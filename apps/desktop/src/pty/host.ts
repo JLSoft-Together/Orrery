@@ -32,6 +32,7 @@ import { ownersOf, readPidTable } from './owners'
 import { childEnv, clampDim, codewhalePath, earlyExitNote, isPaneName, MCP_CONFIG_JSON, mintedSessionId, presetCommand, presetEnabled, taskkillPath } from './presets'
 import { writeShellInit } from './shellInit'
 import { shimDirFor, writeShims } from './shim'
+import { createSpawnWaits } from './spawnWait'
 
 // Native module ships outside the bundle (resources/pty in a packaged app), so it is required by path.
 const pty = require(process.env.CCM_NODE_PTY || '@lydell/node-pty') as typeof import('@lydell/node-pty')
@@ -62,6 +63,7 @@ const EARLY_EXIT_MS = 15_000
 const OPEN_REPLY_MS = 8_000
 const OPEN_RATE_MAX = 20
 const OPEN_RATE_MS = 60_000
+const SPAWN_WAIT_MS = 10_000
 let PORT = 0
 
 interface Session {
@@ -89,6 +91,8 @@ interface Session {
   /** v80 MCP tools: sliding windows per tool key, and the notify_owner fold queue. */
   rates: Map<string, number[]>
   notes: NoteQueue | null
+  /** Agent conversation uuid the pane was started with (minted, ticketed or resumed); open_session finds a reused pane by it. */
+  agentSession?: string
 }
 
 interface Ticket {
@@ -103,6 +107,7 @@ const sessions = new Map<string, Session>()
 const tokens = new Map<string, string>()
 const tickets = new Map<string, Ticket>()
 const openWaiters = new Map<string, (result: PaneOpenResult) => void>()
+const spawnWaits = createSpawnWaits(SPAWN_WAIT_MS)
 const mcpWaiters = new Map<string, (raw: unknown) => void>()
 
 // One bad frame or a dying child must never take every other terminal down with it.
@@ -175,7 +180,8 @@ function spawn(preset: PtyPreset, cols: number, rows: number, cwd: string, resum
   const env = { ...childEnv(process.env), ...pathFix, ...spec.env, ORRERY_API: `http://127.0.0.1:${PORT}`, ORRERY_TOKEN: token, ...(MCP_READY ? { ORRERY_MCP_CONFIG: MCP_FILE } : {}) }
   const proc = pty.spawn(spec.file, spec.args, { name: 'xterm-256color', cols, rows, cwd, env, useConptyDll: false })
   const startedAt = Date.now()
-  const s: Session = { id: randomUUID(), preset, cwd, liveCwd: null, proc, pid: proc.pid, ring: '', pending: [], timer: null, ws: null, exitCode: null, exitedAt: 0, paused: false, branch: null, headWatcher: null, branchGen: 0, token, opens: [], siNonce: spec.integrated && shellNonce ? shellNonce : null, rates: new Map(), notes: null }
+  const agentSession = resume ?? ticket?.sessionId ?? minted
+  const s: Session = { id: randomUUID(), preset, cwd, liveCwd: null, proc, pid: proc.pid, ring: '', pending: [], timer: null, ws: null, exitCode: null, exitedAt: 0, paused: false, branch: null, headWatcher: null, branchGen: 0, token, opens: [], siNonce: spec.integrated && shellNonce ? shellNonce : null, rates: new Map(), notes: null, ...(agentSession ? { agentSession } : {}) }
   proc.onData((d) => {
     s.ring += d
     // Amortised trim; a replay may start mid escape sequence, which xterm shrugs off.
@@ -404,6 +410,7 @@ function onText(ws: WebSocket, current: Session | null, raw: string): Session | 
       return send(ws, { t: 'error', message: 'spawn' }), null
     }
     attachTo(ws, s, false)
+    if (ticket && typeof msg.open === 'string') spawnWaits.spawned(msg.open, s.id)
     return s
   }
   if (msg.t === 'attach' && !current) {
@@ -472,13 +479,22 @@ async function openFrom(s: Session, args: OpenArgs): Promise<OpenOutcome> {
   const id = randomUUID()
   tickets.set(id, { preset, cwd, sessionId: resume ? undefined : sessionId, name: resume ? undefined : name, expires: now + TICKET_TTL_MS })
   s.opens.push(now)
+  const spawned = spawnWaits.expect(id)
   const result = await askPage({ id, from: s.id, preset, cwd, prompt, resume, ...(submit ? { submit: true as const } : {}) })
-  if (result.ok) return { ok: true, preset, cwd, sessionId, prompt: !!prompt, ...(submit ? { submitted: true } : {}), ...(resume ? { resumed: true } : {}) }
+  if (result.ok) {
+    const held = resume ? liveHolding(resume) : undefined
+    if (held) spawned.drop()
+    const paneId = held ?? (await spawned.wait())
+    return { ok: true, preset, cwd, sessionId, ...(paneId ? { paneId } : {}), prompt: !!prompt, ...(submit ? { submitted: true } : {}), ...(resume ? { resumed: true } : {}) }
+  }
+  spawned.drop()
   tickets.delete(id)
   const at = s.opens.indexOf(now)
   if (at >= 0) s.opens.splice(at, 1)
   return { ok: false, error: result.error }
 }
+
+const liveHolding = (agentSession: string): string | undefined => [...sessions.values()].find((x) => x.exitCode === null && x.agentSession === agentSession)?.id
 
 function askPageMcp(call: McpPageCall): Promise<McpPageResult> {
   return new Promise((resolve) => {

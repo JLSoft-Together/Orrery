@@ -44,7 +44,7 @@ describe('mcp json-rpc', () => {
   it('lists open_session first with a closed schema', async () => {
     const res = await handleMcp({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, never, '0')
     const tools = (res.json as { result: { tools: (typeof OPEN_SESSION_TOOL)[] } }).result.tools
-    expect(tools.map((t) => t.name)).toEqual(['open_session', 'notify_owner', 'open_in_workspace', 'who_is_editing', 'preview_layout', 'list_servers', 'free_port', 'run_app', 'run_status', 'run_log', 'device_screenshot', 'telegram_notify', 'telegram_send', 'telegram_receive', 'hand_back', 'list_sessions', 'send_to_session', 'close_session'])
+    expect(tools.map((t) => t.name)).toEqual(['open_session', 'notify_owner', 'open_in_workspace', 'who_is_editing', 'preview_layout', 'list_servers', 'free_port', 'run_app', 'run_status', 'run_log', 'device_screenshot', 'telegram_notify', 'telegram_send', 'telegram_receive', 'hand_back', 'list_sessions', 'send_to_session', 'close_session', 'wait_session'])
     const tool = tools[0]!
     expect(tool.name).toBe('open_session')
     expect(tool.description).toContain('instead of starting a terminal window')
@@ -73,6 +73,11 @@ describe('mcp json-rpc', () => {
     expect((shell.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe('Opened a shell in /srv as a new Orrery pane next to this session.')
     const resumed = await handleMcp(call(8, 'open_session', { resume: uuid }), hostWith(() => Promise.resolve({ ok: true, preset: 'codex', cwd: '/srv', sessionId: uuid, prompt: false, resumed: true })), '0')
     expect((resumed.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe(`Reopened Codex session ${uuid} in /srv as an Orrery pane.`)
+    const withPane = await handleMcp(call(11, 'open_session', { agent: 'codex' }), hostWith(() => Promise.resolve({ ok: true, preset: 'codex', cwd: '/srv', paneId: 'pty-9', prompt: false })), '0')
+    expect((withPane.json as { result: { structuredContent: unknown } }).result.structuredContent).toEqual({ ok: true, preset: 'codex', cwd: '/srv', paneId: 'pty-9', prompt: false })
+    expect((withPane.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe(
+      'Opened Codex in /srv as a new Orrery pane next to this session. Pane id: pty-9 (pass it to send_to_session, close_session and wait_session).',
+    )
     const sent = await handleMcp(call(9, 'open_session', { agent: 'codex', prompt: 'go on', submit: true }), hostWith(() => Promise.resolve({ ok: true, preset: 'codex', cwd: '/srv', prompt: true, submitted: true })), '0')
     expect((sent.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe(
       'Opened Codex in /srv as a new Orrery pane next to this session. The prompt is sent as soon as the agent is ready; it works on it without the user.',

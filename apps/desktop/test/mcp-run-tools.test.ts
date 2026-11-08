@@ -133,6 +133,32 @@ describe('run_status / run_log', () => {
     expect(text).toContain('reloaded')
   })
 
+  it('log: match / ignoreCase / since are validated before asking and forwarded; since returns the oldest lines', async () => {
+    const page = vi.fn(fail)
+    for (const args of [{ match: '(' }, { match: '' }, { match: 'a'.repeat(201) }, { match: 5 }, { ignoreCase: 'y' }, { since: 'x y' }, { since: 7 }]) {
+      expect((await call(hostWith({ page }), 'run_log', args)).isError).toBe(true)
+    }
+    expect((await call(hostWith({ page }), 'run_log', { match: '(' })).structuredContent).toEqual({ ok: false, error: 'match' })
+    expect(page).not.toHaveBeenCalled()
+    const said = pageSays({
+      ok: true,
+      session: sessionRaw,
+      lines: [{ stream: 'app', text: 'one' }, { stream: 'app', text: 'two' }, { stream: 'app', text: 'three' }],
+      errors: [],
+      partial: false,
+      cursor: 'run-1.0.7',
+      reset: true,
+      truncated: true,
+    })
+    const res = await call(hostWith({ page: said }), 'run_log', { lines: 2, match: 'o', ignoreCase: true, since: 'run-1.0.3' })
+    expect(said).toHaveBeenCalledWith({ tool: 'run_log', lines: 2, errorsOnly: false, match: 'o', ignoreCase: true, since: 'run-1.0.3' })
+    expect(res.structuredContent).toMatchObject({ cursor: 'run-1.0.7', reset: true, truncated: true, lines: [{ text: 'one' }, { text: 'two' }] })
+    expect(res.content[0]!.text).toContain('cursor: run-1.0.7')
+    expect(res.content[0]!.text).not.toContain('three')
+    const bad = pageSays({ ok: true, session: sessionRaw, lines: [], errors: [], cursor: '../x' })
+    expect((await call(hostWith({ page: bad }), 'run_log', {})).structuredContent).not.toHaveProperty('cursor')
+  })
+
   it('log without any run', async () => {
     const res = await call(hostWith({ page: pageSays({ ok: true, session: null, lines: [], errors: [] }) }), 'run_log', {})
     expect(res.content[0]!.text).toContain('Nothing has run')

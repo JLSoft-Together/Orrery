@@ -53,6 +53,8 @@ import PresetIcon from './PresetIcon.vue'
 import SplitMenu from './SplitMenu.vue'
 import WorktreeMenu from './WorktreeMenu.vue'
 import OverlapChip from './OverlapChip.vue'
+import AgentStatusChip from './AgentStatusChip.vue'
+import { useAgentStatusStore } from '../../stores/agentStatus'
 import PromptQueueButton from './PromptQueueButton.vue'
 import LimitResumeChip from './LimitResumeChip.vue'
 import { shouldAutoFill } from '../../lib/promptQueue'
@@ -260,6 +262,8 @@ const sessionChip = computed(() => {
 })
 const chipKey = computed(() => (sessionChip.value ? `s:${sessionChip.value.state}:${sessionChip.value.label}` : `p:${procChip.value?.kind ?? ''}:${procChip.value?.label ?? ''}`))
 
+const agentStatus = useAgentStatusStore()
+const workflowStatus = computed(() => (isShell.value ? undefined : agentStatus.statusOf(props.pane.key)))
 const peer = computed(() => (props.pane.state === 'running' ? info.peerOf(props.pane) : null))
 const peerBadge = computed(() => !!sessionChip.value && needsUser(sessionChip.value.state))
 const coordinating = computed(() => (props.pane.state === 'running' ? info.coordinatingOf(props.pane) : null))
@@ -1221,6 +1225,7 @@ onBeforeUnmount(() => {
           </Transition>
         </span>
         <OverlapChip v-if="cwd && preset !== 'shell'" :cwd="cwd" :branch="branch" data-pane-chip />
+        <AgentStatusChip v-if="workflowStatus" :status="workflowStatus" data-pane-chip />
         <LimitResumeChip v-if="!isShell && pane.state === 'running'" :pane-key="pane.key" :hit="limitHit" data-pane-chip />
         <span v-if="!isShell" class="hidden"><PromptQueueButton ref="queueButton" :pane-key="pane.key" :can-fill="canFillQueue" @fill="fillQueued" /></span>
         <PaneMore ref="more" class="@max-[300px]:min-w-6 @max-[300px]:px-1" :entries="moreEntries" :label="t('workspace.paneHead.more')" @pick="pickMore" />

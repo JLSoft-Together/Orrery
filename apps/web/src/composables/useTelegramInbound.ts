@@ -1,5 +1,5 @@
 import { nextTick, watch } from 'vue'
-import { cleanNoteText, isSessionId, type SessionTarget, type TelegramPaneLink, type TelegramInbound, type TelegramInboundResult, type TelegramResumeItem, type TerminalSession, type SessionOpenError } from '@ccm/shared'
+import { cleanNoteText, cleanPanePrompt, isSessionId, type SessionTarget, type TelegramPaneLink, type TelegramInbound, type TelegramInboundResult, type TelegramResumeItem, type TerminalSession, type SessionOpenError } from '@ccm/shared'
 import { i18n } from '../i18n'
 import { telegramPanes } from '../lib/telegram'
 import { baseName } from '../lib/preview'
@@ -19,6 +19,7 @@ export { keyOf, keysReady } from './useSessionActions'
 
 const TOAST_MS = 6000
 const RESUME_MAX = 8
+const REPLY_PANES = new Set(['claude', 'codex'])
 let installed = false
 
 type Req<A extends TelegramInbound['action']> = Extract<TelegramInbound, { action: A }>
@@ -153,6 +154,24 @@ export function installTelegramInbound(): void {
     return { ok: true, action: 'focus', name: nameOf(pane) }
   }
 
+  /**
+   * Owner exception 5 (docs §11an): a tapped `telegram_send` button types its value into the pane that sent it.
+   * Submitted only while that agent is idle; busy, waiting or unknown → only typed, the owner presses Enter.
+   */
+  function answer(req: Req<'answer'>): TelegramInboundResult {
+    const pane = workspace.panes.find((p) => isTerm(p) && p.sessionId === req.target.sessionId)
+    if (!pane || !isTerm(pane) || pane.state !== 'running' || !REPLY_PANES.has(presetOf(pane))) return { ok: false, error: 'gone' }
+    const text = cleanPanePrompt(req.text)
+    if (!text) return { ok: false, error: 'unavailable' }
+    if (pane.prefill || pane.compact) return fail({ ok: false, error: 'busy', panes: [pane] })
+    const idle = sessionOf(pane)?.status === 'idle'
+    workspace.update(pane.key, { prefill: text, prefillSubmit: idle ? true : undefined })
+    const name = nameOf(pane)
+    log(pane, req.from, text)
+    toast(name, text)
+    return { ok: true, action: 'answer', name, submitted: idle }
+  }
+
   const openError = (error: SessionOpenError): TelegramInboundResult => ({ ok: false, error: error === 'live' ? 'busy' : 'unavailable' })
 
   function create(req: Req<'new'>): TelegramInboundResult {
@@ -190,6 +209,7 @@ export function installTelegramInbound(): void {
   handleOrrery('session.create', create)
   handleOrrery('session.resumeList', resumeList)
   handleOrrery('session.resume', resume)
+  handleOrrery('session.answer', answer)
 
   // Main routes a session's reports and its topic's commands by Claude session id; only the page knows which pane runs it.
   watch(

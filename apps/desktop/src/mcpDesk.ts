@@ -104,9 +104,10 @@ export function createDesk(deps: DeskDeps): (call: McpDeskCall) => Promise<McpDe
     if (!tg) return { ok: false, error: 'unavailable' }
     const cwd = realOr(call.cwd)
     if (call.tool === 'telegram_send') {
-      const res = await tg.report(cwd, call.text, call.file ? realOr(call.file) : undefined, call.from)
+      if (call.buttons && call.file) return { ok: false, error: 'buttons-file' }
+      const res = await tg.report(cwd, call.text, call.file ? realOr(call.file) : undefined, call.from, call.buttons)
       if (!res.ok) return { ok: false, error: deskError(res.error), detail: res.error }
-      return { ok: true, tool: 'telegram_send', topic: res.topic, ...(res.file ? { file: res.file } : {}), ...(res.linkOnly ? { linkOnly: true } : {}), ...(res.uploading ? { uploading: true } : {}) }
+      return { ok: true, tool: 'telegram_send', topic: res.topic, ...(res.file ? { file: res.file } : {}), ...(res.linkOnly ? { linkOnly: true } : {}), ...(res.uploading ? { uploading: true } : {}), ...(res.buttons ? { buttons: res.buttons } : {}) }
     }
     if (call.tool === 'telegram_receive') {
       const before = tg.state()

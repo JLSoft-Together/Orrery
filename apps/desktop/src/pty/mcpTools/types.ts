@@ -16,7 +16,7 @@ export interface OpenArgs {
   submit?: unknown
 }
 
-export type OpenOutcome = { ok: true; preset: PtyPreset; cwd: string; sessionId?: string; prompt: boolean; submitted?: boolean; resumed?: boolean } | { ok: false; error: PaneOpenError }
+export type OpenOutcome = { ok: true; preset: PtyPreset; cwd: string; sessionId?: string; paneId?: string; prompt: boolean; submitted?: boolean; resumed?: boolean } | { ok: false; error: PaneOpenError }
 
 export type NoteOutcome = { ok: true; sent: true; name: string; inbox: boolean } | { ok: true; sent: false; inMs: number } | { ok: false; error: 'unavailable' | 'failed' }
 

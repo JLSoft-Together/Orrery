@@ -122,6 +122,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   requestAccess: (path: string): Promise<unknown> => ipcRenderer.invoke('ccm:request-access', path),
   forgetGrants: (): Promise<unknown> => ipcRenderer.invoke('ccm:forget-grants'),
   fullAccess: (on?: boolean | 'first'): Promise<unknown> => ipcRenderer.invoke('ccm:full-access', on),
+  agentStatusWatch: (key: string, dir: string | null): Promise<unknown> => ipcRenderer.invoke('ccm:agent-status-watch', key, dir),
+  onAgentStatus: (handler: (event: unknown) => void): (() => void) => subscribe('ccm:agent-status', handler),
   onPreviewChanged: (handler: (change: unknown) => void): (() => void) => subscribe('ccm:preview-changed', handler),
   changesStatus: (dir: string): Promise<unknown> => ipcRenderer.invoke('ccm:changes-status', dir),
   changesDiff: (root: string, path: string, opts?: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:changes-diff', { root, path, opts }),

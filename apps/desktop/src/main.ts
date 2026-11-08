@@ -103,6 +103,7 @@ import { BuildCleanService } from './buildClean/service'
 import { registerBuildCleanIpc } from './buildClean/ipc'
 import { DISK_FILE, DiskWatch, type DiskSpace } from './disk/watch'
 import { registerDiskIpc } from './disk/ipc'
+import { registerAgentStatusIpc } from './agentStatus/ipc'
 import { runGit } from './pty/git'
 import { registerRestoreIpc } from './restore/ipc'
 import { markClean, markRunning, readPreviousRun, RUN_STATE_FILE } from './restore/runState'
@@ -184,6 +185,7 @@ let disposeTelegram: (() => void) | null = null
 let disposeAgentData: (() => void) | null = null
 let disposeBuildClean: (() => void) | null = null
 let disposeDisk: (() => void) | null = null
+let disposeAgentStatus: (() => void) | null = null
 let disk: DiskWatch | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
@@ -333,6 +335,8 @@ function stopPreview(): Promise<void> {
   disposeBuildClean = null
   disposeDisk?.()
   disposeDisk = null
+  disposeAgentStatus?.()
+  disposeAgentStatus = null
   disk?.stop()
   disk = null
   capture?.dispose()
@@ -1128,6 +1132,16 @@ function setupCaptureAndAwake(): void {
   })
 }
 
+function setupAgentStatus(): void {
+  disposeAgentStatus = registerAgentStatusIpc({
+    ipcMain,
+    isAppFrame,
+    send: (event) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:agent-status', event)
+    },
+  })
+}
+
 function setupPhone(): void {
   const broadcast = (channel: string, payload: unknown) => {
     for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
@@ -1377,6 +1391,7 @@ async function ready(): Promise<void> {
   await setupAgentData()
   setupBuildClean()
   setupDisk()
+  setupAgentStatus()
   host = new CollectorHost({
     script: path.join(__dirname, 'collector.cjs').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`),
     port: PORT,

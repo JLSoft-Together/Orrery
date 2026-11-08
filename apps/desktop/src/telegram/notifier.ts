@@ -36,11 +36,13 @@ import {
   type TelegramSetResult,
   type TelegramState,
   type TelegramTestResult,
+  type TelegramButton,
 } from '@ccm/shared'
 import { createHash, randomInt, randomUUID } from 'node:crypto'
 import { DEFAULT_TELEGRAM_QUIET, DEFAULT_TELEGRAM_SUMMARY, inboundPrompt, maskSecrets, TELEGRAM_TAIL_DEFAULT, TELEGRAM_TAIL_MAX, inTelegramQuiet, isHhmm, type TelegramInbound, type TelegramInboundResult, type TelegramKey, type TelegramOwner, type TelegramHealth, type TelegramPaneInfo, type TelegramQuiet, type TelegramSummary, type TelegramTarget, type TelegramUserInput, type TelegramUserResult } from '@ccm/shared'
-import { ACT_TEXT, ACTION_RE, viaTelegram, MORE_TEXT, dayKey, emptyCounts, FILE_KIND, hhmmMinute, markup, minuteOfDay, PLAN_LABELS, PROMPTS, summaryHtml, TAIL_BUTTON, type ActionEntry, type ActionKind, type DayCounts, type LimitText, type Markup, type PinState } from './actions'
+import { ACT_TEXT, ACTION_RE, REPLY_TEXT, viaTelegram, MORE_TEXT, dayKey, emptyCounts, FILE_KIND, hhmmMinute, markup, minuteOfDay, PLAN_LABELS, PROMPTS, summaryHtml, TAIL_BUTTON, type ActionEntry, type ActionKind, type DayCounts, type LimitText, type Markup, type PinState } from './actions'
 import { isInsideOrSame } from '../agentData/fsTree'
+import { REPLY_DATA_RE, ReplyButtons } from './replyButtons'
 import { COMMAND_MENU, commandOf, paneStatus, readMessage, resultHtml, tailHtml, TEXT as INBOUND_TEXT, type TgFile, type TgMessage } from './inbound'
 import type { TokenCrypt } from '../github/accounts'
 import { RateLimiter } from '../phone/send'
@@ -217,7 +219,7 @@ export interface TelegramDeps {
   focusApp?: () => void
 }
 
-export type SendOutcome = { ok: true; topic: string; file?: string; linkOnly?: boolean; uploading?: boolean } | { ok: false; error: TelegramError | 'telegram-off' | 'telegram-config' | 'no-topic' | 'outside' | 'missing' | 'secret' }
+export type SendOutcome = { ok: true; topic: string; file?: string; linkOnly?: boolean; uploading?: boolean; buttons?: number } | { ok: false; error: TelegramError | 'telegram-off' | 'telegram-config' | 'no-topic' | 'outside' | 'missing' | 'secret' | 'not-paired' | 'buttons-file' }
 
 const DEFAULTS: FileShape = { enabled: false, includeReply: false, digest: false, waiting: true, doneMinutes: DEFAULT_TELEGRAM_DONE_MIN, routes: [], known: {}, quiet: { ...DEFAULT_TELEGRAM_QUIET }, summary: { ...DEFAULT_TELEGRAM_SUMMARY }, alerts: true, pinStatus: false, topicIcons: false, pins: {}, bigFiles: false, sessionRoutes: [], stranger: { ...DEFAULT_TELEGRAM_STRANGER }, replies: {}, members: [] }
 
@@ -460,6 +462,7 @@ export class TelegramNotifier {
   private lightChain: Promise<void> = Promise.resolve()
   private heavyRunning = 0
   private readonly heavyWaiting: (() => void)[] = []
+  private readonly replyButtons = new ReplyButtons(() => this.now)
 
   constructor(private readonly deps: TelegramDeps) {
     this.data = readShape(deps.file)
@@ -758,9 +761,14 @@ export class TelegramNotifier {
     return this.pairCode !== null && (this.pairUntil ?? 0) > this.now
   }
 
+  /** Reply buttons are an agent's explicit question, so a pending one keeps the poll alive even with receive mode off. */
+  private get wantUpdates(): boolean {
+    return this.receiving || this.pairing || (!!this.data.owner && this.replyButtons.pending())
+  }
+
   /** `retry`: only an explicit receive-on (or a new token) restarts a poll that stopped on conflict; other setting changes must not. */
   private syncPoll(retry = false): void {
-    const want = !!this.token() && (this.receiving || this.pairing)
+    const want = !!this.token() && this.wantUpdates
     if (want && !this.pollRun && (!this.pollConflict || retry)) {
       const run = Date.now() + Math.random()
       this.pollRun = run
@@ -806,7 +814,7 @@ export class TelegramNotifier {
     let backoff = 2000
     this.pollSeen = { chats: new Map(), topics: new Map() }
     while (this.pollRun === run) {
-      if (!this.receiving && !this.pairing) {
+      if (!this.wantUpdates) {
         this.pollRun = 0
         this.deps.onState?.(this.state())
         break
@@ -1340,6 +1348,7 @@ export class TelegramNotifier {
     const from = cb.from as { id?: unknown } | undefined
     const data = typeof cb.data === 'string' ? cb.data : ''
     if (!id) return
+    if (REPLY_DATA_RE.test(data)) return this.onReplyTap(id, data, from?.id, cb)
     const locale = this.deps.locale()
     const a = ACT_TEXT[locale]
     const role = this.roleOf(from?.id)
@@ -1433,6 +1442,42 @@ export class TelegramNotifier {
     const done = kind === 'ap' ? a.approved(entry.name) : kind === 'dn' ? a.denied(entry.name) : kind === 'qa' ? a.chose(entry.name, entry.label ?? String(option)) : kind === 'es' ? a.escaped(entry.name) : a.stopped(entry.name)
     await this.answer(id)
     await this.post(where, done)
+  }
+
+  /** Owner exception 5 (docs §11an): the tapped value goes to the pane that sent the buttons, submitted only while it is idle. */
+  private async onReplyTap(id: string, data: string, fromId: unknown, cb: Record<string, unknown>): Promise<void> {
+    const locale = this.deps.locale()
+    const a = ACT_TEXT[locale]
+    const r = REPLY_TEXT[locale]
+    const role = this.roleOf(fromId)
+    if (role !== 'owner') {
+      if (!role) this.noteIgnored()
+      if (this.notOwnerLimit.take()) await this.answer(id, a.notOwner)
+      return
+    }
+    const got = this.replyButtons.claim(data)
+    if (got.kind === 'expired') return this.answer(id, a.expired)
+    if (got.kind === 'answered') return this.answer(id, r.already(got.label))
+    if (got.kind === 'busy') return this.answer(id, a.keysBusy)
+    const { token, group, button } = got
+    const ask = this.deps.askPage
+    const res: TelegramInboundResult = ask
+      ? await ask({ id: randomUUID(), action: 'answer', project: group.project, text: button.value, target: { kind: 'pane', sessionId: group.pane }, from: this.nameOf(fromId as number) }).catch((): TelegramInboundResult => ({ ok: false, error: 'unavailable' }))
+      : { ok: false, error: 'unavailable' }
+    const msgId = (cb.message as { message_id?: unknown } | undefined)?.message_id
+    const closed = !res.ok && (res.error === 'gone' || res.error === 'none')
+    if (!(res.ok && res.action === 'answer') && !closed) {
+      this.replyButtons.release(token)
+      return this.answer(id, !res.ok && res.error === 'busy' ? r.busy : INBOUND_TEXT[locale].unavailable)
+    }
+    const done = res.ok && res.action === 'answer'
+    if (done) this.replyButtons.finish(token, button.label)
+    else this.replyButtons.forget(token)
+    await this.answer(id, done ? (res.submitted ? r.sent(button.label) : r.typed(button.label)) : r.closed)
+    if (typeof msgId === 'number') {
+      const keys = done ? [[{ text: `✓ ${button.label}`.slice(0, 60), callback_data: data }]] : []
+      await this.call('editMessageReplyMarkup', { chat_id: group.chatId, message_id: msgId, reply_markup: { inline_keyboard: keys } })
+    }
   }
 
   private async unlinkTopic(id: string, key: string, entry: ActionEntry, cb: Record<string, unknown>): Promise<void> {
@@ -2278,7 +2323,7 @@ export class TelegramNotifier {
     return sent.error === null
   }
 
-  async report(cwd: string, text: string, file?: string, sessionId?: string): Promise<SendOutcome> {
+  async report(cwd: string, text: string, file?: string, sessionId?: string, buttons?: TelegramButton[]): Promise<SendOutcome> {
     const target: TelegramTarget | undefined = sessionId ? { kind: 'pane', sessionId } : undefined
     if (!this.data.enabled) return { ok: false, error: 'telegram-off' }
     if (!this.token()) return { ok: false, error: 'telegram-config' }
@@ -2287,6 +2332,20 @@ export class TelegramNotifier {
     const name = route.label
     const locale = this.deps.locale()
     const topic = this.topicName(route)
+    if (buttons?.length && sessionId) {
+      if (file) return { ok: false, error: 'buttons-file' }
+      if (!this.data.owner) return { ok: false, error: 'not-paired' }
+      const token = this.replyButtons.add({ pane: sessionId, project: cwd, chatId: route.chatId, threadId: route.threadId, buttons })
+      const keys = this.replyButtons.markup(token, buttons.map((b) => maskSecrets(b.label, this.deps.home, this.deps.platform)))
+      const sent = await this.sendTextId(route, reportHtml(name, text, locale, this.masker), target, keys)
+      if (sent.error) {
+        this.replyButtons.forget(token)
+        return { ok: false, error: sent.error }
+      }
+      this.reportedAt.set(route.project, this.now)
+      this.syncPoll()
+      return { ok: true, topic, buttons: buttons.length }
+    }
     if (!file) {
       const error = await this.sendText(route, reportHtml(name, text, locale, this.masker), target)
       if (error) return { ok: false, error }

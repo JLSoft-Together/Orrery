@@ -135,4 +135,84 @@ describe('MCP run calls (page side)', () => {
     expect(errs).toMatchObject({ lines: [{ text: 'boom', level: 'E' }, { text: 'Build failed with an exception' }] })
     expect(isErrorLine({ stream: 'app', text: 'terror is fine', at: 0 })).toBe(false)
   })
+
+  describe('log match / since', () => {
+    type Out = { ok?: boolean; lines: { text: string }[]; cursor?: string; reset?: boolean; truncated?: boolean }
+    const feed = (run: ReturnType<typeof useRunStore>, texts: string[], sessionId = 's1') =>
+      run.handleEvent({ type: 'log', sessionId, lines: texts.map((text, i) => ({ stream: 'app' as const, text, at: i })) })
+    const logOf = (calls: ReturnType<typeof createRunCalls>, over: Record<string, unknown> = {}) =>
+      calls.log({ ...base, tool: 'run_log', lines: 50, errorsOnly: false, ...over } as never) as unknown as Promise<Out>
+    const texts = (o: Out) => o.lines.map((l) => l.text)
+    const setup = () => {
+      const run = useRunStore()
+      run.handleEvent({ type: 'session', session: session() })
+      return { run, calls: createRunCalls(run) }
+    }
+
+    it('match filters per line, ignoreCase widens it, errorsOnly is ANDed', async () => {
+      const { run, calls } = setup()
+      feed(run, ['Alpha one', 'beta two', 'alpha three'])
+      run.handleEvent({ type: 'log', sessionId: 's1', lines: [{ stream: 'logcat', level: 'E', text: 'alpha boom', at: 9 }] })
+      expect(texts(await logOf(calls, { match: '^alpha' }))).toEqual(['alpha three', 'alpha boom'])
+      expect(texts(await logOf(calls, { match: '^alpha', ignoreCase: true }))).toEqual(['Alpha one', 'alpha three', 'alpha boom'])
+      expect(texts(await logOf(calls, { match: 'alpha', errorsOnly: true }))).toEqual(['alpha boom'])
+    })
+
+    it('an invalid regex is refused', async () => {
+      const { calls } = setup()
+      expect(await logOf(calls, { match: '(' })).toMatchObject({ ok: false })
+    })
+
+    it('since pages the oldest lines first without loss', async () => {
+      const { run, calls } = setup()
+      feed(run, ['l1', 'l2', 'l3', 'l4', 'l5'])
+      expect(texts(await logOf(calls, { lines: 2 }))).toEqual(['l4', 'l5'])
+      const p1 = await logOf(calls, { lines: 2, since: 's1.0.0' })
+      expect(texts(p1)).toEqual(['l1', 'l2'])
+      expect(p1.cursor).toBe('s1.0.2')
+      const p2 = await logOf(calls, { lines: 2, since: p1.cursor })
+      expect(texts(p2)).toEqual(['l3', 'l4'])
+      const p3 = await logOf(calls, { lines: 2, since: p2.cursor })
+      expect(texts(p3)).toEqual(['l5'])
+      expect(p3.cursor).toBe('s1.0.5')
+      expect((await logOf(calls, { since: p3.cursor })).lines).toEqual([])
+      feed(run, ['l6'])
+      expect(texts(await logOf(calls, { since: p3.cursor }))).toEqual(['l6'])
+    })
+
+    it('since with match skips non-matching lines and still advances', async () => {
+      const { run, calls } = setup()
+      feed(run, ['x1', 'y', 'x2', 'y', 'x3'])
+      const a = await logOf(calls, { match: '^x', lines: 2, since: 's1.0.0' })
+      expect(texts(a)).toEqual(['x1', 'x2'])
+      const b = await logOf(calls, { match: '^x', lines: 2, since: a.cursor })
+      expect(texts(b)).toEqual(['x3'])
+      expect(b.cursor).toBe('s1.0.5')
+    })
+
+    it('a cursor from another run, a bad position or a cleared log resets to the start of the current log', async () => {
+      const { run, calls } = setup()
+      feed(run, ['a', 'b'])
+      const old = (await logOf(calls)).cursor
+      run.handleEvent({ type: 'session', session: session({ id: 's2', startedAt: 20 }) })
+      feed(run, ['c', 'd'], 's2')
+      const res = await logOf(calls, { since: old })
+      expect(res).toMatchObject({ reset: true, cursor: 's2.0.2' })
+      expect(texts(res)).toEqual(['c', 'd'])
+      expect(await logOf(calls, { since: 's2.0.99' })).toMatchObject({ reset: true })
+      run.clearLog('s2', ['app'])
+      expect(await logOf(calls, { since: 's2.0.2' })).toMatchObject({ reset: true })
+    })
+
+    it('reports truncated when the ring buffer dropped lines after the cursor', async () => {
+      const { run, calls } = setup()
+      feed(run, ['first'])
+      const cur = (await logOf(calls)).cursor
+      feed(run, Array.from({ length: 5200 }, (_, i) => `n${i}`))
+      const res = await logOf(calls, { since: cur, lines: 3 })
+      expect(res.truncated).toBe(true)
+      expect(res.reset).toBeUndefined()
+      expect(texts(res)).toHaveLength(3)
+    })
+  })
 })

@@ -140,15 +140,21 @@ export function useSessionActions() {
     return workspace.panes
       .filter((p) => !!p.sessionId && live(p) && sameProject(p, project))
       .slice(0, LIST_MAX)
-      .map((p) => ({
-        sessionId: p.sessionId!,
-        ...(isAgentSessionId(p.agentSessionId) ? { agentSessionId: p.agentSessionId } : {}),
-        name: nameOf(p, { title: false }),
-        agent: presetOf(p),
-        status: sessionOf(p)?.status ?? p.state,
-        self: p.key === caller.key,
-        openedByYou: p.openedBy === caller.key,
-      }))
+      .map((p) => {
+        const s = sessionOf(p)
+        const hit = presetOf(p) === 'claude' ? s?.limitHit : undefined
+        return {
+          sessionId: p.sessionId!,
+          ...(isAgentSessionId(p.agentSessionId) ? { agentSessionId: p.agentSessionId } : {}),
+          name: nameOf(p, { title: false }),
+          agent: presetOf(p),
+          status: s?.status ?? p.state,
+          self: p.key === caller.key,
+          openedByYou: p.openedBy === caller.key,
+          ...(hit ? { limit: { ...(hit.resetsAt ? { resetsAt: hit.resetsAt } : {}), ...(hit.window ? { window: hit.window } : {}) } } : {}),
+          ...(s?.status === 'idle' && s.statusSince ? { idleSince: s.statusSince } : {}),
+        }
+      })
   }
 
   /** The prompt is only typed into the other pane (prefillSubmit stays off): the owner reads it and presses Enter. */

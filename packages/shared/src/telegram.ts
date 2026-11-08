@@ -419,6 +419,33 @@ export type TelegramKey = (typeof TELEGRAM_KEYS)[number]
 
 export type TelegramTarget = { kind: 'terminal'; terminalId: string } | { kind: 'pane'; sessionId: string }
 
+/** Reply buttons an agent pane attaches to `telegram_send` (owner exception 5, docs §11an). */
+export const TELEGRAM_BUTTONS_MAX = 6
+export const TELEGRAM_BUTTON_LABEL_MAX = 32
+export const TELEGRAM_BUTTON_VALUE_MAX = 200
+
+export interface TelegramButton {
+  label: string
+  value: string
+}
+
+/** undefined = no buttons asked for; null = malformed (count, lengths, empty after trimming). */
+export function parseTelegramButtons(raw: unknown): TelegramButton[] | null | undefined {
+  if (raw === undefined) return undefined
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > TELEGRAM_BUTTONS_MAX) return null
+  const out: TelegramButton[] = []
+  for (const b of raw) {
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return null
+    const o = b as Record<string, unknown>
+    if (typeof o.label !== 'string' || typeof o.value !== 'string') return null
+    const label = o.label.replace(/[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]+/g, ' ').trim()
+    const value = o.value.trim()
+    if (!label || [...label].length > TELEGRAM_BUTTON_LABEL_MAX || !value || [...value].length > TELEGRAM_BUTTON_VALUE_MAX || value.includes('\0')) return null
+    out.push({ label, value })
+  }
+  return out
+}
+
 export const TELEGRAM_NESTED_MAX = 20
 
 export type TelegramInbound = (
@@ -433,6 +460,8 @@ export type TelegramInbound = (
   | { id: string; action: 'compact'; project: string; target?: TelegramTarget; since?: number }
   | { id: string; action: 'close'; project: string; target?: TelegramTarget; since?: number }
   | { id: string; action: 'focus'; project: string; target?: TelegramTarget }
+  /** A tapped `telegram_send` button: typed into the pane that sent it, submitted only while it is idle. */
+  | { id: string; action: 'answer'; project: string; text: string; target: { kind: 'pane'; sessionId: string }; from: string }
 ) & { nested?: string[] }
 
 export const TELEGRAM_TAIL_DEFAULT = 30
@@ -464,6 +493,7 @@ export type TelegramInboundResult =
   | { ok: true; action: 'resume'; name: string }
   | { ok: true; action: 'tail'; name: string; text: string }
   | { ok: true; action: 'compact' | 'close' | 'focus'; name: string }
+  | { ok: true; action: 'answer'; name: string; submitted: boolean }
   | { ok: false; error: 'none' | 'many' | 'busy' | 'gone' | 'unavailable' | 'state'; panes?: TelegramPaneInfo[] }
 
 const optionOf = (v: unknown): number | undefined => (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= TELEGRAM_ASK_OPTIONS_MAX ? v : undefined)
@@ -507,6 +537,10 @@ export function parseInboundResult(raw: unknown): TelegramInboundResult {
   if (r.action === 'new' || r.action === 'resume' || r.action === 'compact' || r.action === 'close' || r.action === 'focus') {
     const name = nm(r.name)
     return name ? { ok: true, action: r.action, name } : { ok: false, error: 'unavailable' }
+  }
+  if (r.action === 'answer') {
+    const name = nm(r.name)
+    return name ? { ok: true, action: 'answer', name, submitted: r.submitted === true } : { ok: false, error: 'unavailable' }
   }
   if (r.action === 'all') return { ok: true, action: 'all', names: (Array.isArray(r.names) ? r.names : []).slice(0, 20).map(nm).filter((n): n is string => !!n) }
   if (r.action === 'resumeList') {
@@ -570,6 +604,10 @@ function parseInboundBody(raw: unknown): TelegramInbound | null {
     return { id: r.id, action: 'resume', project: r.project, sessionId: r.sessionId, cwd: r.cwd }
   }
   const from = typeof r.from === 'string' ? r.from.slice(0, NAME_MAX) : null
+  if (r.action === 'answer') {
+    if (!from || t0?.kind !== 'pane' || typeof r.text !== 'string' || !r.text.trim() || r.text.length > TELEGRAM_BUTTON_VALUE_MAX * 2) return null
+    return { id: r.id, action: 'answer', project: r.project, text: r.text, target: t0, from }
+  }
   if (r.action === 'new') {
     if (!from || (r.text !== undefined && (typeof r.text !== 'string' || r.text.length > TELEGRAM_INBOUND_MAX))) return null
     return { id: r.id, action: 'new', project: r.project, from, ...(typeof r.text === 'string' && r.text.trim() ? { text: r.text } : {}) }

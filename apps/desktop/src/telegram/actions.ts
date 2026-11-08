@@ -298,6 +298,24 @@ export const ACT_TEXT: Record<TelegramLocale, {
   },
 }
 
+/** Toasts of a tapped `telegram_send` button (plain text, answerCallbackQuery). */
+export const REPLY_TEXT: Record<TelegramLocale, { sent: (label: string) => string; typed: (label: string) => string; already: (label: string) => string; closed: string; busy: string }> = {
+  en: {
+    sent: (l) => `✓ ${l} — sent to the session.`,
+    typed: (l) => `✓ ${l} — typed into the session; it is not idle, so it was not submitted.`,
+    already: (l) => `Already answered: ${l}`,
+    closed: 'That session is closed; nothing was typed.',
+    busy: 'That session already has a prompt waiting; try again in a moment.',
+  },
+  vi: {
+    sent: (l) => `✓ ${l} — đã gửi vào session.`,
+    typed: (l) => `✓ ${l} — đã gõ vào session; session đang bận nên chưa gửi.`,
+    already: (l) => `Đã trả lời rồi: ${l}`,
+    closed: 'Session đó đã đóng; không gõ gì.',
+    busy: 'Session đó đang có prompt chờ gửi, chủ nhân thử lại sau giây lát.',
+  },
+}
+
 export const FILE_KIND: Record<TelegramLocale, Record<string, string>> = {
   en: { photo: 'a photo', voice: 'a voice message', audio: 'an audio file', video: 'a video', document: 'a file', album: 'several files' },
   vi: { photo: 'ảnh', voice: 'tin nhắn thoại', audio: 'file âm thanh', video: 'video', document: 'file', album: 'nhiều file' },

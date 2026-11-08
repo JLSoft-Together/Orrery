@@ -1,14 +1,16 @@
 import { PANE_OPEN_PROMPT_MAX, type PaneOpenError, type PaneOpenResult, type PtyPreset } from '../../../../../packages/shared/src/pty'
 import { toolResult, type McpTool, type OpenOutcome, type ToolDef } from './types'
 
+const PANE_ID_NOTE = ' The result carries paneId (once the pane has started, within about 10 seconds) for send_to_session, close_session and wait_session.'
+
 /** `deepseek` off (v81 owner pause, `CCM_DEEPSEEK_FEATURE` unset): agents cannot open DeepSeek panes. */
 export const openSessionDef = (deepseek: boolean) =>
   ({
   name: 'open_session',
   description:
     deepseek
-      ? 'Open a new Claude Code (default), Codex, DeepSeek (Codewhale) or shell session as a pane in the Orrery workspace, next to the calling session. Use it instead of starting a terminal window (wt.exe, powershell, cmd start, Terminal.app, iTerm) whenever the user asks to open, start or spawn another session, agent or terminal. DeepSeek is for side code, generating tests and running the clone-app-re skill; when you hand it work, the prompt should state the goal, the files it may change, the test command and when it is done, and ask it to call hand_back when finished so its report comes back to you.'
-      : 'Open a new Claude Code (default), Codex or shell session as a pane in the Orrery workspace, next to the calling session. Use it instead of starting a terminal window (wt.exe, powershell, cmd start, Terminal.app, iTerm) whenever the user asks to open, start or spawn another session, agent or terminal.',
+      ? `Open a new Claude Code (default), Codex, DeepSeek (Codewhale) or shell session as a pane in the Orrery workspace, next to the calling session. Use it instead of starting a terminal window (wt.exe, powershell, cmd start, Terminal.app, iTerm) whenever the user asks to open, start or spawn another session, agent or terminal. DeepSeek is for side code, generating tests and running the clone-app-re skill; when you hand it work, the prompt should state the goal, the files it may change, the test command and when it is done, and ask it to call hand_back when finished so its report comes back to you.${PANE_ID_NOTE}`
+      : `Open a new Claude Code (default), Codex or shell session as a pane in the Orrery workspace, next to the calling session. Use it instead of starting a terminal window (wt.exe, powershell, cmd start, Terminal.app, iTerm) whenever the user asks to open, start or spawn another session, agent or terminal.${PANE_ID_NOTE}`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -59,9 +61,10 @@ const PANE_ERRORS = Object.keys(ERRORS)
 export function openText(outcome: OpenOutcome): string {
   if (!outcome.ok) return `${ERRORS[outcome.error] ?? ERRORS.failed} Do not open an external terminal window instead unless the user asks for it.`
   const id = outcome.sessionId ? ` Session id: ${outcome.sessionId}.` : ''
+  const pane = outcome.paneId ? ` Pane id: ${outcome.paneId} (pass it to send_to_session, close_session and wait_session).` : ''
   const prompt = outcome.submitted ? ' The prompt is sent as soon as the agent is ready; it works on it without the user.' : outcome.prompt ? ' The prompt is waiting in its input box; the user presses Enter to send it.' : ''
-  if (outcome.resumed) return `Reopened ${LABELS[outcome.preset]} session ${outcome.sessionId} in ${outcome.cwd} as an Orrery pane.${prompt}`
-  return `Opened ${LABELS[outcome.preset]} in ${outcome.cwd} as a new Orrery pane next to this session.${id}${prompt}`
+  if (outcome.resumed) return `Reopened ${LABELS[outcome.preset]} session ${outcome.sessionId} in ${outcome.cwd} as an Orrery pane.${pane}${prompt}`
+  return `Opened ${LABELS[outcome.preset]} in ${outcome.cwd} as a new Orrery pane next to this session.${id}${pane}${prompt}`
 }
 
 export function toOpenResult(v: unknown): PaneOpenResult | null {

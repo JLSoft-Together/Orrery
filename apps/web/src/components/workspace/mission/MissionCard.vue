@@ -8,6 +8,9 @@ import { peerSlot, stateWord, type PeerSlot, type RailState } from '../../../lib
 import type { RunBadge } from '../../../lib/runUi'
 import type { Box } from '../../../lib/splitLayout'
 import { useOverlapStore } from '../../../stores/overlap'
+import { useAgentStatusStore } from '../../../stores/agentStatus'
+import { isStatusStale, progressPct } from '../../../lib/agentStatus'
+import { now } from '../../../lib/format'
 import { isTerm, useWorkspaceStore, workCwd, type Pane } from '../../../stores/workspace'
 import StatusIcon from '../../StatusIcon.vue'
 import PaneIcon from '../PaneIcon.vue'
@@ -45,6 +48,17 @@ const info = usePaneInfo()
 const workspace = useWorkspaceStore()
 const paneOf = (k: string): Pane | undefined => workspace.panes.find((p) => p.key === k)
 const overlap = useOverlapStore()
+const agentStatus = useAgentStatusStore()
+const statusOf = (paneKey: string) => agentStatus.statusOf(paneKey)
+const statusStale = (paneKey: string): boolean => {
+  const s = statusOf(paneKey)
+  return !!s && isStatusStale(s, now.value)
+}
+const statusTip = (paneKey: string): string => {
+  const s = statusOf(paneKey)
+  const pct = s ? progressPct(s) : null
+  return s ? [s.phase, s.note, pct === null ? '' : t('agentStatus.progress', { pct }), statusStale(paneKey) ? t('agentStatus.stale') : ''].filter(Boolean).join(' · ') : ''
+}
 const overlaps = computed<Record<string, string>>(() =>
   Object.fromEntries(
     props.card.tiles.flatMap((x) => {
@@ -130,8 +144,9 @@ const tileStyle = (b: Box): Record<string, string> => ({
 })
 
 const METRICS: TileMetrics = { inset: 2, gap: GAP, head: 20, pad: 8, line: 15.6 }
+const STATUS_ROW = 16
 const outputs = computed<Record<string, string>>(() =>
-  Object.fromEntries(props.card.tiles.map((x) => [x.paneKey, tailLines(props.snaps[x.paneKey] ?? '', tileRows(props.bodyH, x.box.h, METRICS, props.rowCap))])),
+  Object.fromEntries(props.card.tiles.map((x) => [x.paneKey, tailLines(props.snaps[x.paneKey] ?? '', tileRows(props.bodyH, x.box.h, statusOf(x.paneKey) ? { ...METRICS, head: METRICS.head + STATUS_ROW } : METRICS, props.rowCap))])),
 )
 
 const root = ref<HTMLElement | null>(null)
@@ -295,6 +310,21 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
                   <span class="truncate">{{ words[tile.paneKey] }}</span>
                 </span>
               </Transition>
+            </span>
+            <span
+              v-if="statusOf(tile.paneKey)"
+              class="flex h-4 min-w-0 shrink-0 items-center gap-1 px-1.5 text-2xs"
+              :class="statusStale(tile.paneKey) ? 'text-ink-faint' : 'text-ink-muted'"
+              :title="statusTip(tile.paneKey)"
+              :data-mission-status="statusStale(tile.paneKey) ? 'stale' : 'live'"
+            >
+              <span class="min-w-0 flex-1 truncate">{{ statusOf(tile.paneKey)!.phase }}</span>
+              <template v-if="progressPct(statusOf(tile.paneKey)!) !== null">
+                <span class="h-1 w-8 shrink-0 overflow-hidden rounded-full bg-line-strong" aria-hidden="true">
+                  <span class="block h-full rounded-full" :class="statusStale(tile.paneKey) ? 'bg-ink-faint' : 'bg-accent'" :style="{ width: `${progressPct(statusOf(tile.paneKey)!)}%` }" />
+                </span>
+                <span class="shrink-0 tabular-nums">{{ progressPct(statusOf(tile.paneKey)!) }}%</span>
+              </template>
             </span>
             <span
               v-if="details[tile.paneKey] !== undefined"

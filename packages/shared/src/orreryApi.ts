@@ -1,8 +1,8 @@
 import { cleanNoteText, isAgentNoteLevel, type McpPageCall, type McpPageTool } from './mcpCall'
 import { LAYOUT_DEVICES, type AgentLayoutDevice, type McpDeskCall, type McpDeskTool } from './mcpDesk'
-import { isMcpRunAction, isMcpRunId, MCP_LOG_LINES_DEFAULT, MCP_LOG_LINES_MAX } from './mcpRun'
+import { compileLogMatch, isMcpLogCursor, isMcpRunAction, isMcpRunId, MCP_LOG_LINES_DEFAULT, MCP_LOG_LINES_MAX } from './mcpRun'
 import { cleanPanePrompt, isAgentSessionId, isPtyPreset, PANE_OPEN_PROMPT_MAX, type PaneOpenError, type PaneOpenRequest, type PtyPreset } from './pty'
-import { parseInbound, type TelegramInbound } from './telegram'
+import { parseInbound, parseTelegramButtons, type TelegramInbound } from './telegram'
 
 /** Who asked for a session to be opened; decides prompt submit, the live-pane limit and docking (OPEN_POLICY). */
 export type OrrerySource = 'menu' | 'palette' | 'mcp' | 'url' | 'telegram' | 'restore'
@@ -164,7 +164,17 @@ export function parseMcpPageCall<T extends McpPageTool>(raw: unknown, tool: T): 
         return { ...base, tool: 'run_status' }
       case 'run_log': {
         const lines = typeof raw.lines === 'number' && Number.isInteger(raw.lines) ? Math.min(MCP_LOG_LINES_MAX, Math.max(1, raw.lines)) : MCP_LOG_LINES_DEFAULT
-        return { ...base, tool: 'run_log', lines, errorsOnly: raw.errorsOnly === true }
+        const match = raw.match === undefined ? undefined : typeof raw.match === 'string' && compileLogMatch(raw.match, false) ? raw.match : null
+        if (match === null || (raw.since !== undefined && !isMcpLogCursor(raw.since))) return null
+        return {
+          ...base,
+          tool: 'run_log',
+          lines,
+          errorsOnly: raw.errorsOnly === true,
+          ...opt('match', match),
+          ...(match !== undefined && raw.ignoreCase === true ? { ignoreCase: true } : {}),
+          ...opt('since', raw.since as string | undefined),
+        }
       }
       case 'device_screenshot': {
         if (raw.serial !== undefined && !isMcpRunId(raw.serial)) return null
@@ -200,9 +210,11 @@ export function parseMcpDeskCall<T extends McpDeskTool>(raw: unknown, tool: T): 
       case 'telegram_notify':
       case 'telegram_receive':
         return isTelegramState(raw.state) ? { ...base, tool: raw.tool as 'telegram_notify' | 'telegram_receive', state: raw.state } : null
-      case 'telegram_send':
-        if (!text(raw.text, TEXT_MAX) || (raw.file !== undefined && !pathArg(raw.file))) return null
-        return { ...base, tool: 'telegram_send', text: raw.text, ...opt('file', raw.file as string | undefined) }
+      case 'telegram_send': {
+        const buttons = parseTelegramButtons(raw.buttons)
+        if (!text(raw.text, TEXT_MAX) || (raw.file !== undefined && !pathArg(raw.file)) || buttons === null) return null
+        return { ...base, tool: 'telegram_send', text: raw.text, ...opt('file', raw.file as string | undefined), ...opt('buttons', buttons) }
+      }
       default:
         return null
     }
@@ -241,6 +253,7 @@ export const ORRERY_ACTIONS = {
   'session.create': fromBot('new'),
   'session.resumeList': fromBot('resumeList'),
   'session.resume': fromBot('resume'),
+  'session.answer': fromBot('answer'),
   'session.handBack': onPage('hand_back'),
   'session.list': onPage('list_sessions'),
   'session.sendTo': onPage('send_to_session'),
@@ -307,4 +320,5 @@ export const TELEGRAM_INBOUND_ACTION: Readonly<Record<TelegramInbound['action'],
   new: 'session.create',
   resumeList: 'session.resumeList',
   resume: 'session.resume',
+  answer: 'session.answer',
 }

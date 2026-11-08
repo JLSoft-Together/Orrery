@@ -55,6 +55,27 @@ describe('agent session tools (list_sessions / send_to_session / close_session)'
       expect(rows.find((r) => r.sessionId === 'pty-sh')!.agentSessionId).toBeUndefined()
     })
 
+    it('adds the usage limit of a Claude pane and the idle time from the monitor session, nothing invented', async () => {
+      const { useTerminalsStore } = await import('../stores/terminals')
+      const lead = pane('claude', 'C:\\work\\A', 'lead')
+      const kid = pane('codex', 'C:\\work\\A', 'kid')
+      const busy = pane('claude', 'C:\\work\\A', 'busy')
+      const since = '2026-11-08T10:00:00.000Z'
+      const hit = { at: since, resetsAt: '2026-11-08T15:00:00.000Z', window: 'five_hour' }
+      const term = (id: string, over: object) => ({ id, title: 'x', status: 'idle', startedAt: since, statusSince: since, ...over }) as never
+      useTerminalsStore().replaceAll([term('t-lead', { limitHit: hit }), term('t-kid', { limitHit: hit }), term('t-busy', { status: 'working' })])
+      ws.update(lead.key, { terminalId: 't-lead' })
+      ws.update(kid.key, { terminalId: 't-kid' })
+      ws.update(busy.key, { terminalId: 't-busy' })
+      const rows = act.listFor('pty-lead') as Exclude<ReturnType<typeof act.listFor>, string>
+      const by = (id: string) => rows.find((r) => r.sessionId === id)!
+      expect(by('pty-lead')).toMatchObject({ limit: { resetsAt: hit.resetsAt, window: 'five_hour' }, idleSince: since })
+      expect(by('pty-kid').limit).toBeUndefined()
+      expect(by('pty-kid').idleSince).toBe(since)
+      expect(by('pty-busy')).not.toHaveProperty('idleSince')
+      expect(by('pty-busy')).not.toHaveProperty('limit')
+    })
+
     it('says caller for an unknown or closed pane and skips panes that are not running', () => {
       expect(act.listFor('pty-nope')).toBe('caller')
       pane('claude', 'C:\\work\\A', 'lead')

@@ -100,6 +100,8 @@ export const useRunStore = defineStore('run', () => {
   // Plain arrays behind a version counter: a log burst must not walk 5000 reactive rows.
   const logs = shallowRef(new Map<string, RunLogLine[]>())
   const errors = shallowRef(new Map<string, BuildError[]>())
+  /** Lines ever appended per session (+ epoch bumped when Clear renumbers the buffer): the MCP run_log cursor. */
+  const logSeq = new Map<string, { epoch: number; total: number }>()
   const logVersion = ref(0)
   let flushTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -118,6 +120,9 @@ export const useRunStore = defineStore('run', () => {
     let list = logs.value.get(sessionId)
     if (!list) logs.value.set(sessionId, (list = []))
     for (const l of lines) list.push(l)
+    const seq = logSeq.get(sessionId) ?? { epoch: 0, total: 0 }
+    seq.total += lines.length
+    logSeq.set(sessionId, seq)
     if (list.length > LOG_CAP) list.splice(0, list.length - LOG_CAP)
     scheduleFlush()
   }
@@ -135,6 +140,7 @@ export const useRunStore = defineStore('run', () => {
   function dropOutput(sessionId: string): void {
     logs.value.delete(sessionId)
     errors.value.delete(sessionId)
+    logSeq.delete(sessionId)
   }
 
   function putSession(next: RunSession): void {
@@ -436,12 +442,16 @@ export const useRunStore = defineStore('run', () => {
     return streams ? list.filter((l) => streams.includes(l.stream)) : list
   }
 
+  const logSeqOf = (sessionId: string): { epoch: number; total: number } => logSeq.get(sessionId) ?? { epoch: 0, total: 0 }
+
   const errorsFor = (sessionId: string): BuildError[] => errors.value.get(sessionId) ?? []
 
   function clearLog(sessionId: string, streams: readonly RunStream[]): void {
     const list = logs.value.get(sessionId)
     if (!list) return
-    logs.value.set(sessionId, list.filter((l) => !streams.includes(l.stream)))
+    const kept = list.filter((l) => !streams.includes(l.stream))
+    logs.value.set(sessionId, kept)
+    logSeq.set(sessionId, { epoch: (logSeq.get(sessionId)?.epoch ?? 0) + 1, total: kept.length })
     if (streams.includes('build')) errors.value.delete(sessionId)
     flushLogs()
   }
@@ -611,6 +621,7 @@ export const useRunStore = defineStore('run', () => {
     focusedSession,
     focusSession,
     linesFor,
+    logSeqOf,
     errorsFor,
     isRestored,
     clearLog,

@@ -9,6 +9,7 @@ import { usePaneInfo } from '../../composables/usePaneInfo'
 import { useWorkspaceLinks } from '../../composables/useWorkspaceLinks'
 import { installMcpCalls } from '../../composables/useMcpCalls'
 import { installTelegramInbound } from '../../composables/useTelegramInbound'
+import { useAgentStatusStore } from '../../stores/agentStatus'
 import { openTelegramGlyph, useTelegramLinks, useTelegramTopicUrl } from '../../composables/useTelegramLinks'
 import { useProjectRoots } from '../../composables/useProjectRoots'
 import { captureLayout } from '../../lib/layouts'
@@ -108,6 +109,7 @@ const workspace = useWorkspaceStore()
 useWorkspaceLinks(() => props.visible)
 installMcpCalls()
 installTelegramInbound()
+useAgentStatusStore().start()
 const info = usePaneInfo()
 const { describe, isBusy, viewDetail } = info
 const settings = useSettingsStore()

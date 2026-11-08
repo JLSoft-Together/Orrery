@@ -64,6 +64,15 @@ export interface SessionRef {
   self: boolean
   /** Opened by the caller: close_session may close it. */
   openedByYou: boolean
+  /** Claude pane whose monitor session is at its usage limit (`TerminalSession.limitHit`). */
+  limit?: SessionLimit
+  /** ISO time the monitor status turned idle (`statusSince`); only while idle. */
+  idleSince?: string
+}
+
+export interface SessionLimit {
+  resetsAt?: string
+  window?: string
 }
 
 /** target: no such pane in the caller's project (or the caller itself); busy: it already has a prompt waiting. */
@@ -86,6 +95,11 @@ const ERRORS: readonly McpPageError[] = ['unavailable', 'caller', 'failed', 'lim
 const SESSIONS_MAX = 16
 const REF = /^(?!-)(?!.*\.\.)[A-Za-z0-9._\/-]{1,255}$/
 const STATUS = /^[a-z]{1,20}$/
+const WINDOW = /^[a-z0-9_]{1,40}$/
+const iso = (v: unknown): string | undefined => {
+  const t = str(v, 40)
+  return t && Number.isFinite(Date.parse(t)) ? t : undefined
+}
 const EDITORS_MAX = 16
 const str = (v: unknown, max: number): string | undefined => (typeof v === 'string' && v.length <= max ? v : undefined)
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -118,7 +132,24 @@ function parseSessionRef(v: unknown): SessionRef | null {
   const status = str(v.status, 20)
   if (!sessionId || !name || !status || !STATUS.test(status) || !isPtyPreset(v.agent)) return null
   const agentSessionId = isAgentSessionId(v.agentSessionId) ? v.agentSessionId : undefined
-  return { sessionId, ...(agentSessionId ? { agentSessionId } : {}), name, agent: v.agent, status, self: v.self === true, openedByYou: v.openedByYou === true }
+  const idleSince = iso(v.idleSince)
+  return {
+    sessionId,
+    ...(agentSessionId ? { agentSessionId } : {}),
+    name,
+    agent: v.agent,
+    status,
+    self: v.self === true,
+    openedByYou: v.openedByYou === true,
+    ...(isObj(v.limit) ? { limit: parseLimit(v.limit) } : {}),
+    ...(idleSince ? { idleSince } : {}),
+  }
+}
+
+function parseLimit(v: Record<string, unknown>): SessionLimit {
+  const resetsAt = iso(v.resetsAt)
+  const window = str(v.window, 40)
+  return { ...(resetsAt ? { resetsAt } : {}), ...(window && WINDOW.test(window) ? { window } : {}) }
 }
 
 /** The page's answer is checked like any other input before it reaches an agent. */

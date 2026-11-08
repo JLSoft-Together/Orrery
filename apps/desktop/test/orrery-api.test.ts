@@ -88,6 +88,9 @@ describe('Orrery dispatcher', () => {
   it('parses MCP page and desk calls field by field', () => {
     expect(parseMcpPageCall({ id: 'a', tool: 'run_app', from: 'p', cwd: 'C:\\w', action: 'start', config: '-x' }, 'run_app')).toBeNull()
     expect(parseMcpPageCall({ id: 'a', tool: 'run_log', from: 'p', cwd: 'C:\\w', lines: 9999 }, 'run_log')).toMatchObject({ lines: 200, errorsOnly: false })
+    expect(parseMcpPageCall({ id: 'a', tool: 'run_log', from: 'p', cwd: 'C:\\w', match: 'x', ignoreCase: true, since: 's1.0.4' }, 'run_log')).toMatchObject({ match: 'x', ignoreCase: true, since: 's1.0.4' })
+    expect(parseMcpPageCall({ id: 'a', tool: 'run_log', from: 'p', cwd: 'C:\\w', match: '(' }, 'run_log')).toBeNull()
+    expect(parseMcpPageCall({ id: 'a', tool: 'run_log', from: 'p', cwd: 'C:\\w', since: 'bad' }, 'run_log')).toBeNull()
     expect(parseMcpDeskCall({ ...deskCall, tool: 'free_port', port: 70000 }, 'free_port')).toBeNull()
     expect(parseMcpDeskCall({ ...deskCall, pid: -1 }, 'list_servers')).toBeNull()
     expect(parseMcpDeskCall({ ...deskCall, tool: 'telegram_receive', state: 'on' }, 'telegram_receive')).toMatchObject({ state: 'on' })

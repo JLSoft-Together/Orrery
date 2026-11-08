@@ -1,4 +1,6 @@
 /** v80 WP-5: MCP tools of the PTY host answered by the desktop main process itself (layout daemon, resources, native confirm). */
+import type { TelegramButton } from './telegram'
+
 export const LAYOUT_DEVICES = ['phone', 'tablet'] as const
 export type AgentLayoutDevice = (typeof LAYOUT_DEVICES)[number]
 
@@ -19,7 +21,7 @@ export type McpDeskCall =
   | (DeskBase & { tool: 'list_servers' })
   | (DeskBase & { tool: 'free_port'; port: number })
   | (DeskBase & { tool: 'telegram_notify'; state: 'on' | 'off' | 'status' })
-  | (DeskBase & { tool: 'telegram_send'; text: string; file?: string })
+  | (DeskBase & { tool: 'telegram_send'; text: string; file?: string; buttons?: TelegramButton[] })
   | (DeskBase & { tool: 'telegram_receive'; state: 'on' | 'off' | 'status' })
 
 export type McpDeskTool = McpDeskCall['tool']
@@ -53,6 +55,7 @@ export const DESK_ERRORS = [
   'no-topic',
   'not-paired',
   'rate',
+  'buttons-file',
 ] as const
 export type McpDeskError = (typeof DESK_ERRORS)[number]
 
@@ -82,7 +85,7 @@ export type McpDeskResult =
   | { ok: true; tool: 'list_servers'; at: string; servers: AgentServer[]; outside: { port: number; name: string }[] }
   | { ok: true; tool: 'free_port'; port: number; stopped: { pid: number; name: string }[] }
   | { ok: true; tool: 'telegram_notify'; enabled: boolean; configured: boolean; projects: string[]; routed: boolean }
-  | { ok: true; tool: 'telegram_send'; topic: string; file?: string; linkOnly?: boolean; uploading?: boolean }
+  | { ok: true; tool: 'telegram_send'; topic: string; file?: string; linkOnly?: boolean; uploading?: boolean; buttons?: number }
   | { ok: true; tool: 'telegram_receive'; receiving: boolean; paired: boolean; owner?: string }
   | { ok: false; error: McpDeskError; retryInSec?: number; detail?: string }
 
@@ -159,7 +162,8 @@ export function parseMcpDeskResult(raw: unknown, tool: McpDeskTool): McpDeskResu
     const topic = line(raw.topic, 120)
     if (!topic) return { ok: false, error: 'failed' }
     const file = line(raw.file, 200)
-    return { ok: true, tool, topic, ...(file ? { file } : {}), ...(raw.linkOnly === true ? { linkOnly: true } : {}), ...(raw.uploading === true ? { uploading: true } : {}) }
+    const buttons = int(raw.buttons, 1, 6)
+    return { ok: true, tool, topic, ...(file ? { file } : {}), ...(raw.linkOnly === true ? { linkOnly: true } : {}), ...(raw.uploading === true ? { uploading: true } : {}), ...(buttons ? { buttons } : {}) }
   }
   const port = int(raw.port, 1, 65535)
   if (!port || !Array.isArray(raw.stopped)) return { ok: false, error: 'failed' }

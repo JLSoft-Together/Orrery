@@ -1,4 +1,6 @@
 import {
+  compileLogMatch,
+  isMcpLogCursor,
   isRunLive,
   MCP_LOG_LINES_MAX,
   runPhase,
@@ -127,8 +129,40 @@ export function createRunCalls(run: RunStore) {
     const s = run.focusedSession(call.cwd)
     if (!s) return { ok: true, tool: 'run_log', session: null, lines: [], errors: [], partial: false }
     const n = Math.max(1, Math.min(MCP_LOG_LINES_MAX, Math.floor(call.lines) || 1))
+    const re = call.match === undefined ? null : compileLogMatch(call.match, call.ignoreCase === true)
+    if (call.match !== undefined && !re) return { ok: false, error: 'failed' }
     const all = run.linesFor(s.id)
-    const lines = (call.errorsOnly ? all.filter(isErrorLine) : all).slice(-n)
+    const { epoch, total } = run.logSeqOf(s.id)
+    const first = total - all.length
+    const keep = (l: RunLogLine): boolean => (!call.errorsOnly || isErrorLine(l)) && (!re || re.test(l.text))
+    const pick = (from: number): { out: RunLogLine[]; next: number } => {
+      const out: RunLogLine[] = []
+      let next = total
+      for (let i = from - first; i < all.length; i++) {
+        if (!keep(all[i]!)) continue
+        if (out.length === n) {
+          next = first + i
+          break
+        }
+        out.push(all[i]!)
+      }
+      return { out, next }
+    }
+    let lines: RunLogLine[]
+    let cursor = total
+    let reset = false
+    let truncated = false
+    if (call.since === undefined) {
+      lines = all.filter(keep).slice(-n)
+    } else {
+      const [sid, ep, seq] = isMcpLogCursor(call.since) ? call.since.split('.') : []
+      const from = Number(seq)
+      reset = sid !== s.id || Number(ep) !== epoch || !(from <= total)
+      truncated = !reset && from < first
+      const res = pick(reset ? first : Math.max(from, first))
+      lines = res.out
+      cursor = res.next
+    }
     const errors = run.errorsFor(s.id).filter((e) => !call.errorsOnly || e.severity === 'error').slice(-ERRORS_MAX)
     return {
       ok: true,
@@ -137,6 +171,9 @@ export function createRunCalls(run: RunStore) {
       lines: lines.map((l) => ({ stream: l.stream, ...(l.level ? { level: l.level } : {}), text: l.text })),
       errors: errors.map((e) => ({ file: e.file, line: e.line, col: e.col, message: e.message, severity: e.severity })),
       partial: run.isRestored(s.id),
+      cursor: `${s.id}.${epoch}.${cursor}`,
+      ...(reset ? { reset: true } : {}),
+      ...(truncated ? { truncated: true } : {}),
     }
   }
 

@@ -7,6 +7,20 @@ export const isMcpRunAction = (v: unknown): v is McpRunAction => (MCP_RUN_ACTION
 
 export const MCP_LOG_LINES_MAX = 200
 export const MCP_LOG_LINES_DEFAULT = 50
+export const MCP_LOG_MATCH_MAX = 200
+/** `<run session id>.<clear epoch>.<next line seq>`: the seq counts every line the run ever logged, so the ring buffer dropping old ones never moves it. */
+export const MCP_LOG_CURSOR = /^[A-Za-z0-9-]{1,64}\.\d{1,6}\.\d{1,12}$/
+export const isMcpLogCursor = (v: unknown): v is string => typeof v === 'string' && MCP_LOG_CURSOR.test(v)
+
+/** null = not a valid pattern (or too long). */
+export function compileLogMatch(match: string, ignoreCase: boolean): RegExp | null {
+  if (!match || match.length > MCP_LOG_MATCH_MAX) return null
+  try {
+    return new RegExp(match, ignoreCase ? 'i' : '')
+  } catch {
+    return null
+  }
+}
 const LINE_CHARS = 1000
 const NAME_CHARS = 80
 const DETAIL_CHARS = 300
@@ -91,7 +105,7 @@ export interface McpShot {
 export type McpRunCall =
   | { id: string; tool: 'run_app'; from: string; cwd: string; action: McpRunAction; config?: string; device?: string; full?: boolean }
   | { id: string; tool: 'run_status'; from: string; cwd: string }
-  | { id: string; tool: 'run_log'; from: string; cwd: string; lines: number; errorsOnly: boolean }
+  | { id: string; tool: 'run_log'; from: string; cwd: string; lines: number; errorsOnly: boolean; match?: string; ignoreCase?: boolean; since?: string }
   | { id: string; tool: 'device_screenshot'; from: string; cwd: string; serial?: string }
 
 export type McpRunTool = McpRunCall['tool']
@@ -101,7 +115,7 @@ export const isMcpRunTool = (v: unknown): v is McpRunTool => (MCP_RUN_TOOLS as r
 export type McpRunResult =
   | { ok: true; tool: 'run_app'; action: McpRunAction; refused?: McpRunRefusal; session: McpRunSessionInfo | null }
   | { ok: true; tool: 'run_status'; configs: McpRunConfigInfo[]; devices: McpRunDeviceInfo[]; sessions: McpRunSessionInfo[]; focused: string | null }
-  | { ok: true; tool: 'run_log'; session: McpRunSessionInfo | null; lines: McpLogLine[]; errors: McpBuildError[]; partial: boolean }
+  | { ok: true; tool: 'run_log'; session: McpRunSessionInfo | null; lines: McpLogLine[]; errors: McpBuildError[]; partial: boolean; cursor?: string; reset?: boolean; truncated?: boolean }
   | { ok: true; tool: 'device_screenshot'; refused?: McpRunRefusal; devices?: { serial: string; name: string }[]; shot?: McpShot }
 
 const KINDS: readonly RunKind[] = ['flutter', 'android', 'custom']
@@ -229,6 +243,9 @@ export function parseMcpRunResult(raw: Record<string, unknown>, tool: McpRunTool
       lines: list(raw.lines, MCP_LOG_LINES_MAX).map(logLine).filter(some),
       errors: list(raw.errors, ERRORS_MAX).map(buildError).filter(some),
       partial: raw.partial === true,
+      ...(isMcpLogCursor(raw.cursor) ? { cursor: raw.cursor } : {}),
+      ...(raw.reset === true ? { reset: true } : {}),
+      ...(raw.truncated === true ? { truncated: true } : {}),
     }
   }
   const refused = refusal(raw.refused)

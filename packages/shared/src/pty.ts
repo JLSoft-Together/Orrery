@@ -78,6 +78,8 @@ export interface PaneOpenRequest {
   cwd: string
   prompt?: string
   resume?: string
+  /** MCP `open_session` asked to press Enter on the prompt (owner exception 2026-11-08, OPEN_POLICY.askSubmit). */
+  submit?: true
 }
 
 export type PaneOpenError = 'unavailable' | 'limit' | 'cwd' | 'preset' | 'rate' | 'failed' | 'resume' | 'live' | 'setup'

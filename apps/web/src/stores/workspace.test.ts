@@ -466,6 +466,19 @@ describe('panes opened by an agent', () => {
     expect(ws.tabOf(a.key)!.focus).toBe(a.key)
   })
 
+  it('submits the prompt only when a calling pane asks for it', () => {
+    const ws = useWorkspaceStore()
+    ws.canvasSize = { w: 1600, h: 900 }
+    caller(ws)
+    const paneOf = (key: string) => ws.panes.find((p) => p.key === key)!
+    const sent = keyOf(ws.openFromAgent({ id: 's1', from: 'host-a', preset: 'codex', cwd: 'C:/work/app', prompt: 'go on', submit: true }))
+    expect(paneOf(sent)).toMatchObject({ prefill: 'go on', prefillSubmit: true })
+    const typed = keyOf(ws.openFromAgent({ id: 's2', from: 'host-a', preset: 'codex', cwd: 'C:/work/app', prompt: 'go on' }))
+    expect(paneOf(typed).prefillSubmit).toBeUndefined()
+    const link = keyOf(ws.openFromAgent({ id: 's3', preset: 'codex', cwd: 'C:/work/app', prompt: 'go on', submit: true }))
+    expect(paneOf(link).prefillSubmit).toBeUndefined()
+  })
+
   it('opens a background tab of the caller project when there is no room', () => {
     const ws = useWorkspaceStore()
     ws.canvasSize = { w: 400, h: 250 }

@@ -33,15 +33,18 @@ export interface OpenPolicy {
   limit: boolean
   /** Split beside the calling pane without taking focus. */
   dock: boolean
+  /** The caller may ask for its prompt to be submitted (`submit: true`); without it the prompt is only typed. */
+  askSubmit: boolean
 }
 
 export const OPEN_POLICY: Readonly<Record<OrrerySource, OpenPolicy>> = {
-  menu: { submit: false, limit: false, dock: false },
-  palette: { submit: false, limit: false, dock: false },
-  restore: { submit: false, limit: false, dock: false },
-  mcp: { submit: false, limit: true, dock: true },
-  url: { submit: false, limit: true, dock: false },
-  telegram: { submit: true, limit: true, dock: false },
+  menu: { submit: false, limit: false, dock: false, askSubmit: false },
+  palette: { submit: false, limit: false, dock: false, askSubmit: false },
+  restore: { submit: false, limit: false, dock: false, askSubmit: false },
+  // Owner exception 2026-11-08: an agent pane may hand work on (e.g. to Codex when Claude hit its usage limit) and start it.
+  mcp: { submit: false, limit: true, dock: true, askSubmit: true },
+  url: { submit: false, limit: true, dock: false, askSubmit: false },
+  telegram: { submit: true, limit: true, dock: false, askSubmit: false },
 }
 
 /** Same as the PTY host's live-session cap. */
@@ -111,8 +114,11 @@ function parsePaneOpen(raw: unknown): PaneOpenRequest | null {
   if (raw.from !== undefined && !filled(raw.from, PANE_ID_MAX)) return null
   if (raw.resume !== undefined && !isAgentSessionId(raw.resume)) return null
   if (raw.prompt !== undefined && !text(raw.prompt, PANE_OPEN_PROMPT_MAX * 2)) return null
+  if (raw.submit !== undefined && typeof raw.submit !== 'boolean') return null
   const prompt = cleanPanePrompt(raw.prompt)
-  return { id: raw.id, preset: raw.preset, cwd: raw.cwd, ...opt('from', raw.from as string | undefined), ...opt('prompt', prompt), ...opt('resume', raw.resume as string | undefined) }
+  // Only a calling agent pane (from) with a prompt can ask for Enter; links (no from) never can.
+  const submit = raw.submit === true && !!raw.from && !!prompt && raw.preset !== 'shell'
+  return { id: raw.id, preset: raw.preset, cwd: raw.cwd, ...opt('from', raw.from as string | undefined), ...opt('prompt', prompt), ...opt('resume', raw.resume as string | undefined), ...(submit ? { submit: true as const } : {}) }
 }
 
 type PageCall<T extends McpPageTool> = Extract<McpPageCall, { tool: T }>

@@ -59,6 +59,18 @@ describe('Orrery dispatcher', () => {
     expect(page.mock.calls[0]![0].args).toEqual({ ...open, resume: SID, prompt: 'hi' })
   })
 
+  it('keeps submit only for a calling pane with a prompt and an agent preset', async () => {
+    const { call, page } = deps()
+    const mcp = { source: 'mcp', pane: 'pty-a' } as const
+    expect(await call('session.open', { ...open, from: 'pty-a', prompt: 'go', submit: 'yes' }, mcp)).toEqual({ ok: false, error: 'args' })
+    await call('session.open', { ...open, from: 'pty-a', prompt: 'go', submit: true }, mcp)
+    await call('session.open', { ...open, prompt: 'go', submit: true }, { source: 'url' })
+    await call('session.open', { ...open, from: 'pty-a', submit: true }, mcp)
+    await call('session.open', { ...open, preset: 'shell', from: 'pty-a', prompt: 'go', submit: true }, mcp)
+    const args = page.mock.calls.map((c) => (c[0].args as { submit?: true }).submit)
+    expect(args).toEqual([true, undefined, undefined, undefined])
+  })
+
   it('runs the after-hook on a page answer, and fails closed when a route throws', async () => {
     const after = vi.fn((res: unknown) => ({ wrapped: res }))
     const { call } = deps({ after: { 'owner.notify': after } })

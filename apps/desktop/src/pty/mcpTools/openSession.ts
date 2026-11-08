@@ -17,7 +17,13 @@ export const openSessionDef = (deepseek: boolean) =>
       prompt: {
         type: 'string',
         maxLength: PANE_OPEN_PROMPT_MAX,
-        description: "Text typed into the new agent's input box once it is ready. It is NOT submitted: the user reviews it and presses Enter. Ignored for shell.",
+        description: "Text typed into the new agent's input box once it is ready. It is NOT submitted unless submit is true: the user reviews it and presses Enter. Ignored for shell.",
+      },
+      submit: {
+        type: 'boolean',
+        default: false,
+        description:
+          'Press Enter on the prompt once the agent is ready, so it starts without the user. Only for work the user already asked to continue unattended, e.g. handing an unfinished task to Codex when Claude hit its usage limit; otherwise leave it off so the user reviews the prompt.',
       },
       name: { type: 'string', maxLength: 40, description: 'Display name of the new session, Claude only. Starts with a letter or digit; then letters, digits, spaces, dots, underscores and dashes.' },
       resume: {
@@ -53,7 +59,7 @@ const PANE_ERRORS = Object.keys(ERRORS)
 export function openText(outcome: OpenOutcome): string {
   if (!outcome.ok) return `${ERRORS[outcome.error] ?? ERRORS.failed} Do not open an external terminal window instead unless the user asks for it.`
   const id = outcome.sessionId ? ` Session id: ${outcome.sessionId}.` : ''
-  const prompt = outcome.prompt ? ' The prompt is waiting in its input box; the user presses Enter to send it.' : ''
+  const prompt = outcome.submitted ? ' The prompt is sent as soon as the agent is ready; it works on it without the user.' : outcome.prompt ? ' The prompt is waiting in its input box; the user presses Enter to send it.' : ''
   if (outcome.resumed) return `Reopened ${LABELS[outcome.preset]} session ${outcome.sessionId} in ${outcome.cwd} as an Orrery pane.${prompt}`
   return `Opened ${LABELS[outcome.preset]} in ${outcome.cwd} as a new Orrery pane next to this session.${id}${prompt}`
 }

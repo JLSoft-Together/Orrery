@@ -466,13 +466,14 @@ async function openFrom(s: Session, args: OpenArgs): Promise<OpenOutcome> {
   sweepTickets(now)
   if (liveCount() + tickets.size >= MAX_LIVE) return { ok: false, error: 'limit' }
   const prompt = preset === 'shell' ? undefined : cleanPanePrompt(args.prompt)
+  const submit = args.submit === true && !!prompt
   const name = preset === 'claude' && isPaneName(args.name) ? args.name : undefined
   const sessionId = resume ?? (preset === 'claude' ? randomUUID() : undefined)
   const id = randomUUID()
   tickets.set(id, { preset, cwd, sessionId: resume ? undefined : sessionId, name: resume ? undefined : name, expires: now + TICKET_TTL_MS })
   s.opens.push(now)
-  const result = await askPage({ id, from: s.id, preset, cwd, prompt, resume })
-  if (result.ok) return { ok: true, preset, cwd, sessionId, prompt: !!prompt, ...(resume ? { resumed: true } : {}) }
+  const result = await askPage({ id, from: s.id, preset, cwd, prompt, resume, ...(submit ? { submit: true as const } : {}) })
+  if (result.ok) return { ok: true, preset, cwd, sessionId, prompt: !!prompt, ...(submit ? { submitted: true } : {}), ...(resume ? { resumed: true } : {}) }
   tickets.delete(id)
   const at = s.opens.indexOf(now)
   if (at >= 0) s.opens.splice(at, 1)

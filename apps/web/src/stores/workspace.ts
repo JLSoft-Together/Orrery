@@ -842,7 +842,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const extra: AgentOpen = {
       openTicket: typeof input.id === 'string' && input.id ? input.id : undefined,
       prefill: prompt,
-      ...(prompt && policy.submit && input.submit !== false ? { prefillSubmit: true } : {}),
+      ...(prompt && (policy.submit ? input.submit !== false : policy.askSubmit && input.submit === true) ? { prefillSubmit: true } : {}),
       ...(from ? { openedBy: from.key } : {}),
     }
     const pane = markOpened(addPane(preset, cwd, resume, extra))

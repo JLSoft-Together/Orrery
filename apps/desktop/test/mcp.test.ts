@@ -49,7 +49,7 @@ describe('mcp json-rpc', () => {
     expect(tool.name).toBe('open_session')
     expect(tool.description).toContain('instead of starting a terminal window')
     expect(tool.inputSchema).toMatchObject({ type: 'object', additionalProperties: false })
-    expect(Object.keys(tool.inputSchema.properties).sort()).toEqual(['agent', 'cwd', 'name', 'prompt', 'resume'])
+    expect(Object.keys(tool.inputSchema.properties).sort()).toEqual(['agent', 'cwd', 'name', 'prompt', 'resume', 'submit'])
     expect(tool.inputSchema.properties.agent.enum).toEqual(['claude', 'codex', 'deepseek', 'shell'])
     expect(tool.inputSchema.properties.prompt.maxLength).toBe(8000)
     expect(tool.annotations).toEqual({ title: 'Open Orrery session', readOnlyHint: false, destructiveHint: false, openWorldHint: false })
@@ -73,6 +73,10 @@ describe('mcp json-rpc', () => {
     expect((shell.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe('Opened a shell in /srv as a new Orrery pane next to this session.')
     const resumed = await handleMcp(call(8, 'open_session', { resume: uuid }), hostWith(() => Promise.resolve({ ok: true, preset: 'codex', cwd: '/srv', sessionId: uuid, prompt: false, resumed: true })), '0')
     expect((resumed.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe(`Reopened Codex session ${uuid} in /srv as an Orrery pane.`)
+    const sent = await handleMcp(call(9, 'open_session', { agent: 'codex', prompt: 'go on', submit: true }), hostWith(() => Promise.resolve({ ok: true, preset: 'codex', cwd: '/srv', prompt: true, submitted: true })), '0')
+    expect((sent.json as { result: { content: { text: string }[] } }).result.content[0]!.text).toBe(
+      'Opened Codex in /srv as a new Orrery pane next to this session. The prompt is sent as soon as the agent is ready; it works on it without the user.',
+    )
   })
 
   it('reports refusals as tool errors that discourage an external terminal', async () => {

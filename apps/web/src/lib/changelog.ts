@@ -18,6 +18,19 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '3.4.0',
+    date: '2026-11-08',
+    items: [
+      { en: 'Agents can open a pane and start the prompt themselves (open_session submit: true)', vi: 'Agent mở pane mới và tự gửi prompt luôn (open_session submit: true)' },
+      { en: 'open_session returns the pane id; new wait_session waits until a pane is idle or closed', vi: 'open_session trả id pane; tool mới wait_session chờ pane rảnh hoặc đóng' },
+      { en: 'list_sessions shows when a Claude pane hit its usage limit and since when a pane is idle', vi: 'list_sessions báo pane Claude chạm usage limit và pane rảnh từ lúc nào' },
+      { en: 'A workflow can write .orrery/status.json: phase and progress show on the pane and card', vi: 'Workflow ghi .orrery/status.json: phase và tiến độ hiện trên pane và thẻ' },
+      { en: 'run_log filters lines by a regex and reads only new lines with a cursor', vi: 'run_log lọc dòng theo regex và chỉ đọc dòng mới bằng cursor' },
+      { en: 'Telegram: agents can add reply buttons; your tap goes to that pane, sent only when idle', vi: 'Telegram: agent gắn button trả lời; bạn bấm thì chữ vào pane đó, chỉ gửi khi pane rảnh' },
+      { en: 'Resources: system services no longer show as an agent\'s servers', vi: 'Tài nguyên: service hệ thống không còn bị tính là server của agent' },
+    ],
+  },
+  {
     version: '3.3.1',
     date: '2026-11-06',
     items: [

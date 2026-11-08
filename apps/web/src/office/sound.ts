@@ -13,6 +13,13 @@ function soundBoard(): SoundBoard {
   return (shared ??= new SoundBoard({ boost: OFFICE_BOOST }))
 }
 
+export const OFFICE_IDLE_CLOSE_MS = 30_000
+let idleTimer: ReturnType<typeof setTimeout> | undefined
+function touch(board: SoundBoard): void {
+  clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => board.close?.(), OFFICE_IDLE_CLOSE_MS)
+}
+
 export function createOfficeSound(world: WorldApi, opts: { enabled: () => boolean; volume?: () => number }): { dispose(): void } {
   const board = soundBoard()
   const sync = (): boolean => {
@@ -22,12 +29,20 @@ export function createOfficeSound(world: WorldApi, opts: { enabled: () => boolea
   }
   const off = world.onSound?.((cue) => {
     if (!sync() || document.hidden) return
-    board.play(cue.kind, cue)
+    if (board.open === false) {
+      void board.unlock().then(() => {
+        if (board.play(cue.kind, cue)) touch(board)
+      })
+      return
+    }
+    if (board.play(cue.kind, cue)) touch(board)
   })
   // Browsers (and Electron) only start audio after a user gesture; the click also covers the toggle itself,
   // `change` the volume slider moved by keyboard (its keydown runs before the slider turns the sound on).
   const unlock = (): void => {
-    if (sync()) void board.unlock()
+    if (!sync()) return
+    void board.unlock()
+    touch(board)
   }
   const events = ['pointerdown', 'keydown', 'click', 'change'] as const
   for (const e of events) addEventListener(e, unlock, { passive: true })

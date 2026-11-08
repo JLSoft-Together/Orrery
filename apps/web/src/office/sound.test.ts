@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SoundCue, WorldApi } from '@ccm/habblaud/client/src/world/api'
 
-const board = vi.hoisted(() => ({ configure: vi.fn(), unlock: vi.fn(() => Promise.resolve()), play: vi.fn(() => true) }))
+const board = vi.hoisted(() => ({ configure: vi.fn(), unlock: vi.fn(() => Promise.resolve()), play: vi.fn(() => true), close: vi.fn(), open: true }))
 const made = vi.hoisted(() => ({ n: 0, opts: undefined as unknown }))
 vi.mock('@ccm/habblaud/client/src/audio/board', () => ({
   SoundBoard: function (opts: unknown) {
@@ -11,7 +11,7 @@ vi.mock('@ccm/habblaud/client/src/audio/board', () => ({
   },
 }))
 
-import { OFFICE_BOOST, createOfficeSound } from './sound'
+import { OFFICE_BOOST, OFFICE_IDLE_CLOSE_MS, createOfficeSound } from './sound'
 
 function fakeWorld() {
   let cb: ((c: SoundCue) => void) | null = null
@@ -91,6 +91,28 @@ describe('createOfficeSound', () => {
     create(fakeWorld().world, { enabled: () => true })
     expect(made.opts).toEqual({ boost: OFFICE_BOOST })
     expect(OFFICE_BOOST).toBeGreaterThan(1)
+  })
+
+  it('closes the board after 30 s without playing and reopens it on the next cue', async () => {
+    vi.useFakeTimers()
+    try {
+      const w = fakeWorld()
+      create(w.world, { enabled: () => true })
+      w.emit(cue)
+      vi.advanceTimersByTime(OFFICE_IDLE_CLOSE_MS - 1)
+      expect(board.close).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(2)
+      expect(board.close).toHaveBeenCalledTimes(1)
+      board.open = false
+      board.play.mockClear()
+      w.emit(cue)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(board.unlock).toHaveBeenCalled()
+      expect(board.play).toHaveBeenCalledWith('keys', cue)
+    } finally {
+      board.open = true
+      vi.useRealTimers()
+    }
   })
 
   it('dispose unsubscribes and removes the gesture listeners', () => {

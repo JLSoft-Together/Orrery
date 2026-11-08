@@ -24,7 +24,6 @@ import { useUpdateStore } from './stores/update'
 import ZoomHud from './components/ZoomHud.vue'
 import { useWheelZoom } from './composables/useWheelZoom'
 import CompactView from './components/CompactView.vue'
-import MonitorView from './components/MonitorView.vue'
 import UsageView from './components/usage/UsageView.vue'
 import HistoryView from './components/history/HistoryView.vue'
 import { desktop, hasDeepSeek, hasExtensions, hasTerminals } from './lib/desktop'
@@ -36,6 +35,7 @@ import { isMac } from './lib/platform'
 import { restoreMode, restoreWith, startupRun, uncleanExit } from './lib/workspaceRestore'
 
 // xterm + addons (~400 KB) load only when the workspace is first opened.
+const MonitorView = defineAsyncComponent(() => import('./components/MonitorView.vue'))
 const WorkspaceView = defineAsyncComponent(() => import('./components/workspace/WorkspaceView.vue'))
 const ExtensionsView = defineAsyncComponent(() => import('./components/extensions/ExtensionsView.vue'))
 const DevicesView = defineAsyncComponent(() => import('./components/devices/DevicesView.vue'))

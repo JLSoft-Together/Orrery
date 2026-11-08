@@ -59,6 +59,18 @@ export class SoundBoard {
     return Promise.resolve();
   }
 
+  get open(): boolean {
+    return this.ac !== null;
+  }
+
+  close(): void {
+    const ac = this.ac;
+    this.ac = null;
+    this.out = null;
+    this.noise = null;
+    if (ac && ac.state !== 'closed') void ac.close().catch(() => undefined);
+  }
+
   /** Toca `kind` se a preferência e os limites deixarem. Devolve se tocou. */
   play(kind: SoundKind, opts: { gain?: number; pan?: number; count?: number } = {}): boolean {
     const ac = this.ac;

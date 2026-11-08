@@ -1,4 +1,12 @@
+export const CHIME_IDLE_CLOSE_MS = 30_000
 let ctx: AudioContext | null = null
+let idleTimer: ReturnType<typeof setTimeout> | undefined
+
+function closeIdle(): void {
+  const old = ctx
+  ctx = null
+  if (old && old.state !== 'closed') void old.close().catch(() => undefined)
+}
 
 /** Short two-note chime. Browsers block audio until a user gesture; failures stay silent. */
 export function playChime(kind: 'waiting' | 'alert' = 'waiting'): void {
@@ -20,6 +28,8 @@ export function playChime(kind: 'waiting' | 'alert' = 'waiting'): void {
       osc.start(t0)
       osc.stop(t0 + 0.3)
     })
+    clearTimeout(idleTimer)
+    idleTimer = setTimeout(closeIdle, CHIME_IDLE_CLOSE_MS)
   } catch {
     return
   }

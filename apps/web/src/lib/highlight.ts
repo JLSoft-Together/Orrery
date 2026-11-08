@@ -21,6 +21,19 @@ const pending = new Map<number, (result: WorkerReply['result']) => void>()
 /** Latest request per caller key: a newer one cancels the older. */
 const latest = new Map<string, number>()
 
+export const WORKER_IDLE_MS = 60_000
+let idleTimer: ReturnType<typeof setTimeout> | undefined
+
+function armIdle(): void {
+  clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => {
+    if (!worker) return
+    if (pending.size) return armIdle()
+    worker.terminate()
+    worker = undefined
+  }, WORKER_IDLE_MS)
+}
+
 function getWorker(): Worker | null {
   if (worker !== undefined) return worker
   try {
@@ -33,6 +46,7 @@ function getWorker(): Worker | null {
       const done = pending.get(e.data.id)
       pending.delete(e.data.id)
       done?.(e.data.result)
+      armIdle()
     }
     // A dead worker answers nothing: settle everything as plain and run later requests on this thread.
     worker.onerror = () => {
@@ -40,13 +54,16 @@ function getWorker(): Worker | null {
       pending.clear()
       worker?.terminate()
       worker = null
+      clearTimeout(idleTimer)
     }
+    armIdle()
   }
   return worker
 }
 
 function request(key: string | undefined, msg: { op: 'tokenize'; code: string; lang: string | null } | { op: 'wordDiff'; pairs: WordDiffPair[] }, w: Worker): Promise<WorkerReply['result']> {
   const id = ++nextId
+  armIdle()
   if (key) {
     const prev = latest.get(key)
     if (prev !== undefined && pending.has(prev)) {

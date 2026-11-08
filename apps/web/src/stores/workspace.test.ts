@@ -64,6 +64,7 @@ describe('workspace viewer panes', () => {
     expect(workCwd(ws.panes[0]!)).toBe('C:\repo\web')
     expect(ws.split(term.key, 'row')!.cwd).toBe('C:\repo\web')
     await nextTick()
+    ws.persistNow()
     const saved = JSON.parse(sessionStorage.getItem('ccm.workspace.panes')!)
     expect(saved.panes[0].cwd).toBe('C:\repo')
     expect(saved.panes[0].liveCwd).toBeUndefined()
@@ -85,6 +86,7 @@ describe('workspace viewer panes', () => {
     ws.openFile('C:\\repo\\a.ts', 4)
     ws.openChanges('C:\\repo')
     await nextTick()
+    ws.persistNow()
     const saved = JSON.parse(sessionStorage.getItem('ccm.workspace.panes')!)
     expect(saved.panes.map((p: { kind: string }) => p.kind)).toEqual(['browser', 'file', 'changes'])
 
@@ -215,6 +217,7 @@ describe('log panes', () => {
     const ws = useWorkspaceStore()
     ws.openLog('/repo')
     await nextTick()
+    ws.persistNow()
     sessionStorage.clear()
     setActivePinia(createPinia())
     const next = useWorkspaceStore()
@@ -536,6 +539,7 @@ describe('panes opened by an agent', () => {
     const key = keyOf(ws.openFromAgent({ id: 'secret-ticket', from: 'host-a', preset: 'claude', cwd: 'C:/work/app', prompt: 'secret prompt' }))
     ws.update(key, { sessionId: 'host-b', state: 'running' })
     await nextTick()
+    ws.persistNow()
     const session = sessionStorage.getItem('ccm.workspace.panes')!
     const last = localStorage.getItem('ccm.workspace.last')!
     expect(JSON.parse(session).panes.map((p: { key: string }) => p.key)).toContain(key)
@@ -765,6 +769,7 @@ describe('reopen closed panes', () => {
     const sh = ws.open('shell', 'C:/app')
     ws.update(sh.key, { agent: 'claude', agentSessionId: sid })
     await nextTick()
+    ws.persistNow()
     sessionStorage.clear()
     setActivePinia(createPinia())
     const next = useWorkspaceStore()
@@ -864,6 +869,7 @@ describe('opened by another pane', () => {
     const ws = useWorkspaceStore()
     const { a, b } = opened(ws)
     await nextTick()
+    ws.persistNow()
     expect(JSON.parse(sessionStorage.getItem('ccm.workspace.panes')!).panes.find((p: { key: string }) => p.key === b).openedBy).toBe(a)
     expect(localStorage.getItem('ccm.workspace.last')).not.toContain('openedBy')
 
@@ -1031,6 +1037,7 @@ describe('openSession', () => {
     const pane = paneOf(ws, ws.openSession({ preset: 'claude', cwd: 'C:/work/app' }, { source: 'menu' }))
     ws.update(pane.key, { sessionId: 'host-a', state: 'running' })
     await nextTick()
+    ws.persistNow()
     const lastResume = (key: string): string | undefined =>
       (JSON.parse(localStorage.getItem('ccm.workspace.last')!) as { panes: Array<{ key: string; resume?: string }> }).panes.find((p) => p.key === key)!.resume
     expect(lastResume(pane.key)).toBeUndefined()
@@ -1042,6 +1049,7 @@ describe('openSession', () => {
     expect(kept.mintedSession).toBe(pane.mintedSession)
     reloaded.update(kept.key, { mintedSession: undefined })
     await nextTick()
+    reloaded.persistNow()
     expect(lastResume(pane.key)).toBe(pane.agentSessionId)
     expect(reloaded.recordClosed([kept.key])!.tabs[0]!.panes[0]!.resume).toBe(pane.agentSessionId)
   })
@@ -1061,6 +1069,7 @@ describe('openSession', () => {
     // idle: seen by the monitor, no turn yet
     expect(sessionLinkPatch(pane, id, false)).toBeNull()
     await nextTick()
+    ws.persistNow()
     expect(lastResume()).toBeUndefined()
     expect(ws.recordClosed([pane.key])!.tabs[0]!.panes[0]!.resume).toBeUndefined()
     // /clear: a new id, still no turn
@@ -1071,6 +1080,7 @@ describe('openSession', () => {
     expect(sessionLinkPatch(pane, cleared, true)).toEqual({ agentSessionId: cleared, mintedSession: undefined, untouchedSession: undefined })
     ws.update(pane.key, sessionLinkPatch(pane, id, true)!)
     await nextTick()
+    ws.persistNow()
     expect(lastResume()).toBe(id)
     expect(sessionLinkPatch(pane, id, true)).toBeNull()
   })

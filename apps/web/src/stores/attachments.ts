@@ -48,7 +48,18 @@ export function fromPath(path: string, source: Attachment['source']): NewAttachm
   return { kind: isImagePath(path) ? 'image' : 'file', name: baseName(path), source, path }
 }
 
-export const useAttachmentsStore = defineStore('attachments', () => {
+function sameItem(a: Attachment, b: Attachment): boolean {
+  if (a === b) return true
+  const keys = Object.keys(a) as (keyof Attachment)[]
+  if (keys.length !== Object.keys(b).length) return false
+  return keys.every((k) => a[k] === b[k])
+}
+
+function sameItems(a: Attachment[], b: Attachment[]): boolean {
+  return a === b || (a.length === b.length && a.every((x, i) => sameItem(x, b[i]!)))
+}
+
+export const useAttachmentsStore =defineStore('attachments', () => {
   const byPane = ref<Record<string, Attachment[]>>({})
   const open = ref<Record<string, boolean>>({})
   const autoInsert = ref(readAuto())
@@ -68,6 +79,7 @@ export const useAttachmentsStore = defineStore('attachments', () => {
   const sent = (pane: string): Attachment[] => list(pane).filter((a) => a.state === 'sent')
 
   function set(pane: string, items: Attachment[]): void {
+    if (sameItems(list(pane), items)) return
     byPane.value = { ...byPane.value, [pane]: items }
   }
 

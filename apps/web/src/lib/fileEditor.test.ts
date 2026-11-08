@@ -145,6 +145,7 @@ describe('workspace store: dirty file panes', () => {
     const a = ws.openFile('/repo/a.ts')
     ws.setDirty(a.key, true)
     await nextTick()
+    ws.persistNow()
     const stored = sessionStorage.getItem('ccm.workspace.panes') ?? ''
     expect(stored).toContain('a.ts')
     expect(stored).not.toContain('dirty')

@@ -51,6 +51,7 @@ export function imagePasteKey(preset: PtyPreset, win: boolean): string | null {
 }
 
 const SCAN_MS = 150
+const SCAN_MAX_MS = 1000
 const AWAIT_MS = 8000
 const PASTE_MS = 8000
 const KEY_GAP_MS = 12
@@ -71,6 +72,8 @@ export function usePaneAttachments(o: Options) {
   let submitted = false
   let pendingPaste: { item: NewAttachment; at: number } | null = null
   let scanTimer = 0
+  let scanFirst = 0
+  let scanLast = 0
   let busy = false
   let disposed = false
   /**
@@ -101,6 +104,7 @@ export function usePaneAttachments(o: Options) {
   }
 
   function scan(): void {
+    window.clearTimeout(scanTimer)
     scanTimer = 0
     if (disposed || !agent.value || !o.visible()) return
     const s = read()
@@ -119,9 +123,23 @@ export function usePaneAttachments(o: Options) {
     }
   }
 
-  function schedule(): void {
-    if (!scanTimer && !disposed) scanTimer = window.setTimeout(scan, SCAN_MS)
+  function tick(): void {
+    scanTimer = 0
+    const wait = Math.min(scanLast + SCAN_MS, scanFirst + SCAN_MAX_MS) - Date.now()
+    if (wait > 0) scanTimer = window.setTimeout(tick, wait)
+    else scan()
   }
+
+  function schedule(): void {
+    if (disposed || !agent.value || !o.visible()) return
+    const at = Date.now()
+    scanLast = at
+    if (scanTimer) return
+    scanFirst = at
+    scanTimer = window.setTimeout(tick, SCAN_MS)
+  }
+
+  watch(o.visible, (on) => on && schedule())
 
   /** Enter went to the agent: tokens leaving the prompt now were sent. */
   function noteSubmit(): void {

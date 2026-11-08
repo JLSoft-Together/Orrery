@@ -79,3 +79,30 @@ describe('attachments store', () => {
     expect(s.list(P).map((a) => a.token)).toEqual(['@src/b.ts'])
   })
 })
+
+describe('attachments reconcile no-op', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('keeps byPane when the screen read changes nothing', () => {
+    const s = useAttachmentsStore()
+    s.reconcile(P, scan([1], ['@src/a.ts']), false, null)
+    const before = s.byPane
+    const list = s.list(P)
+    s.reconcile(P, scan([1], ['@src/a.ts']), false, null)
+    s.reconcile(P, scan([1], ['@src/a.ts']), false, null)
+    expect(s.byPane).toBe(before)
+    expect(s.list(P)).toBe(list)
+  })
+
+  it('still replaces byPane when an item changes', () => {
+    const s = useAttachmentsStore()
+    s.reconcile(P, scan([1]), false, null)
+    const before = s.byPane
+    s.reconcile(P, scan([1, 2]), false, null)
+    expect(s.byPane).not.toBe(before)
+    expect(s.list(P)).toHaveLength(2)
+  })
+})

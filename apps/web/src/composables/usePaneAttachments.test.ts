@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
+import type { PtyPreset } from '@ccm/shared'
 import type { PaneScreen } from './usePaneAttachments'
 
 vi.mock('../lib/preview', () => ({ clipboardImage: vi.fn(async () => true), clipboardImageFile: vi.fn(async () => true) }))
@@ -190,5 +191,95 @@ describe('usePaneAttachments remove', () => {
     w.unmount()
     await expect(att.remove(two)).resolves.toBe(false)
     expect(writes).toEqual([])
+  })
+})
+
+describe('usePaneAttachments scan debounce', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  function counted(o: { preset?: PtyPreset; visible?: () => boolean } = {}) {
+    const agent = fakeAgent('[Image #1] ')
+    let reads = 0
+    const att = usePaneAttachments({
+      paneKey: () => 'p',
+      preset: () => o.preset ?? 'claude',
+      cwd: () => undefined,
+      running: () => true,
+      visible: o.visible ?? (() => true),
+      write: () => {},
+      paste: () => {},
+      screen: () => (reads++, agent.screen()),
+      appCursorKeys: () => false,
+      win: true,
+    })
+    return { att, reads: () => reads }
+  }
+
+  it('20 output chunks 10 ms apart scan once, after the output goes quiet', () => {
+    const { att, reads } = counted()
+    for (let i = 0; i < 20; i++) {
+      att.schedule()
+      vi.advanceTimersByTime(10)
+    }
+    expect(reads()).toBe(0)
+    vi.advanceTimersByTime(150)
+    expect(reads()).toBe(1)
+  })
+
+  it('output that never stops is still scanned about once a second', () => {
+    const { att, reads } = counted()
+    for (let i = 0; i < 300; i++) {
+      att.schedule()
+      vi.advanceTimersByTime(10)
+    }
+    expect(reads()).toBeGreaterThanOrEqual(2)
+    expect(reads()).toBeLessThanOrEqual(4)
+  })
+
+  it('does not scan a hidden pane or a shell pane', () => {
+    const hidden = counted({ visible: () => false })
+    const shell = counted({ preset: 'shell' })
+    hidden.att.schedule()
+    shell.att.schedule()
+    vi.advanceTimersByTime(2000)
+    expect(hidden.reads()).toBe(0)
+    expect(shell.reads()).toBe(0)
+  })
+
+  it('a scan queued before unmount never runs', () => {
+    let att!: ReturnType<typeof usePaneAttachments>
+    let reads = 0
+    const agent = fakeAgent('[Image #1] ')
+    const Host = defineComponent({
+      setup() {
+        att = usePaneAttachments({
+          paneKey: () => 'p',
+          preset: () => 'claude',
+          cwd: () => undefined,
+          running: () => true,
+          visible: () => true,
+          write: () => {},
+          paste: () => {},
+          screen: () => (reads++, agent.screen()),
+          appCursorKeys: () => false,
+          win: true,
+        })
+        return () => h('div')
+      },
+    })
+    const w = mount(Host)
+    att.schedule()
+    w.unmount()
+    vi.advanceTimersByTime(2000)
+    expect(reads).toBe(0)
   })
 })

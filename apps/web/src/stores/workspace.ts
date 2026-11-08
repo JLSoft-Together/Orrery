@@ -234,6 +234,7 @@ const PRESET_KEY = 'ccm.workspace.preset'
 const RECENT_LIMIT = 8
 // Survives app restarts (unlike the per-window session state): what "Restore previous workspace" rebuilds.
 const LAST_KEY = 'ccm.workspace.last'
+const PERSIST_MS = 400
 
 interface ViewFields {
   kind?: PaneKind
@@ -555,49 +556,63 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const pendingClose = ref<string[] | null>(null)
   let pendingQuiet = false
 
+  let persistTimer = 0
+  let persistDirty = false
+
+  function persistNow(): void {
+    window.clearTimeout(persistTimer)
+    persistTimer = 0
+    if (!persistDirty) return
+    persistDirty = false
+    const kept = panes.value.filter((p) => !isTerm(p) || p.state === 'parked' || (p.sessionId && p.state !== 'gone'))
+    const data: Saved = {
+      panes: kept.map((p) => ({
+        key: p.key,
+        preset: p.preset,
+        cwd: p.cwd,
+        sessionId: p.sessionId,
+        resume: p.resume,
+        agentSessionId: p.agentSessionId,
+        mintedSession: p.mintedSession,
+        untouchedSession: p.untouchedSession,
+        ranCommand: p.ranCommand,
+        command: p.command,
+        openedBy: p.openedBy,
+        parked: p.state === 'parked' || undefined,
+        ...viewOf(p),
+      })),
+      tabs: tabs.value,
+      active: activeKey.value,
+    }
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    } catch {
+      // storage blocked: panes just will not survive a reload
+    }
+    // Never prompts or output: preset, folder and the agent session id to resume are all that is kept.
+    if (!panes.value.length) return
+    const snapshot: LastWorkspace = {
+      at: new Date().toISOString(),
+      panes: panes.value.map((p) => {
+        // As closedPane: a resumed agent must start where its session lives; a shell comes back where it was.
+        const { preset: kind, cwd, resume } = reopenAs(p)
+        return { key: p.key, preset: kind, cwd, home: cwd !== p.cwd ? p.cwd : undefined, resume, ...viewOf(p) }
+      }),
+      tabs: tabs.value,
+    }
+    writeLocal(LAST_KEY, JSON.stringify(snapshot))
+  }
+
   watch(
     [panes, tabs, activeKey],
     () => {
-      const kept = panes.value.filter((p) => !isTerm(p) || p.state === 'parked' || (p.sessionId && p.state !== 'gone'))
-      const data: Saved = {
-        panes: kept.map((p) => ({
-          key: p.key,
-          preset: p.preset,
-          cwd: p.cwd,
-          sessionId: p.sessionId,
-          resume: p.resume,
-          agentSessionId: p.agentSessionId,
-          mintedSession: p.mintedSession,
-          untouchedSession: p.untouchedSession,
-          ranCommand: p.ranCommand,
-          command: p.command,
-          openedBy: p.openedBy,
-          parked: p.state === 'parked' || undefined,
-          ...viewOf(p),
-        })),
-        tabs: tabs.value,
-        active: activeKey.value,
-      }
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-      } catch {
-        // storage blocked: panes just will not survive a reload
-      }
-      // Never prompts or output: preset, folder and the agent session id to resume are all that is kept.
-      if (!panes.value.length) return
-      const snapshot: LastWorkspace = {
-        at: new Date().toISOString(),
-        panes: panes.value.map((p) => {
-          // As closedPane: a resumed agent must start where its session lives; a shell comes back where it was.
-          const { preset: kind, cwd, resume } = reopenAs(p)
-          return { key: p.key, preset: kind, cwd, home: cwd !== p.cwd ? p.cwd : undefined, resume, ...viewOf(p) }
-        }),
-        tabs: tabs.value,
-      }
-      writeLocal(LAST_KEY, JSON.stringify(snapshot))
+      persistDirty = true
+      if (!persistTimer) persistTimer = window.setTimeout(persistNow, PERSIST_MS)
     },
     { deep: true },
   )
+  window.addEventListener('pagehide', persistNow)
+  window.addEventListener('beforeunload', persistNow)
 
   type AgentOpen = Pick<Pane, 'openTicket' | 'prefill' | 'prefillSubmit' | 'openedBy'>
 
@@ -1530,6 +1545,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   return {
+    persistNow,
     panes,
     tabs,
     canvasSize,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ArtImage from './ArtImage.vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VueFlow, useVueFlow, type Edge, type GraphNode, type Node } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -26,6 +26,7 @@ import {
 import type { Agent, PeerLink } from '@ccm/shared'
 import { useAgentsStore } from '../stores/agents'
 import { useConnectionStore } from '../stores/connection'
+import { useSettingsStore } from '../stores/settings'
 import { otherEnd, peerLinkId, usePeersStore, type PeerPulse } from '../stores/peers'
 import { useTerminalsStore } from '../stores/terminals'
 import { useUiStore, type MapView } from '../stores/ui'
@@ -51,12 +52,13 @@ import TreeEdge from './TreeEdge.vue'
 import KeyHint from './KeyHint.vue'
 import SegmentedControl from './ui/SegmentedControl.vue'
 import OfficeOptions from './office/OfficeOptions.vue'
-import OfficeView from './office/OfficeView.vue'
 import { useOfficeStore } from '../stores/office'
 import { useMapFind } from './map/useMapFind'
 import { useLiveAnnounce } from './map/useLiveAnnounce'
 import { useOffscreenCapsules } from './map/useOffscreenCapsules'
 import { useOfficeControls } from './map/useOfficeControls'
+
+const OfficeView = defineAsyncComponent(() => import('./office/OfficeView.vue'))
 
 const props = defineProps<{ terminalId?: string | null }>()
 const { t } = useI18n()
@@ -1260,6 +1262,15 @@ const controls = computed<{ key: string; label: string; icon: typeof Plus; hint?
   { key: 'reset', label: t('map.reset'), icon: LayoutGrid, run: () => ui.resetLayout() },
 ])
 
+const settings = useSettingsStore()
+watch(
+  () => settings.officeEnabled,
+  (on) => {
+    if (!on && ui.mapView === 'office') ui.mapView = 'map'
+  },
+  { immediate: true },
+)
+
 const views = computed(() => [
   { value: 'map' as MapView, label: t('tools.view.map'), icon: Network },
   { value: 'office' as MapView, label: t('officeV60.view'), icon: Building2 },
@@ -1283,7 +1294,7 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
       @keydown="onCanvasKey"
       @focusin="onCanvasFocusIn"
     >
-      <OfficeView v-if="ui.mapView === 'office'" :terminal-id="terminalId" />
+      <OfficeView v-if="settings.officeEnabled && ui.mapView === 'office'" :terminal-id="terminalId" />
       <VueFlow
         v-else
         :id="FLOW_ID"
@@ -1410,7 +1421,9 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
         </button>
 
         <div class="ccm-material pointer-events-auto flex flex-wrap items-center justify-center gap-0.5 rounded-control p-0.5 shadow-pop" role="toolbar" :aria-label="t('map.title')">
-          <SegmentedControl v-model="ui.mapView" :options="views" :label="t('tools.view.label')" />
+          <Transition name="ccm-fade">
+            <SegmentedControl v-if="settings.officeEnabled" v-model="ui.mapView" :options="views" :label="t('tools.view.label')" />
+          </Transition>
           <template v-if="ui.mapView === 'office'">
             <button
               v-for="c in officeControls"

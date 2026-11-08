@@ -10,6 +10,7 @@ export interface OfficeHubOptions {
   /** Direct reply to one websocket client. */
   send: (clientId: string, message: ServerMessage) => void
   commitMs?: number
+  idleCommitMs?: number
   tickMs?: number
 }
 
@@ -23,6 +24,7 @@ export class OfficeHub {
   private readonly recorder?: Pick<TimelineRecorder, 'ingest'>
   private readonly send: (clientId: string, message: ServerMessage) => void
   private readonly commitMs: number
+  private readonly idleCommitMs: number
   private readonly tickMs: number
   private readonly subscribers = new Set<string>()
   private unsubscribe: (() => void) | null = null
@@ -36,6 +38,7 @@ export class OfficeHub {
     this.recorder = o.recorder
     this.send = o.send
     this.commitMs = o.commitMs ?? 200
+    this.idleCommitMs = o.idleCommitMs ?? 5000
     this.tickMs = o.tickMs ?? 1000
   }
 
@@ -68,6 +71,11 @@ export class OfficeHub {
       return
     }
     this.subscribers.add(clientId)
+    if (this.commitTimer && this.subscribers.size === 1) {
+      clearTimeout(this.commitTimer)
+      this.commitTimer = null
+      this.schedule()
+    }
     // A subscriber gets the state as of now, not the last throttled commit.
     this.commit(true, clientId)
   }
@@ -81,7 +89,7 @@ export class OfficeHub {
     this.commitTimer = setTimeout(() => {
       this.commitTimer = null
       this.commit(false)
-    }, this.commitMs)
+    }, this.subscribers.size ? this.commitMs : this.idleCommitMs)
     this.commitTimer.unref()
   }
 

@@ -43,6 +43,7 @@ const terminalApps = computed(() => (['terminal', 'iterm'] as const).map((app) =
       <SettingRow :label="t('settings.language')" data-setting-row="language">
         <SegmentedControl v-model="settings.locale" :options="locales" :label="t('settings.language')" />
       </SettingRow>
+      <ToggleSwitch v-model="settings.officeEnabled" :label="t('settings.office')" :info="t('settings.officeHint')" class="px-3" data-setting-row="office" />
       <ToggleSwitch v-model="settings.keyHints" :label="t('keys.hints')" :info="t('keys.hintsHint')" class="px-3" data-setting-row="keyHints" />
       <ToggleSwitch v-if="hasTerminals" v-model="tipsOn" :label="t('tips.setting')" :info="t('tips.settingHint')" class="px-3" data-setting-row="tips" />
       <SettingRow v-if="isMac" :label="t('settings.launchTerminal')" :info="t('settings.launchTerminalHint')" data-setting-row="launch">

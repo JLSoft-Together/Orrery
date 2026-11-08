@@ -331,6 +331,8 @@ export function startServer(options: {
         const m = msg as { groups?: unknown; globs?: unknown; ignore?: unknown; rule?: unknown; type?: unknown; attentive?: unknown; locale?: unknown; toast?: unknown; kinds?: unknown; quiet?: unknown; minutes?: unknown; stuckMinutes?: unknown; idleMinutes?: unknown; note?: unknown; dirs?: unknown; terminalId?: unknown; alias?: unknown; dir?: unknown; mode?: unknown; terminalApp?: unknown; label?: unknown; app?: unknown; requestId?: unknown; jobId?: unknown; since?: unknown; on?: unknown; days?: unknown; project?: unknown; searchId?: unknown; query?: unknown; sessionId?: unknown }
         if (m.type === 'resync') {
           send(ws, store.snapshotMessage())
+        } else if (m.type === 'office.enable' && typeof m.on === 'boolean') {
+          options.onClientMessage?.({ type: 'office.enable', on: m.on }, ctx())
         } else if (m.type === 'office.subscribe' && typeof m.on === 'boolean') {
           options.onClientMessage?.({ type: 'office.subscribe', on: m.on }, ctx())
         } else if (m.type === 'terminal.alias' && typeof m.terminalId === 'string' && (typeof m.alias === 'string' || m.alias === null)) {

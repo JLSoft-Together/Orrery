@@ -844,6 +844,8 @@ export default {
     breakReminder: 'Break reminders',
     minimap: 'Code minimap',
     minimapHint: 'A zoomed-out overview of the file beside the file viewer. Click or drag it to scroll.',
+    office: 'Office view',
+    officeHint: 'Pixel-art office on the Monitor map with a day timelapse. Off (default): nothing is loaded, drawn or recorded for it. Turning it on starts the timelapse from that moment.',
     dust: 'Disintegrate on close',
     dustHint: 'Closed sessions, panes and tabs crumble into dust and fly back together on undo. Off: they fade out.',
     autoSave: 'Auto save',

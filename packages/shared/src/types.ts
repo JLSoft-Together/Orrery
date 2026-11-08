@@ -540,6 +540,7 @@ export interface ServerMessage {
 
 export type ClientMessage =
   | { type: 'resync' }
+  | { type: 'office.enable'; on: boolean }
   | { type: 'office.subscribe'; on: boolean }
   | { type: 'toolSpans.get'; terminalId?: string; since?: string }
   | { type: 'terminal.alias'; terminalId: string; alias: string | null }

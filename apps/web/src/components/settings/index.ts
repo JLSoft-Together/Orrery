@@ -83,6 +83,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'general', id: 'restore', labelKey: 'wsRestore.mode', hintKey: 'wsRestore.modeHint', needs: 'terminals' },
   { page: 'general', id: 'awake', labelKey: 'awake.setting', hintKey: 'awake.settingHint', needs: 'awake' },
   { page: 'general', id: 'tips', labelKey: 'tips.setting', hintKey: 'tips.settingHint', needs: 'terminals' },
+  { page: 'general', id: 'office', labelKey: 'settings.office', hintKey: 'settings.officeHint' },
   { page: 'general', id: 'keyHints', labelKey: 'keys.hints', hintKey: 'keys.hintsHint' },
   { page: 'general', id: 'launch', labelKey: 'settings.launchTerminal', hintKey: 'settings.launchTerminalHint', needs: 'mac' },
 

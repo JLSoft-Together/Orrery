@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 import type { OfficeSnapshot } from '@ccm/habblaud/shared/types'
 import { officeFeed } from '../office/feed'
 import { useConnectionStore } from './connection'
+import { useSettingsStore } from './settings'
 
 class FakeSocket {
   static OPEN = 1
@@ -32,6 +34,7 @@ class FakeSocket {
 const officeSnap = (rev: number): OfficeSnapshot =>
   ({ rev, serverTime: rev, rooms: [], agents: [], accounts: [], meta: {} }) as unknown as OfficeSnapshot
 
+const enables = (s: FakeSocket) => s.sent.filter((m) => (m as { type: string }).type === 'office.enable')
 const subscribes = (s: FakeSocket) => s.sent.filter((m) => (m as { type: string }).type === 'office.subscribe')
 
 describe('connection office routing', () => {
@@ -81,5 +84,53 @@ describe('connection office routing', () => {
     const second = FakeSocket.instances[1]!
     second.open()
     expect(subscribes(second)).toEqual([])
+  })
+
+  it('does not send office.enable while the setting is off (default)', () => {
+    const conn = useConnectionStore()
+    conn.start()
+    const first = FakeSocket.instances[0]!
+    first.open()
+    expect(enables(first)).toEqual([])
+  })
+
+  it('sends office.enable on connect when on, and on every change', async () => {
+    const settings = useSettingsStore()
+    settings.officeEnabled = true
+    const conn = useConnectionStore()
+    conn.start()
+    const first = FakeSocket.instances[0]!
+    first.open()
+    expect(enables(first)).toEqual([{ type: 'office.enable', on: true }])
+    settings.officeEnabled = false
+    await nextTick()
+    settings.officeEnabled = true
+    await nextTick()
+    expect(enables(first)).toEqual([
+      { type: 'office.enable', on: true },
+      { type: 'office.enable', on: false },
+      { type: 'office.enable', on: true },
+    ])
+    first.close()
+    vi.advanceTimersByTime(1_500)
+    const second = FakeSocket.instances[1]!
+    second.open()
+    expect(enables(second)).toEqual([{ type: 'office.enable', on: true }])
+  })
+
+  it('drops the office subscription when the setting turns off', async () => {
+    const settings = useSettingsStore()
+    settings.officeEnabled = true
+    const conn = useConnectionStore()
+    conn.start()
+    const first = FakeSocket.instances[0]!
+    first.open()
+    conn.subscribeOffice(true)
+    settings.officeEnabled = false
+    await nextTick()
+    expect(subscribes(first)).toEqual([
+      { type: 'office.subscribe', on: true },
+      { type: 'office.subscribe', on: false },
+    ])
   })
 })

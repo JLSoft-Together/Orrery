@@ -314,6 +314,7 @@ export const useConnectionStore = defineStore('connection', () => {
       retryMs = MIN_RETRY_MS
       lastPresence = null
       sendPresence()
+      if (settings.officeEnabled) send({ type: 'office.enable', on: true })
       if (officeOn) send({ type: 'office.subscribe', on: true })
     }
     ws.onmessage = (e) => onMessage(String(e.data))
@@ -351,6 +352,13 @@ export const useConnectionStore = defineStore('connection', () => {
     window.addEventListener('focus', sendPresence)
     window.addEventListener('blur', sendPresence)
     watch(() => settings.locale, sendPresence)
+  watch(
+    () => settings.officeEnabled,
+    (on) => {
+      send({ type: 'office.enable', on })
+      if (!on && officeOn) subscribeOffice(false)
+    },
+  )
     document.addEventListener('visibilitychange', () => {
       sendPresence()
       if (document.visibilityState === 'visible' && !socket && retryTimer !== null) {

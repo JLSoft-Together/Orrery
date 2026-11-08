@@ -80,7 +80,7 @@ Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguy�
 
 ## Cài đặt
 
-Tải bản mới nhất ở [GitHub Releases](https://github.com/JLSoft-Together/Claude-Code-Monitor/releases).
+Tải bản mới nhất ở [GitHub Releases](https://github.com/JLSoft-Together/Orrery/releases).
 
 | Hệ điều hành | File |
 |---|---|

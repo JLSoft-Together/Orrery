@@ -1,8 +1,8 @@
 import type { FeedAsset } from './pick'
 import { cleanVersion } from './semver'
 
-export const DEFAULT_FEED = 'https://api.github.com/repos/JLSoft-Together/Claude-Code-Monitor/releases/latest'
-export const RELEASES_PAGE = 'https://github.com/JLSoft-Together/Claude-Code-Monitor/releases/latest'
+export const DEFAULT_FEED = 'https://api.github.com/repos/JLSoft-Together/Orrery/releases/latest'
+export const RELEASES_PAGE = 'https://github.com/JLSoft-Together/Orrery/releases/latest'
 const NOTES_MAX = 40_000
 
 export interface FeedRelease {

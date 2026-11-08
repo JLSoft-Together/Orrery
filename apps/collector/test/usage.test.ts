@@ -130,6 +130,24 @@ describe('UsageIndex', () => {
     expect(again.heatmap(1, DAY).days[0]!.hours[hour]).toBe(3)
   })
 
+  it('reads lines larger than a chunk and leaves a trailing partial line unconsumed', async () => {
+    const pad = (n: number) => 'x'.repeat(n)
+    const big = (id: string, n: number) =>
+      line({ type: 'assistant', timestamp: TS, cwd: CWD, message: { id, model: 'claude-opus-5-5', content: [{ type: 'text', text: pad(n) }], usage: { input_tokens: 1, output_tokens: 2 } } })
+    const tail = assistant('m9', { output_tokens: 40 })
+    await writeFile(
+      file,
+      assistant('m1', { input_tokens: 5, output_tokens: 7 }) + big('b1', 70_000) + big('b2', 1_300_000) + big('b3', 3_000_000) + tail.slice(0, 30),
+    )
+    const sink = new Sink()
+    const index = await start(sink)
+    expect(opusOf(sink)).toMatchObject({ messages: 4, input: 8, output: 13 })
+    await appendFile(file, tail.slice(30))
+    index.notify(path.relative(projects, file))
+    await settle(index)
+    expect(opusOf(sink)).toMatchObject({ messages: 5, output: 53 })
+  })
+
   it('tails appended lines and waits for a partial line to complete', async () => {
     const sink = new Sink()
     const index = await start(sink)

@@ -406,19 +406,24 @@ export class UsageIndex {
 
     const fallbackProject = rel.split('/')[0] ?? rel
     let consumed = 0
-    let remainder: Buffer = Buffer.alloc(0)
-    const stream = createReadStream(full, { start: entry.offset, end: size - 1 })
+    let pieces: Buffer[] = []
+    const stream = createReadStream(full, { start: entry.offset, end: size - 1, highWaterMark: 1024 * 1024 })
     for await (const chunk of stream as AsyncIterable<Buffer>) {
-      const data = remainder.length ? Buffer.concat([remainder, chunk]) : chunk
       let start = 0
       let idx: number
-      while ((idx = data.indexOf(NEWLINE, start)) !== -1) {
-        const line = data.subarray(start, idx)
+      while ((idx = chunk.indexOf(NEWLINE, start)) !== -1) {
+        const tail = chunk.subarray(start, idx)
+        let line = tail
+        if (pieces.length) {
+          pieces.push(tail)
+          line = Buffer.concat(pieces)
+          pieces = []
+        }
         start = idx + 1
         consumed += line.length + 1
         this.ingestLine(line, rel, fallbackProject, entry)
       }
-      remainder = Buffer.from(data.subarray(start))
+      if (start < chunk.length) pieces.push(start ? Buffer.from(chunk.subarray(start)) : chunk)
     }
     entry.offset += consumed
   }

@@ -12,6 +12,7 @@ import { fontEntry, termFontStack } from '../../lib/fonts'
 import { shortPath } from '../../lib/format'
 import { isMac } from '../../lib/platform'
 import { PtyConnection } from '../../lib/ptyClient'
+import { TERM_SCROLLBACK } from '../../lib/termBuffer'
 import { useSettingsStore } from '../../stores/settings'
 
 /**
@@ -195,7 +196,7 @@ onMounted(() => {
     fontFamily: termFontStack(fontEntry('code', 'system')),
     fontSize: settings.codeFontSize,
     lineHeight: 1.25,
-    scrollback: 5000,
+    scrollback: TERM_SCROLLBACK,
     smoothScrollDuration: 0,
     minimumContrastRatio: 4.5,
     macOptionClickForcesSelection: true,

@@ -20,6 +20,8 @@ import { headMode, isHeadBlank, processChip, STATE_BADGE, statusWordShown, sugge
 import { contextPctOf } from '../../lib/provider'
 import { retireOverlay } from '../../lib/motion'
 import { registerSnapshot } from '../../lib/paneSnapshots'
+import { HiddenOutput, TERM_SCROLLBACK } from '../../lib/termBuffer'
+import { webglPool } from '../../lib/webglLru'
 import { isMac } from '../../lib/platform'
 import { PtyConnection, type PtyStart } from '../../lib/ptyClient'
 import { spawnQueue, type SpawnTicket } from '../../lib/spawnQueue'
@@ -99,6 +101,20 @@ const dev = new DevServerDetector()
 const decoder = new TextDecoder('utf-8')
 // Bulk output (cat of a big file, replay) is never a dev server banner.
 const DEV_CHUNK_MAX = 64 * 1024
+const output = new HiddenOutput({ write: (bytes, done) => (term ? term.write(bytes, done) : done?.()) })
+let backlog: (() => void) | null = null
+
+function showBacklog(): Promise<void> {
+  backlog?.()
+  return new Promise((resolve) => {
+    const done = (): void => {
+      if (backlog === done) backlog = null
+      resolve()
+    }
+    backlog = done
+    output.setVisible(true, done)
+  })
+}
 
 // The sidebar age needs 'recently active', not every chunk: one store write per pane every few seconds at most.
 const TOUCH_MS = 5000
@@ -111,7 +127,7 @@ function touch(): void {
 }
 
 function feedDev(bytes: Uint8Array): void {
-  if (bytes.length > DEV_CHUNK_MAX) return
+  if (preset.value !== 'shell' || bytes.length > DEV_CHUNK_MAX) return
   const found = dev.feed(decoder.decode(bytes, { stream: true }))
   if (!found.length) return
   devUrls.value = [...devUrls.value, ...found]
@@ -283,7 +299,7 @@ const activity = computed(() => info.activityOf(props.pane))
 const activityText = computed(() => {
   const tool = activity.value?.tool
   if (!tool) return null
-  const time = duration(activity.value?.since, now.value)
+  const time = duration(activity.value?.since, props.visible ? now.value : Date.now())
   return time ? t('workspace.activity.tool', { tool, time }) : tool
 })
 const diff = computed(() => {
@@ -527,15 +543,20 @@ function setRenderer(on: boolean): void {
   if (on && !webgl) {
     try {
       webgl = new WebglAddon()
-      webgl.onContextLoss(() => setRenderer(false))
+      webgl.onContextLoss(dropRenderer)
       term.loadAddon(webgl)
     } catch {
       webgl = null
     }
-  } else if (!on && webgl) {
-    webgl.dispose()
-    webgl = null
   }
+  if (on && webgl) webglPool.show(props.pane.key, dropRenderer)
+  else if (!on && webgl) webglPool.hide(props.pane.key)
+}
+
+function dropRenderer(): void {
+  webglPool.drop(props.pane.key)
+  webgl?.dispose()
+  webgl = null
 }
 
 // xterm measures the cell when the option changes: the face has to be loaded first or it measures the fallback.
@@ -553,7 +574,7 @@ async function applyCodeFont(): Promise<void> {
 }
 
 function refit(): void {
-  if (!props.visible || !fit || !host.value?.offsetWidth) return
+  if (backlog || !props.visible || !fit || !host.value?.offsetWidth) return
   try {
     const dims = fit.proposeDimensions()
     if (term && conn && dims && dims.cols < term.cols && term.buffer.active.type === 'normal') {
@@ -603,6 +624,7 @@ function readScreen(): PaneScreen | null {
 }
 
 const offSnapshot = registerSnapshot(props.pane.key, (n) => {
+  output.flush()
   const b = term?.buffer.active
   if (!b) return []
   // A margin above the cursor row so trailing blank screen rows can be trimmed.
@@ -793,9 +815,10 @@ function onMessage(msg: PtyServerMessage): void {
 async function connect(start: PtyStart): Promise<void> {
   const own = ticket
   conn?.close()
+  output.clear()
   conn = new PtyConnection({
     onOutput: (bytes) => {
-      term?.write(bytes)
+      output.push(bytes)
       touch()
       feedDev(bytes)
     },
@@ -824,6 +847,7 @@ function restart(): void {
   killSession()
   restoredOnMount = false
   marks.reset()
+  output.clear()
   term?.reset()
   resetDev()
   oscLinks.length = 0
@@ -867,6 +891,7 @@ function reconnect(): void {
   if (!props.pane.sessionId) return restart()
   restoredOnMount = false
   marks.reset()
+  output.clear()
   term?.reset()
   workspace.update(props.pane.key, { state: 'starting', error: undefined })
   void connect({ attach: props.pane.sessionId })
@@ -885,7 +910,7 @@ onMounted(() => {
     fontFamily: termFontStack(fontEntry('code', 'system')),
     fontSize: settings.codeFontSize,
     lineHeight: 1.25,
-    scrollback: 5000,
+    scrollback: TERM_SCROLLBACK,
     smoothScrollDuration: 0,
     // CLIs paint with ANSI black/dim colours that vanish on the dark well; xterm lifts them per cell.
     minimumContrastRatio: 4.5,
@@ -956,6 +981,7 @@ onMounted(() => {
   resizeObserver.observe(host.value!)
   window.addEventListener('resize', dropMenus)
 
+  output.setVisible(props.visible)
   restoredOnMount = !!props.pane.sessionId
   if (props.pane.state === 'parked') return
   if (props.pane.sessionId) void connect({ attach: props.pane.sessionId })
@@ -974,10 +1000,16 @@ watch(
   async (visible) => {
     setRenderer(visible)
     if (visible) ticket?.promote()
-    if (!visible) return dropMenus()
+    if (!visible) {
+      output.setVisible(false)
+      return dropMenus()
+    }
+    const written = showBacklog()
     await nextTick()
-    refit()
     if (props.focused) term?.focus()
+    await written
+    if (!props.visible) return
+    refit()
   },
 )
 
@@ -1055,7 +1087,9 @@ onBeforeUnmount(() => {
   }
   conn?.close()
   marks.dispose()
-  webgl?.dispose()
+  output.dispose()
+  backlog?.()
+  dropRenderer()
   term?.dispose()
 })
 </script>

@@ -157,6 +157,8 @@ let sessionEnding = false
 const QUIT_DEADLINE_MS = 8_000
 const RUN_STOP_GRACE_MS = 4_000
 let showingError = false
+let intro: Promise<number> | null = null
+let earlyStart: Promise<void> | null = null
 let hiddenNoticeShown = false
 const preview = new PreviewServer()
 const previewWatch = new RootWatcher()
@@ -489,7 +491,7 @@ function createMainWindow(): BrowserWindow {
   win.on('session-end', () => {
     quitting = true
     sessionEnding = true
-    void host.stop()
+    void host?.stop()
     void ptys?.stop()
     void stopPreview()
   })
@@ -710,6 +712,12 @@ async function confirmQuit(forUpdate = false): Promise<boolean> {
 }
 
 let booting: Promise<void> | null = null
+
+function showIntro(): Promise<number> {
+  const win = mainWindow
+  if (!win) return Promise.resolve(Date.now())
+  return win.loadURL(loadingPage(t, saved().look, app.getVersion())).catch(() => undefined).then(() => Date.now())
+}
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)))
 
 /** Vite starts alongside the app; give it time before the first load (a miss is a blank page, Ctrl+R retries). */
@@ -727,9 +735,11 @@ function boot(): Promise<void> {
     if (!mainWindow) return
     showingError = false
     try {
-      await mainWindow.loadURL(loadingPage(t, saved().look, app.getVersion())).catch(() => undefined)
-      const shownAt = Date.now()
-      await host.start()
+      const shownAt = await (intro ?? showIntro())
+      intro = null
+      const started = earlyStart ?? host.start()
+      earlyStart = null
+      await started
       disk?.start()
       if (DEV_URL) await waitForDevServer(DEV_URL)
       if (showingError) return
@@ -1384,6 +1394,8 @@ async function ready(): Promise<void> {
   backups = new BackupService({ dataDir: DATA_DIR, app: app.getVersion(), platform: process.platform, github: () => ghStore?.list() ?? [] })
   // An import staged before the restart lands before the collector and the main stores read their files.
   backups.applyPending()
+  mainWindow = createMainWindow()
+  intro = showIntro()
   setupCaptureAndAwake()
   setupPhone()
   setupTelegram()
@@ -1420,6 +1432,8 @@ async function ready(): Promise<void> {
       awake?.setBusy(0, 0)
     },
   })
+  earlyStart = host.start()
+  earlyStart.catch(() => undefined)
   const unpacked = (file: string): string => path.join(__dirname, file).replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
   ptys = new PtySupervisor({
     script: unpacked('pty-host.cjs'),
@@ -2093,7 +2107,6 @@ async function ready(): Promise<void> {
   repairLoginItem()
   removeStaleShortcuts()
   createTray()
-  mainWindow = createMainWindow()
   await boot()
   linksReady = true
   const first = pendingLink ?? linkIn(process.argv)

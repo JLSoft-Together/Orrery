@@ -87,6 +87,8 @@ export interface ProcRow {
   pid: number
   ppid: number
   cmd: string
+  /** Creation time (epoch ms) when the table has it; a "parent" created after its child is a reused pid. */
+  startMs?: number | null
 }
 
 export function parseProcRows(stdout: string): ProcRow[] {
@@ -102,8 +104,11 @@ export function parseProcRows(stdout: string): ProcRow[] {
 export function treePids(root: number, rows: readonly ProcRow[], spare: (cmd: string) => boolean): number[] {
   const kids = new Map<number, ProcRow[]>()
   const self = rows.find((r) => r.pid === root)
+  const startOf = new Map(rows.map((r) => [r.pid, r.startMs]))
   for (const r of rows) {
     if (r.pid === r.ppid) continue
+    const parentStart = startOf.get(r.ppid)
+    if (parentStart != null && r.startMs != null && parentStart > r.startMs) continue
     const list = kids.get(r.ppid)
     if (list) list.push(r)
     else kids.set(r.ppid, [r])

@@ -153,6 +153,8 @@ export function buildTree(input: {
   sessions: readonly SessionRoot[]
   lineage: ReadonlyMap<string, string>
   ports?: ReadonlyMap<number, ResPort[]>
+  /** Windows never reparents: a live parent outside every session means the process was never launched by one. */
+  keepsParent?: boolean
 }): TreeResult {
   const f = forest(input.rows)
   const daemons = new Map<number, DaemonInfo>()
@@ -199,6 +201,7 @@ export function buildTree(input: {
   for (const r of left) {
     const p = f.parentOf(r)
     if (p && leftPids.has(p.pid)) continue
+    if (input.keepsParent && p && !placed.has(p.pid)) continue
     const sessionId = sessionOf(r)!
     const members = subtree(r, f, (c) => isDaemon(c) || placed.has(c.pid))
     for (const m of members) placed.add(m.pid)

@@ -164,6 +164,17 @@ describe('pane scope', () => {
     expect(paneScope(root, null, rows, home).tree.size).toBe(0)
   })
 
+  it('leaves a process out of the pane tree when its ppid was reused by a pane process', () => {
+    const reused = [
+      { pid: 10, ppid: 1, cmd: '', startMs: 500 },
+      { pid: 20, ppid: 10, cmd: '', startMs: 600 },
+      { pid: 70, ppid: 20, cmd: '', startMs: 100 },
+      { pid: 71, ppid: 70, cmd: '', startMs: 110 },
+    ]
+    expect([...paneScope(root, 10, reused, home).tree].sort((a, b) => a - b)).toEqual([10, 20])
+    expect(mineOf(report([]), paneScope(root, 10, reused, home))(server({ pid: 70 }))).toBe(false)
+  })
+
   it('planFreePort refuses foreign, outside, emulator and session holders; never a partial stop', () => {
     const scope = paneScope(root, 10, rows, home)
     expect(planFreePort(null, scope, 3000)).toEqual({ ok: false, error: 'no-report' })

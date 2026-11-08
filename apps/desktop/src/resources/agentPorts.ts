@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import path from 'node:path'
 import type { ResKillTarget, ResourceReport, ServerRes } from '@ccm/shared'
 import type { AgentServer, McpDeskError } from '../../../../packages/shared/src/mcpDesk'
+import { filetimeMs } from '../../../collector/src/resources/procs'
 import { nativeProcessTable } from '../../../collector/src/win-procs'
 import { isInsideOrSame } from '../agentData/fsTree'
 import { parseProcRows, treePids, type ProcRow } from '../run/proc'
@@ -86,7 +87,7 @@ function run(file: string, args: string[]): Promise<string | null> {
 export async function readProcRows(platform: NodeJS.Platform = process.platform): Promise<ProcRow[] | null> {
   if (platform === 'win32') {
     const table = nativeProcessTable()
-    if (table) return table.map((p) => ({ pid: p.pid, ppid: p.ppid, cmd: '' }))
+    if (table) return table.map((p) => ({ pid: p.pid, ppid: p.ppid, cmd: '', startMs: p.start === null ? null : filetimeMs(p.start) }))
     const ps = path.win32.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
     const text = await run(ps, ['-NoProfile', '-NonInteractive', '-Command', "Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId | ForEach-Object { '{0} {1}' -f $_.ProcessId,$_.ParentProcessId }"])
     return text ? parseProcRows(text) : null

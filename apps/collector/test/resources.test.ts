@@ -107,6 +107,19 @@ describe('buildTree', () => {
     expect(buildTree({ rows: after, sessions: [], lineage: new Map() }).servers.every((s) => !s.orphan)).toBe(true)
   })
 
+  it('on Windows drops a remembered process whose live parent is outside every session', () => {
+    const svc = [row(600, 1, 'services.exe'), row(601, 600, 'AnyDesk.exe'), row(602, 601, 'AnyDesk.exe'), row(10, 1, 'claude.exe')]
+    const lineage = new Map([['601:s601', 'a'], ['602:s602', 'a']])
+    const ports = new Map([[601, [{ port: 7070, address: '0.0.0.0', established: 0 }]]])
+    const win = buildTree({ rows: svc, sessions: [{ sessionId: 'a', pid: 10 }], lineage, ports, keepsParent: true })
+    expect(win.servers).toEqual([])
+    // A process whose launcher died keeps a dead ppid: still the session's.
+    const gone = buildTree({ rows: svc.filter((r) => r.pid !== 600), sessions: [{ sessionId: 'a', pid: 10 }], lineage, ports, keepsParent: true })
+    expect(gone.servers.map((s) => [s.root.pid, s.sessionId, s.kind])).toEqual([[601, 'a', 'dev-server']])
+    // POSIX reparents orphans to init / a subreaper, so a live parent proves nothing there.
+    expect(buildTree({ rows: svc, sessions: [{ sessionId: 'a', pid: 10 }], lineage, ports }).servers.map((s) => s.root.pid)).toEqual([601])
+  })
+
   it('treats cmd.exe as a tool shell only when it hosts one (MCP wrappers are not servers)', () => {
     const t = buildTree({
       rows: [

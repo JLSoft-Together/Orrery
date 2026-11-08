@@ -143,7 +143,7 @@ export class ResourceSampler {
     const terms = [...this.deps.terminals()].filter((t) => !t.endedAt && t.processId)
     reader.enrich(rows, new Set(), new Set(rows.filter((r) => mayBeDaemon(r.name)).map((r) => r.pid)))
     const ports = this.deps.ports ? await this.deps.ports().catch(() => null) : null
-    const tree = buildTree({ rows, sessions: terms.map((t) => ({ sessionId: t.id, pid: t.processId! })), lineage: this.lineageMap, ports: ports ?? undefined })
+    const tree = buildTree({ rows, sessions: terms.map((t) => ({ sessionId: t.id, pid: t.processId! })), lineage: this.lineageMap, ports: ports ?? undefined, keepsParent: process.platform === 'win32' })
 
     const usagePids = new Set<number>()
     for (const s of tree.sessions) for (const m of s.members) usagePids.add(m.pid)

@@ -1,0 +1,31 @@
+## WP-perf-5 — PARTIAL
+- Đã đổi: `apps/desktop/src/main.ts` (giữ CRLF)
+  - `ready()`: `mainWindow = createMainWindow()` + `intro = showIntro()` (loading page) ngay sau `registerLinks()`, thay vì cuối ready() (đã xoá chỗ cũ).
+  - Sau `new CollectorHost(...)`: `earlyStart = host.start()` (+ `.catch` noop chống unhandled) — collector spawn song song với phần register IPC / `preview.start()` / `runManager.loadSettings()` còn lại.
+  - `boot()`: `shownAt = await (intro ?? showIntro())`, `started = earlyStart ?? host.start()`; lần retry (error page, F5, `agentdata startCollector`) vẫn đi đường cũ. Lỗi `FatalError` từ start sớm vẫn vào catch của boot -> `showError`.
+  - Hàm mới `showIntro()`; biến `intro`, `earlyStart`; `session-end` dùng `host?.stop()` vì window nay có trước host.
+- Bảng module boot/lười:
+  - Lười sẵn: `sql.js` (loadSqlJs), `gramjs.cjs` (bundle riêng, require khi upload).
+  - Không chuyển lười (giữ boot): toàn bộ `register*Ipc` (preview, devices, run, github, telegram, layout, apk, release, libs, hooks…) — phải đăng ký trước khi dashboard load; không đổi channel.
+  - Ứng viên lười đã xét, bỏ: update/install, devices/mcpShot, telegram/host, telegram/command, releaseCheck/sign — module nhỏ, chỉ import node builtin / @ccm/shared, tiết kiệm không đáng kể; đổi sang `import()` thêm rủi ro lỗi async trong callback.
+  - Không có dependency bên thứ ba nặng trong main ngoài sql.js (đã lười) và telegram (gramjs, đã tách bundle).
+  - Esbuild: `main.cjs` là 1 file, `supported: {'dynamic-import': false}` biến `import()` thành `require()` bọc lazy init (`__esm`), nên top-level evaluate được hoãn nếu module không được import tĩnh ở nơi khác; không tách chunk. Không đổi build.mjs.
+  - Việc 2 (preview.start / runManager.loadSettings / telegram / adb / update check chạy sau ready-to-show): KHÔNG hoãn. Chúng chạy trong ready() trước boot() và overlap với collector spawn + intro 2450 ms (INTRO_MS), nên dashboard load không bị chậm thêm; hoãn thật sự cần handler await promise khởi tạo, rủi ro cao vì renderer gọi IPC ngay khi load.
+- Tiêu chí: 3/4 đạt
+  - [x] Bảng module.
+  - [x] Không đổi IPC channel; mọi handler vẫn đăng ký trong ready() trước `await boot()` (dashboard chỉ load trong boot).
+  - [x] `npm test -w @ccm/desktop` pass; typecheck: không lỗi mới từ main.ts (chỉ lỗi cũ thiếu package `telegram`).
+  - [ ] Đo thời gian require/evaluate `stage/main.cjs`: CHƯA KIỂM (cần build).
+- Audit: ready() tuần tự; window tạo cuối; collector chỉ spawn trong boot sau window.
+- Review edge case:
+  - IPC trước khi module lười load: không có handler lười mới.
+  - Gọi đồng thời 2 lần: không áp dụng (không thêm import lười); `booting ??=` giữ nguyên chống boot kép; `earlyStart` bị lấy 1 lần rồi null nên không start đúp (CollectorHost.start không idempotent: nếu có child thì stop).
+  - Protocol link lúc boot: `openLink` vẫn chặn bởi `host?.ownsPort`; `linksReady` và `pendingLink` giữ nguyên; second-instance trước ready: `showMain` bỏ qua khi chưa có window.
+  - macOS open-url trước ready: vẫn vào `pendingLink` (linksReady false tới sau boot).
+  - Quit giữa chừng: before-quit nhánh `!host` thoát ngay như cũ; `session-end` đã an toàn khi host chưa tạo; window đóng khi quitting không bị chặn.
+  - Intro: không load loading page 2 lần (boot dùng lại `intro`), INTRO_MS tính từ lúc page sớm load xong nên dashboard hiện sớm hơn bằng thời gian setup.
+  - Rủi ro còn lại: lỗi collector (port-in-use) giờ có thể xảy ra trước khi ready() xong; vẫn chỉ hiện error page khi boot await (đúng như cũ).
+- Test: `npm test -w @ccm/desktop -- --maxWorkers=6` -> 1414 pass / 0 fail (119 file). `npm run typecheck -w @ccm/desktop` -> chỉ lỗi cũ (`telegram` module không tìm thấy trong gramjs.ts, mtproto.ts, userScan.ts). Không có test đơn vị cho main.ts (cần Electron); CHƯA KIỂM chạy thật vì app chủ nhân đang chạy và cấm build.
+- Ngoài phạm vi: lỗi typecheck thiếu package `telegram` (cần `npm install`); `.code_index/desktop.md` nên ghi lại thứ tự boot mới (window + collector sớm).
+- Commit message đề xuất:
+  perf(desktop): create main window and spawn collector earlier in ready()

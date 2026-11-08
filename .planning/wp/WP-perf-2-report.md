@@ -1,0 +1,24 @@
+## WP-perf-2 — DONE
+- Đã đổi:
+  - `apps/web/src/components/workspace/TermPane.vue:113` `feedDev` chỉ chạy khi `preset.value === 'shell'` (pane Claude/Codex/DeepSeek bỏ qua); `:286` `activityText` không phụ thuộc `now` khi pane ẩn (`props.visible ? now.value : Date.now()`), nên không recompute mỗi giây.
+  - `apps/web/src/composables/usePaneAttachments.ts` `schedule` thành trailing debounce (150 ms im lặng, max chờ 1000 ms), bỏ qua khi pane ẩn / không phải agent; `watch(o.visible)` quét lại khi pane hiện; timer scan clear khi unmount (đã có) và trong `scan()`.
+  - `apps/web/src/stores/attachments.ts` `set()` không gán `byPane` mới khi danh sách không đổi (so nông từng item), áp cho `reconcile`/`patch`/`remove`...
+  - `apps/web/src/stores/workspace.ts` watcher persist: chỉ đánh dấu dirty + timer 400 ms (`PERSIST_MS`), `persistNow()` ghi sessionStorage + localStorage, flush trên `pagehide` và `beforeunload`; `persistNow` được export từ store.
+  - Test: `stores/workspacePersist.test.ts` (mới), thêm vào `stores/attachments.test.ts`, `composables/usePaneAttachments.test.ts`; sửa test cũ thêm `ws.persistNow()` sau `nextTick()` trong `workspace.test.ts` (10 chỗ), `workspaceRestore.test.ts` (2), `lib/fileEditor.test.ts` (1, ngoài danh sách nhưng là test của chính hành vi persist).
+- Tiêu chí: 5/5 đạt.
+  - reconcile cùng list giữ nguyên reference `byPane`: có test.
+  - persist debounce gộp 20 patch thành 1 lần ghi, flush pagehide/beforeunload, pane đóng trong debounce không bị ghi lại: có test.
+  - scan: 20 chunk cách 10 ms → 1 scan sau khi im; output liên tục 3 s → 2–4 scan; pane ẩn/shell không scan; unmount không scan: có test.
+  - Dev server detect: `devServer` test có sẵn pass (không đổi detector); chỉ gate theo preset ở TermPane.
+  - `npm test -w @ccm/web` + typecheck pass.
+- Audit: diff chỉ trong 4 file nguồn + test. Mọi chỗ dùng `devUrls` (chip mở dev server) chỉ đến từ `feedDev`; pane agent không còn chip dev, đúng yêu cầu brief. Một shell đang chạy `claude` (presetOf = claude) cũng ngừng detect khi đang ở chế độ agent.
+- Review edge case:
+  - Pane đóng giữa debounce: `persistNow` đọc state lúc ghi, không ghi pane đã xoá.
+  - Unmount: scan timer bị clear; timer persist là của store (sống cùng app).
+  - Đổi preset: `agent` là computed nên schedule/scan theo preset hiện tại; `feedDev` đọc preset mỗi chunk.
+  - pagehide/beforeunload: flush đồng bộ; watcher pre-flush đã chạy trước event (microtask) nên dirty được ghi.
+  - Lưu ý: mất tối đa 400 ms thay đổi nếu process bị kill cứng (crash), trước đây gần như 0.
+  - Clock toàn cục `lib/format.ts` đã dừng khi window ẩn; ở pane ẩn chỉ tắt phần recompute label.
+- Test (`npm test -w @ccm/web` → 1803 test: 1802 pass + 1 fail do `fileEditor.test.ts` cần `persistNow`, đã sửa, chạy lại file → 17 pass; `npm run typecheck -w @ccm/web` → sạch). Chưa chạy lại full suite sau fix cuối (chỉ file đó).
+- Hot file cần thêm / Ngoài phạm vi cần main xử lý: `lib/fileEditor.test.ts` (1 dòng test). Test nào khác ngoài `src/` đọc `ccm.workspace.panes` ngay sau `nextTick` cũng phải gọi `persistNow()` (E2E desktop nếu có: CHƯA KIỂM). Watcher `deep: true` vẫn traverse panes mỗi mutation (chỉ bỏ JSON.stringify/ghi storage).
+- Commit message đề xuất: perf(web): debounce workspace persist and attachment scan, skip dev-server feed for agent panes, no-op attachment reconcile

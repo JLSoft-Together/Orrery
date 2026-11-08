@@ -78,7 +78,7 @@ Shape-checked in collector `server.ts` (unknown / malformed dropped, `maxPayload
 - `entryName.ts` — `checkEntryName` (new file / folder names). Desktop `preview/explorer.ts` + web `CreateEntryDialog.vue`.
 - `index.ts` — re-exports.
 
-`office.snapshot {payload: OfficeSnapshot}` (server -> client) is a direct reply from `OfficeHub` to clients that sent `office.subscribe {on}` (client -> server, boolean checked in `server.ts`); never batched into `seq`. `GET /api/timeline/days` and `/api/timeline/:day` are plain HTTP behind the app key.
+`office.enable {on: boolean}` (client -> server, `ClientMessage` in `types.ts`; sent by `stores/connection.ts` on connect and on every change of `settings.officeEnabled`, default off; validated in `server.ts`; consumed by `index.ts` → `OfficeRuntime.setEnabled`) starts / stops the hub and timelapse recorder. It has no reply. `office.subscribe {on}` (client -> server, boolean checked in `server.ts`) is remembered by `OfficeRuntime` and applied to the hub when it runs (no hub → nothing sent); `office.snapshot {payload: OfficeSnapshot}` (server -> client) is a direct reply from `OfficeHub` to clients that sent `office.subscribe {on}`; never batched into `seq`. `GET /api/timeline/days` and `/api/timeline/:day` are plain HTTP behind the app key.
 
 ## Devices (v61, desktop IPC, not the WS protocol)
 

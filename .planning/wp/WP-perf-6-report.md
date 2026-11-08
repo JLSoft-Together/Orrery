@@ -1,0 +1,19 @@
+## WP-perf-6 — DONE
+- Đã đổi:
+  - apps/collector/src/office/runtime.ts (mới) — `OfficeRuntime`: refcount client bật; tạo hub + recorder + NameStore khi (ready && có client bật), stop + flush khi hết; hub/recorder dựng mới mỗi lần bật.
+  - apps/collector/src/index.ts — bỏ recorder/officeNames/officeHub tạo lúc boot; dùng `office` (setReady sau monitor.start, close ở shutdown); case `office.enable`; `office.subscribe`/dropClient đi qua runtime.
+  - apps/collector/src/server.ts — validate `office.enable { on: boolean }`.
+  - packages/shared/src/types.ts — `ClientMessage` thêm `office.enable`.
+  - apps/web/src/stores/settings.ts — `officeEnabled` (`ccm.office`, mặc định false).
+  - apps/web/src/stores/connection.ts — gửi `office.enable` khi connect (nếu bật) và khi đổi; tắt thì huỷ subscribe.
+  - apps/web/src/components/AgentMap.vue — SegmentedControl Map/Office chỉ hiện khi bật (Transition ccm-fade); OfficeView chỉ render khi bật; tắt mà mapView='office' đã lưu → về 'map' (ghi đè giá trị lưu).
+  - components/settings/SettingsGeneral.vue + settings/index.ts — ToggleSwitch "Office view" (page General, id `office`).
+  - i18n en.ts / vi.ts — `settings.office`, `settings.officeHint`.
+  - Test: collector/test/office-runtime.test.ts (mới, 7 test), office-hub.test.ts (validate office.enable), web stores/connection.office.test.ts (+3 test).
+- Tiêu chí: 5/5 đạt (ghi chú: không có component test cho AgentMap/Settings; cover qua store + runtime).
+- Audit: boot không còn tạo recorder (không ghi `timeline/`) / OfficeHub / đọc office-names.json. `/api/timeline/days` khi chưa có thư mục trả [] (listTimelineDays không lỗi). `timeline.get` là StatusTimeline khác, không đụng.
+- Review: 2 client → bật nếu bất kỳ client bật; client disconnect → dropClient, hết client bật thì tắt; bật/tắt nhanh → sync idempotent, parts mới mỗi lần; collector boot trước web → setReady chờ monitor.start, enable đến sớm được nhớ và tạo khi ready; mapView='office' đã lưu + setting tắt → watch immediate đổi về 'map'. Setting chỉ ở localStorage web nên đổi trong 1 cửa sổ chưa đồng bộ sang cửa sổ khác đang mở (cửa sổ kia vẫn gửi enable của nó).
+- Test: `npm test -w @ccm/collector -- --maxWorkers=6` → 417 pass / 0 fail (1 skip có sẵn). `npm test -w @ccm/web -- connection.office.test.ts components/office components/settings stores/settings` → 105 pass / 0 fail; `AgentMap i18n Map` → 31 pass. `npm run typecheck` collector + shared pass; web chỉ 1 lỗi ngoài phạm vi: TermPane.vue(898) `TERM_SCROLLBACK` (WP-perf-4 đang sửa).
+- Nhìn: CHƯA NHÌN: không được chạy app (toolbar map, animation ccm-fade, hàng switch trong Settings → General).
+- Hot file cần thêm: không. Ngoài phạm vi: `.code_index/` (protocol.md/_meta.md/collector.md) chưa cập nhật `office.enable` + `OfficeRuntime` — main cập nhật; `createTimelineHandler({recording:true})` vẫn cứng true (chỉ ảnh hưởng UI Office, vốn đang ẩn khi tắt).
+- Commit message đề xuất: perf: Office view off by default, collector starts hub and timelapse recorder only when a client enables it in Settings

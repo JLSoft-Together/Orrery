@@ -1,0 +1,17 @@
+## WP-perf-3 — DONE
+- Đã đổi:
+  - apps/web/src/lib/highlight.ts — WORKER_IDLE_MS=60s, armIdle(): terminate worker khi không request; còn pending thì hoãn (không treo); request sau tạo worker mới (worker=undefined).
+  - apps/web/src/lib/sound.ts — playChime: AudioContext.close() sau 30 s im lặng, ctx=null, lần sau tạo mới.
+  - apps/web/src/office/sound.ts — OFFICE_IDLE_CLOSE_MS=30s; board.close() sau 30 s không phát; cue đến lúc board đóng thì unlock() rồi play.
+  - packages/habblaud/client/src/audio/board.ts — thêm getter `open` và `close()` (patch local; SoundBoard giữ ac private). types/ là thư mục ignore, đã chạy `npm run types` ở packages/habblaud để d.ts có `open/close`.
+  - apps/web/src/App.vue — MonitorView thành defineAsyncComponent(loadMonitor); nếu view != monitor thì prefetch bằng requestIdleCallback (fallback setTimeout 2s). v-if/v-else-if giữ nguyên.
+  - apps/web/src/components/AgentMap.vue — OfficeView thành defineAsyncComponent.
+  - Test mới: lib/highlight.idle.test.ts, lib/sound.test.ts; office/sound.test.ts thêm 1 case (close sau 30 s + reopen).
+- Tiêu chí: 3/4 đạt; dòng 4 PARTIAL (typecheck pass; full `npm test -w @ccm/web` còn 11 fail ngoài phạm vi, xem dưới).
+  - Import tĩnh từ entry (rg main.ts/App.vue): không còn MonitorView/AgentMap/OfficeView/@vue-flow; chỉ `import()` động trong App.vue:38. @vue-flow/core chỉ còn trong AgentMap, MainNode, SubPill, DoneTray, PeerEdge, AgentDetails, useMapNode, useOffscreenCapsules (đều chỉ tới được qua MonitorView). `@vue-flow/core/dist/style.css` còn import ở style.css (CSS, không phải JS).
+- Audit: diff chỉ trong phạm vi + board.ts của habblaud (cần thiết cho close).
+- Review: request pending khi terminate — không terminate lúc pending.size>0, cancel/onerror vẫn resolve null như cũ. Phát âm đúng lúc close — board.close() set ac=null trước, play() trả false, cue kế gọi unlock() tạo lại. Monitor lần đầu khi chunk chưa tải — Monitor là view mặc định nên chunk tải ngay lúc boot; defineAsyncComponent không delay, Transition bọc ngoài giữ nguyên.
+- Test: `npm test -w @ccm/web -- src/lib/highlight src/lib/sound src/office src/stores/office src/components/office` → 371 pass / 0 fail; `npm test -w @ccm/habblaud` → 538 pass / 0 fail; `npm run typecheck -w @ccm/web` → pass (sau khi regen types); full web: 1782 pass / 11 fail, toàn bộ ở stores/workspace.test.ts, workspacePersist.test.ts, lib/fileEditor.test.ts (file subagent khác đang sửa stores/workspace.ts) — không sửa.
+- Nhìn: CHƯA NHÌN: không được chạy app (chuyển Monitor lần đầu, chớp trắng nếu có, âm thanh sau close). CHƯA KIỂM: kích thước chunk thực (không chạy vite build).
+- Hot file cần thêm: packages/habblaud/client/src/audio/board.ts (đã sửa). Ngoài phạm vi cần main xử lý: 11 test fail ở workspace store do subagent khác; nếu CI chạy lại `prepare` thì types sẽ tự sinh lại.
+- Commit message đề xuất: perf(web): idle-terminate shiki worker, close idle AudioContexts, lazy-load Monitor and Office view

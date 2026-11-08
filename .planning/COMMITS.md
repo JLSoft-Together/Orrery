@@ -14,3 +14,22 @@ Nếu muốn tách theo WP (thứ tự, mỗi commit `git add` đúng file trong
 7. 🌐 Vietnamese status labels everywhere and remove the unused session bar, dim toggle and dead strings
 
 Không add: spikes/, bg_native_ad_cta.xml, git-gui.bat, apps/desktop/test/__snapshots__/fwp-host.test.ts.snap, apps/*/.vitest/, .planning/HANDOFF-2026-11-01-v76.md (sửa cũ).
+
+## 2026-11-09 perf (PLAN-v86) — chưa commit
+- perf(collector): linear usage scan, idle office commit cadence, coalesced per-cwd git diffstat
+  apps/collector/src/{usage.ts,office/hub.ts,gitstat.ts}, apps/collector/test/{usage.test.ts,office-hub.test.ts,gitstat.test.ts}
+- perf(web): debounce workspace persist and attachment scan, skip dev-server feed for agent panes, no-op attachment reconcile
+  apps/web/src/{components/workspace/TermPane.vue,composables/usePaneAttachments.ts(+test),stores/attachments.ts(+test),stores/workspace.ts(+test),stores/workspaceRestore.test.ts,lib/fileEditor.test.ts}
+- perf(web): idle-terminate shiki worker, close idle AudioContexts, lazy-load Monitor and Office view
+  apps/web/src/{lib/highlight.ts,lib/highlight.idle.test.ts,lib/sound.ts,lib/sound.test.ts,office/sound.ts,office/sound.test.ts,App.vue,components/AgentMap.vue}, packages/habblaud/client/src/audio/board.ts
+- chore: point update feed and README to the renamed Orrery repo
+  apps/desktop/src/update/github.ts, README.md
+- perf: Office view off by default, collector starts hub and timelapse recorder only when a client enables it in Settings
+  apps/collector/src/{index.ts,server.ts,office/runtime.ts,office/hub.ts}, apps/collector/test/{office-runtime.test.ts,office-hub.test.ts}, packages/shared/src/types.ts, apps/web/src/{stores/settings.ts,stores/connection.ts,stores/connection.office.test.ts,components/AgentMap.vue,components/settings/SettingsGeneral.vue,components/settings/index.ts,i18n/en.ts,i18n/vi.ts}
+- perf(desktop): create main window and spawn collector earlier in ready()
+  apps/desktop/src/main.ts
+- perf(workspace): batch hidden pane output, keep WebGL for 4 recent panes, scrollback 3000
+  apps/web/src/{lib/termBuffer.ts,lib/termBuffer.test.ts,lib/webglLru.ts,lib/webglLru.test.ts,components/workspace/TermPane.vue,components/workspace/DropTerminal.vue}
+- docs: code index + PLAN-v86 performance plan, WP briefs/reports
+  .code_index/*, .planning/{PLAN-v86-performance.md,PROGRESS-2026-11-09-perf.md,DECISIONS.md,COMMITS.md,wp/WP-perf-*}
+Ghi chú: apps/collector/test/__snapshots__/tracker.test.ts.snap và apps/desktop/test/__snapshots__/fwp-host.test.ts.snap chỉ đổi line ending do vitest — bỏ ra khỏi commit (git checkout -- <file>).

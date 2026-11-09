@@ -170,7 +170,7 @@ const idFor = (alias: string): string => {
   return `00000000-0000-4000-8000-${hex}`
 }
 
-export async function runScenario(kind: TargetKind, scenario: Scenario, nodeBundle: string, coreBin: string): Promise<Transcript> {
+export async function runScenario(kind: TargetKind, scenario: Scenario, nodeBundle: string, coreBin: string, onChildPid?: (pid: number) => void): Promise<Transcript> {
   const target = new Target(kind, nodeBundle, coreBin)
   const names: Names = { tmp: target.tmp, ids: new Map(), pids: new Map([[process.pid, 'pid:self']]) }
   const vars = new Map<string, number>([['self', process.pid]])
@@ -228,6 +228,7 @@ export async function runScenario(kind: TargetKind, scenario: Scenario, nodeBund
       if (pid > 0 && current) {
         vars.set(current, pid)
         names.pids.set(pid, `pid:${current}`)
+        if (t.t === 'ready') onChildPid?.(pid)
       }
     }
   }

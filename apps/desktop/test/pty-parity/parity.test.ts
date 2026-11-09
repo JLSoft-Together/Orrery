@@ -25,7 +25,7 @@ beforeAll(async () => {
     target: 'node24',
     logLevel: 'silent',
     logOverride: { 'empty-import-meta': 'silent' },
-    external: ['@lydell/node-pty', 'bufferutil', 'utf-8-validate', 'koffi'],
+    external: ['@lydell/node-pty', 'bufferutil', 'utf-8-validate'],
   })
 }, 60_000)
 
@@ -40,6 +40,28 @@ describe('PTY host parity: Node host (stdio control channel)', () => {
       expect(t.snaps.length).toBeGreaterThan(0)
     }, sc.timeoutMs ?? 60_000)
   }
+
+  it('stops child processes after kill and teardown', async () => {
+    const scenario = SCENARIOS.find((sc) => sc.name.startsWith('kill by id from another socket'))
+    if (!scenario) throw new Error('kill scenario missing')
+    const pids = new Set<number>()
+    await runScenario('node', scenario, bundle, CORE_BIN, (pid) => pids.add(pid))
+    const alive = (pid: number): boolean => {
+      try {
+        process.kill(pid, 0)
+        return true
+      } catch (error) {
+        return (error as NodeJS.ErrnoException).code !== 'ESRCH'
+      }
+    }
+    const deadline = Date.now() + 2_000
+    let remaining = [...pids].filter(alive)
+    while (remaining.length && Date.now() < deadline) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50))
+      remaining = [...pids].filter(alive)
+    }
+    expect(remaining).toEqual([])
+  }, 60_000)
 })
 
 describe.skipIf(!RUST)('PTY host parity: Rust core equals Node (set CCM_CORE_BIN)', () => {

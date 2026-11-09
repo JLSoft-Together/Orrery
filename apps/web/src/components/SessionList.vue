@@ -182,7 +182,7 @@ const endedCount = computed(() => terminals.list.length - terminals.live.length)
           <span class="font-normal tabular-nums" :class="g.key === 'needs' ? '' : 'text-ink-faint'" data-group-count>{{ g.ids.length }}</span>
         </h3>
         <TransitionGroup tag="ul" name="ccm-list" :css="false" class="relative grid grid-cols-1 gap-2.5" @before-leave="pinLeaving" @enter="listEnter" @leave="listLeave">
-          <li v-for="id in g.ids" :key="id" :data-terminal-id="id">
+          <li v-for="id in g.ids" :key="id" :data-terminal-id="id" class="ccm-rail-item">
             <CardById :id="id" />
           </li>
         </TransitionGroup>
@@ -191,3 +191,12 @@ const endedCount = computed(() => terminals.list.length - terminals.live.length)
     </div>
   </section>
 </template>
+
+<style scoped>
+.ccm-rail-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+  padding: 4px;
+  margin: -4px;
+}
+</style>

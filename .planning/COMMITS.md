@@ -45,3 +45,9 @@ Ghi chú: apps/collector/test/__snapshots__/tracker.test.ts.snap và apps/deskto
   scripts/perf-bench.mjs, docs/perf/*
 - 📝 Plan v87, decisions, WP briefs/reports, code index
   .planning/*, .code_index/*
+
+## 2026-11-09 v87 bước 1c — đã commit + push
+- ⚡️ Adaptive WS flush (220 ms under load, urgent bypass, flush on window show)
+- ⚡️ Rail cards skip layout and paint off-screen (content-visibility)
+- ⚡️ Agent Map mounts only visible nodes and edges
+- 📈 v87 step 1c benchmarks (3 runs), WP briefs / reports, code index, handoff

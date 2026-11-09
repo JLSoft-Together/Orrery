@@ -1,0 +1,363 @@
+{
+  "version": "3.4.0",
+  "label": "v87-step2-r3",
+  "platform": "win32",
+  "date": "2026-11-09",
+  "exe": "electron dev (apps/desktop/stage)",
+  "cores": 8,
+  "totalMemMB": 49024,
+  "cpuUnit": "percent of one core",
+  "seconds": 120,
+  "settle": 20,
+  "scenarios": {
+    "idle-monitor": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 283.7,
+          "privateMBMax": 318.4,
+          "rssMB": 505.8,
+          "cpuAvgPct": 0.6,
+          "cpuP95Pct": 3.9,
+          "cpuSec": 0.7
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 76.8,
+          "privateMBMax": 83.5,
+          "rssMB": 119.2,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 1.5,
+          "cpuSec": 0.2
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 65.8,
+          "privateMBMax": 76.2,
+          "rssMB": 139.1,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.4
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 59.4,
+          "privateMBMax": 69.5,
+          "rssMB": 103.7,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 68,
+          "privateMBMax": 75.3,
+          "rssMB": 91,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0.1
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.7,
+          "privateMBMax": 14.1,
+          "rssMB": 52.9,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 3888,
+          "role": "renderer",
+          "privateMB": 65.8,
+          "rssMB": 139.1,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.4,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-TimD5N\\u"
+        },
+        {
+          "pid": 10368,
+          "role": "main",
+          "privateMB": 76.8,
+          "rssMB": 119.2,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 1.5,
+          "cpuSec": 0.2,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-TimD5N\\ud --remote-debuggin"
+        },
+        {
+          "pid": 8668,
+          "role": "collector",
+          "privateMB": 68,
+          "rssMB": 91,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0.1,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 11772,
+          "role": "network",
+          "privateMB": 13.7,
+          "rssMB": 52.9,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        },
+        {
+          "pid": 16868,
+          "role": "gpu",
+          "privateMB": 59.4,
+          "rssMB": 103.7,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-TimD5"
+        }
+      ]
+    },
+    "demo-6x3": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 502.2,
+          "privateMBMax": 541.6,
+          "rssMB": 733.8,
+          "cpuAvgPct": 54.8,
+          "cpuP95Pct": 88,
+          "cpuSec": 66
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 79.2,
+          "privateMBMax": 80.3,
+          "rssMB": 124.2,
+          "cpuAvgPct": 2.1,
+          "cpuP95Pct": 13.1,
+          "cpuSec": 2.5
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 199.3,
+          "privateMBMax": 238.9,
+          "rssMB": 277.1,
+          "cpuAvgPct": 28.3,
+          "cpuP95Pct": 46.4,
+          "cpuSec": 34
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 135.2,
+          "privateMBMax": 155.4,
+          "rssMB": 184.8,
+          "cpuAvgPct": 21.8,
+          "cpuP95Pct": 34.8,
+          "cpuSec": 26.2
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 74.8,
+          "privateMBMax": 76.4,
+          "rssMB": 94.7,
+          "cpuAvgPct": 2.6,
+          "cpuP95Pct": 5.4,
+          "cpuSec": 3.1
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.7,
+          "privateMBMax": 14.1,
+          "rssMB": 53,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1
+        }
+      },
+      "pids": [
+        {
+          "pid": 6032,
+          "role": "renderer",
+          "privateMB": 199.3,
+          "rssMB": 277.1,
+          "cpuAvgPct": 28.3,
+          "cpuP95Pct": 46.4,
+          "cpuSec": 34,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-rFMM3g\\u"
+        },
+        {
+          "pid": 15464,
+          "role": "gpu",
+          "privateMB": 135.2,
+          "rssMB": 184.8,
+          "cpuAvgPct": 21.8,
+          "cpuP95Pct": 34.8,
+          "cpuSec": 26.2,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-rFMM3"
+        },
+        {
+          "pid": 6976,
+          "role": "collector",
+          "privateMB": 74.8,
+          "rssMB": 94.7,
+          "cpuAvgPct": 2.6,
+          "cpuP95Pct": 5.4,
+          "cpuSec": 3.1,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 10912,
+          "role": "main",
+          "privateMB": 79.2,
+          "rssMB": 124.2,
+          "cpuAvgPct": 2.1,
+          "cpuP95Pct": 13.1,
+          "cpuSec": 2.5,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-rFMM3g\\ud --remote-debuggin"
+        },
+        {
+          "pid": 12304,
+          "role": "network",
+          "privateMB": 13.7,
+          "rssMB": 53,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        }
+      ]
+    },
+    "demo-30x6": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 621.4,
+          "privateMBMax": 663.1,
+          "rssMB": 843.3,
+          "cpuAvgPct": 78,
+          "cpuP95Pct": 106.4,
+          "cpuSec": 94.1
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 76.7,
+          "privateMBMax": 78.4,
+          "rssMB": 118.2,
+          "cpuAvgPct": 0.7,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.9
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 319.3,
+          "privateMBMax": 347.6,
+          "rssMB": 394.4,
+          "cpuAvgPct": 46,
+          "cpuP95Pct": 66.4,
+          "cpuSec": 55.5
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 116.9,
+          "privateMBMax": 120.6,
+          "rssMB": 161.8,
+          "cpuAvgPct": 21.4,
+          "cpuP95Pct": 30.9,
+          "cpuSec": 25.9
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 94.7,
+          "privateMBMax": 108.2,
+          "rssMB": 115.3,
+          "cpuAvgPct": 9.7,
+          "cpuP95Pct": 14.8,
+          "cpuSec": 11.7
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.7,
+          "privateMBMax": 14.1,
+          "rssMB": 53.6,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2
+        }
+      },
+      "pids": [
+        {
+          "pid": 17552,
+          "role": "renderer",
+          "privateMB": 319.3,
+          "rssMB": 394.4,
+          "cpuAvgPct": 46,
+          "cpuP95Pct": 66.4,
+          "cpuSec": 55.5,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-YemiWU\\u"
+        },
+        {
+          "pid": 19420,
+          "role": "gpu",
+          "privateMB": 116.9,
+          "rssMB": 161.8,
+          "cpuAvgPct": 21.4,
+          "cpuP95Pct": 30.9,
+          "cpuSec": 25.9,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-YemiW"
+        },
+        {
+          "pid": 5872,
+          "role": "collector",
+          "privateMB": 94.7,
+          "rssMB": 115.3,
+          "cpuAvgPct": 9.7,
+          "cpuP95Pct": 14.8,
+          "cpuSec": 11.7,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 16888,
+          "role": "main",
+          "privateMB": 76.7,
+          "rssMB": 118.2,
+          "cpuAvgPct": 0.7,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.9,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-YemiWU\\ud --remote-debuggin"
+        },
+        {
+          "pid": 19812,
+          "role": "network",
+          "privateMB": 13.7,
+          "rssMB": 53.6,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        }
+      ]
+    }
+  },
+  "failures": {}
+}

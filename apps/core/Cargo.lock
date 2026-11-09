@@ -70,6 +70,7 @@ version = "0.1.0"
 dependencies = [
  "core-procs",
  "core-pty",
+ "core-transcript",
  "serde_json",
  "tungstenite",
 ]
@@ -97,6 +98,18 @@ dependencies = [
  "subtle",
  "tokio",
  "tokio-tungstenite",
+ "windows-sys",
+]
+
+[[package]]
+name = "core-transcript"
+version = "0.1.0"
+dependencies = [
+ "core-procs",
+ "libc",
+ "memchr",
+ "serde",
+ "serde_json",
  "windows-sys",
 ]
 

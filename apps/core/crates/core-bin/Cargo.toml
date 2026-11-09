@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 core-procs = { path = "../core-procs" }
 core-pty = { path = "../core-pty" }
+core-transcript = { path = "../core-transcript" }
 
 [dev-dependencies]
 serde_json.workspace = true

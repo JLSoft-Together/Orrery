@@ -26,7 +26,7 @@ import { RepoRoots } from './repo'
 import { ResponseTracker } from './response'
 import { isPortInUse, PORT_IN_USE_EXIT, startServer } from './server'
 import { MonitorStore } from './store'
-import { UsageIndex } from './usage'
+import { createUsageSource, whenReady } from './usageSource'
 import { openFolder } from './opener'
 import { PromptSearcher } from './prompt-search'
 import { CodexMonitor } from './codex/monitor'
@@ -85,7 +85,7 @@ async function main(): Promise<void> {
   sensitive.onChange = (settings) => store.setSensitive(settings)
   store.setSensitive(sensitive.settings)
   monitor.contextHints.sensitive = sensitive
-  const usage = new UsageIndex(path.join(config.claudeRoot, 'projects'), path.join(config.dataDir, 'usage-index.json'), store)
+  const usage = createUsageSource(path.join(config.claudeRoot, 'projects'), path.join(config.dataDir, 'usage-index.json'), store)
   monitor.onProjectFile = (file) => usage.notify(file)
   const promptSearch = new PromptSearcher(path.join(config.claudeRoot, 'projects'), { openFolder })
   const repoRoots = new RepoRoots()
@@ -254,10 +254,10 @@ async function main(): Promise<void> {
           monitor.sendTimeline(ctx.reply)
           break
         case 'heatmap.get':
-          ctx.reply({ type: 'heatmap.data', payload: usage.heatmap(28) })
+          whenReady(usage.heatmap(28), (payload) => ctx.reply({ type: 'heatmap.data', payload }))
           break
         case 'toolstats.get':
-          ctx.reply({ type: 'toolstats.data', payload: usage.toolStats(message.days, message.project) })
+          whenReady(usage.toolStats(message.days, message.project), (payload) => ctx.reply({ type: 'toolstats.data', payload }))
           break
         case 'promptSearch.start':
           void promptSearch.start(ctx.clientId, message, ctx.reply)

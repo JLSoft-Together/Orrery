@@ -1,5 +1,5 @@
 import { createReadStream, type Stats } from 'node:fs'
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { ToolStatEntry, ToolStats, UsageBucket, UsageHeatmap, UsageScan, UsageSnapshot, UsageTotals } from '@ccm/shared'
 
@@ -408,22 +408,29 @@ export class UsageIndex {
     let consumed = 0
     let pieces: Buffer[] = []
     const stream = createReadStream(full, { start: entry.offset, end: size - 1, highWaterMark: 1024 * 1024 })
-    for await (const chunk of stream as AsyncIterable<Buffer>) {
-      let start = 0
-      let idx: number
-      while ((idx = chunk.indexOf(NEWLINE, start)) !== -1) {
-        const tail = chunk.subarray(start, idx)
-        let line = tail
-        if (pieces.length) {
-          pieces.push(tail)
-          line = Buffer.concat(pieces)
-          pieces = []
+    try {
+      for await (const chunk of stream as AsyncIterable<Buffer>) {
+        let start = 0
+        let idx: number
+        while ((idx = chunk.indexOf(NEWLINE, start)) !== -1) {
+          const tail = chunk.subarray(start, idx)
+          let line = tail
+          if (pieces.length) {
+            pieces.push(tail)
+            line = Buffer.concat(pieces)
+            pieces = []
+          }
+          start = idx + 1
+          consumed += line.length + 1
+          this.ingestLine(line, rel, fallbackProject, entry)
         }
-        start = idx + 1
-        consumed += line.length + 1
-        this.ingestLine(line, rel, fallbackProject, entry)
+        if (start < chunk.length) pieces.push(start ? Buffer.from(chunk.subarray(start)) : chunk)
       }
-      if (start < chunk.length) pieces.push(start ? Buffer.from(chunk.subarray(start)) : chunk)
+    } catch (err) {
+      delete entry.mtimeMs
+      this.saveNeeded = true
+      console.error('[collector] usage index: skipped a transcript:', (err as NodeJS.ErrnoException).code ?? (err as Error).message)
+      return
     }
     entry.offset += consumed
   }
@@ -649,7 +656,7 @@ export class UsageIndex {
     this.saveNeeded = false
     const cacheFile = this.cacheFile
     const body: CacheFile = { version: CACHE_VERSION, files: Object.fromEntries(this.files) }
-    const tmp = `${cacheFile}.tmp`
+    const tmp = `${cacheFile}.tmp-${process.pid}`
     this.saving = (async () => {
       try {
         await mkdir(path.dirname(cacheFile), { recursive: true })
@@ -657,6 +664,7 @@ export class UsageIndex {
         await renameWithRetry(tmp, cacheFile)
       } catch (err) {
         this.saveNeeded = true
+        await rm(tmp, { force: true }).catch(() => undefined)
         console.error('[collector] cannot save usage cache:', (err as Error).message)
       } finally {
         this.saving = null

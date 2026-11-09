@@ -25,6 +25,14 @@ export interface PtySupervisorOptions {
   onOrrery?: (action: string, args: unknown, caller: OrreryCaller) => Promise<unknown>
   mcpConfig?: string
   core?: string
+  onFallback?: (reason: string) => void
+}
+
+const MAX_CORE_CRASHES = 2
+
+function reasonOf(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err)
+  return text.length > 160 ? `${text.slice(0, 160)}...` : text
 }
 
 export type PtyHostKind = 'node' | 'rust'
@@ -104,7 +112,7 @@ export class RustHost implements HostLauncher {
   }
 
   launch(): HostChild {
-    if (!existsSync(this.bin)) throw new Error(`orrery-core not found at ${this.bin} (build apps/core or unset CCM_CORE_PTY)`)
+    if (!existsSync(this.bin)) throw new Error(`orrery-core not found at ${this.bin} (build apps/core or set CCM_CORE_PTY=node)`)
     const proc = spawn(this.bin, [], { env: coreEnv(process.env), stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
     let exited = false
     const exitCbs: ((code: number | null) => void)[] = []
@@ -147,7 +155,8 @@ const STOP_TIMEOUT_MS = 3_000
  */
 export class PtySupervisor implements PtyHost {
   private child: HostChild | null = null
-  private readonly launcher: HostLauncher
+  private launcher: HostLauncher
+  private coreCrashes = 0
   private broker: PtyBroker | null = null
   private starting: Promise<PtyEndpoint> | null = null
   private log: WriteStream | null = null
@@ -168,11 +177,33 @@ export class PtySupervisor implements PtyHost {
 
   endpoint(): Promise<PtyEndpoint> {
     if (this.stopped) return Promise.reject(new Error('pty host stopped'))
-    this.starting ??= this.start().catch((err: unknown) => {
+    this.starting ??= this.startOrFallBack().catch((err: unknown) => {
       this.starting = null
       throw err
     })
     return this.starting
+  }
+
+  private fallBackToNode(reason: string): void {
+    this.logLine(`pty host: rust core unusable (${reason}); using the node host for this session`)
+    this.launcher = new NodeHost(this.opts.script, this.opts.nodePty)
+    try {
+      this.opts.onFallback?.(reason)
+    } catch (err) {
+      this.logLine(`pty host: fallback notice failed: ${String(err)}`)
+    }
+  }
+
+  private async startOrFallBack(): Promise<PtyEndpoint> {
+    if (this.launcher.kind === 'rust' && this.coreCrashes >= MAX_CORE_CRASHES) this.fallBackToNode(`core crashed ${this.coreCrashes} times`)
+    if (this.launcher.kind !== 'rust') return this.start()
+    try {
+      return await this.start()
+    } catch (err) {
+      if (this.stopped) throw err
+      this.fallBackToNode(reasonOf(err))
+      return this.start()
+    }
   }
 
   private logLine(line: string): void {
@@ -247,6 +278,7 @@ export class PtySupervisor implements PtyHost {
     this.broker = broker
     child.post({ t: 'init', token: this.token, origins: this.opts.origins, appVersion: app.getVersion() })
     return new Promise((resolve, reject) => {
+      let listened = false
       const timer = setTimeout(() => {
         child.kill()
         this.logLine('pty host did not report listening within 10s')
@@ -261,6 +293,7 @@ export class PtySupervisor implements PtyHost {
         }
         if (msg.t === 'listening') {
           clearTimeout(timer)
+          listened = true
           resolve({ url: `ws://127.0.0.1:${msg.port}/pty`, protocol: `${PTY_PROTOCOL_PREFIX}${this.token}` })
         } else if (msg.t === 'census-reply') {
           const waiters = this.censusWaiters
@@ -274,8 +307,9 @@ export class PtySupervisor implements PtyHost {
         broker.dispose()
         if (this.child === child) {
           this.child = null
-          this.starting = null
+          if (listened) this.starting = null
           this.broker = null
+          if (listened && !this.stopped && this.launcher.kind === 'rust') this.coreCrashes++
         }
         for (const w of this.censusWaiters.splice(0)) w([])
         reject(new Error(`pty host exited (${code})`))

@@ -71,19 +71,21 @@ describe('core binary location and environment', () => {
 })
 
 describe('RustHost start failures', () => {
-  it('a missing binary rejects with a clear log line and never starts the Node host', async () => {
+  it('a missing binary is logged, then the supervisor falls back to the Node host', async () => {
     const sup = make(path.join(tmp, 'no-such-core'))
-    await expect(sup.endpoint()).rejects.toThrow('orrery-core not found')
+    await expect(sup.endpoint()).rejects.toThrow('the Node host must not start')
     await vi.waitFor(() => expect(logOf(sup)).toContain('pty host did not start'))
     expect(logOf(sup)).toContain('rust (')
-    await expect(sup.endpoint()).rejects.toThrow('orrery-core not found')
+    expect(logOf(sup)).toContain('orrery-core not found')
+    expect(sup.kind).toBe('node')
     expect(await sup.census()).toEqual([])
   })
 
-  it('a core that exits before listening rejects without hanging', async () => {
+  it('a core that exits before listening is logged, then falls back without hanging', async () => {
     const sup = make(QUICK_EXIT)
-    await expect(sup.endpoint()).rejects.toThrow(/pty host exited/)
+    await expect(sup.endpoint()).rejects.toThrow('the Node host must not start')
     await vi.waitFor(() => expect(logOf(sup)).toContain('pty host exited'))
+    expect(sup.kind).toBe('node')
     expect(await sup.census()).toEqual([])
   }, 15_000)
 })

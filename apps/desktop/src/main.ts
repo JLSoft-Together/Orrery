@@ -151,7 +151,8 @@ Object.assign(process.env, CORE_PROCS_ENV)
 let t: Strings
 let host: CollectorHost
 let ptys: PtySupervisor | null = null
-const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
+let ptyFellBack = false
 let attention: Attention | null = null
 let mainWindow: BrowserWindow | null = null
 let compactWindow: BrowserWindow | null = null
@@ -801,7 +802,7 @@ function logReport(pageReport: string): string {
     `${t.appName} ${app.getVersion()}${app.isPackaged ? (PORTABLE_EXE ? ' portable' : '') : ' dev'}`,
     `Electron ${process.versions.electron}, ${process.platform} ${os.release()} ${process.arch}, locale ${app.getLocale()}`,
     `collector port ${PORT}: ${host?.ownsPort ? 'running' : 'not running'}`,
-    `terminal host: ${PTY_HOST}`,
+    `terminal host: ${ptyFellBack ? 'node (rust core unusable, fell back)' : PTY_HOST}`,
     `generated ${new Date().toISOString()}`,
   ]
   const sections = [head.join('\n'), pageReport && `## Diagnostics\n${pageReport}`]
@@ -1449,6 +1450,11 @@ async function ready(): Promise<void> {
     shellInitDir: path.join(DATA_DIR, 'shell-init'),
     onOrrery: orrery,
     mcpConfig: path.join(DATA_DIR, 'orrery-mcp.json'),
+    onFallback: (reason) => {
+      ptyFellBack = true
+      console.warn(`[ccm] terminal host: rust core unusable (${reason}); using node`)
+      if (Notification.isSupported()) new Notification({ title: t.ptyFallbackTitle, body: t.ptyFallbackBody(reason) }).show()
+    },
     core: PTY_HOST === 'rust' ? coreBinaryPath({ env: process.env, packaged: app.isPackaged, resourcesPath: process.resourcesPath, repo: REPO, platform: process.platform }) : undefined,
   })
   // The token is the only gate on a shell; hand it out to top-level app frames only.

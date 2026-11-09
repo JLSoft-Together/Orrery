@@ -219,6 +219,8 @@ It runs in ${cwd} with a made-up JSON input on stdin and a minimal environment, 
   tgReceiveAskConfirm: 'Turn on',
   capturePickTitle: 'Folder for screenshots and recordings',
   captureMissingTitle: 'Capture folder not available',
+  ptyFallbackTitle: 'Terminals use the Node host',
+  ptyFallbackBody: (reason: string) => `The Rust terminal core did not start (${reason}). This session uses the Node terminal host instead. Details are in pty.log; set CCM_CORE_PTY=node to skip the Rust core.`,
   captureMissingBody: (dir: string) => `${dir} cannot be found (drive removed?). Recordings go to the temp folder and screenshots to the clipboard until it is back.`,
   backupApplyTitle: (n: number) => (n === 1 ? 'Import 1 section and restart Orrery?' : `Import ${n} sections and restart Orrery?`),
   backupApplyDetail: (names: string[]) =>
@@ -509,6 +511,8 @@ Lệnh chạy trong ${cwd} với input JSON giả trên stdin và môi trường
   tgReceiveAskConfirm: 'Bật',
   capturePickTitle: 'Thư mục lưu ảnh chụp và video quay',
   captureMissingTitle: 'Không dùng được thư mục chụp / quay',
+  ptyFallbackTitle: 'Terminal dùng host Node',
+  ptyFallbackBody: (reason) => `Core terminal Rust không khởi động được (${reason}). Phiên này dùng host terminal Node thay thế. Chi tiết trong pty.log; đặt CCM_CORE_PTY=node để bỏ qua core Rust.`,
   captureMissingBody: (dir) => `Không tìm thấy ${dir} (đã rút ổ?). Video quay tạm ghi vào thư mục temp và ảnh chụp đi qua clipboard cho tới khi thư mục có lại.`,
   backupApplyTitle: (n) => `Nhập ${n} mục và khởi động lại Orrery?`,
   backupApplyDetail: (names) =>

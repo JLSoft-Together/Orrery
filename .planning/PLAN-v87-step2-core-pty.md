@@ -141,8 +141,8 @@ Chưa có `core-procs` / `core-store` (bước 3+); `owners.rs` viết sao cho t
 
 | Việc | Cách làm |
 |---|---|
-| Cờ | `CCM_CORE_PTY=rust\|node`, mặc định `node` cho tới khi qua cổng §6. Đọc ở `main.ts` (chỗ dựng `PtySupervisor`, dòng 1440). Ghi bản đang chạy vào `pty.log` + `logReport` |
-| Supervisor | Tách `PtyHost` interface (`endpoint`, `census`, `stop`); `NodeHost` = `utilityProcess.fork` như cũ, `RustHost` = `child_process.spawn(orrery-core, {stdio:['pipe','pipe','pipe'], windowsHide:true})`, gửi `init`, chờ `listening` 10 s. Lỗi khởi động / chết bất thường: ghi log, **không** tự đổi sang Node giữa chừng (câu hỏi O1) |
+| Cờ | `CCM_CORE_PTY=rust\|node`, mặc định `rust` từ 2026-11-09 (WP-R1, chờ soak macOS; `node` để quay lại node-pty). Đọc ở `main.ts` (chỗ dựng `PtySupervisor`, dòng 1440). Ghi bản đang chạy vào `pty.log` + `logReport` |
+| Supervisor | Tách `PtyHost` interface (`endpoint`, `census`, `stop`); `NodeHost` = `utilityProcess.fork` như cũ, `RustHost` = `child_process.spawn(orrery-core, {stdio:['pipe','pipe','pipe'], windowsHide:true})`, gửi `init`, chờ `listening` 10 s. Lỗi khởi động (thiếu binary, spawn lỗi, thoát sớm, không `listening` trong 10 s): ghi log + tự dùng Node host cho phiên đó + thông báo native 1 lần (`onFallback`, O1 đã chốt 2026-11-09). Core crash khi đã `listening`: pane báo thoát như cũ, lần mở pane sau dựng lại core; crash lần thứ 2 (`MAX_CORE_CRASHES`) thì lần mở pane kế rơi về Node + báo 1 lần |
 | Vị trí binary | Packaged: `resources/core/orrery-core(.exe)`; dev: `apps/core/target/release/`; override `CCM_CORE_BIN` (dùng cho test) |
 | `build.mjs` | Thêm `buildCore()` cạnh `buildDaemon`: kiểm `cargo` + target, `cargo build --release --locked -p core-bin -j $JIN_MAX_THREADS`; `CCM_SKIP_CORE_BUILD=1` bỏ qua; dev chỉ build khi thiếu binary; `--dist` bắt buộc build. Giữ `pty-host.cjs` + node-pty trong gói cho tới khi bỏ bản Node |
 | `electron-builder.yml` | `extraResources`: binary → `core/`. Windows: `from: ../core/target/release/orrery-core.exe`. macOS 2 dmg: `${arch}` trong `from` trỏ `target/<triple>/release/orrery-core` (kiểm electron-builder có hỗ trợ macro trong extraResources; không thì override cấu hình theo arch trong `scripts/dist.mjs`) |
@@ -185,6 +185,8 @@ Script parity phải gồm: spawn mọi preset hợp lệ + preset sai / cwd sai
 
 Parity xanh Win + mac; E2E CDP pass; p50 độ trễ phím phía host ≤ 5 ms; RSS `orrery-core` ≤ 20 MB / 8 pane; kill cây sạch (không process mồ côi sau quit, sau crash core); chủ nhân dùng thật 1 bản release với cờ `rust` không lỗi.
 
+**Đổi mặc định 2026-11-09 (WP-R1): chờ soak macOS.** Mặc định `rust`; cờ `CCM_CORE_PTY=node` giữ. Chủ nhân test mac theo `.planning/QA-v87-mac.md`. Bản Node + node-pty chưa bỏ.
+
 ## 7. Rủi ro + không được phá
 
 | Rủi ro | Cách giảm |
@@ -208,7 +210,7 @@ Parity xanh Win + mac; E2E CDP pass; p50 độ trễ phím phía host ≤ 5 ms; 
 
 | # | Câu hỏi | Đề xuất |
 |---|---|---|
-| O1 | Binary Rust không khởi động được: tự rơi về Node hay báo lỗi? | Chỉ giai đoạn `node` mặc định thì không cần; sau khi đổi mặc định, **báo lỗi rõ + nút dùng Node**, không im lặng đổi |
+| O1 | Binary Rust không khởi động được: tự rơi về Node hay báo lỗi? | Đã chốt 2026-11-09 (main thay chủ nhân): tự rơi về Node cho phiên đó + báo 1 lần (notification native + `pty.log` + `logReport`), không có nút |
 | O2 | `wt.*`, `cwd` validate, theo dõi branch ở lại TS trong main qua control channel (không port sang Rust) | Đồng ý? (khớp "Rust chỉ lo PTY", tránh viết lại git) |
 | O3 | Crate đặt ở `apps/core/` (theo plan gốc) hay `core/` ở root | `apps/core/` |
 | O4 | Tự rơi sang `portable-pty` hay ConPTY trực tiếp nếu spike lỗi | Quyết sau spike WP-C, báo chủ nhân số đo |

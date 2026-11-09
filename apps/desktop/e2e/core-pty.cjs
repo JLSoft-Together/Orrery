@@ -6,7 +6,10 @@ const { launch, REPO, OUT } = require('./cdp.cjs')
 
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
-const MODE = (process.env.CCM_CORE_PTY || 'node').trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+const WANT = (process.env.CCM_CORE_PTY || 'rust').trim().toLowerCase() === 'node' ? 'node' : 'rust'
+const CORE_MISSING = !!process.env.CCM_CORE_BIN && !fs.existsSync(process.env.CCM_CORE_BIN)
+const FALLBACK = WANT === 'rust' && CORE_MISSING
+const MODE = FALLBACK ? 'node' : WANT
 const WIN = process.platform === 'win32'
 const MARKS = path.join(OUT, 'marks')
 const results = []
@@ -119,7 +122,8 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
       const end = Date.now() + 10000
       while (Date.now() < end) {
         try {
-          const m = fs.readFileSync(ptyLog, 'utf8').match(/^pty host: (node|rust)/m)
+          const all = [...fs.readFileSync(ptyLog, 'utf8').matchAll(/^pty host: (node|rust) \(/gm)]
+          const m = all.at(-1)
           if (m) return m[1]
         } catch {}
         await sleep(250)
@@ -127,6 +131,10 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
       return null
     })()
     check(`pty.log says the ${MODE} host runs`, hostLine === MODE, String(hostLine))
+    if (FALLBACK) {
+      const log = fs.readFileSync(ptyLog, 'utf8')
+      check('pty.log reports the rust core unusable once', (log.match(/rust core unusable/g) || []).length === 1)
+    }
     let corePid = 0
     const snap0 = snapshot()
     const coreProc = snap0.find((p) => p.ppid === mainPid && /orrery-core/i.test(p.name))
@@ -134,7 +142,7 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
       corePid = coreProc?.pid ?? 0
       check('orrery-core runs as a child of the app', corePid > 0, String(corePid))
       check('core command line has no token and no arguments', !!coreProc && !/ccm\.pty|[0-9a-f]{64}/i.test(coreProc.cmd) && coreProc.cmd.trim().split(/\s+/).length === 1, coreProc?.cmd)
-    } else check('no orrery-core with the Node host', !snap0.some((p) => /orrery-core/i.test(p.name)))
+    } else check('no orrery-core with the Node host', !snap0.some((p) => p.ppid === mainPid && /orrery-core/i.test(p.name)))
 
     await evaluate(`${W}.open('shell', ${JSON.stringify(REPO)}, undefined, { tab: true })`)
     await waitFor(`${W}.panes[0]?.state === 'running'`, 20000, 'shell running')

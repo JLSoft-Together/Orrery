@@ -17,8 +17,6 @@ const cases: [string, NodeJS.ProcessEnv, NodeJS.Platform, string, string][] = [
   ['win LOCALAPPDATA', { LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local' }, 'win32', 'C:\\Users\\a', 'C:\\Users\\a\\AppData\\Local\\ccm'],
   ['win fallback', {}, 'win32', 'C:\\Users\\a', 'C:\\Users\\a\\AppData\\Local\\ccm'],
   ['mac', { XDG_DATA_HOME: '/x' }, 'darwin', '/Users/a', '/Users/a/Library/Application Support/ccm'],
-  ['linux XDG', { XDG_DATA_HOME: '/data' }, 'linux', '/home/a', '/data/ccm'],
-  ['linux fallback', {}, 'linux', '/home/a', '/home/a/.local/share/ccm'],
 ]
 
 describe('defaultDataDir', () => {

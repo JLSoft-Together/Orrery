@@ -124,12 +124,10 @@ export async function recoverMoves(store: MoveStore): Promise<DataAgent[]> {
 
 const NETWORK_FS = /^(smbfs|nfs|nfs4|afpfs|webdav|cifs|fuse\.sshfs|9p|ftp)$/i
 
-/** Mount table line (`/dev/x on /Volumes/Y (smbfs, …)` macOS, `x on /y type cifs (…)` Linux) → [mount point, fs type]. */
+/** Mount table line (`/dev/x on /Volumes/Y (smbfs, …)` macOS) → [mount point, fs type]. */
 export function parseMountLine(line: string): [string, string] | null {
   const mac = /^.+? on (.+) \(([^,)]+)/.exec(line)
-  const linux = /^.+? on (.+) type (\S+)/.exec(line)
-  const m = linux ?? mac
-  return m ? [m[1]!, m[2]!] : null
+  return mac ? [mac[1]!, mac[2]!] : null
 }
 
 function run(file: string, args: string[]): Promise<string | null> {

@@ -573,7 +573,7 @@ describe('Monitor with fixture claude root', () => {
     expect(store.getAgent('a1')?.status).toBe('unknown')
   })
 
-  it('verifies a macOS/Linux session by ps lstart and rejects a reused pid', async () => {
+  it('verifies a macOS session by ps lstart and rejects a reused pid', async () => {
     const lstart = 'Thu Oct  8 03:01:22 2026'
     await writeFile(path.join(root, 'sessions', `${PID}.json`), registry({ procStart: lstart }))
     const terminalsWith = async (start: string) => {

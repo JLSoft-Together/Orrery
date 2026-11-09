@@ -9,7 +9,7 @@ Verified 2026-11-03 against **Codewhale 0.10.2** (`ff466b2ed0bf`, Windows x64), 
 |---|---|---|
 | npm (all OS, needs Node) | `npm i -g codewhale` | wrapper only; the first run of `codewhale` downloads the 128 MB release binary from GitHub Releases (prints `codewhale: downloading …`). Run `codewhale --version` once after install. |
 | winget (Windows) | `winget install HunterBown.CodeWhale` | |
-| script (macOS / Linux) | `curl -fsSL https://codewhale.net/install.sh \| sh` | |
+| script (macOS) | `curl -fsSL https://codewhale.net/install.sh \| sh` | |
 
 Binaries: `codewhale`, alias `codew`. Detect with a PATH lookup + `codewhale --version` → `codewhale 0.10.2 (<hash>)`.
 
@@ -86,7 +86,7 @@ everything below about line contents is from source only and the collector treat
   (subagents), `terminal.started|ended`. Ended sessions drop after `CCM_STALE_TTL_MIN`. `CCM_DEEPSEEK=0` turns it off.
 - `processes.ts`: `codewhale(.exe)`, `codewhale-windows-x64.exe`, `codew(.exe)` (npm wrapper runs
   `node_modules/codewhale/bin/downloads/codewhale.exe`) via the shared walker in `codex/processes.ts`
-  (`listProcessesNamed`, core table with CIM fallback, `ps` on macOS / Linux). Scans only on a new session and every
+  (`listProcessesNamed`, core table with CIM fallback, `ps` on macOS). Scans only on a new session and every
   60 s while one is live (same cadence as Codex). Only `-C/--workspace` (absolute) and `-r/--resume/--session-id`
   are kept from the command line. `matchDeepseekProcesses`: one process per session — resume id (prefix), then
   workspace, then nearest start before `session_start` (−2 s … +120 s), then a lone earlier process. The matched pid

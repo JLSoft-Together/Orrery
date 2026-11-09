@@ -134,7 +134,7 @@ export const WINGET_ARGS = ['install', '--id', 'HunterBown.CodeWhale', '-e', '--
 export const NPM_ARGS = ['i', '-g', 'codewhale']
 export const INSTALL_SCRIPT = 'curl -fsSL https://codewhale.net/install.sh | sh'
 
-/** Windows: winget, else npm. macOS / Linux: npm, else the official script (the only shell-string route). */
+/** Windows: winget, else npm. macOS: npm, else the official script (the only shell-string route). */
 export function installPlan(env: NodeJS.ProcessEnv, home: string, platform: NodeJS.Platform, probe: FsProbe = realFs): InstallPlan | null {
   if (platform === 'win32') {
     const winget = findWinget(env, home, probe)

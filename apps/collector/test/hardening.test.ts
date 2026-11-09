@@ -252,13 +252,12 @@ describe('openFolder', () => {
     const calls: string[][] = []
     const spawner = async (cmd: string, args: string[]) => void calls.push([cmd, ...args])
     expect(await openFolder(process.cwd(), 'explorer', spawner, 'darwin')).toBe('ok')
-    expect(await openFolder(process.cwd(), 'explorer', spawner, 'linux')).toBe('ok')
-    expect(calls.map((c) => c[0])).toEqual(['/usr/bin/open', 'xdg-open'])
+    expect(calls.map((c) => c[0])).toEqual(['/usr/bin/open'])
     expect(await openFolder(process.cwd(), 'explorer', spawner, 'aix')).toBe('unsupported')
     const enoent = async () => {
-      throw Object.assign(new Error('spawn xdg-open ENOENT'), { code: 'ENOENT' })
+      throw Object.assign(new Error('spawn open ENOENT'), { code: 'ENOENT' })
     }
-    expect(await openFolder(process.cwd(), 'explorer', enoent, 'linux')).toBe('noApp')
+    expect(await openFolder(process.cwd(), 'explorer', enoent, 'darwin')).toBe('noApp')
   })
 
   // A Mac with VS Code in /Applications would find the real bundle first.
@@ -270,7 +269,6 @@ describe('openFolder', () => {
     const spawner = async (cmd: string, args: string[]) => void calls.push([cmd, ...args])
     const dir = path.normalize(process.cwd())
 
-    expect(await openFolder(dir, 'vscode', spawner, 'linux', { PATH: bin, HOME: home })).toBe('noApp')
     expect(await openFolder(dir, 'vscode', spawner, 'darwin', { PATH: bin, HOME: home })).toBe('noApp')
 
     const bundle = path.join(home, 'Applications', 'Visual Studio Code.app')

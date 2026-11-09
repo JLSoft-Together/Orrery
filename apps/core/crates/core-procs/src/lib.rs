@@ -2,7 +2,6 @@ pub mod args;
 pub mod deadline;
 pub mod kinfo;
 pub mod lines;
-pub mod procfs;
 pub mod serve;
 pub mod start;
 pub mod tcp;
@@ -13,10 +12,7 @@ mod sys;
 #[cfg(target_os = "macos")]
 #[path = "mac.rs"]
 mod sys;
-#[cfg(target_os = "linux")]
-#[path = "linux.rs"]
-mod sys;
-#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
+#[cfg(not(any(windows, target_os = "macos")))]
 #[path = "other.rs"]
 mod sys;
 

@@ -30,7 +30,7 @@ export function filetimeMs(ft: bigint): number {
   return Number(ft / 10_000n) - FILETIME_EPOCH_MS
 }
 
-/** `ps` cputime: `[[dd-]hh:]mm:ss[.cc]` (Linux `00:01:02`, macOS `1:02.33`). */
+/** `ps` cputime: `[[dd-]hh:]mm:ss[.cc]` (macOS `1:02.33`). */
 export function parseCpuTime(text: string): number | null {
   const m = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+(?:\.\d+)?)$/.exec(text.trim())
   if (!m) return null
@@ -198,7 +198,7 @@ export function coreReader(client: CoreProcsClient, fallback: ProcReader, eager:
 
 function legacyProcReader(): ProcReader | null {
   if (process.platform === 'win32') return cimReader()
-  if (process.platform === 'darwin' || process.platform === 'linux') return psReader()
+  if (process.platform === 'darwin') return psReader()
   return null
 }
 

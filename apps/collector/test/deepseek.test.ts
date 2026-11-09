@@ -125,13 +125,13 @@ describe('Codewhale processes', () => {
         { id: 'late', startedAt: 900_000 },
       ],
       [p(1, 9_000, { resumeId: 'resumed' }), p(2, 5_000, { workspace: '/a' }), p(3, 20_000), p(4, 100_000)],
-      'linux',
+      'darwin',
     )
     expect(Object.fromEntries([...m].map(([k, v]) => [k, v.pid]))).toEqual({ 'resumed-thread': 1, ws: 2, timed: 3, late: 4 })
     // Kept pid with the same start wins over a closer newcomer.
-    const kept = matchDeepseekProcesses([{ id: 'k', startedAt: 1_000, pid: 7, start: 0 }], [p(8, 1_000), p(7, 0)], 'linux')
+    const kept = matchDeepseekProcesses([{ id: 'k', startedAt: 1_000, pid: 7, start: 0 }], [p(8, 1_000), p(7, 0)], 'darwin')
     expect(kept.get('k')?.pid).toBe(7)
-    expect(matchDeepseekProcesses([{ id: 'x', startedAt: 1_000 }, { id: 'y', startedAt: 1_100 }], [p(9, 900)], 'linux').size).toBe(1)
+    expect(matchDeepseekProcesses([{ id: 'x', startedAt: 1_000 }, { id: 'y', startedAt: 1_100 }], [p(9, 900)], 'darwin').size).toBe(1)
   })
 })
 

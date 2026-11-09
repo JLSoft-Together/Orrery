@@ -164,7 +164,7 @@ describe('focusMacWindow', () => {
 
 describe('focusTerminalWindow', () => {
   it('is unsupported off win32 and darwin', async () => {
-    expect(await focusTerminalWindow(123, 'linux')).toBe('unsupported')
+    expect(await focusTerminalWindow(123, 'aix')).toBe('unsupported')
   })
 
   it('routes darwin to the mac path and rejects an invalid pid without running anything', async () => {

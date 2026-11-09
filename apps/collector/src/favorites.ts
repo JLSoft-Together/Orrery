@@ -5,7 +5,7 @@ import { sanitizeAlias } from './aliases'
 
 export const MAX_FAVORITES = 50
 
-// Only Windows paths are case-insensitive; macOS volumes can be case-sensitive, Linux always is.
+// Only Windows paths are case-insensitive; macOS volumes can be case-sensitive.
 export const favoriteKey = (dir: string, platform: NodeJS.Platform = process.platform): string =>
   platform === 'win32' ? path.resolve(dir).toLowerCase() : path.resolve(dir)
 

@@ -14,8 +14,7 @@ export interface DeepseekProcess {
 
 // The npm wrapper runs `node_modules/codewhale/bin/downloads/codewhale.exe`, so its exe name is the same.
 const WIN_EXE = ['codewhale.exe', 'codewhale-windows-x64.exe', 'codew.exe']
-// Linux truncates `comm` to 15 characters.
-const UNIX_NAMES = ['codewhale', 'codew', 'codewhale-linux', 'codewhale-macos', 'codewhale-darwi']
+const UNIX_NAMES = ['codewhale', 'codew', 'codewhale-macos', 'codewhale-darwi']
 const VALUE_FLAGS = new Set(['-C', '--workspace', '-r', '--resume', '--session-id', '-m', '--model', '-p', '--provider', '--profile', '-c', '--config', '--output-format'])
 // Commands that never open a session.
 const NON_SESSION = new Set(['auth', 'config', 'mcp', 'doctor', 'login', 'logout', 'help', 'completion', 'completions', 'update', 'upgrade', 'version', 'models', 'telemetry'])

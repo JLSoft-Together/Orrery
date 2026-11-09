@@ -194,7 +194,7 @@ export function netTcpPortTable(exec: RunPs = runPs): PortTable {
 
 function legacyPortTable(): PortTable | null {
   if (process.platform === 'win32') return netTcpPortTable()
-  if (process.platform === 'darwin' || process.platform === 'linux') return lsofPortTable()
+  if (process.platform === 'darwin') return lsofPortTable()
   return null
 }
 

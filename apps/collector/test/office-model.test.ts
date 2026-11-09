@@ -25,7 +25,7 @@ describe('roomKey', () => {
     expect(roomKey('C:\\Code\\app', 'win32')).toBe('c:/code/app')
     expect(roomKey('c:\\code\\app\\', 'win32')).toBe('c:/code/app')
     expect(roomKey('C:/Code/app', 'win32')).toBe('c:/code/app')
-    expect(roomKey('/Home/Me/App/', 'linux')).toBe('/Home/Me/App')
+    expect(roomKey('/Home/Me/App/', 'darwin')).toBe('/Home/Me/App')
     expect(roomKey(undefined, 'win32')).toBe('(unknown)')
     expect(roomKey('  ', 'darwin')).toBe('(unknown)')
   })

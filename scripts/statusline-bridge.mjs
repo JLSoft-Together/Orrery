@@ -11,8 +11,7 @@ import path from 'node:path'
 function defaultDataDir(env, platform, home) {
   const p = platform === 'win32' ? path.win32 : path.posix
   if (platform === 'win32') return p.join(env.LOCALAPPDATA || p.join(home, 'AppData', 'Local'), 'ccm')
-  if (platform === 'darwin') return p.join(home, 'Library', 'Application Support', 'ccm')
-  return p.join(env.XDG_DATA_HOME || p.join(home, '.local', 'share'), 'ccm')
+  return p.join(home, 'Library', 'Application Support', 'ccm')
 }
 
 const DATA_DIR = process.env.CCM_DATA_DIR || defaultDataDir(process.env, process.platform, os.homedir())

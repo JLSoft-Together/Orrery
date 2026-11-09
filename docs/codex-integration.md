@@ -51,7 +51,7 @@ plugin's app-server `clientInfo.name`) → **plugin**; `source` object → **sub
 ## 4. Processes and launch link
 
 - Windows: one PowerShell CIM query lists all processes (pid, parent, creation) and `codex.exe` command lines; the
-  parent chain only follows parents created before their child (pid reuse). macOS/Linux: `ps -A -o pid=,ppid=,lstart=,comm=`
+  parent chain only follows parents created before their child (pid reuse). macOS: `ps -A -o pid=,ppid=,lstart=,comm=`
   + `ps -o pid=,args=` for codex pids. Command lines are reduced to subcommand + `resume <uuid>` in memory and dropped.
 - Launch chain from Claude Code (observed): `claude.exe → bash.exe → bash.exe → node.exe (codex.js) → codex.exe`.
 - Thread ↔ process: no registry, so a thread belongs to the exec / TUI process that started 2 s before … 120 s after

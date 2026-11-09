@@ -91,7 +91,6 @@ describe('agent data classification', () => {
       { name: 'x.exe', pid: 7 },
     ])
     expect(parseMountLine('//u@nas/share on /Volumes/share (smbfs, nodev)')).toEqual(['/Volumes/share', 'smbfs'])
-    expect(parseMountLine('server:/x on /mnt/x type nfs4 (rw)')).toEqual(['/mnt/x', 'nfs4'])
   })
 })
 

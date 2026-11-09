@@ -44,6 +44,6 @@ describe('favoriteKey', () => {
   it('folds case only on Windows', () => {
     expect(favoriteKey('/Work/App', 'win32')).toBe(favoriteKey('/work/app', 'win32'))
     expect(favoriteKey('/Work/App', 'darwin')).not.toBe(favoriteKey('/work/app', 'darwin'))
-    expect(favoriteKey('/Work/App', 'linux')).not.toBe(favoriteKey('/work/app', 'linux'))
+    expect(favoriteKey('/Work/App', 'darwin')).not.toBe(favoriteKey('/work/app', 'darwin'))
   })
 })

@@ -21,7 +21,7 @@ const row = (pid: number, ppid: number, name: string, extra: Partial<ProcRow> = 
 })
 
 describe('ps / CIM parsers', () => {
-  it('reads Linux and macOS cputime', () => {
+  it('reads macOS cputime', () => {
     expect(parseCpuTime('00:01:02')).toBe(62_000)
     expect(parseCpuTime('1-02:00:00')).toBe(26 * 3_600_000)
     expect(parseCpuTime('1:02.33')).toBe(62_330)

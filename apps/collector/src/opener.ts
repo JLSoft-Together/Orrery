@@ -63,7 +63,7 @@ async function vsCodeCommand(dir: string, platform: NodeJS.Platform, env: NodeJS
 }
 
 const folderCommand = (dir: string, platform: NodeJS.Platform): Command =>
-  platform === 'win32' ? ['explorer.exe', [dir]] : platform === 'darwin' ? ['/usr/bin/open', [dir]] : ['xdg-open', [dir]]
+  platform === 'win32' ? ['explorer.exe', [dir]] : ['/usr/bin/open', [dir]]
 
 /** Opens a folder the collector already tracks; arguments go straight to the executable, never through a shell. */
 export async function openFolder(
@@ -73,7 +73,7 @@ export async function openFolder(
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<OpenResult> {
-  if (!['win32', 'darwin', 'linux'].includes(platform)) return 'unsupported'
+  if (!['win32', 'darwin'].includes(platform)) return 'unsupported'
   const st = await stat(dir).catch(() => null)
   if (!st?.isDirectory()) return 'notFound'
   const target = path.normalize(dir)

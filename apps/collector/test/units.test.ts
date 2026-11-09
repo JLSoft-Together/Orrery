@@ -481,12 +481,12 @@ describe('macOS launcher', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  it('checks the directory first and stays unsupported on linux', async () => {
+  it('checks the directory first and stays unsupported off win32 and darwin', async () => {
     const { launchClaude } = await import('../src/launcher')
     const r = fakeRun()
     await expect(launchClaude(`${process.cwd()}/does-not-exist`, 'new', undefined, 'terminal', 'darwin', r.run)).rejects.toThrow('directory not found')
     expect(r.calls).toEqual([])
-    await expect(launchClaude(process.cwd(), 'new', undefined, 'terminal', 'linux', r.run)).rejects.toThrow('unsupported platform')
+    await expect(launchClaude(process.cwd(), 'new', undefined, 'terminal', 'aix', r.run)).rejects.toThrow('unsupported platform')
     expect(r.calls).toEqual([])
   })
 })
@@ -510,7 +510,7 @@ describe('macOS folder picker', () => {
     expect(await pickFolder('darwin', fakeRun({ stdout: '\n' }).run)).toEqual({ result: 'failed' })
     expect(await pickFolder('darwin', fakeRun({ stdout: 'relative/\n' }).run)).toEqual({ result: 'failed' })
     const r = fakeRun()
-    expect(await pickFolder('linux', r.run)).toEqual({ result: 'unsupported' })
+    expect(await pickFolder('aix', r.run)).toEqual({ result: 'unsupported' })
     expect(r.calls).toEqual([])
   })
 })

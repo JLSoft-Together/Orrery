@@ -60,7 +60,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, platform: NodeJ
     processVerifyMs: 60_000,
     activityLimit: 1000,
     batchMs: 50,
-    verifyProcesses: ['win32', 'darwin', 'linux'].includes(process.platform) && env.CCM_VERIFY_PROCESSES !== '0',
+    verifyProcesses: ['win32', 'darwin'].includes(process.platform) && env.CCM_VERIFY_PROCESSES !== '0',
     webDist: env.CCM_WEB_DIST || fromHere('../../web/dist'),
     statusLineBridge,
     statusLineCommand: env.CCM_STATUSLINE_COMMAND || `node "${statusLineBridge.replaceAll('\\', '/')}"`,

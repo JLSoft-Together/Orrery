@@ -299,7 +299,7 @@ function switchSide(): void {
 }
 
 function onPaneKey(e: KeyboardEvent): void {
-  // Windows / Linux: Ctrl+Shift+Tab is the previous workspace tab (v18), taken in the capture phase before this pane.
+  // Windows: Ctrl+Shift+Tab is the previous workspace tab (v18), taken in the capture phase before this pane.
   if (isMac && e.key === 'Tab' && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
     e.preventDefault()
     switchSide()

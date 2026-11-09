@@ -8,7 +8,7 @@ export type ProcessMode = 'exec' | 'tui' | 'app-server' | 'other'
 
 export interface CodexProcess {
   pid: number
-  /** Creation time in ms (1 s resolution on macOS / Linux). */
+  /** Creation time in ms (1 s resolution on macOS). */
   start: number
   mode: ProcessMode
   resumeId?: string
@@ -103,7 +103,7 @@ export function topLevel<T extends { pid: number; ancestors: number[] }>(list: T
 /** A process of one CLI with its command line; callers derive what they keep from `cmd` and drop it. */
 export interface CliProcess {
   pid: number
-  /** Creation time in ms (1 s resolution on macOS / Linux). */
+  /** Creation time in ms (1 s resolution on macOS). */
   start: number
   ancestors: number[]
   orphan: boolean
@@ -272,7 +272,7 @@ function run(file: string, args: string[], env?: NodeJS.ProcessEnv): Promise<str
 }
 
 /**
- * Processes of one CLI by exe name (Windows, lower case with `.exe`) or `comm` (macOS / Linux), command lines
+ * Processes of one CLI by exe name (Windows, lower case with `.exe`) or `comm` (macOS), command lines
  * included; null when the platform query failed (callers keep their last view).
  */
 export async function listProcessesNamed(names: { win: readonly string[]; unix: readonly string[] }, platform: NodeJS.Platform = process.platform): Promise<CliProcess[] | null> {
@@ -290,7 +290,7 @@ export async function listProcessesNamed(names: { win: readonly string[]; unix: 
       return null
     }
   }
-  if (platform !== 'darwin' && platform !== 'linux') return null
+  if (platform !== 'darwin') return null
   const viaCore = platform === process.platform ? await unixNamedViaCore(names.unix) : null
   if (viaCore) return viaCore
   const env = { ...process.env, LC_ALL: 'C', TZ: 'UTC' }

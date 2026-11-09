@@ -181,6 +181,6 @@ export function queryProcesses(pids: number[]): Promise<Map<number, ProcessInfo>
   const valid = pids.filter((p) => Number.isInteger(p) && p > 0)
   if (valid.length === 0) return Promise.resolve(null)
   if (process.platform === 'win32') return queryProcessesWindows(valid)
-  if (process.platform === 'darwin' || process.platform === 'linux') return queryProcessesUnix(valid)
+  if (process.platform === 'darwin') return queryProcessesUnix(valid)
   return Promise.resolve(null)
 }

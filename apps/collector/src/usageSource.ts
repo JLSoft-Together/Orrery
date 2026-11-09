@@ -1,3 +1,4 @@
+import { reportCoreFallback } from './coreFallback'
 import path from 'node:path'
 import type { ToolStats, UsageBucket, UsageHeatmap, UsageScan, UsageSnapshot } from '@ccm/shared'
 import { createCoreTranscript, type CoreMessage, type CoreTranscriptClient } from './coreTranscript'
@@ -20,7 +21,7 @@ export interface UsageSource {
 export type ClientFactory = (hooks: { onEvent: (e: CoreMessage) => void; onDown: () => void }) => CoreTranscriptClient | null
 
 export function usageMode(env: NodeJS.ProcessEnv = process.env): UsageMode {
-  return env.CCM_CORE_USAGE?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+  return env.CCM_CORE_USAGE?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -83,6 +84,7 @@ export class RustUsageSource implements UsageSource {
   private async fallback(why: string): Promise<void> {
     if (this.node || this.stopped) return
     this.log(`[ccm] ${why}, using the Node usage index`)
+    reportCoreFallback('usage', why)
     this.client?.dispose()
     this.client = null
     this.node = new UsageIndex(this.projectsDir, this.cacheFile, this.sink, this.options)
@@ -171,7 +173,8 @@ export function createUsageSource(projectsDir: string, cacheFile: string | null,
   if (usageMode(env) !== 'rust') return new UsageIndex(projectsDir, cacheFile, sink, options)
   const bin = env.CCM_CORE_BIN?.trim()
   if (!bin) {
-    console.warn('[ccm] CCM_CORE_USAGE=rust but CCM_CORE_BIN is not set, using the Node usage index')
+    console.warn('[ccm] CCM_CORE_BIN is not set, using the Node usage index')
+    reportCoreFallback('usage', 'CCM_CORE_BIN is not set')
     return new UsageIndex(projectsDir, cacheFile, sink, options)
   }
   return new RustUsageSource(projectsDir, cacheFile, sink, options, (hooks) => createCoreTranscript({ bin, ...hooks }))

@@ -219,10 +219,12 @@ describe.skipIf(!BIN)('usage index skips an unreadable transcript (Node and Rust
 })
 
 describe('usage source selection', () => {
-  it('defaults to the Node index and falls back to it when the core cannot start', async () => {
-    expect(usageMode({})).toBe('node')
-    expect(usageMode({ CCM_CORE_USAGE: ' Rust ' })).toBe('rust')
+  it('defaults to the Rust index, Node with CCM_CORE_USAGE=node, and falls back to Node when the core cannot start', async () => {
+    expect(usageMode({})).toBe('rust')
+    expect(usageMode({ CCM_CORE_USAGE: ' Node ' })).toBe('node')
     expect(createUsageSource('p', null, new Sink(), {}, {})).toBeInstanceOf(UsageIndex)
+    expect(createUsageSource('p', null, new Sink(), {}, { CCM_CORE_BIN: 'x' })).toBeInstanceOf(RustUsageSource)
+    expect(createUsageSource('p', null, new Sink(), {}, { CCM_CORE_USAGE: 'node', CCM_CORE_BIN: 'x' })).toBeInstanceOf(UsageIndex)
     expect(createUsageSource('p', null, new Sink(), {}, { CCM_CORE_USAGE: 'rust' })).toBeInstanceOf(UsageIndex)
     expect(createUsageSource('p', null, new Sink(), {}, { CCM_CORE_USAGE: 'rust', CCM_CORE_BIN: 'x' })).toBeInstanceOf(RustUsageSource)
 

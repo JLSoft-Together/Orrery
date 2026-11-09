@@ -22,12 +22,13 @@ const temp = async (p: string) => {
 const describeCore = BIN ? describe : describe.skip
 
 describe('tracker source', () => {
-  it('picks the Rust tracker only with CCM_CORE_TRANSCRIPT=rust and a core binary', () => {
-    expect(trackerMode({})).toBe('node')
-    expect(trackerMode({ CCM_CORE_TRANSCRIPT: ' Rust ' })).toBe('rust')
+  it('picks the Rust tracker by default when a core binary is set, Node with CCM_CORE_TRANSCRIPT=node', () => {
+    expect(trackerMode({})).toBe('rust')
+    expect(trackerMode({ CCM_CORE_TRANSCRIPT: ' Node ' })).toBe('node')
     const make = (env: NodeJS.ProcessEnv) => createTracker('1:0', record(), 'p', {}, Date.now, env)
-    expect(make({})).toBeInstanceOf(SessionTracker)
     expect(make({ CCM_CORE_TRANSCRIPT: 'rust' })).toBeInstanceOf(SessionTracker)
+    expect(make({ CCM_CORE_BIN: 'x' })).toBeInstanceOf(CoreTracker)
+    expect(make({ CCM_CORE_TRANSCRIPT: 'node', CCM_CORE_BIN: 'x' })).toBeInstanceOf(SessionTracker)
     expect(make({ CCM_CORE_TRANSCRIPT: 'rust', CCM_CORE_BIN: 'x' })).toBeInstanceOf(CoreTracker)
   })
 })

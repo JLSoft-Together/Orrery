@@ -5,9 +5,9 @@ import { coreStarts } from '../src/resources/kill'
 const base = { packaged: false, resourcesPath: 'R', repo: 'D:\\repo', platform: 'win32' as const }
 
 describe('coreProcsEnv', () => {
-  it('adds nothing only when CCM_CORE_PROCS=node', () => {
-    expect(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: 'node' } })).toEqual({})
-    expect(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: ' Node ' } })).toEqual({})
+  it('keeps the core binary for usage and transcripts when CCM_CORE_PROCS=node', () => {
+    expect(Object.keys(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: 'node' } }))).toEqual(['CCM_CORE_BIN'])
+    expect(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: ' Node ' } }).CCM_CORE_PROCS).toBeUndefined()
   })
 
   it('passes the flag and the core binary path to the collector by default', () => {

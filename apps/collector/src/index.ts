@@ -27,6 +27,7 @@ import { ResponseTracker } from './response'
 import { isPortInUse, PORT_IN_USE_EXIT, startServer } from './server'
 import { MonitorStore } from './store'
 import { createUsageSource, whenReady } from './usageSource'
+import { onCoreFallback } from './coreFallback'
 import { openFolder } from './opener'
 import { PromptSearcher } from './prompt-search'
 import { CodexMonitor } from './codex/monitor'
@@ -38,6 +39,8 @@ import { SENSITIVE_FILE, SensitiveWatch } from './sensitive/watch'
 
 async function main(): Promise<void> {
   useEnglishOffice()
+  const coreHost = (process as unknown as { parentPort?: { postMessage: (msg: unknown) => void } }).parentPort
+  if (coreHost) onCoreFallback((m) => coreHost.postMessage(m))
   const config = loadConfig()
   if (!config.appKey && !config.dev) {
     console.error('[collector] Orrery runs inside its desktop app: npm run desktop (UI work: npm run dev).')

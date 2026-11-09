@@ -153,6 +153,7 @@ let host: CollectorHost
 let ptys: PtySupervisor | null = null
 const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 let ptyFellBack = false
+const coreFellBack = new Map<string, string>()
 let attention: Attention | null = null
 let mainWindow: BrowserWindow | null = null
 let compactWindow: BrowserWindow | null = null
@@ -796,6 +797,28 @@ function tailOf(file: string): string {
   }
 }
 
+const CORE_READERS = { usage: 'CCM_CORE_USAGE', transcript: 'CCM_CORE_TRANSCRIPT' } as const
+
+function coreReadersLine(): string {
+  const parts = Object.entries(CORE_READERS).map(([kind, flag]) => {
+    const fell = coreFellBack.get(kind)
+    if (fell !== undefined) return `${kind} node (rust core unusable, fell back: ${fell})`
+    return `${kind} ${process.env[flag]?.trim().toLowerCase() === 'node' ? 'node' : 'rust'}`
+  })
+  return `core readers: ${parts.join(', ')}`
+}
+
+function noteCoreFallback(data: unknown): void {
+  const m = data as { kind?: unknown; reason?: unknown }
+  if (m.kind !== 'usage' && m.kind !== 'transcript') return
+  if (coreFellBack.has(m.kind)) return
+  const reason = typeof m.reason === 'string' ? m.reason.slice(0, 200) : 'unknown'
+  coreFellBack.set(m.kind, reason)
+  console.warn(`[ccm] ${m.kind}: rust core unusable (${reason}); using node`)
+  const what = m.kind === 'usage' ? t.coreFallbackUsage : t.coreFallbackTranscript
+  if (Notification.isSupported()) new Notification({ title: t.coreFallbackTitle(what), body: t.coreFallbackBody(what, reason, CORE_READERS[m.kind]) }).show()
+}
+
 /** Everything a bug report needs in one paste; long opaque strings (tokens, keys) are masked. */
 function logReport(pageReport: string): string {
   const head = [
@@ -803,6 +826,7 @@ function logReport(pageReport: string): string {
     `Electron ${process.versions.electron}, ${process.platform} ${os.release()} ${process.arch}, locale ${app.getLocale()}`,
     `collector port ${PORT}: ${host?.ownsPort ? 'running' : 'not running'}`,
     `terminal host: ${ptyFellBack ? 'node (rust core unusable, fell back)' : PTY_HOST}`,
+    coreReadersLine(),
     `generated ${new Date().toISOString()}`,
   ]
   const sections = [head.join('\n'), pageReport && `## Diagnostics\n${pageReport}`]
@@ -1420,6 +1444,7 @@ async function ready(): Promise<void> {
     onMessage: (data) => {
       const m = data as { type?: unknown; report?: unknown } | null
       if (m?.type === 'resources' && typeof m.report === 'object' && m.report !== null) resReport = m.report as ResourceReport
+      else if (m?.type === 'core-fallback') noteCoreFallback(data)
       else if (m?.type === 'busy') {
         const busy = parseBusy(data)
         if (busy) awake?.setBusy(busy.agents, busy.jobs)

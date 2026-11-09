@@ -1,3 +1,4 @@
+import { reportCoreFallback } from './coreFallback'
 import path from 'node:path'
 import type { Agent, TelegramAsk, TerminalSession, ToolSpan } from '@ccm/shared'
 import type { CoreMessage, CoreTranscriptClient } from './coreTranscript'
@@ -285,6 +286,7 @@ export class CoreTracker {
 
   private toNode(): SessionTracker {
     this.hub.log(`[ccm] core-transcript tracker unavailable for ${this.terminalId}, using the Node session tracker`)
+    reportCoreFallback('transcript', 'core-transcript tracker unavailable')
     this.hub.unregister(this)
     this.key = null
     const t = new SessionTracker(this.terminalId, this.record, this.projectsDir, this.hints, this.now)

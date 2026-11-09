@@ -1,3 +1,4 @@
+import { reportCoreFallback } from './coreFallback'
 import type { Agent, TelegramAsk, TerminalSession, ToolSpan } from '@ccm/shared'
 import { createCoreTranscript, type CoreTranscriptClient } from './coreTranscript'
 import { CoreTracker, type CoreHub } from './coreTracker'
@@ -37,7 +38,7 @@ export interface Tracker {
 export type TrackerMode = 'rust' | 'node'
 
 export function trackerMode(env: NodeJS.ProcessEnv = process.env): TrackerMode {
-  return env.CCM_CORE_TRANSCRIPT?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+  return env.CCM_CORE_TRANSCRIPT?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 }
 
 export const SAFETY_NET_MS = 4_000
@@ -70,7 +71,8 @@ function hubFor(env: NodeJS.ProcessEnv): CoreHub | null {
   if (!bin) {
     if (warned) return null
     warned = true
-    console.warn('[ccm] CCM_CORE_TRANSCRIPT=rust but CCM_CORE_BIN is not set, using the Node session tracker')
+    console.warn('[ccm] CCM_CORE_BIN is not set, using the Node session tracker')
+    reportCoreFallback('transcript', 'CCM_CORE_BIN is not set')
     return null
   }
   shared = createCoreHub(() => createCoreTranscript({ bin, timeoutMs: 30_000 }))

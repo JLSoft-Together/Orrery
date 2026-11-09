@@ -69,3 +69,12 @@ Ghi chú: apps/collector/test/__snapshots__/tracker.test.ts.snap và apps/deskto
 - 🦀 Scaffold apps/core Rust workspace (core-pty skeleton + orrery-core control stub), buildCore in build.mjs, core/ extraResources per arch, rust steps in CI — CHƯA BIÊN DỊCH (chờ MSVC Build Tools)
   apps/core/**, apps/desktop/{build.mjs,electron-builder.yml}, .github/workflows/*, .gitignore, .code_index/core.md
 - 📝 code index (desktop, protocol, _meta), plan step 2, WP briefs / reports, progress
+
+## 2026-11-09 v87 bước 2: B + C + D + E1 + E2 — đã commit + push
+- 🦀 Rust core orrery-core: NDJSON control + WS /pty auth, direct ConPTY (Windows) / portable-pty (unix), Job Objects / killpg kill tree, 256 KiB ring + UTF-8-safe replay, byte-credited backpressure, owners, MAX_LIVE 16, 30 min reaper, close 4001 on overflow; buildCore in build.mjs, core/ extraResources, rust steps in CI
+  apps/core/**, apps/desktop/{build.mjs,electron-builder.yml}, .github/workflows/{desktop,test}.yml, .gitignore, .code_index/core.md
+- ✅ pty-parity harness: same JSON scenarios against the Node host and the Rust core
+  apps/desktop/test/pty-parity/**
+- ⚡️ RustHost + CCM_CORE_PTY flag (default node), renderer re-attaches on close 4001, core-pty E2E + Node vs Rust host bench
+  apps/desktop/src/{main.ts,pty/supervisor.ts}, apps/web/src/lib/{ptyClient.ts,ptyClient.test.ts}, apps/desktop/test/pty-supervisor-rust.test.ts, apps/desktop/e2e/core-pty{,-bench}.cjs, docs/perf/v87-step2-core-pty-win32.json
+- 📝 WP B / C / D / E1 / E2 briefs + reports, code index, progress

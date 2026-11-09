@@ -1,4 +1,4 @@
-import { statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { AGENT_NOTE_MAX, cleanNoteText, type McpPageResult } from '../../../../../packages/shared/src/mcpCall'
 import { PATH_MAX, resolveInside, type InsideError } from './paths'
 import { toolResult, type McpTool, type ToolDef } from './types'
@@ -50,11 +50,11 @@ export const handBack: McpTool = {
     if (typeof args.summary !== 'string' || [...args.summary].length > AGENT_NOTE_MAX) return fail('summary')
     const summary = cleanNoteText(args.summary)
     if (!summary) return fail('summary')
-    const target = resolveInside(host.root, args.report)
+    const target = await resolveInside(host.root, args.report)
     if (!target.ok) return fail(target.error)
     if (!/\.md$/i.test(target.path)) return fail('markdown')
     try {
-      if (statSync(target.path).size > REPORT_MAX_BYTES) return fail('size')
+      if ((await stat(target.path)).size > REPORT_MAX_BYTES) return fail('size')
     } catch {
       return fail('missing')
     }

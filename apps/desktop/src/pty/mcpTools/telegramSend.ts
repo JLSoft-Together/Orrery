@@ -68,7 +68,7 @@ export const telegramSend: McpTool = {
     if (typeof args.text !== 'string' || !args.text.trim() || [...args.text].length > TELEGRAM_REPORT_MAX) return fail('text')
     let file: string | undefined
     if (args.file !== undefined && args.file !== null && args.file !== '') {
-      const r = resolveInside(host.root, args.file)
+      const r = await resolveInside(host.root, args.file)
       if (!r.ok) return fail(r.error)
       if (isSecretFileName(r.path.split(/[\\/]/).pop() ?? '')) return fail('secret')
       file = r.path

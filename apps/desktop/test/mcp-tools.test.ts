@@ -37,36 +37,36 @@ const call = async (host: ToolHost, name: string, args: unknown) => {
 }
 
 describe('resolveInside', () => {
-  it('accepts project files, absolute or relative', () => {
+  it('accepts project files, absolute or relative', async () => {
     const file = path.join(root, 'src', 'a.ts')
-    expect(resolveInside(root, 'src/a.ts')).toEqual({ ok: true, path: file, exists: true })
-    expect(resolveInside(root, file)).toEqual({ ok: true, path: file, exists: true })
-    expect(resolveInside(root, `src${path.sep}..${path.sep}src${path.sep}a.ts`)).toMatchObject({ ok: true, path: file })
+    expect(await resolveInside(root, 'src/a.ts')).toEqual({ ok: true, path: file, exists: true })
+    expect(await resolveInside(root, file)).toEqual({ ok: true, path: file, exists: true })
+    expect(await resolveInside(root, `src${path.sep}..${path.sep}src${path.sep}a.ts`)).toMatchObject({ ok: true, path: file })
   })
 
-  it('refuses traversal, outside paths, UNC, control characters and folders', () => {
-    expect(resolveInside(root, '../secret/key.txt')).toEqual({ ok: false, error: 'outside' })
-    expect(resolveInside(root, path.join(outside, 'key.txt'))).toEqual({ ok: false, error: 'outside' })
-    expect(resolveInside(root, 'src/../../secret/key.txt')).toEqual({ ok: false, error: 'outside' })
-    expect(resolveInside(root, '\\\\evil\\share\\x.ts')).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, '//evil/share/x.ts')).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, 'src/a.ts\0.png')).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, '')).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, 42)).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, 'x'.repeat(5000))).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, 'src')).toEqual({ ok: false, error: 'folder' })
+  it('refuses traversal, outside paths, UNC, control characters and folders', async () => {
+    expect(await resolveInside(root, '../secret/key.txt')).toEqual({ ok: false, error: 'outside' })
+    expect(await resolveInside(root, path.join(outside, 'key.txt'))).toEqual({ ok: false, error: 'outside' })
+    expect(await resolveInside(root, 'src/../../secret/key.txt')).toEqual({ ok: false, error: 'outside' })
+    expect(await resolveInside(root, '\\\\evil\\share\\x.ts')).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, '//evil/share/x.ts')).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, 'src/a.ts\0.png')).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, '')).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, 42)).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, 'x'.repeat(5000))).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, 'src')).toEqual({ ok: false, error: 'folder' })
   })
 
-  it('missing files only when allowed, judged by the nearest real folder', () => {
-    expect(resolveInside(root, 'src/new.ts')).toEqual({ ok: false, error: 'missing' })
-    expect(resolveInside(root, 'src/new/deeper.ts', { allowMissing: true })).toEqual({ ok: true, path: path.join(root, 'src', 'new', 'deeper.ts'), exists: false })
-    expect(resolveInside(root, '../secret/new.ts', { allowMissing: true })).toEqual({ ok: false, error: 'outside' })
+  it('missing files only when allowed, judged by the nearest real folder', async () => {
+    expect(await resolveInside(root, 'src/new.ts')).toEqual({ ok: false, error: 'missing' })
+    expect(await resolveInside(root, 'src/new/deeper.ts', { allowMissing: true })).toEqual({ ok: true, path: path.join(root, 'src', 'new', 'deeper.ts'), exists: false })
+    expect(await resolveInside(root, '../secret/new.ts', { allowMissing: true })).toEqual({ ok: false, error: 'outside' })
   })
 
-  it('resolves links before judging, so a junction out of the project is refused', ({ skip }) => {
+  it('resolves links before judging, so a junction out of the project is refused', async ({ skip }) => {
     if (!realpathSafe(path.join(root, 'link'))) skip()
-    expect(resolveInside(root, 'link/key.txt')).toEqual({ ok: false, error: 'outside' })
-    expect(resolveInside(root, 'link/new.txt', { allowMissing: true })).toEqual({ ok: false, error: 'outside' })
+    expect(await resolveInside(root, 'link/key.txt')).toEqual({ ok: false, error: 'outside' })
+    expect(await resolveInside(root, 'link/new.txt', { allowMissing: true })).toEqual({ ok: false, error: 'outside' })
   })
 })
 
@@ -237,18 +237,18 @@ describe('security review fixes (v80 WP-1)', () => {
       expect(res.structuredContent).toEqual({ ok: false, error: 'rate' })
     }
     expect(page).not.toHaveBeenCalled()
-    expect(resolveInside(root, Array(65).fill('a').join('/'))).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, Array(64).fill('a').join('/'), { allowMissing: true })).toMatchObject({ ok: true, exists: false })
+    expect(await resolveInside(root, Array(65).fill('a').join('/'))).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, Array(64).fill('a').join('/'), { allowMissing: true })).toMatchObject({ ok: true, exists: false })
     const batch = Array.from({ length: BATCH_MAX + 1 }, (_, i) => ({ jsonrpc: '2.0', id: i, method: 'ping' }))
     expect((await handleMcp(batch, hostWith(), '0')).json).toMatchObject({ id: null, error: { code: -32600 } })
     expect(((await handleMcp(batch.slice(0, BATCH_MAX), hostWith(), '0')).json as unknown[]).length).toBe(BATCH_MAX)
   })
 
-  it('2: Windows device names are refused in any segment; only regular files pass', () => {
+  it('2: Windows device names are refused in any segment; only regular files pass', async () => {
     for (const p of ['nul', 'src/CON.txt', 'COM1', 'lpt9.log', 'src/aux .ts', 'conout$'])
-      expect(resolveInside(root, p, { allowMissing: true, platform: 'win32' })).toEqual({ ok: false, error: 'path' })
-    expect(resolveInside(root, 'src/console.ts', { allowMissing: true, platform: 'win32' })).toMatchObject({ ok: true })
-    expect(resolveInside(root, 'src/nul.ts', { allowMissing: true, platform: 'linux' })).toMatchObject({ ok: true })
+      expect(await resolveInside(root, p, { allowMissing: true, platform: 'win32' })).toEqual({ ok: false, error: 'path' })
+    expect(await resolveInside(root, 'src/console.ts', { allowMissing: true, platform: 'win32' })).toMatchObject({ ok: true })
+    expect(await resolveInside(root, 'src/nul.ts', { allowMissing: true, platform: 'linux' })).toMatchObject({ ok: true })
   })
 
   it('3: line / paragraph separators, Arabic letter mark, Mongolian vowel separator and tag characters are removed', () => {

@@ -50,7 +50,7 @@ export const openInWorkspace: McpTool = {
     const diff = args.diff === true
     const line = args.line
     if (line !== undefined && line !== null && (typeof line !== 'number' || !Number.isInteger(line) || line < 1 || line > LINE_MAX)) return fail('line')
-    const target = resolveInside(host.root, args.path, { allowMissing: diff })
+    const target = await resolveInside(host.root, args.path, { allowMissing: diff })
     if (!target.ok) return fail(target.error)
     let res: McpPageResult
     try {

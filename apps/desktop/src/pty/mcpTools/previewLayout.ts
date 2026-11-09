@@ -67,7 +67,7 @@ export const previewLayout: McpTool = {
     if (!(LAYOUT_DEVICES as readonly unknown[]).includes(device)) return fail('device')
     const theme = args.theme ?? 'light'
     if (theme !== 'light' && theme !== 'dark') return fail('theme')
-    const target = resolveInside(host.root, args.path)
+    const target = await resolveInside(host.root, args.path)
     if (!target.ok) return fail(target.error)
     if (!/\.xml$/i.test(target.path)) return fail('xml')
     if (!host.desk) return fail('unavailable')

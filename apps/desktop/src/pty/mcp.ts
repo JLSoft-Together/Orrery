@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { MCP_TOOLS } from './mcpTools'
 import type { Json, McpTool, ToolHost } from './mcpTools/types'
 
@@ -81,4 +82,63 @@ export function mcpGate(
   const auth = /^(\S+) ([0-9a-f]{64})$/.exec(req.authorization ?? '')
   if (!auth || auth[1]!.toLowerCase() !== 'bearer') return { status: 401 }
   return { token: auth[2]! }
+}
+
+export const BODY_MAX = 64 * 1024
+
+export interface McpHttpOptions {
+  port: () => number
+  caller: (token: string) => ToolHost | null
+  version: string
+  tools: readonly McpTool[]
+  log?: (line: string) => void
+}
+
+function readBody(req: IncomingMessage): Promise<string | null> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > BODY_MAX) {
+        req.removeAllListeners('data')
+        req.pause()
+        resolve(null)
+      } else chunks.push(chunk)
+    })
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    req.on('error', () => resolve(null))
+  })
+}
+
+const replyJson = (res: ServerResponse, status: number, json: unknown): void =>
+  void res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(json))
+
+async function onMcpRequest(req: IncomingMessage, res: ServerResponse, opts: McpHttpOptions): Promise<void> {
+  const gate = mcpGate({ method: req.method, url: req.url, host: req.headers.host, origin: req.headers.origin, authorization: req.headers.authorization }, opts.port())
+  if ('status' in gate) return void res.writeHead(gate.status, gate.allow ? { Allow: gate.allow } : {}).end()
+  const host = opts.caller(gate.token)
+  if (!host) return void res.writeHead(401).end()
+  if (Number(req.headers['content-length'] ?? 0) > BODY_MAX) return void res.writeHead(413, { Connection: 'close' }).end()
+  const raw = await readBody(req)
+  if (raw === null) return void res.writeHead(413, { Connection: 'close' }).end(() => req.destroy())
+  let body: unknown
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    return replyJson(res, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })
+  }
+  const out = await handleMcp(body, host, opts.version, opts.tools)
+  if (out.json === undefined) res.writeHead(out.status).end()
+  else replyJson(res, out.status, out.json)
+}
+
+export function mcpHttpHandler(opts: McpHttpOptions): (req: IncomingMessage, res: ServerResponse) => void {
+  return (req, res) => {
+    onMcpRequest(req, res, opts).catch((err: unknown) => {
+      opts.log?.(`mcp request failed: ${String(err)}`)
+      if (!res.headersSent) res.writeHead(500)
+      res.end()
+    })
+  }
 }

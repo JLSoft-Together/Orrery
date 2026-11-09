@@ -1,0 +1,80 @@
+{
+  "mainToCore": [
+    { "t": "init", "token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "origins": ["http://127.0.0.1:4317"], "appVersion": "3.4.0" },
+    {
+      "t": "resolved",
+      "rid": "r-1",
+      "ok": true,
+      "id": "6f1c1d2e-0000-4000-8000-000000000001",
+      "file": "/bin/zsh",
+      "args": ["-l", "-i", "-c", "claude --session-id 6f1c1d2e-0000-4000-8000-0000000000aa; exec /bin/zsh -l"],
+      "env": { "TERM": "xterm-256color", "ORRERY_API": "http://127.0.0.1:50123", "ORRERY_TOKEN": "aa" },
+      "cwd": "/Users/me/work/app",
+      "agentSession": "6f1c1d2e-0000-4000-8000-0000000000aa"
+    },
+    {
+      "t": "resolved",
+      "rid": "r-2",
+      "ok": true,
+      "id": "6f1c1d2e-0000-4000-8000-000000000002",
+      "file": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": ["-NoLogo", "-NoExit", "-EncodedCommand", "AAAA"],
+      "env": { "ORRERY_SI_NONCE": "00112233445566778899aabbccddeeff" },
+      "cwd": "C:\\work\\app",
+      "si": "00112233445566778899aabbccddeeff"
+    },
+    { "t": "resolved", "rid": "r-3", "ok": false, "message": "preset" },
+    { "t": "resolved", "rid": "r-4", "ok": false, "message": "cwd" },
+    { "t": "resolved", "rid": "r-5", "ok": false, "message": "limit" },
+    { "t": "resolved", "rid": "r-6", "ok": false, "message": "spawn" },
+    { "t": "cwd-ok", "rid": "c-1", "cwd": "/Users/me/work/app/src" },
+    { "t": "cwd-ok", "rid": "c-2", "cwd": null },
+    { "t": "wt-reply", "rid": "w-1", "reply": { "t": "wt.list", "repo": "/Users/me/work/app", "worktrees": [] } },
+    { "t": "wt-reply", "rid": "w-2", "reply": { "t": "wt.error", "code": "busy" } },
+    { "t": "branch", "id": "6f1c1d2e-0000-4000-8000-000000000001", "branch": "main" },
+    { "t": "branch", "id": "6f1c1d2e-0000-4000-8000-000000000001", "branch": null },
+    { "t": "census" },
+    { "t": "kill-all" },
+    { "t": "shutdown" }
+  ],
+  "coreToMain": [
+    { "t": "listening", "port": 50123 },
+    { "t": "resolve", "rid": "r-1", "msg": { "t": "spawn", "preset": "claude", "cols": 120, "rows": 30, "cwd": "/Users/me/work/app", "session": "6f1c1d2e-0000-4000-8000-0000000000aa" } },
+    { "t": "resolve", "rid": "r-2", "msg": { "t": "spawn", "preset": "shell", "cols": 80, "rows": 24, "integrate": true, "shim": true } },
+    { "t": "spawned", "id": "6f1c1d2e-0000-4000-8000-000000000001", "pid": 4242 },
+    { "t": "spawned", "id": "6f1c1d2e-0000-4000-8000-000000000002", "pid": 0 },
+    { "t": "pid", "id": "6f1c1d2e-0000-4000-8000-000000000002", "pid": 5151 },
+    { "t": "exited", "id": "6f1c1d2e-0000-4000-8000-000000000001", "code": 0 },
+    { "t": "exited", "id": "6f1c1d2e-0000-4000-8000-000000000002", "code": -1073741502 },
+    { "t": "exited", "id": "6f1c1d2e-0000-4000-8000-000000000002", "code": 3221225794 },
+    { "t": "removed", "id": "6f1c1d2e-0000-4000-8000-000000000001" },
+    { "t": "cwd", "rid": "c-1", "id": "6f1c1d2e-0000-4000-8000-000000000001", "cwd": "/Users/me/work/app/src" },
+    { "t": "wt", "rid": "w-1", "msg": { "t": "wt.list", "cwd": "/Users/me/work/app" } },
+    { "t": "wt", "rid": "w-3", "msg": { "t": "wt.add", "cwd": "/Users/me/work/app", "branch": "feat/x", "copy": [".env*"] } },
+    { "t": "wt", "rid": "w-4", "msg": { "t": "wt.remove", "cwd": "/Users/me/work/app", "path": "/Users/me/work/app-wt/feat-x" } },
+    { "t": "census-reply", "sessions": [{ "id": "6f1c1d2e-0000-4000-8000-000000000002", "preset": "shell", "cwd": "C:\\work\\app", "liveCwd": "C:\\work\\app\\src", "pid": 5151, "alive": true }] }
+  ],
+  "invalidMainToCore": [
+    { "t": "init", "token": "x", "origins": "http://127.0.0.1:4317", "appVersion": "1" },
+    { "t": "resolved", "rid": "r-9", "ok": false, "message": "nope" },
+    { "t": "resolved", "rid": "r-9", "ok": true, "id": "x", "file": "f", "args": [1], "env": {}, "cwd": "/" },
+    { "t": "resolved", "rid": "r-9", "ok": true, "id": "x", "file": "f", "args": [], "env": { "A": 1 }, "cwd": "/" },
+    { "t": "cwd-ok", "rid": "c-9", "cwd": 3 },
+    { "t": "wt-reply", "rid": "w-9", "reply": { "t": "ready" } },
+    { "t": "branch", "id": "", "branch": "main" },
+    { "t": "spawn" },
+    null,
+    "census"
+  ],
+  "invalidCoreToMain": [
+    { "t": "listening", "port": 0 },
+    { "t": "resolve", "rid": "r", "msg": { "t": "attach", "id": "x" } },
+    { "t": "spawned", "id": "x", "pid": -1 },
+    { "t": "exited", "id": "x", "code": 1.5 },
+    { "t": "cwd", "rid": "c", "id": "x", "cwd": 7 },
+    { "t": "wt", "rid": "w", "msg": { "t": "owners", "pids": [] } },
+    { "t": "census-reply", "sessions": null },
+    { "t": "ready" },
+    []
+  ]
+}

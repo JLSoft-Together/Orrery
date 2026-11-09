@@ -1,5 +1,9 @@
-import { lstatSync, readlinkSync, realpathSync, statSync } from 'node:fs'
+import { realpath as realpathCb } from 'node:fs'
+import { lstat, readlink, stat } from 'node:fs/promises'
 import path from 'node:path'
+import { promisify } from 'node:util'
+
+const realpathJs = promisify(realpathCb)
 
 export const PATH_MAX = 4096
 export const SEGMENTS_MAX = 64
@@ -18,14 +22,14 @@ const inside = (child: string, parent: string): boolean => {
 }
 
 /** No component below `root` may be a link to a share: realpath would already open it (SMB, NTLM hash). */
-function remoteLinkBelow(root: string, target: string): boolean {
+async function remoteLinkBelow(root: string, target: string): Promise<boolean> {
   const parts = path.relative(root, target).split(path.sep).filter(Boolean)
   let at = root
   for (const part of parts) {
     at = path.join(at, part)
     try {
-      if (!lstatSync(at).isSymbolicLink()) continue
-      const to = readlinkSync(at)
+      if (!(await lstat(at)).isSymbolicLink()) continue
+      const to = await readlink(at)
       if (isRemoteLink(to)) return true
     } catch {
       return false
@@ -39,7 +43,7 @@ function remoteLinkBelow(root: string, target: string): boolean {
  * first, so a link inside the project pointing out of it is refused like `..` is. A missing file is allowed only
  * with `allowMissing`, judged by its deepest existing parent folder.
  */
-export function resolveInside(root: string, raw: unknown, opts: { allowMissing?: boolean; platform?: string } = {}): { ok: true; path: string; exists: boolean } | { ok: false; error: InsideError } {
+export async function resolveInside(root: string, raw: unknown, opts: { allowMissing?: boolean; platform?: string } = {}): Promise<{ ok: true; path: string; exists: boolean } | { ok: false; error: InsideError }> {
   if (typeof raw !== 'string' || !raw.trim() || raw.length > PATH_MAX || /[\0\r\n]/.test(raw)) return { ok: false, error: 'path' }
   if (UNC.test(raw) || UNC.test(root)) return { ok: false, error: 'path' }
   const segments = raw.split(/[\\/]+/).filter(Boolean)
@@ -47,17 +51,17 @@ export function resolveInside(root: string, raw: unknown, opts: { allowMissing?:
   if ((opts.platform ?? process.platform) === 'win32' && segments.some((s) => DEVICE.test(s))) return { ok: false, error: 'path' }
   let realRoot: string
   try {
-    realRoot = realpathSync(root)
+    realRoot = await realpathJs(root)
   } catch {
     return { ok: false, error: 'missing' }
   }
   const asked = path.resolve(realRoot, raw)
   if (!inside(asked, realRoot)) return { ok: false, error: 'outside' }
-  if (remoteLinkBelow(realRoot, asked)) return { ok: false, error: 'path' }
+  if (await remoteLinkBelow(realRoot, asked)) return { ok: false, error: 'path' }
   let real: string
   let exists = true
   try {
-    real = realpathSync(asked)
+    real = await realpathJs(asked)
   } catch {
     if (!opts.allowMissing) return { ok: false, error: 'missing' }
     exists = false
@@ -65,7 +69,7 @@ export function resolveInside(root: string, raw: unknown, opts: { allowMissing?:
     const rest = [path.basename(asked)]
     for (;;) {
       try {
-        real = path.join(realpathSync(dir), ...rest)
+        real = path.join(await realpathJs(dir), ...rest)
         break
       } catch {
         const up = path.dirname(dir)
@@ -78,7 +82,7 @@ export function resolveInside(root: string, raw: unknown, opts: { allowMissing?:
   if (UNC.test(real) || !inside(real, realRoot)) return { ok: false, error: 'outside' }
   if (exists) {
     try {
-      const st = statSync(real)
+      const st = await stat(real)
       if (st.isDirectory()) return { ok: false, error: 'folder' }
       if (!st.isFile()) return { ok: false, error: 'path' }
     } catch {
@@ -88,9 +92,9 @@ export function resolveInside(root: string, raw: unknown, opts: { allowMissing?:
   return { ok: true, path: real, exists }
 }
 
-export function mtimeOf(file: string): number | undefined {
+export async function mtimeOf(file: string): Promise<number | undefined> {
   try {
-    const s = statSync(file)
+    const s = await stat(file)
     return s.isFile() ? Math.round(s.mtimeMs) : undefined
   } catch {
     return undefined
@@ -98,9 +102,9 @@ export function mtimeOf(file: string): number | undefined {
 }
 
 /** Real path of `p`, or null when it cannot be resolved. */
-export function realOf(p: string): string | null {
+export async function realOf(p: string): Promise<string | null> {
   try {
-    return realpathSync(p)
+    return await realpathJs(p)
   } catch {
     return null
   }

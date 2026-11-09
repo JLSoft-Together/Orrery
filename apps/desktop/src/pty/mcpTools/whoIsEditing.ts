@@ -52,13 +52,13 @@ const sameRoot = (a: string, b: string): boolean => path.relative(a, b) === ''
  * The page names the other checkout's copy; its mtime is read only when the root is one of the repo's worktrees
  * as git lists them to the host, and the real file (links resolved) is inside that root with the same name.
  */
-function withMtime(e: FileEditor, base: string, roots: readonly string[]): FileEditor {
+async function withMtime(e: FileEditor, base: string, roots: readonly string[]): Promise<FileEditor> {
   if (!path.isAbsolute(e.file) || !path.isAbsolute(e.root) || /^[\\/]{2}/.test(e.file) || /^[\\/]{2}/.test(e.root) || path.basename(e.file) !== base) return e
   const root = roots.find((r) => sameRoot(r, e.root))
-  const real = root ? realOf(e.file) : null
-  const realRoot = root ? realOf(root) : null
+  const real = root ? await realOf(e.file) : null
+  const realRoot = root ? await realOf(root) : null
   if (!real || !realRoot || path.basename(real) !== base || !isInsideDir(real, realRoot)) return e
-  const at = mtimeOf(real)
+  const at = await mtimeOf(real)
   return at ? { ...e, modifiedAt: at } : e
 }
 
@@ -67,7 +67,7 @@ export const whoIsEditing: McpTool = {
   async call(args, host) {
     const fail = (error: keyof typeof ERRORS) => toolResult(ERRORS[error], { ok: false, error }, true)
     if (!host.take('who', WHO_RATE_MAX, WHO_RATE_MS)) return fail('rate')
-    const target = resolveInside(host.root, args.path, { allowMissing: true })
+    const target = await resolveInside(host.root, args.path, { allowMissing: true })
     if (!target.ok) return fail(target.error)
     let res: McpPageResult
     try {
@@ -78,7 +78,7 @@ export const whoIsEditing: McpTool = {
     if (!res.ok) return fail(res.error)
     if (res.tool !== 'who_is_editing') return fail('failed')
     const roots = res.editors.length ? await host.checkoutRoots().catch((): string[] => []) : []
-    const editors = res.editors.map((e) => withMtime(e, path.basename(target.path), roots))
+    const editors = await Promise.all(res.editors.map((e) => withMtime(e, path.basename(target.path), roots)))
     const out = { ok: true, path: target.path, repo: res.repo, editors }
     if (!res.repo) return toolResult(`${target.path} is not in a git repository, so Orrery cannot tell which sessions changed it.`, out)
     if (!editors.length) return toolResult(`No other Orrery agent session has an unmerged change to ${target.path}.`, out)

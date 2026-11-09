@@ -51,3 +51,12 @@ Ghi chú: apps/collector/test/__snapshots__/tracker.test.ts.snap và apps/deskto
 - ⚡️ Rail cards skip layout and paint off-screen (content-visibility)
 - ⚡️ Agent Map mounts only visible nodes and edges
 - 📈 v87 step 1c benchmarks (3 runs), WP briefs / reports, code index, handoff
+
+## 2026-11-09 v87 bước 1b — đã commit + push
+- ⚡️ Heavy-load WS flush 300 ms
+  apps/web/src/stores/connection.ts
+- 📦 Smaller installer: drop node-pty .pdb and WebGPU-only dxcompiler / dxil on Windows
+  apps/desktop/electron-builder.yml (filter), apps/desktop/after-pack.cjs
+- 📦 Download the layout daemon jar + loose kit on first XML Preview use (sha256-pinned release asset, CI builds one reproducible zip)
+  apps/desktop/{build.mjs,daemon-kit.mjs,electron-builder.yml,src/layout/*,src/main.ts,test/layout-kit.test.ts}, apps/layout-daemon/{build.gradle.kts,README.md}, .github/workflows/{desktop,release}.yml, .code_index/desktop.md
+- 📝 WP brief / report, progress, handoff

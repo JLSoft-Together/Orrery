@@ -7,3 +7,4 @@
 - 2026-11-05 · Thành viên Telegram (WP-D, main chốt theo đề xuất, chủ nhân đổi được): mức `read` chỉ status / last / tail / help + nút 💬 📜 📄; mức `full` mọi lệnh + nút trừ Cho phép / Từ chối quyền tool, nối topic, lệnh lúc app tắt, ghép bot (chỉ chủ nhân); prompt của thành viên mang tên đã lưu trong app, không lấy tên Telegram (chống mạo danh).
 
 - 2026-11-09 · Office (Habblaud) mặc định TẮT, bật trong Settings · chủ nhân hầu như không dùng; tắt thì collector không chạy OfficeHub/timelapse (tiết kiệm CPU/disk), web không load Habblaud.
+- 2026-11-09 · PLAN-v87 lõi Rust: đồng ý cài Rust + CI macOS; bỏ blur trên toolbar/sidebar (GPU); chuyển MCP orrery từ PTY host sang Electron main ở bước 2; giảm cả size cài đặt (bước 1b, mạnh nhất ở bước 6 Tauri).

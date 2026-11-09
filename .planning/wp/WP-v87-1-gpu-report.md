@@ -1,0 +1,24 @@
+## WP-v87-1-gpu — DONE
+- Đã đổi:
+  - apps/web/src/style.css: `.ccm-material` bỏ `backdrop-filter` + `-webkit-backdrop-filter`; `--ccm-material` light `rgb(246 246 248)`, dark `rgb(40 40 42)` (opaque, bỏ alpha .78).
+  - apps/web/src/themes.css:17: `--ccm-material: var(--ccm-raised)` (trước 80% trong suốt) cho mọi theme phụ.
+  - apps/web/src/components/workspace/CodeEditor.vue (~381): `.cm-panels` bỏ `backdrop-filter: blur(20px)`.
+  - CLAUDE.md (dòng Visual style) và .planning/AUDIT-v18-deck-reference.md (bảng Material bar): ghi quyết định không blur.
+- Bảng blur trước/sau:
+  - `.ccm-material` (~25 chỗ dùng: AppHeader, WorkspaceView, WorkspaceSidebar, RailColumn, AgentMap toolbar/zoom, pane toolbar...) blur 20px saturate 180% → không blur, nền opaque.
+  - `.cm-panels` blur 20px → không.
+  - Còn lại `rg backdrop apps/web/src` = 0 kết quả áp blur.
+- Animation infinite (trước = sau, đều giữ):
+  - `.ccm-spin` / `animate-spin` / `RefreshCw` spin: chỉ render khi busy (v-if hoặc `cond ? 'ccm-spin' : ''`, class gỡ khi xong). ~100 chỗ.
+  - `.ccm-shimmer`: BrowserToolbar:226 (v-if loading), RunPane:287 (v-else progress không có step, trong thanh chỉ hiện khi chạy), UsageView:127-130 (skeleton v-if waiting), LayoutPreview `.lp-skel-bar` (skeleton khi đang render).
+  - `lp-slide` (LayoutPreview:726 busy bar, chỉ lúc rendering), `animate-pulse` thanh progress không biết % (BuildCleanDialog, AgentDataSettings, SettingsDeepSeek, chỉ khi `pct === null` trong dialog đang mở).
+  - Animation lặp hữu hạn sẵn có: ccm-breathe `3`, ccm-pulse `3`, ccm-caret `4`. Không có glow/pulse trang trí chạy khi rảnh → không cần bỏ cái nào.
+  - Không có `will-change` và không có `filter: blur/drop-shadow` trong apps/web/src.
+- rAF: useCountUp, PeerEdge, TreeEdge, OfficeTimelapse (loop dừng khi pause/end/hidden), CodeMinimap (schedule theo yêu cầu), các rAF khác một lần. Không loop rảnh. Canvas Office pixel-art nằm ở packages/habblaud, ngoài phạm vi.
+- Tiêu chí: 3/3 đạt.
+- Audit: diff chỉ 5 file trên (+ FlipClock.vue, HistoryView.vue trong git diff là của subagent khác, không đụng).
+- Review: opaque nền ở mọi theme (light/dark mặc định + theme phụ) dùng raised, text ink đã được themes.test kiểm ≥4.5:1 trên raised; material lồng nhau (header > pane toolbar) cùng màu opaque nên không đổi tương phản. Chưa kiểm compact window bằng mắt. Comment cũ ở style.css ~129 ("translucency is for toolbar / sidebar only") và vài chỗ khác nay lỗi thời, để nguyên theo rule giữ comment.
+- Test: `npm test -w @ccm/web -- --maxWorkers=6` → 1823 pass / 0 fail (213 file, gồm themes.test.ts); `npm run typecheck -w @ccm/web` → sạch.
+- Nhìn: CHƯA NHÌN: không được chạy app. Cần main QA: toolbar/sidebar có còn đủ tách khỏi nội dung khi cuộn (đặc biệt header sticky, theme sáng), `.cm-panels`.
+- Ngoài phạm vi: packages/habblaud canvas; docs ngoài (code_index/web.md có nhắc material, chưa cập nhật vì ngoài danh sách file).
+- Commit message đề xuất: Drop backdrop blur: chrome layers use opaque material tokens, update design rule

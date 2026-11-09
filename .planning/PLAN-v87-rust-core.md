@@ -70,6 +70,14 @@ Nối tiếp `PLAN-v86-performance.md` (đã làm 6 WP tối ưu trên stack cũ
 - Virtualize list dài (activity, session list, git log nếu chưa).
 - Cổng: GPU + renderer CPU lúc rảnh giảm ≥ 70 % so với bước 0; không mất animation theo rule chủ nhân (animation chạy khi có thay đổi, không chạy lặp khi rảnh).
 
+### Bước 1b — Giảm size cài đặt trên Electron (3–5 ngày)
+- Hiện tại (v3.4.0): Setup / Portable 146 MB, dmg 147–152 MB; cài xong 406 MB, trong đó runtime Electron/Chromium ~310 MB.
+- Layout daemon (jar 30 MB + loose kit 10 MB) thành gói tải về lần đầu bật XML Layout Preview, có checksum, lưu vào `CCM_DATA_DIR`.
+- NSIS / dmg nén mạnh hơn (`compression: maximum`), đo thời gian cài trước/sau.
+- Bỏ `dxcompiler.dll` + `dxil.dll` (~26 MB, chỉ dùng cho WebGPU; app dùng WebGL) — chỉ làm nếu test WebGL terminal + Office + Agent Map trên máy thật vẫn ổn.
+- Web assets: chỉ đóng gói grammar shiki cho ngôn ngữ hay dùng, phần còn lại tải lười trong cùng app (không lấy từ network).
+- Cổng: Setup ≤ 115 MB, mọi tính năng chạy được (Layout Preview tải đúng lần đầu).
+
 ### Bước 2 — `core-pty` thay PTY host (2–3 tuần)
 - Renderer đã nói chuyện thẳng với PTY host qua WebSocket `ws://127.0.0.1:<port>/pty` + subprotocol token (`PTY_PROTOCOL_PREFIX`), nên chỉ cần thay binary, giữ đúng message.
 - Làm: spawn shell / agent preset, resize, write, ring scrollback 256 KB, replay, backpressure, census, owners, flush **leading edge** (bỏ timer 8 ms → hết 15 ms trễ trên Windows).
@@ -93,7 +101,7 @@ Nối tiếp `PLAN-v86-performance.md` (đã làm 6 WP tối ưu trên stack cũ
 - Cổng: toàn bộ test collector chuyển thành test parity / test Rust tương đương; E2E desktop pass trên Windows + macOS; RAM tổng đạt mục tiêu mục 1.
 
 ### Bước 6 — (Tuỳ chọn) vỏ Tauri
-- Chỉ quyết sau bước 5, dựa trên số đo. Vướng: `<webview>` + `capturePage`, `titleBarOverlay`, migrate localStorage (279 chỗ) + safeStorage, E2E macOS không có CDP.
+- Chỉ quyết sau bước 5, dựa trên số đo. Đây là cách duy nhất để size cài đặt xuống dưới 50 MB (ước Windows 20–35 MB vì dùng WebView2 có sẵn trên Win10/11, macOS 15–30 MB). Vướng: `<webview>` + `capturePage`, `titleBarOverlay`, migrate localStorage (279 chỗ) + safeStorage, E2E macOS không có CDP.
 
 ## 7. Rủi ro
 
@@ -106,12 +114,13 @@ Nối tiếp `PLAN-v86-performance.md` (đã làm 6 WP tối ưu trên stack cũ
 | Ký / notarize binary mới trên macOS | Thêm vào workflow ngay từ bước 2 |
 | Người sửa app phải đọc Rust | `.code_index/core.md` + README crate, giữ module nhỏ |
 
-## 8. Cần chủ nhân chốt trước khi code
+## 8. Chủ nhân đã chốt (2026-11-09)
 
-1. Cài Rust trên máy dev (Windows) và thêm vào CI macOS — đồng ý?
-2. Bước 1 có được giảm / bỏ blur trên toolbar + sidebar không, hay giữ blur và chỉ bỏ khi bật một setting "tiết kiệm"?
-3. Bước 2: chuyển MCP server `orrery` từ PTY host sang Electron main — đồng ý?
-4. Commit 6 WP của PLAN-v86 trước khi bắt đầu v87 (để v87 đi trên nền sạch)?
+1. Cài Rust trên máy dev (Windows) và thêm vào CI macOS — đồng ý.
+2. Bước 1 được giảm / bỏ blur trên toolbar + sidebar — đồng ý.
+3. Bước 2: chuyển MCP server `orrery` từ PTY host sang Electron main — đồng ý.
+4. Commit 6 WP của PLAN-v86 trước — đã commit (`8ba9d71`…`816f047`).
+5. Giảm cả size cài đặt — thêm bước 1b; giảm mạnh chỉ có ở bước 6 (Tauri).
 
 ## 9. Theo dõi
 

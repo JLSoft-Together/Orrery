@@ -33,3 +33,15 @@ Không add: spikes/, bg_native_ad_cta.xml, git-gui.bat, apps/desktop/test/__snap
 - docs: code index + PLAN-v86 performance plan, WP briefs/reports
   .code_index/*, .planning/{PLAN-v86-performance.md,PROGRESS-2026-11-09-perf.md,DECISIONS.md,COMMITS.md,wp/WP-perf-*}
 Ghi chú: apps/collector/test/__snapshots__/tracker.test.ts.snap và apps/desktop/test/__snapshots__/fwp-host.test.ts.snap chỉ đổi line ending do vitest — bỏ ra khỏi commit (git checkout -- <file>).
+
+## 2026-11-09 v87 bước 0 + 1 — đã commit + push
+- ⚡️ Drop chrome blur: opaque material tokens, design rule updated
+  apps/web/src/{style.css,themes.css,components/workspace/CodeEditor.vue}, CLAUDE.md, .planning/AUDIT-v18-deck-reference.md
+- ⚡️ Pause the 1 s clock, history poll and tool-span prune while the window is hidden (usePageActive)
+  apps/web/src/{composables/usePageActive.ts(+test),components/FlipClock.vue,components/history/HistoryView.vue,stores/toolSpans.ts}
+- ⚡️ Renderer under load: per-frame event batching, frozen shallow entity stores, WAAPI list motion, cursor blink only when focused
+  apps/web/src/{stores/connection.ts,stores/agents.ts,stores/terminals.ts,stores/toolSpans.ts,lib/patch.ts,lib/motion.ts,lib/stableEdges.ts(+test),components/SessionList.vue,components/AgentMap.vue,components/TreeEdge.vue,components/workspace/TermPane.vue,components/workspace/DropTerminal.vue,stores/connection.batch.test.ts}
+- 📈 perf-bench script (--stage, --trace, --profile) and Windows baselines 3.4.0 / v87
+  scripts/perf-bench.mjs, docs/perf/*
+- 📝 Plan v87, decisions, WP briefs/reports, code index
+  .planning/*, .code_index/*

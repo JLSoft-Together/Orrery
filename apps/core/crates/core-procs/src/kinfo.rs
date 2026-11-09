@@ -18,7 +18,9 @@ fn i32_at(b: &[u8], off: usize) -> i32 {
 }
 
 pub fn parse_kinfo(buf: &[u8]) -> Vec<Kinfo> {
-    buf.chunks_exact(KINFO_SIZE)
+    buf.as_chunks::<KINFO_SIZE>()
+        .0
+        .iter()
         .filter_map(|r| {
             let pid = u32::try_from(i32_at(r, OFF_PID)).ok()?;
             let ppid = u32::try_from(i32_at(r, OFF_PPID)).ok()?;

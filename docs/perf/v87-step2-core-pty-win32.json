@@ -1,0 +1,185 @@
+{
+  "label": "v87-step2-core-pty",
+  "platform": "win32",
+  "node": "v24.15.0",
+  "cpus": 8,
+  "cpuModel": "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz",
+  "totalMemMB": 49024,
+  "generated": "2026-11-09T07:08:41.572Z",
+  "coreBinaryBytes": 927744,
+  "params": {
+    "rounds": 2,
+    "echoSamples": 300,
+    "floodMB": 128
+  },
+  "summary": {
+    "node": {
+      "echoP50Ms": 15.92,
+      "echoP90Ms": 16.65,
+      "echoP99Ms": 22.02,
+      "rss1PaneMB": 118,
+      "private1PaneMB": 43.2,
+      "rss8PanesMB": 173.4,
+      "private8PanesMB": 140,
+      "floodCpuSeconds": 3.14,
+      "floodCpuPctOfOneCore": 14.3,
+      "floodPeakWorkingSetMB": 231.1,
+      "floodMBPerSecond": 6.4
+    },
+    "rust": {
+      "echoP50Ms": 0.77,
+      "echoP90Ms": 1.36,
+      "echoP99Ms": 15.91,
+      "rss1PaneMB": 6.1,
+      "private1PaneMB": 1.4,
+      "rss8PanesMB": 8,
+      "private8PanesMB": 3.9,
+      "floodCpuSeconds": 1.36,
+      "floodCpuPctOfOneCore": 6.4,
+      "floodPeakWorkingSetMB": 9.8,
+      "floodMBPerSecond": 6.2
+    }
+  },
+  "runs": {
+    "node": [
+      {
+        "mode": "node",
+        "hostName": "electron.exe",
+        "rss1": {
+          "workingSetMB": 118,
+          "privateMB": 43.2,
+          "peakWorkingSetMB": 118,
+          "cpuSeconds": 0.296875
+        },
+        "rss8": {
+          "workingSetMB": 173.4,
+          "privateMB": 140,
+          "peakWorkingSetMB": 173.4,
+          "cpuSeconds": 1.015625
+        },
+        "echo": {
+          "samples": 300,
+          "p50": 15.92,
+          "p90": 16.65,
+          "p99": 17.27,
+          "max": 30.22,
+          "mean": 15.97
+        },
+        "flood": {
+          "completed": true,
+          "wallSeconds": 21.98,
+          "deliveredMB": 131.3,
+          "mbPerSecond": 6,
+          "cpuSeconds": 3.14,
+          "cpuPct": 14.3,
+          "peakWorkingSetMB": 231.1,
+          "workingSetAfterMB": 227.4
+        }
+      },
+      {
+        "mode": "node",
+        "hostName": "electron.exe",
+        "rss1": {
+          "workingSetMB": 116,
+          "privateMB": 40.2,
+          "peakWorkingSetMB": 116,
+          "cpuSeconds": 0.21875
+        },
+        "rss8": {
+          "workingSetMB": 171.2,
+          "privateMB": 136.6,
+          "peakWorkingSetMB": 171.2,
+          "cpuSeconds": 0.796875
+        },
+        "echo": {
+          "samples": 300,
+          "p50": 15.82,
+          "p90": 16.37,
+          "p99": 22.02,
+          "max": 47.39,
+          "mean": 16.09
+        },
+        "flood": {
+          "completed": true,
+          "wallSeconds": 20.55,
+          "deliveredMB": 131.4,
+          "mbPerSecond": 6.4,
+          "cpuSeconds": 2.77,
+          "cpuPct": 13.5,
+          "peakWorkingSetMB": 229.3,
+          "workingSetAfterMB": 224.6
+        }
+      }
+    ],
+    "rust": [
+      {
+        "mode": "rust",
+        "hostName": "orrery-core.exe",
+        "rss1": {
+          "workingSetMB": 6.1,
+          "privateMB": 1.4,
+          "peakWorkingSetMB": 6.1,
+          "cpuSeconds": 0.015625
+        },
+        "rss8": {
+          "workingSetMB": 8,
+          "privateMB": 3.9,
+          "peakWorkingSetMB": 8,
+          "cpuSeconds": 0.234375
+        },
+        "echo": {
+          "samples": 300,
+          "p50": 0.77,
+          "p90": 1.36,
+          "p99": 15.91,
+          "max": 57.24,
+          "mean": 1.28
+        },
+        "flood": {
+          "completed": true,
+          "wallSeconds": 21.67,
+          "deliveredMB": 131.4,
+          "mbPerSecond": 6.1,
+          "cpuSeconds": 1.36,
+          "cpuPct": 6.3,
+          "peakWorkingSetMB": 9.7,
+          "workingSetAfterMB": 9.1
+        }
+      },
+      {
+        "mode": "rust",
+        "hostName": "orrery-core.exe",
+        "rss1": {
+          "workingSetMB": 6.1,
+          "privateMB": 1.4,
+          "peakWorkingSetMB": 6.1,
+          "cpuSeconds": 0
+        },
+        "rss8": {
+          "workingSetMB": 8,
+          "privateMB": 3.9,
+          "peakWorkingSetMB": 8,
+          "cpuSeconds": 0.09375
+        },
+        "echo": {
+          "samples": 300,
+          "p50": 0.65,
+          "p90": 1.04,
+          "p99": 5.47,
+          "max": 56.16,
+          "mean": 1.06
+        },
+        "flood": {
+          "completed": true,
+          "wallSeconds": 21.07,
+          "deliveredMB": 131.4,
+          "mbPerSecond": 6.2,
+          "cpuSeconds": 1.34,
+          "cpuPct": 6.4,
+          "peakWorkingSetMB": 9.8,
+          "workingSetAfterMB": 9.8
+        }
+      }
+    ]
+  }
+}

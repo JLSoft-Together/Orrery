@@ -12,6 +12,10 @@ export type PtyStart = { spawn: { preset: PtyPreset; cwd?: string; resume?: stri
 const encoder = new TextEncoder()
 // Host caps frames at 1 MB; a big paste goes out in slices instead of killing the socket.
 const CHUNK = 64 * 1024
+const OVERFLOW_CLOSE = 4001
+const MAX_REATTACH = 5
+const REATTACH_WINDOW_MS = 30_000
+const RESET_TERMINAL = new Uint8Array([0x1b, 0x63])
 
 async function endpoint(): Promise<PtyEndpoint> {
   const ep = await desktop?.ptyEndpoint()
@@ -23,6 +27,11 @@ async function endpoint(): Promise<PtyEndpoint> {
 export class PtyConnection {
   private ws: WebSocket | null = null
   private closedByUs = false
+  private sessionId: string | null = null
+  private cols = 80
+  private rows = 24
+  private reattaches = 0
+  private reattachedAt = 0
 
   constructor(private readonly handlers: PtyHandlers) {}
 
@@ -81,6 +90,8 @@ export class PtyConnection {
   async open(start: PtyStart, cols: number, rows: number): Promise<void> {
     const ep = await endpoint()
     if (this.closedByUs) return
+    this.cols = cols
+    this.rows = rows
     const ws = new WebSocket(ep.url, [ep.protocol])
     ws.binaryType = 'arraybuffer'
     this.ws = ws
@@ -93,15 +104,32 @@ export class PtyConnection {
       if (this.closedByUs || this.ws !== ws) return
       if (typeof ev.data !== 'string') return this.handlers.onOutput(new Uint8Array(ev.data))
       try {
-        this.handlers.onMessage(JSON.parse(ev.data) as PtyServerMessage)
+        const msg = JSON.parse(ev.data) as PtyServerMessage
+        if (msg.t === 'ready') this.sessionId = msg.id
+        this.handlers.onMessage(msg)
       } catch {
         // malformed control frame: ignore, like unknown protocol events elsewhere
       }
     }
     ws.onclose = (ev) => {
       if (this.ws === ws) this.ws = null
-      if (!this.closedByUs) this.handlers.onClose(ev.code)
+      if (this.closedByUs) return
+      if (ev.code === OVERFLOW_CLOSE && this.reattach()) return
+      this.handlers.onClose(ev.code)
     }
+  }
+
+  private reattach(): boolean {
+    const id = this.sessionId
+    if (!id) return false
+    const now = Date.now()
+    if (now - this.reattachedAt > REATTACH_WINDOW_MS) this.reattaches = 0
+    if (this.reattaches >= MAX_REATTACH) return false
+    this.reattaches++
+    this.reattachedAt = now
+    this.handlers.onOutput(RESET_TERMINAL)
+    this.open({ attach: id }, this.cols, this.rows).catch(() => this.handlers.onClose(OVERFLOW_CLOSE))
+    return true
   }
 
   write(text: string): void {
@@ -114,6 +142,8 @@ export class PtyConnection {
   }
 
   resize(cols: number, rows: number): void {
+    this.cols = cols
+    this.rows = rows
     this.control({ t: 'resize', cols, rows })
   }
 

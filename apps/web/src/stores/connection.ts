@@ -29,7 +29,7 @@ export const HEAVY_ENTER_RATE = 20
 export const HEAVY_ENTER_WINDOW_MS = 250
 export const HEAVY_ENTER_BURST = 10
 export const HEAVY_EXIT_RATE = 8
-export const HEAVY_FLUSH_MS = 220
+export const HEAVY_FLUSH_MS = 300
 export const HIDDEN_FLUSH_MS = 1_000
 const ATTENTION_STATUSES: ReadonlySet<string> = new Set(['waiting', 'error', 'completed'])
 

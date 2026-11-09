@@ -56,6 +56,9 @@ mac:
   # Hardened runtime + ad-hoc breaks Electron's library validation, so it stays off.
   identity: '-'
   hardenedRuntime: false
+  extraResources:
+    - from: ../core/target/bundle/${arch}/orrery-core
+      to: core/orrery-core
   protocols:
     - name: Orrery
       schemes: [agent-monitor]
@@ -65,6 +68,8 @@ win:
   icon: ../../scripts/assets/ccm.ico
   # koffi (native process table, collector/src/win-procs.ts): loader + the host's prebuilt only; macOS uses ps.
   extraResources:
+    - from: ../core/target/bundle/${arch}/orrery-core.exe
+      to: core/orrery-core.exe
     - from: ../../node_modules/koffi
       to: koffi/node_modules/koffi
       filter: [package.json, LICENSE.txt, index.cjs, src/koffi/index.cjs, src/koffi/src/*.cjs]

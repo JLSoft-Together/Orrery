@@ -1,6 +1,6 @@
 // Bundles the Electron main process and the collector into stage/, the app dir electron-builder packs.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -50,6 +50,80 @@ function buildDaemon(tasks) {
   return spawnSync(gradlew, [...tasks, '--console=plain'], { cwd: daemonDir, env, stdio: 'inherit', shell: process.platform === 'win32' }).status === 0
 }
 
+const coreDir = path.join(HERE, '..', 'core')
+const coreExe = process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core'
+const coreRelease = path.join(coreDir, 'target', 'release', coreExe)
+const coreBundle = (arch) => path.join(coreDir, 'target', 'bundle', arch, coreExe)
+const skipCore = process.env.CCM_SKIP_CORE_BUILD === '1'
+const MAC_CORE_TARGETS = { arm64: 'aarch64-apple-darwin', x64: 'x86_64-apple-darwin' }
+
+function toolPath(name) {
+  const exe = process.platform === 'win32' ? `${name}.exe` : name
+  if (spawnSync(exe, ['--version'], { stdio: 'ignore' }).status === 0) return exe
+  const home = process.env.CARGO_HOME?.trim() || path.join(os.homedir(), '.cargo')
+  const local = path.join(home, 'bin', exe)
+  return existsSync(local) && spawnSync(local, ['--version'], { stdio: 'ignore' }).status === 0 ? local : null
+}
+
+function coreJobs() {
+  const asked = Number(process.env.JIN_MAX_THREADS)
+  const cap = Number.isInteger(asked) && asked > 0 ? asked : 6
+  return String(Math.max(1, Math.min(cap, 6, os.cpus().length)))
+}
+
+function cargoBuildCore(cargo, triple) {
+  const args = ['build', '--release', '--locked', '-p', 'core-bin', '-j', coreJobs(), ...(triple ? ['--target', triple] : [])]
+  return spawnSync(cargo, args, { cwd: coreDir, stdio: 'inherit' }).status === 0
+}
+
+function ensureRustTarget(triple) {
+  const rustup = toolPath('rustup')
+  if (!rustup) return false
+  const listed = spawnSync(rustup, ['target', 'list', '--installed'], { encoding: 'utf8' })
+  if (listed.status === 0 && listed.stdout.split(/\r?\n/).includes(triple)) return true
+  return spawnSync(rustup, ['target', 'add', triple], { cwd: coreDir, stdio: 'inherit' }).status === 0
+}
+
+function stageCore(arch, from) {
+  const to = coreBundle(arch)
+  mkdirSync(path.dirname(to), { recursive: true })
+  copyFileSync(from, to)
+  chmodSync(to, 0o755)
+}
+
+function buildCore(forDist) {
+  const fail = (msg) => {
+    if (forDist) {
+      console.error(`build: ${msg}`)
+      process.exit(1)
+    }
+    console.warn(`build: WARNING ${msg}; the Rust PTY core stays unavailable (CCM_CORE_PTY=rust will not start)`)
+  }
+  const plan = forDist
+    ? process.platform === 'win32'
+      ? [{ arch: 'x64', triple: null }]
+      : process.platform === 'darwin'
+        ? Object.entries(MAC_CORE_TARGETS).map(([arch, triple]) => ({ arch, triple }))
+        : []
+    : [{ arch: null, triple: null }]
+  const built = (step) => (step.triple ? path.join(coreDir, 'target', step.triple, 'release', coreExe) : coreRelease)
+  if (skipCore) {
+    if (forDist && plan.some((s) => !existsSync(coreBundle(s.arch)) && !existsSync(built(s)))) {
+      return fail('CCM_SKIP_CORE_BUILD=1 but orrery-core is not built; unset it or build apps/core first')
+    }
+    if (forDist) for (const s of plan) if (!existsSync(coreBundle(s.arch))) stageCore(s.arch, built(s))
+    return
+  }
+  if (!forDist && existsSync(coreRelease)) return
+  const cargo = toolPath('cargo')
+  if (!cargo) return fail('cargo is not installed (https://rustup.rs); apps/core was not built')
+  for (const step of plan) {
+    if (step.triple && !ensureRustTarget(step.triple)) return fail(`rust target ${step.triple} is missing (rustup target add ${step.triple})`)
+    if (!cargoBuildCore(cargo, step.triple) || !existsSync(built(step))) return fail('apps/core build failed (needs a Rust toolchain and, on Windows, the MSVC build tools)')
+    if (forDist) stageCore(step.arch, built(step))
+  }
+}
+
 const zipOnly = process.argv.includes('--daemon-zip-only')
 const dist = process.argv.includes('--dist') || zipOnly
 const zipFile = path.join(daemonDir, 'build', 'dist', `layout-daemon-${pkg.version}.zip`)
@@ -92,6 +166,8 @@ if (dist) {
     console.warn('build: layout-daemon build failed, the XML preview stays off (needs a JDK 17–24 in JAVA_HOME or ~/.gradle/jdks; Gradle 8.14 does not run on Java 25)')
   }
 }
+
+buildCore(dist)
 
 rmSync(STAGE, { recursive: true, force: true })
 mkdirSync(STAGE, { recursive: true })

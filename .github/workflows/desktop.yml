@@ -58,6 +58,12 @@ jobs:
         with:
           name: layout-daemon
           path: apps/layout-daemon/build/dist
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/core
       - run: npm ci
       # One dmg per arch, but npm only installs the host's node-pty prebuilt: fetch the other one too.
       - if: runner.os == 'macOS'

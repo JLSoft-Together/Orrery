@@ -27,7 +27,14 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: gradle
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/core
       - run: npm ci
+      - name: core (cargo test)
+        working-directory: apps/core
+        run: cargo test --locked -j 4
       # Daemon first: `assemble` builds the jar + layoutlib-dist that apps/desktop/test/layout-daemon.int.test.ts spawns.
       # Golden PNGs exist for Windows only (host-OS fonts); GoldenTest skips its image comparisons elsewhere.
       - name: layout daemon (assemble + test)

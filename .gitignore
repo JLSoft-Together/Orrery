@@ -63,3 +63,6 @@ temp/
 # Vitest JSON reporter output
 apps/web/.vitest/
 __pycache__/
+
+# Rust core
+apps/core/target/

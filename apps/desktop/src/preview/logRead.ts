@@ -30,7 +30,7 @@ export async function readLogChunk(req: LogReadRequest, allowedRoots: readonly s
   if (typeof file !== 'string' || !path.isAbsolute(file)) return { ok: false, error: 'denied' }
   const roots = await realRoots(allowedRoots)
   const real = await realOrNull(file)
-  if (!real) return { ok: false, error: rootOf(path.resolve(file), roots) ? 'missing' : 'denied' }
+  if (!real) return { ok: false, error: rootOf(path.resolve(file), [...roots, ...allowedRoots.filter((r) => typeof r === 'string' && path.isAbsolute(r))]) ? 'missing' : 'denied' }
   if (!rootOf(real, roots)) return { ok: false, error: 'denied' }
   const stat = await fs.stat(real).catch(() => null)
   if (!stat?.isFile()) return { ok: false, error: 'missing' }

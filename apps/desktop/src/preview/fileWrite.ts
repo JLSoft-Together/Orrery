@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { decodeUtf8, eolOf, hasUtf8Bom, type Eol } from './files'
-import { realOrNull, rootOf } from './paths'
+import { realOrNull, realRoots, rootOf } from './paths'
 
 /** Room above the 2 MB view limit for a file that grew while edited. */
 export const MAX_WRITE_BYTES = 4 * 1024 * 1024
@@ -36,14 +36,15 @@ const isBusy = (err: unknown): boolean => {
  * Saves an existing text file the page edited. The real path (symlinks resolved) must sit inside one of `roots`
  * (already real paths), so a link pointing out of the project is refused. Atomic: temp file next to it + rename.
  */
-export async function writeTextFile(req: unknown, roots: readonly string[], deps: FileWriteDeps = {}): Promise<FileWriteResult> {
+export async function writeTextFile(req: unknown, allowedRoots: readonly string[], deps: FileWriteDeps = {}): Promise<FileWriteResult> {
   const r = (req ?? {}) as Record<string, unknown>
   const file = r.path
   const text = r.text
   if (typeof file !== 'string' || !path.isAbsolute(file) || typeof text !== 'string') return { ok: false, error: 'denied' }
   if (text.length > MAX_WRITE_BYTES || Buffer.byteLength(text, 'utf8') > MAX_WRITE_BYTES) return { ok: false, error: 'too-large' }
+  const roots = await realRoots(allowedRoots)
   const real = await realOrNull(file)
-  if (!real) return { ok: false, error: rootOf(path.resolve(file), roots) ? 'missing' : 'denied' }
+  if (!real) return { ok: false, error: rootOf(path.resolve(file), [...roots, ...allowedRoots]) ? 'missing' : 'denied' }
   if (!rootOf(real, roots)) return { ok: false, error: 'denied' }
   const stat = await fs.stat(real).catch(() => null)
   if (!stat?.isFile()) return { ok: false, error: 'missing' }

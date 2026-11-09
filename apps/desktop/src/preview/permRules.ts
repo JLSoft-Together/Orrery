@@ -179,12 +179,13 @@ export async function writeAllow(root: string, rules: unknown, confirm: ConfirmA
   const clean = cleanRules(rules)
   if (clean === null) return { ok: false, error: 'invalid' }
   if (clean === 'risky') return { ok: false, error: 'risky' }
+  const realRoot = (await realOrNull(root)) ?? root
   const dir = path.join(root, '.claude')
   const realDir = await realOrNull(dir)
-  if (realDir && !isWithin(root, realDir)) return { ok: false, error: 'denied' }
+  if (realDir && !isWithin(realRoot, realDir)) return { ok: false, error: 'denied' }
   const file = path.join(dir, 'settings.local.json')
   const realFile = await realOrNull(file)
-  if (realFile && !isWithin(root, realFile)) return { ok: false, error: 'denied' }
+  if (realFile && !isWithin(realRoot, realFile)) return { ok: false, error: 'denied' }
   const read = await readSettings(file)
   if (read.state === 'unreadable' || !read.settings) return { ok: false, error: 'unreadable' }
   const { next, added } = planAllow(read.settings, clean)

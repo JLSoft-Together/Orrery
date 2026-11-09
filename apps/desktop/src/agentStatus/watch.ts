@@ -15,8 +15,9 @@ export async function resolveStatusDir(dir: string): Promise<string | null> {
 }
 
 export async function readStatus(orreryDir: string): Promise<StatusRead> {
+  const realDir = (await realOrNull(orreryDir)) ?? orreryDir
   const file = await realOrNull(path.join(orreryDir, AGENT_STATUS_FILE))
-  if (!file || !isWithin(orreryDir, file)) return { kind: 'missing' }
+  if (!file || !isWithin(realDir, file)) return { kind: 'missing' }
   let handle: fs.FileHandle | null = null
   try {
     handle = await fs.open(file, 'r')

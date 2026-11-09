@@ -55,7 +55,7 @@ describe('shim files', () => {
 
   it('shim folder stays in the app data dir', () => {
     expect(shimDirFor('/data/ccm/shell-init', '/data/ccm/orrery-mcp.json')).toBe(path.join('/data/ccm', 'shell-shim'))
-    expect(shimDirFor(undefined, 'C:\\data\\ccm\\orrery-mcp.json')).toBe(path.join('C:\\data\\ccm', 'shell-shim'))
+    if (process.platform === 'win32') expect(shimDirFor(undefined, 'C:\\data\\ccm\\orrery-mcp.json')).toBe(path.join('C:\\data\\ccm', 'shell-shim'))
     expect(shimDirFor(undefined, '')).toBeUndefined()
     expect(shimDirFor('relative', 'also/relative')).toBeUndefined()
   })

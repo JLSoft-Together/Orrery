@@ -128,7 +128,7 @@
   --ccm-control: #ffffff;
   /* CSS only (.ccm-material / .ccm-menu), no utility on purpose: translucency is for toolbar / sidebar only.
      Popups are opaque (owner, 2026-10-15): a menu nested in a blurred layer lost its blur and showed the text below. */
-  --ccm-material: rgb(246 246 248 / 0.78);
+  --ccm-material: rgb(246 246 248);
   --ccm-material-pop: rgb(248 248 250);
   --ccm-well: #111113;
   --ccm-well-ink: #e5e5ea;
@@ -262,7 +262,7 @@
   --ccm-fill: rgb(118 118 128 / 0.24);
   --ccm-fill-strong: rgb(118 118 128 / 0.36);
   --ccm-control: #3a3a3c;
-  --ccm-material: rgb(40 40 42 / 0.78);
+  --ccm-material: rgb(40 40 42);
   --ccm-material-pop: rgb(44 44 46);
   --ccm-well: #0b0b0c;
   --ccm-well-ink: #e5e5ea;
@@ -339,8 +339,6 @@ body {
 /* Chrome layers only (toolbar, sidebar, popovers); content surfaces stay opaque. */
 .ccm-material {
   background: var(--ccm-material);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
 }
 
 .ccm-titlebar[data-title-bar] {

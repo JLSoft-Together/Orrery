@@ -80,7 +80,7 @@ HyperFrames: CSS thuần, 1 file token, macOS-flavoured. Không có sidebar/sour
 | Accent | systemBlue `#007aff` / `#0a84ff`, soft .12/.22 | `accent`, `accent-soft` |
 | Fill | `rgb(116 116 128/.12)` / `rgb(118 118 128/.24)`, mạnh .2/.36 | mới: `fill`, `fill-strong` |
 | Control face | `#fff` / `#3a3a3c` | mới: `control` |
-| Material bar | `rgb(246 246 248/.78)` / `rgb(40 40 42/.78)` + `saturate(180%) blur(20px)` | mới: `material` (toolbar, sidebar) |
+| Material bar | `rgb(246 246 248)` / `rgb(40 40 42)` opaque, no blur (owner 2026-11-09, GPU) | mới: `material` (toolbar, sidebar) |
 | Material menu | `.94/.95` + blur 24 | mới: `material-pop` (popover, menu, palette) |
 | Shadow | hairline 0.5px ring + bóng nhẹ; pop `0 14px 44px` | mới: `shadow`, `shadow-control`, `shadow-pop` |
 | Status | red `#d70015`/`#ff453a`, green `#248a3d`/`#30d158`, orange `#ff9f0a`, ink cam `#b25000` | `st-error`, `st-done`, `st-working` (light dùng biến thể high-contrast) |

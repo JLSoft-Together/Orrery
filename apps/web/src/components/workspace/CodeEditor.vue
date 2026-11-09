@@ -378,7 +378,6 @@ watch(
 /* Search / replace panel = chrome (material), outside the scoped block because CodeMirror builds it. */
 .ccm-editor .cm-panels {
   background: var(--ccm-material);
-  backdrop-filter: blur(20px);
   color: var(--ccm-ink);
   font-family: var(--font-sans);
   font-size: 12px;

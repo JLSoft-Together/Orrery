@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process'
 import path from 'node:path'
 import { windowsPowerShell } from '../win-exe'
+import type { CoreProcsClient, CoreUsageRow } from '../coreProcs'
+import { sharedCoreProcs } from '../procSource'
 import { winProcs, type WinProcApi } from '../win-procs'
 
 /** One process of the machine-wide table; `cmd` undefined = not read yet, null = unreadable. */
@@ -19,7 +21,7 @@ export interface ProcRow {
 export interface ProcReader {
   read(): Promise<ProcRow[] | null>
   /** Fills usage and command lines for these pids when `read` left them out (native Windows path). */
-  enrich(rows: readonly ProcRow[], usage: ReadonlySet<number>, cmd: ReadonlySet<number>): void
+  enrich(rows: readonly ProcRow[], usage: ReadonlySet<number>, cmd: ReadonlySet<number>): void | Promise<void>
 }
 
 export const procKey = (row: Pick<ProcRow, 'pid' | 'start'>): string | null => (row.start === null ? null : `${row.pid}:${row.start}`)
@@ -199,11 +201,70 @@ export function nativeReader(api: WinProcApi, fallback: ProcReader = cimReader()
   }
 }
 
-export function defaultProcReader(): ProcReader | null {
+export function coreReader(client: CoreProcsClient, fallback: ProcReader, eager: boolean = process.platform !== 'win32'): ProcReader {
+  const cmds = new Map<string, string | null>()
+  let usingFallback = false
+  const fill = async (rows: readonly ProcRow[], usagePids: ReadonlySet<number>, cmdPids: ReadonlySet<number>): Promise<void> => {
+    const usageList = rows.filter((r) => usagePids.has(r.pid) && r.pid > 4).map((r) => r.pid)
+    const cmdList = rows.filter((r) => cmdPids.has(r.pid) && r.cmd === undefined && r.pid > 4).map((r) => r.pid)
+    const [usageRows, cmdRows] = await Promise.all([usageList.length ? client.usage(usageList) : [], cmdList.length ? client.cmdline(cmdList) : []])
+    const usage = new Map((usageRows ?? []).map((u) => [u.pid, u]))
+    const fresh = new Map((cmdRows ?? []).map((c) => [c.pid, c.cmd]))
+    for (const row of rows) {
+      if (usagePids.has(row.pid)) {
+        const u = usage.get(row.pid)
+        row.ramBytes = u?.workingSet ?? null
+        row.cpuMs = u?.cpuMs ?? null
+      }
+      if (cmdPids.has(row.pid) && row.cmd === undefined) {
+        const c = fresh.get(row.pid) ?? null
+        row.cmd = c
+        const key = procKey(row)
+        if (key) cmds.set(key, c)
+      }
+    }
+  }
+  return {
+    async read() {
+      const table = await client.table()
+      if (!table) {
+        usingFallback = true
+        return fallback.read()
+      }
+      usingFallback = false
+      const live = new Set<string>()
+      const rows = table.map((p): ProcRow => {
+        const row: ProcRow = { pid: p.pid, ppid: p.ppid, name: p.name, start: p.startRaw, startMs: p.startMs, ramBytes: null, cpuMs: null }
+        const key = procKey(row)
+        if (key) live.add(key)
+        if (key && cmds.has(key)) row.cmd = cmds.get(key)
+        return row
+      })
+      for (const key of cmds.keys()) if (!live.has(key)) cmds.delete(key)
+      if (eager) {
+        const all = new Set(rows.map((r) => r.pid))
+        await fill(rows, all, all)
+      }
+      return rows
+    },
+    async enrich(rows, usagePids, cmdPids) {
+      if (usingFallback) return fallback.enrich(rows, usagePids, cmdPids)
+      if (!eager) await fill(rows, usagePids, cmdPids)
+    },
+  }
+}
+
+function legacyProcReader(): ProcReader | null {
   if (process.platform === 'win32') {
     const api = winProcs()
     return api ? nativeReader(api) : cimReader()
   }
   if (process.platform === 'darwin' || process.platform === 'linux') return psReader()
   return null
+}
+
+export function defaultProcReader(): ProcReader | null {
+  const legacy = legacyProcReader()
+  const client = legacy ? sharedCoreProcs() : null
+  return client && legacy ? coreReader(client, legacy) : legacy
 }

@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import type { ResPort } from '@ccm/shared'
 import { windowsPowerShell } from '../win-exe'
+import { corePorts, coreProcsEnabled } from '../procSource'
 import { defaultKoffiLoader } from '../win-procs'
 
 export const TCP_LISTEN = 2
@@ -234,10 +235,23 @@ export function netTcpPortTable(exec: RunPs = runPs): PortTable {
   }
 }
 
-export function defaultPortTable(): PortTable | null {
+function legacyPortTable(): PortTable | null {
   if (process.platform === 'win32') return (process.env.CCM_NATIVE_PROCS === '0' ? null : winPortTable()) ?? netTcpPortTable()
   if (process.platform === 'darwin' || process.platform === 'linux') return lsofPortTable()
   return null
+}
+
+export function coreFirstPortTable(legacy: PortTable | null, fetchRows: () => Promise<TcpRow[] | null> = corePorts): PortTable | null {
+  if (!legacy) return null
+  return async () => {
+    const rows = await fetchRows()
+    return rows ? portsByPid(rows) : legacy()
+  }
+}
+
+export function defaultPortTable(): PortTable | null {
+  const legacy = legacyPortTable()
+  return coreProcsEnabled() ? coreFirstPortTable(legacy) : legacy
 }
 
 const CONFLICT_RES = [

@@ -267,3 +267,12 @@ Flow: `main.ts` `ready()` → `backups.applyPending()` → `createMainWindow()` 
 ## Workflow status (2026-11-08, docs §11ap)
 
 - `src/agentStatus/watch.ts`: `resolveStatusDir` (realpath folder + `.orrery`, inside check), `readStatus` (regular file, 4 KB cap via `AGENT_STATUS_MAX_BYTES`, `parseAgentStatus`), `AgentStatusWatch` (`set(key, dir|null)`: one `fs.watch` per pane on `.orrery`, debounce 300 ms, 30 s re-check while the folder is missing, `holdMs` 5 s keeps the last good value on parse errors, same folder again re-sends). `src/agentStatus/ipc.ts` `registerAgentStatusIpc`: `ccm:agent-status-watch` + push `ccm:agent-status`; `main.ts` `setupAgentStatus`. Shared parser / limits `packages/shared/src/agentStatus.ts`. Test `agent-status.test.ts`.
+
+## core-procs in the desktop (v87 step 3, WP P2)
+
+- `coreProcsEnv.ts` `coreProcsEnv(opts)`: `{}` unless `CCM_CORE_PROCS=rust`, else `{CCM_CORE_PROCS, CCM_CORE_BIN: coreBinaryPath(...)}`; `main.ts` assigns it to `process.env` (main-process client) and spreads it into `collectorEnv()`.
+- Readers switched to the async `procSource` seam (core first, koffi / CIM / ps as before): `pty/owners.ts` `readPidTable` (now async; non-win32 uses core rows on the host platform), `agentData/procs.ts` `agentProcs`, `resources/agentPorts.ts` `readProcRows`, `resources/kill.ts` `liveStarts` / `killTreeByPid`, `run/proc.ts` `killTreeSparing` (async path only: `coreProcRows` = table + command lines of the subtree via `subtreeOf`; `sync: true` stays koffi / CIM because the app is exiting).
+- Test: `test/core-procs-env.test.ts`.
+
+## core-procs P3
+- `e2e/core-procs.cjs` opens the Resources dialog in isolated Electron instances in `rust` and default `node` modes; checks a real node listener and session.

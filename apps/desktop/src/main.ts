@@ -58,6 +58,7 @@ import { wireFlutterPreview, type FlutterPreviewWire } from './flutterPreview/wi
 import { afterRunTarget } from './layout/model'
 import { defaultSpawner, killAdbClient } from './run/proc'
 import { RunManager } from './run/sessions'
+import { coreProcsEnv } from './coreProcsEnv'
 import { coreBinaryPath, PtySupervisor } from './pty/supervisor'
 import { paneOpenResult, parseOpenLink, realDir, takeLinkSlot, type OpenLink } from './openLink'
 import { dustSize } from './capture'
@@ -146,6 +147,9 @@ function loadSqlJs(): Promise<SqlJsStatic> {
 }
 // Native process table (collector/src/win-procs.ts); collector and pty host inherit it through their env.
 if (process.platform === 'win32') process.env.CCM_KOFFI ||= resource('koffi/node_modules/koffi', 'node_modules/koffi')
+
+const CORE_PROCS_ENV = coreProcsEnv({ env: process.env, packaged: app.isPackaged, resourcesPath: process.resourcesPath, repo: REPO, platform: process.platform })
+Object.assign(process.env, CORE_PROCS_ENV)
 
 let t: Strings
 let host: CollectorHost
@@ -776,6 +780,7 @@ function collectorEnv(): NodeJS.ProcessEnv {
     CCM_STATUSLINE_BRIDGE: bridge.script,
     CCM_STATUSLINE_COMMAND: bridge.command,
     CCM_APP_KEY: APP_KEY,
+    ...CORE_PROCS_ENV,
     ...(DEV_URL ? { CCM_DEV_ORIGIN_PORT: DEV_URL.port || '80' } : {}),
     ...(IS_MAC ? { CCM_TOAST_BACKEND: 'electron' } : { CCM_TOAST_LINK: `${LINK_SCHEME}://` }),
   }

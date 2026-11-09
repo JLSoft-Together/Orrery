@@ -2,7 +2,8 @@ import { execFile } from 'node:child_process'
 import type { FocusWindowResult } from '@ccm/shared'
 import { focusMacWindow } from './focus-mac'
 import { windowsPowerShell } from './win-exe'
-import { nativeProcessTable, type WinProc } from './win-procs'
+import { tableWin, type TableWin } from './procSource'
+import type { WinProc } from './win-procs'
 
 // First asks the session's own console: ConPTY's hidden pseudo-console window is owned by the hosting terminal window
 // (Windows Terminal sets it per tab), and a classic console window is the console itself, so this names the exact
@@ -108,10 +109,10 @@ export function ancestorChain(pid: number, table: WinProc[], max = 9): number[] 
   return chain
 }
 
-export function focusProcessWindow(pid: number, native: () => WinProc[] | null = nativeProcessTable): Promise<FocusWindowResult> {
-  if (process.platform !== 'win32') return Promise.resolve('unsupported')
-  if (!Number.isInteger(pid) || pid <= 4) return Promise.resolve('notFound')
-  const table = native()
+export async function focusProcessWindow(pid: number, native: TableWin = tableWin): Promise<FocusWindowResult> {
+  if (process.platform !== 'win32') return 'unsupported'
+  if (!Number.isInteger(pid) || pid <= 4) return 'notFound'
+  const table = await native()
   const chain = table ? ancestorChain(pid, table) : []
   return new Promise((resolve) => {
     execFile(

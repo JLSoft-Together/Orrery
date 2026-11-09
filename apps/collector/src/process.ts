@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process'
 import path from 'node:path'
+import type { CoreProcRow } from './coreProcs'
 import { windowsPowerShell } from './win-exe'
-import { nativeProcessTable, type WinProc } from './win-procs'
+import { coreRows, tableWin, type TableWin } from './procSource'
+import type { WinProc } from './win-procs'
 
 export type ProcessStart = { kind: 'filetime'; value: bigint } | { kind: 'lstart'; value: string }
 
@@ -107,7 +109,23 @@ function runPs(args: string[]): Promise<string | null> {
   })
 }
 
+function infoFromCoreRows(pids: number[], rows: CoreProcRow[]): Map<number, ProcessInfo> | null {
+  const byPid = new Map(rows.map((r) => [r.pid, r]))
+  const result = new Map<number, ProcessInfo>()
+  for (const pid of pids) {
+    const r = byPid.get(pid)
+    if (!r) continue
+    const raw = r.startRaw === null ? '' : squash(r.startRaw)
+    if (!LSTART.test(raw)) return null
+    result.set(pid, { pid, start: { kind: 'lstart', value: raw }, parentPid: r.ppid, parentName: byPid.get(r.ppid)?.name })
+  }
+  return result
+}
+
 async function queryProcessesUnix(pids: number[]): Promise<Map<number, ProcessInfo> | null> {
+  const viaCore = await coreRows()
+  const fromCore = viaCore && infoFromCoreRows(pids, viaCore)
+  if (fromCore) return fromCore
   const out = await runPs(['-o', 'pid=,ppid=,lstart=', '-p', pids.join(',')])
   if (out === null) return null
   const info = parsePsOutput(out)
@@ -149,14 +167,14 @@ function queryProcessesCim(pids: number[]): Promise<Map<number, ProcessInfo> | n
   })
 }
 
-export function queryProcessesWindows(
+export async function queryProcessesWindows(
   pids: number[],
-  native: () => WinProc[] | null = nativeProcessTable,
+  native: TableWin = tableWin,
   cim: (pids: number[]) => Promise<Map<number, ProcessInfo> | null> = queryProcessesCim,
 ): Promise<Map<number, ProcessInfo> | null> {
-  const table = native()
+  const table = await native()
   const info = table && processInfoFromTable(pids, table)
-  return info ? Promise.resolve(info) : cim(pids)
+  return info ? info : cim(pids)
 }
 
 export function queryProcesses(pids: number[]): Promise<Map<number, ProcessInfo> | null> {

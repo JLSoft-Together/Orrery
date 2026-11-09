@@ -2,6 +2,7 @@ import { execFile, execFileSync, spawn, type ChildProcess } from 'node:child_pro
 import path from 'node:path'
 import { childEnv, taskkillPath } from '../pty/presets'
 import type { SubstituteVars } from './args'
+import { commandLinesWin, coreProcsEnabled, tableWin } from '../../../collector/src/procSource'
 import { nativeCommandLine, nativeProcessTable, type WinProc } from '../../../collector/src/win-procs'
 
 export interface SpawnSpec {
@@ -127,8 +128,7 @@ export function treePids(root: number, rows: readonly ProcRow[], spare: (cmd: st
 }
 
 /** Rows for treePids from the native table: command lines only for root's subtree, the only ones `spare` sees. */
-export function nativeProcRows(root: number, table: WinProc[] | null, commandLine: (pid: number) => string | null): ProcRow[] | null {
-  if (!table) return null
+export function subtreeOf(root: number, table: readonly WinProc[]): Set<number> {
   const kids = new Map<number, number[]>()
   for (const p of table) if (p.pid !== p.ppid) kids.set(p.ppid, [...(kids.get(p.ppid) ?? []), p.pid])
   const subtree = new Set<number>()
@@ -139,6 +139,12 @@ export function nativeProcRows(root: number, table: WinProc[] | null, commandLin
     subtree.add(pid)
     stack.push(...(kids.get(pid) ?? []))
   }
+  return subtree
+}
+
+export function nativeProcRows(root: number, table: WinProc[] | null, commandLine: (pid: number) => string | null): ProcRow[] | null {
+  if (!table) return null
+  const subtree = subtreeOf(root, table)
   const rows: ProcRow[] = []
   for (const p of table) {
     if (!subtree.has(p.pid)) {
@@ -176,17 +182,31 @@ export function killTreeSparing(child: ChildProcess, spare: RegExp, opts: { sync
     const pids = treePids(pid, rows, (cmd) => spare.test(cmd))
     if (pids.length) taskkill(pids, false, sync)
   }
-  const native = nativeProcRows(pid, nativeProcessTable(), nativeCommandLine)
-  if (native) return finish(null, native)
-  const [file, args] = procTableCommand(process.env)
-  if (sync) {
-    let out: string | null = null
-    try {
-      out = execFileSync(file, args, { windowsHide: true, timeout: 5_000, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
-    } catch {
-      out = null
+  const legacy = (): void => {
+    const native = nativeProcRows(pid, nativeProcessTable(), nativeCommandLine)
+    if (native) return finish(null, native)
+    const [file, args] = procTableCommand(process.env)
+    if (sync) {
+      let out: string | null = null
+      try {
+        out = execFileSync(file, args, { windowsHide: true, timeout: 5_000, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      } catch {
+        out = null
+      }
+      return finish(out)
     }
-    return finish(out)
+    execFile(file, args, { windowsHide: true, timeout: 15_000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => finish(err ? null : String(stdout)))
   }
-  execFile(file, args, { windowsHide: true, timeout: 15_000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => finish(err ? null : String(stdout)))
+  if (!sync && coreProcsEnabled()) {
+    void coreProcRows(pid).then((rows) => (rows ? finish(null, rows) : legacy()))
+    return
+  }
+  return legacy()
+}
+
+async function coreProcRows(root: number): Promise<ProcRow[] | null> {
+  const table = await tableWin()
+  if (!table) return null
+  const cmds = await commandLinesWin([...subtreeOf(root, table)])
+  return nativeProcRows(root, table, (p) => cmds.get(p) ?? null)
 }

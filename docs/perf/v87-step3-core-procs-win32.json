@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-09",
+  "platform": "win32",
+  "binary": "apps/core/target/release/orrery-core.exe",
+  "via": "apps/collector/src/coreProcs.ts client, round trip over stdin/stdout",
+  "table": { "samples": 50, "rows": 534, "p50Ms": 15.104, "maxMs": 22.743 },
+  "rustDirect": {
+    "table": { "p50Ms": 12.3, "maxMs": 15.1 },
+    "usage50": { "p50Ms": 0.37, "maxMs": 0.59 },
+    "cmdline50": { "p50Ms": 0.52, "maxMs": 0.83 },
+    "ports": { "p50Ms": 0.91, "maxMs": 1.86, "rows": 172 }
+  },
+  "rss": { "workingSetMB": 5.5, "privateMB": 1.7 },
+  "parity": "table 535/535 pid match koffi (5 runs, P1); core-procs-parity.test.ts table / usage / cmdline / LISTEN ports pass 3/3 (pid <= 4 dropped like portsByPid)",
+  "note": "machine busy with other work during the client run; p50 is the gate (<= 20 ms)"
+}

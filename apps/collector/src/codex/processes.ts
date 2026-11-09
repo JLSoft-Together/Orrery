@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process'
 import path from 'node:path'
 import { windowsPowerShell } from '../win-exe'
-import { nativeCommandLine, nativeProcessTable, type WinProc } from '../win-procs'
+import { commandLinesWin, coreRows, sharedCoreProcs, tableWin } from '../procSource'
+import type { WinProc } from '../win-procs'
 
 export type ProcessMode = 'exec' | 'tui' | 'app-server' | 'other'
 
@@ -245,6 +246,23 @@ export function unixCodexProcesses(all: Map<number, PsRow>, argsOut: string): Co
   return topLevel(unixProcessesNamed(all, argsOut, new Set(CODEX_NAMES)).map(toCodex))
 }
 
+async function unixNamedViaCore(unix: readonly string[]): Promise<CliProcess[] | null> {
+  const rows = await coreRows()
+  if (!rows) return null
+  const all = new Map<number, PsRow>()
+  for (const r of rows) {
+    if (r.startMs === null) continue
+    all.set(r.pid, { ppid: r.ppid, start: r.startMs, name: path.posix.basename(r.name).replace(/^-/, '') })
+  }
+  const wanted = new Set(unix)
+  const pids = [...all].filter(([, r]) => wanted.has(r.name)).map(([pid]) => pid)
+  const client = sharedCoreProcs()
+  const cmds = pids.length && client ? await client.cmdline(pids) : []
+  if (!cmds) return null
+  const argsOut = cmds.map((c) => `${c.pid} ${c.cmd.replace(/[\r\n]+/g, ' ')}`).join('\n')
+  return unixProcessesNamed(all, argsOut, wanted)
+}
+
 function run(file: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string | null> {
   return new Promise((resolve) => {
     execFile(file, args, { timeout: 8_000, windowsHide: true, maxBuffer: 4_000_000, env }, (err, stdout) => {
@@ -259,8 +277,10 @@ function run(file: string, args: string[], env?: NodeJS.ProcessEnv): Promise<str
  */
 export async function listProcessesNamed(names: { win: readonly string[]; unix: readonly string[] }, platform: NodeJS.Platform = process.platform): Promise<CliProcess[] | null> {
   if (platform === 'win32') {
-    const table = nativeProcessTable()
-    const native = table && windowsProcessesNamed(table, new Set(names.win), nativeCommandLine)
+    const wanted = new Set(names.win)
+    const table = await tableWin()
+    const cmds = table ? await commandLinesWin(table.filter((p) => wanted.has(p.name.toLowerCase()) && p.start !== null).map((p) => p.pid)) : null
+    const native = table && cmds && windowsProcessesNamed(table, wanted, (pid) => cmds.get(pid) ?? null)
     if (native) return native
     const out = await run(windowsPowerShell(), ['-NoProfile', '-NonInteractive', '-Command', cimScript(names.win)])
     if (out === null) return null
@@ -271,6 +291,8 @@ export async function listProcessesNamed(names: { win: readonly string[]; unix: 
     }
   }
   if (platform !== 'darwin' && platform !== 'linux') return null
+  const viaCore = platform === process.platform ? await unixNamedViaCore(names.unix) : null
+  if (viaCore) return viaCore
   const env = { ...process.env, LC_ALL: 'C', TZ: 'UTC' }
   const all = await run('ps', ['-A', '-o', 'pid=,ppid=,lstart=,comm='], env)
   if (all === null) return null

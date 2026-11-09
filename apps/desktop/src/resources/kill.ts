@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { appendFile } from 'node:fs/promises'
 import { RES_BUSY_GUARD_MS, type ResKillError, type ResKillTarget, type ResourceReport } from '@ccm/shared'
-import { nativeProcessTable } from '../../../collector/src/win-procs'
+import { coreRows, tableWin } from '../../../collector/src/procSource'
 import { taskkillPath } from '../pty/presets'
 import { parseProcRows, treePids } from '../run/proc'
 
@@ -61,11 +61,18 @@ function run(file: string, args: string[], env?: NodeJS.ProcessEnv): Promise<str
   })
 }
 
+export function coreStarts(rows: readonly { pid: number; startRaw: string | null }[], pids: readonly number[]): Map<number, string> {
+  const out = new Map<number, string>()
+  const want = new Set(pids)
+  for (const p of rows) if (want.has(p.pid) && p.startRaw !== null) out.set(p.pid, p.startRaw.trim().replace(/\s+/g, ' '))
+  return out
+}
+
 /** Creation times read now, in the same text form the collector reports (FILETIME decimal / ps lstart in UTC); missing = gone. */
 export async function liveStarts(pids: readonly number[], platform: NodeJS.Platform = process.platform): Promise<Map<number, string>> {
   const out = new Map<number, string>()
   if (platform === 'win32') {
-    const table = nativeProcessTable()
+    const table = await tableWin()
     if (table) {
       const want = new Set(pids)
       for (const p of table) if (want.has(p.pid) && p.start !== null) out.set(p.pid, p.start.toString())
@@ -79,6 +86,10 @@ export async function liveStarts(pids: readonly number[], platform: NodeJS.Platf
       if (m) out.set(Number(m[1]), m[2]!)
     }
     return out
+  }
+  const core = platform === process.platform ? await coreRows() : null
+  if (core) {
+    return coreStarts(core, pids)
   }
   const text = await run('ps', ['-o', 'pid=,lstart=', '-p', pids.join(',')], { ...process.env, LC_ALL: 'C', TZ: 'UTC' })
   for (const line of text?.split(/\r?\n/) ?? []) {
@@ -104,8 +115,10 @@ export async function killTreeByPid(pid: number, platform: NodeJS.Platform = pro
       execFile(taskkillPath(process.env), ['/T', '/F', '/PID', String(pid)], { windowsHide: true, timeout: 15_000 }, (err) => resolve(!err || !alive(pid)))
     })
   }
-  const table = await run('ps', ['-A', '-o', 'pid=,ppid='])
-  const pids = table ? treePids(pid, parseProcRows(table), () => false) : [pid]
+  const core = platform === process.platform ? await coreRows() : null
+  const table = core ? null : await run('ps', ['-A', '-o', 'pid=,ppid='])
+  const procRows = core ? core.map((p) => ({ pid: p.pid, ppid: p.ppid, cmd: '' })) : table ? parseProcRows(table) : null
+  const pids = procRows ? treePids(pid, procRows, () => false) : [pid]
   for (const p of pids) {
     try {
       process.kill(p, 'SIGTERM')

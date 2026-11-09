@@ -2,6 +2,8 @@
 
 One line per change: what, then the key file / symbol. Details live in `collector.md`, `web.md`, `protocol.md`, `desktop.md`, the `.planning/PLAN-v*.md` plans and `docs/*-integration.md`. Paths are relative to the package (`apps/web/src`, `apps/collector/src`, `apps/desktop/src`) unless they start at the repo root. Cleaned 2026-10-17: entries for removed code (`.bat` launchers, `scripts/launch.mjs`, collector borrowing / takeover, PWA, `SessionView.vue`, `AgentContextMenu.vue`, `AgentNode.vue`, `spikes/`) were dropped; full history is in git.
 
+- 2026-11-09 — T0 deterministic demo + benchmark: `scripts/demo-fixture.mjs` `--seed` / `--record`; `scripts/perf-bench.mjs` collector Inspector profile; `scripts/usage-corpus.mjs` cold/warm `UsageIndex` corpus; results `docs/perf/v87-step4-baseline-win32.json`.
+
 ## 2026-10-07 — MVP + v2
 
 - Phases 1–7: discovery `docs/claude-code-integration.md`; collector `Monitor` / `SessionTracker` / `MonitorStore` / `server.ts`; shared `types.ts` / `status.ts`; web stores, Agent Map, SessionCard, ActivityFeed, i18n en/vi; `scripts/demo-fixture.mjs`.
@@ -287,3 +289,6 @@ One line per change: what, then the key file / symbol. Details live in `collecto
 - v87 step 3 P3: collector parity/bench `test/core-procs-parity.test.ts`; desktop Resources E2E `e2e/core-procs.cjs`; report + perf JSON under `.planning/wp/` and `docs/perf/`.
 - 2026-11-09 v87 step 3 P4: default `CCM_CORE_PROCS=rust` (`procSource.ts` `coreProcsMode`, `coreProcsEnv.ts`; `node` = CIM / ps); koffi removed (`win-procs.ts` types only, `resources/{procs,ports}.ts`, `main.ts`, `build.mjs`, `electron-builder.yml`, `apps/collector/package.json`, lock); `run/proc.ts` `killTreeSparing` sync = snapshot (`watchTree`, 3 s / 15 s) + per-pid taskkill sparing the daemon, else `killTree`; parity test now Rust ↔ CIM / `Get-NetTCPConnection`.
 - 2026-11-09 v87-3 leak investigation: desktop `test/pty-parity/harness.ts` can report ready child PIDs; `parity.test.ts` checks the kill scenario leaves no live child after teardown. Six Node and Rust parity runs showed zero leftover signature processes.
+- v87 step 4 T1: `apps/core/crates/core-transcript` (`UsageIndex` port, `orrery-core transcript`), `apps/collector/src/coreTranscript.ts` + `usageSource.ts` (`CCM_CORE_USAGE`, default node, fallback Node); see core.md / collector.md.
+
+- 2026-11-09 WP-v87-nolinux: Linux support dropped (Windows + macOS only); `datadir.ts`, `opener.ts`, `config.ts`, `process.ts`, `resources/{ports,procs}.ts`, `codex/processes.ts`, `deepseek/processes.ts`, desktop `agentData/move.ts` `parseMountLine`, bridge scripts; other platforms answer unsupported / null.

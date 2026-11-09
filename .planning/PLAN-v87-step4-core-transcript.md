@@ -1,0 +1,53 @@
+# PLAN v87 bước 4 — `core-transcript`
+
+Nguồn: khảo sát 2026-11-09 (sonnet, chỉ đọc). Plan gốc `.planning/PLAN-v87-rust-core.md` §6 bước 4. Cổng: parity snapshot (fixture tracker + demo 30×6 có seed), cold usage scan 4 GB ≤ 5 CPU-s, CPU collector demo 30×6 ≤ ~7.6 % (≤ 50 % của 15.3 % bước 0; hiện ~10.7 %).
+
+## 1. Hiện trạng (apps/collector/src)
+| Phần | File (dòng) | Vai trò |
+|---|---|---|
+| Watch | `monitor.ts` (936) | `fs.watch` sessions + projects recursive, reconcile 5 s |
+| Tail | `tailer.ts` (127) | `JsonlTailer.readEach`, offset byte, chunk 1 MB, dòng dở |
+| Lọc | `tracker.ts:105` `signalLineFilter`, `:369` `liteFilter` | raw-key match `"type":"…"`, bỏ ~40 % byte |
+| Parse | `transcript.ts` (401) `extractSignals` → `Signal` (20 loại) | redaction: chỉ đếm / id / tên / enum đã cắt |
+| State | `transcript.ts:266-401` `TranscriptState`, `tool-spans.ts` (84) | open tools, usage theo message id, context, compaction |
+| Tracker | `tracker.ts` (685) `SessionTracker` | main + subagent (meta, nested, peer), `buildTerminal` / `buildAgents` |
+| Usage | `usage.ts` (667) `UsageIndex` | full scan `~/.claude/projects`, dedupe `message.id`, cache `<CCM_DATA_DIR>/usage-index.json` v4 |
+| Khác | `codex/` (rollout, reader, link), `deepseek/`, `hooks.ts`, `statusline.ts`, `sensitive/rules.ts` `touchOf`, `resources/ports.ts` `portConflictIn` | |
+
+## 2. Thiết kế
+- Crate `apps/core/crates/core-transcript` + subcommand `orrery-core transcript` (stdin / stdout NDJSON như `procs`, collector tự spawn 1 con, thoát khi stdin EOF). Không bind port.
+- Ranh giới đích (b): Rust đọc file → dựng `TerminalSession` / `Agent[]` / `ToolSpan[]` / `ActivityDraft[]` / usage bucket delta; Node chỉ còn store + diff + WS server. Đi qua bước đệm (a) `Signal[]` để parity từng tầng.
+- Usage index sang Rust trước (độc lập, lợi CPU lớn nhất ở cold scan): đọc / ghi đúng `usage-index.json` v4 (cả hai chiều trong giai đoạn song song), dedupe `message.id` toàn cục, `gone` / `releaseIds`, `renameWithRetry`.
+- Cờ `CCM_CORE_TRANSCRIPT=rust|node` (mặc định `node` tới khi qua cổng), `CCM_CORE_USAGE=rust|node` riêng cho usage. Core lỗi → đường Node cũ.
+- Redaction giữ y: whitelist field, `MAX_ENUM` 120, regex `EFFORT_RE` / `AGENT_ID_RE` / `RECORD_ID_RE`, `reply_text` ≤ 3000 ký tự, `maskSecrets`, `sockKey` sha256. Rust không log nội dung dòng JSONL.
+- Watch: crate `notify` (ghi lý do) hoặc giữ `fs.watch` ở Node rồi đẩy tên file sang Rust (giai đoạn đầu: Node đẩy, Rust không tự watch).
+
+### 2.1 Protocol `orrery-core transcript` (T1, usage)
+- NDJSON stdin / stdout, 1 MiB max request line. Request = object with `op`, number / string `id` (no id → no reply; only `usage.notify` is sent without id). Reply `{id, ok:true, …}` or `{id, ok:false, error}`; events carry `event` and no `id`.
+- `ping` → `{version}`.
+- `usage.scan {projectsDir, cacheFile|null, sweepMs?, fileDebounceMs?, saveDebounceMs?, idRetentionMs?}` (= `UsageIndex.start`): loads cache v4, replies `{snapshot}` (= first `resetUsage`), then queues the full scan and starts the sweep timer. Second open → `open`; bad args → `projectsDir` / `cacheFile`.
+- `usage.notify {files: [rel with /]}` (= `notify`; debounce per file in Rust; max 4096 names per line). Node normalises `path.sep`.
+- `usage.query {q}`: `heatmap {days, today?}` → `{heatmap}`, `toolStats {days, project|null, today?}` → `{toolStats}`, `scanInfo` → `{scan}`, `snapshot` → `{snapshot}`. `days` integer 0..3660 (else `days`), `today` default = local today. Answered on the main thread between files of a running scan.
+- `usage.idle` (= `whenIdle`) answers when the job queue reaches it. `usage.stop` (= `stop`) stops the scan at the next file, saves if needed, answers. Before open: `closed`. Unknown op → `op`.
+- Events: `usage.scan {scan}` (= `setUsageScan`, start + every > 400 ms), `usage.reset {snapshot}` (scan done), `usage.update {buckets}` (dirty buckets after notify / sweep).
+- stdin EOF → stop + save + exit 0. stderr: `[collector] usage index: <io error>` / `cannot save usage cache: …`, never line content.
+- Known differences vs Node (edge cases only): lone UTF-16 surrogate when a name is cut at 100 units (Rust drops the half), JSON nested deeper than 128 or numbers beyond f64 range (serde_json rejects the line, JS counts it), `Date.parse` non-ISO forms, `localeCompare` ties outside ASCII (approximation), local time from the OS zone instead of ICU.
+
+## 3. WP
+| WP | Việc | Model | Phụ thuộc |
+|---|---|---|---|
+| T0 | Đo + fixture: `scripts/demo-fixture.mjs --seed` (deterministic), ghi corpus cố định demo 30×6; `scripts/perf-bench.mjs` thêm `--cpu-prof` cho collector (utilityProcess `--cpu-prof`), đo baseline Node: CPU demo 30×6, cold usage scan trên corpus lớn (tạo 4 GB tổng hợp nếu không có thật), top hàm nóng | Codex | — |
+| T1 | `core-transcript::usage` + `orrery-core transcript` op `usage.*` + client TS + cờ `CCM_CORE_USAGE`, parity với `usage.test.ts` + cache v4 | opus | — (song song T0) |
+| T2 | Port tầng nguồn: tailer + `signalLineFilter` / `liteFilter` + `extractSignals` + `touchOf` + `portConflictIn` + `TranscriptState` + `ToolSpanLog`; op xuất `Signal[]`; parity golden theo dòng (fixture tracker + corpus T0) | opus | T1 (dùng chung crate / server) |
+| T3 | Port `SessionTracker` (subagent, nested, peer, build*) → ranh giới (b); collector dùng Rust sau `CCM_CORE_TRANSCRIPT`; parity `tracker.test.ts` snapshot | opus | T2 |
+| T4 | Parity demo 30×6 + E2E + đo cổng (CPU, cold scan), Codex | Codex | T3 |
+| T5 | Codex rollout + DeepSeek outbox + hooks / statusline sang Rust (có thể tách bước sau) | sonnet / opus | T3 |
+
+## 4. Không được phá
+Trạng thái agent / subagent / peer đúng như hiện tại (snapshot `tracker.test.ts`), số usage khớp cache cũ, không lộ nội dung session / secret, `--resume` dedupe, Office timeline, Telegram reply text. App Orrery đang chạy của chủ nhân không bị đụng khi test (port 4317, `%APPDATA%\Agent Monitor`, `%LOCALAPPDATA%\ccm`).
+
+## 5. Baseline T0 (2026-11-09, Codex) — đổi ưu tiên
+- Collector demo 30×6 (seed 8704): 10.3 % avg, p95 16.7 %, 8.6 CPU-s / 120 s, RSS 108 MB. Cổng ≤ ~7.6 %.
+- Top self-time collector: `monitor.ts publish` 6.5 ms/s, `spawn` (process con) 6.3 ms/s, `store.ts` (anon 5.5, `clean` 5.1, `diff` 3.4), `stat` 3.1, `tailer.consume` 2.9, `usage.ingestLine` 2.4. Parse transcript không phải phần nóng nhất; store diff / publish + spawn + stat chiếm phần lớn.
+- Cold usage scan 4.29 GB tổng hợp (1 % dòng có `usage`): Node 5.06–7.02 CPU-s; Rust T1 nhanh ~2× → dự kiến đạt ≤ 5 CPU-s.
+- Hệ quả: trước T2 / T3 nên có WP nhỏ tìm nguồn `spawn` (ai spawn process mỗi tick ở demo 30×6) và giảm chi phí `publish` / `store.clean` / `diff` — lợi CPU nhanh hơn port tracker.

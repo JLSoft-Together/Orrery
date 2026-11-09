@@ -14,7 +14,7 @@ Flow: registry dir + projects dir (fs.watch) + reconcile 5 s → `Monitor` → `
 
 - `registry.ts` `readRegistry`: `<pid>.json` only, whitelisted fields, 256 KB cap, torn record → `'unreadable'` keeps state; `socketKey` → `sockKey` (sha256, path never kept).
 - `win-procs.ts`: only the `WinProc` / `ProcUsage` types now (koffi binding removed in v87 P4). Tables come from `procSource.ts` (core), every caller keeps its PowerShell CIM fallback.
-- `process.ts` `isPidAlive`, `queryProcesses` (win `queryProcessesWindows`, mac/linux `ps` lstart), `procStartMatches`, `parsePsOutput` / `parsePsNames`.
+- `process.ts` `isPidAlive`, `queryProcesses` (win `queryProcessesWindows`, mac `ps` lstart), `procStartMatches`, `parsePsOutput` / `parsePsNames`.
 - `win-exe.ts` `windowsPowerShell` / `windowsTerminal` / `findOnPath`: every Windows spawn uses an absolute exe (a bare name resolves against the project cwd first).
 - `tailer.ts` `JsonlTailer`: byte-offset tail in 1 MB chunks, partial-line buffer, reset on truncate; `readEach(onRecord, LineFilter)` per record.
 - `transcript.ts` `extractSignals` + `TranscriptState`: tool_use / result, usage (incl. cache `ttl`), model, effort, turn_end, task notifications, `compact`, `permission_mode`, `branch`, codex calls, v54 `coordinator_msg` / `handback` / `send_main` (docs §11y), `peer_in` / `peer_sent` (docs §11z). Counters and ids only.
@@ -71,7 +71,7 @@ Flow: registry dir + projects dir (fs.watch) + reconcile 5 s → `Monitor` → `
 ## OS integration
 
 - `focus.ts` `focusTerminalWindow` → win32 `focusProcessWindow` (`ConsoleHost` / `ancestorChain`) / darwin `focus-mac.ts` `focusMacWindow` (Terminal / iTerm by tty, else `appOnly`, -1743 → `denied`); `osascript.ts` `runCommand` / `parseOsaError`.
-- `opener.ts` `openFolder` (Explorer / Finder / xdg-open, VS Code lookup; tracker cwd only).
+- `opener.ts` `openFolder` (Explorer / Finder, VS Code lookup; tracker cwd only).
 - `launcher.ts` `launchClaude`: wt.exe tab or detached PowerShell; macOS Terminal / iTerm via `launchArgs` (dir + cmd as osascript argv, `quoted form of`); `hasControlChars` guard because the new shell's line editor acts on control bytes before quoting applies; `LaunchError(denied|notInstalled|failed)`; strips `ELECTRON_RUN_AS_NODE`.
 - `folder-pick.ts` `pickFolder`: win32 PowerShell -STA IFileOpenDialog (path back as base64, no client input in the script), darwin `choose folder`.
 - `toast.ts` `Toaster`: waiting / reminder / done / job / limit / stuck / context toasts, quiet hours, test + `refreshHealth`, key persisted in `notify.json` (`accepts` timing-safe), links via `CCM_TOAST_LINK` (`agent-monitor://`); Windows backend `ps-host.ts` `PsHost` (one long-lived PowerShell, JSON lines on stdin); `toast-electron.ts` `electronToastDeps` posts `toast.show|hide` to the desktop parent.
@@ -121,3 +121,10 @@ Flow: registry dir + projects dir (fs.watch) + reconcile 5 s → `Monitor` → `
 
 ## core-procs P3
 - `test/core-procs-parity.test.ts` compares the CIM process table, usage, command lines and `Get-NetTCPConnection` listening ports with `coreProcs.ts`; it runs only on Windows when `CCM_CORE_BIN` is set.
+
+## core-transcript usage client (v87 step 4, WP T1, `CCM_CORE_USAGE=rust|node`, default node)
+
+- `coreTranscript.ts` `createCoreTranscript({bin, args=[transcript], timeoutMs=5000, maxRestarts=3, windowMs=60000, onEvent, onDown})`: like `coreProcs.ts` but lines with `event` go to `onEvent`, `send(op)` writes an id-less line (notify), `request(op, extra, {timeoutMs, restartOnTimeout})`, stderr lines forwarded to `console.error` (Rust logs only errno text), `onDown` on child death (not after `dispose`), `dispose` ends stdin (core saves then exits; kill after 5 s), max line 256 MiB (snapshot can be large).
+- `usageSource.ts`: `UsageSource` (= public surface of `UsageIndex`: start / stop / notify / whenIdle / scanInfo / heatmap / toolStats, the two queries may be async), `usageMode(env)`, `createUsageSource` (node → `UsageIndex`; rust without `CCM_CORE_BIN` → `UsageIndex` + warn), `RustUsageSource` (open = `usage.scan` → `resetUsage(snapshot)`; events → sink; `onDown` → re-open (core reloads the cache file and rescans), re-open fails or restart cap hit → `fallback` = new `UsageIndex` on the same cache file; queries during recovery wait for it), `whenReady` (sync value stays sync so node mode replies like before). `index.ts` only builds it through `createUsageSource` and answers `heatmap.get` / `toolstats.get` via `whenReady`.
+- Tests: `test/usage-parity.test.ts` (Node and Rust over one corpus: buckets, scanInfo, heatmap, toolStats ×2, cache v4 deep-equal; append + notify; each reads the other's cache; source selection + fallback with no client / missing binary). Skips when no `apps/core/target/{debug,release}/orrery-core` and no `CCM_CORE_BIN`.
+- Round 2: `usage.ts` `ingest` catches a read error (log `skipped a transcript: <code>`, `mtimeMs` deleted, offset unchanged, scan continues) and saves through `<cache>.tmp-<pid>` (removed on failure); `RustUsageSource` queries never restart the core on timeout (`restartOnTimeout: false`, UI gets empty data). Parity test locks one transcript (PowerShell `FileShare.None` / chmod 000) for both engines.

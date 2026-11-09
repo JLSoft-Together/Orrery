@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Orrery Spike</title>
+<style>
+:root { --bg:#1e1e1e; --fg:#e8e8e8; --bar:#2b2b2e; --accent:#0a84ff; }
+:root.light { --bg:#f5f5f7; --fg:#1d1d1f; --bar:#e4e4e8; --accent:#007aff; }
+* { box-sizing: border-box; }
+html, body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--fg); font:13px -apple-system,"Segoe UI Variable Text","Segoe UI",sans-serif; }
+#bar { height:40px; background:var(--bar); display:flex; align-items:center; justify-content:space-between; user-select:none; }
+#title { padding-left:12px; flex:1; height:100%; display:flex; align-items:center; }
+#btns { display:flex; height:100%; }
+#btns button { width:46px; height:100%; border:0; background:transparent; color:var(--fg); font-size:14px; }
+#btns button:hover { background:rgba(128,128,128,.25); }
+#btns button#close:hover { background:#e81123; color:#fff; }
+#theme { margin-right:8px; border:1px solid var(--accent); background:transparent; color:var(--fg); border-radius:6px; padding:2px 10px; }
+#body { display:flex; height:calc(100% - 40px); }
+#side { width:300px; padding:12px; border-right:1px solid rgba(128,128,128,.3); }
+#slot { flex:1; margin:8px; border:2px dashed var(--accent); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="title" data-tauri-drag-region>Orrery Spike - custom header</div>
+  <button id="theme">Theme</button>
+  <div id="btns">
+    <button id="min">&#8211;</button>
+    <button id="max">&#9633;</button>
+    <button id="close">&#10005;</button>
+  </div>
+</div>
+<div id="body">
+  <div id="side"><div id="info">...</div></div>
+  <div id="slot"></div>
+</div>
+<script>
+const T = window.__TAURI__
+const w = T.window.getCurrentWindow()
+document.getElementById('min').onclick = () => w.minimize()
+document.getElementById('max').onclick = () => w.toggleMaximize()
+document.getElementById('close').onclick = () => w.close()
+document.getElementById('theme').onclick = () => document.documentElement.classList.toggle('light')
+const slot = document.getElementById('slot')
+let last = ''
+function sync() {
+  const r = slot.getBoundingClientRect()
+  const b = { x: r.left, y: r.top, w: r.width, h: r.height }
+  const k = JSON.stringify(b)
+  if (k === last) return
+  last = k
+  document.getElementById('info').textContent = 'slot ' + Math.round(b.x) + ',' + Math.round(b.y) + ' ' + Math.round(b.w) + 'x' + Math.round(b.h)
+  T.core.invoke('child_bounds', b)
+}
+new ResizeObserver(sync).observe(slot)
+window.addEventListener('resize', sync)
+sync()
+</script>
+</body>
+</html>

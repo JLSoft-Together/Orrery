@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/__nm/@xterm/xterm/css/xterm.css" />
+<style>
+html, body { margin:0; height:100%; background:#111; overflow:hidden; }
+#grid { display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(2,1fr); height:100%; gap:2px; }
+.t { overflow:hidden; background:#000; }
+#hud { position:fixed; right:6px; bottom:4px; color:#0f0; font:12px monospace; z-index:9; background:#000a; }
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<div id="hud">...</div>
+<script src="/__nm/@xterm/xterm/lib/xterm.js"></script>
+<script src="/__nm/@xterm/addon-webgl/lib/addon-webgl.js"></script>
+<script>
+const params = new URLSearchParams(location.search)
+const warm = Number(params.get('warm') || 6)
+const dur = Number(params.get('dur') || 20)
+const grid = document.getElementById('grid')
+let lost = 0
+let webglOk = 0
+const terms = []
+for (let i = 0; i < 8; i++) {
+  const el = document.createElement('div')
+  el.className = 't'
+  grid.appendChild(el)
+  const t = new Terminal({ fontSize: 12, fontFamily: 'Consolas, monospace', scrollback: 1000, allowProposedApi: true })
+  t.open(el)
+  try {
+    const gl = new WebglAddon.WebglAddon()
+    gl.onContextLoss(() => { lost++ })
+    t.loadAddon(gl)
+    webglOk++
+  } catch (e) {}
+  terms.push(t)
+}
+let n = 0
+setInterval(() => {
+  for (let i = 0; i < terms.length; i++) {
+    const c = 31 + ((n + i) % 6)
+    terms[i].write('\x1b[' + c + 'm' + 'term' + i + ' line ' + n + ' ' + 'abcdefghijklmnopqrstuvwxyz0123456789 '.repeat(2) + '\x1b[0m\r\n')
+  }
+  n++
+}, 16)
+const t0 = performance.now()
+let mStart = 0
+let mFrames = 0
+const dts = []
+let prev = performance.now()
+function tick(now) {
+  const el = (now - t0) / 1000
+  if (el >= warm && !mStart) { mStart = now; mFrames = 0 }
+  if (mStart) { mFrames++; dts.push(now - prev) }
+  prev = now
+  if (mStart && (now - mStart) / 1000 >= dur) { finish(now); return }
+  document.getElementById('hud').textContent = 'lines ' + n + ' lost ' + lost + ' webgl ' + webglOk
+  requestAnimationFrame(tick)
+}
+function finish(now) {
+  const secs = (now - mStart) / 1000
+  dts.sort((a, b) => a - b)
+  const p95 = dts[Math.floor(dts.length * 0.95)]
+  const c = document.createElement('canvas')
+  const g = c.getContext('webgl2')
+  let gl = null
+  if (g) {
+    const e = g.getExtension('WEBGL_debug_renderer_info')
+    gl = e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'n/a'
+  }
+  const rep = { kind: 'xterm', terminals: terms.length, webglOk, contextLost: lost, seconds: secs, fps: mFrames / secs, frameP95ms: p95, frameMaxMs: dts[dts.length - 1], linesWritten: n, gl }
+  fetch('/report', { method: 'POST', body: JSON.stringify(rep) }).catch(() => {})
+  document.getElementById('hud').textContent = JSON.stringify(rep)
+}
+requestAnimationFrame(tick)
+</script>
+</body>
+</html>

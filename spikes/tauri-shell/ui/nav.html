@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8" /></head>
+<body>
+<a id="pop" href="https://blocked.invalid/popup" target="_blank">popup link</a>
+<script>
+const rep = (o) => fetch('/report', { method: 'POST', body: JSON.stringify(Object.assign({ kind: 'nav' }, o)) })
+rep({ step: 'loaded', href: location.href })
+setTimeout(() => { const w = window.open('https://blocked.invalid/window-open'); rep({ step: 'window.open', returned: w === null ? 'null' : 'window' }) }, 800)
+setTimeout(() => { document.getElementById('pop').click() }, 1600)
+setTimeout(() => { location.href = 'https://blocked.invalid/location' }, 2400)
+setTimeout(() => { rep({ step: 'after-location', href: location.href }) }, 4000)
+</script>
+</body></html>

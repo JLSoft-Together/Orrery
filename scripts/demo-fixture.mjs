@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -17,6 +17,25 @@ const SUBAGENTS = Number(args.subagents ?? 3)
 const TICK_MS = Number(args.tick ?? 1200)
 const DURATION_S = Number(args.duration ?? 0)
 const PEERS = Number(args.peers ?? 0)
+const SEED = args.seed === undefined ? null : Number(args.seed) >>> 0
+const RECORD = args.record ? path.resolve(args.record) : null
+const inside = (parent, child) => {
+  const rel = path.relative(path.resolve(parent), path.resolve(child))
+  return rel === '' || (!rel.startsWith(`..${path.sep}`) && rel !== '..' && !path.isAbsolute(rel))
+}
+if (RECORD && (inside(ROOT, RECORD) || inside(RECORD, ROOT))) throw new Error('--record must be outside --root')
+let randomState = SEED ?? 0
+let logicalTime = 1_800_000_000_000
+const random = () => {
+  if (SEED === null) return Math.random()
+  randomState = (randomState + 0x6d2b79f5) >>> 0
+  let t = randomState
+  t = Math.imul(t ^ (t >>> 15), t | 1)
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
+const now = () => (SEED === null ? Date.now() : logicalTime++)
+const uuid = () => SEED === null ? randomUUID() : `00000000-0000-4000-8000-${Math.floor(random() * 0xffffffffffff).toString(16).padStart(12, '0')}`
 
 const TOOLS = ['Read', 'Edit', 'Bash', 'Grep', 'Glob', 'Write', 'PowerShell']
 const AGENT_TYPES = ['Explore', 'general-purpose', 'Plan', 'code-reviewer']
@@ -27,11 +46,11 @@ const STATUSES = ['busy', 'busy', 'busy', 'idle', 'waiting', 'shell']
 rmSync(ROOT, { recursive: true, force: true })
 mkdirSync(path.join(ROOT, 'sessions'), { recursive: true })
 
-const pick = (list) => list[Math.floor(Math.random() * list.length)]
-const iso = () => new Date().toISOString()
+const pick = (list) => list[Math.floor(random() * list.length)]
+const iso = () => new Date(now()).toISOString()
 const line = (o) => `${JSON.stringify(o)}\n`
 let counter = 0
-const nextId = (p) => `${p}_${Date.now().toString(36)}${(counter++).toString(36)}`
+const nextId = (p) => `${p}_${now().toString(36)}${(counter++).toString(36)}`
 
 const children = []
 const sessions = []
@@ -51,8 +70,8 @@ function writeRegistry(s) {
       nameSource: s.nameSource,
       status: s.status,
       waitingFor: s.status === 'waiting' ? 'permission prompt' : undefined,
-      updatedAt: Date.now(),
-      statusUpdatedAt: Date.now(),
+      updatedAt: now(),
+      statusUpdatedAt: now(),
       messagingSocketPath: PEERS > 0 ? s.sock : undefined,
     }),
   )
@@ -74,7 +93,7 @@ function toolUse(file, tool, sidechain = false) {
         id: nextId('msg'),
         model: 'claude-opus-5-5',
         stop_reason: 'tool_use',
-        usage: { input_tokens: 200 + Math.floor(Math.random() * 3000), output_tokens: 20 + Math.floor(Math.random() * 400), cache_read_input_tokens: 5000 },
+        usage: { input_tokens: 200 + Math.floor(random() * 3000), output_tokens: 20 + Math.floor(random() * 400), cache_read_input_tokens: 5000 },
         content: [{ type: 'tool_use', id, name: tool, input: {} }],
       },
     }),
@@ -90,7 +109,7 @@ function spawnSubagent(s, parent) {
   const host = parent ? parent.file : transcript(s)
   const toolUseId = toolUse(host, 'Agent', Boolean(parent))
   toolResult(host, toolUseId, false, { toolUseResult: { status: 'async_launched' } })
-  const agentId = `a${Math.random().toString(16).slice(2, 15)}`
+  const agentId = SEED === null ? `a${Math.random().toString(16).slice(2, 15)}` : `a${Math.floor(random() * 0xffffffffff).toString(16)}`
   const dir = path.join(ROOT, 'projects', s.slug, s.sessionId, 'subagents')
   mkdirSync(dir, { recursive: true })
   writeFileSync(
@@ -103,7 +122,7 @@ function spawnSubagent(s, parent) {
 }
 
 function finishSubagent(s, sub) {
-  const status = Math.random() < 0.8 ? 'completed' : Math.random() < 0.5 ? 'failed' : 'stopped'
+  const status = random() < 0.8 ? 'completed' : random() < 0.5 ? 'failed' : 'stopped'
   appendFileSync(
     sub.file,
     line({ type: 'assistant', isSidechain: true, timestamp: iso(), message: { id: nextId('msg'), stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 300 }, content: [{ type: 'text', text: 'done' }] } }),
@@ -116,8 +135,8 @@ function finishSubagent(s, sub) {
 }
 
 function sendPeer(from, to) {
-  const msgId = randomUUID()
-  const sub = Math.random() < 0.3 ? pick(from.subs.filter((x) => !x.done)) : undefined
+  const msgId = uuid()
+  const sub = random() < 0.3 ? pick(from.subs.filter((x) => !x.done)) : undefined
   const file = sub ? sub.file : transcript(from)
   const id = toolUse(file, 'SendMessage', Boolean(sub))
   toolResult(file, id, false, { toolUseResult: { success: true, message: '', display: '', msg_id: msgId } })
@@ -130,7 +149,7 @@ function sendPeer(from, to) {
     into,
     line({
       type: 'user',
-      uuid: randomUUID(),
+      uuid: uuid(),
       timestamp: at,
       sessionId: to.sessionId,
       isMeta: true,
@@ -143,7 +162,7 @@ function sendPeer(from, to) {
 }
 
 function peerPair() {
-  const from = Math.random() < 0.5 ? sessions[0] : pick(sessions)
+  const from = random() < 0.5 ? sessions[0] : pick(sessions)
   return [from, pick(sessions.filter((s) => s !== from))]
 }
 
@@ -154,15 +173,15 @@ for (let i = 0; i < SESSIONS; i++) {
   const cwd = `D:\\work\\demo\\${name}`
   const s = {
     pid: child.pid,
-    sessionId: randomUUID(),
+    sessionId: uuid(),
     cwd,
     slug: cwd.replace(/[^a-zA-Z0-9]/g, '-'),
-    startedAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+    startedAt: now() - Math.floor(random() * 3_600_000),
     kind: i === SESSIONS - 1 && SESSIONS > 2 ? 'bg' : 'interactive',
     name: `${name}-${(i + 10).toString(16)}`,
     nameSource: 'derived',
     status: 'busy',
-    sock: `\\\\.\\pipe\\LOCAL\\cc-msg-demo-${i}-${randomUUID().slice(0, 8)}`,
+    sock: `\\\\.\\pipe\\LOCAL\\cc-msg-demo-${i}-${uuid().slice(0, 8)}`,
     open: null,
     subs: [],
   }
@@ -181,11 +200,11 @@ for (let i = 0; i < HISTORY; i++) {
   const cwd = path.join(ROOT, 'work', name)
   if (i !== 1) mkdirSync(cwd, { recursive: true })
   const slug = cwd.replace(/[^a-zA-Z0-9]/g, '-')
-  const sessionId = randomUUID()
+  const sessionId = uuid()
   mkdirSync(path.join(ROOT, 'projects', slug), { recursive: true })
-  const at = (m) => new Date(Date.now() - (i + 1) * 86_400_000 + m * 60_000).toISOString()
+  const at = (m) => new Date(now() - (i + 1) * 86_400_000 + m * 60_000).toISOString()
   const base = { parentUuid: null, isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId, version: '2.1.294', gitBranch: i % 2 ? 'main' : `feature/paywall-${i}` }
-  const rec = (m, extra) => line({ ...base, uuid: randomUUID(), timestamp: at(m), ...extra })
+  const rec = (m, extra) => line({ ...base, uuid: uuid(), timestamp: at(m), ...extra })
   const file = path.join(ROOT, 'projects', slug, `${sessionId}.jsonl`)
   writeFileSync(
     file,
@@ -217,9 +236,9 @@ let ticks = 0
 const timer = setInterval(() => {
   ticks++
   for (const s of sessions) {
-    const r = Math.random()
+    const r = random()
     if (s.open) {
-      toolResult(transcript(s), s.open, Math.random() < 0.05)
+      toolResult(transcript(s), s.open, random() < 0.05)
       s.open = null
     } else if (s.status === 'busy') {
       s.open = toolUse(transcript(s), pick(TOOLS))
@@ -229,9 +248,9 @@ const timer = setInterval(() => {
       if (sub.open) {
         toolResult(sub.file, sub.open)
         sub.open = null
-      } else if (sub.depth < 3 && Math.random() < 0.05) {
+      } else if (sub.depth < 3 && random() < 0.05) {
         spawnSubagent(s, sub)
-      } else if (Math.random() < 0.15) {
+      } else if (random() < 0.15) {
         finishSubagent(s, sub)
       } else {
         sub.open = toolUse(sub.file, pick(TOOLS), true)
@@ -248,13 +267,17 @@ const timer = setInterval(() => {
       writeRegistry(s)
     }
   }
-  if (canMessage && Math.random() < 0.12) sendPeer(...peerPair())
+  if (canMessage && random() < 0.12) sendPeer(...peerPair())
   if (DURATION_S > 0 && ticks * TICK_MS >= DURATION_S * 1000) shutdown()
 }, TICK_MS)
 
 function shutdown() {
   clearInterval(timer)
   for (const c of children) c.kill()
+  if (RECORD) {
+    mkdirSync(RECORD, { recursive: true })
+    cpSync(path.join(ROOT, 'projects'), path.join(RECORD, 'projects'), { recursive: true })
+  }
   process.exit(0)
 }
 

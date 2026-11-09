@@ -38,6 +38,9 @@ const PROFILE = opt('profile', 'false') !== 'false'
 const PROFILE_SECONDS = Number(opt('profile-seconds', 25))
 const PATCH_SECONDS = Number(opt('patch-seconds', 10))
 const PROFILE_DIR = opt('profile-dir', '')
+const COLLECTOR_PROF = opt('collector-prof', 'false') !== 'false'
+const COLLECTOR_PROF_SECONDS = Number(opt('collector-prof-seconds', 30))
+const FIXTURE_SEED = opt('seed', null)
 const TICK_MS = 2000
 
 const defaultExe = WIN ? 'C:\\Program Files\\Orrery\\Orrery.exe' : MAC ? '/Applications/Orrery.app/Contents/MacOS/Orrery' : ''
@@ -95,6 +98,52 @@ const killTree = (pid) => {
     if (WIN) execFileSync('taskkill', ['/T', '/F', '/PID', String(pid)], { stdio: 'ignore' })
     else process.kill(-pid, 'SIGKILL')
   } catch {}
+}
+
+async function profileCollector(claudeRoot, tmp) {
+  const inspectorPort = await freePort()
+  const port = await freePort()
+  const data = path.join(tmp, 'collector-prof-data')
+  mkdirSync(data, { recursive: true })
+  const child = spawn(process.execPath, [`--inspect=127.0.0.1:${inspectorPort}`, '--import', 'tsx', path.join(ROOT, 'apps', 'collector', 'src', 'index.ts'), '--dev'], {
+    env: { ...process.env, CCM_PORT: String(port), CCM_DATA_DIR: data, CCM_TOAST: '0', CCM_VERIFY_PROCESSES: '0', CLAUDE_CONFIG_DIR: claudeRoot, CODEX_HOME: path.join(tmp, 'codex'), CODEWHALE_HOME: path.join(tmp, 'codewhale') },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  let log = ''
+  let wsUrl = null
+  const appendLog = (b) => {
+    log = (log + String(b)).slice(-4000)
+    wsUrl ??= log.match(/ws:\/\/127\.0\.0\.1:\d+\/[^\s]+/)?.[0] ?? null
+  }
+  child.stdout.on('data', appendLog)
+  child.stderr.on('data', appendLog)
+  let cdp = null
+  try {
+    for (let i = 0; i < 120; i++) {
+      if (wsUrl) break
+      if (child.exitCode !== null) break
+      await sleep(250)
+    }
+    if (!wsUrl) throw new Error(`profile collector failed to start (exit ${child.exitCode}): ${log.trim()}`)
+    cdp = await connect(wsUrl)
+    await sleep(1000)
+    await cdp.cmd('Profiler.enable')
+    await cdp.cmd('Profiler.setSamplingInterval', { interval: 500 })
+    await cdp.cmd('Profiler.start')
+    await sleep(COLLECTOR_PROF_SECONDS * 1000)
+    const profile = await cdp.cmd('Profiler.stop')
+    await cdp.cmd('Profiler.disable')
+    const prof = profile.result?.profile
+    if (!prof) throw new Error('profile collector returned no CPU profile')
+    const analyzed = analyzeProfile(prof, COLLECTOR_PROF_SECONDS)
+    return { mode: 'standalone Node collector, source via tsx', seconds: COLLECTOR_PROF_SECONDS, sampleCount: analyzed.sampleCount, sampledMs: analyzed.sampledMs, topSelf: analyzed.topSelf.slice(0, 20) }
+  } finally {
+    cdp?.close()
+    if (child.exitCode === null) {
+      child.kill()
+      await new Promise((resolve) => child.once('exit', resolve))
+    }
+  }
 }
 
 async function connect(wsUrl) {
@@ -634,7 +683,7 @@ async function runScenario(name, version) {
   try {
     if (sc.demo) {
       const [sessions, subagents] = sc.demo
-      fixture = spawn(process.execPath, [path.join(ROOT, 'scripts', 'demo-fixture.mjs'), `--root=${dirs.claude}`, `--sessions=${sessions}`, `--subagents=${subagents}`, `--duration=${SETTLE + SECONDS + 400}`], { stdio: ['ignore', 'pipe', 'ignore'] })
+      fixture = spawn(process.execPath, [path.join(ROOT, 'scripts', 'demo-fixture.mjs'), `--root=${dirs.claude}`, `--sessions=${sessions}`, `--subagents=${subagents}`, `--duration=${SETTLE + SECONDS + 400}`, ...(FIXTURE_SEED === null ? [] : [`--seed=${FIXTURE_SEED}`])], { stdio: ['ignore', 'pipe', 'ignore'] })
       lowPriority(fixture.pid)
       await new Promise((res, rej) => {
         const t = setTimeout(() => rej(new Error('fixture did not start')), 30000)
@@ -723,6 +772,7 @@ async function runScenario(name, version) {
       result.profile = { ...analyzeProfile(prof, PROFILE_SECONDS), file: PROFILE_DIR ? file : '(temp, deleted)', storePatches: patches, dom: await cdp.evaluate(PAGE_REGIONS) }
       console.log('profile', name, 'busy', result.profile.busyPct + '%', 'saved', file)
     }
+    if (COLLECTOR_PROF) result.collectorProfile = await profileCollector(dirs.claude, tmp)
     return result
   } finally {
     stopSampler()

@@ -31,9 +31,17 @@ impl Shared {
     }
 }
 
+pub fn read_dir_sorted(dir: &Path) -> Option<Vec<std::fs::DirEntry>> {
+    #[allow(unused_mut)]
+    let mut entries: Vec<_> = std::fs::read_dir(dir).ok()?.flatten().collect();
+    #[cfg(unix)]
+    entries.sort_by(|a, b| a.file_name().as_encoded_bytes().cmp(b.file_name().as_encoded_bytes()));
+    Some(entries)
+}
+
 fn walk(dir: &Path, prefix: &str, out: &mut Vec<String>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
-    for e in entries.flatten() {
+    let Some(entries) = read_dir_sorted(dir) else { return };
+    for e in entries {
         let name = e.file_name().to_string_lossy().into_owned();
         let rel = if prefix.is_empty() { name.clone() } else { format!("{prefix}/{name}") };
         let is_dir = e.file_type().is_ok_and(|t| t.is_dir());

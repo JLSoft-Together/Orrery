@@ -33,8 +33,8 @@ pub fn find_transcript(projects: &Path, session_id: &str, cwd: Option<&str>) -> 
             return Some(guess);
         }
     }
-    let dirs = std::fs::read_dir(projects).ok()?;
-    for d in dirs.flatten() {
+    let dirs = crate::jobs::read_dir_sorted(projects)?;
+    for d in dirs {
         let candidate = projects.join(d.file_name()).join(&name);
         if candidate.exists() {
             return Some(candidate);
@@ -111,8 +111,8 @@ impl Tracker {
         let mut fresh = HashSet::new();
         let Some(transcript) = &self.transcript else { return fresh };
         let dir = transcript.with_extension("").join("subagents");
-        let Ok(entries) = std::fs::read_dir(&dir) else { return fresh };
-        for e in entries.flatten() {
+        let Some(entries) = crate::jobs::read_dir_sorted(&dir) else { return fresh };
+        for e in entries {
             let name = e.file_name();
             let Some(name) = name.to_str() else { continue };
             let Some(agent_id) = meta_id(name) else { continue };

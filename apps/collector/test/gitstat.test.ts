@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { GitDiffStat } from '@ccm/shared'
-import { createDiffStatReader, NOT_A_REPO } from '../src/gitstat'
+import { createDiffStatReader, MISSING_DIR, NOT_A_REPO } from '../src/gitstat'
 
 const stat = (n: number): GitDiffStat => ({ files: n, insertions: 2, deletions: 3, untracked: 0, at: new Date(0).toISOString() })
 
@@ -63,6 +63,19 @@ describe('createDiffStatReader', () => {
     expect(run).toHaveBeenCalledTimes(1)
     t = 301_000
     await read('/tmp/x')
+    expect(run).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not spawn again for a missing cwd within its short ttl, and does after it', async () => {
+    let t = 0
+    const run = vi.fn(async (): Promise<typeof MISSING_DIR> => MISSING_DIR)
+    const read = createDiffStatReader(run, { now: () => t, missingDirTtlMs: 30_000 })
+    expect(await read('/gone')).toBeNull()
+    t = 29_000
+    expect(await read('/gone')).toBeNull()
+    expect(run).toHaveBeenCalledTimes(1)
+    t = 31_000
+    await read('/gone')
     expect(run).toHaveBeenCalledTimes(2)
   })
 

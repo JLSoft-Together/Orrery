@@ -32,21 +32,33 @@ import type { UsageSink } from './usage'
 type Listener = (message: ServerMessage) => void
 
 function diff<T extends { id: string }>(prev: T, next: T): Record<string, unknown> | null {
-  const patch: Record<string, unknown> = {}
-  let changed = false
-  const keys = new Set([...Object.keys(prev), ...Object.keys(next)])
-  for (const key of keys) {
+  let patch: Record<string, unknown> | null = null
+  const a = prev as Record<string, unknown>
+  const b = next as Record<string, unknown>
+  for (const key in b) {
     if (key === 'id') continue
-    const a = (prev as Record<string, unknown>)[key]
-    const b = (next as Record<string, unknown>)[key]
-    if (a === b) continue
-    patch[key] = b === undefined ? null : b
-    changed = true
+    const x = a[key]
+    const y = b[key]
+    if (x === y) continue
+    ;(patch ??= {})[key] = y === undefined ? null : y
   }
-  return changed ? patch : null
+  for (const key in a) {
+    if (key === 'id' || key in b) continue
+    if (a[key] === undefined) continue
+    ;(patch ??= {})[key] = null
+  }
+  return patch
 }
 
 function clean<T extends object>(obj: T): T {
+  let dirty = false
+  for (const key in obj) {
+    if ((obj as Record<string, unknown>)[key] === undefined) {
+      dirty = true
+      break
+    }
+  }
+  if (!dirty) return { ...obj }
   const out = {} as Record<string, unknown>
   for (const [k, v] of Object.entries(obj)) if (v !== undefined) out[k] = v
   return out as T
@@ -55,6 +67,7 @@ function clean<T extends object>(obj: T): T {
 export class MonitorStore implements UsageSink {
   private readonly terminals = new Map<string, TerminalSession>()
   private readonly agents = new Map<string, Agent>()
+  private readonly agentIdsByTerminal = new Map<string, Set<string>>()
   private readonly links = new Map<string, PeerLink>()
   private readonly activity: ActivityEvent[] = []
   /** tool.* events get their own ring so a busy session cannot push waits/completions out of history. */
@@ -159,16 +172,27 @@ export class MonitorStore implements UsageSink {
   }
 
   agentsOf(terminalId: string): Agent[] {
-    return [...this.agents.values()].filter((a) => a.terminalId === terminalId)
+    const ids = this.agentIdsByTerminal.get(terminalId)
+    if (!ids) return []
+    const out: Agent[] = []
+    for (const id of ids) {
+      const agent = this.agents.get(id)
+      if (agent) out.push(agent)
+    }
+    return out
   }
 
   upsertTerminal(next: TerminalSession): void {
-    const value = clean(next)
-    const prev = this.terminals.get(value.id)
-    this.terminals.set(value.id, value)
-    if (!prev) return this.emit({ type: 'terminal.created', payload: value })
-    const patch = diff(prev, value)
-    if (patch) this.emit({ type: 'terminal.updated', payload: { ...patch, id: value.id } })
+    const prev = this.terminals.get(next.id)
+    if (!prev) {
+      const value = clean(next)
+      this.terminals.set(value.id, value)
+      return this.emit({ type: 'terminal.created', payload: value })
+    }
+    const patch = diff(prev, next)
+    if (!patch) return
+    this.terminals.set(next.id, clean(next))
+    this.emit({ type: 'terminal.updated', payload: { ...patch, id: next.id } })
   }
 
   removeTerminal(id: string): void {
@@ -177,15 +201,40 @@ export class MonitorStore implements UsageSink {
   }
 
   upsertAgent(next: Agent): void {
+    const prev = this.agents.get(next.id)
+    if (!prev) {
+      const value = clean(next)
+      this.agents.set(value.id, value)
+      this.indexAgent(value)
+      return this.emit({ type: 'agent.created', payload: value })
+    }
+    const patch = diff(prev, next)
+    if (!patch) return
     const value = clean(next)
-    const prev = this.agents.get(value.id)
     this.agents.set(value.id, value)
-    if (!prev) return this.emit({ type: 'agent.created', payload: value })
-    const patch = diff(prev, value)
-    if (patch) this.emit({ type: 'agent.updated', payload: { ...patch, id: value.id } })
+    if (prev.terminalId !== value.terminalId) {
+      this.unindexAgent(prev)
+      this.indexAgent(value)
+    }
+    this.emit({ type: 'agent.updated', payload: { ...patch, id: value.id } })
+  }
+
+  private indexAgent(agent: Agent): void {
+    let ids = this.agentIdsByTerminal.get(agent.terminalId)
+    if (!ids) this.agentIdsByTerminal.set(agent.terminalId, (ids = new Set()))
+    ids.add(agent.id)
+  }
+
+  private unindexAgent(agent: Agent): void {
+    const ids = this.agentIdsByTerminal.get(agent.terminalId)
+    if (!ids) return
+    ids.delete(agent.id)
+    if (ids.size === 0) this.agentIdsByTerminal.delete(agent.terminalId)
   }
 
   removeAgent(id: string): void {
+    const prev = this.agents.get(id)
+    if (prev) this.unindexAgent(prev)
     if (this.agents.delete(id)) this.emit({ type: 'agent.removed', payload: { id } })
   }
 

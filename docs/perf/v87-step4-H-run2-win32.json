@@ -1,0 +1,160 @@
+{
+  "version": "3.4.0",
+  "label": "v87-step4-H-run2",
+  "platform": "win32",
+  "date": "2026-11-09",
+  "exe": "electron dev (apps/desktop/stage)",
+  "cores": 8,
+  "totalMemMB": 49024,
+  "cpuUnit": "percent of one core",
+  "seconds": 120,
+  "settle": 20,
+  "scenarios": {
+    "demo-30x6": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 57
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 7,
+          "privateMB": 612.9,
+          "privateMBMax": 645.2,
+          "rssMB": 841.6,
+          "cpuAvgPct": 78.6,
+          "cpuP95Pct": 114.8,
+          "cpuSec": 94.5
+        },
+        "main": {
+          "procs": 2,
+          "privateMB": 78.2,
+          "privateMBMax": 80.6,
+          "rssMB": 123.9,
+          "cpuAvgPct": 0.7,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.8
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 309.6,
+          "privateMBMax": 328.6,
+          "rssMB": 385.4,
+          "cpuAvgPct": 45.6,
+          "cpuP95Pct": 69.3,
+          "cpuSec": 54.7
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 115,
+          "privateMBMax": 122.4,
+          "rssMB": 159.5,
+          "cpuAvgPct": 22.7,
+          "cpuP95Pct": 33.8,
+          "cpuSec": 27.3
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 94.9,
+          "privateMBMax": 104.1,
+          "rssMB": 112.1,
+          "cpuAvgPct": 9.6,
+          "cpuP95Pct": 17.7,
+          "cpuSec": 11.5
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 14,
+          "privateMBMax": 14.4,
+          "rssMB": 53.3,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2
+        },
+        "pty-child": {
+          "procs": 1,
+          "privateMB": 1.2,
+          "privateMBMax": 1.2,
+          "rssMB": 7.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 28484,
+          "role": "renderer",
+          "privateMB": 309.6,
+          "rssMB": 385.4,
+          "cpuAvgPct": 45.6,
+          "cpuP95Pct": 69.3,
+          "cpuSec": 54.7,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-im6OVk\\u"
+        },
+        {
+          "pid": 27084,
+          "role": "gpu",
+          "privateMB": 115,
+          "rssMB": 159.5,
+          "cpuAvgPct": 22.7,
+          "cpuP95Pct": 33.8,
+          "cpuSec": 27.3,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-im6OV"
+        },
+        {
+          "pid": 32160,
+          "role": "collector",
+          "privateMB": 94.9,
+          "rssMB": 112.1,
+          "cpuAvgPct": 9.6,
+          "cpuP95Pct": 17.7,
+          "cpuSec": 11.5,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 18724,
+          "role": "main",
+          "privateMB": 77.2,
+          "rssMB": 119.1,
+          "cpuAvgPct": 0.6,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.7,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-im6OVk\\ud --remote-debuggin"
+        },
+        {
+          "pid": 28124,
+          "role": "network",
+          "privateMB": 14,
+          "rssMB": 53.3,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        },
+        {
+          "pid": 1788,
+          "role": "main",
+          "privateMB": 1,
+          "rssMB": 4.8,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0.1,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\apps\\core\\target\\release\\orrery-core.exe procs"
+        },
+        {
+          "pid": 2900,
+          "role": "pty-child",
+          "privateMB": 1.2,
+          "rssMB": 7.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4"
+        }
+      ]
+    }
+  },
+  "failures": {}
+}

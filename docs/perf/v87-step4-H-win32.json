@@ -1,0 +1,288 @@
+{
+  "version": "3.4.0",
+  "label": "v87-step4-H",
+  "platform": "win32",
+  "date": "2026-11-09",
+  "exe": "electron dev (apps/desktop/stage)",
+  "cores": 8,
+  "totalMemMB": 49024,
+  "cpuUnit": "percent of one core",
+  "seconds": 120,
+  "settle": 20,
+  "scenarios": {
+    "demo-30x6": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 57
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 7,
+          "privateMB": 597,
+          "privateMBMax": 630.3,
+          "rssMB": 834.3,
+          "cpuAvgPct": 77.4,
+          "cpuP95Pct": 107,
+          "cpuSec": 91.9
+        },
+        "main": {
+          "procs": 2,
+          "privateMB": 78.4,
+          "privateMBMax": 80.4,
+          "rssMB": 125.9,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.6
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 305.6,
+          "privateMBMax": 328.9,
+          "rssMB": 381.2,
+          "cpuAvgPct": 44.1,
+          "cpuP95Pct": 63.2,
+          "cpuSec": 52.4
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 114.7,
+          "privateMBMax": 123.4,
+          "rssMB": 159.3,
+          "cpuAvgPct": 22.4,
+          "cpuP95Pct": 32.2,
+          "cpuSec": 26.5
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 83.3,
+          "privateMBMax": 88.6,
+          "rssMB": 107.3,
+          "cpuAvgPct": 10.3,
+          "cpuP95Pct": 17.6,
+          "cpuSec": 12.2
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.8,
+          "privateMBMax": 14.2,
+          "rssMB": 53.1,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2
+        },
+        "pty-child": {
+          "procs": 1,
+          "privateMB": 1.2,
+          "privateMBMax": 1.2,
+          "rssMB": 7.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 20620,
+          "role": "renderer",
+          "privateMB": 305.6,
+          "rssMB": 381.2,
+          "cpuAvgPct": 44.1,
+          "cpuP95Pct": 63.2,
+          "cpuSec": 52.4,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-1bIxG0\\u"
+        },
+        {
+          "pid": 26636,
+          "role": "gpu",
+          "privateMB": 114.7,
+          "rssMB": 159.3,
+          "cpuAvgPct": 22.4,
+          "cpuP95Pct": 32.2,
+          "cpuSec": 26.5,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-1bIxG"
+        },
+        {
+          "pid": 11896,
+          "role": "collector",
+          "privateMB": 83.3,
+          "rssMB": 107.3,
+          "cpuAvgPct": 10.3,
+          "cpuP95Pct": 17.6,
+          "cpuSec": 12.2,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 24832,
+          "role": "main",
+          "privateMB": 77.4,
+          "rssMB": 121.1,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.6,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-1bIxG0\\ud --remote-debuggin"
+        },
+        {
+          "pid": 21904,
+          "role": "network",
+          "privateMB": 13.8,
+          "rssMB": 53.1,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        },
+        {
+          "pid": 27520,
+          "role": "pty-child",
+          "privateMB": 1.2,
+          "rssMB": 7.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4"
+        },
+        {
+          "pid": 32664,
+          "role": "main",
+          "privateMB": 1,
+          "rssMB": 4.8,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\apps\\core\\target\\release\\orrery-core.exe procs"
+        }
+      ],
+      "collectorProfile": {
+        "mode": "standalone Node collector, source via tsx",
+        "seconds": 30,
+        "sampleCount": 28765,
+        "sampledMs": 30005.7,
+        "topSelf": [
+          {
+            "fn": "diff @ src/store.ts:1:210",
+            "ms": 65.8,
+            "pctOfWindow": 0.22,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "stat @ :0:0",
+            "ms": 61.6,
+            "pctOfWindow": 0.21,
+            "msPerSec": 2.1
+          },
+          {
+            "fn": "ingestLine @ src/usage.ts:1:9744",
+            "ms": 53.6,
+            "pctOfWindow": 0.18,
+            "msPerSec": 1.8
+          },
+          {
+            "fn": "stat @ fs/promises:1037:20",
+            "ms": 39.3,
+            "pctOfWindow": 0.13,
+            "msPerSec": 1.3
+          },
+          {
+            "fn": "discoverSubagents @ src/tracker.ts:1:11484",
+            "ms": 32.2,
+            "pctOfWindow": 0.11,
+            "msPerSec": 1.1
+          },
+          {
+            "fn": "publish @ src/monitor.ts:1:23586",
+            "ms": 32.2,
+            "pctOfWindow": 0.11,
+            "msPerSec": 1.1
+          },
+          {
+            "fn": "normalize @ node:path:350:12",
+            "ms": 31.7,
+            "pctOfWindow": 0.11,
+            "msPerSec": 1.1
+          },
+          {
+            "fn": "nextTick @ process/task_queues:112:18",
+            "ms": 29.5,
+            "pctOfWindow": 0.1,
+            "msPerSec": 1
+          },
+          {
+            "fn": "read @ :0:0",
+            "ms": 28.4,
+            "pctOfWindow": 0.09,
+            "msPerSec": 0.9
+          },
+          {
+            "fn": "upsertAgent @ src/store.ts:1:3397",
+            "ms": 28.2,
+            "pctOfWindow": 0.09,
+            "msPerSec": 0.9
+          },
+          {
+            "fn": "spawn @ :0:0",
+            "ms": 27.1,
+            "pctOfWindow": 0.09,
+            "msPerSec": 0.9
+          },
+          {
+            "fn": "openFileHandle @ :0:0",
+            "ms": 25.6,
+            "pctOfWindow": 0.09,
+            "msPerSec": 0.9
+          },
+          {
+            "fn": "buildTerminal @ src/tracker.ts:1:14112",
+            "ms": 25.3,
+            "pctOfWindow": 0.08,
+            "msPerSec": 0.8
+          },
+          {
+            "fn": "join @ node:path:506:7",
+            "ms": 24.8,
+            "pctOfWindow": 0.08,
+            "msPerSec": 0.8
+          },
+          {
+            "fn": "consume @ src/tailer.ts:1:1490",
+            "ms": 24.4,
+            "pctOfWindow": 0.08,
+            "msPerSec": 0.8
+          },
+          {
+            "fn": "prune @ src/tool-spans.ts:1:1650",
+            "ms": 18.6,
+            "pctOfWindow": 0.06,
+            "msPerSec": 0.6
+          },
+          {
+            "fn": "syncOnce @ src/tracker.ts:1:5998",
+            "ms": 17.6,
+            "pctOfWindow": 0.06,
+            "msPerSec": 0.6
+          },
+          {
+            "fn": "buildAgents @ src/tracker.ts:1:15097",
+            "ms": 17.5,
+            "pctOfWindow": 0.06,
+            "msPerSec": 0.6
+          },
+          {
+            "fn": "close @ :0:0",
+            "ms": 16.8,
+            "pctOfWindow": 0.06,
+            "msPerSec": 0.6
+          },
+          {
+            "fn": "read @ fs/promises:647:20",
+            "ms": 16.7,
+            "pctOfWindow": 0.06,
+            "msPerSec": 0.6
+          }
+        ]
+      }
+    }
+  },
+  "failures": {}
+}

@@ -26,3 +26,17 @@ Máy: MacBook (Darwin 27.0.0, 10 core, 24 GB), Rust 1.99.1 (rustup cài mới), 
 - `cargo clippy -D warnings`: `kinfo.rs` đổi sang `as_chunks`, sạch.
 - `cargo fmt --check` lệch cả repo (không dùng rustfmt) — bỏ qua.
 - QA tay 12 bước trong `QA-v87-mac.md`: chờ chủ nhân chạy `npm run desktop`.
+
+## QA 12 bước (con tự chạy qua CDP, instance riêng, 2026-11-10)
+
+| Bước | Kết quả |
+|---|---|
+| 1 terminal host | `pty host: rust (…/apps/core/target/release/orrery-core)` |
+| 2 shell, `ls`, `vim` rồi `:q` | ĐẠT (ảnh: màu, tiếng Việt, thoát vim pane vẫn chạy) |
+| 3 Claude | ĐẠT: prompt ngắn → "mac ok", status idle → working → idle, link Monitor |
+| 3 Codex | CHƯA: Codex hỏi "Trust this folder?" (máy này chưa trust `~/work/web/Orrery`); con không tự trust thay chủ nhân |
+| 4 resize, 5 cd / branch, 6 đóng pane, 8 `--resume`, 9 kill core | ĐẠT qua E2E core-pty / p3 / p5 / tabs-cwd |
+| 7 Quit | ĐẠT: sheet "Quit and close 2 terminals?" đủ 2 dòng; Cancel giữ app + pane; Quit → app, pane, `orrery-core` tắt hết |
+| 10 Monitor | ĐẠT: session Claude của pane hiện, link đúng |
+| 11 Usage | ĐẠT: hiện số trong ~6 s lần mở đầu, không treo |
+| 12 Ports | ĐẠT sau sửa: cổng 8765 có dòng; lỗi tên process `cut` → sửa `tree.ts` `mainOf` ưu tiên process đang listen (lệnh pipe kiểu `npm run dev \| tee` lấy nhầm tên) |

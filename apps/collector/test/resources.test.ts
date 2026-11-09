@@ -92,6 +92,14 @@ describe('buildTree', () => {
     expect(t.servers.some((s) => s.root.pid === 5)).toBe(false)
   })
 
+  it('names a piped shell command after the process that listens, not the first one in the pipe', () => {
+    const piped = [row(10, 1, 'claude'), row(11, 10, 'zsh'), row(30, 11, 'cut'), row(31, 11, 'node', { cmd: 'node dev.js' }), row(32, 31, 'python3')]
+    const ports = new Map([[32, [{ port: 8765, address: '127.0.0.1', established: 0 }]]])
+    const shell = buildTree({ rows: piped, sessions: [{ sessionId: 'a', pid: 10 }], lineage: new Map(), ports }).servers.find((s) => s.root.pid === 11)!
+    expect(shell.main.name).toBe('python3')
+    expect(buildTree({ rows: piped, sessions: [{ sessionId: 'a', pid: 10 }], lineage: new Map() }).servers.find((s) => s.root.pid === 11)!.main.name).toBe('cut')
+  })
+
   it('marks a dev server once it listens, and leftovers as orphans once the session is gone', () => {
     const first = buildTree({ rows, sessions: [{ sessionId: 'a', pid: 10 }], lineage: new Map(), ports: new Map([[12, [{ port: 5173, address: '127.0.0.1', established: 0 }]]]) })
     expect(first.servers.find((s) => s.root.pid === 11)).toMatchObject({ kind: 'dev-server', ports: [{ port: 5173 }] })

@@ -128,8 +128,9 @@ function isToolShell(child: ProcRow, f: Forest): boolean {
   return (f.children.get(child.pid) ?? []).some((g) => isShell(g.name) && baseName(g.name) !== 'cmd')
 }
 
-function mainOf(members: readonly ProcRow[]): ProcRow {
-  return members.find((m) => !isShell(m.name) && !CONSOLE_HOSTS.has(baseName(m.name))) ?? members[0]!
+function mainOf(members: readonly ProcRow[], ports?: ReadonlyMap<number, ResPort[]>): ProcRow {
+  const main = (m: ProcRow) => !isShell(m.name) && !CONSOLE_HOSTS.has(baseName(m.name))
+  return members.find((m) => main(m) && !!ports?.get(m.pid)?.length) ?? members.find(main) ?? members[0]!
 }
 
 function portsOf(members: readonly ProcRow[], ports: ReadonlyMap<number, ResPort[]> | undefined): ResPort[] {
@@ -140,7 +141,7 @@ function portsOf(members: readonly ProcRow[], ports: ReadonlyMap<number, ResPort
 function entry(root: ProcRow, members: ProcRow[], sessionId: string | null, orphan: boolean, ports: ReadonlyMap<number, ResPort[]> | undefined): ServerEntry {
   const p = portsOf(members, ports)
   const kind: ResKind = p.length ? 'dev-server' : isShell(root.name) ? 'shell' : 'other'
-  return { root, main: mainOf(members), members, kind, sessionId, orphan, ports: p }
+  return { root, main: mainOf(members, ports), members, kind, sessionId, orphan, ports: p }
 }
 
 /**

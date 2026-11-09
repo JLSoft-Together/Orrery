@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+core-procs = { path = "../core-procs" }
 futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
 serde.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }

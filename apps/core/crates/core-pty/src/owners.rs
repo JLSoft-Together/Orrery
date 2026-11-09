@@ -50,79 +50,9 @@ pub fn to_json(owners: &BTreeMap<u64, String>) -> Value {
     Value::Object(o)
 }
 
-pub fn parse_ps(stdout: &str) -> PidTable {
-    let mut t = PidTable::new();
-    for line in stdout.lines() {
-        let mut it = line.split_whitespace();
-        let (Some(a), Some(b), None) = (it.next(), it.next(), it.next()) else { continue };
-        if let (Ok(pid), Ok(ppid)) = (a.parse::<u64>(), b.parse::<u64>()) {
-            t.insert(pid, ppid);
-        }
-    }
-    t
-}
-
-#[cfg(windows)]
 pub fn read_pid_table() -> Option<PidTable> {
-    use crate::jobs::windows::Owned;
-    use std::mem::{size_of, zeroed};
-    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
-    use windows_sys::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
-    let snap = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-    if snap == INVALID_HANDLE_VALUE {
-        return None;
-    }
-    let snap = Owned(snap);
-    let mut e: PROCESSENTRY32W = unsafe { zeroed() };
-    e.dwSize = size_of::<PROCESSENTRY32W>() as u32;
-    let mut t = PidTable::new();
-    let mut more = unsafe { Process32FirstW(snap.0, &mut e) } != 0;
-    while more {
-        t.insert(e.th32ProcessID as u64, e.th32ParentProcessID as u64);
-        more = unsafe { Process32NextW(snap.0, &mut e) } != 0;
-    }
+    let t: PidTable = core_procs::pid_parents()?.into_iter().map(|(p, pp)| (u64::from(p), u64::from(pp))).collect();
     (!t.is_empty()).then_some(t)
-}
-
-#[cfg(unix)]
-pub fn read_pid_table() -> Option<PidTable> {
-    let out = run_with_deadline("/bin/ps", &["-A", "-o", "pid=", "-o", "ppid="], PS_DEADLINE)?;
-    let t = parse_ps(&out);
-    (!t.is_empty()).then_some(t)
-}
-
-#[cfg_attr(windows, allow(dead_code))]
-pub const PS_DEADLINE: Duration = Duration::from_secs(15);
-
-#[cfg_attr(windows, allow(dead_code))]
-pub fn run_with_deadline(file: &str, args: &[&str], deadline: Duration) -> Option<String> {
-    use std::io::Read;
-    use std::process::{Command, Stdio};
-    let mut child = Command::new(file).args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
-    let mut stdout = child.stdout.take()?;
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::Builder::new()
-        .name("owners-ps".into())
-        .spawn(move || {
-            let mut buf = Vec::new();
-            let ok = stdout.read_to_end(&mut buf).is_ok();
-            let _ = tx.send(ok.then_some(buf));
-        })
-        .ok()?;
-    let end = Instant::now() + deadline;
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(s)) => break s,
-            Ok(None) if Instant::now() < end => std::thread::sleep(Duration::from_millis(10)),
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-        }
-    };
-    let out = rx.recv_timeout(end.saturating_duration_since(Instant::now()).max(Duration::from_millis(200))).ok()??;
-    status.success().then(|| String::from_utf8_lossy(&out).into_owned())
 }
 
 pub struct Ask {
@@ -216,12 +146,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_ps_rows() {
-        let t = parse_ps("    1     0\n  412     1\nbad row\n 9 8 7\n\n");
-        assert_eq!(t, HashMap::from([(1, 0), (412, 1)]));
-    }
-
-    #[test]
     fn cache_shares_one_scan_per_burst_and_expires_after_1500ms() {
         let mut c = TableCache::default();
         let t0 = Instant::now();
@@ -243,26 +167,10 @@ mod tests {
     }
 
     #[test]
-    fn table_command_is_killed_at_its_deadline() {
-        #[cfg(windows)]
-        let slow: &[&str] = &["powershell.exe", "-NoProfile", "-Command", "Start-Sleep -Seconds 20"];
-        #[cfg(windows)]
-        let quick: &[&str] = &["cmd.exe", "/d", "/c", "echo 12 1"];
-        #[cfg(unix)]
-        let slow: &[&str] = &["/bin/sleep", "20"];
-        #[cfg(unix)]
-        let quick: &[&str] = &["/bin/echo", "12 1"];
-        let t = Instant::now();
-        assert!(run_with_deadline(slow[0], &slow[1..], Duration::from_millis(500)).is_none());
-        assert!(t.elapsed() < Duration::from_secs(5), "deadline not honoured: {:?}", t.elapsed());
-        assert_eq!(parse_ps(&run_with_deadline(quick[0], &quick[1..], Duration::from_secs(10)).unwrap()), HashMap::from([(12, 1)]));
-        assert!(run_with_deadline("/definitely/missing/ps", &[], Duration::from_secs(1)).is_none());
-    }
-
-    #[test]
     fn real_table_has_this_process_and_its_parent() {
         let t = read_pid_table().expect("process table");
         let me = std::process::id() as u64;
-        assert!(t.contains_key(&me));
+        let parent = *t.get(&me).expect("own pid");
+        assert!(t.contains_key(&parent), "parent {parent} listed");
     }
 }

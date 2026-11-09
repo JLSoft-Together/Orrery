@@ -68,15 +68,27 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 name = "core-bin"
 version = "0.1.0"
 dependencies = [
+ "core-procs",
  "core-pty",
  "serde_json",
  "tungstenite",
 ]
 
 [[package]]
+name = "core-procs"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "windows-sys",
+]
+
+[[package]]
 name = "core-pty"
 version = "0.1.0"
 dependencies = [
+ "core-procs",
  "futures-util",
  "libc",
  "portable-pty",

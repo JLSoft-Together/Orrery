@@ -30,7 +30,7 @@ const psq = (s) => `'${s.replace(/'/g, "''")}'`
 
 function snapshot() {
   if (!WIN) {
-    const out = execFileSync('ps', ['-axo', 'pid=,ppid=,comm=,args='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    const out = execFileSync('ps', ['-axww', '-o', 'pid=,ppid=,comm=,args='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
     return out.split('\n').filter(Boolean).map((l) => {
       const m = l.trim().match(/^(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/)
       return m ? { pid: Number(m[1]), ppid: Number(m[2]), name: m[3], cmd: m[4] } : null
@@ -92,6 +92,7 @@ foreach ($w in $root.FindAll([System.Windows.Automation.TreeScope]::Children, $c
 const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', timeout })
 
 ;(async () => {
+  fs.rmSync(MARKS, { recursive: true, force: true })
   fs.mkdirSync(MARKS, { recursive: true })
   const app = await launch()
   const { evaluate, waitFor, shot, type, key, sleep: pause } = app
@@ -137,12 +138,12 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
     }
     let corePid = 0
     const snap0 = snapshot()
-    const coreProc = snap0.find((p) => p.ppid === mainPid && /orrery-core/i.test(p.name))
+    const coreProc = snap0.find((p) => p.ppid === mainPid && /orrery-core/i.test(p.name + ' ' + p.cmd))
     if (MODE === 'rust') {
       corePid = coreProc?.pid ?? 0
       check('orrery-core runs as a child of the app', corePid > 0, String(corePid))
       check('core command line has no token and no arguments', !!coreProc && !/ccm\.pty|[0-9a-f]{64}/i.test(coreProc.cmd) && coreProc.cmd.trim().split(/\s+/).length === 1, coreProc?.cmd)
-    } else check('no orrery-core with the Node host', !snap0.some((p) => p.ppid === mainPid && /orrery-core/i.test(p.name)))
+    } else check('no orrery-core with the Node host', !snap0.some((p) => p.ppid === mainPid && /orrery-core/i.test(p.name + ' ' + p.cmd)))
 
     await evaluate(`${W}.open('shell', ${JSON.stringify(REPO)}, undefined, { tab: true })`)
     await waitFor(`${W}.panes[0]?.state === 'running'`, 20000, 'shell running')
@@ -151,7 +152,7 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
     await app.cmd('Page.bringToFront')
     check('shell pane running', true)
     keep([await evaluate(`${W}.panes[0].pid`)])
-    await enter(shellKey, shellWrite(mark('echo.txt'), `'CCM'+'E2E'+(40+2)`))
+    await enter(shellKey, shellWrite(mark('echo.txt'), WIN ? `'CCM'+'E2E'+(40+2)` : `echo CCME2E$((40+2))`))
     check('typed command runs and echoes through the host', (await fileText(mark('echo.txt'))) === 'CCME2E42')
     await shot(`core-pty-${MODE}-01-shell`)
 
@@ -185,8 +186,9 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
     git('commit', '-m', 'init')
     await enter(shellKey, WIN ? `cd ${psq(repo)}` : `cd '${repo}'`)
     const norm = (p) => (WIN ? String(p).toLowerCase().replace(/\//g, '\\') : String(p))
-    const want = norm(repo)
-    const cdSeen = await waitFor(`(() => { const p = ${W}.panes.find((p) => p.key === '${shellKey}'); const n = String(p?.liveCwd ?? '').toLowerCase().replace(/\\//g, '\\\\').replace(/\\\\$/, ''); return n === ${JSON.stringify(want)} ? p.liveCwd : '' })()`, 15000, 'cd tracked').catch(() => null)
+    const want = norm(WIN ? repo : fs.realpathSync(repo))
+    const normJs = WIN ? `.toLowerCase().replace(/\\//g, '\\\\').replace(/\\\\$/, '')` : `.replace(/\\/$/, '')`
+    const cdSeen = await waitFor(`(() => { const p = ${W}.panes.find((p) => p.key === '${shellKey}'); const n = String(p?.liveCwd ?? '')${normJs}; return n === ${JSON.stringify(want)} ? p.liveCwd : '' })()`, 15000, 'cd tracked').catch(() => null)
     check('cd in the shell reaches the pane (OSC 7 / 9;9)', !!cdSeen, String(await evaluate(`${W}.panes.find((p) => p.key === '${shellKey}')?.liveCwd`)))
     const br = await waitFor(`${W}.panes.find((p) => p.key === '${shellKey}')?.branch === 'e2e-branch'`, 15000, 'branch').then(() => true, () => false)
     check('branch of the new folder is tracked', br, String(await evaluate(`${W}.panes.find((p) => p.key === '${shellKey}')?.branch`)))
@@ -268,7 +270,7 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
       const before = live.map((p) => p.pid)
       const snap = snapshot()
       const trees = before.flatMap((p) => descendants(p, snap))
-      process.kill(corePid, 'SIGKILL')
+      if (corePid > 0) process.kill(corePid, 'SIGKILL')
       const left = await allDead([...before, ...trees], 10000)
       check('core crash (killed by pid): every pane process dies', left.length === 0, `still alive ${left}`)
       await sleep(1500)
@@ -279,7 +281,7 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
       const back = await waitFor(`${W}.panes.some((p) => p.state === 'running')`, 25000, 'new pane after crash').then(() => true, () => false)
       check('a new pane starts a fresh core after the crash', back)
       const snapB = snapshot()
-      const core2 = snapB.find((p) => p.ppid === mainPid && /orrery-core/i.test(p.name))
+      const core2 = snapB.find((p) => p.ppid === mainPid && /orrery-core/i.test(p.name + ' ' + p.cmd))
       check('a new orrery-core child exists', !!core2 && core2.pid !== corePid, String(core2?.pid))
       corePid = core2?.pid ?? 0
       keep([await evaluate(`${W}.panes.find((p) => p.state === 'running')?.pid`)])
@@ -294,13 +296,13 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
     const watched = [...everyone, ...coreTree].filter((p) => p && p !== mainPid && alive(p) && (MODE === 'rust' ? true : paneTrees.includes(p)))
     const others = ownTree.filter((p) => !watched.includes(p))
     try {
-      execFileSync('taskkill', ['/F', '/PID', String(mainPid)], { stdio: 'ignore' })
+      WIN ? execFileSync('taskkill', ['/F', '/PID', String(mainPid)], { stdio: 'ignore' }) : process.kill(mainPid, 'SIGKILL')
     } catch {}
     const orphans = await allDead(watched, 10000)
     check('main process killed hard: no orphan core / pane processes', orphans.length === 0, `watched ${watched.length}, still alive ${orphans}`)
     for (const p of [...others, ...orphans]) {
       try {
-        execFileSync('taskkill', ['/F', '/PID', String(p)], { stdio: 'ignore' })
+        WIN ? execFileSync('taskkill', ['/F', '/PID', String(p)], { stdio: 'ignore' }) : process.kill(p, 'SIGKILL')
       } catch {}
     }
   } catch (e) {

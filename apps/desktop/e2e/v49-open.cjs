@@ -41,7 +41,7 @@ const call = (port, token, args) =>
   request(port, { headers: { Authorization: `Bearer ${token}` }, body: { jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: 'open_session', arguments: args } } }).then((r) => r.json?.result?.structuredContent)
 
 const fireLink = (link) => {
-  const p = spawn(path.join(REPO, 'node_modules/electron/dist/electron.exe'), [`--user-data-dir=${path.join(OUT, 'run', 'ud')}`, path.join(REPO, 'apps/desktop/stage'), link], { stdio: 'ignore' })
+  const p = spawn(require(path.join(REPO, 'node_modules/electron')), [`--user-data-dir=${path.join(OUT, 'run', 'ud')}`, path.join(REPO, 'apps/desktop/stage'), link], { stdio: 'ignore' })
   return new Promise((resolve) => { p.on('exit', resolve); setTimeout(() => { try { p.kill() } catch {} resolve() }, 20000) })
 }
 

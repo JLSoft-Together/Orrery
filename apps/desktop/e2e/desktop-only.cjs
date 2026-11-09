@@ -30,7 +30,7 @@ const socketOpens = () =>
     // A toast button launches the exe again with agent-monitor://…; the single-instance lock hands it to this app.
     await evaluate(`${S}.get('ui').setView('usage')`)
     const args = [`--user-data-dir=${path.join(OUT, 'run', 'ud')}`, ...(exe ? [] : [path.join(REPO, 'apps/desktop/stage')]), 'agent-monitor://focus?k=wrong&t=nope']
-    spawn(exe ?? path.join(REPO, 'node_modules/electron/dist/electron.exe'), args, { stdio: 'ignore' })
+    spawn(exe ?? require(path.join(REPO, 'node_modules/electron')), args, { stdio: 'ignore' })
     await waitFor(`${S}.get('ui').view === 'monitor'`, 15000, 'link shows the session in Monitor')
     check('toast link reaches the running app', true)
     await shot('desktop-only')

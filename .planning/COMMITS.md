@@ -60,3 +60,12 @@ Ghi chú: apps/collector/test/__snapshots__/tracker.test.ts.snap và apps/deskto
 - 📦 Download the layout daemon jar + loose kit on first XML Preview use (sha256-pinned release asset, CI builds one reproducible zip)
   apps/desktop/{build.mjs,daemon-kit.mjs,electron-builder.yml,src/layout/*,src/main.ts,test/layout-kit.test.ts}, apps/layout-daemon/{build.gradle.kts,README.md}, .github/workflows/{desktop,release}.yml, .code_index/desktop.md
 - 📝 WP brief / report, progress, handoff
+
+## 2026-11-09 v87 bước 2: A1 + A2 đã commit, B chưa commit
+- ♻️ PTY control contract: PtyBroker in main resolves spawns, cwd, branch and worktrees; Node host keeps PTY + ws and speaks the contract over parentPort or stdio NDJSON
+  packages/shared/src/ptyControl.ts, apps/desktop/src/pty/{broker.ts,host.ts,supervisor.ts,spawnWait.ts}, apps/desktop/test/{pty-*.test.ts,fixtures/pty-control.json}
+- ♻️ MCP orrery server moves to Electron main: pane tokens map to tool hosts, page / desk calls go straight to onOrrery, PTY host drops MCP and relays
+  apps/desktop/src/pty/{mcp.ts,mcpTools/*,broker.ts,supervisor.ts,host.ts}, apps/desktop/test/{mcp-http,mcp-tools}.test.ts, docs/claude-code-integration.md, apps/desktop/e2e/shell-agent.cjs
+- 🦀 Scaffold apps/core Rust workspace (core-pty skeleton + orrery-core control stub), buildCore in build.mjs, core/ extraResources per arch, rust steps in CI — CHƯA BIÊN DỊCH (chờ MSVC Build Tools)
+  apps/core/**, apps/desktop/{build.mjs,electron-builder.yml}, .github/workflows/*, .gitignore, .code_index/core.md
+- 📝 code index (desktop, protocol, _meta), plan step 2, WP briefs / reports, progress

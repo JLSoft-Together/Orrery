@@ -78,7 +78,18 @@ async function launch(opts = {}) {
     throw new Error('timeout: ' + label)
   }
   const stop = () => {
-    try { execFileSync('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore' }) } catch {}
+    if (process.platform === 'win32') {
+      try { execFileSync('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore' }) } catch {}
+      return
+    }
+    try { process.kill(child.pid, 'SIGKILL') } catch {}
+    const end = Date.now() + 5000
+    while (Date.now() < end) {
+      try {
+        if (/Z|^$/.test(execFileSync('ps', ['-o', 'stat=', '-p', String(child.pid)], { encoding: 'utf8' }).trim())) return
+      } catch { return }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
+    }
   }
   return { child, cmd, evaluate, shot, type, key, waitFor, stop, sleep }
 }

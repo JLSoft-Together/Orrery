@@ -2,6 +2,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const path = require('node:path')
 const { launch, REPO, OUT } = require('./cdp.cjs')
+const { paneProbe } = require('./pane-probe.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const IO = path.join(OUT, 'v80-mcp')
@@ -57,7 +58,7 @@ const tool = async (port, token, name, args) => (await request(port, token, { js
     await sleep(2500)
     await evaluate(`document.querySelector('[data-pane="${shellKey}"] .xterm-helper-textarea').focus()`)
     const envFile = path.join(IO, 'env.json')
-    await type(`@{api=$env:ORRERY_API; token=$env:ORRERY_TOKEN} | ConvertTo-Json | Set-Content -Encoding utf8 ${psq(envFile)}`)
+    await type(process.platform === 'win32' ? `@{api=$env:ORRERY_API; token=$env:ORRERY_TOKEN} | ConvertTo-Json | Set-Content -Encoding utf8 ${psq(envFile)}` : paneProbe(IO, { envFile }))
     await key('Enter', 'Enter', 13)
     const env = await readJson(envFile)
     const port = Number(/^http:\/\/127\.0\.0\.1:(\d+)$/.exec(env.api ?? '')?.[1])
@@ -91,12 +92,12 @@ const tool = async (port, token, name, args) => (await request(port, token, { js
     check('traversal refused', outside?.isError === true && outside?.structuredContent?.error === 'outside', JSON.stringify(outside?.structuredContent))
     const unc = await tool(port, token, 'open_in_workspace', { path: '\\\\127.0.0.1\\c$\\Windows\\win.ini' })
     check('UNC refused', unc?.structuredContent?.error === 'path')
-    const abs = await tool(port, token, 'open_in_workspace', { path: 'C:\\Windows\\win.ini' })
+    const abs = await tool(port, token, 'open_in_workspace', { path: process.platform === 'win32' ? 'C:\\Windows\\win.ini' : '/etc/hosts' })
     check('absolute path outside refused', abs?.structuredContent?.error === 'outside')
 
     const who = await tool(port, token, 'who_is_editing', { path: 'README.md' })
     check('who_is_editing answers for a repo file', who?.structuredContent?.ok === true && who?.structuredContent?.repo === true && Array.isArray(who?.structuredContent?.editors), JSON.stringify(who?.structuredContent))
-    check('who_is_editing refuses outside', (await tool(port, token, 'who_is_editing', { path: '..\\x.ts' }))?.structuredContent?.error === 'outside')
+    check('who_is_editing refuses outside', (await tool(port, token, 'who_is_editing', { path: process.platform === 'win32' ? '..\\x.ts' : '../x.ts' }))?.structuredContent?.error === 'outside')
 
     const note = await tool(port, token, 'notify_owner', { text: 'E2E note\nsecond line', level: 'attention' })
     check('notify_owner delivered with a name', note?.structuredContent?.ok === true && note?.structuredContent?.sent === true && !!note?.structuredContent?.name, JSON.stringify(note?.structuredContent))

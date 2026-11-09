@@ -5,7 +5,9 @@ const W = `${S}.get('workspace')`
 const T = `${S}.get('terminals')`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
-const CTRL = 2, SHIFT = 8
+const CTRL = 2, META = 4, SHIFT = 8
+const MOD = process.platform === 'darwin' ? META : CTRL | SHIFT
+const ATT = process.platform === 'darwin' ? META | SHIFT : CTRL | SHIFT
 
 ;(async () => {
   const app = await launch()
@@ -54,7 +56,7 @@ const CTRL = 2, SHIFT = 8
     await sleep(300)
     await shot('p6-01-attention')
     await evaluate(`document.querySelectorAll('.xterm-helper-textarea')[2].focus()`)
-    await chord('A', 'KeyA', 65, CTRL | SHIFT)
+    await chord('A', 'KeyA', 65, ATT)
     await sleep(300)
     check('Ctrl+Shift+A jumps to waiting pane and clears it', await evaluate(`${W}.activeKey === ${W}.panes[0].key && !${W}.panes[0].attention`))
 
@@ -68,12 +70,12 @@ const CTRL = 2, SHIFT = 8
     check('Esc cancels, pane kept', await evaluate(`${W}.panes.length === 3 && !${W}.pendingClose`))
     await evaluate(`${W}.activate(${W}.panes[1].key)`)
     await sleep(300)
-    await chord('W', 'KeyW', 87, CTRL | SHIFT)
+    await chord('W', 'KeyW', 87, MOD)
     await sleep(500)
     check('idle shell closes without asking', await evaluate(`${W}.panes.length === 2 && !${W}.pendingClose`))
     await evaluate(`${W}.activate(${W}.panes[0].key)`)
     await sleep(200)
-    await chord('W', 'KeyW', 87, CTRL | SHIFT)
+    await chord('W', 'KeyW', 87, MOD)
     await sleep(300)
     await evaluate(`document.querySelector('[role=alertdialog] .ccm-btn-danger').click()`)
     await sleep(800)

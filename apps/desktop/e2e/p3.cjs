@@ -4,7 +4,11 @@ const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$p
 const W = `${S}.get('workspace')`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
-const ALT = 1, CTRL = 2, SHIFT = 8
+const ALT = 1, CTRL = 2, META = 4, SHIFT = 8
+const MAC = process.platform === 'darwin'
+const K = MAC
+  ? { split: ['D', 'KeyD', 68, META], left: ['ArrowLeft', 'ArrowLeft', 37, META | ALT], newTab: ['T', 'KeyT', 84, META], cycle: [']', 'BracketRight', 221, META | SHIFT], tab2: ['2', 'Digit2', 50, META], close: ['W', 'KeyW', 87, META] }
+  : { split: ['D', 'KeyD', 68, ALT | SHIFT], left: ['ArrowLeft', 'ArrowLeft', 37, ALT], newTab: ['T', 'KeyT', 84, CTRL | SHIFT], cycle: ['Tab', 'Tab', 9, CTRL], tab2: ['2', 'Digit2', 50, CTRL | ALT], close: ['W', 'KeyW', 87, CTRL | SHIFT] }
 
 ;(async () => {
   const app = await launch()
@@ -28,7 +32,7 @@ const ALT = 1, CTRL = 2, SHIFT = 8
     const firstXterm = await evaluate(`(window.__x1 = document.querySelector('.xterm'), !!window.__x1)`)
 
     await evaluate(`document.querySelector('.xterm-helper-textarea').focus()`)
-    await chord('D', 'KeyD', 68, ALT | SHIFT)
+    await chord(...K.split)
     await waitFor(`${W}.panes.length === 2 && ${W}.panes[1].state === 'running'`, 20000, 'split pane running')
     const tabs1 = await evaluate(`${W}.tabs.length`)
     check('Alt+Shift+D splits inside the tab', tabs1 === 1, `tabs=${tabs1}`)
@@ -41,7 +45,7 @@ const ALT = 1, CTRL = 2, SHIFT = 8
     await sleep(800)
     await shot('p3-01-split')
 
-    await chord('ArrowLeft', 'ArrowLeft', 37, ALT)
+    await chord(...K.left)
     check('Alt+Left moves focus', await evaluate(`${W}.activeKey === ${W}.panes[0].key`))
     const active = await evaluate(`document.activeElement?.classList.contains('xterm-helper-textarea') && document.activeElement.closest('section') === document.querySelectorAll('section[aria-label]')[0]`)
     check('keyboard focus follows', active)
@@ -56,15 +60,15 @@ const ALT = 1, CTRL = 2, SHIFT = 8
     check('divider drag sets ratio', Math.abs(ratio - 0.3) < 0.04, String(ratio))
 
     // Ctrl+Shift+T opens the picker; launch a second tab.
-    await chord('T', 'KeyT', 84, CTRL | SHIFT)
+    await chord(...K.newTab)
     const pop = await evaluate(`!!document.querySelector('[role=dialog] [data-launch-row]')`)
     check('Ctrl+Shift+T opens new-terminal picker', pop)
     await evaluate(`[...document.querySelectorAll('[role=dialog] [data-launch-row]')].at(-1).click()`)
     await waitFor(`${W}.tabs.length === 2 && ${W}.panes[2]?.state === 'running'`, 20000, 'tab 2 running')
     check('second tab opened', true)
-    await chord('Tab', 'Tab', 9, CTRL)
+    await chord(...K.cycle)
     check('Ctrl+Tab cycles to first tab', await evaluate(`${W}.activeTab.key === ${W}.tabs[0].key`))
-    await chord('2', 'Digit2', 50, CTRL | ALT)
+    await chord(...K.tab2)
     check('Ctrl+Alt+2 jumps to tab 2', await evaluate(`${W}.activeTab.key === ${W}.tabs[1].key`))
     await shot('p3-02-tab2')
 
@@ -84,7 +88,7 @@ const ALT = 1, CTRL = 2, SHIFT = 8
     // Ctrl+Shift+W closes the focused pane; tab collapses to one.
     await evaluate(`document.querySelectorAll('.xterm-helper-textarea')[0].focus()`)
     const pid0 = await evaluate(`${W}.panes.find(p=>p.key===${W}.activeKey).pid`)
-    await chord('W', 'KeyW', 87, CTRL | SHIFT)
+    await chord(...K.close)
     await sleep(2000)
     check('Ctrl+Shift+W closes pane', await evaluate(`${W}.panes.length === 2 && 'pane' in ${W}.tabs[0].root`))
     let dead = true

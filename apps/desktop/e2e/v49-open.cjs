@@ -4,6 +4,7 @@ const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
 const { launch, REPO, OUT } = require('./cdp.cjs')
+const { paneProbe } = require('./pane-probe.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const IO = path.join(OUT, 'v49')
@@ -72,7 +73,7 @@ const fireLink = (link) => {
       `$b = @{jsonrpc='2.0';id=1;method='tools/call';params=@{name='open_session';arguments=@{agent='claude';prompt='E2E prefill check';name='E2E Child'}}} | ConvertTo-Json -Depth 6 -Compress`,
       `(Invoke-RestMethod -Method Post -Uri "$env:ORRERY_API/mcp" -Headers @{Authorization="Bearer $env:ORRERY_TOKEN"} -ContentType 'application/json' -Body $b) | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 ${psq(callFile)}`,
     ].join('; ')
-    await type(line)
+    await type(process.platform === 'win32' ? line : paneProbe(IO, { envFile, callFile, args: { agent: 'claude', prompt: 'E2E prefill check', name: 'E2E Child' } }))
     await key('Enter', 'Enter', 13)
 
     const env = await readJson(envFile)

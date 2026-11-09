@@ -33,7 +33,7 @@ const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} 
     console.log('dbg', await evaluate(`JSON.stringify({vis: document.visibilityState, focus: document.hasFocus(), view: ${S}.get('ui').view, n: document.querySelectorAll('.xterm-helper-textarea').length})`))
     await evaluate(`document.querySelector('.xterm-helper-textarea').focus()`)
     console.log('dbg active', await evaluate(`document.activeElement?.className`))
-    await type('echo ("CCM" + "E2E" + (40+2))')
+    await type(process.platform === 'win32' ? 'echo ("CCM" + "E2E" + (40+2))' : 'echo CCME2E$((40+2))')
     await key('Enter', 'Enter', 13)
     await sleep(1500)
     await shot('02-shell')

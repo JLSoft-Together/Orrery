@@ -2,6 +2,7 @@ use crate::index::{Options, UsageIndex};
 use crate::jobs::{drain, full_scan, sweep, Shared, Sink};
 use crate::omap::OMap;
 use crate::query::scan_json;
+use crate::sigserve::Handles;
 use crate::time::{now_ms, today};
 use core_procs::lines::Lines;
 use serde_json::{json, Map, Value};
@@ -305,11 +306,28 @@ fn handle(m: &Map<String, Value>, state: &mut Option<Open>) -> Option<Value> {
     Some(reply)
 }
 
+fn signal_op(m: &Map<String, Value>, signals: &mut Handles) -> Option<Option<Value>> {
+    let op = m.get("op").and_then(Value::as_str).filter(|o| o.starts_with("signals."))?;
+    let Some(id) = m.get("id").filter(|v| v.is_number() || v.is_string()) else { return Some(None) };
+    Some(Some(match signals.handle(op, m) {
+        Some(Ok(extra)) => ok(id, extra),
+        Some(Err(kind)) => failed(id, kind),
+        None => failed(id, "op"),
+    }))
+}
+
 pub fn run() -> i32 {
     let mut state: Option<Open> = None;
+    let mut signals = Handles::default();
     let mut lines = Lines::new(std::io::stdin().lock());
     while let Some(line) = lines.next_line() {
         let Ok(Value::Object(m)) = serde_json::from_slice::<Value>(&line) else { continue };
+        if let Some(reply) = signal_op(&m, &mut signals) {
+            if let Some(reply) = reply {
+                write(&reply);
+            }
+            continue;
+        }
         if let Some(reply) = handle(&m, &mut state) {
             write(&reply);
         }

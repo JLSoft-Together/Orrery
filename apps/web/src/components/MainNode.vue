@@ -24,7 +24,7 @@ const { t } = useI18n()
 const ui = useUiStore()
 const extras = useExtrasStore()
 const { viewport, findNode, updateNode } = useVueFlow()
-const { flowId, mapCtx, agent, terminal, meta, badge, selected, quiet, working, tabbable, findHit, dimmed, kids, folded, foldLabel, foldedCount, flash, popDelay, toggleFold } =
+const { flowId, mapCtx, agent, terminal, meta, badge, selected, quiet, working, tabbable, findHit, dimmed, kids, folded, foldLabel, foldedCount, flash, popDelay, animateIn, toggleFold } =
   useMapNode(props)
 
 const title = computed(() => displayTitle(terminal.value) || agent.value?.name || agent.value?.id || '')
@@ -194,7 +194,7 @@ onBeforeUnmount(() => stop?.())
   <div v-if="agent" class="relative" :style="frame">
     <Handle type="target" :position="Position.Top" />
     <Handle type="source" :position="Position.Bottom" :style="{ left: `${TRUNK_X}px` }" />
-    <div class="ccm-node-in size-full" :style="popDelay ? { animationDelay: `${popDelay}ms` } : undefined">
+    <div class="size-full" :class="animateIn ? 'ccm-node-in' : ''" :style="popDelay ? { animationDelay: `${popDelay}ms` } : undefined">
       <div
         ref="box"
         data-agent-node

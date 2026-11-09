@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref, type Component, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowDown, ArrowDownLeft, ArrowDownRight, ArrowLeft, ArrowRight, ArrowUp, ArrowUpLeft, ArrowUpRight } from 'lucide-vue-next'
 import type { GraphNode } from '@vue-flow/core'
-import { MAIN_HEIGHT, MAIN_WIDTH, type Point } from '../../lib/layout'
+import type { Point } from '../../lib/layout'
 
 const CAPSULE_MS = 6000
 const CAPSULE_MAX = 3
@@ -22,6 +22,7 @@ const ARROWS: Record<string, Component> = {
 
 export interface CapsuleDeps {
   findNode: (id: string) => GraphNode | undefined
+  sizeOf: (node: GraphNode) => { width: number; height: number }
   viewport: Ref<{ x: number; y: number; zoom: number }>
   dimensions: Ref<{ width: number; height: number }>
   mainNodeOf: (terminalId: string) => string | null
@@ -31,7 +32,7 @@ export interface CapsuleDeps {
 
 /** Edge-of-canvas hints for a message that landed on a card currently outside the view. */
 export function useOffscreenCapsules(deps: CapsuleDeps) {
-  const { findNode, viewport, dimensions, mainNodeOf, nameOf, keepClear } = deps
+  const { findNode, sizeOf, viewport, dimensions, mainNodeOf, nameOf, keepClear } = deps
   const { t } = useI18n()
   const capsules = ref<Capsule[]>([])
   const capsuleTimers = new Map<number, number>()
@@ -41,9 +42,10 @@ export function useOffscreenCapsules(deps: CapsuleDeps) {
     const n = findNode(id)
     if (!n) return null
     const { x, y, zoom } = viewport.value
+    const size = sizeOf(n)
     return {
-      x: (n.computedPosition.x + (n.dimensions.width || MAIN_WIDTH) / 2) * zoom + x,
-      y: (n.computedPosition.y + (n.dimensions.height || MAIN_HEIGHT) / 2) * zoom + y,
+      x: (n.computedPosition.x + size.width / 2) * zoom + x,
+      y: (n.computedPosition.y + size.height / 2) * zoom + y,
     }
   }
 

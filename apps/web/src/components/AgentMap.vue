@@ -34,7 +34,7 @@ import { useAgentActions } from '../composables/useAgentActions'
 import { MAP_RUNNERS, PEER_MAP, usePeerName, type PeerEdgeData, type PeerLane, type PeerMapContext, type RunnerBudget } from '../composables/useMapNode'
 import { useRevealInWorkspace } from '../composables/useRevealInWorkspace'
 import { dustOutAll } from '../lib/dust'
-import { isFinished, MAIN_HEIGHT, MAIN_WIDTH, peerPath, peerSlots, pickLayout, trayId, trayTerminal, visibleAgents, type Box, type Point } from '../lib/layout'
+import { isFinished, peerPath, peerSlots, pickLayout, trayId, trayTerminal, visibleAgents, type Box, type Point } from '../lib/layout'
 import { canvasMenu, nodeMenu, peerTarget, type CanvasAction, type NodeAction } from '../lib/mapMenu'
 import { buildNav, childCounts, hideCollapsed, navigate, NAV_KEYS, treeParent, type MapNav, type MapNodeContext, type NavKey, type TrayState } from '../lib/mapNav'
 import { agentName } from '../lib/mapText'
@@ -57,6 +57,7 @@ import { useOfficeStore } from '../stores/office'
 import { useMapFind } from './map/useMapFind'
 import { useLiveAnnounce } from './map/useLiveAnnounce'
 import { useOffscreenCapsules } from './map/useOffscreenCapsules'
+import { nodeSize, SeenNodes } from '../lib/mapNodeSize'
 import { useOfficeControls } from './map/useOfficeControls'
 
 const OfficeView = defineAsyncComponent(() => import('./office/OfficeView.vue'))
@@ -72,7 +73,7 @@ const FLOW_ID = scoped ? `agent-map-${props.terminalId}` : 'agent-map'
 const {
   addNodes,
   removeNodes,
-  getNodes,
+  nodes: allNodes,
   findNode,
   fitView,
   getViewport,
@@ -308,7 +309,8 @@ function syncNodes(fit = false): void {
   const wanted = new Map<string, Node>()
   for (const a of shownList.value) wanted.set(a.id, { id: a.id, type: a.role === 'main' ? 'main' : 'sub', position: { x: 0, y: 0 }, data: { agentId: a.id }, draggable: true, selectable: false })
   for (const tid of trayIds.value) wanted.set(trayId(tid), { id: trayId(tid), type: 'tray', position: { x: 0, y: 0 }, data: { terminalId: tid }, draggable: false, selectable: false })
-  const current = new Map(getNodes.value.map((n) => [n.id, n]))
+  const current = new Map(allNodes.value.map((n) => [n.id, n]))
+  seenNodes.prune(new Set(wanted.keys()))
 
   retireNodes(
     [...current.keys()].filter((id) => !wanted.has(id)),
@@ -412,7 +414,7 @@ function isPicked(agentId: string): boolean {
 }
 
 function applyPicked(): void {
-  for (const n of getNodes.value) {
+  for (const n of allNodes.value) {
     const want = isPicked(n.id)
     if (n.selected !== want) n.selected = want
   }
@@ -438,12 +440,17 @@ watch(picked, applyPicked)
 const MIN_AUTO_ZOOM = 0.6
 const EDGE_PAD = 24
 
+function sizeOf(n: GraphNode): { width: number; height: number } {
+  return nodeSize(n, ui.nodeSizes)
+}
+
 function flowBox(n: GraphNode): Box {
-  return { x: n.computedPosition.x, y: n.computedPosition.y, w: n.dimensions.width || MAIN_WIDTH, h: n.dimensions.height || MAIN_HEIGHT }
+  const { width, height } = sizeOf(n)
+  return { x: n.computedPosition.x, y: n.computedPosition.y, w: width, h: height }
 }
 
 function arcClearance(): number {
-  const nodes = getNodes.value
+  const nodes = allNodes.value
   if (!nodes.length || !peerEdges.value.length) return 0
   const top = Math.min(...nodes.map((n) => n.computedPosition.y))
   let peak = top
@@ -464,14 +471,14 @@ function fitPadding() {
 async function autoFit(duration = 0): Promise<void> {
   await fitView({ padding: fitPadding(), duration, maxZoom: 1.1 })
   if (getViewport().zoom >= MIN_AUTO_ZOOM) return
-  const nodes = getNodes.value
+  const nodes = allNodes.value
   if (!nodes.length) return
   const minX = Math.min(...nodes.map((n) => n.position.x))
   const minY = Math.min(...nodes.map((n) => n.position.y))
   await setViewport({ x: EDGE_PAD - minX * MIN_AUTO_ZOOM, y: KEEP_CLEAR + EDGE_PAD / 2 + (arcClearance() - minY) * MIN_AUTO_ZOOM, zoom: MIN_AUTO_ZOOM }, { duration })
 }
 
-const nodeIds = computed(() => new Set(getNodes.value.map((n) => n.id)))
+const nodeIds = computed(() => new Set(allNodes.value.map((n) => n.id)))
 
 function measureEdges(ids: string[]): void {
   for (const id of ids) {
@@ -686,6 +693,7 @@ const peerMapCtx: PeerMapContext = {
   scoped,
   rings,
   slots: peerSlotMap,
+  sizeOf,
   listen(edgeId, fly) {
     flyers.set(edgeId, fly)
     const queued = queuedFlights.get(edgeId)
@@ -748,12 +756,13 @@ function goToPeer(tid: string): void {
   ui.revealTerminal(tid)
   const node = findNode(id)
   if (node) {
-    void setCenter(node.computedPosition.x + (node.dimensions.width || MAIN_WIDTH) / 2, node.computedPosition.y + (node.dimensions.height || MAIN_HEIGHT) / 2, {
+    const { width, height } = sizeOf(node)
+    void setCenter(node.computedPosition.x + width / 2, node.computedPosition.y + height / 2, {
       zoom: Math.max(getViewport().zoom, MIN_AUTO_ZOOM),
       duration: motionMs(300),
     })
   }
-  void nextTick(() => nodeBox(id)?.focus({ preventScroll: true }))
+  focusWhenMounted(id)
 }
 
 function peerTargets(tid: string): { terminalId: string; name: string }[] {
@@ -845,9 +854,9 @@ watch(
   (view) => {
     if (view !== 'map') return
     void nextTick(() => {
-      const restoring = !getNodes.value.length
+      const restoring = !allNodes.value.length
       syncNodes(false)
-      if (restoring && getNodes.value.length) pendingFit = true
+      if (restoring && allNodes.value.length) pendingFit = true
     })
   },
 )
@@ -897,7 +906,7 @@ function nodeBox(id: string): HTMLElement | null {
 }
 
 const KEEP_CLEAR = 56
-const { capsuleViews, dismissCapsule, dismissCapsulesTo, offerCapsule } = useOffscreenCapsules({ findNode, viewport, dimensions, mainNodeOf, nameOf, keepClear: KEEP_CLEAR })
+const { capsuleViews, dismissCapsule, dismissCapsulesTo, offerCapsule } = useOffscreenCapsules({ findNode, sizeOf, viewport, dimensions, mainNodeOf, nameOf, keepClear: KEEP_CLEAR })
 /** Pans (same zoom) only when the node is off screen or under the floating toolbar. */
 function ensureVisible(id: string): void {
   const node = findNode(id)
@@ -906,19 +915,35 @@ function ensureVisible(id: string): void {
   const { x, y, zoom } = getViewport()
   const left = node.computedPosition.x * zoom + x
   const top = node.computedPosition.y * zoom + y
-  const w = node.dimensions.width * zoom
-  const h = node.dimensions.height * zoom
+  const size = sizeOf(node)
+  const w = size.width * zoom
+  const h = size.height * zoom
   if (left >= 16 && top >= KEEP_CLEAR && left + w <= box.clientWidth - 16 && top + h <= box.clientHeight - 16) return
-  void setCenter(node.computedPosition.x + node.dimensions.width / 2, node.computedPosition.y + node.dimensions.height / 2, { zoom, duration: motionMs(200) })
+  void setCenter(node.computedPosition.x + size.width / 2, node.computedPosition.y + size.height / 2, { zoom, duration: motionMs(200) })
+}
+
+let focusToken = 0
+let mapUnmounted = false
+onBeforeUnmount(() => {
+  mapUnmounted = true
+})
+
+function focusWhenMounted(id: string): void {
+  const token = ++focusToken
+  const attempt = (tries: number): void => {
+    if (token !== focusToken || mapUnmounted) return
+    const box = nodeBox(id)
+    if (box) box.focus({ preventScroll: true })
+    else if (tries > 0) requestAnimationFrame(() => attempt(tries - 1))
+  }
+  void nextTick(() => attempt(30))
 }
 
 function moveCursor(id: string): void {
   cursorId.value = id
   if (ui.selectedAgentId && ui.selectedAgentId !== id && agents.byId[id]) ui.selectAgent(id)
-  void nextTick(() => {
-    nodeBox(id)?.focus({ preventScroll: true })
-    ensureVisible(id)
-  })
+  ensureVisible(id)
+  focusWhenMounted(id)
 }
 
 function onCanvasFocusIn(e: FocusEvent): void {
@@ -992,6 +1017,7 @@ const { findOpen, query, matchIndex, findInput, matchList, matches, currentMatch
   moveCursor,
 })
 
+const seenNodes = new SeenNodes()
 const mapNode: MapNodeContext = {
   tabStop,
   matches,
@@ -1002,6 +1028,13 @@ const mapNode: MapNodeContext = {
   toggleFold,
 }
 provide('ccm-map-node', mapNode)
+provide('ccm-map-seen', seenNodes)
+const seenEdges = new SeenNodes()
+provide('ccm-map-seen-edges', seenEdges)
+watch(
+  () => peerEdges.value.map((e) => e.id),
+  (ids) => seenEdges.prune(new Set(ids)),
+)
 
 /** Ctrl+C on a node: picked sessions as a tree when the node belongs to them, else this agent's summary. */
 function copyFocused(id: string): void {
@@ -1287,6 +1320,7 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
         v-else
         :id="FLOW_ID"
         :edges="edges"
+        only-render-visible-elements
         :min-zoom="0.2"
         :max-zoom="2"
         :nodes-connectable="false"

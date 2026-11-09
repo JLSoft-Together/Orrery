@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { EdgeLabelRenderer, type GraphNode } from '@vue-flow/core'
 import { usePeerMap, usePeerName, useRunnerBudget, type PeerEdgeData, type PeerLane } from '../composables/useMapNode'
 import { now, relativeTime } from '../lib/format'
-import { MAIN_HEIGHT, MAIN_WIDTH, peerPath, type Box } from '../lib/layout'
+import { peerPath, type Box } from '../lib/layout'
+import { nodeSize, type SeenNodes } from '../lib/mapNodeSize'
 import { reducedMotion } from '../lib/motion'
 import { pointAt, samplePath, type PathSamples } from '../lib/pathSamples'
 import { usePeersStore } from '../stores/peers'
@@ -27,12 +28,11 @@ const ctx = usePeerMap()
 const runners = useRunnerBudget()
 const nameOf = usePeerName()
 
-const boxOf = (n: GraphNode): Box => ({
-  x: n.computedPosition.x,
-  y: n.computedPosition.y,
-  w: n.dimensions.width || MAIN_WIDTH,
-  h: n.dimensions.height || MAIN_HEIGHT,
-})
+const boxOf = (n: GraphNode): Box => {
+  const { width, height } = (ctx?.sizeOf ?? nodeSize)(n)
+  return { x: n.computedPosition.x, y: n.computedPosition.y, w: width, h: height }
+}
+const animateIn = inject<SeenNodes | null>('ccm-map-seen-edges', null)?.take(props.id) ?? true
 const arc = computed(() => peerPath(boxOf(props.sourceNode), boxOf(props.targetNode), ctx?.slots.value.get(props.id)))
 
 const pathEl = ref<SVGPathElement | null>(null)
@@ -152,7 +152,7 @@ const badge = computed(() => {
 </script>
 
 <template>
-  <g class="ccm-peer-edge" :class="[data.kind === 'opened' ? 'ccm-peer-edge-opened' : '', hot ? 'ccm-peer-edge-hot' : '']" :data-peer-edge="data.linkId">
+  <g class="ccm-peer-edge" :class="[data.kind === 'opened' ? 'ccm-peer-edge-opened' : '', hot ? 'ccm-peer-edge-hot' : '', animateIn ? 'ccm-peer-edge-enter' : '']" :data-peer-edge="data.linkId">
     <path ref="pathEl" class="ccm-peer-edge-line" :d="arc.d" fill="none" />
     <path class="ccm-peer-edge-hit" :d="arc.d" fill="none" @pointerenter="hover = true" @pointerleave="hover = false" />
     <g
@@ -190,8 +190,11 @@ const badge = computed(() => {
   }
 }
 
-.ccm-peer-edge {
+.ccm-peer-edge-enter {
   animation: ccm-peer-edge-in var(--ccm-dur-slow) var(--ease-out-quint) backwards;
+}
+
+.ccm-peer-edge {
   transition: opacity var(--ccm-dur-slow) var(--ease-exit);
 }
 

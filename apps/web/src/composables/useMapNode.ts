@@ -1,8 +1,9 @@
 import { computed, inject, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useVueFlow } from '@vue-flow/core'
+import { useVueFlow, type GraphNode } from '@vue-flow/core'
 import type { PeerLinkKind } from '@ccm/shared'
 import type { MapNodeContext } from '../lib/mapNav'
+import type { SeenNodes } from '../lib/mapNodeSize'
 import { bootNodeDelay } from '../lib/motion'
 import { badgeOf, isCodex } from '../lib/provider'
 import { isQuiet, statusMeta } from '../lib/status'
@@ -30,6 +31,7 @@ export interface PeerMapContext {
   scoped: boolean
   rings: Readonly<Ref<Readonly<Record<string, number>>>>
   slots: Readonly<Ref<ReadonlyMap<string, { a: number; b: number }>>>
+  sizeOf?: (node: GraphNode) => { width: number; height: number }
   listen(edgeId: string, fly: (lane: PeerLane, n: number) => void): () => void
   landed(terminalId: string): void
   goTo(terminalId: string): void
@@ -96,7 +98,8 @@ export function useMapNode(props: { id: string; data: { agentId: string } }) {
     },
   )
 
-  const popDelay = bootNodeDelay()
+  const animateIn = inject<SeenNodes | null>('ccm-map-seen', null)?.take(props.id) ?? true
+  const popDelay = animateIn ? bootNodeDelay() : 0
 
   function toggleFold(): void {
     mapCtx?.toggleFold(props.id)
@@ -122,6 +125,7 @@ export function useMapNode(props: { id: string; data: { agentId: string } }) {
     foldLabel,
     flash,
     popDelay,
+    animateIn,
     toggleFold,
   }
 }

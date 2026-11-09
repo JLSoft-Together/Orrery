@@ -15,7 +15,7 @@ const props = defineProps<{ id: string; data: { agentId: string }; picked?: bool
 
 const { t, locale } = useI18n()
 const extras = useExtrasStore()
-const { flowId, mapCtx, agent, meta, codex, badge, selected, quiet, working, tabbable, findHit, dimmed, kids, folded, foldLabel, foldedCount, flash, popDelay, toggleFold } =
+const { flowId, mapCtx, agent, meta, codex, badge, selected, quiet, working, tabbable, findHit, dimmed, kids, folded, foldLabel, foldedCount, flash, popDelay, animateIn, toggleFold } =
   useMapNode(props)
 
 const name = computed(() => {
@@ -68,7 +68,7 @@ const tip = computed(() => {
   <div v-if="agent" class="relative" :style="{ width: `${PILL_WIDTH}px`, height: `${PILL_HEIGHT}px` }">
     <Handle type="target" :position="Position.Top" :style="{ left: `${TRUNK_X}px` }" />
     <Handle type="source" :position="Position.Bottom" :style="{ left: `${TRUNK_X}px` }" />
-    <div class="ccm-pill-in size-full" :style="popDelay ? { animationDelay: `${popDelay}ms` } : undefined">
+    <div class="size-full" :class="animateIn ? 'ccm-pill-in' : ''" :style="popDelay ? { animationDelay: `${popDelay}ms` } : undefined">
       <div
         data-agent-node
         data-node-kind="sub"

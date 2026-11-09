@@ -34,7 +34,7 @@ Máy: MacBook (Darwin 27.0.0, 10 core, 24 GB), Rust 1.99.1 (rustup cài mới), 
 | 1 terminal host | `pty host: rust (…/apps/core/target/release/orrery-core)` |
 | 2 shell, `ls`, `vim` rồi `:q` | ĐẠT (ảnh: màu, tiếng Việt, thoát vim pane vẫn chạy) |
 | 3 Claude | ĐẠT: prompt ngắn → "mac ok", status idle → working → idle, link Monitor |
-| 3 Codex | CHƯA: Codex hỏi "Trust this folder?" (máy này chưa trust `~/work/web/Orrery`); con không tự trust thay chủ nhân |
+| 3 Codex | ĐẠT (sau khi chủ nhân trust folder): prompt ngắn → "codex ok"; pane Codex chạy độc lập không có dòng riêng trong Monitor (thiết kế: Codex hiện dưới agent Claude đã gọi nó) |
 | 4 resize, 5 cd / branch, 6 đóng pane, 8 `--resume`, 9 kill core | ĐẠT qua E2E core-pty / p3 / p5 / tabs-cwd |
 | 7 Quit | ĐẠT: sheet "Quit and close 2 terminals?" đủ 2 dòng; Cancel giữ app + pane; Quit → app, pane, `orrery-core` tắt hết |
 | 10 Monitor | ĐẠT: session Claude của pane hiện, link đúng |

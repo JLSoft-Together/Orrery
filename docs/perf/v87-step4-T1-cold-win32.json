@@ -1,0 +1,136 @@
+{
+  "task": "WP-v87-4-T1g",
+  "measuredAt": "2026-11-09",
+  "machine": {
+    "name": "DESKTOP-SMCL7FD",
+    "os": "Microsoft Windows 11 Pro",
+    "osVersion": "10.0.26200",
+    "cpu": "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz",
+    "physicalCores": 8,
+    "logicalProcessors": 8,
+    "node": "v24.15.0",
+    "rustBinary": "apps/core/target/release/orrery-core.exe"
+  },
+  "corpus": {
+    "path": "%TEMP%/orrery-usage-corpus-23300/projects",
+    "transcriptBytes": 4294705152,
+    "files": 192,
+    "lineBytes": 4096,
+    "usageRecordEvery": 100
+  },
+  "measurement": {
+    "coldRunsPerBackend": 3,
+    "coldCache": "unique new cacheFile for each cold run",
+    "warmRunsPerBackend": 1,
+    "warmCache": "reused that backend's first cold cacheFile",
+    "node": "UsageIndex; CPU from process.cpuUsage user+system; wall from start to ready/idle; peak RSS sampled every 25ms",
+    "rust": "spawn orrery-core transcript; usage.scan and await usage.reset; CPU from child process total processor time (user+system); wall from spawn to usage.reset; peak RSS from Windows PeakWorkingSet64",
+    "allRunsState": "ready",
+    "allRunsFiles": 192
+  },
+  "runs": {
+    "node": [
+      {
+        "mode": "cold",
+        "run": 1,
+        "cpuSeconds": 7.98,
+        "wallMs": 6240,
+        "peakRssMB": 128,
+        "files": 192,
+        "state": "ready"
+      },
+      {
+        "mode": "cold",
+        "run": 2,
+        "cpuSeconds": 6.7,
+        "wallMs": 4181,
+        "peakRssMB": 151,
+        "files": 192,
+        "state": "ready"
+      },
+      {
+        "mode": "cold",
+        "run": 3,
+        "cpuSeconds": 6.36,
+        "wallMs": 3758,
+        "peakRssMB": 157,
+        "files": 192,
+        "state": "ready"
+      },
+      {
+        "mode": "warm",
+        "run": 1,
+        "cpuSeconds": 0.05,
+        "wallMs": 62,
+        "peakRssMB": 138,
+        "files": 192,
+        "state": "ready"
+      }
+    ],
+    "rust": [
+      {
+        "mode": "cold",
+        "run": 1,
+        "cpuSeconds": 2.17,
+        "wallMs": 4965,
+        "peakRssMB": 8,
+        "files": 192,
+        "state": "ready"
+      },
+      {
+        "mode": "cold",
+        "run": 2,
+        "cpuSeconds": 1.88,
+        "wallMs": 1944,
+        "peakRssMB": 8,
+        "files": 192,
+        "state": "ready"
+      },
+      {
+        "mode": "cold",
+        "run": 3,
+        "cpuSeconds": 2.84,
+        "wallMs": 3861,
+        "peakRssMB": 8,
+        "files": 192,
+        "state": "ready"
+      },
+      {
+        "mode": "warm",
+        "run": 1,
+        "cpuSeconds": 0.02,
+        "wallMs": 62,
+        "peakRssMB": 9,
+        "files": 192,
+        "state": "ready"
+      }
+    ]
+  },
+  "coldMedian": {
+    "node": {
+      "cpuSeconds": 6.7,
+      "wallMs": 4181,
+      "peakRssMB": 151
+    },
+    "rust": {
+      "cpuSeconds": 2.17,
+      "wallMs": 3861,
+      "peakRssMB": 8
+    },
+    "rustCpuSpeedupVsNode": 3.09,
+    "gateCpuSecondsMax": 5.0,
+    "gatePassed": true
+  },
+  "warm": {
+    "node": {
+      "cpuSeconds": 0.05,
+      "wallMs": 62,
+      "peakRssMB": 138
+    },
+    "rust": {
+      "cpuSeconds": 0.02,
+      "wallMs": 62,
+      "peakRssMB": 9
+    }
+  }
+}

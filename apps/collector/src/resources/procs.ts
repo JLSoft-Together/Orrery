@@ -3,7 +3,6 @@ import path from 'node:path'
 import { windowsPowerShell } from '../win-exe'
 import type { CoreProcsClient, CoreUsageRow } from '../coreProcs'
 import { sharedCoreProcs } from '../procSource'
-import { winProcs, type WinProcApi } from '../win-procs'
 
 /** One process of the machine-wide table; `cmd` undefined = not read yet, null = unreadable. */
 export interface ProcRow {
@@ -20,7 +19,6 @@ export interface ProcRow {
 
 export interface ProcReader {
   read(): Promise<ProcRow[] | null>
-  /** Fills usage and command lines for these pids when `read` left them out (native Windows path). */
   enrich(rows: readonly ProcRow[], usage: ReadonlySet<number>, cmd: ReadonlySet<number>): void | Promise<void>
 }
 
@@ -88,7 +86,6 @@ const CIM_SCRIPT = [
 
 const numOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null)
 
-/** Parses the CIM fallback's JSON (`CCM_NATIVE_PROCS=0` or koffi missing). */
 export function parseCimTable(stdout: string): ProcRow[] {
   const text = stdout.trim()
   if (!text) return []
@@ -146,61 +143,6 @@ export function cimReader(): ProcReader {
   }
 }
 
-/** koffi path: the table first, then usage / command lines only for the pids the report needs. */
-export function nativeReader(api: WinProcApi, fallback: ProcReader = cimReader()): ProcReader {
-  const cmds = new Map<string, string | null>()
-  let usingFallback = false
-  return {
-    async read() {
-      let table
-      try {
-        table = api.list()
-      } catch {
-        usingFallback = true
-        return fallback.read()
-      }
-      usingFallback = false
-      const live = new Set<string>()
-      const rows = table.map((p): ProcRow => {
-        const start = p.start === null ? null : p.start.toString()
-        const row: ProcRow = { pid: p.pid, ppid: p.ppid, name: p.name, start, startMs: p.start === null ? null : filetimeMs(p.start), ramBytes: null, cpuMs: null }
-        const key = procKey(row)
-        if (key) live.add(key)
-        if (key && cmds.has(key)) row.cmd = cmds.get(key)
-        return row
-      })
-      for (const key of cmds.keys()) if (!live.has(key)) cmds.delete(key)
-      return rows
-    },
-    enrich(rows, usage, cmd) {
-      if (usingFallback) return
-      for (const row of rows) {
-        if (usage.has(row.pid)) {
-          let u = null
-          try {
-            u = api.usage(row.pid)
-          } catch {
-            u = null
-          }
-          row.ramBytes = u?.workingSet ?? null
-          row.cpuMs = u?.cpuMs ?? null
-        }
-        if (cmd.has(row.pid) && row.cmd === undefined) {
-          let c: string | null = null
-          try {
-            c = api.commandLine(row.pid)
-          } catch {
-            c = null
-          }
-          row.cmd = c
-          const key = procKey(row)
-          if (key) cmds.set(key, c)
-        }
-      }
-    },
-  }
-}
-
 export function coreReader(client: CoreProcsClient, fallback: ProcReader, eager: boolean = process.platform !== 'win32'): ProcReader {
   const cmds = new Map<string, string | null>()
   let usingFallback = false
@@ -211,12 +153,12 @@ export function coreReader(client: CoreProcsClient, fallback: ProcReader, eager:
     const usage = new Map((usageRows ?? []).map((u) => [u.pid, u]))
     const fresh = new Map((cmdRows ?? []).map((c) => [c.pid, c.cmd]))
     for (const row of rows) {
-      if (usagePids.has(row.pid)) {
+      if (usagePids.has(row.pid) && usageRows !== null) {
         const u = usage.get(row.pid)
         row.ramBytes = u?.workingSet ?? null
         row.cpuMs = u?.cpuMs ?? null
       }
-      if (cmdPids.has(row.pid) && row.cmd === undefined) {
+      if (cmdPids.has(row.pid) && row.cmd === undefined && cmdRows !== null) {
         const c = fresh.get(row.pid) ?? null
         row.cmd = c
         const key = procKey(row)
@@ -255,10 +197,7 @@ export function coreReader(client: CoreProcsClient, fallback: ProcReader, eager:
 }
 
 function legacyProcReader(): ProcReader | null {
-  if (process.platform === 'win32') {
-    const api = winProcs()
-    return api ? nativeReader(api) : cimReader()
-  }
+  if (process.platform === 'win32') return cimReader()
   if (process.platform === 'darwin' || process.platform === 'linux') return psReader()
   return null
 }

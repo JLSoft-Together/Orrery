@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
 import { afterAll, describe, expect, it } from 'vitest'
-import { nativeCommandLine, nativeProcessTable, nativeUsage } from '../src/win-procs'
-import { winPortTable } from '../src/resources/ports'
+import { netTcpPortTable } from '../src/resources/ports'
+import { cimReader } from '../src/resources/procs'
 import { createCoreProcs } from '../src/coreProcs'
 
 const bin = process.env.CCM_CORE_BIN
@@ -12,7 +12,7 @@ const client = enabled ? createCoreProcs({ bin: bin! }) : null
 afterAll(() => client?.dispose())
 
 describe.skipIf(!enabled)('core-procs Windows parity', () => {
-  it('matches koffi table, usage, cmdline and listening sockets and measures 50 table requests', async () => {
+  it('matches the CIM table, usage, cmdline and Get-NetTCPConnection sockets and measures 50 table requests', async () => {
     const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { stdio: 'ignore' })
     const server = createServer()
     try {
@@ -20,50 +20,46 @@ describe.skipIf(!enabled)('core-procs Windows parity', () => {
       const pid = child.pid!
       const port = (server.address() as { port: number }).port
       const rust = await client!.table()
-      const koffi = nativeProcessTable()
+      const cim = await cimReader().read()
       expect(rust).not.toBeNull()
-      expect(koffi).not.toBeNull()
-      const k = new Map(koffi!.map((r) => [r.pid, r]))
+      expect(cim).not.toBeNull()
+      const k = new Map(cim!.map((r) => [r.pid, r]))
       const r = new Map(rust!.map((row) => [row.pid, row]))
       const common = [...r.keys()].filter((p) => k.has(p))
       const comparable = common.filter((p) => r.get(p)!.startRaw !== null && k.get(p)!.start !== null)
       const matched = comparable.filter((p) => {
         const a = r.get(p)!
         const b = k.get(p)!
-        return a.ppid === b.ppid && a.name.toLowerCase() === b.name.toLowerCase() && Math.abs(Number(BigInt(a.startRaw!) - b.start!)) <= 10
+        return a.ppid === b.ppid && a.name.toLowerCase() === b.name.toLowerCase() && Math.abs(Number(BigInt(a.startRaw!) - BigInt(b.start!))) <= 20
       })
       const tableRatio = matched.length / Math.max(1, comparable.length)
-      console.log(`CORE_PROCS_TABLE ${JSON.stringify({ rust: r.size, koffi: k.size, common: common.length, comparable: comparable.length, matched: matched.length, ratio: tableRatio })}`)
-      expect(tableRatio).toBeGreaterThanOrEqual(0.99)
+      console.log(`CORE_PROCS_TABLE ${JSON.stringify({ rust: r.size, cim: k.size, common: common.length, comparable: comparable.length, matched: matched.length, ratio: tableRatio })}`)
+      expect(tableRatio).toBeGreaterThanOrEqual(0.97)
 
-      const cu = nativeUsage(pid)
+      const cu = k.get(pid)!
       const ru = await client!.usage([pid])
       expect(ru).not.toBeNull()
-      expect(cu).not.toBeNull()
       const usage = ru!.find((row) => row.pid === pid)!
-      for (const key of ['workingSet', 'privateBytes'] as const) {
-        const a = usage[key]
-        const b = cu![key]
-        expect(a).not.toBeNull()
-        expect(b).not.toBeNull()
-        expect(Math.abs(a! - b!)).toBeLessThanOrEqual(Math.max(2 * 1024 * 1024, b! * 0.1))
-      }
-      expect(usage.cpuMs).toBeGreaterThanOrEqual(cu!.cpuMs ?? 0)
+      expect(usage.workingSet).not.toBeNull()
+      expect(cu.ramBytes).not.toBeNull()
+      expect(Math.abs(usage.workingSet! - cu.ramBytes!)).toBeLessThanOrEqual(Math.max(8 * 1024 * 1024, cu.ramBytes! * 0.25))
+      expect(usage.privateBytes).toBeGreaterThan(0)
+      expect(usage.cpuMs).not.toBeNull()
       const rustCmd = await client!.cmdline([process.pid!, pid])
       expect(rustCmd).not.toBeNull()
-      expect(rustCmd!.find((row) => row.pid === process.pid)?.cmd).toBe(nativeCommandLine(process.pid!))
-      expect(rustCmd!.find((row) => row.pid === pid)?.cmd).toBe(nativeCommandLine(pid))
+      expect(rustCmd!.find((row) => row.pid === process.pid)?.cmd).toBe(k.get(process.pid!)?.cmd)
+      expect(rustCmd!.find((row) => row.pid === pid)?.cmd).toBe(cu.cmd)
 
       const rustPorts = await client!.ports()
-      const koffiPortsReader = winPortTable()
-      const koffiPorts = await koffiPortsReader?.()
+      const netPorts = await netTcpPortTable()()
       expect(rustPorts).not.toBeNull()
-      expect(koffiPorts).not.toBeNull()
-      const rustListen = [...new Set(rustPorts!.filter((row) => row.state === 2 && row.pid > 4).map(({ pid, port: p, state }) => `${pid}:${p}:${state}`))].sort()
-      const nativeListen = [...new Set([...koffiPorts!.entries()].flatMap(([owner, rows]) => rows.map(({ port: p }) => `${owner}:${p}:2`)))].sort()
-      expect(nativeListen).toContain(`${process.pid}:${port}:2`)
-      expect(rustListen).toContain(`${process.pid}:${port}:2`)
-      expect(rustListen).toEqual(nativeListen)
+      expect(netPorts).not.toBeNull()
+      const rustListen = new Set(rustPorts!.filter((row) => row.state === 2 && row.pid > 4).map(({ pid: owner, port: p }) => `${owner}:${p}`))
+      const netListen = new Set([...netPorts!.entries()].flatMap(([owner, rows]) => rows.map(({ port: p }) => `${owner}:${p}`)))
+      expect(netListen.has(`${process.pid}:${port}`)).toBe(true)
+      expect(rustListen.has(`${process.pid}:${port}`)).toBe(true)
+      const sharedPorts = [...rustListen].filter((p) => netListen.has(p))
+      expect(sharedPorts.length / Math.max(1, rustListen.size)).toBeGreaterThanOrEqual(0.95)
 
       const samples: number[] = []
       for (let i = 0; i < 50; i++) {

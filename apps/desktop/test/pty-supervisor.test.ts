@@ -95,7 +95,7 @@ beforeAll(async () => {
     target: 'node24',
     logLevel: 'silent',
     logOverride: { 'empty-import-meta': 'silent' },
-    external: ['@lydell/node-pty', 'bufferutil', 'utf-8-validate', 'koffi'],
+    external: ['@lydell/node-pty', 'bufferutil', 'utf-8-validate'],
   })
   sup = new PtySupervisor({
     script: bundle,

@@ -86,7 +86,7 @@ everything below about line contents is from source only and the collector treat
   (subagents), `terminal.started|ended`. Ended sessions drop after `CCM_STALE_TTL_MIN`. `CCM_DEEPSEEK=0` turns it off.
 - `processes.ts`: `codewhale(.exe)`, `codewhale-windows-x64.exe`, `codew(.exe)` (npm wrapper runs
   `node_modules/codewhale/bin/downloads/codewhale.exe`) via the shared walker in `codex/processes.ts`
-  (`listProcessesNamed`, koffi table with CIM fallback, `ps` on macOS / Linux). Scans only on a new session and every
+  (`listProcessesNamed`, core table with CIM fallback, `ps` on macOS / Linux). Scans only on a new session and every
   60 s while one is live (same cadence as Codex). Only `-C/--workspace` (absolute) and `-r/--resume/--session-id`
   are kept from the command line. `matchDeepseekProcesses`: one process per session — resume id (prefix), then
   workspace, then nearest start before `session_start` (−2 s … +120 s), then a lone earlier process. The matched pid

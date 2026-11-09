@@ -2,7 +2,6 @@ import { execFile } from 'node:child_process'
 import type { ResPort } from '@ccm/shared'
 import { windowsPowerShell } from '../win-exe'
 import { corePorts, coreProcsEnabled } from '../procSource'
-import { defaultKoffiLoader } from '../win-procs'
 
 export const TCP_LISTEN = 2
 export const TCP_ESTABLISHED = 5
@@ -136,47 +135,6 @@ export function portsByPid(rows: readonly TcpRow[]): Map<number, ResPort[]> {
   return out
 }
 
-const AF_INET = 2
-const AF_INET6 = 23
-const TCP_TABLE_OWNER_PID_ALL = 5
-const ERROR_INSUFFICIENT_BUFFER = 122
-
-type Koffi = typeof import('koffi')
-
-export function bindTcpTable(koffi: Koffi): (family: 4 | 6) => Buffer | null {
-  const iphlp = koffi.load('iphlpapi.dll')
-  // BOOL bOrder is a 4-byte int, not a C bool.
-  const get = iphlp.func('__stdcall', 'GetExtendedTcpTable', 'uint32', ['void *', koffi.inout(koffi.pointer('uint32')), 'int32', 'uint32', 'int32', 'uint32'])
-  return (family) => {
-    const af = family === 4 ? AF_INET : AF_INET6
-    const size = [0]
-    let status = get(null, size, 0, af, TCP_TABLE_OWNER_PID_ALL, 0) as number
-    for (let attempt = 0; attempt < 4 && status === ERROR_INSUFFICIENT_BUFFER; attempt++) {
-      const buf = Buffer.alloc(size[0]! + 4096)
-      size[0] = buf.length
-      status = get(buf, size, 0, af, TCP_TABLE_OWNER_PID_ALL, 0) as number
-      if (status === 0) return buf
-    }
-    return status === 0 ? Buffer.alloc(4) : null
-  }
-}
-
-export function winPortTable(load: () => Koffi = defaultKoffiLoader): PortTable | null {
-  let read: (family: 4 | 6) => Buffer | null
-  try {
-    read = bindTcpTable(load())
-  } catch (err) {
-    console.warn(`[ccm] port table unavailable: ${(err as Error).message}`)
-    return null
-  }
-  return async () => {
-    const v4 = read(4)
-    const v6 = read(6)
-    if (!v4 && !v6) return null
-    return portsByPid([...(v4 ? parseTcpTable4(v4) : []), ...(v6 ? parseTcpTable6(v6) : [])])
-  }
-}
-
 export function lsofPortTable(): PortTable {
   return () =>
     new Promise((resolve) => {
@@ -227,7 +185,6 @@ const runPs: RunPs = (file, args) =>
     execFile(file, args, { timeout: 15_000, windowsHide: true, maxBuffer: 16_000_000 }, (err, stdout) => resolve(err ? null : String(stdout ?? '')))
   })
 
-/** Windows without koffi (`CCM_NATIVE_PROCS=0` or the binding failed): one PowerShell call per sampler pass. */
 export function netTcpPortTable(exec: RunPs = runPs): PortTable {
   return async () => {
     const out = await exec(windowsPowerShell(), ['-NoProfile', '-NonInteractive', '-Command', NET_TCP_SCRIPT])
@@ -236,7 +193,7 @@ export function netTcpPortTable(exec: RunPs = runPs): PortTable {
 }
 
 function legacyPortTable(): PortTable | null {
-  if (process.platform === 'win32') return (process.env.CCM_NATIVE_PROCS === '0' ? null : winPortTable()) ?? netTcpPortTable()
+  if (process.platform === 'win32') return netTcpPortTable()
   if (process.platform === 'darwin' || process.platform === 'linux') return lsofPortTable()
   return null
 }

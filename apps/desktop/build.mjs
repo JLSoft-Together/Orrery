@@ -173,7 +173,6 @@ rmSync(STAGE, { recursive: true, force: true })
 mkdirSync(STAGE, { recursive: true })
 const { build } = await import('esbuild')
 
-// win-procs.ts reads import.meta only when `require` is missing (ESM under tsx / vitest), never in these CJS bundles.
 const common = { bundle: true, platform: 'node', format: 'cjs', target: 'node24', sourcemap: false, logLevel: 'info', logOverride: { 'empty-import-meta': 'silent' } }
 
 // GramJS (large Telegram files) is its own bundle, required by main only when an upload starts.
@@ -188,7 +187,7 @@ await build({
   ...common,
   entryPoints: [path.join(HERE, 'src', 'main.ts')],
   outfile: path.join(STAGE, 'main.cjs'),
-  external: ['electron', 'koffi'],
+  external: ['electron'],
   define: { __DAEMON_KIT__: kit ? JSON.stringify(kit) : 'undefined' },
   plugins: [gramjsApart],
   // Turns the import() of gramjs.cjs into require(), which loads from inside app.asar.
@@ -206,8 +205,7 @@ await build({
   entryPoints: [path.join(HERE, '..', 'collector', 'src', 'index.ts')],
   outfile: path.join(STAGE, 'collector.cjs'),
   // ws loads these optional native peers inside try/catch.
-  // koffi is native: shipped as extraResources (koffi/node_modules), required by path CCM_KOFFI.
-  external: ['bufferutil', 'utf-8-validate', 'koffi'],
+  external: ['bufferutil', 'utf-8-validate'],
   // config.ts touches import.meta only when CCM_WEB_DIST / CCM_STATUSLINE_BRIDGE are unset; the desktop host always sets both.
   logOverride: { 'empty-import-meta': 'silent' },
 })
@@ -224,7 +222,7 @@ await build({
   entryPoints: [path.join(HERE, 'src', 'pty', 'host.ts')],
   outfile: path.join(STAGE, 'pty-host.cjs'),
   // node-pty is native: shipped as extraResources (pty/node_modules) and required by path at runtime.
-  external: ['@lydell/node-pty', 'bufferutil', 'utf-8-validate', 'koffi'],
+  external: ['@lydell/node-pty', 'bufferutil', 'utf-8-validate'],
 })
 
 // No dependencies on purpose: everything is bundled, so electron-builder ships no node_modules.

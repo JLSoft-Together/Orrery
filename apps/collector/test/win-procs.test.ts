@@ -1,36 +1,18 @@
-import { execFile } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { windowsCodexProcesses } from '../src/codex/processes'
 import { ancestorChain } from '../src/focus'
-import { processInfoFromTable, queryProcessesWindows, type ProcessInfo } from '../src/process'
+import { processInfoFromTable, queryProcessesWindows } from '../src/process'
 import { PsHost } from '../src/ps-host'
-import { windowsPowerShell } from '../src/win-exe'
-import { defaultKoffiLoader, nativeCommandLine, nativeProcessTable, setKoffiLoader, winProcs, type WinProc } from '../src/win-procs'
+import type { WinProc } from '../src/win-procs'
 
 const FT = (ms: number): bigint => (BigInt(ms) + 11_644_473_600_000n) * 10_000n
 const T0 = Date.parse('2026-10-15T10:00:00Z')
 const row = (pid: number, ppid: number, name: string, ms: number | null): WinProc => ({ pid, ppid, name, start: ms === null ? null : FT(ms) })
 
-afterEach(() => setKoffiLoader(defaultKoffiLoader))
-
-describe('native process table', () => {
-  it('falls back (null) when koffi fails to load', async () => {
-    setKoffiLoader(() => {
-      throw new Error('no koffi')
-    })
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    expect(winProcs()).toBeNull()
-    expect(nativeProcessTable()).toBeNull()
-    expect(nativeCommandLine(process.pid)).toBeNull()
-    const cim = vi.fn(async (pids: number[]) => new Map<number, ProcessInfo>(pids.map((pid) => [pid, { pid, start: { kind: 'filetime', value: 1n } }])))
-    const out = await queryProcessesWindows([7], nativeProcessTable, cim)
-    expect(cim).toHaveBeenCalledWith([7])
-    expect(out?.get(7)?.start).toEqual({ kind: 'filetime', value: 1n })
-  })
-
+describe('process table rows', () => {
   it('maps the table to the CIM query shape, and asks CIM when a wanted start is unreadable', async () => {
     const table = [row(10, 5, 'claude.exe', T0), row(5, 1, 'pwsh.exe', T0 - 1000), row(20, 5, 'claude.exe', null)]
     expect(processInfoFromTable([10, 99], table)).toEqual(
@@ -70,37 +52,6 @@ describe('native process table', () => {
     expect(ancestorChain(9, table)).toEqual([9, 8])
     expect(ancestorChain(42, table)).toEqual([])
   })
-})
-
-const cimRows = (pids: number[]): Promise<Array<{ pid: number; ppid: number; name: string; ft: string }>> =>
-  new Promise((resolve, reject) => {
-    const script = `@(Get-CimInstance Win32_Process -Filter "${pids.map((p) => `ProcessId=${p}`).join(' OR ')}" | ForEach-Object { [pscustomobject]@{ pid = [int]$_.ProcessId; ppid = [int]$_.ParentProcessId; name = $_.Name; ft = $_.CreationDate.ToFileTimeUtc().ToString() } }) | ConvertTo-Json -Compress`
-    execFile(windowsPowerShell(), ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 30_000 }, (err, stdout) => {
-      if (err) return reject(err)
-      const parsed: unknown = JSON.parse(stdout)
-      resolve((Array.isArray(parsed) ? parsed : [parsed]) as Array<{ pid: number; ppid: number; name: string; ft: string }>)
-    })
-  })
-
-describe.runIf(process.platform === 'win32')('koffi vs CIM parity (this machine)', () => {
-  it('reports the same pid, ppid, name and creation time for the current process tree', async () => {
-    const table = nativeProcessTable()
-    expect(table).not.toBeNull()
-    const byPid = new Map(table!.map((p) => [p.pid, p]))
-    const chain: number[] = []
-    for (let p = byPid.get(process.pid); p && chain.length < 6 && p.start !== null; p = byPid.get(p.ppid)) chain.push(p.pid)
-    expect(chain[0]).toBe(process.pid)
-    const cim = await cimRows(chain)
-    expect(cim.length).toBe(chain.length)
-    for (const c of cim) {
-      const n = byPid.get(c.pid)!
-      expect({ ppid: n.ppid, name: n.name }).toEqual({ ppid: c.ppid, name: c.name })
-      // CIM's CreationDate keeps microseconds; FILETIME has 100 ns ticks.
-      const diff = n.start! - BigInt(c.ft)
-      expect(diff >= -10n && diff <= 10n).toBe(true)
-    }
-    expect(nativeCommandLine(process.pid)).toContain('node')
-  }, 40_000)
 })
 
 class FakeChild extends EventEmitter {

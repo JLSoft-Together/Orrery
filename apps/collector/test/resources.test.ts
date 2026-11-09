@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { parseDeviceUsed, sanitizeIdle, type Agent, type BackgroundJob, type ResourceReport, type TerminalSession } from '@ccm/shared'
 import { emulatorIdleSince, idleSinceOf, isForgotten, serverBusy, sessionIdleSince, trackBusy } from '../src/resources/idle'
-import { nativeReader, parseCimTable, parseCpuTime, parsePsTable, type ProcReader, type ProcRow } from '../src/resources/procs'
+import { parseCimTable, parseCpuTime, parsePsTable, type ProcReader, type ProcRow } from '../src/resources/procs'
 import { ResourceSampler } from '../src/resources/sampler'
 import { buildTree, cpuPercent, daemonOf, sumOf } from '../src/resources/tree'
 import { mentionsDevice } from '../src/transcript'
 import { Toaster, formatBytes, type ToastContent } from '../src/toast'
-import { defaultKoffiLoader, setKoffiLoader, winProcs, type WinProc, type WinProcApi } from '../src/win-procs'
 
 const MB = 1024 ** 2
 const row = (pid: number, ppid: number, name: string, extra: Partial<ProcRow> = {}): ProcRow => ({
@@ -256,52 +255,6 @@ describe('ResourceSampler', () => {
     expect(r4.totals.forgotten).toBe(1)
     expect(r4.totals.forgottenRamBytes).toBe(101 * MB)
     expect(r4.totals.ramBytes).toBe(2149 * MB)
-  })
-})
-
-describe('nativeReader (fake koffi API)', () => {
-  it('reads usage and command lines only for wanted pids, nulls on failures, CIM when the table fails', async () => {
-    const calls: string[] = []
-    let fail = false
-    const api: WinProcApi = {
-      list: () => {
-        if (fail) throw new Error('snapshot')
-        return [{ pid: 7, ppid: 1, name: 'node.exe', start: 1000n }, { pid: 8, ppid: 7, name: 'x.exe', start: null }] as WinProc[]
-      },
-      commandLine: (pid) => {
-        calls.push(`cmd:${pid}`)
-        return 'node app'
-      },
-      usage: (pid) => {
-        calls.push(`use:${pid}`)
-        if (pid === 8) return null
-        return { privateBytes: 5, workingSet: 9, cpuMs: 3 }
-      },
-    }
-    const fallback = { read: async () => [row(99, 1, 'cim')], enrich: () => undefined }
-    const reader = nativeReader(api, fallback)
-    const rows = (await reader.read())!
-    expect(rows[0]).toMatchObject({ pid: 7, start: '1000', ramBytes: null, cpuMs: null })
-    reader.enrich(rows, new Set([7, 8]), new Set([7]))
-    expect(rows[0]).toMatchObject({ ramBytes: 9, cpuMs: 3, cmd: 'node app' })
-    expect(rows[1]).toMatchObject({ ramBytes: null, cpuMs: null })
-    const again = (await reader.read())!
-    expect(again[0]!.cmd).toBe('node app')
-    reader.enrich(again, new Set(), new Set([7]))
-    expect(calls.filter((c) => c === 'cmd:7')).toHaveLength(1)
-    fail = true
-    expect((await reader.read())![0]!.pid).toBe(99)
-  })
-})
-
-describe.runIf(process.platform === 'win32')('koffi usage (this machine)', () => {
-  it('reads working set and CPU time of this process', () => {
-    setKoffiLoader(defaultKoffiLoader)
-    const u = winProcs()?.usage(process.pid)
-    expect(u?.workingSet).toBeGreaterThan(1024 * 1024)
-    expect(u?.privateBytes).toBeGreaterThan(0)
-    expect(u?.cpuMs).toBeGreaterThan(0)
-    expect(winProcs()?.usage(0)).toBeNull()
   })
 })
 

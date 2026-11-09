@@ -3,7 +3,7 @@ import path from 'node:path'
 import { childEnv, taskkillPath } from '../pty/presets'
 import type { SubstituteVars } from './args'
 import { commandLinesWin, coreProcsEnabled, tableWin } from '../../../collector/src/procSource'
-import { nativeCommandLine, nativeProcessTable, type WinProc } from '../../../collector/src/win-procs'
+import type { WinProc } from '../../../collector/src/win-procs'
 
 export interface SpawnSpec {
   file: string
@@ -35,6 +35,12 @@ export function substVars(projectDir: string, workspaceDir: string, base: NodeJS
 }
 
 export const defaultSpawner: Spawner = (spec) => {
+  const child = spawnChild(spec)
+  if (!spec.detached && process.platform === 'win32') watchTree(child)
+  return child
+}
+
+const spawnChild: Spawner = (spec) => {
   if (spec.detached) {
     const child = spawn(spec.file, spec.args, { cwd: spec.cwd, env: runEnv(process.env, spec.env), windowsHide: true, shell: false, stdio: 'ignore', detached: true })
     child.unref()
@@ -53,6 +59,7 @@ export const defaultSpawner: Spawner = (spec) => {
 }
 
 const taskkill = (pids: number[], tree: boolean, sync: boolean): void => {
+  if (!pids.length) return
   const args = [...(tree ? ['/T'] : []), '/F', ...pids.flatMap((p) => ['/PID', String(p)])]
   if (sync) {
     try {
@@ -142,18 +149,21 @@ export function subtreeOf(root: number, table: readonly WinProc[]): Set<number> 
   return subtree
 }
 
+const FILETIME_EPOCH_MS = 11_644_473_600_000
+
 export function nativeProcRows(root: number, table: WinProc[] | null, commandLine: (pid: number) => string | null): ProcRow[] | null {
   if (!table) return null
   const subtree = subtreeOf(root, table)
   const rows: ProcRow[] = []
   for (const p of table) {
+    const startMs = p.start === null ? null : Number(p.start / 10_000n) - FILETIME_EPOCH_MS
     if (!subtree.has(p.pid)) {
-      rows.push({ pid: p.pid, ppid: p.ppid, cmd: '' })
+      rows.push({ pid: p.pid, ppid: p.ppid, cmd: '', startMs })
       continue
     }
     const cmd = commandLine(p.pid)
     if (cmd === null) return null
-    rows.push({ pid: p.pid, ppid: p.ppid, cmd })
+    rows.push({ pid: p.pid, ppid: p.ppid, cmd, startMs })
   }
   return rows
 }
@@ -182,26 +192,123 @@ export function killTreeSparing(child: ChildProcess, spare: RegExp, opts: { sync
     const pids = treePids(pid, rows, (cmd) => spare.test(cmd))
     if (pids.length) taskkill(pids, false, sync)
   }
-  const legacy = (): void => {
-    const native = nativeProcRows(pid, nativeProcessTable(), nativeCommandLine)
-    if (native) return finish(null, native)
-    const [file, args] = procTableCommand(process.env)
-    if (sync) {
-      let out: string | null = null
-      try {
-        out = execFileSync(file, args, { windowsHide: true, timeout: 5_000, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
-      } catch {
-        out = null
-      }
-      return finish(out)
+  if (sync) {
+    const rows = freshSnapshot(pid)
+    if (!rows) {
+      opts.onFallback?.()
+      return killTree(child, true)
     }
-    execFile(file, args, { windowsHide: true, timeout: 15_000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => finish(err ? null : String(stdout)))
-  }
-  if (!sync && coreProcsEnabled()) {
-    void coreProcRows(pid).then((rows) => (rows ? finish(null, rows) : legacy()))
+    const plan = sparingPlan(pid, rows, (cmd) => spare.test(cmd))
+    taskkill(plan.single, false, true)
+    taskkill(plan.tree, true, true)
     return
   }
-  return legacy()
+  const viaCim = (): void => {
+    const [file, args] = procTableCommand(process.env)
+    execFile(file, args, { windowsHide: true, timeout: 15_000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => finish(err ? null : String(stdout)))
+  }
+  if (coreProcsEnabled()) {
+    void coreProcRows(pid).then((rows) => (rows ? finish(null, rows) : viaCim()))
+    return
+  }
+  viaCim()
+}
+
+export function sparingPlan(root: number, rows: readonly ProcRow[], spare: (cmd: string) => boolean): { single: number[]; tree: number[] } {
+  const pids = treePids(root, rows, spare)
+  const parentOf = new Map(rows.map((r) => [r.pid, r.ppid]))
+  const kids = new Map<number, number[]>()
+  for (const r of rows) if (r.pid !== r.ppid) kids.set(r.ppid, [...(kids.get(r.ppid) ?? []), r.pid])
+  const cmdOf = new Map(rows.map((r) => [r.pid, r.cmd]))
+  const memo = new Map<number, boolean>()
+  const holdsSpare = (pid: number, depth = 0): boolean => {
+    const known = memo.get(pid)
+    if (known !== undefined) return known
+    const hit = depth < 64 && (spare(cmdOf.get(pid) ?? '') || (kids.get(pid) ?? []).some((k) => holdsSpare(k, depth + 1)))
+    memo.set(pid, hit)
+    return hit
+  }
+  const single = pids.filter((p) => holdsSpare(p))
+  const safe = pids.filter((p) => !holdsSpare(p))
+  const safeSet = new Set(safe)
+  const tree = safe.filter((p) => !safeSet.has(parentOf.get(p) ?? -1))
+  return { single, tree }
+}
+
+const SNAPSHOT_EVERY_MS = 3_000
+const SNAPSHOT_MAX_AGE_MS = 6_000
+
+interface Snapshot {
+  at: number
+  rows: ProcRow[]
+}
+
+const snapshots = new Map<number, Snapshot>()
+const watched = new Map<number, { child: ChildProcess; snap: Snapshot | null }>()
+let ticker: NodeJS.Timeout | null = null
+let ticking = false
+
+export function setTreeSnapshot(pid: number, rows: ProcRow[] | null, at = Date.now()): void {
+  if (rows) snapshots.set(pid, { at, rows })
+  else snapshots.delete(pid)
+}
+
+export function freshSnapshot(pid: number, now = Date.now()): ProcRow[] | null {
+  const snap = snapshots.get(pid)
+  return snap && now - snap.at <= SNAPSHOT_MAX_AGE_MS ? snap.rows : null
+}
+
+export async function snapshotTick(now = Date.now()): Promise<void> {
+  if (ticking || !coreProcsEnabled()) return
+  const live = [...watched.entries()].filter(([, w]) => w.child.exitCode === null)
+  if (!live.length) return
+  ticking = true
+  try {
+    const table = await tableWin()
+    if (!table) return
+    const union = new Set<number>()
+    const subtrees = new Map<number, Set<number>>()
+    for (const [root] of live) {
+      const sub = subtreeOf(root, table)
+      subtrees.set(root, sub)
+      for (const p of sub) union.add(p)
+    }
+    const cmds = await commandLinesWin([...union])
+    for (const [root, w] of live) {
+      const rows = nativeProcRows(root, table, (p) => cmds.get(p) ?? null)
+      if (!rows || w.child.exitCode !== null) continue
+      w.snap = { at: now, rows }
+      snapshots.set(root, w.snap)
+    }
+  } finally {
+    ticking = false
+  }
+}
+
+function watchTree(child: ChildProcess): void {
+  const pid = child.pid
+  if (!pid) return
+  const entry: { child: ChildProcess; snap: Snapshot | null } = { child, snap: null }
+  watched.set(pid, entry)
+  if (!ticker) {
+    ticker = setInterval(() => void snapshotTick().catch(() => undefined), SNAPSHOT_EVERY_MS)
+    ticker.unref()
+  }
+  void snapshotTick().catch(() => undefined)
+  child.once('exit', () => {
+    if (watched.get(pid) === entry) watched.delete(pid)
+    if (!watched.size && ticker) {
+      clearInterval(ticker)
+      ticker = null
+    }
+    setTimeout(() => {
+      if (entry.snap && snapshots.get(pid) === entry.snap) snapshots.delete(pid)
+    }, SNAPSHOT_MAX_AGE_MS).unref()
+  })
+}
+
+export function watchedCount(): number {
+  return watched.size
 }
 
 async function coreProcRows(root: number): Promise<ProcRow[] | null> {

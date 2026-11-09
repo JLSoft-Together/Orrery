@@ -5,13 +5,13 @@ import { coreStarts } from '../src/resources/kill'
 const base = { packaged: false, resourcesPath: 'R', repo: 'D:\\repo', platform: 'win32' as const }
 
 describe('coreProcsEnv', () => {
-  it('adds nothing unless CCM_CORE_PROCS=rust', () => {
-    expect(coreProcsEnv({ ...base, env: {} })).toEqual({})
+  it('adds nothing only when CCM_CORE_PROCS=node', () => {
     expect(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: 'node' } })).toEqual({})
+    expect(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: ' Node ' } })).toEqual({})
   })
 
-  it('passes the flag and the core binary path to the collector', () => {
-    const env = coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: 'rust' } })
+  it('passes the flag and the core binary path to the collector by default', () => {
+    const env = coreProcsEnv({ ...base, env: {} })
     expect(env.CCM_CORE_PROCS).toBe('rust')
     expect(env.CCM_CORE_BIN).toMatch(/orrery-core\.exe$/)
     expect(coreProcsEnv({ ...base, env: { CCM_CORE_PROCS: 'rust', CCM_CORE_BIN: 'X:\\core.exe' } }).CCM_CORE_BIN).toBe('X:\\core.exe')

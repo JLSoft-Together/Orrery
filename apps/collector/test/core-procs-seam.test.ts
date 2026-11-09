@@ -26,17 +26,18 @@ afterEach(() => {
 })
 
 describe('CCM_CORE_PROCS flag', () => {
-  it('is node unless set to rust, and then there is no client', () => {
-    expect(coreProcsMode({})).toBe('node')
-    expect(coreProcsMode({ CCM_CORE_PROCS: 'node' })).toBe('node')
-    expect(coreProcsMode({ CCM_CORE_PROCS: ' Rust ' })).toBe('rust')
-    vi.stubEnv('CCM_CORE_PROCS', '')
+  it('is rust unless set to node, and node has no client', () => {
+    expect(coreProcsMode({})).toBe('rust')
+    expect(coreProcsMode({ CCM_CORE_PROCS: 'rust' })).toBe('rust')
+    expect(coreProcsMode({ CCM_CORE_PROCS: ' Node ' })).toBe('node')
+    vi.stubEnv('CCM_CORE_PROCS', 'node')
+    vi.stubEnv('CCM_CORE_BIN', '/x/core')
     expect(sharedCoreProcs()).toBeNull()
   })
 
-  it('rust without a core binary warns once and stays on the legacy path', () => {
+  it('the default without a core binary warns once and stays on the CIM / ps path', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    vi.stubEnv('CCM_CORE_PROCS', 'rust')
+    vi.stubEnv('CCM_CORE_PROCS', '')
     vi.stubEnv('CCM_CORE_BIN', '')
     expect(sharedCoreProcs()).toBeNull()
     expect(sharedCoreProcs()).toBeNull()
@@ -53,7 +54,7 @@ describe('procSource adapters', () => {
     expect(table[2]!.start).toBeNull()
   })
 
-  it('uses the core client when present and the legacy readers otherwise', async () => {
+  it('uses the core client when present', async () => {
     setSharedCoreProcs(
       fakeClient({
         table: async () => rows([10, 4, 'a.exe', '5']),
@@ -66,11 +67,11 @@ describe('procSource adapters', () => {
     expect((await usageWin([10])).get(10)).toEqual({ privateBytes: 2, workingSet: 1, cpuMs: 3 })
   })
 
-  it('falls back when the core client answers null', async () => {
+  it('answers null / empty when the core client answers null so callers fall back to CIM', async () => {
     setSharedCoreProcs(fakeClient())
-    const legacy = await tableWin()
-    if (process.platform !== 'win32' || process.env.CCM_NATIVE_PROCS === '0') expect(legacy).toBeNull()
-    else expect(legacy?.some((p) => p.pid === process.pid)).toBe(true)
+    expect(await tableWin()).toBeNull()
+    expect((await commandLinesWin([10])).size).toBe(0)
+    expect((await usageWin([10])).size).toBe(0)
   })
 
   it('queryProcessesWindows accepts an async table source', async () => {

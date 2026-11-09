@@ -145,9 +145,6 @@ function loadSqlJs(): Promise<SqlJsStatic> {
   })
   return sqlJs
 }
-// Native process table (collector/src/win-procs.ts); collector and pty host inherit it through their env.
-if (process.platform === 'win32') process.env.CCM_KOFFI ||= resource('koffi/node_modules/koffi', 'node_modules/koffi')
-
 const CORE_PROCS_ENV = coreProcsEnv({ env: process.env, packaged: app.isPackaged, resourcesPath: process.resourcesPath, repo: REPO, platform: process.platform })
 Object.assign(process.env, CORE_PROCS_ENV)
 

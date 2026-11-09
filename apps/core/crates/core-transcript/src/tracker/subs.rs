@@ -67,10 +67,14 @@ pub fn parse_meta(raw: &str) -> Meta {
     }
 }
 
+fn js_ms(d: std::time::Duration) -> f64 {
+    d.as_secs() as f64 * 1000.0 + f64::from(d.subsec_nanos()) / 1e6
+}
+
 fn ms_of(t: std::io::Result<SystemTime>) -> f64 {
     match t.ok().map(|t| t.duration_since(UNIX_EPOCH)) {
-        Some(Ok(d)) => d.as_secs_f64() * 1000.0,
-        Some(Err(e)) => -(e.duration().as_secs_f64() * 1000.0),
+        Some(Ok(d)) => js_ms(d),
+        Some(Err(e)) => -js_ms(e.duration()),
         None => 0.0,
     }
 }

@@ -31,6 +31,7 @@ export interface Tracker {
   buildTerminal(): TerminalSession
   buildAgents(terminal: TerminalSession): Agent[]
   dispose?(): void
+  takeChanged?(): boolean
 }
 
 export type TrackerMode = 'rust' | 'node'
@@ -38,6 +39,8 @@ export type TrackerMode = 'rust' | 'node'
 export function trackerMode(env: NodeJS.ProcessEnv = process.env): TrackerMode {
   return env.CCM_CORE_TRANSCRIPT?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
 }
+
+export const SAFETY_NET_MS = 4_000
 
 let keySeq = 0
 
@@ -76,5 +79,5 @@ function hubFor(env: NodeJS.ProcessEnv): CoreHub | null {
 
 export function createTracker(terminalId: string, record: RegistryRecord, projectsDir: string, hints: ContextHints, now: () => number, env: NodeJS.ProcessEnv = process.env): Tracker {
   const hub = trackerMode(env) === 'rust' ? hubFor(env) : null
-  return hub ? new CoreTracker(terminalId, record, projectsDir, hints, now, hub) : new SessionTracker(terminalId, record, projectsDir, hints, now)
+  return hub ? new CoreTracker(terminalId, record, projectsDir, hints, now, hub, { safetyNetMs: SAFETY_NET_MS }) : new SessionTracker(terminalId, record, projectsDir, hints, now)
 }

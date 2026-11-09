@@ -4,7 +4,9 @@ use crate::state::TranscriptState;
 use serde_json::{Map, Value};
 use std::collections::HashSet;
 
-fn state_view(s: &TranscriptState, main: bool) -> Value {
+type Obj = Map<String, Value>;
+
+fn state_view(s: &TranscriptState, main: bool) -> Obj {
     let mut m = Map::new();
     put_opt(&mut m, "model", &s.model);
     put_opt(&mut m, "effort", &s.effort);
@@ -53,7 +55,7 @@ fn state_view(s: &TranscriptState, main: bool) -> Value {
             put(&mut m, "pendingAsk", a.to_json());
         }
     }
-    Value::Object(m)
+    m
 }
 
 fn meta_view(meta: &Meta) -> Value {
@@ -67,8 +69,47 @@ fn meta_view(meta: &Meta) -> Value {
     Value::Object(m)
 }
 
+fn removed(sent: &Obj, next: &Obj, d: &mut Obj) {
+    for k in sent.keys() {
+        if !next.contains_key(k) {
+            d.insert(k.clone(), Value::Null);
+        }
+    }
+}
+
+pub fn delta(sent: &Obj, next: &Obj) -> Obj {
+    let mut d = Map::new();
+    for (k, v) in next {
+        if sent.get(k) != Some(v) {
+            d.insert(k.clone(), v.clone());
+        }
+    }
+    removed(sent, next, &mut d);
+    d
+}
+
+fn sub_delta(sent: &Obj, next: &Obj) -> Obj {
+    let mut d = Map::new();
+    for (k, v) in next {
+        match (sent.get(k), v) {
+            (Some(Value::Object(a)), Value::Object(b)) if k == "state" => {
+                let s = delta(a, b);
+                if !s.is_empty() {
+                    d.insert(k.clone(), Value::Object(s));
+                }
+            }
+            (old, _) if old != Some(v) => {
+                d.insert(k.clone(), v.clone());
+            }
+            _ => {}
+        }
+    }
+    removed(sent, next, &mut d);
+    d
+}
+
 impl Tracker {
-    fn sub_view(&self, e: &Sub) -> Value {
+    fn sub_view(&self, e: &Sub) -> Obj {
         let mut m = Map::new();
         put(&mut m, "agentId", e.agent_id.as_str());
         put(&mut m, "meta", meta_view(&e.meta));
@@ -83,23 +124,57 @@ impl Tracker {
             put(&mut m, "msgOut", n);
         }
         put(&mut m, "state", state_view(&e.state, false));
-        Value::Object(m)
+        m
     }
 
     pub fn view(&self) -> Value {
-        self.view_of(true, true, &HashSet::new())
+        let mut m = Map::new();
+        put(&mut m, "full", true);
+        put(&mut m, "main", state_view(&self.main, true));
+        put(&mut m, "subs", self.subs.iter().map(|(_, e)| Value::Object(self.sub_view(e))).collect::<Vec<_>>());
+        Value::Object(m)
     }
 
-    pub fn view_of(&self, full: bool, main: bool, dirty: &HashSet<String>) -> Value {
-        let mut m = Map::new();
+    pub fn view_of(&mut self, full: bool, main: bool, dirty: &HashSet<String>) -> Option<Value> {
         if full {
+            self.sent_main = state_view(&self.main, true);
+            let subs: Vec<(String, Obj)> = self.subs.iter().map(|(k, e)| (k.to_owned(), self.sub_view(e))).collect();
+            let list = subs.iter().map(|(_, v)| Value::Object(v.clone())).collect::<Vec<_>>();
+            self.sent_subs = subs.into_iter().collect();
+            let mut m = Map::new();
             put(&mut m, "full", true);
+            put(&mut m, "main", self.sent_main.clone());
+            put(&mut m, "subs", list);
+            return Some(Value::Object(m));
         }
+        let mut m = Map::new();
         if main {
-            put(&mut m, "main", state_view(&self.main, true));
+            let next = state_view(&self.main, true);
+            let d = delta(&self.sent_main, &next);
+            self.sent_main = next;
+            if !d.is_empty() {
+                put(&mut m, "main", d);
+            }
         }
-        let subs = self.subs.iter().filter(|(k, _)| full || dirty.contains(*k)).map(|(_, e)| self.sub_view(e)).collect::<Vec<_>>();
+        let views: Vec<(String, Obj)> = self.subs.iter().filter(|(k, _)| dirty.contains(*k)).map(|(k, e)| (k.to_owned(), self.sub_view(e))).collect();
+        let mut subs = Vec::new();
+        for (k, next) in views {
+            let d = match self.sent_subs.get(&k) {
+                Some(sent) => sub_delta(sent, &next),
+                None => next.clone(),
+            };
+            if !d.is_empty() {
+                let mut s = Map::new();
+                put(&mut s, "agentId", k.as_str());
+                s.extend(d);
+                subs.push(Value::Object(s));
+            }
+            self.sent_subs.insert(k, next);
+        }
+        if m.is_empty() && subs.is_empty() {
+            return None;
+        }
         put(&mut m, "subs", subs);
-        Value::Object(m)
+        Some(Value::Object(m))
     }
 }

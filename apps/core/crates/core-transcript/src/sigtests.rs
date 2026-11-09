@@ -93,7 +93,7 @@ fn shell_rules_follow_the_node_rules() {
 #[test]
 fn tailer_handles_partial_lines_truncation_and_appends() {
     let file = tmp("tail");
-    append(&file, "{\"a\":1}\n{\"a\":2}\n{\"a\":");
+    append(&file, "{\"uuid\":1}\n{\"uuid\":2}\n{\"uuid\":");
     let mut t = JsonlTailer::new(file.clone(), 5, TailOptions::default());
     let mut got = Vec::new();
     let mut parse = |_: &[u8], _: u64, _: u64| Verdict::Parse;
@@ -105,15 +105,15 @@ fn tailer_handles_partial_lines_truncation_and_appends() {
         })
     };
     take(&mut got, &mut t, &mut parse);
-    assert_eq!(got, vec![json!({ "a": 1 }), json!({ "a": 2 })]);
-    append(&file, "3}\n not json\n\n\u{feff}{\"a\":4}\r\n");
+    assert_eq!(got, vec![json!({ "uuid": 1 }), json!({ "uuid": 2 })]);
+    append(&file, "3}\n not json\n\n\u{feff}{\"uuid\":4}\r\n");
     got.clear();
     take(&mut got, &mut t, &mut parse);
-    assert_eq!(got, vec![json!({ "a": 3 }), json!({ "a": 4 })]);
-    std::fs::write(&file, "{\"b\":1}\n").unwrap();
+    assert_eq!(got, vec![json!({ "uuid": 3 }), json!({ "uuid": 4 })]);
+    std::fs::write(&file, "{\"subtype\":1}\n").unwrap();
     got.clear();
     take(&mut got, &mut t, &mut parse);
-    assert_eq!(got, vec![json!({ "b": 1 })]);
+    assert_eq!(got, vec![json!({ "subtype": 1 })]);
     let mut ends = Vec::new();
     let mut t2 = JsonlTailer::new(file.clone(), 3, TailOptions { from_end: Some(4), max_line: Some(100) });
     append(&file, "{\"c\":22}\n{\"d\":1}\n");

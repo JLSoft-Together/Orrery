@@ -166,10 +166,13 @@ export class Monitor {
   }
 
   private async refreshHints(): Promise<void> {
-    this.contextHints.settingsModel = await readSettingsModel(this.config.claudeRoot)
+    const settingsModel = await readSettingsModel(this.config.claudeRoot)
     const catalog = await readModelCatalog(this.config.claudeRoot)
+    const changed = settingsModel !== this.contextHints.settingsModel || JSON.stringify(catalog.windows) !== JSON.stringify(this.contextHints.modelWindows)
+    this.contextHints.settingsModel = settingsModel
     this.contextHints.modelWindows = catalog.windows
     this.store.setModelNames(catalog.names)
+    if (changed) for (const t of this.trackers.values()) this.publish(t)
   }
 
   /** Background jobs + status line bridge files; both are small directories, polled with the reconcile cadence. */
@@ -479,7 +482,7 @@ export class Monitor {
   private async syncTracker(tracker: SessionTracker, scope?: SyncScope): Promise<void> {
     try {
       const drafts = await tracker.sync(false, scope)
-      this.publish(tracker)
+      if (tracker.takeChanged?.() !== false) this.publish(tracker)
       for (const span of tracker.drainSpans()) this.store.toolSpan(span)
       this.pushActivity(drafts)
       this.drainPeers(tracker)

@@ -1,0 +1,377 @@
+{
+  "label": "v87-step4-T3b",
+  "platform": "win32",
+  "date": "2026-11-09",
+  "scenario": "perf-bench --stage --scenario demo-30x6 --seed 8704, 120 s after 20 s settle, CCM_CORE_BIN = apps/core/target/release; modes: node (default), rust = CCM_CORE_TRANSCRIPT=rust, rust-usage = + CCM_CORE_USAGE=rust",
+  "cpuUnit": "percent of one core",
+  "gateTotalPct": 7.6,
+  "notes": [
+    "coreTranscript = every orrery-core transcript child of the collector (rust: 1 tracker child; rust-usage: tracker + usage child)",
+    "base = code of T3 (HEAD f9e280b); intermediate r1 = field delta + takeChanged + prune parse + one open per read; r2 / final = + safetyNetMs 4 s",
+    "final laps interleaved node, rust, rust-usage x2; machine has other load, single laps vary by ~1-2 points",
+    "collectorProfileFinal = standalone tsx collector (--collector-prof, 30 s) per mode, top self time"
+  ],
+  "base": [
+    {
+      "mode": "node",
+      "run": "base",
+      "collectorCpuAvgPct": 10,
+      "collectorCpuP95Pct": 15.3,
+      "collectorCpuSec": 12,
+      "collectorRssMB": 108,
+      "coreTranscriptProcs": 0,
+      "coreTranscriptCpuAvgPct": 0,
+      "coreTranscriptCpuSec": 0,
+      "coreTranscriptPrivateMB": 0,
+      "collectorPlusCorePct": 10
+    },
+    {
+      "mode": "rust",
+      "run": "base",
+      "collectorCpuAvgPct": 6.1,
+      "collectorCpuP95Pct": 9.2,
+      "collectorCpuSec": 7.3,
+      "collectorRssMB": 103.7,
+      "coreTranscriptProcs": 1,
+      "coreTranscriptCpuAvgPct": 2.2,
+      "coreTranscriptCpuSec": 2.7,
+      "coreTranscriptPrivateMB": 6.3,
+      "collectorPlusCorePct": 8.3
+    },
+    {
+      "mode": "rust-usage",
+      "run": "base",
+      "collectorCpuAvgPct": 5.1,
+      "collectorCpuP95Pct": 9.2,
+      "collectorCpuSec": 6.1,
+      "collectorRssMB": 95.7,
+      "coreTranscriptProcs": 2,
+      "coreTranscriptCpuAvgPct": 3,
+      "coreTranscriptCpuSec": 3.4,
+      "coreTranscriptPrivateMB": 10.2,
+      "collectorPlusCorePct": 8.1
+    }
+  ],
+  "intermediate": [
+    {
+      "mode": "rust",
+      "run": "r1",
+      "collectorCpuAvgPct": 7,
+      "collectorCpuP95Pct": 12.1,
+      "collectorCpuSec": 8.5,
+      "collectorRssMB": 102.4,
+      "coreTranscriptProcs": 1,
+      "coreTranscriptCpuAvgPct": 2.9,
+      "coreTranscriptCpuSec": 3.5,
+      "coreTranscriptPrivateMB": 8.7,
+      "collectorPlusCorePct": 9.9
+    },
+    {
+      "mode": "rust-usage",
+      "run": "r1",
+      "collectorCpuAvgPct": 5.2,
+      "collectorCpuP95Pct": 10.7,
+      "collectorCpuSec": 6.4,
+      "collectorRssMB": 93.4,
+      "coreTranscriptProcs": 2,
+      "coreTranscriptCpuAvgPct": 3.1,
+      "coreTranscriptCpuSec": 3.7,
+      "coreTranscriptPrivateMB": 12.6,
+      "collectorPlusCorePct": 8.3
+    },
+    {
+      "mode": "rust",
+      "run": "r2",
+      "collectorCpuAvgPct": 7.2,
+      "collectorCpuP95Pct": 12.2,
+      "collectorCpuSec": 8.1,
+      "collectorRssMB": 92.7,
+      "coreTranscriptProcs": 1,
+      "coreTranscriptCpuAvgPct": 1.4,
+      "coreTranscriptCpuSec": 1.6,
+      "coreTranscriptPrivateMB": 8.3,
+      "collectorPlusCorePct": 8.6
+    },
+    {
+      "mode": "rust-usage",
+      "run": "r2",
+      "collectorCpuAvgPct": 5.1,
+      "collectorCpuP95Pct": 9,
+      "collectorCpuSec": 5.8,
+      "collectorRssMB": 133.6,
+      "coreTranscriptProcs": 2,
+      "coreTranscriptCpuAvgPct": 1.9,
+      "coreTranscriptCpuSec": 2.3,
+      "coreTranscriptPrivateMB": 12.2,
+      "collectorPlusCorePct": 7
+    }
+  ],
+  "final": [
+    {
+      "mode": "node",
+      "run": "f1",
+      "collectorCpuAvgPct": 10.3,
+      "collectorCpuP95Pct": 17,
+      "collectorCpuSec": 12.3,
+      "collectorRssMB": 116.8,
+      "coreTranscriptProcs": 0,
+      "coreTranscriptCpuAvgPct": 0,
+      "coreTranscriptCpuSec": 0,
+      "coreTranscriptPrivateMB": 0,
+      "collectorPlusCorePct": 10.3
+    },
+    {
+      "mode": "rust",
+      "run": "f1",
+      "collectorCpuAvgPct": 5.5,
+      "collectorCpuP95Pct": 10,
+      "collectorCpuSec": 6.6,
+      "collectorRssMB": 106,
+      "coreTranscriptProcs": 1,
+      "coreTranscriptCpuAvgPct": 1.4,
+      "coreTranscriptCpuSec": 1.6,
+      "coreTranscriptPrivateMB": 8.6,
+      "collectorPlusCorePct": 6.9
+    },
+    {
+      "mode": "rust-usage",
+      "run": "f1",
+      "collectorCpuAvgPct": 4.7,
+      "collectorCpuP95Pct": 9.1,
+      "collectorCpuSec": 5.8,
+      "collectorRssMB": 102.8,
+      "coreTranscriptProcs": 2,
+      "coreTranscriptCpuAvgPct": 2,
+      "coreTranscriptCpuSec": 2.5,
+      "coreTranscriptPrivateMB": 12.5,
+      "collectorPlusCorePct": 6.7
+    },
+    {
+      "mode": "node",
+      "run": "f2",
+      "collectorCpuAvgPct": 10.1,
+      "collectorCpuP95Pct": 16.9,
+      "collectorCpuSec": 12.1,
+      "collectorRssMB": 105.3,
+      "coreTranscriptProcs": 0,
+      "coreTranscriptCpuAvgPct": 0,
+      "coreTranscriptCpuSec": 0,
+      "coreTranscriptPrivateMB": 0,
+      "collectorPlusCorePct": 10.1
+    },
+    {
+      "mode": "rust",
+      "run": "f2",
+      "collectorCpuAvgPct": 5.7,
+      "collectorCpuP95Pct": 10.7,
+      "collectorCpuSec": 6.9,
+      "collectorRssMB": 102.1,
+      "coreTranscriptProcs": 1,
+      "coreTranscriptCpuAvgPct": 1.1,
+      "coreTranscriptCpuSec": 1.4,
+      "coreTranscriptPrivateMB": 8.6,
+      "collectorPlusCorePct": 6.8
+    },
+    {
+      "mode": "rust-usage",
+      "run": "f2",
+      "collectorCpuAvgPct": 4.5,
+      "collectorCpuP95Pct": 9.1,
+      "collectorCpuSec": 5.5,
+      "collectorRssMB": 97.7,
+      "coreTranscriptProcs": 2,
+      "coreTranscriptCpuAvgPct": 1.6,
+      "coreTranscriptCpuSec": 1.8,
+      "coreTranscriptPrivateMB": 12.4,
+      "collectorPlusCorePct": 6.1
+    }
+  ],
+  "collectorProfileFinal": {
+    "node": [
+      {
+        "fn": "diff @ src/store.ts:1:210",
+        "msPerSec": 2
+      },
+      {
+        "fn": "stat @ :0:0",
+        "msPerSec": 1.8
+      },
+      {
+        "fn": "spawn @ :0:0",
+        "msPerSec": 1.1
+      },
+      {
+        "fn": "publish @ src/monitor.ts:1:23641",
+        "msPerSec": 1.1
+      },
+      {
+        "fn": "ingestLine @ src/usage.ts:1:9744",
+        "msPerSec": 1
+      },
+      {
+        "fn": "buildTerminal @ src/tracker.ts:1:14112",
+        "msPerSec": 1
+      },
+      {
+        "fn": "upsertAgent @ src/store.ts:1:3397",
+        "msPerSec": 1
+      },
+      {
+        "fn": "consume @ src/tailer.ts:1:1490",
+        "msPerSec": 0.9
+      },
+      {
+        "fn": "stat @ fs/promises:1037:20",
+        "msPerSec": 0.8
+      },
+      {
+        "fn": "read @ fs/promises:647:20",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "buildAgents @ src/tracker.ts:1:15097",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "discoverSubagents @ src/tracker.ts:1:11484",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "prune @ src/tool-spans.ts:1:1650",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "read @ :0:0",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "nextTick @ process/task_queues:112:18",
+        "msPerSec": 0.6
+      }
+    ],
+    "rust": [
+      {
+        "fn": "ingestLine @ src/usage.ts:1:9744",
+        "msPerSec": 1.1
+      },
+      {
+        "fn": "nextTick @ process/task_queues:112:18",
+        "msPerSec": 0.9
+      },
+      {
+        "fn": "diff @ src/store.ts:1:210",
+        "msPerSec": 0.7
+      },
+      {
+        "fn": "spawn @ :0:0",
+        "msPerSec": 0.7
+      },
+      {
+        "fn": "(anon) @ src/coreTranscript.ts:1:1208",
+        "msPerSec": 0.7
+      },
+      {
+        "fn": "ingestTools @ src/usage.ts:1:10472",
+        "msPerSec": 0.5
+      },
+      {
+        "fn": "indexOfBuffer @ :0:0",
+        "msPerSec": 0.5
+      },
+      {
+        "fn": "routeProjectChange @ src/monitor.ts:1:25335",
+        "msPerSec": 0.5
+      },
+      {
+        "fn": "runMicrotasks @ :0:0",
+        "msPerSec": 0.4
+      },
+      {
+        "fn": "buildTerminalOf @ src/trackerView.ts:1:2165",
+        "msPerSec": 0.4
+      },
+      {
+        "fn": "upsertAgent @ src/store.ts:1:3397",
+        "msPerSec": 0.4
+      },
+      {
+        "fn": "buildAgentsOf @ src/trackerView.ts:1:3178",
+        "msPerSec": 0.4
+      },
+      {
+        "fn": "publish @ src/monitor.ts:1:23641",
+        "msPerSec": 0.3
+      },
+      {
+        "fn": "clean @ src/store.ts:1:541",
+        "msPerSec": 0.3
+      },
+      {
+        "fn": "ingest @ src/usage.ts:1:8541",
+        "msPerSec": 0.3
+      }
+    ],
+    "rust-usage": [
+      {
+        "fn": "spawn @ :0:0",
+        "msPerSec": 1.2
+      },
+      {
+        "fn": "diff @ src/store.ts:1:210",
+        "msPerSec": 0.8
+      },
+      {
+        "fn": "buildTerminalOf @ src/trackerView.ts:1:2165",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "(anon) @ src/coreTranscript.ts:1:1208",
+        "msPerSec": 0.6
+      },
+      {
+        "fn": "routeProjectChange @ src/monitor.ts:1:25335",
+        "msPerSec": 0.5
+      },
+      {
+        "fn": "publish @ src/monitor.ts:1:23641",
+        "msPerSec": 0.5
+      },
+      {
+        "fn": "buildAgentsOf @ src/trackerView.ts:1:3178",
+        "msPerSec": 0.4
+      },
+      {
+        "fn": "buildTerminal @ src/coreTracker.ts:1:3363",
+        "msPerSec": 0.3
+      },
+      {
+        "fn": "upsertAgent @ src/store.ts:1:3397",
+        "msPerSec": 0.3
+      },
+      {
+        "fn": "patched @ src/trackerView.ts:1:345",
+        "msPerSec": 0.3
+      },
+      {
+        "fn": "writeUtf8String @ :0:0",
+        "msPerSec": 0.3
+      },
+      {
+        "fn": "emit @ node:events:456:44",
+        "msPerSec": 0.2
+      },
+      {
+        "fn": "apply @ src/coreTracker.ts:1:6925",
+        "msPerSec": 0.2
+      },
+      {
+        "fn": "readableAddChunkPushByteMode @ streams/readable:465:38",
+        "msPerSec": 0.2
+      },
+      {
+        "fn": "mergeView @ src/trackerView.ts:1:500",
+        "msPerSec": 0.2
+      }
+    ]
+  }
+}

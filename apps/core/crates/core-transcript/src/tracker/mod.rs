@@ -6,7 +6,7 @@ use crate::signal::Signal;
 use crate::spans::ToolSpanLog;
 use crate::state::TranscriptState;
 use crate::tail::{Item, JsonlTailer, TailOptions, CHUNK_BYTES};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -106,6 +106,8 @@ pub struct Tracker {
     full_view: bool,
     dirty_main: bool,
     dirty: HashSet<String>,
+    sent_main: Map<String, Value>,
+    sent_subs: HashMap<String, Map<String, Value>>,
 }
 
 pub fn tailer(file: PathBuf) -> JsonlTailer {
@@ -150,6 +152,8 @@ impl Tracker {
             full_view: true,
             dirty_main: false,
             dirty: HashSet::new(),
+            sent_main: Map::new(),
+            sent_subs: HashMap::new(),
         }
     }
 
@@ -166,6 +170,8 @@ impl Tracker {
         self.full_view = true;
         self.dirty_main = false;
         self.dirty.clear();
+        self.sent_main.clear();
+        self.sent_subs.clear();
     }
 
     fn begin(&mut self, a: SyncArgs) -> bool {
@@ -252,9 +258,9 @@ impl Tracker {
         let full = std::mem::take(&mut self.full_view);
         let main = std::mem::take(&mut self.dirty_main);
         let dirty = std::mem::take(&mut self.dirty);
-        if full {
-            return Some(self.view_of(true, true, &dirty));
+        if !full && !main && dirty.is_empty() {
+            return None;
         }
-        (main || !dirty.is_empty()).then(|| self.view_of(false, main, &dirty))
+        self.view_of(full, main, &dirty)
     }
 }

@@ -25,9 +25,22 @@ interface SyncPlan {
 const PAGE_TIMEOUT_MS = 30_000
 const PAGE_BYTES = 4 * 1024 * 1024
 const REQUEST = { timeoutMs: PAGE_TIMEOUT_MS, restartOnTimeout: false }
+export interface CoreTrackerOptions {
+  safetyNetMs?: number
+  clock?: () => number
+}
+
 const ALL: SyncPlan = { all: true, unresolved: false, files: new Set() }
 
 type Draft = ActivityDraft & { touch?: ToolTouch }
+
+function sameRecord(a: RegistryRecord, b: RegistryRecord): boolean {
+  const x = a as unknown as Record<string, unknown>
+  const y = b as unknown as Record<string, unknown>
+  for (const k in x) if (x[k] !== y[k]) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
 
 export class CoreTracker {
   record: RegistryRecord
@@ -47,6 +60,8 @@ export class CoreTracker {
   private syncAgain = false
   private plan: SyncPlan = { all: false, unresolved: false, files: new Set() }
   private fallback: SessionTracker | null = null
+  private changed = true
+  private lastSyncAt = Number.NEGATIVE_INFINITY
 
   constructor(
     readonly terminalId: string,
@@ -55,6 +70,7 @@ export class CoreTracker {
     private readonly hints: ContextHints,
     private readonly now: () => number,
     private readonly hub: CoreHub,
+    private readonly opts: CoreTrackerOptions = {},
   ) {
     this.record = record
     this.mirror = new SpanMirror(now)
@@ -96,18 +112,27 @@ export class CoreTracker {
 
   setRecord(record: RegistryRecord): { sessionChanged: boolean } {
     const sessionChanged = record.sessionId !== this.record.sessionId
+    if (!sameRecord(record, this.record)) this.changed = true
     this.record = record
     this.fallback?.setRecord(record)
     if (sessionChanged) {
       this.epoch++
       this.view = emptyView()
+      this.lastSyncAt = Number.NEGATIVE_INFINITY
     }
     return { sessionChanged }
   }
 
   markEnded(at: string): void {
+    if (this.endedAt !== at) this.changed = true
     this.endedAt = at
     this.fallback?.markEnded(at)
+  }
+
+  takeChanged(): boolean {
+    const changed = this.changed || this.fallback !== null
+    this.changed = false
+    return changed
   }
 
   drainSpans(): ToolSpan[] {
@@ -162,6 +187,7 @@ export class CoreTracker {
   }
 
   sync(catchUp: boolean, scope: SyncScope = {}): Promise<ActivityDraft[]> {
+    if (!catchUp && scope.skipResolved && !scope.files && this.recentlySynced()) return Promise.resolve([])
     if (scope.files) for (const f of scope.files) this.plan.files.add(path.basename(f))
     else if (scope.skipResolved) this.plan.unresolved = true
     else this.plan.all = true
@@ -176,12 +202,23 @@ export class CoreTracker {
         const plan = this.plan
         this.plan = { all: false, unresolved: false, files: new Set() }
         out.push(...(await this.syncOnce(catchUp, plan)))
+        if (plan.all || plan.unresolved) this.lastSyncAt = this.clock()
       } while (this.syncAgain)
       return out
     })().finally(() => {
       this.syncing = null
     })
     return this.syncing
+  }
+
+  private clock(): number {
+    return this.opts.clock ? this.opts.clock() : performance.now()
+  }
+
+  private recentlySynced(): boolean {
+    const ms = this.opts.safetyNetMs
+    if (!ms || !this.opened || this.fallback || this.syncing || this.disposed) return false
+    return this.clock() - this.lastSyncAt < ms
   }
 
   private scopeOf(plan: SyncPlan): SyncScope {
@@ -294,6 +331,9 @@ export class CoreTracker {
         out.push({ kind: 'sensitive', terminalId: this.terminalId, agentId: d.agentId, at: d.at, data: { tool: d.data?.tool, rule: h.rule, path: h.path, file: h.file, project: h.project } })
       }
     }
-    if (r.view && epoch === this.epoch) this.view = mergeView(this.view, r.view as unknown as ViewDelta)
+    if (r.view && epoch === this.epoch) {
+      this.view = mergeView(this.view, r.view as unknown as ViewDelta)
+      this.changed = true
+    }
   }
 }

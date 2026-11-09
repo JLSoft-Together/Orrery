@@ -44,22 +44,48 @@ export interface TrackerView {
 
 export const emptyView = (): TrackerView => ({ main: { peakContext: 0, codexCalls: [], compactions: 0 }, subs: [] })
 
+type Patch<T> = { [K in keyof T]?: T[K] | null }
+
+export interface SubPatch extends Patch<Omit<SubView, 'agentId' | 'state'>> {
+  agentId: string
+  state?: Patch<StateView>
+}
+
 export interface ViewDelta {
   full?: boolean
-  main?: StateView
-  subs: SubView[]
+  main?: Patch<StateView>
+  subs: SubPatch[]
+}
+
+function patched<T extends object>(prev: T, d: Patch<T>): T {
+  const out = { ...prev } as Record<string, unknown>
+  for (const k in d) {
+    const v = (d as Record<string, unknown>)[k]
+    if (v === null) delete out[k]
+    else out[k] = v
+  }
+  return out as T
 }
 
 export function mergeView(view: TrackerView, d: ViewDelta): TrackerView {
-  if (d.full) return { main: d.main ?? view.main, subs: d.subs }
+  if (d.full) return { main: (d.main as StateView | undefined) ?? view.main, subs: d.subs as SubView[] }
+  const main = d.main ? patched(view.main, d.main) : view.main
+  if (!d.subs.length) return { main, subs: view.subs }
   const subs = [...view.subs]
   const at = new Map(subs.map((s, i) => [s.agentId, i]))
   for (const s of d.subs) {
     const i = at.get(s.agentId)
-    if (i === undefined) at.set(s.agentId, subs.push(s) - 1)
-    else subs[i] = s
+    if (i === undefined) {
+      at.set(s.agentId, subs.push(s as SubView) - 1)
+      continue
+    }
+    const { state, ...rest } = s
+    const prev = subs[i]!
+    const next = patched(prev, rest as Patch<SubView>)
+    next.state = state ? patched(prev.state, state) : prev.state
+    subs[i] = next
   }
-  return { main: d.main ?? view.main, subs }
+  return { main, subs }
 }
 
 export interface ViewContext {

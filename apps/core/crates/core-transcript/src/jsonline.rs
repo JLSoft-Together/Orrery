@@ -88,7 +88,7 @@ fn too_deep(e: &serde_json::Error) -> bool {
 }
 
 fn attempt(line: &str) -> Result<Value, bool> {
-    serde_json::from_str::<Value>(line).map_err(|e| too_deep(&e))
+    crate::prune::record(line).map_err(|e| too_deep(&e))
 }
 
 pub fn parse_line(line: &str) -> Parsed {
@@ -164,28 +164,54 @@ mod tests {
 
     #[test]
     fn replaces_only_lone_surrogates() {
-        let v = value(r#"{"a":"x\ud800y","b":"😀","c":"\\ud800"}"#);
-        assert_eq!(v["a"], "x\u{fffd}y");
-        assert_eq!(v["b"], "😀");
-        assert_eq!(v["c"], "\\ud800");
+        let v = value(r#"{"uuid":"x\ud800y","content":"😀","subtype":"\\ud800"}"#);
+        assert_eq!(v["uuid"], "x\u{fffd}y");
+        assert_eq!(v["content"], "😀");
+        assert_eq!(v["subtype"], "\\ud800");
         assert!(matches!(parse_line("{broken"), Parsed::Bad));
     }
 
     #[test]
     fn out_of_range_numbers_read_like_infinity() {
-        let v = value(r#"{"a":1e400,"b":-1E+999,"c":"1e400","d":[2,1e-400]}"#);
-        assert_eq!(v["a"], -1);
-        assert_eq!(v["b"], -1);
-        assert_eq!(v["c"], "1e400");
-        assert_eq!(v["d"][0], 2);
+        let v = value(r#"{"isMeta":1e400,"apiError":-1E+999,"content":"1e400","quotaLimits":[2,1e-400]}"#);
+        assert_eq!(v["isMeta"], -1);
+        assert_eq!(v["apiError"], -1);
+        assert_eq!(v["content"], "1e400");
+        assert_eq!(v["quotaLimits"][0], 2);
+    }
+
+    #[test]
+    fn pruned_records_give_the_same_signals() {
+        let big = "z".repeat(200_000);
+        let lines = [
+            format!(r#"{{"type":"assistant","timestamp":"2026-10-07T10:00:00.000Z","gitBranch":"main","effort":"high","x":{{"y":["{big}"]}},"message":{{"id":"m1","model":"claude-opus-5-5","stop_reason":"end_turn","usage":{{"input_tokens":3,"cache_creation":{{"ephemeral_1h_input_tokens":2}}}},"content":[{{"type":"text","text":"done"}},{{"type":"thinking","thinking":"{big}"}},{{"type":"tool_use","id":"t1","name":"Bash","input":{{"command":"adb install && codex exec"}}}},{{"type":"tool_use","id":"t2","name":"SendMessage","input":{{"to":"main"}}}},7]}}}}"#),
+            format!(r#"{{"type":"user","timestamp":"2026-10-07T10:00:01.000Z","uuid":"u1","toolUseResult":{{"status":"async_launched","success":true,"msg_id":"msg_1","file":{{"content":"{big}"}}}},"message":{{"content":[{{"type":"tool_result","tool_use_id":"t1","is_error":true,"content":[{{"type":"text","text":"Error: listen EADDRINUSE: address already in use :::3000"}},{{"type":"image","source":"{big}"}}]}},{{"type":"text","text":"<task-notification><task-id>a</task-id><tool-use-id>t9</tool-use-id><status>completed</status></task-notification>"}}]}}}}"#),
+            format!(r#"{{"type":"user","toolUseResult":{{"success":true,"msg_id":"msg_2","pin":{{"a":"{big}"}}}},"message":{{"content":"plain {big}"}},"isMeta":true}}"#),
+            r#"{"type":"attachment","uuid":"u2","attachment":{"type":"queued_command","source_uuid":"s1","origin":{"kind":"peer","from":"uds:/tmp/x.sock"}}}"#.to_owned(),
+            r#"{"type":"system","subtype":"compact_boundary","compactMetadata":{"trigger":"auto","preTokens":5,"postTokens":1},"timestamp":"2026-10-07T10:00:02.000Z"}"#.to_owned(),
+            r#"{"type":"queue-operation","content":"<task-notification><tool-use-id>t1</tool-use-id><status>failed</status></task-notification>"}"#.to_owned(),
+            r#"{"type":"permission-mode","permissionMode":"plan","type":"permission-mode"}"#.to_owned(),
+            r#"[1,{"type":"user"}]"#.to_owned(),
+        ];
+        for line in &lines {
+            let full: Value = serde_json::from_str(line).unwrap();
+            let pruned = value(line);
+            let a: Vec<Value> = extract_signals(&full).iter().map(Signal::to_json).collect();
+            let b: Vec<Value> = extract_signals(&pruned).iter().map(Signal::to_json).collect();
+            assert_eq!(a, b, "{}", &line[..80.min(line.len())]);
+            assert!(pruned.to_string().len() < 1000 || !line.contains(&big[..10]) || line.contains("plain"));
+        }
     }
 
     #[test]
     fn deep_lines_still_give_signals() {
         let nest = format!("{}{}", "[".repeat(5000), "]".repeat(5000));
-        let line = format!(r#"{{"type":"user","timestamp":"2026-10-07T10:00:00.000Z","x":{nest},"message":{{"content":"hi"}}}}"#);
+        let line = format!(r#"{{"type":"user","timestamp":"2026-10-07T10:00:00.000Z","origin":{nest},"message":{{"content":"hi"}}}}"#);
         let Parsed::Deep(text) = parse_line(&line) else { panic!("expected deep") };
         let kinds: Vec<&str> = deep_signals(text).iter().map(Signal::kind).collect();
+        assert_eq!(kinds, vec!["seen", "prompt"]);
+        let skipped = line.replace("\"origin\"", "\"x\"");
+        let kinds: Vec<&str> = extract_signals(&value(&skipped)).iter().map(Signal::kind).collect();
         assert_eq!(kinds, vec!["seen", "prompt"]);
     }
 }

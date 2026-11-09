@@ -170,3 +170,35 @@ fn new_args_drop_a_pending_run() {
     assert_eq!(t.take_view().unwrap()["subs"][0]["agentId"], "a1");
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn view_deltas_carry_only_changed_fields() {
+    let (dir, main, subs) = fixture("delta");
+    let mut t = Tracker::new("4242:1", dir.clone());
+    run(&mut t, args(true, 0.0), u64::MAX);
+    let full = t.take_view().unwrap();
+    assert_eq!(full["full"], true);
+    assert_eq!(full["main"]["currentTool"], "Agent");
+    append(&main, &tool_use("m8", "tz", "Bash", "2026-10-07T10:02:00.000Z"));
+    run(&mut t, args(false, 0.0), u64::MAX);
+    let d = t.take_view().unwrap();
+    assert!(d.get("full").is_none());
+    assert_eq!(d["main"]["currentTool"], "Bash");
+    assert_eq!(d["main"]["lastAt"], "2026-10-07T10:02:00.000Z");
+    assert!(d["main"].get("model").is_none() && d["main"].get("codexCalls").is_none());
+    assert_eq!(d["subs"], json!([]));
+    append(&main, &tool_result("tz", "2026-10-07T10:02:01.000Z", false));
+    append(&main, &tool_result("toolu_a1", "2026-10-07T10:02:02.000Z", false));
+    append(&subs.join("agent-a1.jsonl"), &tool_result("g1", "2026-10-07T10:02:03.000Z", false));
+    run(&mut t, args(false, 0.0), u64::MAX);
+    let d = t.take_view().unwrap();
+    assert_eq!(d["main"]["currentTool"], Value::Null);
+    let sub = &d["subs"][0];
+    assert_eq!(sub["agentId"], "a1");
+    assert_eq!(sub["status"], "completed");
+    assert!(sub.get("meta").is_none() && sub.get("startedAt").is_none());
+    assert_eq!(sub["state"]["currentTool"], Value::Null);
+    run(&mut t, args(false, 0.0), u64::MAX);
+    assert!(t.take_view().is_none());
+    let _ = fs::remove_dir_all(dir);
+}

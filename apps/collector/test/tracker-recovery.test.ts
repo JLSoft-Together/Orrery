@@ -107,6 +107,48 @@ describeCore('CoreTracker recovery', () => {
     expect(rust.drainSpans().map((s) => s.id).sort()).toEqual([...new Set(ts.drainSpans().map((s) => s.id))].sort())
   })
 
+  it('reports a change only when the view, record or end moved since the last check', async () => {
+    const w = wrap(() => false)
+    const [ts, rust] = pair('7:f', w)
+    await Promise.all([ts.sync(true), rust.sync(true)])
+    expect(rust.takeChanged()).toBe(true)
+    await rust.sync(false, { skipResolved: true })
+    expect(rust.takeChanged()).toBe(false)
+    rust.setRecord({ ...rust.record })
+    expect(rust.takeChanged()).toBe(false)
+    await appendFile(fx.transcript, assistant('m8', '2026-10-07T13:47:00.000Z', [use('toolu_r', 'Grep')], 'tool_use'))
+    await Promise.all([ts.sync(false), rust.sync(false)])
+    expect(rust.takeChanged()).toBe(true)
+    same(ts, rust)
+    rust.setRecord({ ...rust.record, status: 'waiting' })
+    expect(rust.takeChanged()).toBe(true)
+    rust.markEnded('2026-10-07T13:48:00.000Z')
+    expect(rust.takeChanged()).toBe(true)
+    expect(rust.takeChanged()).toBe(false)
+  })
+
+  it('skips a skip-resolved safety-net sync within safetyNetMs of the last full or skip-resolved one', async () => {
+    const w = wrap(() => false)
+    let t = 0
+    const rust = new CoreTracker('7:g', record(), fx.projects, {}, () => NOW, createCoreHub(() => w.client, () => undefined), { safetyNetMs: 1000, clock: () => t })
+    const syncs = () => w.calls.filter((c) => c.op === 'tracker.sync').length
+    await rust.sync(true)
+    const base = syncs()
+    t = 500
+    expect(await rust.sync(false, { skipResolved: true })).toEqual([])
+    expect(syncs()).toBe(base)
+    await rust.sync(false, { files: [fx.transcript] })
+    expect(syncs()).toBe(base + 1)
+    t = 900
+    await rust.sync(false, { skipResolved: true })
+    expect(syncs()).toBe(base + 1)
+    await rust.sync(false)
+    expect(syncs()).toBe(base + 2)
+    t = 2000
+    await rust.sync(false, { skipResolved: true })
+    expect(syncs()).toBe(base + 3)
+  })
+
   it('closes its Rust tracker on dispose', async () => {
     const w = wrap(() => false)
     const [, rust] = pair('7:e', w)

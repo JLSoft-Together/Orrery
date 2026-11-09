@@ -135,7 +135,7 @@ impl JsonlTailer {
     }
 
     pub fn read_some(&mut self, budget: u64, filter: &mut dyn FnMut(&[u8], u64, u64) -> Verdict, on: &mut dyn FnMut(Item)) -> bool {
-        let Ok(now) = std::fs::metadata(&self.file).map(|m| m.len()) else {
+        let Some((mut f, now)) = File::open(&self.file).ok().and_then(|f| f.metadata().ok().map(|m| (f, m.len()))) else {
             self.target = None;
             return false;
         };
@@ -157,7 +157,6 @@ impl JsonlTailer {
         if size == self.offset {
             return false;
         }
-        let Ok(mut f) = File::open(&self.file) else { return false };
         let mut used = 0u64;
         let mut chunk = vec![0u8; (size - self.offset).min(self.chunk_bytes as u64) as usize];
         while self.offset < size && used < budget {

@@ -16,8 +16,13 @@ Máy: MacBook (Darwin 27.0.0, 10 core, 24 GB), Rust 1.99.1 (rustup cài mới), 
 2. Symlink `/tmp`, `/var` → `/private/...`: so đường dẫn đã realpath với root chưa resolve → `denied` / `missing` sai. Sửa trong code (người dùng mac thật có thể gặp): `permRules.ts` `writeAllow`, `agentStatus/watch.ts` `readStatus`, `fileWrite.ts` `writeTextFile` (realpath roots bên trong), `logRead.ts` (file không tồn tại: so thêm root gốc để trả `missing`). Kiểm containment giữ nguyên.
 3. `shim.test.ts`: đường dẫn `C:\` chỉ assert trên win32 (lỗi test).
 
-## Còn treo
+## E2E trên mac (instance cô lập, port 4399)
 
-- `cargo clippy -D warnings` trên mac: `core-procs/src/kinfo.rs:21` `chunks_exact` hằng số (lint mới, file chỉ build trên mac; CI không chạy clippy). Chưa sửa.
+- Sửa để chạy được trên mac: electron path qua `require('electron')` (`cdp.cjs`, `desktop-only.cjs`, `v49-open.cjs`); `core-pty.cjs` unix (echo, realpath cwd, `ps -axww` + args, SIGKILL, chặn `process.kill(0)` vốn giết cả process group khi không thấy core).
+- `main.ts`: có `--user-data-dir` thì log vào `<userData>/logs` (trước đó E2E trên mac ghi đè `~/Library/Logs/Orrery/pty.log` của app thật).
+- `core-pty`: rust 22/0, `CCM_CORE_PTY=node` 17/0, fallback (core thiếu) 18/0 — gồm core crash → pane chết hết → core mới, không process mồ côi.
+- `tabs-cwd` 14/0, `shell-agent` 5/0.
+- Script chỉ viết cho Windows (chưa port): p2 / v49-open / v80-mcp gõ lệnh PowerShell, p3 phím Alt, p4–p6 chờ `[data-launch-row]` (timeout picker, chưa điều tra).
+- `cargo clippy -D warnings`: `kinfo.rs` đổi sang `as_chunks`, sạch.
 - `cargo fmt --check` lệch cả repo (không dùng rustfmt) — bỏ qua.
 - QA tay 12 bước trong `QA-v87-mac.md`: chờ chủ nhân chạy `npm run desktop`.

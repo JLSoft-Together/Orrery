@@ -48,5 +48,5 @@ Bản đang chạy xem ở dòng `terminal host:` trong Diagnostics và dòng đ
 ## Log gửi lại khi lỗi
 
 - Settings → Diagnostics → Copy (đã che token / đường dẫn home), dán vào tin nhắn.
-- `~/Library/Logs/Agent Monitor/pty.log` (và `collector.log`).
+- `~/Library/Logs/Orrery/pty.log` (và `collector.log`).
 - Kết quả `ps aux | rg "orrery-core|Orrery"` và số bước lỗi ở trên.

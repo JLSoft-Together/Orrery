@@ -39,7 +39,8 @@ import { canvasMenu, nodeMenu, peerTarget, type CanvasAction, type NodeAction } 
 import { buildNav, childCounts, hideCollapsed, navigate, NAV_KEYS, treeParent, type MapNav, type MapNodeContext, type NavKey, type TrayState } from '../lib/mapNav'
 import { agentName } from '../lib/mapText'
 import type { MenuEntry } from '../lib/menu'
-import { motionMs, nextMapIsSwitch, reducedMotion } from '../lib/motion'
+import { stableEdges } from '../lib/stableEdges'
+import { capsuleEnter, capsuleLeave, motionMs, nextMapIsSwitch, reducedMotion } from '../lib/motion'
 import { isMac } from '../lib/platform'
 import { isTyping, keyCombo } from '../lib/shortcuts'
 import AgentDetails from './AgentDetails.vue'
@@ -769,20 +770,7 @@ onBeforeUnmount(() => {
   for (const list of queuedFlights.values()) for (const q of list) window.clearTimeout(q.timer)
 })
 
-function sameEdge(a: Edge, b: Edge): boolean {
-  return a.id === b.id && a.source === b.source && a.target === b.target && a.type === b.type && a.class === b.class && a.ariaLabel === b.ariaLabel && sameEdgeData(a.data, b.data)
-}
-function sameEdgeData(a: unknown, b: unknown): boolean {
-  if (a === b) return true
-  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
-  const ka = Object.keys(a)
-  return ka.length === Object.keys(b).length && ka.every((k) => (a as Record<string, unknown>)[k] === (b as Record<string, unknown>)[k])
-}
-
-const edges = computed<Edge[]>((prev) => {
-  const next = buildEdges()
-  return prev?.length === next.length && next.every((e, i) => sameEdge(e, prev[i]!)) ? prev : next
-})
+const edges = computed<Edge[]>((prev) => stableEdges(prev, buildEdges()))
 
 function buildEdges(): Edge[] {
   const out: Edge[] = [...peerEdges.value]
@@ -1331,7 +1319,7 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
       </VueFlow>
       <p :id="`${FLOW_ID}-keys`" class="sr-only">{{ t('map.node.keys', NODE_KEYS) }}</p>
       <p class="sr-only" aria-live="polite" data-peer-live>{{ liveText }}</p>
-      <TransitionGroup v-if="ui.mapView === 'map'" name="ccm-peer-capsule" tag="div" class="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+      <TransitionGroup v-if="ui.mapView === 'map'" tag="div" :css="false" class="pointer-events-none absolute inset-0 z-10 overflow-hidden" @enter="capsuleEnter" @leave="capsuleLeave">
         <div v-for="c in capsuleViews" :key="c.key" class="absolute" :style="c.style">
           <button
             type="button"
@@ -1554,26 +1542,3 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
     </div>
   </section>
 </template>
-
-<style>
-.ccm-peer-capsule-enter-active {
-  transition:
-    opacity var(--ccm-dur-base) var(--ease-out-quint),
-    scale var(--ccm-dur-base) var(--ease-spring);
-}
-.ccm-peer-capsule-leave-active {
-  transition: opacity var(--ccm-dur-fast) var(--ease-exit);
-}
-.ccm-peer-capsule-enter-from {
-  opacity: 0;
-  scale: 0.85;
-}
-.ccm-peer-capsule-leave-to {
-  opacity: 0;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ccm-peer-capsule-enter-from {
-    scale: 1;
-  }
-}
-</style>

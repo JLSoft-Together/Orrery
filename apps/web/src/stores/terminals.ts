@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
-import { computed, reactive } from 'vue'
+import { computed, shallowReactive } from 'vue'
 import { normalizeTerminalStatus, type TerminalPatch, type TerminalSession } from '@ccm/shared'
-import { applyPatch } from '../lib/patch'
+import { applyEntityOps, type EntityOp } from '../lib/patch'
 
 export const useTerminalsStore = defineStore('terminals', () => {
-  const byId = reactive<Record<string, TerminalSession>>({})
+  const byId = shallowReactive<Record<string, TerminalSession>>({})
 
   const list = computed(() =>
     Object.values(byId).sort(
@@ -23,23 +23,24 @@ export const useTerminalsStore = defineStore('terminals', () => {
 
   function replaceAll(items: TerminalSession[]): void {
     for (const id of Object.keys(byId)) delete byId[id]
-    for (const t of items) byId[t.id] = sanitize(t)
+    for (const t of items) byId[t.id] = Object.freeze(sanitize(t))
+  }
+
+  function applyMany(ops: readonly EntityOp<TerminalSession, TerminalPatch>[]): void {
+    applyEntityOps(byId, ops, sanitize)
   }
 
   function upsert(t: TerminalSession): void {
-    byId[t.id] = sanitize(t)
+    applyMany([{ kind: 'upsert', value: t }])
   }
 
   function patch(p: TerminalPatch): void {
-    const current = byId[p.id]
-    if (!current) return
-    applyPatch(current, p)
-    current.status = normalizeTerminalStatus(current.status)
+    applyMany([{ kind: 'patch', patch: p }])
   }
 
   function remove(id: string): void {
-    delete byId[id]
+    applyMany([{ kind: 'remove', id }])
   }
 
-  return { byId, list, live, replaceAll, upsert, patch, remove }
+  return { byId, list, live, replaceAll, applyMany, upsert, patch, remove }
 })

@@ -4,6 +4,7 @@ import { useRunnerBudget } from '../composables/useMapNode'
 import { treePath } from '../lib/layout'
 import { pointAt, samplePath, type PathSamples } from '../lib/pathSamples'
 import { reducedMotion } from '../lib/motion'
+import { pageActive } from '../composables/usePageActive'
 
 defineOptions({ inheritAttrs: false })
 
@@ -48,7 +49,7 @@ function stop(): void {
 
 function run(dir: PulseDir): void {
   stop()
-  if (reducedMotion()) return
+  if (reducedMotion() || !pageActive.value) return
   const start = () => {
     const el = pathEl.value
     if (!el) return

@@ -904,7 +904,7 @@ function close(): void {
 onMounted(() => {
   term = new Terminal({
     allowProposedApi: true,
-    cursorBlink: true,
+    cursorBlink: false,
     cursorStyle: 'bar',
     // The chosen face may still be loading; applyCodeFont swaps it in once it is.
     fontFamily: termFontStack(fontEntry('code', 'system')),
@@ -962,7 +962,13 @@ onMounted(() => {
   })
   term.onBinary((data) => conn?.writeBinary(data))
   term.onResize(({ cols, rows }) => conn?.resize(cols, rows))
-  term.textarea?.addEventListener('focus', () => workspace.activate(props.pane.key))
+  term.textarea?.addEventListener('focus', () => {
+    if (term) term.options.cursorBlink = true
+    workspace.activate(props.pane.key)
+  })
+  term.textarea?.addEventListener('blur', () => {
+    if (term) term.options.cursorBlink = false
+  })
   host.value!.addEventListener('contextmenu', onContextMenu)
   host.value!.addEventListener('copy', onCopy, true)
   setRenderer(props.visible)

@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
-import { computed, reactive } from 'vue'
+import { computed, shallowReactive } from 'vue'
 import { normalizeAgentStatus, type Agent, type AgentPatch } from '@ccm/shared'
-import { applyPatch } from '../lib/patch'
+import { applyEntityOps, type EntityOp } from '../lib/patch'
 
 export const useAgentsStore = defineStore('agents', () => {
-  const byId = reactive<Record<string, Agent>>({})
+  const byId = shallowReactive<Record<string, Agent>>({})
 
   const list = computed(() => Object.values(byId))
 
@@ -30,22 +30,23 @@ export const useAgentsStore = defineStore('agents', () => {
 
   function replaceAll(items: Agent[]): void {
     for (const id of Object.keys(byId)) delete byId[id]
-    for (const a of items) byId[a.id] = sanitize(a)
+    for (const a of items) byId[a.id] = Object.freeze(sanitize(a))
+  }
+
+  function applyMany(ops: readonly EntityOp<Agent, AgentPatch>[]): void {
+    applyEntityOps(byId, ops, sanitize)
   }
 
   function upsert(a: Agent): void {
-    byId[a.id] = sanitize(a)
+    applyMany([{ kind: 'upsert', value: a }])
   }
 
   function patch(p: AgentPatch): void {
-    const current = byId[p.id]
-    if (!current) return
-    applyPatch(current, p)
-    current.status = normalizeAgentStatus(current.status)
+    applyMany([{ kind: 'patch', patch: p }])
   }
 
   function remove(id: string): void {
-    delete byId[id]
+    applyMany([{ kind: 'remove', id }])
   }
 
   function mainOf(terminalId: string): Agent | undefined {
@@ -72,5 +73,5 @@ export const useAgentsStore = defineStore('agents', () => {
     return out
   }
 
-  return { byId, list, byTerminal, subagents, replaceAll, upsert, patch, remove, mainOf, lineage }
+  return { byId, list, byTerminal, subagents, replaceAll, applyMany, upsert, patch, remove, mainOf, lineage }
 })

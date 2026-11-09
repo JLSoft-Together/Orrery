@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { ClientMessage, FolderPickResult, LaunchMode, OpenApp, MonitorEvent, MonitorSnapshot, QuietHours, SensitiveSettings, ServerMessage, ToastKind, ToolStatDays } from '@ccm/shared'
+import type { Agent, AgentPatch, ClientMessage, FolderPickResult, LaunchMode, OpenApp, MonitorEvent, MonitorSnapshot, QuietHours, SensitiveSettings, ServerMessage, ToastKind, ToolStatDays, TerminalPatch, TerminalSession } from '@ccm/shared'
+import type { EntityOp } from '../lib/patch'
 import { officeFeed } from '../office/feed'
 import { useActivityStore } from './activity'
 import { useAgentsStore } from './agents'
@@ -22,6 +23,7 @@ export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'dis
 
 const MIN_RETRY_MS = 1_000
 const MAX_RETRY_MS = 10_000
+const BATCH_FALLBACK_MS = 50
 
 function isServerMessage(value: unknown): value is ServerMessage {
   return (
@@ -107,23 +109,43 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   function apply(events: MonitorEvent[]): void {
+    toolSpans.hold()
+    try {
+      applyEvents(events)
+    } finally {
+      toolSpans.release()
+    }
+  }
+
+  function applyEvents(events: MonitorEvent[]): void {
     const newActivity = []
+    let terminalOps: EntityOp<TerminalSession, TerminalPatch>[] = []
+    let agentOps: EntityOp<Agent, AgentPatch>[] = []
+    const removedAgents = new Set<string>()
+    const flushEntities = (): void => {
+      if (terminalOps.length) terminals.applyMany(terminalOps)
+      if (agentOps.length) agents.applyMany(agentOps)
+      terminalOps = []
+      agentOps = []
+    }
     for (const event of events) {
       switch (event.type) {
         case 'snapshot':
+          flushEntities()
+          removedAgents.clear()
           hydrate(event.payload)
           break
         case 'sessions.loading':
           sessionsLoading.value = event.payload?.loading === true
           break
         case 'terminal.created':
-          terminals.upsert(event.payload)
+          terminalOps.push({ kind: 'upsert', value: event.payload })
           break
         case 'terminal.updated':
-          terminals.patch(event.payload)
+          terminalOps.push({ kind: 'patch', patch: event.payload })
           break
         case 'terminal.removed':
-          terminals.remove(event.payload.id)
+          terminalOps.push({ kind: 'remove', id: event.payload.id })
           toolSpans.removeTerminal(event.payload.id)
           peers.dropTerminal(event.payload.id)
           break
@@ -137,14 +159,14 @@ export const useConnectionStore = defineStore('connection', () => {
           officeFeed.ingestLive(event.payload)
           break
         case 'agent.created':
-          agents.upsert(event.payload)
+          agentOps.push({ kind: 'upsert', value: event.payload })
           break
         case 'agent.updated':
-          agents.patch(event.payload)
+          agentOps.push({ kind: 'patch', patch: event.payload })
           break
         case 'agent.removed':
-          agents.remove(event.payload.id)
-          if (ui.selectedAgentId === event.payload.id) ui.selectAgent(null)
+          agentOps.push({ kind: 'remove', id: event.payload.id })
+          removedAgents.add(event.payload.id)
           break
         case 'link.created':
           peers.upsert(event.payload, sessionsLoading.value)
@@ -251,21 +273,22 @@ export const useConnectionStore = defineStore('connection', () => {
           break
       }
     }
+    flushEntities()
+    if (ui.selectedAgentId && removedAgents.has(ui.selectedAgentId)) ui.selectAgent(null)
     activity.push(newActivity)
   }
 
-  function onMessage(raw: string): void {
+  type Accepted = { events: MonitorEvent[]; immediate: boolean }
+
+  function accept(raw: string): Accepted | null {
     let message: unknown
     try {
       message = JSON.parse(raw)
     } catch {
-      return
+      return null
     }
-    if (!isServerMessage(message)) return
-    if (message.direct) {
-      apply(message.events)
-      return
-    }
+    if (!isServerMessage(message)) return null
+    if (message.direct) return { events: message.events, immediate: true }
     const isSnapshot = message.events[0]?.type === 'snapshot'
     if (!isSnapshot && lastSeq >= 0 && message.seq !== lastSeq + 1) {
       if (message.seq > lastSeq + 1 && !awaitingResync) {
@@ -275,12 +298,52 @@ export const useConnectionStore = defineStore('connection', () => {
         for (const done of folderPicks.values()) done({ result: 'failed' })
         folderPicks.clear()
       }
-      return
+      return null
     }
     if (isSnapshot) awaitingResync = false
     lastSeq = message.seq
     lastEventAt.value = Date.now()
-    apply(message.events)
+    return { events: message.events, immediate: isSnapshot }
+  }
+
+  let queue: MonitorEvent[] = []
+  let frame = 0
+  let fallback: number | null = null
+
+  function flush(): void {
+    if (frame) cancelAnimationFrame(frame)
+    if (fallback !== null) window.clearTimeout(fallback)
+    frame = 0
+    fallback = null
+    if (queue.length === 0) return
+    const batch = queue
+    queue = []
+    apply(batch)
+  }
+
+  function schedule(): void {
+    if (frame || fallback !== null) return
+    if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(flush)
+    fallback = window.setTimeout(flush, BATCH_FALLBACK_MS)
+  }
+
+  function onMessage(raw: string): void {
+    const accepted = accept(raw)
+    if (!accepted) return
+    flush()
+    apply(accepted.events)
+  }
+
+  function receive(raw: string): void {
+    const accepted = accept(raw)
+    if (!accepted) return
+    if (accepted.immediate) {
+      flush()
+      apply(accepted.events)
+      return
+    }
+    for (const event of accepted.events) queue.push(event)
+    schedule()
   }
 
   function send(payload: unknown): void {
@@ -298,6 +361,7 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   function connect(): void {
+    flush()
     lastSeq = -1
     awaitingResync = false
     if (!hasData.value && state.value !== 'disconnected') state.value = 'connecting'
@@ -317,9 +381,10 @@ export const useConnectionStore = defineStore('connection', () => {
       if (settings.officeEnabled) send({ type: 'office.enable', on: true })
       if (officeOn) send({ type: 'office.subscribe', on: true })
     }
-    ws.onmessage = (e) => onMessage(String(e.data))
+    ws.onmessage = (e) => receive(String(e.data))
     ws.onclose = () => {
       if (socket === ws) socket = null
+      flush()
       for (const done of folderPicks.values()) done({ result: 'failed' })
       folderPicks.clear()
       if (promptSearch.running && promptSearch.searchId)
@@ -352,13 +417,13 @@ export const useConnectionStore = defineStore('connection', () => {
     window.addEventListener('focus', sendPresence)
     window.addEventListener('blur', sendPresence)
     watch(() => settings.locale, sendPresence)
-  watch(
-    () => settings.officeEnabled,
-    (on) => {
-      send({ type: 'office.enable', on })
-      if (!on && officeOn) subscribeOffice(false)
-    },
-  )
+    watch(
+      () => settings.officeEnabled,
+      (on) => {
+        send({ type: 'office.enable', on })
+        if (!on && officeOn) subscribeOffice(false)
+      },
+    )
     document.addEventListener('visibilitychange', () => {
       sendPresence()
       if (document.visibilityState === 'visible' && !socket && retryTimer !== null) {
@@ -461,6 +526,8 @@ export const useConnectionStore = defineStore('connection', () => {
     start,
     apply,
     onMessage,
+    receive,
+    flush,
     setAlias,
     toggleFavorite,
     removeFavorite,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, nextTick, ref, watch } from 'vue'
-import { reducedMotion, pinLeaving } from '../lib/motion'
+import { reducedMotion, pinLeaving, listEnter, listLeave } from '../lib/motion'
 import { useI18n } from 'vue-i18n'
 import { ArrowDownUp, Hand, Trash2 } from 'lucide-vue-next'
 import { readSessionSort, saveSessionSort, SESSION_SORTS, sortSessions } from '../lib/sessionSort'
@@ -181,7 +181,7 @@ const endedCount = computed(() => terminals.list.length - terminals.live.length)
           <Hand v-if="g.key === 'needs'" :size="14" aria-hidden="true" />{{ t(`monitorV79.group.${g.key}`) }}
           <span class="font-normal tabular-nums" :class="g.key === 'needs' ? '' : 'text-ink-faint'" data-group-count>{{ g.ids.length }}</span>
         </h3>
-        <TransitionGroup tag="ul" name="ccm-list" class="relative grid grid-cols-1 gap-2.5" @before-leave="pinLeaving">
+        <TransitionGroup tag="ul" name="ccm-list" :css="false" class="relative grid grid-cols-1 gap-2.5" @before-leave="pinLeaving" @enter="listEnter" @leave="listLeave">
           <li v-for="id in g.ids" :key="id" :data-terminal-id="id">
             <CardById :id="id" />
           </li>

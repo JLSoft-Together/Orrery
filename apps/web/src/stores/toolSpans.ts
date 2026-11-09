@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef } from 'vue'
+import { ref, shallowRef, triggerRef } from 'vue'
 import type { ToolSpan, ToolSpansData } from '@ccm/shared'
+import { useActiveInterval } from '../composables/usePageActive'
 
 const KEEP_MS = 2 * 60 * 60_000
 const PRUNE_EVERY_MS = 60_000
@@ -8,12 +9,31 @@ const PRUNE_EVERY_MS = 60_000
 export const useToolSpansStore = defineStore('toolSpans', () => {
   const byTerminal = shallowRef(new Map<string, Map<string, ToolSpan>>())
   const version = ref(0)
-  let pruneTimer: number | undefined
+  let pruning = false
+  let holding = 0
+  let pending = false
+
+  function hold(): void {
+    holding++
+  }
+
+  function release(): void {
+    if (--holding > 0 || !pending) return
+    pending = false
+    touch()
+  }
 
   function touch(): void {
-    byTerminal.value = new Map(byTerminal.value)
+    if (holding > 0) {
+      pending = true
+      return
+    }
+    triggerRef(byTerminal)
     version.value++
-    if (pruneTimer === undefined) pruneTimer = window.setInterval(() => prune(Date.now()), PRUNE_EVERY_MS)
+    if (!pruning) {
+      pruning = true
+      useActiveInterval(() => prune(Date.now()), PRUNE_EVERY_MS)
+    }
   }
 
   function bucket(terminalId: string): Map<string, ToolSpan> {
@@ -80,5 +100,5 @@ export const useToolSpansStore = defineStore('toolSpans', () => {
     return [...byTerminal.value.values()].flatMap((m) => [...m.values()])
   }
 
-  return { version, upsert, applyData, removeTerminal, prune, spansFor }
+  return { version, hold, release, upsert, applyData, removeTerminal, prune, spansFor }
 })

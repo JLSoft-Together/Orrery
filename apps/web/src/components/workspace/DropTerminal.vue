@@ -191,7 +191,7 @@ watch(() => [settings.codeFont, settings.codeFontSize] as const, () => void appl
 onMounted(() => {
   term = new Terminal({
     allowProposedApi: true,
-    cursorBlink: true,
+    cursorBlink: false,
     cursorStyle: 'bar',
     fontFamily: termFontStack(fontEntry('code', 'system')),
     fontSize: settings.codeFontSize,
@@ -208,6 +208,12 @@ onMounted(() => {
   term.unicode.activeVersion = '15-graphemes'
   term.open(host.value!)
   term.attachCustomKeyEventHandler(onKey)
+  term.textarea?.addEventListener('focus', () => {
+    if (term) term.options.cursorBlink = true
+  })
+  term.textarea?.addEventListener('blur', () => {
+    if (term) term.options.cursorBlink = false
+  })
   term.onData((data) => conn?.write(data))
   term.onBinary((data) => conn?.writeBinary(data))
   term.onResize(({ cols, rows }) => conn?.resize(cols, rows))

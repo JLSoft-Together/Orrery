@@ -45,6 +45,7 @@ struct Entry {
 pub struct ToolSpanLog {
     terminal_id: String,
     spans: OMap<Entry>,
+    dropped: Option<Vec<String>>,
 }
 
 fn close(entry: &mut Entry, at: &str, outcome: &'static str) -> bool {
@@ -58,7 +59,23 @@ fn close(entry: &mut Entry, at: &str, outcome: &'static str) -> bool {
 
 impl ToolSpanLog {
     pub fn new(terminal_id: &str) -> Self {
-        ToolSpanLog { terminal_id: terminal_id.to_owned(), spans: OMap::new() }
+        ToolSpanLog { terminal_id: terminal_id.to_owned(), spans: OMap::new(), dropped: None }
+    }
+
+    pub fn with_drops(terminal_id: &str) -> Self {
+        ToolSpanLog { dropped: Some(Vec::new()), ..ToolSpanLog::new(terminal_id) }
+    }
+
+    pub fn take_dropped(&mut self) -> Vec<String> {
+        self.dropped.as_mut().map(std::mem::take).unwrap_or_default()
+    }
+
+    fn drop_key(&mut self, k: &str) {
+        if self.spans.remove(k).is_some() {
+            if let Some(d) = self.dropped.as_mut() {
+                d.push(k.to_owned());
+            }
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -135,14 +152,14 @@ impl ToolSpanLog {
         let cutoff = now_ms - SPAN_RETENTION_MS;
         let old: Vec<String> = self.spans.iter().filter(|(_, e)| e.end_ms.is_some_and(|t| t < cutoff)).map(|(k, _)| k.to_owned()).collect();
         for k in old {
-            self.spans.remove(&k);
+            self.drop_key(&k);
         }
         let ended: Vec<String> = self.spans.iter().filter(|(_, e)| e.end_ms.is_some()).map(|(k, _)| k.to_owned()).collect();
         for k in ended {
             if self.spans.len() <= SPAN_LIMIT {
                 break;
             }
-            self.spans.remove(&k);
+            self.drop_key(&k);
         }
     }
 }

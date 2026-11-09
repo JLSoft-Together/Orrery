@@ -26,7 +26,7 @@ import { ResponseTracker } from './response'
 import { latestLimits, StatusLineReader } from './statusline'
 import { COMPACT_STALE_MS, HookReader, type HookRecord } from './hooks'
 import type { MonitorStore } from './store'
-import { SessionTracker, terminalIdOf, type ActivityDraft, type ContextHints, type SyncScope } from './tracker'
+import { createTracker, terminalIdOf, type ActivityDraft, type ContextHints, type SyncScope, type Tracker as SessionTracker } from './trackerSource'
 import { CodexMonitor } from './codex/monitor'
 import { DeepseekMonitor } from './deepseek/monitor'
 import type { ClaudeTarget } from './codex/link'
@@ -356,7 +356,7 @@ export class Monitor {
       if (this.rejected.has(id) || !this.deps.isPidAlive(pid)) continue
       let tracker = this.trackers.get(id)
       if (!tracker) {
-        tracker = new SessionTracker(id, entry, this.projectsDir, this.contextHints, () => this.deps.now())
+        tracker = createTracker(id, entry, this.projectsDir, this.contextHints, () => this.deps.now())
         created.push(tracker)
         seen.add(id)
         continue
@@ -562,6 +562,7 @@ export class Monitor {
 
   private forget(tracker: SessionTracker): void {
     this.trackers.delete(tracker.terminalId)
+    tracker.dispose?.()
     this.diffs.delete(tracker.terminalId)
     clearTimeout(this.diffTimers.get(tracker.terminalId))
     this.diffTimers.delete(tracker.terminalId)

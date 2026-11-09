@@ -19,6 +19,7 @@ pub mod spans;
 pub mod state;
 pub mod tail;
 pub mod time;
+pub mod tracker;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

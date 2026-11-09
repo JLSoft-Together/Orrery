@@ -1,0 +1,2732 @@
+{
+  "version": "3.4.0.0",
+  "label": "3.4.0",
+  "platform": "win32",
+  "date": "2026-11-08",
+  "exe": "C:\\Program Files\\Orrery\\Orrery.exe",
+  "cores": 8,
+  "totalMemMB": 49024,
+  "cpuUnit": "percent of one core",
+  "seconds": 120,
+  "settle": 20,
+  "scenarios": {
+    "idle-monitor": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 314.3,
+          "privateMBMax": 354.4,
+          "rssMB": 761.8,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 1.5,
+          "cpuSec": 0.4
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 81,
+          "privateMBMax": 85.5,
+          "rssMB": 170.4,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0.1
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 77.6,
+          "privateMBMax": 86.8,
+          "rssMB": 173.7,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 73.6,
+          "privateMBMax": 93.5,
+          "rssMB": 173.2,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 68.6,
+          "privateMBMax": 74.7,
+          "rssMB": 130.9,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.5,
+          "privateMBMax": 13.9,
+          "rssMB": 113.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 7808,
+          "role": "collector",
+          "privateMB": 68.6,
+          "rssMB": 130.9,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --video-capture-use-gpu-m"
+        },
+        {
+          "pid": 2336,
+          "role": "main",
+          "privateMB": 81,
+          "rssMB": 170.4,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0.1,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-iTM9FZ\\ud --remote-debugging-port=60255"
+        },
+        {
+          "pid": 13788,
+          "role": "renderer",
+          "privateMB": 77.6,
+          "rssMB": 173.7,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-iTM9FZ\\ud\" --app-user-model-id=dev.ccm.monito"
+        },
+        {
+          "pid": 7312,
+          "role": "network",
+          "privateMB": 13.5,
+          "rssMB": 113.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --user-data-dir=\"C:"
+        },
+        {
+          "pid": 14364,
+          "role": "gpu",
+          "privateMB": 73.6,
+          "rssMB": 173.2,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-iTM9FZ\\ud\" --gpu-preferences=WAAAAAAAAADgA"
+        }
+      ],
+      "pageState": {
+        "dom": 707,
+        "runningAnimations": {},
+        "backdropFilter": [
+          "header.ccm-material.ccm-titlebar.sticky 1360x41 saturate(1.8) blur(20px)",
+          "button.ccm-material.ccm-press.pointer-events-auto 110x32 saturate(1.8) blur(20px)",
+          "div.ccm-material.pointer-events-auto.flex 180x32 saturate(1.8) blur(20px)",
+          "div.ccm-material.pointer-events-auto.absolute 32x122 saturate(1.8) blur(20px)"
+        ],
+        "infiniteCss": [],
+        "canvases": [],
+        "hidden": false,
+        "visibility": "visible"
+      },
+      "trace": {
+        "seconds": 25,
+        "processes": {
+          "2336": "Browser",
+          "7312": "Service: network.mojom.NetworkService",
+          "7808": "Utility",
+          "13788": "Renderer",
+          "14364": "GPU Process",
+          "20876": "Service: tracing.mojom.TracingService"
+        },
+        "threads": [
+          {
+            "thread": "14364:gpu:GpuVSyncThread",
+            "busyMsPerSec": 44.7,
+            "tasksPerSec": 3
+          },
+          {
+            "thread": "13788:renderer:CrRendererMain",
+            "busyMsPerSec": 0.9,
+            "tasksPerSec": 8.6
+          },
+          {
+            "thread": "7808:Utility:node.CrUtilityMain",
+            "busyMsPerSec": 0.7,
+            "tasksPerSec": 4.4
+          },
+          {
+            "thread": "20876:Service: tracing.mojom.TracingService:tracing.CrUtilityMain",
+            "busyMsPerSec": 0.5,
+            "tasksPerSec": 19.5
+          },
+          {
+            "thread": "2336:browser:CrBrowserMain",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 4.8
+          },
+          {
+            "thread": "13788:renderer:Compositor",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 5.6
+          },
+          {
+            "thread": "14364:gpu:VizCompositorThread",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 9
+          },
+          {
+            "thread": "2336:browser:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 4.1
+          },
+          {
+            "thread": "20876:Service: tracing.mojom.TracingService:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 4.2
+          },
+          {
+            "thread": "7312:Service: network.mojom.NetworkService:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 3.1
+          },
+          {
+            "thread": "14364:gpu:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 3.9
+          },
+          {
+            "thread": "13788:renderer:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 4.4
+          },
+          {
+            "thread": "7808:Utility:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 3.4
+          },
+          {
+            "thread": "7312:Service: network.mojom.NetworkService:Chrome_ChildIOThread",
+            "busyMsPerSec": 0,
+            "tasksPerSec": 2.2
+          }
+        ],
+        "perSecond": {
+          "2336:browser:RunTask": 11.36,
+          "7312:Service: network.mojom.NetworkService:RunTask": 5.64,
+          "20876:Service: tracing.mojom.TracingService:RunTask": 23.64,
+          "14364:gpu:RunTask": 16.24,
+          "13788:renderer:RunTask": 18.72,
+          "7808:Utility:RunTask": 7.84,
+          "7808:Utility:FunctionCall": 4.2,
+          "13788:renderer:TimerFire": 1,
+          "13788:renderer:FunctionCall": 1.04,
+          "13788:renderer:ProxyMain::BeginMainFrame": 1,
+          "13788:renderer:UpdateLayoutTree": 1,
+          "13788:renderer:PrePaint": 1,
+          "13788:renderer:Layerize": 1,
+          "13788:renderer:Commit": 1,
+          "13788:renderer:MinorGC": 0.04
+        },
+        "topEventsByThread": {
+          "gpu|GpuVSyncThread": [
+            {
+              "name": "RunTask",
+              "perSec": 3.04,
+              "msPerSec": 44.74
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 3.04,
+              "msPerSec": 44.71
+            },
+            {
+              "name": "WaitForVSync Sleep",
+              "perSec": 0.08,
+              "msPerSec": 1.41
+            },
+            {
+              "name": "WinVSyncProvider::GetVSyncIntervalIfAvailable",
+              "perSec": 3.04,
+              "msPerSec": 0.07
+            }
+          ],
+          "renderer|CrRendererMain": [
+            {
+              "name": "RunTask",
+              "perSec": 8.56,
+              "msPerSec": 1.05
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 8.56,
+              "msPerSec": 0.92
+            },
+            {
+              "name": "TimerBase::run",
+              "perSec": 1.04,
+              "msPerSec": 0.44
+            },
+            {
+              "name": "TimerFire",
+              "perSec": 1,
+              "msPerSec": 0.43
+            },
+            {
+              "name": "AsyncTask Run",
+              "perSec": 1,
+              "msPerSec": 0.41
+            },
+            {
+              "name": "v8.callFunction",
+              "perSec": 1.04,
+              "msPerSec": 0.41
+            },
+            {
+              "name": "ProxyMain::BeginMainFrame",
+              "perSec": 1,
+              "msPerSec": 0.25
+            },
+            {
+              "name": "FunctionCall",
+              "perSec": 1.04,
+              "msPerSec": 0.13
+            }
+          ],
+          "renderer|Compositor": [
+            {
+              "name": "RunTask",
+              "perSec": 5.6,
+              "msPerSec": 0.25
+            },
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 4.04,
+              "msPerSec": 0.21
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 5.6,
+              "msPerSec": 0.2
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 4.04,
+              "msPerSec": 0.17
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 8,
+              "msPerSec": 0.15
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 4.04,
+              "msPerSec": 0.13
+            },
+            {
+              "name": "ExternalBeginFrameSource::OnBeginFrame",
+              "perSec": 3,
+              "msPerSec": 0.1
+            },
+            {
+              "name": "Scheduler::BeginImplFrame",
+              "perSec": 2.04,
+              "msPerSec": 0.09
+            }
+          ],
+          "gpu|VizCompositorThread": [
+            {
+              "name": "RunTask",
+              "perSec": 9,
+              "msPerSec": 0.25
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 9,
+              "msPerSec": 0.21
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 5.4,
+              "msPerSec": 0.12
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 6.96,
+              "msPerSec": 0.08
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 7.96,
+              "msPerSec": 0.07
+            },
+            {
+              "name": "ExternalBeginFrameSource::OnBeginFrame",
+              "perSec": 2.04,
+              "msPerSec": 0.05
+            },
+            {
+              "name": "SendBeginFrameDecision",
+              "perSec": 3.04,
+              "msPerSec": 0.01
+            }
+          ],
+          "renderer|PerfettoTrace": [
+            {
+              "name": "RunTask",
+              "perSec": 4.44,
+              "msPerSec": 0.16
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 4.44,
+              "msPerSec": 0.13
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 2.72,
+              "msPerSec": 0.09
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 2,
+              "msPerSec": 0.04
+            },
+            {
+              "name": "Receive mojo reply",
+              "perSec": 0.76,
+              "msPerSec": 0.01
+            }
+          ],
+          "gpu|PerfettoTrace": [
+            {
+              "name": "RunTask",
+              "perSec": 3.92,
+              "msPerSec": 0.14
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 3.92,
+              "msPerSec": 0.12
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 2.6,
+              "msPerSec": 0.08
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 2,
+              "msPerSec": 0.02
+            },
+            {
+              "name": "Receive mojo reply",
+              "perSec": 0.6,
+              "msPerSec": 0.01
+            }
+          ],
+          "gpu|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 14.12,
+              "msPerSec": 0.19
+            }
+          ],
+          "renderer|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 10.72,
+              "msPerSec": 0.11
+            }
+          ]
+        },
+        "topFunctionCalls": [
+          {
+            "fn": "dk @ assets/index-lirszYyI.js:5:37224",
+            "perSec": 1,
+            "msPerSec": 0.13
+          },
+          {
+            "fn": "Y.Be.onmessage @ assets/index-lirszYyI.js:8:22085",
+            "perSec": 0.04,
+            "msPerSec": 0
+          }
+        ],
+        "topTimers": [
+          {
+            "timer": "timer 3",
+            "install": null,
+            "perSec": 1,
+            "msPerSec": 0.43
+          }
+        ],
+        "topInstallStacks": [],
+        "pageScheduling": []
+      }
+    },
+    "idle-workspace": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 14,
+          "privateMB": 702.1,
+          "privateMBMax": 768.9,
+          "rssMB": 1340.5,
+          "cpuAvgPct": 1.5,
+          "cpuP95Pct": 5.4,
+          "cpuSec": 1.9
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 83.8,
+          "privateMBMax": 96.9,
+          "rssMB": 174.3,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 98.4,
+          "privateMBMax": 128.4,
+          "rssMB": 198.5,
+          "cpuAvgPct": 0.6,
+          "cpuP95Pct": 1.5,
+          "cpuSec": 0.7
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 100.6,
+          "privateMBMax": 104.8,
+          "rssMB": 204.4,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.5
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 68,
+          "privateMBMax": 74.8,
+          "rssMB": 130.6,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1
+        },
+        "pty-host": {
+          "procs": 1,
+          "privateMB": 72.9,
+          "privateMBMax": 83.7,
+          "rssMB": 150.5,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 0,
+          "cpuSec": 0.3
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.6,
+          "privateMBMax": 13.9,
+          "rssMB": 113.6,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        },
+        "pty-child": {
+          "procs": 8,
+          "privateMB": 264.9,
+          "privateMBMax": 266.4,
+          "rssMB": 368.5,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0.1
+        }
+      },
+      "pids": [
+        {
+          "pid": 16904,
+          "role": "renderer",
+          "privateMB": 98.4,
+          "rssMB": 198.5,
+          "cpuAvgPct": 0.6,
+          "cpuP95Pct": 1.5,
+          "cpuSec": 0.7,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-2QDHvX\\ud\" --app-user-model-id=dev.ccm.monito"
+        },
+        {
+          "pid": 2104,
+          "role": "gpu",
+          "privateMB": 100.6,
+          "rssMB": 204.4,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 2.3,
+          "cpuSec": 0.5,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-2QDHvX\\ud\" --gpu-preferences=WAAAAAAAAADgA"
+        },
+        {
+          "pid": 20440,
+          "role": "pty-host",
+          "privateMB": 72.9,
+          "rssMB": 150.5,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 0,
+          "cpuSec": 0.3,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --video-capture-use-gpu-m"
+        },
+        {
+          "pid": 16688,
+          "role": "main",
+          "privateMB": 83.8,
+          "rssMB": 174.3,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-2QDHvX\\ud --remote-debugging-port=54129"
+        },
+        {
+          "pid": 18088,
+          "role": "collector",
+          "privateMB": 68,
+          "rssMB": 130.6,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --video-capture-use-gpu-m"
+        },
+        {
+          "pid": 10620,
+          "role": "pty-child",
+          "privateMB": 1.3,
+          "rssMB": 8.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\\\\?\\C:\\WINDOWS\\system32\\conhost.exe --headless --width 52 --height 18 --signal 0x67c --server 0x680"
+        },
+        {
+          "pid": 13868,
+          "role": "pty-child",
+          "privateMB": 1.3,
+          "rssMB": 8.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\\\\?\\C:\\WINDOWS\\system32\\conhost.exe --headless --width 52 --height 18 --signal 0x704 --server 0x6fc"
+        },
+        {
+          "pid": 16072,
+          "role": "pty-child",
+          "privateMB": 1.4,
+          "rssMB": 8.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\\\\?\\C:\\WINDOWS\\system32\\conhost.exe --headless --width 80 --height 24 --signal 0x5ec --server 0x5e0"
+        },
+        {
+          "pid": 16992,
+          "role": "pty-child",
+          "privateMB": 1.4,
+          "rssMB": 8.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\\\\?\\C:\\WINDOWS\\system32\\conhost.exe --headless --width 108 --height 18 --signal 0x658 --server 0x650"
+        },
+        {
+          "pid": 11252,
+          "role": "network",
+          "privateMB": 13.6,
+          "rssMB": 113.6,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --user-data-dir=\"C:"
+        },
+        {
+          "pid": 144,
+          "role": "pty-child",
+          "privateMB": 64.8,
+          "rssMB": 83.7,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoExit -EncodedCommand aQBmACAAKAAtAG4AbwB0ACAAJABnAGwAbwBiAGEAbAA6AF8AXwBBAGcAZQBuAHQATQBvAG"
+        },
+        {
+          "pid": 13860,
+          "role": "pty-child",
+          "privateMB": 65.3,
+          "rssMB": 83.9,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoExit -EncodedCommand aQBmACAAKAAtAG4AbwB0ACAAJABnAGwAbwBiAGEAbAA6AF8AXwBBAGcAZQBuAHQATQBvAG"
+        },
+        {
+          "pid": 17612,
+          "role": "pty-child",
+          "privateMB": 64.8,
+          "rssMB": 83.6,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoExit -EncodedCommand aQBmACAAKAAtAG4AbwB0ACAAJABnAGwAbwBiAGEAbAA6AF8AXwBBAGcAZQBuAHQATQBvAG"
+        },
+        {
+          "pid": 18508,
+          "role": "pty-child",
+          "privateMB": 64.6,
+          "rssMB": 83.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoExit -EncodedCommand aQBmACAAKAAtAG4AbwB0ACAAJABnAGwAbwBiAGEAbAA6AF8AXwBBAGcAZQBuAHQATQBvAG"
+        }
+      ],
+      "pageState": {
+        "dom": 1247,
+        "runningAnimations": {},
+        "backdropFilter": [
+          "header.ccm-material.ccm-titlebar.sticky 1360x41 saturate(1.8) blur(20px)",
+          "nav.flex.h-full.w-full 240x799 saturate(1.8) blur(20px)",
+          "div.ccm-material.flex.min-h-0 280x799 saturate(1.8) blur(20px)"
+        ],
+        "infiniteCss": [],
+        "canvases": [
+          "canvas.xterm-link-layer 350x324",
+          "canvas 350x324",
+          "canvas.xterm-link-layer 350x324",
+          "canvas 350x324",
+          "canvas 32x26 hidden",
+          "canvas.xterm-link-layer 350x324",
+          "canvas 350x324",
+          "canvas.xterm-link-layer 350x324",
+          "canvas 350x324"
+        ],
+        "hidden": false,
+        "visibility": "visible"
+      },
+      "trace": {
+        "seconds": 25,
+        "processes": {
+          "2104": "GPU Process",
+          "11252": "Service: network.mojom.NetworkService",
+          "16688": "Browser",
+          "16904": "Renderer",
+          "17740": "Service: tracing.mojom.TracingService",
+          "18088": "Utility",
+          "20440": "Utility"
+        },
+        "threads": [
+          {
+            "thread": "2104:gpu:GpuVSyncThread",
+            "busyMsPerSec": 198.6,
+            "tasksPerSec": 13.4
+          },
+          {
+            "thread": "16904:renderer:CrRendererMain",
+            "busyMsPerSec": 3.7,
+            "tasksPerSec": 33.5
+          },
+          {
+            "thread": "16904:renderer:Compositor",
+            "busyMsPerSec": 2.5,
+            "tasksPerSec": 60.7
+          },
+          {
+            "thread": "2104:gpu:CrGpuMain",
+            "busyMsPerSec": 2,
+            "tasksPerSec": 10
+          },
+          {
+            "thread": "2104:gpu:VizCompositorThread",
+            "busyMsPerSec": 1.6,
+            "tasksPerSec": 41.7
+          },
+          {
+            "thread": "18088:Utility:node.CrUtilityMain",
+            "busyMsPerSec": 0.7,
+            "tasksPerSec": 4.4
+          },
+          {
+            "thread": "17740:Service: tracing.mojom.TracingService:tracing.CrUtilityMain",
+            "busyMsPerSec": 0.6,
+            "tasksPerSec": 22.6
+          },
+          {
+            "thread": "16688:browser:CrBrowserMain",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 4.9
+          },
+          {
+            "thread": "16904:renderer:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 5
+          },
+          {
+            "thread": "2104:gpu:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 4.7
+          },
+          {
+            "thread": "16688:browser:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 4.2
+          },
+          {
+            "thread": "17740:Service: tracing.mojom.TracingService:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 4.2
+          },
+          {
+            "thread": "11252:Service: network.mojom.NetworkService:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 3.3
+          },
+          {
+            "thread": "20440:Utility:PerfettoTrace",
+            "busyMsPerSec": 0.1,
+            "tasksPerSec": 3.2
+          }
+        ],
+        "perSecond": {
+          "16688:browser:RunTask": 11.48,
+          "16904:renderer:RunTask": 105.16,
+          "17740:Service: tracing.mojom.TracingService:RunTask": 26.72,
+          "11252:Service: network.mojom.NetworkService:RunTask": 5.8,
+          "2104:gpu:RunTask": 69.76,
+          "20440:Utility:RunTask": 3.64,
+          "18088:Utility:RunTask": 7.88,
+          "16904:renderer:ProxyMain::BeginMainFrame": 5.76,
+          "16904:renderer:PrePaint": 5.76,
+          "16904:renderer:Layerize": 5.76,
+          "16904:renderer:Commit": 5.76,
+          "18088:Utility:FunctionCall": 4.2,
+          "16904:renderer:TimerFire": 2.64,
+          "16904:renderer:FunctionCall": 6.8,
+          "16904:renderer:UpdateLayoutTree": 1,
+          "16904:renderer:FireAnimationFrame": 3.28,
+          "16904:renderer:Paint": 3.28,
+          "16904:renderer:RasterTask": 1.64,
+          "2104:gpu:Display::DrawAndSwap": 1.64,
+          "20440:Utility:FunctionCall": 0.24,
+          "16904:renderer:MinorGC": 0.04
+        },
+        "topEventsByThread": {
+          "gpu|GpuVSyncThread": [
+            {
+              "name": "RunTask",
+              "perSec": 13.36,
+              "msPerSec": 198.7
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 13.36,
+              "msPerSec": 198.56
+            },
+            {
+              "name": "WaitForVSync Sleep",
+              "perSec": 0.2,
+              "msPerSec": 3.52
+            },
+            {
+              "name": "WinVSyncProvider::GetVSyncIntervalIfAvailable",
+              "perSec": 13.4,
+              "msPerSec": 0.32
+            }
+          ],
+          "renderer|CrRendererMain": [
+            {
+              "name": "RunTask",
+              "perSec": 33.48,
+              "msPerSec": 4.11
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 33.48,
+              "msPerSec": 3.69
+            },
+            {
+              "name": "ProxyMain::BeginMainFrame",
+              "perSec": 5.76,
+              "msPerSec": 2.59
+            },
+            {
+              "name": "WebFrameWidgetImpl::UpdateLifecycle",
+              "perSec": 5.76,
+              "msPerSec": 1.27
+            },
+            {
+              "name": "LocalFrameView::RunPaintLifecyclePhase",
+              "perSec": 5.76,
+              "msPerSec": 0.86
+            },
+            {
+              "name": "AsyncTask Run",
+              "perSec": 5.92,
+              "msPerSec": 0.86
+            },
+            {
+              "name": "v8.callFunction",
+              "perSec": 6.8,
+              "msPerSec": 0.82
+            },
+            {
+              "name": "Blink.Paint.UpdateTime",
+              "perSec": 5.76,
+              "msPerSec": 0.68
+            }
+          ],
+          "renderer|Compositor": [
+            {
+              "name": "RunTask",
+              "perSec": 61.08,
+              "msPerSec": 2.69
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 60.72,
+              "msPerSec": 2.45
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 31.6,
+              "msPerSec": 1.56
+            },
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 20.48,
+              "msPerSec": 1.11
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 20.48,
+              "msPerSec": 0.89
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 20.48,
+              "msPerSec": 0.74
+            },
+            {
+              "name": "ProxyImpl::ScheduledActionDraw",
+              "perSec": 3.52,
+              "msPerSec": 0.67
+            },
+            {
+              "name": "MainFrame.Draw",
+              "perSec": 3.52,
+              "msPerSec": 0.67
+            }
+          ],
+          "gpu|CrGpuMain": [
+            {
+              "name": "RunTask",
+              "perSec": 9.96,
+              "msPerSec": 2.07
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 9.96,
+              "msPerSec": 2
+            },
+            {
+              "name": "Scheduler::RunTask",
+              "perSec": 7.08,
+              "msPerSec": 1.86
+            },
+            {
+              "name": "GpuChannel::ExecuteDeferredRequest",
+              "perSec": 3.8,
+              "msPerSec": 1.14
+            },
+            {
+              "name": "GPUTask",
+              "perSec": 3.8,
+              "msPerSec": 1.12
+            },
+            {
+              "name": "CommandBuffer::Flush",
+              "perSec": 3.8,
+              "msPerSec": 1.01
+            },
+            {
+              "name": "CommandBufferStub::OnAsyncFlush",
+              "perSec": 3.8,
+              "msPerSec": 1
+            },
+            {
+              "name": "CommandBufferService:PutChanged",
+              "perSec": 3.8,
+              "msPerSec": 0.97
+            }
+          ],
+          "gpu|VizCompositorThread": [
+            {
+              "name": "RunTask",
+              "perSec": 41.68,
+              "msPerSec": 1.76
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 41.68,
+              "msPerSec": 1.59
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 34.6,
+              "msPerSec": 0.91
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 19.68,
+              "msPerSec": 0.6
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 22.24,
+              "msPerSec": 0.44
+            },
+            {
+              "name": "DisplayScheduler::OnBeginFrameDeadline",
+              "perSec": 4.88,
+              "msPerSec": 0.43
+            },
+            {
+              "name": "DisplayScheduler::DrawAndSwap",
+              "perSec": 1.64,
+              "msPerSec": 0.42
+            },
+            {
+              "name": "Display::DrawAndSwap",
+              "perSec": 1.64,
+              "msPerSec": 0.42
+            }
+          ],
+          "gpu|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 54.16,
+              "msPerSec": 0.7
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 5.44,
+              "msPerSec": 0.13
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 5.44,
+              "msPerSec": 0.09
+            },
+            {
+              "name": "GpuChannelMessageFilter::FlushDeferredRequests",
+              "perSec": 3.8,
+              "msPerSec": 0.05
+            },
+            {
+              "name": "Scheduler::ScheduleTask",
+              "perSec": 3.68,
+              "msPerSec": 0.03
+            }
+          ],
+          "renderer|ThreadPoolForegroundWorker": [
+            {
+              "name": "ThreadPool_RunTask",
+              "perSec": 2.08,
+              "msPerSec": 0.24
+            },
+            {
+              "name": "TaskGraphRunner::RunTask",
+              "perSec": 6.56,
+              "msPerSec": 0.15
+            },
+            {
+              "name": "RasterizerTaskImpl::RunOnWorkerThread",
+              "perSec": 1.64,
+              "msPerSec": 0.12
+            },
+            {
+              "name": "RasterTask",
+              "perSec": 1.64,
+              "msPerSec": 0.11
+            },
+            {
+              "name": "GpuRasterBuffer::Playback",
+              "perSec": 1.64,
+              "msPerSec": 0.1
+            },
+            {
+              "name": "RasterImplementation::RasterCHROMIUM",
+              "perSec": 1.64,
+              "msPerSec": 0.08
+            },
+            {
+              "name": "TaskSetFinishedTaskImpl::RunOnWorkerThread",
+              "perSec": 3.2,
+              "msPerSec": 0.01
+            },
+            {
+              "name": "CommandBufferProxyImpl::OrderingBarrier",
+              "perSec": 1.64,
+              "msPerSec": 0.01
+            }
+          ],
+          "gpu|PerfettoTrace": [
+            {
+              "name": "RunTask",
+              "perSec": 4.72,
+              "msPerSec": 0.21
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 4.72,
+              "msPerSec": 0.18
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 2.88,
+              "msPerSec": 0.11
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 2,
+              "msPerSec": 0.04
+            },
+            {
+              "name": "Receive mojo reply",
+              "perSec": 0.88,
+              "msPerSec": 0.01
+            }
+          ]
+        },
+        "topFunctionCalls": [
+          {
+            "fn": "(anon) @ assets/WorkspaceView-DtJald9A.js:80:23614",
+            "perSec": 1.64,
+            "msPerSec": 0.19
+          },
+          {
+            "fn": "(anon) @ assets/WorkspaceView-DtJald9A.js:69:38699",
+            "perSec": 1.64,
+            "msPerSec": 0.13
+          },
+          {
+            "fn": "(anon) @ assets/WorkspaceView-DtJald9A.js:80:23889",
+            "perSec": 1.64,
+            "msPerSec": 0.12
+          },
+          {
+            "fn": "dk @ assets/index-lirszYyI.js:5:37224",
+            "perSec": 1,
+            "msPerSec": 0.1
+          },
+          {
+            "fn": "Y.Be.onmessage @ assets/index-lirszYyI.js:8:22085",
+            "perSec": 0.04,
+            "msPerSec": 0
+          },
+          {
+            "fn": "(anon) @ assets/WorkspaceView-DtJald9A.js:69:35094",
+            "perSec": 0.84,
+            "msPerSec": 0
+          }
+        ],
+        "topTimers": [
+          {
+            "timer": "timer 3",
+            "install": null,
+            "perSec": 1,
+            "msPerSec": 0.34
+          },
+          {
+            "timer": "timer 100",
+            "install": null,
+            "perSec": 1.64,
+            "msPerSec": 0.27
+          }
+        ],
+        "topInstallStacks": [
+          {
+            "site": "RequestAnimationFrame window.<computed> @ :13:19",
+            "perSec": 3.28
+          }
+        ],
+        "pageScheduling": [
+          [
+            "requestAnimationFrame at http://127.0.0.1:54130/assets/WorkspaceView-DtJald9A.js:80:23867",
+            43
+          ],
+          [
+            "requestAnimationFrame at qX.refresh (http://127.0.0.1:54130/assets/WorkspaceView-DtJald9A.js:69:38677) <- at ov.refreshRows (http://127.0.0.1:54130/assets/WorkspaceView-DtJald9A.js:69:44474)",
+            43
+          ]
+        ]
+      }
+    },
+    "demo-6x3": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 435.1,
+          "privateMBMax": 478.6,
+          "rssMB": 884.8,
+          "cpuAvgPct": 33.9,
+          "cpuP95Pct": 57.9,
+          "cpuSec": 40.7
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 79.7,
+          "privateMBMax": 81.4,
+          "rssMB": 170.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 149.5,
+          "privateMBMax": 187.1,
+          "rssMB": 247.3,
+          "cpuAvgPct": 16.6,
+          "cpuP95Pct": 28.8,
+          "cpuSec": 20
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 113.9,
+          "privateMBMax": 117.1,
+          "rssMB": 213.4,
+          "cpuAvgPct": 14.5,
+          "cpuP95Pct": 25.4,
+          "cpuSec": 17.5
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 78.5,
+          "privateMBMax": 84.4,
+          "rssMB": 140,
+          "cpuAvgPct": 2.7,
+          "cpuP95Pct": 6.2,
+          "cpuSec": 3.2
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.6,
+          "privateMBMax": 13.8,
+          "rssMB": 113.6,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1
+        }
+      },
+      "pids": [
+        {
+          "pid": 16672,
+          "role": "renderer",
+          "privateMB": 149.5,
+          "rssMB": 247.3,
+          "cpuAvgPct": 16.6,
+          "cpuP95Pct": 28.8,
+          "cpuSec": 20,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-A4ZCIL\\ud\" --app-user-model-id=dev.ccm.monito"
+        },
+        {
+          "pid": 17916,
+          "role": "gpu",
+          "privateMB": 113.9,
+          "rssMB": 213.4,
+          "cpuAvgPct": 14.5,
+          "cpuP95Pct": 25.4,
+          "cpuSec": 17.5,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-A4ZCIL\\ud\" --gpu-preferences=WAAAAAAAAADgA"
+        },
+        {
+          "pid": 18400,
+          "role": "collector",
+          "privateMB": 78.5,
+          "rssMB": 140,
+          "cpuAvgPct": 2.7,
+          "cpuP95Pct": 6.2,
+          "cpuSec": 3.2,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --video-capture-use-gpu-m"
+        },
+        {
+          "pid": 21456,
+          "role": "network",
+          "privateMB": 13.6,
+          "rssMB": 113.6,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.1,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --user-data-dir=\"C:"
+        },
+        {
+          "pid": 18488,
+          "role": "main",
+          "privateMB": 79.7,
+          "rssMB": 170.5,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-A4ZCIL\\ud --remote-debugging-port=54553"
+        }
+      ],
+      "pageState": {
+        "dom": 1799,
+        "runningAnimations": {
+          "ccm-spin on svg": 1
+        },
+        "backdropFilter": [
+          "header.ccm-material.ccm-titlebar.sticky 1360x41 saturate(1.8) blur(20px)",
+          "button.ccm-material.ccm-press.pointer-events-auto 110x32 saturate(1.8) blur(20px)",
+          "div.ccm-material.pointer-events-auto.flex 243x32 saturate(1.8) blur(20px)",
+          "div.ccm-material.pointer-events-auto.absolute 32x122 saturate(1.8) blur(20px)"
+        ],
+        "infiniteCss": [],
+        "canvases": [],
+        "hidden": false,
+        "visibility": "visible"
+      },
+      "trace": {
+        "seconds": 25,
+        "processes": {
+          "14816": "Service: tracing.mojom.TracingService",
+          "16672": "Renderer",
+          "17916": "GPU Process",
+          "18400": "Utility",
+          "18488": "Browser",
+          "21456": "Service: network.mojom.NetworkService"
+        },
+        "threads": [
+          {
+            "thread": "17916:gpu:GpuVSyncThread",
+            "busyMsPerSec": 872.3,
+            "tasksPerSec": 52.6
+          },
+          {
+            "thread": "17916:gpu:CrGpuMain",
+            "busyMsPerSec": 124.4,
+            "tasksPerSec": 757.8
+          },
+          {
+            "thread": "16672:renderer:CrRendererMain",
+            "busyMsPerSec": 123,
+            "tasksPerSec": 346.2
+          },
+          {
+            "thread": "16672:renderer:Compositor",
+            "busyMsPerSec": 65.7,
+            "tasksPerSec": 475.5
+          },
+          {
+            "thread": "17916:gpu:VizCompositorThread",
+            "busyMsPerSec": 58.4,
+            "tasksPerSec": 254.5
+          },
+          {
+            "thread": "18400:Utility:node.CrUtilityMain",
+            "busyMsPerSec": 21.7,
+            "tasksPerSec": 153.1
+          },
+          {
+            "thread": "14816:Service: tracing.mojom.TracingService:tracing.CrUtilityMain",
+            "busyMsPerSec": 1.4,
+            "tasksPerSec": 20.8
+          },
+          {
+            "thread": "18488:browser:CrBrowserMain",
+            "busyMsPerSec": 0.7,
+            "tasksPerSec": 7
+          },
+          {
+            "thread": "16672:renderer:Chrome_ChildIOThread",
+            "busyMsPerSec": 0.7,
+            "tasksPerSec": 57.9
+          },
+          {
+            "thread": "16672:renderer:PerfettoTrace",
+            "busyMsPerSec": 0.3,
+            "tasksPerSec": 5.4
+          },
+          {
+            "thread": "18400:Utility:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 4.6
+          },
+          {
+            "thread": "21456:Service: network.mojom.NetworkService:Chrome_ChildIOThread",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 6.4
+          },
+          {
+            "thread": "21456:Service: network.mojom.NetworkService:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 3.8
+          },
+          {
+            "thread": "17916:gpu:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 5.1
+          }
+        ],
+        "perSecond": {
+          "18488:browser:RunTask": 14.36,
+          "14816:Service: tracing.mojom.TracingService:RunTask": 25.12,
+          "18400:Utility:RunTask": 157.64,
+          "21456:Service: network.mojom.NetworkService:RunTask": 10.48,
+          "17916:gpu:RunTask": 1069.96,
+          "16672:renderer:RunTask": 893.64,
+          "16672:renderer:PrePaint": 35.56,
+          "16672:renderer:Layerize": 35.12,
+          "17916:gpu:Display::DrawAndSwap": 48.24,
+          "16672:renderer:Commit": 35.12,
+          "16672:renderer:RasterTask": 114.36,
+          "16672:renderer:ProxyMain::BeginMainFrame": 35.08,
+          "16672:renderer:FireAnimationFrame": 35.2,
+          "16672:renderer:FunctionCall": 49.6,
+          "16672:renderer:UpdateLayoutTree": 47.16,
+          "16672:renderer:TimerFire": 10.52,
+          "16672:renderer:Paint": 120.28,
+          "18400:Utility:FunctionCall": 152.84,
+          "18400:Utility:MinorGC": 0.52,
+          "16672:renderer:EventDispatch": 6.44,
+          "16672:renderer:MajorGC": 0.28,
+          "16672:renderer:MinorGC": 0.04
+        },
+        "topEventsByThread": {
+          "gpu|GpuVSyncThread": [
+            {
+              "name": "RunTask",
+              "perSec": 52.6,
+              "msPerSec": 872.7
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 52.6,
+              "msPerSec": 872.35
+            },
+            {
+              "name": "WinVSyncProvider::GetVSyncIntervalIfAvailable",
+              "perSec": 52.64,
+              "msPerSec": 1.58
+            },
+            {
+              "name": "WaitForVSync Sleep",
+              "perSec": 0.04,
+              "msPerSec": 0.69
+            }
+          ],
+          "renderer|CrRendererMain": [
+            {
+              "name": "RunTask",
+              "perSec": 346.44,
+              "msPerSec": 125.01
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 346.2,
+              "msPerSec": 123.04
+            },
+            {
+              "name": "ProxyMain::BeginMainFrame",
+              "perSec": 35.08,
+              "msPerSec": 90.17
+            },
+            {
+              "name": "WebFrameWidgetImpl::UpdateLifecycle",
+              "perSec": 35.08,
+              "msPerSec": 70.66
+            },
+            {
+              "name": "LocalFrameView::RunPaintLifecyclePhase",
+              "perSec": 35.12,
+              "msPerSec": 38.1
+            },
+            {
+              "name": "v8.callFunction",
+              "perSec": 48.76,
+              "msPerSec": 30.66
+            },
+            {
+              "name": "LocalFrameView::UpdateStyleAndLayout",
+              "perSec": 71.72,
+              "msPerSec": 25.87
+            },
+            {
+              "name": "LocalFrameView::pushPaintArtifactToCompositor",
+              "perSec": 35.12,
+              "msPerSec": 21.91
+            }
+          ],
+          "gpu|CrGpuMain": [
+            {
+              "name": "RunTask",
+              "perSec": 757.8,
+              "msPerSec": 125.71
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 757.8,
+              "msPerSec": 124.43
+            },
+            {
+              "name": "Scheduler::RunTask",
+              "perSec": 708.72,
+              "msPerSec": 121.39
+            },
+            {
+              "name": "SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass",
+              "perSec": 624.16,
+              "msPerSec": 64.3
+            },
+            {
+              "name": "GpuChannel::ExecuteDeferredRequest",
+              "perSec": 57.96,
+              "msPerSec": 41.8
+            },
+            {
+              "name": "GPUTask",
+              "perSec": 53.68,
+              "msPerSec": 41.3
+            },
+            {
+              "name": "RendererRasterWorker",
+              "perSec": 53.68,
+              "msPerSec": 40.32
+            },
+            {
+              "name": "CommandBuffer::Flush",
+              "perSec": 53.68,
+              "msPerSec": 40.25
+            }
+          ],
+          "renderer|Compositor": [
+            {
+              "name": "RunTask",
+              "perSec": 483.28,
+              "msPerSec": 66.68
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 475.52,
+              "msPerSec": 65.7
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 156.48,
+              "msPerSec": 53.61
+            },
+            {
+              "name": "ProxyImpl::ScheduledActionDraw",
+              "perSec": 49.96,
+              "msPerSec": 40.59
+            },
+            {
+              "name": "MainFrame.Draw",
+              "perSec": 49.96,
+              "msPerSec": 40.52
+            },
+            {
+              "name": "LayerTreeHostImpl::PrepareToDraw",
+              "perSec": 49.96,
+              "msPerSec": 20.98
+            },
+            {
+              "name": "LayerTreeImpl::UpdateDrawProperties",
+              "perSec": 82.04,
+              "msPerSec": 17.35
+            },
+            {
+              "name": "ProxyImpl::ReadyToCommit",
+              "perSec": 32.2,
+              "msPerSec": 16.36
+            }
+          ],
+          "gpu|VizCompositorThread": [
+            {
+              "name": "RunTask",
+              "perSec": 254.48,
+              "msPerSec": 59.2
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 254.48,
+              "msPerSec": 58.4
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 299.44,
+              "msPerSec": 55.07
+            },
+            {
+              "name": "DisplayScheduler::OnBeginFrameDeadline",
+              "perSec": 49.88,
+              "msPerSec": 42.73
+            },
+            {
+              "name": "DisplayScheduler::DrawAndSwap",
+              "perSec": 48.24,
+              "msPerSec": 42.64
+            },
+            {
+              "name": "Display::DrawAndSwap",
+              "perSec": 48.24,
+              "msPerSec": 42.56
+            },
+            {
+              "name": "DirectRenderer::DrawFrame",
+              "perSec": 48.24,
+              "msPerSec": 32.26
+            },
+            {
+              "name": "DirectRenderer::DrawRenderPass",
+              "perSec": 967.12,
+              "msPerSec": 28.46
+            }
+          ],
+          "renderer|ThreadPoolForegroundWorker": [
+            {
+              "name": "ThreadPool_RunTask",
+              "perSec": 51.24,
+              "msPerSec": 25.49
+            },
+            {
+              "name": "V8.GC_MC_BACKGROUND_MARKING",
+              "perSec": 5.88,
+              "msPerSec": 10.36
+            },
+            {
+              "name": "TaskGraphRunner::RunTask",
+              "perSec": 198.56,
+              "msPerSec": 3.92
+            },
+            {
+              "name": "RasterizerTaskImpl::RunOnWorkerThread",
+              "perSec": 114.36,
+              "msPerSec": 3.42
+            },
+            {
+              "name": "RasterTask",
+              "perSec": 114.36,
+              "msPerSec": 3.11
+            },
+            {
+              "name": "V8.GC_MC_BACKGROUND_SWEEPING",
+              "perSec": 3.04,
+              "msPerSec": 3.1
+            },
+            {
+              "name": "GpuRasterBuffer::Playback",
+              "perSec": 114.36,
+              "msPerSec": 2.87
+            },
+            {
+              "name": "RasterImplementation::RasterCHROMIUM",
+              "perSec": 114.36,
+              "msPerSec": 2.18
+            }
+          ],
+          "gpu|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 318.64,
+              "msPerSec": 5.17
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 57.44,
+              "msPerSec": 1.37
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 57.44,
+              "msPerSec": 0.92
+            },
+            {
+              "name": "GpuChannelMessageFilter::FlushDeferredRequests",
+              "perSec": 30.64,
+              "msPerSec": 0.38
+            },
+            {
+              "name": "Scheduler::ScheduleTask",
+              "perSec": 32.04,
+              "msPerSec": 0.19
+            },
+            {
+              "name": "SyncToken::Wait",
+              "perSec": 1.84,
+              "msPerSec": 0
+            }
+          ],
+          "renderer|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 153.92,
+              "msPerSec": 1.18
+            },
+            {
+              "name": "RunTask",
+              "perSec": 57.92,
+              "msPerSec": 0.8
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 57.92,
+              "msPerSec": 0.66
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 26.8,
+              "msPerSec": 0.32
+            },
+            {
+              "name": "Receive mojo reply",
+              "perSec": 26.8,
+              "msPerSec": 0.17
+            }
+          ]
+        },
+        "topFunctionCalls": [
+          {
+            "fn": "L @ assets/index-lirszYyI.js:110:3160",
+            "perSec": 20.48,
+            "msPerSec": 1.95
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:73775",
+            "perSec": 3.36,
+            "msPerSec": 0.95
+          },
+          {
+            "fn": "Y.Be.onmessage @ assets/index-lirszYyI.js:8:22085",
+            "perSec": 2.28,
+            "msPerSec": 0.74
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:73484",
+            "perSec": 3.84,
+            "msPerSec": 0.62
+          },
+          {
+            "fn": "x @ assets/index-lirszYyI.js:110:3026",
+            "perSec": 0.44,
+            "msPerSec": 0.61
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:74694",
+            "perSec": 7.2,
+            "msPerSec": 0.37
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:42983",
+            "perSec": 0.32,
+            "msPerSec": 0.28
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:74376",
+            "perSec": 7.2,
+            "msPerSec": 0.17
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:40476",
+            "perSec": 0.56,
+            "msPerSec": 0.1
+          },
+          {
+            "fn": "dk @ assets/index-lirszYyI.js:5:37224",
+            "perSec": 1,
+            "msPerSec": 0.09
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:35258",
+            "perSec": 0.56,
+            "msPerSec": 0.07
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:107:52334",
+            "perSec": 0.16,
+            "msPerSec": 0.03
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:43014",
+            "perSec": 0.36,
+            "msPerSec": 0.03
+          },
+          {
+            "fn": "(anon) @ assets/WorkspaceView-DtJald9A.js:3:11598",
+            "perSec": 0.4,
+            "msPerSec": 0.02
+          },
+          {
+            "fn": "m @ assets/index-lirszYyI.js:2:74652",
+            "perSec": 0.12,
+            "msPerSec": 0.01
+          }
+        ],
+        "topTimers": [
+          {
+            "timer": "timer 3",
+            "install": null,
+            "perSec": 1,
+            "msPerSec": 1.7
+          },
+          {
+            "timer": "timer 1266",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.46
+          },
+          {
+            "timer": "timer 1322",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.43
+          },
+          {
+            "timer": "timer 1407",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.4
+          },
+          {
+            "timer": "timer 1394",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.39
+          },
+          {
+            "timer": "timer 1240",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.38
+          },
+          {
+            "timer": "timer 1299",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.37
+          },
+          {
+            "timer": "timer 1260",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.35
+          },
+          {
+            "timer": "timer 1285",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.34
+          },
+          {
+            "timer": "timer 1452",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 0.34
+          }
+        ],
+        "topInstallStacks": [
+          {
+            "site": "RequestAnimationFrame window.<computed> @ :13:19",
+            "perSec": 35.16
+          },
+          {
+            "site": "TimerInstall window.<computed> @ :13:19",
+            "perSec": 9.76
+          }
+        ],
+        "pageScheduling": [
+          [
+            "requestAnimationFrame at L (http://127.0.0.1:54554/assets/index-lirszYyI.js:110:3323)",
+            575
+          ],
+          [
+            "requestAnimationFrame at http://127.0.0.1:54554/assets/index-lirszYyI.js:2:74381",
+            258
+          ],
+          [
+            "requestAnimationFrame at d1 (http://127.0.0.1:54554/assets/index-lirszYyI.js:2:74354) <- at http://127.0.0.1:54554/assets/index-lirszYyI.js:2:73481",
+            135
+          ],
+          [
+            "setTimeout at h1 (http://127.0.0.1:54554/assets/index-lirszYyI.js:2:74683) <- at http://127.0.0.1:54554/assets/index-lirszYyI.js:2:73520",
+            135
+          ],
+          [
+            "requestAnimationFrame at d1 (http://127.0.0.1:54554/assets/index-lirszYyI.js:2:74354) <- at onLeave (http://127.0.0.1:54554/assets/index-lirszYyI.js:2:73772)",
+            123
+          ],
+          [
+            "setTimeout at h1 (http://127.0.0.1:54554/assets/index-lirszYyI.js:2:74683) <- at http://127.0.0.1:54554/assets/index-lirszYyI.js:2:73818",
+            123
+          ],
+          [
+            "setTimeout at st (http://127.0.0.1:54554/assets/index-lirszYyI.js:111:40465) <- at lt (http://127.0.0.1:54554/assets/index-lirszYyI.js:111:40302)",
+            21
+          ],
+          [
+            "setTimeout at Ee (http://127.0.0.1:54554/assets/index-lirszYyI.js:111:35247) <- at we.immediate (http://127.0.0.1:54554/assets/index-lirszYyI.js:111:37533)",
+            18
+          ],
+          [
+            "setTimeout at C (http://127.0.0.1:54554/assets/index-lirszYyI.js:110:3416) <- at we.immediate (http://127.0.0.1:54554/assets/index-lirszYyI.js:110:3515)",
+            13
+          ],
+          [
+            "requestAnimationFrame at x (http://127.0.0.1:54554/assets/index-lirszYyI.js:110:3370)",
+            13
+          ],
+          [
+            "setTimeout at c (http://127.0.0.1:54554/assets/WorkspaceView-DtJald9A.js:3:11587) <- at X3.pe.immediate (http://127.0.0.1:54554/assets/WorkspaceView-DtJald9A.js:3:12400)",
+            13
+          ],
+          [
+            "setTimeout at Oa (http://127.0.0.1:54554/assets/index-lirszYyI.js:111:43003) <- at we.immediate (http://127.0.0.1:54554/assets/index-lirszYyI.js:111:48491)",
+            10
+          ],
+          [
+            "requestAnimationFrame at http://127.0.0.1:54554/assets/index-lirszYyI.js:111:42961",
+            10
+          ],
+          [
+            "requestAnimationFrame at x (http://127.0.0.1:54554/assets/index-lirszYyI.js:110:3370) <- at C (http://127.0.0.1:54554/assets/index-lirszYyI.js:110:3434)",
+            2
+          ]
+        ]
+      }
+    },
+    "demo-30x6": {
+      "sampled": {
+        "seconds": 120,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 59
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 871.3,
+          "privateMBMax": 925.9,
+          "rssMB": 1313.2,
+          "cpuAvgPct": 157.9,
+          "cpuP95Pct": 197.8,
+          "cpuSec": 190.4
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 81.1,
+          "privateMBMax": 82.2,
+          "rssMB": 171,
+          "cpuAvgPct": 0.4,
+          "cpuP95Pct": 1.6,
+          "cpuSec": 0.5
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 539.1,
+          "privateMBMax": 588.5,
+          "rssMB": 631.4,
+          "cpuAvgPct": 116.7,
+          "cpuP95Pct": 139.3,
+          "cpuSec": 140.8
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 122.6,
+          "privateMBMax": 128.3,
+          "rssMB": 220.8,
+          "cpuAvgPct": 25.3,
+          "cpuP95Pct": 41.8,
+          "cpuSec": 30.5
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 115,
+          "privateMBMax": 144.9,
+          "rssMB": 176.3,
+          "cpuAvgPct": 15.3,
+          "cpuP95Pct": 25.2,
+          "cpuSec": 18.4
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 13.6,
+          "privateMBMax": 13.9,
+          "rssMB": 113.7,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2
+        }
+      },
+      "pids": [
+        {
+          "pid": 2104,
+          "role": "renderer",
+          "privateMB": 539.1,
+          "rssMB": 631.4,
+          "cpuAvgPct": 116.7,
+          "cpuP95Pct": 139.3,
+          "cpuSec": 140.8,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-dYUSoU\\ud\" --app-user-model-id=dev.ccm.monito"
+        },
+        {
+          "pid": 18456,
+          "role": "gpu",
+          "privateMB": 122.6,
+          "rssMB": 220.8,
+          "cpuAvgPct": 25.3,
+          "cpuP95Pct": 41.8,
+          "cpuSec": 30.5,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-dYUSoU\\ud\" --gpu-preferences=WAAAAAAAAADgA"
+        },
+        {
+          "pid": 6032,
+          "role": "collector",
+          "privateMB": 115,
+          "rssMB": 176.3,
+          "cpuAvgPct": 15.3,
+          "cpuP95Pct": 25.2,
+          "cpuSec": 18.4,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbox-type=none --video-capture-use-gpu-m"
+        },
+        {
+          "pid": 17140,
+          "role": "main",
+          "privateMB": 81.1,
+          "rssMB": 171,
+          "cpuAvgPct": 0.4,
+          "cpuP95Pct": 1.6,
+          "cpuSec": 0.5,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-dYUSoU\\ud --remote-debugging-port=59409"
+        },
+        {
+          "pid": 13368,
+          "role": "network",
+          "privateMB": 13.6,
+          "rssMB": 113.7,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 0.8,
+          "cpuSec": 0.2,
+          "cmd": "\"C:\\Program Files\\Orrery\\Orrery.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --user-data-dir=\"C:"
+        }
+      ],
+      "pageState": {
+        "dom": 6472,
+        "runningAnimations": {
+          "ccm-breathe on div.group/node.relative.flex": 1,
+          "ccm-spin on svg": 2
+        },
+        "backdropFilter": [
+          "header.ccm-material.ccm-titlebar.sticky 1360x41 saturate(1.8) blur(20px)",
+          "button.ccm-material.ccm-press.pointer-events-auto 110x32 saturate(1.8) blur(20px)",
+          "div.ccm-material.pointer-events-auto.flex 250x32 saturate(1.8) blur(20px)",
+          "div.ccm-material.pointer-events-auto.absolute 32x122 saturate(1.8) blur(20px)"
+        ],
+        "infiniteCss": [],
+        "canvases": [],
+        "hidden": false,
+        "visibility": "visible"
+      },
+      "trace": {
+        "seconds": 25,
+        "processes": {
+          "2104": "Renderer",
+          "6032": "Utility",
+          "13368": "Service: network.mojom.NetworkService",
+          "17140": "Browser",
+          "17464": "Service: tracing.mojom.TracingService",
+          "18456": "GPU Process"
+        },
+        "threads": [
+          {
+            "thread": "18456:gpu:GpuVSyncThread",
+            "busyMsPerSec": 994.6,
+            "tasksPerSec": 59.6
+          },
+          {
+            "thread": "2104:renderer:CrRendererMain",
+            "busyMsPerSec": 767.1,
+            "tasksPerSec": 301
+          },
+          {
+            "thread": "2104:renderer:Compositor",
+            "busyMsPerSec": 191.4,
+            "tasksPerSec": 505.8
+          },
+          {
+            "thread": "18456:gpu:CrGpuMain",
+            "busyMsPerSec": 151,
+            "tasksPerSec": 998.2
+          },
+          {
+            "thread": "6032:Utility:node.CrUtilityMain",
+            "busyMsPerSec": 87.4,
+            "tasksPerSec": 402.3
+          },
+          {
+            "thread": "18456:gpu:VizCompositorThread",
+            "busyMsPerSec": 73.6,
+            "tasksPerSec": 264.3
+          },
+          {
+            "thread": "17464:Service: tracing.mojom.TracingService:tracing.CrUtilityMain",
+            "busyMsPerSec": 2.4,
+            "tasksPerSec": 24.8
+          },
+          {
+            "thread": "17140:browser:CrBrowserMain",
+            "busyMsPerSec": 2,
+            "tasksPerSec": 10.7
+          },
+          {
+            "thread": "2104:renderer:Chrome_ChildIOThread",
+            "busyMsPerSec": 0.7,
+            "tasksPerSec": 49.3
+          },
+          {
+            "thread": "13368:Service: network.mojom.NetworkService:Chrome_ChildIOThread",
+            "busyMsPerSec": 0.6,
+            "tasksPerSec": 11.8
+          },
+          {
+            "thread": "2104:renderer:PerfettoTrace",
+            "busyMsPerSec": 0.5,
+            "tasksPerSec": 10.8
+          },
+          {
+            "thread": "17140:browser:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 4.4
+          },
+          {
+            "thread": "17464:Service: tracing.mojom.TracingService:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 4.4
+          },
+          {
+            "thread": "18456:gpu:PerfettoTrace",
+            "busyMsPerSec": 0.2,
+            "tasksPerSec": 5.1
+          }
+        ],
+        "perSecond": {
+          "17140:browser:RunTask": 18.88,
+          "17464:Service: tracing.mojom.TracingService:RunTask": 29.24,
+          "18456:gpu:RunTask": 1327.2,
+          "6032:Utility:RunTask": 406.88,
+          "13368:Service: network.mojom.NetworkService:RunTask": 16.48,
+          "6032:Utility:FunctionCall": 402.04,
+          "2104:renderer:RunTask": 876.32,
+          "2104:renderer:PrePaint": 39.72,
+          "2104:renderer:Paint": 401.96,
+          "2104:renderer:Layerize": 38.24,
+          "2104:renderer:Commit": 38.24,
+          "2104:renderer:FunctionCall": 203.36,
+          "2104:renderer:RasterTask": 114.36,
+          "18456:gpu:Display::DrawAndSwap": 47.12,
+          "2104:renderer:UpdateLayoutTree": 111.76,
+          "6032:Utility:MinorGC": 0.32,
+          "2104:renderer:ProxyMain::BeginMainFrame": 38.2,
+          "2104:renderer:FireAnimationFrame": 146.6,
+          "2104:renderer:MinorGC": 1.28,
+          "2104:renderer:TimerFire": 47.12,
+          "2104:renderer:EventDispatch": 108.96,
+          "2104:renderer:MajorGC": 0.24,
+          "6032:Utility:MajorGC": 0.04
+        },
+        "topEventsByThread": {
+          "renderer|CrRendererMain": [
+            {
+              "name": "RunTask",
+              "perSec": 302.52,
+              "msPerSec": 768.92
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 301,
+              "msPerSec": 767.06
+            },
+            {
+              "name": "v8.callFunction",
+              "perSec": 201.08,
+              "msPerSec": 397.06
+            },
+            {
+              "name": "ProxyMain::BeginMainFrame",
+              "perSec": 38.2,
+              "msPerSec": 380.81
+            },
+            {
+              "name": "WebFrameWidgetImpl::UpdateLifecycle",
+              "perSec": 38.2,
+              "msPerSec": 294.98
+            },
+            {
+              "name": "LocalFrameView::RunPaintLifecyclePhase",
+              "perSec": 38.24,
+              "msPerSec": 204.4
+            },
+            {
+              "name": "AsyncTask Run",
+              "perSec": 302.68,
+              "msPerSec": 199.54
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 34.44,
+              "msPerSec": 198.04
+            }
+          ],
+          "gpu|GpuVSyncThread": [
+            {
+              "name": "RunTask",
+              "perSec": 59.64,
+              "msPerSec": 995.08
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 59.64,
+              "msPerSec": 994.58
+            },
+            {
+              "name": "WinVSyncProvider::GetVSyncIntervalIfAvailable",
+              "perSec": 59.68,
+              "msPerSec": 2.04
+            },
+            {
+              "name": "WaitForVSync Sleep",
+              "perSec": 0.04,
+              "msPerSec": 0.71
+            }
+          ],
+          "renderer|Compositor": [
+            {
+              "name": "RunTask",
+              "perSec": 513.16,
+              "msPerSec": 192.46
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 505.84,
+              "msPerSec": 191.37
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 178.72,
+              "msPerSec": 118.63
+            },
+            {
+              "name": "ProxyImpl::ScheduledActionDraw",
+              "perSec": 59.4,
+              "msPerSec": 99.54
+            },
+            {
+              "name": "MainFrame.Draw",
+              "perSec": 59.4,
+              "msPerSec": 99.45
+            },
+            {
+              "name": "LayerTreeImpl::UpdateDrawProperties",
+              "perSec": 96.48,
+              "msPerSec": 79.18
+            },
+            {
+              "name": "LayerTreeHostImpl::PrepareToDraw",
+              "perSec": 59.4,
+              "msPerSec": 66.42
+            },
+            {
+              "name": "LayerTreeImpl::UpdateDrawProperties::CalculateDrawProperties",
+              "perSec": 96.48,
+              "msPerSec": 60.49
+            }
+          ],
+          "gpu|CrGpuMain": [
+            {
+              "name": "RunTask",
+              "perSec": 998.16,
+              "msPerSec": 152.59
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 998.16,
+              "msPerSec": 151
+            },
+            {
+              "name": "Scheduler::RunTask",
+              "perSec": 951.68,
+              "msPerSec": 147.06
+            },
+            {
+              "name": "SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass",
+              "perSec": 885.68,
+              "msPerSec": 90.95
+            },
+            {
+              "name": "GpuChannel::ExecuteDeferredRequest",
+              "perSec": 43.12,
+              "msPerSec": 34.64
+            },
+            {
+              "name": "GPUTask",
+              "perSec": 35.6,
+              "msPerSec": 34.09
+            },
+            {
+              "name": "RendererRasterWorker",
+              "perSec": 35.6,
+              "msPerSec": 33.27
+            },
+            {
+              "name": "CommandBuffer::Flush",
+              "perSec": 35.6,
+              "msPerSec": 33.22
+            }
+          ],
+          "gpu|VizCompositorThread": [
+            {
+              "name": "RunTask",
+              "perSec": 264.32,
+              "msPerSec": 74.54
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 264.32,
+              "msPerSec": 73.61
+            },
+            {
+              "name": "Graphics.Pipeline",
+              "perSec": 307.92,
+              "msPerSec": 70.2
+            },
+            {
+              "name": "DisplayScheduler::OnBeginFrameDeadline",
+              "perSec": 49.44,
+              "msPerSec": 53.15
+            },
+            {
+              "name": "DisplayScheduler::DrawAndSwap",
+              "perSec": 47.12,
+              "msPerSec": 53.05
+            },
+            {
+              "name": "Display::DrawAndSwap",
+              "perSec": 47.12,
+              "msPerSec": 52.96
+            },
+            {
+              "name": "DirectRenderer::DrawFrame",
+              "perSec": 47.12,
+              "msPerSec": 39.92
+            },
+            {
+              "name": "DirectRenderer::DrawRenderPass",
+              "perSec": 1305.64,
+              "msPerSec": 35.32
+            }
+          ],
+          "renderer|ThreadPoolForegroundWorker": [
+            {
+              "name": "ThreadPool_RunTask",
+              "perSec": 76.36,
+              "msPerSec": 119.24
+            },
+            {
+              "name": "V8.GC_SCAVENGER_BACKGROUND_SCAVENGE_PARALLEL",
+              "perSec": 8.64,
+              "msPerSec": 39.38
+            },
+            {
+              "name": "V8.GC_MC_BACKGROUND_MARKING",
+              "perSec": 9.28,
+              "msPerSec": 33.78
+            },
+            {
+              "name": "V8.GC_MC_BACKGROUND_SWEEPING",
+              "perSec": 4.48,
+              "msPerSec": 7.84
+            },
+            {
+              "name": "TaskGraphRunner::RunTask",
+              "perSec": 184.2,
+              "msPerSec": 4.43
+            },
+            {
+              "name": "RasterizerTaskImpl::RunOnWorkerThread",
+              "perSec": 114.36,
+              "msPerSec": 3.8
+            },
+            {
+              "name": "RasterTask",
+              "perSec": 114.36,
+              "msPerSec": 3.5
+            },
+            {
+              "name": "GpuRasterBuffer::Playback",
+              "perSec": 114.36,
+              "msPerSec": 3.23
+            }
+          ],
+          "gpu|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 309.8,
+              "msPerSec": 6.07
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 48.4,
+              "msPerSec": 1.29
+            },
+            {
+              "name": "Receive mojo message",
+              "perSec": 48.4,
+              "msPerSec": 0.83
+            },
+            {
+              "name": "GpuChannelMessageFilter::FlushDeferredRequests",
+              "perSec": 26.52,
+              "msPerSec": 0.32
+            },
+            {
+              "name": "Scheduler::ScheduleTask",
+              "perSec": 28.04,
+              "msPerSec": 0.15
+            },
+            {
+              "name": "SyncToken::Wait",
+              "perSec": 1.76,
+              "msPerSec": 0
+            }
+          ],
+          "renderer|Chrome_ChildIOThread": [
+            {
+              "name": "IOHandler::OnIOCompleted",
+              "perSec": 206.88,
+              "msPerSec": 1.45
+            },
+            {
+              "name": "RunTask",
+              "perSec": 49.28,
+              "msPerSec": 0.85
+            },
+            {
+              "name": "ThreadControllerImpl::RunTask",
+              "perSec": 49.28,
+              "msPerSec": 0.66
+            },
+            {
+              "name": "SimpleWatcher::OnHandleReady",
+              "perSec": 21.88,
+              "msPerSec": 0.29
+            },
+            {
+              "name": "Receive mojo reply",
+              "perSec": 21.88,
+              "msPerSec": 0.16
+            }
+          ]
+        },
+        "topFunctionCalls": [
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:73775",
+            "perSec": 18.76,
+            "msPerSec": 14.08
+          },
+          {
+            "fn": "L @ assets/index-lirszYyI.js:110:3160",
+            "perSec": 70.04,
+            "msPerSec": 5.82
+          },
+          {
+            "fn": "Y.Be.onmessage @ assets/index-lirszYyI.js:8:22085",
+            "perSec": 4.96,
+            "msPerSec": 4.86
+          },
+          {
+            "fn": "x @ assets/index-lirszYyI.js:110:3026",
+            "perSec": 2,
+            "msPerSec": 3.41
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:42983",
+            "perSec": 1.52,
+            "msPerSec": 2.67
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:74694",
+            "perSec": 37.52,
+            "msPerSec": 2.28
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:73484",
+            "perSec": 18.76,
+            "msPerSec": 1.81
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:43014",
+            "perSec": 1.44,
+            "msPerSec": 1.65
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:40476",
+            "perSec": 2.16,
+            "msPerSec": 1.32
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:111:35258",
+            "perSec": 2.28,
+            "msPerSec": 0.74
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:2:74376",
+            "perSec": 37.52,
+            "msPerSec": 0.65
+          },
+          {
+            "fn": "dk @ assets/index-lirszYyI.js:5:37224",
+            "perSec": 1,
+            "msPerSec": 0.27
+          },
+          {
+            "fn": "(anon) @ assets/WorkspaceView-DtJald9A.js:3:11598",
+            "perSec": 0.72,
+            "msPerSec": 0.06
+          },
+          {
+            "fn": "m @ assets/index-lirszYyI.js:2:74652",
+            "perSec": 0.44,
+            "msPerSec": 0.03
+          },
+          {
+            "fn": "(anon) @ assets/index-lirszYyI.js:107:80178",
+            "perSec": 1.44,
+            "msPerSec": 0.03
+          }
+        ],
+        "topTimers": [
+          {
+            "timer": "timer 3",
+            "install": null,
+            "perSec": 1,
+            "msPerSec": 7.87
+          },
+          {
+            "timer": "timer 7617",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.75
+          },
+          {
+            "timer": "timer 7436",
+            "install": null,
+            "perSec": 0.04,
+            "msPerSec": 2.62
+          },
+          {
+            "timer": "timer 7518",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.54
+          },
+          {
+            "timer": "timer 7498",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.51
+          },
+          {
+            "timer": "timer 8497",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.47
+          },
+          {
+            "timer": "timer 7883",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.46
+          },
+          {
+            "timer": "timer 8394",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.36
+          },
+          {
+            "timer": "timer 7873",
+            "install": {
+              "timeout": 1400,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.33
+          },
+          {
+            "timer": "timer 7762",
+            "install": {
+              "timeout": 700,
+              "singleShot": true,
+              "from": "window.<computed> @ :13:19"
+            },
+            "perSec": 0.04,
+            "msPerSec": 2.32
+          }
+        ],
+        "topInstallStacks": [
+          {
+            "site": "RequestAnimationFrame window.<computed> @ :13:19",
+            "perSec": 146.8
+          },
+          {
+            "site": "TimerInstall window.<computed> @ :13:19",
+            "perSec": 47.52
+          }
+        ],
+        "pageScheduling": [
+          [
+            "requestAnimationFrame at L (http://127.0.0.1:59410/assets/index-lirszYyI.js:110:3323)",
+            4127
+          ],
+          [
+            "requestAnimationFrame at http://127.0.0.1:59410/assets/index-lirszYyI.js:2:74381",
+            1830
+          ],
+          [
+            "requestAnimationFrame at d1 (http://127.0.0.1:59410/assets/index-lirszYyI.js:2:74354) <- at onLeave (http://127.0.0.1:59410/assets/index-lirszYyI.js:2:73772)",
+            915
+          ],
+          [
+            "requestAnimationFrame at d1 (http://127.0.0.1:59410/assets/index-lirszYyI.js:2:74354) <- at http://127.0.0.1:59410/assets/index-lirszYyI.js:2:73481",
+            915
+          ],
+          [
+            "setTimeout at h1 (http://127.0.0.1:59410/assets/index-lirszYyI.js:2:74683) <- at http://127.0.0.1:59410/assets/index-lirszYyI.js:2:73818",
+            915
+          ],
+          [
+            "setTimeout at h1 (http://127.0.0.1:59410/assets/index-lirszYyI.js:2:74683) <- at http://127.0.0.1:59410/assets/index-lirszYyI.js:2:73520",
+            915
+          ],
+          [
+            "setTimeout at C (http://127.0.0.1:59410/assets/index-lirszYyI.js:110:3416) <- at we.immediate (http://127.0.0.1:59410/assets/index-lirszYyI.js:110:3515)",
+            146
+          ],
+          [
+            "setTimeout at st (http://127.0.0.1:59410/assets/index-lirszYyI.js:111:40465) <- at lt (http://127.0.0.1:59410/assets/index-lirszYyI.js:111:40302)",
+            142
+          ],
+          [
+            "requestAnimationFrame at x (http://127.0.0.1:59410/assets/index-lirszYyI.js:110:3370)",
+            137
+          ],
+          [
+            "setTimeout at Ee (http://127.0.0.1:59410/assets/index-lirszYyI.js:111:35247) <- at we.immediate (http://127.0.0.1:59410/assets/index-lirszYyI.js:111:37533)",
+            126
+          ],
+          [
+            "setTimeout at Oa (http://127.0.0.1:59410/assets/index-lirszYyI.js:111:43003) <- at we.immediate (http://127.0.0.1:59410/assets/index-lirszYyI.js:111:48491)",
+            101
+          ],
+          [
+            "requestAnimationFrame at http://127.0.0.1:59410/assets/index-lirszYyI.js:111:42961",
+            101
+          ],
+          [
+            "setTimeout at c (http://127.0.0.1:59410/assets/WorkspaceView-DtJald9A.js:3:11587) <- at X3.pe.immediate (http://127.0.0.1:59410/assets/WorkspaceView-DtJald9A.js:3:12400)",
+            72
+          ],
+          [
+            "requestAnimationFrame at x (http://127.0.0.1:59410/assets/index-lirszYyI.js:110:3370) <- at C (http://127.0.0.1:59410/assets/index-lirszYyI.js:110:3434)",
+            18
+          ]
+        ]
+      }
+    }
+  },
+  "failures": {}
+}

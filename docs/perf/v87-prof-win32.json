@@ -1,0 +1,1516 @@
+{
+  "version": "3.4.0",
+  "label": "v87-prof",
+  "platform": "win32",
+  "date": "2026-11-08",
+  "exe": "electron dev (apps/desktop/stage)",
+  "cores": 8,
+  "totalMemMB": 49024,
+  "cpuUnit": "percent of one core",
+  "seconds": 20,
+  "settle": 20,
+  "scenarios": {
+    "demo-6x3": {
+      "sampled": {
+        "seconds": 20,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 10
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 424,
+          "privateMBMax": 430,
+          "rssMB": 645.4,
+          "cpuAvgPct": 42.3,
+          "cpuP95Pct": 64.8,
+          "cpuSec": 8.6
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 78.8,
+          "privateMBMax": 78.9,
+          "rssMB": 121.5,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 3.1,
+          "cpuSec": 0.1
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 144.6,
+          "privateMBMax": 149.7,
+          "rssMB": 219.9,
+          "cpuAvgPct": 19.8,
+          "cpuP95Pct": 33.9,
+          "cpuSec": 4
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 112.7,
+          "privateMBMax": 112.9,
+          "rssMB": 157.2,
+          "cpuAvgPct": 18.9,
+          "cpuP95Pct": 30.1,
+          "cpuSec": 3.9
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 74,
+          "privateMBMax": 75.1,
+          "rssMB": 93.7,
+          "cpuAvgPct": 3,
+          "cpuP95Pct": 5.4,
+          "cpuSec": 0.6
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 14,
+          "privateMBMax": 14,
+          "rssMB": 53.1,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 6764,
+          "role": "renderer",
+          "privateMB": 144.6,
+          "rssMB": 219.9,
+          "cpuAvgPct": 19.8,
+          "cpuP95Pct": 33.9,
+          "cpuSec": 4,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-hNnTwd\\u"
+        },
+        {
+          "pid": 16984,
+          "role": "gpu",
+          "privateMB": 112.7,
+          "rssMB": 157.2,
+          "cpuAvgPct": 18.9,
+          "cpuP95Pct": 30.1,
+          "cpuSec": 3.9,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-hNnTw"
+        },
+        {
+          "pid": 5712,
+          "role": "collector",
+          "privateMB": 74,
+          "rssMB": 93.7,
+          "cpuAvgPct": 3,
+          "cpuP95Pct": 5.4,
+          "cpuSec": 0.6,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 17700,
+          "role": "main",
+          "privateMB": 78.8,
+          "rssMB": 121.5,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 3.1,
+          "cpuSec": 0.1,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-hNnTwd\\ud --remote-debuggin"
+        },
+        {
+          "pid": 7404,
+          "role": "network",
+          "privateMB": 14,
+          "rssMB": 53.1,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        }
+      ],
+      "profile": {
+        "seconds": 25,
+        "sampleCount": 22566,
+        "sampledMs": 25017,
+        "busyPct": 9.53,
+        "special": {
+          "(program)": 1737.8,
+          "(idle)": 22633.2,
+          "(garbage collector)": 69.7
+        },
+        "topSelf": [
+          {
+            "fn": "get @ assets/index-sNX6iJPS.js:2:13886",
+            "ms": 61.8,
+            "pctOfWindow": 0.25,
+            "msPerSec": 2.5
+          },
+          {
+            "fn": "wh @ assets/index-sNX6iJPS.js:2:75762",
+            "ms": 53.8,
+            "pctOfWindow": 0.21,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "o @ assets/index-sNX6iJPS.js:2:75155",
+            "ms": 37.6,
+            "pctOfWindow": 0.15,
+            "msPerSec": 1.5
+          },
+          {
+            "fn": "Nn @ assets/index-sNX6iJPS.js:2:10291",
+            "ms": 26.4,
+            "pctOfWindow": 0.11,
+            "msPerSec": 1.1
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:27:65247",
+            "ms": 16.9,
+            "pctOfWindow": 0.07,
+            "msPerSec": 0.7
+          },
+          {
+            "fn": "getPointAtLength @ :0:0",
+            "ms": 13.7,
+            "pctOfWindow": 0.05,
+            "msPerSec": 0.5
+          },
+          {
+            "fn": "K_ @ assets/index-sNX6iJPS.js:2:66170",
+            "ms": 13.7,
+            "pctOfWindow": 0.05,
+            "msPerSec": 0.5
+          },
+          {
+            "fn": "setAttribute @ :0:0",
+            "ms": 12,
+            "pctOfWindow": 0.05,
+            "msPerSec": 0.5
+          },
+          {
+            "fn": "ef @ assets/index-sNX6iJPS.js:5:13510",
+            "ms": 10.5,
+            "pctOfWindow": 0.04,
+            "msPerSec": 0.4
+          },
+          {
+            "fn": "E_ @ assets/index-sNX6iJPS.js:2:49289",
+            "ms": 10.4,
+            "pctOfWindow": 0.04,
+            "msPerSec": 0.4
+          },
+          {
+            "fn": "i1 @ assets/index-sNX6iJPS.js:5:14921",
+            "ms": 9.4,
+            "pctOfWindow": 0.04,
+            "msPerSec": 0.4
+          },
+          {
+            "fn": "getBoundingClientRect @ :0:0",
+            "ms": 8.5,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "rk @ assets/index-sNX6iJPS.js:2:49903",
+            "ms": 8.4,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "set @ assets/index-sNX6iJPS.js:2:14511",
+            "ms": 7.5,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "insertBefore @ :0:0",
+            "ms": 7,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "b @ assets/index-sNX6iJPS.js:2:54794",
+            "ms": 6.9,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "h3 @ assets/index-sNX6iJPS.js:5:6185",
+            "ms": 6.6,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "run @ assets/index-sNX6iJPS.js:2:6810",
+            "ms": 6.5,
+            "pctOfWindow": 0.03,
+            "msPerSec": 0.3
+          },
+          {
+            "fn": "notify @ assets/index-sNX6iJPS.js:2:9914",
+            "ms": 5.5,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "remove @ :0:0",
+            "ms": 5.4,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "ag @ assets/index-sNX6iJPS.js:2:47272",
+            "ms": 5.4,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "z @ assets/index-sNX6iJPS.js:2:57217",
+            "ms": 5.4,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "wb @ assets/index-sNX6iJPS.js:2:8124",
+            "ms": 5.3,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "w @ assets/index-sNX6iJPS.js:2:52409",
+            "ms": 5.2,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "nr @ assets/index-sNX6iJPS.js:2:77010",
+            "ms": 5.1,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "L @ assets/index-sNX6iJPS.js:2:53827",
+            "ms": 4.5,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "runIfDirty @ assets/index-sNX6iJPS.js:2:7219",
+            "ms": 4.3,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "aS @ assets/index-sNX6iJPS.js:2:76486",
+            "ms": 4.3,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "track @ assets/index-sNX6iJPS.js:2:9401",
+            "ms": 4.2,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          },
+          {
+            "fn": "add @ :0:0",
+            "ms": 4.2,
+            "pctOfWindow": 0.02,
+            "msPerSec": 0.2
+          }
+        ],
+        "topTotal": [
+          {
+            "fn": "Nb @ assets/index-sNX6iJPS.js:2:24156",
+            "ms": 490.5,
+            "pctOfWindow": 1.96,
+            "msPerSec": 19.6
+          },
+          {
+            "fn": "runIfDirty @ assets/index-sNX6iJPS.js:2:7219",
+            "ms": 387.9,
+            "pctOfWindow": 1.55,
+            "msPerSec": 15.5
+          },
+          {
+            "fn": "run @ assets/index-sNX6iJPS.js:2:6810",
+            "ms": 351.2,
+            "pctOfWindow": 1.4,
+            "msPerSec": 14
+          },
+          {
+            "fn": "z @ assets/index-sNX6iJPS.js:2:57217",
+            "ms": 342.3,
+            "pctOfWindow": 1.37,
+            "msPerSec": 13.7
+          },
+          {
+            "fn": "w @ assets/index-sNX6iJPS.js:2:52409",
+            "ms": 230,
+            "pctOfWindow": 0.92,
+            "msPerSec": 9.2
+          },
+          {
+            "fn": "K @ assets/index-sNX6iJPS.js:2:53586",
+            "ms": 171,
+            "pctOfWindow": 0.68,
+            "msPerSec": 6.8
+          },
+          {
+            "fn": "b @ assets/index-sNX6iJPS.js:2:54794",
+            "ms": 160.6,
+            "pctOfWindow": 0.64,
+            "msPerSec": 6.4
+          },
+          {
+            "fn": "ag @ assets/index-sNX6iJPS.js:2:47272",
+            "ms": 149.7,
+            "pctOfWindow": 0.6,
+            "msPerSec": 6
+          },
+          {
+            "fn": "D @ assets/index-sNX6iJPS.js:2:56626",
+            "ms": 133.6,
+            "pctOfWindow": 0.53,
+            "msPerSec": 5.3
+          },
+          {
+            "fn": "W @ assets/index-sNX6iJPS.js:2:57001",
+            "ms": 117.4,
+            "pctOfWindow": 0.47,
+            "msPerSec": 4.7
+          },
+          {
+            "fn": "bo @ assets/index-sNX6iJPS.js:2:22469",
+            "ms": 105.2,
+            "pctOfWindow": 0.42,
+            "msPerSec": 4.2
+          },
+          {
+            "fn": "Pe @ assets/index-sNX6iJPS.js:2:59181",
+            "ms": 101.5,
+            "pctOfWindow": 0.41,
+            "msPerSec": 4.1
+          },
+          {
+            "fn": "get @ assets/index-sNX6iJPS.js:2:13886",
+            "ms": 85.9,
+            "pctOfWindow": 0.34,
+            "msPerSec": 3.4
+          },
+          {
+            "fn": "I @ assets/index-sNX6iJPS.js:2:21483",
+            "ms": 77.8,
+            "pctOfWindow": 0.31,
+            "msPerSec": 3.1
+          },
+          {
+            "fn": "wb @ assets/index-sNX6iJPS.js:2:8124",
+            "ms": 69.2,
+            "pctOfWindow": 0.28,
+            "msPerSec": 2.8
+          },
+          {
+            "fn": "k @ assets/index-sNX6iJPS.js:2:56198",
+            "ms": 62.3,
+            "pctOfWindow": 0.25,
+            "msPerSec": 2.5
+          },
+          {
+            "fn": "Se @ assets/index-sNX6iJPS.js:2:61147",
+            "ms": 61.1,
+            "pctOfWindow": 0.24,
+            "msPerSec": 2.4
+          },
+          {
+            "fn": "L @ assets/index-sNX6iJPS.js:2:31616",
+            "ms": 58.9,
+            "pctOfWindow": 0.24,
+            "msPerSec": 2.4
+          },
+          {
+            "fn": "Oe @ assets/index-sNX6iJPS.js:2:61952",
+            "ms": 57.9,
+            "pctOfWindow": 0.23,
+            "msPerSec": 2.3
+          },
+          {
+            "fn": "be @ assets/index-sNX6iJPS.js:2:58547",
+            "ms": 56.1,
+            "pctOfWindow": 0.22,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "leave @ assets/index-sNX6iJPS.js:2:32126",
+            "ms": 55.8,
+            "pctOfWindow": 0.22,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "_ @ assets/index-sNX6iJPS.js:2:31642",
+            "ms": 55.8,
+            "pctOfWindow": 0.22,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "onLeave @ assets/index-sNX6iJPS.js:2:74036",
+            "ms": 54.8,
+            "pctOfWindow": 0.22,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "wh @ assets/index-sNX6iJPS.js:2:75762",
+            "ms": 53.8,
+            "pctOfWindow": 0.21,
+            "msPerSec": 2.2
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:27:65247",
+            "ms": 52.8,
+            "pctOfWindow": 0.21,
+            "msPerSec": 2.1
+          },
+          {
+            "fn": "dh @ assets/index-sNX6iJPS.js:2:7958",
+            "ms": 51.1,
+            "pctOfWindow": 0.2,
+            "msPerSec": 2
+          },
+          {
+            "fn": "Z @ assets/index-sNX6iJPS.js:2:58412",
+            "ms": 51,
+            "pctOfWindow": 0.2,
+            "msPerSec": 2
+          },
+          {
+            "fn": "Pe @ assets/index-sNX6iJPS.js:5:20599",
+            "ms": 47.8,
+            "pctOfWindow": 0.19,
+            "msPerSec": 1.9
+          },
+          {
+            "fn": "ef @ assets/index-sNX6iJPS.js:5:13510",
+            "ms": 44.7,
+            "pctOfWindow": 0.18,
+            "msPerSec": 1.8
+          },
+          {
+            "fn": "pe @ assets/index-sNX6iJPS.js:5:20962",
+            "ms": 42.5,
+            "pctOfWindow": 0.17,
+            "msPerSec": 1.7
+          }
+        ],
+        "byFile": [
+          {
+            "file": "assets/index-sNX6iJPS.js",
+            "ms": 446.1,
+            "pctOfWindow": 1.78
+          },
+          {
+            "file": "assets/MonitorView-BqBb5elx.js",
+            "ms": 65.4,
+            "pctOfWindow": 0.26
+          },
+          {
+            "file": "assets/WorkspaceView-BGl6Gveh.js",
+            "ms": 1.1,
+            "pctOfWindow": 0
+          },
+          {
+            "file": "js2c/sandbox_bundle",
+            "ms": 1,
+            "pctOfWindow": 0
+          }
+        ],
+        "file": "C:\\Users\\dauph\\AppData\\Local\\Temp\\prof87\\demo-6x3.cpuprofile",
+        "storePatches": {
+          "connection": {
+            "patches": 17,
+            "actions": 0,
+            "patchesPerSec": 1.7,
+            "actionsPerSec": 0
+          },
+          "terminals": {
+            "patches": 53,
+            "actions": 41,
+            "patchesPerSec": 5.3,
+            "actionsPerSec": 4.1
+          },
+          "agents": {
+            "patches": 359,
+            "actions": 145,
+            "patchesPerSec": 35.9,
+            "actionsPerSec": 14.5
+          },
+          "activity": {
+            "patches": 8,
+            "actions": 17,
+            "patchesPerSec": 0.8,
+            "actionsPerSec": 1.7
+          },
+          "ui": {
+            "patches": 0,
+            "actions": 8,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.8
+          },
+          "usage": {
+            "patches": 33,
+            "actions": 18,
+            "patchesPerSec": 3.3,
+            "actionsPerSec": 1.8
+          },
+          "favorites": {
+            "patches": 0,
+            "actions": 2,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.2
+          },
+          "extras": {
+            "patches": 1,
+            "actions": 1,
+            "patchesPerSec": 0.1,
+            "actionsPerSec": 0.1
+          },
+          "history": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "settings": {
+            "patches": 0,
+            "actions": 2,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.2
+          },
+          "snooze": {
+            "patches": 0,
+            "actions": 106,
+            "patchesPerSec": 0,
+            "actionsPerSec": 10.6
+          },
+          "toolSpans": {
+            "patches": 65,
+            "actions": 65,
+            "patchesPerSec": 6.5,
+            "actionsPerSec": 6.5
+          },
+          "peers": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "promptSearch": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "resources": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "sensitive": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "checkpoints": {
+            "patches": 0,
+            "actions": 2,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.2
+          },
+          "attention": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "toasts": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "away": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "update": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "workspace": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "deepseek": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "inbox": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "checks": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "telegram": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "awake": {
+            "patches": 4,
+            "actions": 0,
+            "patchesPerSec": 0.4,
+            "actionsPerSec": 0
+          },
+          "disk": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "tips": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "prompts": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "run": {
+            "patches": 0,
+            "actions": 4,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.4
+          },
+          "attachments": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "agentStatus": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "explorer": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "navigation": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "overlap": {
+            "patches": 1,
+            "actions": 0,
+            "patchesPerSec": 0.1,
+            "actionsPerSec": 0
+          },
+          "office": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          }
+        },
+        "dom": {
+          "total": 1203,
+          "header": 59,
+          "rail": 358,
+          "map": 640,
+          "activity": 0,
+          "other": 146,
+          "vueComponents": 0,
+          "topComponents": []
+        }
+      }
+    },
+    "demo-30x6": {
+      "sampled": {
+        "seconds": 20,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 10
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 5,
+          "privateMB": 781.3,
+          "privateMBMax": 803.3,
+          "rssMB": 995.2,
+          "cpuAvgPct": 158.4,
+          "cpuP95Pct": 183.1,
+          "cpuSec": 32.4
+        },
+        "main": {
+          "procs": 1,
+          "privateMB": 78.9,
+          "privateMBMax": 79,
+          "rssMB": 119.7,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 2.2,
+          "cpuSec": 0.1
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 473.6,
+          "privateMBMax": 496.4,
+          "rssMB": 545.6,
+          "cpuAvgPct": 115.5,
+          "cpuP95Pct": 130.4,
+          "cpuSec": 23.6
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 120.9,
+          "privateMBMax": 121.5,
+          "rssMB": 163.1,
+          "cpuAvgPct": 31.6,
+          "cpuP95Pct": 40.1,
+          "cpuSec": 6.5
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 93.9,
+          "privateMBMax": 94.7,
+          "rssMB": 113.8,
+          "cpuAvgPct": 10.6,
+          "cpuP95Pct": 14.7,
+          "cpuSec": 2.2
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 14,
+          "privateMBMax": 14,
+          "rssMB": 53.1,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 16964,
+          "role": "renderer",
+          "privateMB": 473.6,
+          "rssMB": 545.6,
+          "cpuAvgPct": 115.5,
+          "cpuP95Pct": 130.4,
+          "cpuSec": 23.6,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=renderer --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-pHdnaY\\u"
+        },
+        {
+          "pid": 14160,
+          "role": "gpu",
+          "privateMB": 120.9,
+          "rssMB": 163.1,
+          "cpuAvgPct": 31.6,
+          "cpuP95Pct": 40.1,
+          "cpuSec": 6.5,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-pHdna"
+        },
+        {
+          "pid": 19956,
+          "role": "collector",
+          "privateMB": 93.9,
+          "rssMB": 113.8,
+          "cpuAvgPct": 10.6,
+          "cpuP95Pct": 14.7,
+          "cpuSec": 2.2,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US --service-sandbo"
+        },
+        {
+          "pid": 5592,
+          "role": "main",
+          "privateMB": 78.9,
+          "rssMB": 119.7,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 2.2,
+          "cpuSec": 0.1,
+          "cmd": "D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe --user-data-dir=C:\\Users\\dauph\\AppData\\Local\\Temp\\perf-bench-pHdnaY\\ud --remote-debuggin"
+        },
+        {
+          "pid": 20496,
+          "role": "network",
+          "privateMB": 14,
+          "rssMB": 53.1,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.7,
+          "cpuSec": 0,
+          "cmd": "\"D:\\work\\web\\claude-code-monitor\\node_modules\\electron\\dist\\electron.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-"
+        }
+      ],
+      "profile": {
+        "seconds": 25,
+        "sampleCount": 24302,
+        "sampledMs": 25018.7,
+        "busyPct": 83.02,
+        "special": {
+          "(program)": 9116.2,
+          "(garbage collector)": 427.8,
+          "(idle)": 4247
+        },
+        "topSelf": [
+          {
+            "fn": "get @ assets/index-sNX6iJPS.js:2:13886",
+            "ms": 1782.2,
+            "pctOfWindow": 7.12,
+            "msPerSec": 71.3
+          },
+          {
+            "fn": "wh @ assets/index-sNX6iJPS.js:2:75762",
+            "ms": 548.2,
+            "pctOfWindow": 2.19,
+            "msPerSec": 21.9
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:27:65247",
+            "ms": 516,
+            "pctOfWindow": 2.06,
+            "msPerSec": 20.6
+          },
+          {
+            "fn": "_k @ assets/index-sNX6iJPS.js:2:75112",
+            "ms": 460.6,
+            "pctOfWindow": 1.84,
+            "msPerSec": 18.4
+          },
+          {
+            "fn": "set @ assets/index-sNX6iJPS.js:2:14511",
+            "ms": 416.9,
+            "pctOfWindow": 1.67,
+            "msPerSec": 16.7
+          },
+          {
+            "fn": "track @ assets/index-sNX6iJPS.js:2:9401",
+            "ms": 391,
+            "pctOfWindow": 1.56,
+            "msPerSec": 15.6
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:30:58743",
+            "ms": 381.4,
+            "pctOfWindow": 1.52,
+            "msPerSec": 15.3
+          },
+          {
+            "fn": "dh @ assets/index-sNX6iJPS.js:2:7958",
+            "ms": 339.2,
+            "pctOfWindow": 1.36,
+            "msPerSec": 13.6
+          },
+          {
+            "fn": "E_ @ assets/index-sNX6iJPS.js:2:49289",
+            "ms": 303.7,
+            "pctOfWindow": 1.21,
+            "msPerSec": 12.1
+          },
+          {
+            "fn": "rk @ assets/index-sNX6iJPS.js:2:49903",
+            "ms": 291.1,
+            "pctOfWindow": 1.16,
+            "msPerSec": 11.6
+          },
+          {
+            "fn": "runIfDirty @ assets/index-sNX6iJPS.js:2:7219",
+            "ms": 257.8,
+            "pctOfWindow": 1.03,
+            "msPerSec": 10.3
+          },
+          {
+            "fn": "getTotalLength @ :0:0",
+            "ms": 230.9,
+            "pctOfWindow": 0.92,
+            "msPerSec": 9.2
+          },
+          {
+            "fn": "ya @ assets/MonitorView-BqBb5elx.js:27:5484",
+            "ms": 230.5,
+            "pctOfWindow": 0.92,
+            "msPerSec": 9.2
+          },
+          {
+            "fn": "z @ assets/index-sNX6iJPS.js:2:57217",
+            "ms": 189.6,
+            "pctOfWindow": 0.76,
+            "msPerSec": 7.6
+          },
+          {
+            "fn": "ag @ assets/index-sNX6iJPS.js:2:47272",
+            "ms": 183.1,
+            "pctOfWindow": 0.73,
+            "msPerSec": 7.3
+          },
+          {
+            "fn": "b @ assets/index-sNX6iJPS.js:2:54794",
+            "ms": 179.8,
+            "pctOfWindow": 0.72,
+            "msPerSec": 7.2
+          },
+          {
+            "fn": "Jm @ assets/index-sNX6iJPS.js:2:23671",
+            "ms": 160.5,
+            "pctOfWindow": 0.64,
+            "msPerSec": 6.4
+          },
+          {
+            "fn": "getBoundingClientRect @ :0:0",
+            "ms": 142.2,
+            "pctOfWindow": 0.57,
+            "msPerSec": 5.7
+          },
+          {
+            "fn": "get value @ assets/index-sNX6iJPS.js:2:20477",
+            "ms": 130.4,
+            "pctOfWindow": 0.52,
+            "msPerSec": 5.2
+          },
+          {
+            "fn": "W @ assets/index-sNX6iJPS.js:2:57001",
+            "ms": 93.6,
+            "pctOfWindow": 0.37,
+            "msPerSec": 3.7
+          },
+          {
+            "fn": "ft @ assets/MonitorView-BqBb5elx.js:30:39169",
+            "ms": 92.8,
+            "pctOfWindow": 0.37,
+            "msPerSec": 3.7
+          },
+          {
+            "fn": "aS @ assets/index-sNX6iJPS.js:2:76486",
+            "ms": 89.2,
+            "pctOfWindow": 0.36,
+            "msPerSec": 3.6
+          },
+          {
+            "fn": "getPointAtLength @ :0:0",
+            "ms": 89.2,
+            "pctOfWindow": 0.36,
+            "msPerSec": 3.6
+          },
+          {
+            "fn": "Hu @ assets/MonitorView-BqBb5elx.js:7:2943",
+            "ms": 83.2,
+            "pctOfWindow": 0.33,
+            "msPerSec": 3.3
+          },
+          {
+            "fn": "xp @ assets/index-sNX6iJPS.js:2:8501",
+            "ms": 79.3,
+            "pctOfWindow": 0.32,
+            "msPerSec": 3.2
+          },
+          {
+            "fn": "rg @ assets/index-sNX6iJPS.js:2:48520",
+            "ms": 78.9,
+            "pctOfWindow": 0.32,
+            "msPerSec": 3.2
+          },
+          {
+            "fn": "F_ @ assets/index-sNX6iJPS.js:2:65761",
+            "ms": 77.3,
+            "pctOfWindow": 0.31,
+            "msPerSec": 3.1
+          },
+          {
+            "fn": "notify @ assets/index-sNX6iJPS.js:2:9914",
+            "ms": 74,
+            "pctOfWindow": 0.3,
+            "msPerSec": 3
+          },
+          {
+            "fn": "d @ assets/index-sNX6iJPS.js:2:65182",
+            "ms": 68,
+            "pctOfWindow": 0.27,
+            "msPerSec": 2.7
+          },
+          {
+            "fn": "has @ assets/index-sNX6iJPS.js:2:15971",
+            "ms": 66.7,
+            "pctOfWindow": 0.27,
+            "msPerSec": 2.7
+          }
+        ],
+        "topTotal": [
+          {
+            "fn": "Nb @ assets/index-sNX6iJPS.js:2:24156",
+            "ms": 10319.5,
+            "pctOfWindow": 41.25,
+            "msPerSec": 412.8
+          },
+          {
+            "fn": "runIfDirty @ assets/index-sNX6iJPS.js:2:7219",
+            "ms": 7925.3,
+            "pctOfWindow": 31.68,
+            "msPerSec": 317
+          },
+          {
+            "fn": "z @ assets/index-sNX6iJPS.js:2:57217",
+            "ms": 6846.9,
+            "pctOfWindow": 27.37,
+            "msPerSec": 273.9
+          },
+          {
+            "fn": "w @ assets/index-sNX6iJPS.js:2:52409",
+            "ms": 4231.7,
+            "pctOfWindow": 16.91,
+            "msPerSec": 169.3
+          },
+          {
+            "fn": "K @ assets/index-sNX6iJPS.js:2:53586",
+            "ms": 3595.1,
+            "pctOfWindow": 14.37,
+            "msPerSec": 143.8
+          },
+          {
+            "fn": "b @ assets/index-sNX6iJPS.js:2:54794",
+            "ms": 3536.3,
+            "pctOfWindow": 14.13,
+            "msPerSec": 141.5
+          },
+          {
+            "fn": "ag @ assets/index-sNX6iJPS.js:2:47272",
+            "ms": 3371,
+            "pctOfWindow": 13.47,
+            "msPerSec": 134.8
+          },
+          {
+            "fn": "run @ assets/index-sNX6iJPS.js:2:6810",
+            "ms": 3247.3,
+            "pctOfWindow": 12.98,
+            "msPerSec": 129.9
+          },
+          {
+            "fn": "D @ assets/index-sNX6iJPS.js:2:56626",
+            "ms": 3149.5,
+            "pctOfWindow": 12.59,
+            "msPerSec": 126
+          },
+          {
+            "fn": "W @ assets/index-sNX6iJPS.js:2:57001",
+            "ms": 3005.4,
+            "pctOfWindow": 12.01,
+            "msPerSec": 120.2
+          },
+          {
+            "fn": "be @ assets/index-sNX6iJPS.js:2:58547",
+            "ms": 2413.3,
+            "pctOfWindow": 9.65,
+            "msPerSec": 96.5
+          },
+          {
+            "fn": "Pe @ assets/index-sNX6iJPS.js:2:59181",
+            "ms": 2406.5,
+            "pctOfWindow": 9.62,
+            "msPerSec": 96.3
+          },
+          {
+            "fn": "bo @ assets/index-sNX6iJPS.js:2:22469",
+            "ms": 2228.8,
+            "pctOfWindow": 8.91,
+            "msPerSec": 89.2
+          },
+          {
+            "fn": "get @ assets/index-sNX6iJPS.js:2:13886",
+            "ms": 2162.5,
+            "pctOfWindow": 8.64,
+            "msPerSec": 86.5
+          },
+          {
+            "fn": "I @ assets/index-sNX6iJPS.js:2:21483",
+            "ms": 2075.7,
+            "pctOfWindow": 8.3,
+            "msPerSec": 83
+          },
+          {
+            "fn": "dh @ assets/index-sNX6iJPS.js:2:7958",
+            "ms": 2067.6,
+            "pctOfWindow": 8.26,
+            "msPerSec": 82.7
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:27:65247",
+            "ms": 1828.7,
+            "pctOfWindow": 7.31,
+            "msPerSec": 73.1
+          },
+          {
+            "fn": "k @ assets/index-sNX6iJPS.js:2:56198",
+            "ms": 1436.8,
+            "pctOfWindow": 5.74,
+            "msPerSec": 57.5
+          },
+          {
+            "fn": "get dirty @ assets/index-sNX6iJPS.js:2:7252",
+            "ms": 966.8,
+            "pctOfWindow": 3.86,
+            "msPerSec": 38.7
+          },
+          {
+            "fn": "Jm @ assets/index-sNX6iJPS.js:2:23671",
+            "ms": 961.5,
+            "pctOfWindow": 3.84,
+            "msPerSec": 38.5
+          },
+          {
+            "fn": "E_ @ assets/index-sNX6iJPS.js:2:49289",
+            "ms": 786.3,
+            "pctOfWindow": 3.14,
+            "msPerSec": 31.5
+          },
+          {
+            "fn": "get value @ assets/index-sNX6iJPS.js:2:20477",
+            "ms": 779.8,
+            "pctOfWindow": 3.12,
+            "msPerSec": 31.2
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:2:13724",
+            "ms": 769.2,
+            "pctOfWindow": 3.07,
+            "msPerSec": 30.8
+          },
+          {
+            "fn": "n @ assets/MonitorView-BqBb5elx.js:2:13698",
+            "ms": 769.2,
+            "pctOfWindow": 3.07,
+            "msPerSec": 30.8
+          },
+          {
+            "fn": "i @ assets/MonitorView-BqBb5elx.js:2:13932",
+            "ms": 768.1,
+            "pctOfWindow": 3.07,
+            "msPerSec": 30.7
+          },
+          {
+            "fn": "ru @ assets/MonitorView-BqBb5elx.js:2:13836",
+            "ms": 767.6,
+            "pctOfWindow": 3.07,
+            "msPerSec": 30.7
+          },
+          {
+            "fn": "(anon) @ assets/MonitorView-BqBb5elx.js:27:20186",
+            "ms": 757.4,
+            "pctOfWindow": 3.03,
+            "msPerSec": 30.3
+          },
+          {
+            "fn": "W @ assets/MonitorView-BqBb5elx.js:27:28618",
+            "ms": 756.3,
+            "pctOfWindow": 3.02,
+            "msPerSec": 30.3
+          },
+          {
+            "fn": "Se @ assets/index-sNX6iJPS.js:2:61147",
+            "ms": 629.3,
+            "pctOfWindow": 2.52,
+            "msPerSec": 25.2
+          },
+          {
+            "fn": "ya @ assets/MonitorView-BqBb5elx.js:27:5484",
+            "ms": 577.7,
+            "pctOfWindow": 2.31,
+            "msPerSec": 23.1
+          }
+        ],
+        "byFile": [
+          {
+            "file": "assets/index-sNX6iJPS.js",
+            "ms": 8207.5,
+            "pctOfWindow": 32.81
+          },
+          {
+            "file": "assets/MonitorView-BqBb5elx.js",
+            "ms": 2350.6,
+            "pctOfWindow": 9.4
+          },
+          {
+            "file": "assets/WorkspaceView-BGl6Gveh.js",
+            "ms": 4.5,
+            "pctOfWindow": 0.02
+          },
+          {
+            "file": "D:\\work\\web\\claude-code-monitor\\apps\\desktop\\stage\\preload.cjs",
+            "ms": 1,
+            "pctOfWindow": 0
+          },
+          {
+            "file": "js2c/sandbox_bundle",
+            "ms": 1,
+            "pctOfWindow": 0
+          }
+        ],
+        "file": "C:\\Users\\dauph\\AppData\\Local\\Temp\\prof87\\demo-30x6.cpuprofile",
+        "storePatches": {
+          "connection": {
+            "patches": 7,
+            "actions": 0,
+            "patchesPerSec": 0.7,
+            "actionsPerSec": 0
+          },
+          "terminals": {
+            "patches": 134,
+            "actions": 89,
+            "patchesPerSec": 13.4,
+            "actionsPerSec": 8.9
+          },
+          "agents": {
+            "patches": 1241,
+            "actions": 421,
+            "patchesPerSec": 124.1,
+            "actionsPerSec": 42.1
+          },
+          "activity": {
+            "patches": 3,
+            "actions": 4,
+            "patchesPerSec": 0.3,
+            "actionsPerSec": 0.4
+          },
+          "ui": {
+            "patches": 0,
+            "actions": 8,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.8
+          },
+          "usage": {
+            "patches": 59,
+            "actions": 33,
+            "patchesPerSec": 5.9,
+            "actionsPerSec": 3.3
+          },
+          "favorites": {
+            "patches": 0,
+            "actions": 8,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.8
+          },
+          "extras": {
+            "patches": 3,
+            "actions": 3,
+            "patchesPerSec": 0.3,
+            "actionsPerSec": 0.3
+          },
+          "history": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "settings": {
+            "patches": 0,
+            "actions": 2,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.2
+          },
+          "snooze": {
+            "patches": 0,
+            "actions": 121,
+            "patchesPerSec": 0,
+            "actionsPerSec": 12.1
+          },
+          "toolSpans": {
+            "patches": 224,
+            "actions": 224,
+            "patchesPerSec": 22.4,
+            "actionsPerSec": 22.4
+          },
+          "peers": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "promptSearch": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "resources": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "sensitive": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "checkpoints": {
+            "patches": 0,
+            "actions": 7,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0.7
+          },
+          "attention": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "toasts": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "away": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "update": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "workspace": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "deepseek": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "inbox": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "checks": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "telegram": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "awake": {
+            "patches": 12,
+            "actions": 0,
+            "patchesPerSec": 1.2,
+            "actionsPerSec": 0
+          },
+          "disk": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "tips": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "prompts": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "run": {
+            "patches": 0,
+            "actions": 16,
+            "patchesPerSec": 0,
+            "actionsPerSec": 1.6
+          },
+          "attachments": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "agentStatus": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "explorer": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "navigation": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          },
+          "overlap": {
+            "patches": 1,
+            "actions": 0,
+            "patchesPerSec": 0.1,
+            "actionsPerSec": 0
+          },
+          "office": {
+            "patches": 0,
+            "actions": 0,
+            "patchesPerSec": 0,
+            "actionsPerSec": 0
+          }
+        },
+        "dom": {
+          "total": 6425,
+          "header": 59,
+          "rail": 2019,
+          "map": 4201,
+          "activity": 0,
+          "other": 146,
+          "vueComponents": 0,
+          "topComponents": []
+        }
+      }
+    }
+  },
+  "failures": {}
+}

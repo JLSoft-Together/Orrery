@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileDown, Play, Search } from 'lucide-vue-next'
 import { isAgentSessionId } from '@ccm/shared'
+import { useActiveInterval } from '../../composables/usePageActive'
 import { hasTerminals } from '../../lib/desktop'
 import { compactNumber, duration, formatCost, relativeTime, shortPath, now } from '../../lib/format'
 import { modelLabel } from '../../lib/model'
@@ -28,7 +29,6 @@ const terminals = useTerminalsStore()
 const workspace = useWorkspaceStore()
 
 const PAGE_SIZE = 20
-let timer: number | undefined
 
 function refresh(): void {
   connection.loadTimeline()
@@ -36,12 +36,9 @@ function refresh(): void {
   connection.loadHeatmap()
 }
 
-onMounted(() => {
-  refresh()
-  // Open segments grow with the clock locally; the poll only picks up new lanes and closed segments.
-  timer = window.setInterval(() => connection.loadTimeline(), 30_000)
-})
-onBeforeUnmount(() => window.clearInterval(timer))
+onMounted(refresh)
+// Open segments grow with the clock locally; the poll only picks up new lanes and closed segments.
+useActiveInterval(() => connection.loadTimeline(), 30_000)
 
 const promptSearchCard = ref<InstanceType<typeof PromptSearchCard> | null>(null)
 // The palette can fire before this view mounts (view switch) or while it is already open.

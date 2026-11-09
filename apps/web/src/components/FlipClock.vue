@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usePageActive } from '../composables/usePageActive'
 import FlipChar from './FlipChar.vue'
 
 const { t } = useI18n()
@@ -8,12 +9,23 @@ const nowMs = ref(Date.now())
 let timer: number | undefined
 
 // Ticks on the second boundary so the seconds flip in step with the system clock.
+const active = usePageActive()
 function tick(): void {
   nowMs.value = Date.now()
   timer = window.setTimeout(tick, 1000 - (nowMs.value % 1000) + 5)
 }
-onMounted(tick)
-onBeforeUnmount(() => window.clearTimeout(timer))
+function halt(): void {
+  window.clearTimeout(timer)
+  timer = undefined
+}
+watch(active, (on) => {
+  halt()
+  if (on) tick()
+})
+onMounted(() => {
+  if (active.value) tick()
+})
+onBeforeUnmount(halt)
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const parts = computed(() => {

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import QRCode from 'qrcode'
 import { CircleAlert, CircleCheck, CircleOff, LoaderCircle } from 'lucide-vue-next'
 import type { QrStatus } from '@ccm/shared'
 import { useDevicesStore } from '../../stores/devices'
@@ -20,7 +19,7 @@ watch(
   () => store.qr?.payload,
   async (payload) => {
     const n = ++rendered
-    const out = payload ? await QRCode.toString(payload, { type: 'svg', margin: 1 }).catch(() => '') : ''
+    const out = payload ? await import('qrcode').then((m) => m.default.toString(payload, { type: 'svg', margin: 1 })).catch(() => '') : ''
     if (n === rendered) svg.value = out
   },
   { immediate: true },

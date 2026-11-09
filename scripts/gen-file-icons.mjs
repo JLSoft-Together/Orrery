@@ -69,6 +69,20 @@ try {
     used.folders.add(m[1])
   }
 
+  const compactPath = (d) =>
+    d
+      .replace(/-?\d*\.\d+/g, (n) => {
+        let t = n.replace(/0+$/, '')
+        if (t.endsWith('.')) t = t.slice(0, -1)
+        t = t.replace(/^(-?)0\./, '$1.')
+        return t === '' || t === '-' ? '0' : t
+      })
+      .replace(/\s*,\s*/g, ',')
+      .replace(/([A-Za-z])\s+/g, '$1')
+      .replace(/(\d)\s+([A-Za-z])/g, '$1$2')
+      .replace(/\s+/g, ' ')
+      .trim()
+
   // Comments, XML prolog, editor-only data-* attributes and layout whitespace go; fills and shapes stay as drawn.
   const minify = (svg) =>
     svg
@@ -79,6 +93,7 @@ try {
       .replace(/\s+/g, ' ')
       .replace(/>\s+</g, '><')
       .replace(/\s+(\/?>)/g, '$1')
+      .replace(/(\sd=")([^"]*)(")/g, (_, a, d, c) => a + compactPath(d) + c)
       .trim()
 
   rmSync(out, { recursive: true, force: true })

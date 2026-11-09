@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import QRCode from 'qrcode'
 import { ChevronRight, Copy, Dices, ExternalLink, Eye, EyeOff, Send, Smartphone } from 'lucide-vue-next'
 import { PHONE_IDLE_CHOICES, type PhoneChannel, type PhonePatch, type PhoneState } from '@ccm/shared'
 import { onPhone, phoneSet, phoneState, phoneTest } from '../lib/phone'
@@ -100,7 +99,7 @@ watch(
   subscribeLink,
   async (link) => {
     const n = ++qrRun
-    const out = link ? await QRCode.toString(link, { type: 'svg', margin: 1 }).catch(() => '') : ''
+    const out = link ? await import('qrcode').then((m) => m.default.toString(link, { type: 'svg', margin: 1 })).catch(() => '') : ''
     if (n === qrRun) qrSvg.value = out
   },
   { immediate: true },

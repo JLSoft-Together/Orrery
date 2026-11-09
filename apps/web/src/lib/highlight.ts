@@ -112,7 +112,7 @@ export function unpackTokens(code: string, packed: PackedTokens): CodeToken[][] 
 export async function tokenize(code: string, lang: string | null, key?: string): Promise<CodeToken[][] | null> {
   if (!lang) return null
   const w = getWorker()
-  const packed = w ? ((await request(key, { op: 'tokenize', code, lang }, w)) as PackedTokens | null) : await (await import('./highlightCore')).tokenizePacked(code, lang)
+  const packed = w ? ((await request(key, { op: 'tokenize', code, lang }, w)) as PackedTokens | null) : import.meta.env.PROD ? null : await (await import('./highlightCore')).tokenizePacked(code, lang)
   return packed ? unpackTokens(code, packed) : null
 }
 

@@ -245,3 +245,137 @@ describe('connection batching, store level', () => {
     expect(spans.spansFor('t1')).toHaveLength(3)
   })
 })
+
+describe('connection adaptive flush', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    setActivePinia(createPinia())
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  const setup = (n = 40) => {
+    const conn = useConnectionStore()
+    const terminals = useTerminalsStore()
+    const spans = useToolSpansStore()
+    const applies = vi.spyOn(spans, 'hold')
+    const list = Array.from({ length: n }, (_, i) => terminal(`t${i}`))
+    conn.receive(msg(1, [{ type: 'snapshot', payload: snapshot(list) }]))
+    applies.mockClear()
+    return { conn, terminals, applies, seq: { v: 2 } }
+  }
+
+  const pump = (ctx: ReturnType<typeof setup>, perSecond: number, seconds: number, make: (i: number) => ServerMessage['events'][number]) => {
+    const stepMs = 1000 / perSecond
+    const total = perSecond * seconds
+    for (let i = 0; i < total; i++) {
+      ctx.conn.receive(msg(ctx.seq.v++, [make(i)]))
+      vi.advanceTimersByTime(stepMs)
+    }
+  }
+
+  const tick = (i: number): ServerMessage['events'][number] => ({ type: 'terminal.updated', payload: { id: `t${(i % 30) + 1}`, title: `x${i}` } })
+
+  it('low load keeps one apply per frame', () => {
+    const ctx = setup()
+    pump(ctx, 5, 2, tick)
+    vi.advanceTimersByTime(60)
+    expect(ctx.applies.mock.calls.length).toBe(10)
+  })
+
+  it('high load applies at most about 5 batches per second and loses nothing', () => {
+    const ctx = setup()
+    pump(ctx, 200, 2, tick)
+    vi.advanceTimersByTime(300)
+    expect(ctx.applies.mock.calls.length).toBeLessThanOrEqual(12)
+    expect(ctx.applies.mock.calls.length).toBeGreaterThanOrEqual(5)
+    for (let i = 370; i < 400; i++) expect(ctx.terminals.byId[`t${(i % 30) + 1}`]?.title).toBe(`x${i}`)
+  })
+
+  it('returns to frame flushing once the load drops', () => {
+    const ctx = setup()
+    pump(ctx, 200, 2, tick)
+    vi.advanceTimersByTime(2000)
+    ctx.applies.mockClear()
+    ctx.conn.receive(msg(ctx.seq.v++, [tick(1)]))
+    vi.advanceTimersByTime(60)
+    expect(ctx.applies.mock.calls.length).toBe(1)
+    expect(ctx.terminals.byId.t2?.title).toBe('x1')
+  })
+
+  it('hysteresis: a rate between the exit and enter thresholds stays heavy', () => {
+    const ctx = setup()
+    pump(ctx, 200, 1, tick)
+    vi.advanceTimersByTime(300)
+    ctx.applies.mockClear()
+    pump(ctx, 12, 3, tick)
+    vi.advanceTimersByTime(300)
+    expect(ctx.applies.mock.calls.length).toBeLessThanOrEqual(15)
+  })
+
+  it('a snapshot during heavy load flushes at once and in order', () => {
+    const ctx = setup()
+    pump(ctx, 200, 1, tick)
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.created', payload: terminal('before') }]))
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'snapshot', payload: snapshot([terminal('snap')]) }]))
+    expect(Object.keys(ctx.terminals.byId)).toEqual(['snap'])
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.created', payload: terminal('after') }]))
+    vi.advanceTimersByTime(300)
+    expect(Object.keys(ctx.terminals.byId).sort()).toEqual(['after', 'snap'])
+  })
+
+  it('an attention status flushes within a frame even under heavy load', () => {
+    const ctx = setup()
+    pump(ctx, 200, 1, tick)
+    ctx.applies.mockClear()
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.updated', payload: { id: 't35', title: 'quiet' } }]))
+    vi.advanceTimersByTime(10)
+    expect(ctx.terminals.byId.t35?.title).not.toBe('quiet')
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.updated', payload: { id: 't36', status: 'waiting' } }]))
+    vi.advanceTimersByTime(60)
+    expect(ctx.terminals.byId.t36?.status).toBe('waiting')
+    expect(ctx.terminals.byId.t35?.title).toBe('quiet')
+    expect(ctx.applies.mock.calls.length).toBe(1)
+  })
+
+  it('events of the selected agent and focused terminal flush within a frame under heavy load', () => {
+    const ctx = setup()
+    const ui = useUiStore()
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'agent.created', payload: agent('a1', 't3') }]))
+    vi.advanceTimersByTime(300)
+    ui.selectAgent('a1')
+    pump(ctx, 200, 1, tick)
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'agent.updated', payload: { id: 'a1', currentTool: 'Bash' } }]))
+    vi.advanceTimersByTime(60)
+    expect(useAgentsStore().byId.a1?.currentTool).toBe('Bash')
+    ui.selectAgent(null)
+    ui.focusTerminal('t39')
+    pump(ctx, 200, 1, tick)
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.updated', payload: { id: 't39', title: 'focused' } }]))
+    vi.advanceTimersByTime(60)
+    expect(ctx.terminals.byId.t39?.title).toBe('focused')
+  })
+
+  it('a hidden document batches with the long interval and still applies everything', () => {
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+    const ctx = setup()
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.updated', payload: { id: 't1', title: 'bg' } }]))
+    vi.advanceTimersByTime(500)
+    expect(ctx.terminals.byId.t1?.title).not.toBe('bg')
+    vi.advanceTimersByTime(600)
+    expect(ctx.terminals.byId.t1?.title).toBe('bg')
+  })
+
+  it('flush applies a pending slow batch and leaves no timer behind', () => {
+    const ctx = setup()
+    pump(ctx, 200, 1, tick)
+    ctx.conn.receive(msg(ctx.seq.v++, [{ type: 'terminal.updated', payload: { id: 't2', title: 'pending' } }]))
+    ctx.conn.flush()
+    expect(ctx.terminals.byId.t2?.title).toBe('pending')
+    ctx.applies.mockClear()
+    vi.advanceTimersByTime(500)
+    expect(ctx.applies.mock.calls.length).toBe(0)
+  })
+})

@@ -24,6 +24,14 @@ export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'dis
 const MIN_RETRY_MS = 1_000
 const MAX_RETRY_MS = 10_000
 const BATCH_FALLBACK_MS = 50
+export const RATE_WINDOW_MS = 1_000
+export const HEAVY_ENTER_RATE = 20
+export const HEAVY_ENTER_WINDOW_MS = 250
+export const HEAVY_ENTER_BURST = 10
+export const HEAVY_EXIT_RATE = 8
+export const HEAVY_FLUSH_MS = 220
+export const HIDDEN_FLUSH_MS = 1_000
+const ATTENTION_STATUSES: ReadonlySet<string> = new Set(['waiting', 'error', 'completed'])
 
 function isServerMessage(value: unknown): value is ServerMessage {
   return (
@@ -309,20 +317,79 @@ export const useConnectionStore = defineStore('connection', () => {
   let queue: MonitorEvent[] = []
   let frame = 0
   let fallback: number | null = null
+  let slowTimer: number | null = null
+  let heavy = false
+  let rateBuf: { t: number; n: number }[] = []
+
+  function noteRate(count: number): void {
+    const now = Date.now()
+    rateBuf.push({ t: now, n: count })
+    const cutoff = now - RATE_WINDOW_MS
+    let drop = 0
+    const burstCutoff = now - HEAVY_ENTER_WINDOW_MS
+    let rate = 0
+    let burst = 0
+    for (const entry of rateBuf) {
+      if (entry.t <= cutoff) drop++
+      else {
+        rate += entry.n
+        if (entry.t > burstCutoff) burst += entry.n
+      }
+    }
+    if (drop > 0) rateBuf = rateBuf.slice(drop)
+    if (heavy) {
+      if (rate < HEAVY_EXIT_RATE) heavy = false
+    } else if (rate >= HEAVY_ENTER_RATE || burst >= HEAVY_ENTER_BURST) {
+      heavy = true
+    }
+  }
+
+  function isUrgent(event: MonitorEvent): boolean {
+    switch (event.type) {
+      case 'terminal.created':
+      case 'terminal.updated': {
+        const p = event.payload as { id: string; status?: string }
+        return p.id === ui.focusedTerminalId || (p.status !== undefined && ATTENTION_STATUSES.has(p.status))
+      }
+      case 'agent.created':
+      case 'agent.updated': {
+        const p = event.payload as { id: string; terminalId?: string; status?: string }
+        if (p.id === ui.selectedAgentId) return true
+        if (p.status !== undefined && ATTENTION_STATUSES.has(p.status)) return true
+        const terminalId = p.terminalId ?? agents.byId[p.id]?.terminalId
+        return terminalId !== undefined && terminalId === ui.focusedTerminalId
+      }
+      case 'agent.removed':
+        return event.payload.id === ui.selectedAgentId
+      default:
+        return false
+    }
+  }
 
   function flush(): void {
     if (frame) cancelAnimationFrame(frame)
     if (fallback !== null) window.clearTimeout(fallback)
+    if (slowTimer !== null) window.clearTimeout(slowTimer)
     frame = 0
     fallback = null
+    slowTimer = null
     if (queue.length === 0) return
     const batch = queue
     queue = []
     apply(batch)
   }
 
-  function schedule(): void {
+  function schedule(urgent: boolean): void {
     if (frame || fallback !== null) return
+    const hidden = typeof document !== 'undefined' && document.hidden
+    if ((heavy || hidden) && !urgent) {
+      if (slowTimer === null) slowTimer = window.setTimeout(flush, hidden ? HIDDEN_FLUSH_MS : HEAVY_FLUSH_MS)
+      return
+    }
+    if (slowTimer !== null) {
+      window.clearTimeout(slowTimer)
+      slowTimer = null
+    }
     if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(flush)
     fallback = window.setTimeout(flush, BATCH_FALLBACK_MS)
   }
@@ -342,8 +409,13 @@ export const useConnectionStore = defineStore('connection', () => {
       apply(accepted.events)
       return
     }
-    for (const event of accepted.events) queue.push(event)
-    schedule()
+    let urgent = false
+    for (const event of accepted.events) {
+      queue.push(event)
+      if (!urgent && isUrgent(event)) urgent = true
+    }
+    noteRate(accepted.events.length)
+    schedule(urgent)
   }
 
   function send(payload: unknown): void {
@@ -426,6 +498,7 @@ export const useConnectionStore = defineStore('connection', () => {
     )
     document.addEventListener('visibilitychange', () => {
       sendPresence()
+      if (document.visibilityState === 'visible') flush()
       if (document.visibilityState === 'visible' && !socket && retryTimer !== null) {
         clearTimeout(retryTimer)
         retryTimer = null

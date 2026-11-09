@@ -2141,6 +2141,7 @@ async function ready(): Promise<void> {
 // profile (ccm.* localStorage), window bounds, appearance and the single-instance lock survive renames. An explicit
 // --user-data-dir (E2E) still wins.
 if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), USER_DATA_DIR))
+else app.setAppLogsPath(path.join(app.getPath('userData'), 'logs'))
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()

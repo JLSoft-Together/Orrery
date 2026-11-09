@@ -6,7 +6,7 @@ import { drawableFolderKind, drawableKind, DRAWABLE_SNIFF_BYTES, isLooseLayoutXm
 import { isWithin } from '../preview/paths'
 import type { PreviewServer } from '../preview/server'
 import { LayoutDaemon, LayoutError, type DaemonDeps, type RenderParams } from './daemon'
-import { LayoutlibBundle } from './download'
+import { LayoutlibBundle, type KitSpec } from './download'
 import { findJdk } from './jdk'
 import { LayoutModelService, type ModelServiceDeps } from './model'
 import { LAYOUTLIB_API_LEVEL } from './types'
@@ -33,6 +33,7 @@ export interface LayoutIpcDeps {
   env?: NodeJS.ProcessEnv
   /** Dev: staged bundle (apps/layout-daemon/build/layoutlib-dist) instead of the download. */
   layoutlibOverride?: string | null
+  kit?: KitSpec | null
   findJava?: DaemonDeps['findJava']
   bundle?: LayoutlibBundle
   daemon?: LayoutDaemon
@@ -247,7 +248,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
 
   const bundle =
     deps.bundle ??
-    new LayoutlibBundle({ base, platform, arch: deps.arch ?? process.arch, overrideDir: deps.layoutlibOverride, onStatus: (status) => broadcast({ type: 'bundle', status }) })
+    new LayoutlibBundle({ base, platform, arch: deps.arch ?? process.arch, overrideDir: deps.layoutlibOverride, kit: deps.kit, onStatus: (status) => broadcast({ type: 'bundle', status }) })
   const daemon =
     deps.daemon ??
     new LayoutDaemon({
@@ -265,7 +266,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
       },
       onStage: (stage) => broadcast({ type: 'daemon-stage', stage }),
     })
-  const jarExists = (): boolean => existsSync(deps.daemonJar)
+  const jarExists = (): boolean => existsSync(deps.daemonJar) || (bundle.kitPending?.() ?? false)
   let realRender: string | null = null
   let realSnap: string | null = null
   if (deps.model) {
@@ -354,7 +355,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
     if (!isAppFrame(event)) return null
     const now = bundle.status()
     if (now.state === 'ready' || now.state === 'downloading') return now
-    if (!(await deps.confirm(event, { bytes: bundle.downloadBytes, host: 'dl.google.com' }))) return { state: 'cancelled' }
+    if (!(await deps.confirm(event, { bytes: bundle.downloadBytes, host: bundle.hosts ?? 'dl.google.com' }))) return { state: 'cancelled' }
     // Progress goes out as ccm:layout-event; the invoke resolves when the bundle is ready or failed.
     return bundle.download()
   })

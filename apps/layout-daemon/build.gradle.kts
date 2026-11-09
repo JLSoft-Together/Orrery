@@ -77,6 +77,11 @@ tasks.shadowJar {
     manifest { attributes("Main-Class" to "dev.ccm.layoutdaemon.MainKt") }
 }
 
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
 tasks.jar { enabled = false }
 tasks.assemble { dependsOn(tasks.shadowJar, stageLayoutlib) }
 

@@ -21,6 +21,62 @@ export const ARTIFACTS = {
   resources: { artifact: 'layoutlib-resources', size: 34_854_638, sha256: 'b4c4582e3680cbc8e0248223dc6ccf393bdedecd38cfccd03a33014b9238c559' },
 } as const satisfies Record<string, Artifact>
 
+interface Pinned {
+  size: number
+  sha256: string
+}
+
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES'])
+const PARTIAL_STALE_MS = 10 * 60_000
+const KEEP_OTHER_KITS = 1
+
+export async function renameWithRetry(
+  from: string,
+  to: string,
+  rename: (a: string, b: string) => Promise<void> = fs.rename,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+  tries = 5,
+): Promise<void> {
+  for (let i = 0; ; i++) {
+    try {
+      await rename(from, to)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (i >= tries - 1 || !code || !RENAME_RETRY_CODES.has(code)) throw err
+      await sleep(100 * 2 ** i)
+    }
+  }
+}
+
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(/[.-]/).map((x) => Number.parseInt(x, 10))
+  const pb = b.split(/[.-]/).map((x) => Number.parseInt(x, 10))
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = Number.isFinite(pa[i]) ? pa[i]! : 0
+    const y = Number.isFinite(pb[i]) ? pb[i]! : 0
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return 0
+}
+
+export function kitsToPrune(names: string[], current: string): string[] {
+  const others = names.filter((n) => n !== current && !n.includes('.partial-')).sort((x, y) => compareVersions(y, x))
+  return others.slice(KEEP_OTHER_KITS).filter((n) => compareVersions(n, current) < 0)
+}
+
+export interface KitSpec {
+  version: string
+  size: number
+  sha256: string
+  url: string
+}
+
+const KIT_HOSTS = new Set(['github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com', 'github-releases.githubusercontent.com'])
+const MAX_REDIRECTS = 5
+const KIT_JAR = 'layout-daemon.jar'
+const KIT_DIR = 'loose-kit'
+
 const MAVEN = 'https://dl.google.com/android/maven2/com/android/tools/layoutlib'
 const ALLOWED_HOST = 'dl.google.com'
 const MAX_UNZIPPED = 600 * 1024 * 1024
@@ -31,6 +87,19 @@ export function runtimeFor(platform: NodeJS.Platform, arch: string): Artifact | 
   if (platform === 'win32') return ARTIFACTS.win
   if (platform === 'darwin') return arch === 'arm64' ? ARTIFACTS.macArm : ARTIFACTS.mac
   return null
+}
+
+export function isAllowedKitUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' && KIT_HOSTS.has(u.hostname) && !u.username && !u.password && (u.port === '' || u.port === '443')
+  } catch {
+    return false
+  }
+}
+
+export function kitDirFor(base: string, version: string): string {
+  return path.join(base, 'daemon', version)
 }
 
 export function artifactUrl(a: Artifact): string {
@@ -51,6 +120,7 @@ export function isAllowedUrl(url: string): boolean {
 export interface HttpBody {
   status: number
   length: number | null
+  location?: string
   body: AsyncIterable<Buffer>
   abort: () => void
 }
@@ -62,7 +132,7 @@ export const httpsFetcher: Fetcher = (url) =>
   new Promise((resolve, reject) => {
     const req = httpsGet(url, { timeout: 30_000 }, (res) => {
       const len = Number(res.headers['content-length'])
-      resolve({ status: res.statusCode ?? 0, length: Number.isFinite(len) ? len : null, body: res, abort: () => req.destroy() })
+      resolve({ status: res.statusCode ?? 0, length: Number.isFinite(len) ? len : null, location: res.headers.location, body: res, abort: () => req.destroy() })
     })
     req.on('timeout', () => req.destroy(new Error('timeout')))
     req.on('error', reject)
@@ -74,11 +144,35 @@ export class DownloadError extends Error {
   }
 }
 
+export function followRedirects(base: Fetcher, allow: (url: string) => boolean, max = MAX_REDIRECTS): Fetcher {
+  return async (url) => {
+    let cur = url
+    for (let hop = 0; hop <= max; hop++) {
+      if (!allow(cur)) throw new DownloadError('host-not-allowed')
+      const res = await base(cur)
+      if (res.status >= 300 && res.status < 400 && res.location) {
+        res.abort()
+        cur = new URL(res.location, cur).toString()
+        continue
+      }
+      return res
+    }
+    throw new DownloadError('too-many-redirects')
+  }
+}
+
 /** Streams `a` into `file`, refusing anything that is not exactly the pinned size + sha256. */
-export async function downloadArtifact(a: Artifact, file: string, fetcher: Fetcher, onBytes: (n: number) => void, url = artifactUrl(a)): Promise<void> {
-  if (!isAllowedUrl(url)) throw new DownloadError('host-not-allowed')
-  const res = await fetcher(url).catch(() => {
-    throw new DownloadError('network')
+export async function downloadArtifact(a: Artifact, file: string, fetcher: Fetcher, onBytes: (n: number) => void, url?: string): Promise<void>
+export async function downloadArtifact(a: Pinned, file: string, fetcher: Fetcher, onBytes: (n: number) => void, url: string, allow: (url: string) => boolean): Promise<void>
+export async function downloadArtifact(a: Pinned | Artifact, file: string, fetcher: Fetcher, onBytes: (n: number) => void, url?: string, allow: (url: string) => boolean = isAllowedUrl): Promise<void> {
+  const target = url ?? ('artifact' in a ? artifactUrl(a) : '')
+  return fetchPinned(a, file, fetcher, onBytes, target, allow)
+}
+
+async function fetchPinned(a: Pinned, file: string, fetcher: Fetcher, onBytes: (n: number) => void, url: string, allow: (url: string) => boolean): Promise<void> {
+  if (!allow(url)) throw new DownloadError('host-not-allowed')
+  const res = await fetcher(url).catch((err: unknown) => {
+    throw err instanceof DownloadError ? err : new DownloadError('network')
   })
   if (res.status !== 200) {
     res.abort()
@@ -126,6 +220,7 @@ export interface BundleDeps {
   fetcher?: Fetcher
   /** Dev: an already staged folder (apps/layout-daemon/build/layoutlib-dist) used instead of downloading. */
   overrideDir?: string | null
+  kit?: KitSpec | null
   onStatus?: (status: BundleStatus) => void
 }
 
@@ -142,16 +237,39 @@ export class LayoutlibBundle {
     return path.join(this.deps.base, LAYOUTLIB_VERSION)
   }
 
-  /** Total compressed bytes for this OS (for the consent dialog). */
-  get downloadBytes(): number {
-    const runtime = runtimeFor(this.deps.platform, this.deps.arch)
-    return ARTIFACTS.jar.size + ARTIFACTS.resources.size + (runtime?.size ?? 0)
+  get kitDir(): string | null {
+    const k = this.deps.kit
+    return k ? kitDirFor(this.deps.base, k.version) : null
   }
 
-  isReady(): boolean {
+  get hosts(): string {
+    return [...(this.layoutlibReady() ? [] : ['dl.google.com']), ...(this.kitReady() ? [] : ['github.com (GitHub release assets)'])].join(', ') || 'dl.google.com'
+  }
+
+  /** Total compressed bytes still missing for this OS (for the consent dialog). */
+  get downloadBytes(): number {
+    const runtime = runtimeFor(this.deps.platform, this.deps.arch)
+    const lib = this.layoutlibReady() ? 0 : ARTIFACTS.jar.size + ARTIFACTS.resources.size + (runtime?.size ?? 0)
+    return lib + (this.kitReady() ? 0 : (this.deps.kit?.size ?? 0))
+  }
+
+  private layoutlibReady(): boolean {
     const dir = this.dir
     if (dir !== path.join(this.deps.base, LAYOUTLIB_VERSION)) return true
     return existsSync(path.join(dir, READY_MARKER)) && existsSync(path.join(dir, JAR_NAME))
+  }
+
+  private kitReady(): boolean {
+    const dir = this.kitDir
+    return !dir || (existsSync(path.join(dir, READY_MARKER)) && existsSync(path.join(dir, KIT_JAR)) && existsSync(path.join(dir, KIT_DIR, 'kit.json')))
+  }
+
+  kitPending(): boolean {
+    return !this.kitReady()
+  }
+
+  isReady(): boolean {
+    return this.layoutlibReady() && this.kitReady()
   }
 
   status(): BundleStatus {
@@ -179,8 +297,10 @@ export class LayoutlibBundle {
 
   private async run(): Promise<void> {
     const { base, platform, arch } = this.deps
+    const needLib = !this.layoutlibReady()
+    const needKit = !this.kitReady()
     const runtime = runtimeFor(platform, arch)
-    if (!runtime) {
+    if (needLib && !runtime) {
       this.lastError = 'unsupported-os'
       return
     }
@@ -188,17 +308,63 @@ export class LayoutlibBundle {
     this.pct = 0
     this.deps.onStatus?.({ state: 'downloading', pct: 0 })
     const fetcher = this.deps.fetcher ?? httpsFetcher
-    const tmp = path.join(base, `${LAYOUTLIB_VERSION}.partial-${randomBytes(4).toString('hex')}`)
+    const total = this.downloadBytes
+    let done = 0
+    const onBytes = (n: number): void => {
+      done += n
+      this.emit((done / total) * 85)
+    }
     try {
       await fs.mkdir(base, { recursive: true })
+      if (needKit) {
+        await this.fetchKit(fetcher, onBytes).catch((err: unknown) => {
+          throw new DownloadError(err instanceof DownloadError || err instanceof ZipError ? `daemon-${err.code}` : 'daemon-io')
+        })
+      }
+      if (needLib && runtime) await this.fetchLayoutlib(runtime, fetcher, onBytes)
+      this.emit(100)
+    } catch (err) {
+      this.lastError = err instanceof DownloadError || err instanceof ZipError ? err.code : 'io'
+    }
+  }
+
+  private async fetchKit(fetcher: Fetcher, onBytes: (n: number) => void): Promise<void> {
+    const kit = this.deps.kit
+    const dest = this.kitDir
+    if (!kit || !dest) return
+    const kitBase = path.dirname(dest)
+    await fs.mkdir(kitBase, { recursive: true })
+    const stale = await fs.readdir(kitBase).catch(() => [] as string[])
+    for (const n of stale) {
+      if (!n.includes('.partial-')) continue
+      const full = path.join(kitBase, n)
+      const old = n.startsWith(`${kit.version}.partial-`) || Date.now() - ((await fs.stat(full).catch(() => null))?.mtimeMs ?? 0) > PARTIAL_STALE_MS
+      if (old) await fs.rm(full, { recursive: true, force: true }).catch(() => undefined)
+    }
+    const tmp = path.join(kitBase, `${kit.version}.partial-${randomBytes(4).toString('hex')}`)
+    try {
+      await fs.mkdir(tmp, { recursive: true })
+      const zipFile = path.join(tmp, 'kit.download.zip')
+      await downloadArtifact(kit, zipFile, followRedirects(fetcher, isAllowedKitUrl), onBytes, kit.url, isAllowedKitUrl)
+      const content = path.join(tmp, 'content')
+      await extractZip(zipFile, content, { maxTotal: MAX_UNZIPPED })
+      if (!existsSync(path.join(content, KIT_JAR)) || !existsSync(path.join(content, KIT_DIR, 'kit.json'))) throw new DownloadError('kit-incomplete')
+      await fs.writeFile(path.join(content, READY_MARKER), `${kit.version}\n`)
+      await fs.rm(dest, { recursive: true, force: true })
+      await renameWithRetry(content, dest)
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true }).catch(() => undefined)
+    }
+    const names = await fs.readdir(kitBase).catch(() => [] as string[])
+    for (const n of kitsToPrune(names, kit.version)) await fs.rm(path.join(kitBase, n), { recursive: true, force: true }).catch(() => undefined)
+  }
+
+  private async fetchLayoutlib(runtime: Artifact, fetcher: Fetcher, onBytes: (n: number) => void): Promise<void> {
+    const { base } = this.deps
+    const tmp = path.join(base, `${LAYOUTLIB_VERSION}.partial-${randomBytes(4).toString('hex')}`)
+    try {
       await this.sweepPartials()
       await fs.mkdir(tmp, { recursive: true })
-      const total = this.downloadBytes
-      let done = 0
-      const onBytes = (n: number): void => {
-        done += n
-        this.emit((done / total) * 85)
-      }
       const runtimeJar = path.join(tmp, 'runtime.download.jar')
       const resourcesJar = path.join(tmp, 'resources.download.jar')
       await downloadArtifact(ARTIFACTS.jar, path.join(tmp, JAR_NAME), fetcher, onBytes)
@@ -212,11 +378,10 @@ export class LayoutlibBundle {
       await fs.writeFile(path.join(tmp, READY_MARKER), `${LAYOUTLIB_VERSION}\n`)
       const dest = path.join(base, LAYOUTLIB_VERSION)
       await fs.rm(dest, { recursive: true, force: true })
-      await fs.rename(tmp, dest)
-      this.emit(100)
+      await renameWithRetry(tmp, dest)
     } catch (err) {
-      this.lastError = err instanceof DownloadError || err instanceof ZipError ? err.code : 'io'
       await fs.rm(tmp, { recursive: true, force: true }).catch(() => undefined)
+      throw err
     }
   }
 

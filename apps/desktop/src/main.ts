@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, net, Notification, powerMonitor, powerSaveBlocker, safeStorage, screen, session, shell, Tray, type Rectangle, type WebContents } from 'electron'
@@ -52,6 +52,8 @@ import { DeviceManager } from './devices/manager'
 import { UI_ORIGINALS_FILE } from './devices/uiTester'
 import type { LayoutIpc } from './layout/ipc'
 import { wireLayout } from './layout/wire'
+import { kitDirFor } from './layout/download'
+import { embeddedKit } from './layout/kit'
 import { wireFlutterPreview, type FlutterPreviewWire } from './flutterPreview/wire'
 import { afterRunTarget } from './layout/model'
 import { defaultSpawner, killAdbClient } from './run/proc'
@@ -1978,6 +1980,15 @@ async function ready(): Promise<void> {
       return findSignTools({ jdkSetting: s.jdk, sdkSetting: s.androidSdk, env: process.env, platform: process.platform, home: os.homedir() })
     },
   })
+  const layoutKit = app.isPackaged ? embeddedKit() : null
+  if (app.isPackaged && !layoutKit) {
+    const line = 'packaged build without an embedded layout daemon kit (__DAEMON_KIT__ missing): looking for resources/layout-daemon, XML Preview may be unavailable'
+    console.warn(line)
+    try {
+      appendFileSync(path.join(app.getPath('logs'), 'layout.log'), `${new Date().toISOString()} [warn] ${line}\n`)
+    } catch {}
+  }
+  const layoutKitDir = layoutKit ? kitDirFor(path.join(DATA_DIR, 'layoutlib'), layoutKit.version) : null
   layoutIpc = wireLayout({
     ipcMain,
     isAppFrame,
@@ -1986,9 +1997,10 @@ async function ready(): Promise<void> {
     getJdk: () => runManager?.getSettings().jdk ?? null,
     getRunSettings: () => runManager?.getSettings() ?? { androidSdk: null, jdk: null },
     initScript: resource('layout-daemon/ccm-project-model.gradle', 'apps/layout-daemon/init/ccm-project-model.gradle'),
-    looseKitDir: resource('layout-daemon/loose-kit', 'apps/layout-daemon/build/loose-kit'),
+    looseKitDir: layoutKitDir ? path.join(layoutKitDir, 'loose-kit') : resource('layout-daemon/loose-kit', 'apps/layout-daemon/build/loose-kit'),
+    kit: layoutKit,
     server: preview,
-    daemonJar: resource('layout-daemon/layout-daemon.jar', 'apps/layout-daemon/build/libs/layout-daemon.jar'),
+    daemonJar: layoutKitDir ? path.join(layoutKitDir, 'layout-daemon.jar') : resource('layout-daemon/layout-daemon.jar', 'apps/layout-daemon/build/libs/layout-daemon.jar'),
     logFile: path.join(app.getPath('logs'), 'layout.log'),
     locale: app.getLocale(),
     // Dev reuses the Gradle-staged bundle instead of the 170 MB download; CCM_LAYOUTLIB_DIR= (empty) tests the download flow.

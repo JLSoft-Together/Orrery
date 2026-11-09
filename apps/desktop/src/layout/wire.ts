@@ -9,6 +9,7 @@ import type { PreviewServer } from '../preview/server'
 import { RootWatcher } from '../preview/watch'
 import { defaultSpawner, killTree, killTreeSparing, runEnv } from '../run/proc'
 import type { DaemonChild } from './daemon'
+import type { KitSpec } from './download'
 import { registerLayoutIpc, type LayoutIpc } from './ipc'
 import { parseLooseKit, type ProjectLoadPayload } from './projectModel'
 
@@ -30,20 +31,21 @@ export interface WireLayoutDeps {
   logFile: string
   locale: string
   layoutlibOverride?: string | null
+  kit?: KitSpec | null
 }
 
 const STRINGS = {
   en: {
     title: 'Download the Android layout renderer?',
     detail: (mb: number, host: string) =>
-      `The XML layout preview needs Google's layoutlib (about ${mb} MB) from ${host}. It is downloaded once over HTTPS, checked against pinned SHA-256 hashes and stored in the app data folder.`,
+      `The XML layout preview needs Google's layoutlib and the render daemon (about ${mb} MB) from ${host}. It is downloaded once over HTTPS, checked against pinned SHA-256 hashes and stored in the app data folder.`,
     ok: 'Download',
     cancel: 'Cancel',
   },
   vi: {
     title: 'Tải bộ dựng layout Android?',
     detail: (mb: number, host: string) =>
-      `Xem trước layout XML cần layoutlib của Google (khoảng ${mb} MB) từ ${host}. Tải một lần qua HTTPS, kiểm tra theo SHA-256 cố định và lưu trong thư mục dữ liệu của app.`,
+      `Xem trước layout XML cần layoutlib của Google và render daemon (khoảng ${mb} MB) từ ${host}. Tải một lần qua HTTPS, kiểm tra theo SHA-256 cố định và lưu trong thư mục dữ liệu của app.`,
     ok: 'Tải về',
     cancel: 'Huỷ',
   },
@@ -81,6 +83,7 @@ export function wireLayout(deps: WireLayoutDeps): LayoutIpc {
     server: deps.server,
     daemonJar: deps.daemonJar,
     layoutlibOverride: deps.layoutlibOverride,
+    kit: deps.kit,
     log,
     model: {
       initScript: deps.initScript,

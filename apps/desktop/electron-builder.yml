@@ -14,6 +14,7 @@ compression: maximum
 asarUnpack:
   - collector.cjs
   - pty-host.cjs
+afterPack: ./after-pack.cjs
 npmRebuild: false
 nodeGypRebuild: false
 files:
@@ -27,12 +28,9 @@ extraResources:
   # node-pty + the prebuilt package for this platform/arch (npm installs only the host one).
   - from: ../../node_modules/@lydell
     to: pty/node_modules/@lydell
+    filter: ['**/*', '!**/*.pdb']
   - from: ../web/dist
     to: web
-  - from: ../layout-daemon/build/libs/layout-daemon.jar
-    to: layout-daemon/layout-daemon.jar
-  - from: ../layout-daemon/build/loose-kit
-    to: layout-daemon/loose-kit
   - from: ../layout-daemon/init/ccm-project-model.gradle
     to: layout-daemon/ccm-project-model.gradle
   # sql.js JS is bundled into main.cjs; its WASM is read from here (device app data inspector).

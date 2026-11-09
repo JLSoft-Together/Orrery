@@ -40,3 +40,11 @@ Máy: MacBook (Darwin 27.0.0, 10 core, 24 GB), Rust 1.99.1 (rustup cài mới), 
 | 10 Monitor | ĐẠT: session Claude của pane hiện, link đúng |
 | 11 Usage | ĐẠT: hiện số trong ~6 s lần mở đầu, không treo |
 | 12 Ports | ĐẠT sau sửa: cổng 8765 có dòng; lỗi tên process `cut` → sửa `tree.ts` `mainOf` ưu tiên process đang listen (lệnh pipe kiểu `npm run dev \| tee` lấy nhầm tên) |
+
+## T4 trên mac (2026-11-10)
+
+- Parity: `tracker-parity-demo` (30×6) + `usage-parity` pass; cold scan cache Rust = Node (192 file, 10 486 id).
+- CPU demo 30×6 (`docs/perf/v87-step4-T4-darwin.json`): node 4.8 / 4.7 %, rust (mặc định R2) 3.1 / 3.1 % → −35 % (Windows cổng −26 %) ĐẠT.
+- Cold usage scan 4.29 GB: Node 1.24 CPU-s / ~135 MB, Rust 0.42 CPU-s / 6 MB → cổng ≤ 5 CPU-s ĐẠT.
+- E2E full (56 bộ, mặc định Rust): mọi bộ chạm terminal / Monitor / usage / MCP pass. `cdp.cjs`: `Page.reload` chờ `loadEventFired` + `#app` (race làm 6 bộ fail `__vue_app__` null), `macKey` đổi tổ hợp phím Windows → mac theo `workspaceKeys.ts`.
+- E2E còn fail trên mac, đều là port script (không phải core): Ctrl+click → Cmd+click (browser, tabs-cwd), clipboard (agent-map Ctrl+C, v25 Ctrl+V ảnh, links copy), v69 Ctrl+F12, v73 Ctrl+↑ (marks), v50-groups drag rail + Mission, v51-compact fake agent `.cmd`, pane-drag Alt+Shift+arrow, v25 tip text ⌘T, v27 font Consolas, project-panes picker, file-editor selection, agent-api PowerShell.

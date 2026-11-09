@@ -16,6 +16,45 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const getJson = (url) =>
   new Promise((res, rej) => http.get(url, (r) => { let b = ''; r.on('data', (d) => (b += d)); r.on('end', () => { try { res(JSON.parse(b)) } catch (e) { rej(e) } }) }).on('error', rej))
 
+const ALT = 1, CTRL = 2, META = 4, SHIFT = 8
+const ARROW = /^Arrow(Left|Right|Up|Down)$/
+const VK = { KeyT: 84, KeyD: 68, BracketRight: 221, BracketLeft: 219, Minus: 189 }
+const MAC_KEYS = [
+  [CTRL | SHIFT, 'KeyT', META, 'KeyT'],
+  [CTRL | SHIFT, 'KeyW', META, 'KeyW'],
+  [CTRL | SHIFT, 'KeyZ', META | SHIFT, 'KeyT'],
+  [CTRL | SHIFT, 'Enter', META | SHIFT, 'Enter'],
+  [CTRL | SHIFT, 'KeyA', META | SHIFT, 'KeyA'],
+  [CTRL | SHIFT, 'KeyP', META, 'KeyP'],
+  [CTRL | SHIFT, 'KeyE', META | SHIFT, 'KeyE'],
+  [CTRL | SHIFT, 'KeyO', META | SHIFT, 'KeyO'],
+  [CTRL | SHIFT, 'PageUp', META | SHIFT, 'PageUp'],
+  [CTRL | SHIFT, 'PageDown', META | SHIFT, 'PageDown'],
+  [ALT | SHIFT, 'KeyD', META, 'KeyD'],
+  [ALT | SHIFT, 'KeyF', META | SHIFT, 'KeyF'],
+  [ALT | SHIFT, 'KeyP', META | SHIFT, 'KeyP'],
+  [ALT | SHIFT, 'KeyE', META, 'KeyE'],
+  [ALT | SHIFT, 'Equal', META, 'KeyD'],
+  [ALT | SHIFT, 'Minus', META | SHIFT, 'KeyD'],
+  [CTRL, 'Tab', META | SHIFT, 'BracketRight'],
+  [CTRL | SHIFT, 'Tab', META | SHIFT, 'BracketLeft'],
+  [CTRL, 'KeyK', META, 'KeyK'],
+  [CTRL, 'ArrowUp', META, 'ArrowUp'],
+  [CTRL, 'ArrowDown', META, 'ArrowDown'],
+]
+
+function macKey(p) {
+  const mods = p.modifiers ?? 0
+  const code = p.code ?? ''
+  if (mods & META) return p
+  const hit = MAC_KEYS.find(([m, c]) => m === mods && c === code)
+  if (hit) return { ...p, modifiers: hit[2], code: hit[3], windowsVirtualKeyCode: hit[3] === code ? p.windowsVirtualKeyCode : VK[hit[3]] ?? p.windowsVirtualKeyCode, key: hit[3] === code ? p.key : hit[3].replace(/^Key/, '').replace('BracketRight', ']').replace('BracketLeft', '[') }
+  if (mods === (CTRL | ALT) && /^Digit[1-9]$/.test(code)) return { ...p, modifiers: META }
+  if (mods === (CTRL | ALT) && (code === 'ArrowLeft' || code === 'ArrowRight')) return { ...p, modifiers: code === 'ArrowLeft' ? CTRL : CTRL | SHIFT, code: 'Minus', key: '-', windowsVirtualKeyCode: 189 }
+  if ((mods === ALT || mods === (ALT | SHIFT)) && ARROW.test(code)) return { ...p, modifiers: mods | META }
+  return p
+}
+
 async function launch(opts = {}) {
   for (let i = 0; !opts.keep; i++) {
     try {
@@ -48,11 +87,31 @@ async function launch(opts = {}) {
   await new Promise((r) => ws.once('open', r))
   let id = 0
   const pending = new Map()
+  const loads = []
   ws.on('message', (raw) => {
     const m = JSON.parse(raw)
     if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) }
+    if (m.method === 'Page.loadEventFired') loads.splice(0).forEach((r) => r())
   })
-  const cmd = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
+  const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
+  await send('Page.enable')
+  const appUp = async () => {
+    const end = Date.now() + 15000
+    while (Date.now() < end) {
+      const r = await send('Runtime.evaluate', { expression: "!!document.querySelector('#app')?.__vue_app__", returnByValue: true })
+      if (r.result?.result?.value === true) return
+      await sleep(100)
+    }
+  }
+  const cmd = async (method, params = {}) => {
+    if (method === 'Input.dispatchKeyEvent' && process.platform === 'darwin') params = macKey(params)
+    if (method !== 'Page.reload') return send(method, params)
+    const loaded = new Promise((r) => { loads.push(r); setTimeout(r, 15000) })
+    const res = await send(method, params)
+    await loaded
+    await appUp()
+    return res
+  }
   const evaluate = async (expr) => {
     const r = await cmd('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })
     if (r.result?.exceptionDetails) throw new Error('eval: ' + JSON.stringify(r.result.exceptionDetails).slice(0, 400))

@@ -1,0 +1,37 @@
+{
+  "label": "v87-step4-T4",
+  "platform": "darwin",
+  "date": "2026-11-10",
+  "machine": { "os": "macOS (Darwin 27.0.0)", "cores": 10, "memGB": 24, "node": "v26.12.1", "rust": "1.99.1" },
+  "cpuUnit": "percent of one core",
+  "demo30x6": {
+    "scenario": "perf-bench --stage --scenario demo-30x6 --seed 8704, 120 s after 20 s settle; node = CCM_CORE_TRANSCRIPT=node CCM_CORE_USAGE=node, rust = defaults since WP-R2",
+    "notes": [
+      "transcript cores = the two orrery-core transcript children of the collector (tracker + usage), counted from per-pid cpuSec",
+      "perf-bench labels the core children role main on macOS (no --type); the sums below add them to the collector by hand",
+      "macOS collector is far below Windows (no PowerShell / git spawn cost), so the Windows gate 7.6 % is compared as the relative drop (Windows 10.3 -> 7.6 = -26 %)"
+    ],
+    "runs": [
+      { "mode": "node", "lap": 1, "collectorCpuAvgPct": 4.7, "collectorRssMB": 121.2, "coreTranscriptProcs": 0, "coreTranscriptCpuSec": 0, "collectorPlusCorePct": 4.8 },
+      { "mode": "node", "lap": 2, "collectorCpuAvgPct": 4.6, "collectorRssMB": 122.8, "coreTranscriptProcs": 0, "coreTranscriptCpuSec": 0, "collectorPlusCorePct": 4.7 },
+      { "mode": "rust", "lap": 1, "collectorCpuAvgPct": 1.8, "collectorRssMB": 114.6, "coreTranscriptProcs": 2, "coreTranscriptCpuSec": 1.6, "coreTranscriptRssMB": 18.5, "collectorPlusCorePct": 3.1 },
+      { "mode": "rust", "lap": 2, "collectorCpuAvgPct": 1.7, "collectorRssMB": 113.8, "coreTranscriptProcs": 2, "coreTranscriptCpuSec": 1.6, "coreTranscriptRssMB": 18.6, "collectorPlusCorePct": 3.1 }
+    ],
+    "result": "rust 3.1 % vs node 4.75 % = -35 % (gate: at least the Windows -26 %) PASS"
+  },
+  "coldUsageScan": {
+    "corpus": "scripts/usage-corpus.mjs, 4294705152 bytes, 192 files, 4096-byte lines, usage record every 100 lines (same as WP-v87-4-T1g)",
+    "node": "UsageIndex in-process (usage-corpus.mjs), fresh corpus and cache each run",
+    "rust": "orrery-core transcript, usage.scan until scan.state ready + usage.idle, fresh cache file each run; CPU from ps cputime of the child, peak RSS sampled every 25 ms",
+    "runs": [
+      { "mode": "node", "run": 1, "cpuSeconds": 1.24, "wallMs": 726, "peakRssMB": 143 },
+      { "mode": "node", "run": 2, "cpuSeconds": 1.24, "wallMs": 750, "peakRssMB": 132 },
+      { "mode": "node", "run": 3, "cpuSeconds": 1.2, "wallMs": 726, "peakRssMB": 131 },
+      { "mode": "rust", "run": 1, "cpuSeconds": 0.4, "wallMs": 701, "peakRssMB": 6 },
+      { "mode": "rust", "run": 2, "cpuSeconds": 0.42, "wallMs": 726, "peakRssMB": 6 },
+      { "mode": "rust", "run": 3, "cpuSeconds": 0.43, "wallMs": 730, "peakRssMB": 7 }
+    ],
+    "parity": "rust and node cache v4: 192 files, 10486 message ids",
+    "result": "rust median 0.42 CPU-s vs node 1.24 (-66 %), RSS 6 MB vs ~135 MB; gate <= 5 CPU-s PASS"
+  }
+}

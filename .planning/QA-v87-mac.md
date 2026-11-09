@@ -43,7 +43,7 @@ Mặc định `CCM_CORE_PTY` = `rust` (đổi 2026-11-09, chờ soak macOS). Cor
 | `CCM_CORE_TRANSCRIPT=node` | Theo dõi transcript bằng Node |
 | `CCM_CORE_PROCS=node` | Bảng process / port bằng Node (PowerShell / `ps` + `lsof`) |
 
-Bản đang chạy xem ở dòng `terminal host:` trong Diagnostics và dòng đầu `pty.log`. Cờ usage / transcript chỉ đổi mặc định ở bản sau; bản này nếu chưa mặc định Rust thì không cần đặt.
+Bản đang chạy xem ở dòng `terminal host:` trong Diagnostics và dòng đầu `pty.log`. Từ WP-R2 (2026-11-10) usage và transcript cũng mặc định Rust: dòng `core readers:` trong Diagnostics; core hỏng thì tự dùng Node và hiện notification "Usage uses Node" / "Session tracking uses Node" 1 lần.
 
 ## Log gửi lại khi lỗi
 

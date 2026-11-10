@@ -1,24 +1,16 @@
-# HANDOFF 2026-11-10 23:30 — v87 bước 6 trên Mac
-
-Thay `HANDOFF-2026-11-10-2100-v87-step6.md`. Nhật ký: `.planning/PROGRESS-2026-11-09-v87.md`.
+# HANDOFF 2026-11-11 02:30 — Orrery 4.0.0 (Tauri + Rust)
 
 ## Trạng thái
-- Mac bước 1–3 của handoff 21:00 xong, sửa 5 lỗi chỉ có trên mac (xem `.code_index/_meta.md` dòng "v87 mac").
-- Gói mới (đều không build release, không E2E; cờ mặc định ghi bên cạnh):
-  - D2 PARTIAL — `github`, `phone`, `capture`, `power`, `disk`, `agentStatus`, `resources` → `core-desk`, mặc định node (`DESK_NODE_DEFAULT`). `.planning/wp/WP-v87-6-D2-report.md`.
-  - D3b DONE — 11 kênh previewTools (format, check-run/cancel, perm-*, sensitive-deny, ctx-sources, memory-doctor, http-send/cancel, replace-files qua `regress`), mặc định rust. `WP-v87-6-D3b-report.md`.
-  - D4 PARTIAL — 23 kênh `ccm:run-*` + 5 `ccm:fwp-*`, mặc định node; chặn bật rust: layout model / telegram / runLogs / MCP run tools / settings đọc `runManager` TS → cần cầu nối từ `ccm:run-event`. `WP-v87-6-D4-report.md`.
-- Cổng gộp (main kiểm 23:30): `cargo test` 694/0, clippy sạch, desktop 1617 pass / 29 skip, typecheck 0.
-- Repo Orrery: **chưa commit** (auto mode chặn lệnh commit đầu phiên; chủ nhân chưa nói commit Orrery). jin-workflow đã commit + push (`cec3ea6`, `d0c7f76`).
+- `master` đã push (tới `33584b3`), tag `v4.0.0` đã push, CI `desktop` run 42883690014 build Windows + mac Tauri.
+- Release `layout-daemon-v1` (kit XML Preview, `--latest=false`) đã đăng; `latest` vẫn là v3.4.0.
+- Release v4.0.0 ĐÃ ĐĂNG (latest) 02:50: https://github.com/JLSoft-Together/Orrery/releases/tag/v4.0.0 — feed cũ `Claude-Code-Monitor/releases/latest` trả v4.0.0 + digest. Windows Setup 19 MB, dmg 24 / 25 MB.
+- Test: core / shell / desktop / web / typecheck sạch; E2E Electron rust 19/22 (v73, v76, run fail y hệt node = không phải Rust; v74 đã sửa `f0fd7eb`); smoke Tauri mac OK (health, WS, thoát sạch); đo perf mac `docs/perf/4.0.0-*.json`.
+- Updater 3.4.0 → 4.0.0: code tag v3.4.0 chọn đúng `Orrery-4.0.0-arm64/x64.dmg`, `Orrery-Setup-4.0.0.exe`; Portable không lên được (không có asset).
 
-## Việc tiếp
-1. Chủ nhân nói "commit" → commit Orrery theo batch (mac fixes; D2; D3b; D4), không trailer.
-2. Chủ nhân build: `cd apps/core && cargo build --release -j 4 -p core-bin -p core-bridge` + `node apps/desktop/build.mjs`.
-3. Sau build, E2E (rust rồi node), lệnh trong từng báo cáo: D1 (`v74`, `extensions`, `tier2`, `run-pane`, `v77b`), D2 (`github-accounts`, `push`, `v76`, `v77a`, `agent-api`, port 4492), D3b (`v70-tools`, `v72`–`v76`, `file-editor`), D4 (port 4511, `rg -l "ccm:run-|ccm:fwp-" apps/desktop/e2e`). Qua → bỏ module khỏi `DESK_NODE_DEFAULT`.
-4. D4b: cầu nối `ccm:run-event` → runManager TS consumers; rồi D5–D9, T2, T3 theo `PLAN-v87-step6-tauri.md`.
-5. Chủ nhân test tay `npm run desktop` (checklist `.planning/CHECKLIST-v87-step6-mac.md`).
+## Việc tiếp (chủ nhân)
+1. Cài `Orrery-Setup-4.0.0.exe` từ draft trên 1 máy Windows có 3.4: kiểm gỡ Electron cũ, giữ data, autostart, token GitHub, Telegram đăng nhập lại.
+2. Mở dmg mac xem UI (Bảng, Quỹ đạo Q2/Q3, panel lệnh, Workspace terminal); macOS hỏi Keychain "Orrery Safe Storage" 1 lần.
+3. Lỗi trên Windows → sửa nhanh, bản 4.0.1 (user 3.4 đã nhận 4.0.0 qua updater).
 
-## Ghi nhớ
-- `cargo` ở `~/.cargo/bin`; `.zshrc` đã source `~/.cargo/env` (session mới mới có). Session cũ: `export PATH="$HOME/.cargo/bin:$PATH"`.
-- Hook resource-guard đã đọc RAM bằng `vm_stat` (trước luôn báo 91–96% trên mac).
-- Vỏ Tauri phải: gọi `set_sink` của `Emitter` (event awake / disk / agent status), host `keychain.*`, `run.owner` / `run.confirm` / `run.adbUse`, `preview.confirm` kind `http`.
+## Còn treo
+- E2E `--shell=tauri` trên Windows (T3); OSC 633 trên Tauri; bash shim `--init-file`; Office khoá trên Tauri; W4 dời nút Office (chủ nhân chưa trả lời có trả về chỗ cũ không).

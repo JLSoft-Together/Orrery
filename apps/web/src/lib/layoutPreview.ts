@@ -5,6 +5,22 @@ export type BundleStatus = { state: 'missing' } | { state: 'downloading'; pct: n
 export type JdkStatus = { ok: true; home: string; version: number } | { ok: false; code: 'jdk-missing' | 'jdk-old'; detail?: string }
 export type DaemonState = 'stopped' | 'starting' | 'ready' | 'failed'
 
+export interface LayoutInstallStatus {
+  available: boolean
+  installed: boolean
+  version: string | null
+  pinnedVersion: string | null
+  sizeBytes: number
+  downloadBytes: number
+  bundle: BundleStatus
+}
+
+export interface LayoutUninstallResult {
+  ok: boolean
+  code?: string
+  status: LayoutInstallStatus
+}
+
 export interface LayoutStatus {
   bundle: BundleStatus
   jdk: JdkStatus
@@ -248,6 +264,9 @@ export function stepView(root: LayoutViewNode | null, cur: LayoutViewNode | null
 }
 
 export const layoutStatus = ():Promise<LayoutStatus | null> => desktop?.layoutStatus?.() ?? Promise.resolve(null)
+export const hasXmlInstall = typeof desktop?.layoutInstallStatus === 'function'
+export const layoutInstallStatus = (): Promise<LayoutInstallStatus | null> => desktop?.layoutInstallStatus?.() ?? Promise.resolve(null)
+export const layoutUninstall = (): Promise<LayoutUninstallResult | null> => desktop?.layoutUninstall?.() ?? Promise.resolve(null)
 export const layoutDownload = (): Promise<BundleStatus | { state: 'cancelled' } | null> => desktop?.layoutDownload?.() ?? Promise.resolve(null)
 export const layoutRender = (req: LayoutRenderRequest): Promise<LayoutRenderResult> =>
   desktop?.layoutRender?.(req) ?? Promise.resolve({ ok: false, code: 'unavailable' })

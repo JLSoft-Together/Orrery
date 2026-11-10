@@ -1,54 +1,14 @@
 // Bundles the Electron main process and the collector into stage/, the app dir electron-builder packs.
 import { spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chooseKitSource, describeZip, fetchReleaseZip, packDaemonKit, releaseZipUrl, sha256Of } from './daemon-kit.mjs'
+import { kitEmbed, readKitPin } from './daemon-kit.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const STAGE = path.join(HERE, 'stage')
 const pkg = JSON.parse(readFileSync(path.join(HERE, 'package.json'), 'utf8'))
-
-const daemonDir = path.join(HERE, '..', 'layout-daemon')
-const jar = path.join(daemonDir, 'build', 'libs', 'layout-daemon.jar')
-const skipDaemon = process.env.CCM_SKIP_DAEMON_BUILD === '1'
-
-// Java range the daemon's Gradle wrapper (8.14) runs on; raise the max with the wrapper.
-const GRADLE_JAVA = { min: 17, max: 24 }
-
-function jdkMajor(home) {
-  try {
-    const m = /^JAVA_VERSION="(?:1\.)?(\d+)/m.exec(readFileSync(path.join(home, 'release'), 'utf8'))
-    return m ? Number(m[1]) : null
-  } catch {
-    return null
-  }
-}
-
-/** JAVA_HOME when Gradle runs on it, else the newest fitting JDK of Gradle's own toolchains (~/.gradle/jdks) or the Android Studio JBR (paths as `studioJbr` in src/run/android/env.ts). */
-function gradleJavaHome(env) {
-  const fits = (home) => {
-    const v = home ? jdkMajor(home) : null
-    return v !== null && v >= GRADLE_JAVA.min && v <= GRADLE_JAVA.max ? v : null
-  }
-  if (fits(env.JAVA_HOME?.trim())) return env.JAVA_HOME
-  const toolchains = path.join(env.GRADLE_USER_HOME?.trim() || path.join(os.homedir(), '.gradle'), 'jdks')
-  const homes = existsSync(toolchains) ? readdirSync(toolchains).map((d) => path.join(toolchains, d)) : []
-  if (process.platform === 'win32') homes.push(path.win32.join(env.ProgramFiles || 'C:\\Program Files', 'Android', 'Android Studio', 'jbr'))
-  if (process.platform === 'darwin') homes.push('/Applications/Android Studio.app/Contents/jbr/Contents/Home')
-  const best = homes.map((home) => ({ home, v: fits(home) })).filter((j) => j.v !== null).sort((a, b) => b.v - a.v)[0]
-  return best?.home ?? env.JAVA_HOME
-}
-
-/** Gradle in apps/layout-daemon with a JAVA_HOME it runs on. */
-function buildDaemon(tasks) {
-  const env = { ...process.env }
-  const javaHome = gradleJavaHome(env)
-  if (javaHome) env.JAVA_HOME = javaHome
-  const gradlew = path.join(daemonDir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
-  return spawnSync(gradlew, [...tasks, '--console=plain'], { cwd: daemonDir, env, stdio: 'inherit', shell: process.platform === 'win32' }).status === 0
-}
 
 const coreDir = path.join(HERE, '..', 'core')
 const coreExe = process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core'
@@ -132,47 +92,11 @@ function buildCore(forDist) {
   }
 }
 
-const zipOnly = process.argv.includes('--daemon-zip-only')
-const dist = process.argv.includes('--dist') || zipOnly
-const zipFile = path.join(daemonDir, 'build', 'dist', `layout-daemon-${pkg.version}.zip`)
-let kit = null
-if (dist) {
-  const ci = process.env.CI === 'true'
-  const zipExists = existsSync(zipFile)
-  const reuseFlag = process.env.CCM_REUSE_DAEMON_ZIP === '1'
-  const release = !ci && !(zipExists && reuseFlag) ? await fetchReleaseZip(pkg.version) : null
-  const source = chooseKitSource({ ci, reuseFlag, zipExists, release })
-  if (source === 'release') {
-    mkdirSync(path.dirname(zipFile), { recursive: true })
-    writeFileSync(zipFile, release)
-    kit = { version: pkg.version, size: release.length, sha256: sha256Of(release) }
-    console.log(`build: using the layout daemon zip already published at ${releaseZipUrl(pkg.version)}`)
-  } else if (source === 'local') {
-    if (!skipDaemon && !buildDaemon(['shadowJar', 'stageLooseKit'])) {
-      console.error('build: layout-daemon jar / loose kit build failed (needs a JDK 17–24 in JAVA_HOME or ~/.gradle/jdks; Gradle 8.14 does not run on Java 25)')
-      process.exit(1)
-    }
-    if (!existsSync(jar)) {
-      console.error(`build: ${jar} is missing; run "./gradlew shadowJar" in apps/layout-daemon with JAVA_HOME = JDK 17+`)
-      process.exit(1)
-    }
-    if (!existsSync(path.join(daemonDir, 'build', 'loose-kit', 'kit.json'))) {
-      console.error(`build: the loose layout kit is missing; run "./gradlew stageLooseKit" in apps/layout-daemon`)
-      process.exit(1)
-    }
-    kit = { version: pkg.version, ...packDaemonKit({ jar, kitDir: path.join(daemonDir, 'build', 'loose-kit'), out: zipFile }) }
-    if (!ci) console.warn(`build: WARNING no layout daemon zip on release v${pkg.version}; the installer pins this local zip, upload exactly ${zipFile} (sha256 ${kit.sha256}) to release v${pkg.version} or XML Preview will fail with daemon-sha256-mismatch`)
-  } else {
-    kit = { version: pkg.version, ...describeZip(zipFile) }
-  }
-  console.log(`build: layout-daemon-${pkg.version}.zip ${kit.size} bytes sha256 ${kit.sha256}`)
-  if (zipOnly) process.exit(0)
-} else if (!skipDaemon) {
-  // Dev runs the jar, loose kit and layoutlib-dist straight from build/ (main.ts); rebuilt only when one is gone.
-  const built = [jar, path.join(daemonDir, 'build', 'loose-kit', 'kit.json'), path.join(daemonDir, 'build', 'layoutlib-dist')].every((p) => existsSync(p))
-  if (!built && !buildDaemon(['assemble'])) {
-    console.warn('build: layout-daemon build failed, the XML preview stays off (needs a JDK 17–24 in JAVA_HOME or ~/.gradle/jdks; Gradle 8.14 does not run on Java 25)')
-  }
+const dist = process.argv.includes('--dist')
+const kit = kitEmbed(readKitPin())
+if (dist && !kit) {
+  console.error('build: apps/layout-daemon/kit.json is not pinned yet (placeholder sha256); run "node scripts/kit-release.mjs" once and publish the kit before a dist build')
+  process.exit(1)
 }
 
 buildCore(dist)

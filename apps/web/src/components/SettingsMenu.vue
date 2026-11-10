@@ -8,6 +8,7 @@ import { isMac } from '../lib/platform'
 import { hasAgentData } from '../lib/agentData'
 import { hasBackup } from '../lib/backup'
 import { hasAwake, hasCapture } from '../lib/capture'
+import { hasXmlInstall } from '../lib/layoutPreview'
 import { hasDisk } from '../lib/buildClean'
 import { desktop, hasDeepSeek, hasRun, hasTerminals } from '../lib/desktop'
 import { hasGitHub } from '../lib/github'
@@ -144,6 +145,7 @@ const env = computed<SettingsEnv>(() => ({
   toast: extras.toast === 'on' || extras.toast === 'off',
   notifyData: Boolean(extras.notify),
   deepseek: hasDeepSeek,
+  xmlPreview: hasXmlInstall,
 }))
 const pages = computed(() => SETTINGS_PAGES.filter((p) => pageVisible(p, env.value)))
 const allEntries = computed(() => entries(isMac))

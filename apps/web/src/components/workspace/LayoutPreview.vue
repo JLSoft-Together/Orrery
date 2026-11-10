@@ -736,15 +736,6 @@ onBeforeUnmount(() => {
         <p class="flex max-w-sm items-start gap-2 text-sm"><CircleAlert :size="16" class="mt-0.5 shrink-0 text-st-error" aria-hidden="true" />{{ status ? t('layout.setup.jarMissing') : t('layout.error.unavailable') }}</p>
       </div>
 
-      <div v-else-if="!status.jdk.ok" class="grid size-full place-items-center p-6" data-layout-setup="jdk">
-        <div class="flex max-w-sm flex-col items-center gap-2 text-center">
-          <Coffee :size="26" aria-hidden="true" />
-          <p class="text-sm text-well-ink">{{ status.jdk.code === 'jdk-old' ? t('layout.setup.jdkOld', { version: status.jdk.detail ?? '?' }) : t('layout.setup.jdkMissing') }}</p>
-          <p class="text-xs text-well-ink">{{ t('layout.setup.jdkHint') }}</p>
-          <button type="button" class="ccm-btn mt-1" @click="chooseJdk">{{ t('layout.setup.chooseJdk') }}</button>
-        </div>
-      </div>
-
       <div v-else-if="status.bundle.state !== 'ready'" class="grid size-full place-items-center p-6" data-layout-setup="bundle">
         <div class="flex w-full max-w-sm flex-col items-center gap-2 text-center">
           <Download :size="26" aria-hidden="true" />
@@ -771,6 +762,15 @@ onBeforeUnmount(() => {
               {{ status.bundle.state === 'error' ? t('layout.setup.retry') : t('layout.setup.download') }}
             </button>
           </template>
+        </div>
+      </div>
+
+      <div v-else-if="!status.jdk.ok" class="grid size-full place-items-center p-6" data-layout-setup="jdk">
+        <div class="flex max-w-sm flex-col items-center gap-2 text-center">
+          <Coffee :size="26" aria-hidden="true" />
+          <p class="text-sm text-well-ink">{{ status.jdk.code === 'jdk-old' ? t('layout.setup.jdkOld', { version: status.jdk.detail ?? '?' }) : t('layout.setup.jdkMissing') }}</p>
+          <p class="text-xs text-well-ink">{{ t('layout.setup.jdkHint') }}</p>
+          <button type="button" class="ccm-btn mt-1" @click="chooseJdk">{{ t('layout.setup.chooseJdk') }}</button>
         </div>
       </div>
 

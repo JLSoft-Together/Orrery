@@ -46,6 +46,7 @@ export interface SettingsEnv {
   toast: boolean
   notifyData: boolean
   deepseek: boolean
+  xmlPreview: boolean
 }
 
 export interface SettingsEntry {
@@ -127,6 +128,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
 
   { page: 'integrations', id: 'statusLine', labelKey: 'limits.setupTitle', hintKey: 'limits.setupHint', needs: 'statusLine' },
   { page: 'integrations', id: 'run', labelKey: 'run.sdk.section', needs: 'run' },
+  { page: 'integrations', id: 'xmlPreview', labelKey: 'xmlPreview.section', hintKey: 'xmlPreview.hint', needs: 'xmlPreview' },
   { page: 'integrations', id: 'capture', labelKey: 'capture.section', hintKey: 'capture.folderHint', needs: 'capture' },
 
   { page: 'deepseek', id: 'dsStatus', labelKey: 'deepseekSetup.status', hintKey: 'deepseekSetup.intro', needs: 'deepseek' },

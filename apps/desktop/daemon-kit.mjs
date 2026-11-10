@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { crc32, deflateRawSync } from 'node:zlib'
 
 const DOS_TIME = 0
@@ -83,24 +84,31 @@ export function describeZip(file) {
   return { size: buf.length, sha256: sha256Of(buf) }
 }
 
+export const KIT_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'layout-daemon', 'kit.json')
 export const RELEASE_BASE = 'https://github.com/JLSoft-Together/Orrery/releases/download'
 
-export function releaseZipUrl(version) {
-  return `${RELEASE_BASE}/v${version}/layout-daemon-${version}.zip`
+export function kitNames(version) {
+  const tag = `layout-daemon-v${version}`
+  const asset = `layout-daemon-${version}.zip`
+  return { tag, asset, url: `${RELEASE_BASE}/${tag}/${asset}` }
 }
 
-export async function fetchReleaseZip(version, fetchImpl = fetch) {
-  try {
-    const res = await fetchImpl(releaseZipUrl(version), { signal: AbortSignal.timeout(30_000) })
-    if (!res.ok) return null
-    return Buffer.from(await res.arrayBuffer())
-  } catch {
-    return null
-  }
+export function isPinned(pin) {
+  return Boolean(pin) && typeof pin.version === 'string' && pin.version !== '' && Number.isInteger(pin.size) && pin.size > 0 && /^[0-9a-f]{64}$/.test(pin.sha256 ?? '')
 }
 
-export function chooseKitSource({ ci, reuseFlag, zipExists, release }) {
-  if (zipExists && (ci || reuseFlag)) return 'reuse'
-  if (!ci && release) return 'release'
-  return 'local'
+export function readKitPin(file = KIT_FILE) {
+  return JSON.parse(readFileSync(file, 'utf8'))
+}
+
+export function kitEmbed(pin) {
+  return isPinned(pin) ? { version: pin.version, size: pin.size, sha256: pin.sha256, url: pin.url } : null
+}
+
+export function makeKitPin(version, size, sha256) {
+  return { version: String(version), ...kitNames(version), size, sha256 }
+}
+
+export function writeKitPin(pin, file = KIT_FILE) {
+  writeFileSync(file, `${JSON.stringify(pin, null, 2)}\n`)
 }

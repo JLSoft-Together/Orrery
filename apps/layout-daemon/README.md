@@ -107,5 +107,15 @@ Sources: variant API (`androidComponents.onVariants`: namespace, applicationId, 
 
 ## Distribution (v87 step 1b)
 
-Packaged Orrery does not carry `layout-daemon.jar` or the loose kit. `apps/desktop/build.mjs --dist` packs both into `apps/layout-daemon/build/dist/layout-daemon-<version>.zip` and embeds its size + sha256 into `main.cjs`; the app downloads that zip from the GitHub release `v<version>` on the first XML Preview use (`<dataDir>/layoutlib/daemon/<version>/`).
-Every release must therefore carry the `layout-daemon-<version>.zip` asset (the `desktop` workflow job `daemon` builds it once, `release.yml` publishes `dist/*.zip`); without it XML Preview fails with `daemon-http-404`.
+Packaged Orrery does not carry `layout-daemon.jar` or the loose kit. The kit has its own version (independent of the app version) and its pin (version, tag, asset, url, size, sha256) is committed in `apps/layout-daemon/kit.json`; `build.mjs` and the Tauri shell embed that file, so no app build needs Gradle or Java.
+
+Publishing a kit (once per kit change; needs a JDK 17-24):
+
+```
+node scripts/kit-release.mjs --version 2   # gradle shadowJar stageLooseKit, packs build/dist/layout-daemon-2.zip, rewrites kit.json
+gh release create layout-daemon-v2 apps/layout-daemon/build/dist/layout-daemon-2.zip ...   # the script prints the exact command
+```
+
+Then commit `kit.json`. The `layout-daemon` workflow does the same from CI (dispatch with `publish`). While `kit.json` still holds the placeholder sha256, dist builds refuse to run and the app shows "XML Preview is not published for this build".
+
+The app never downloads the kit by itself: Settings, Integrations, XML Preview (or the install button in the preview pane) asks, then fetches `layout-daemon-<n>.zip` into `<dataDir>/layoutlib/daemon/<n>/` together with layoutlib (`<dataDir>/layoutlib/16.2.3/`). A kit installed by an older app (folder named after the app version) is not the pinned kit: it counts as not installed, is removed by the next install, and Remove in Settings deletes it.

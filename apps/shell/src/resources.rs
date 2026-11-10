@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
-pub const KIT_RELEASE_BASE: &str = "https://github.com/JLSoft-Together/Orrery/releases/download";
+const PINNED_KIT: &str = include_str!("../../layout-daemon/kit.json");
 
 pub fn resource_dirs(exe_dir: &Path) -> Vec<PathBuf> {
     let mut dirs = vec![exe_dir.to_path_buf()];
@@ -18,10 +18,10 @@ pub fn find_resource(exe_dir: Option<&Path>, rel: &str) -> Option<PathBuf> {
 
 pub fn embedded_kit(raw: Option<&str>) -> Option<Value> {
     let v: Value = serde_json::from_str(raw?.trim()).ok()?;
-    let version = v.get("version")?.as_str()?.to_owned();
-    let size = v.get("size")?.as_u64()?;
-    let sha = v.get("sha256")?.as_str()?.to_owned();
-    let url = format!("{KIT_RELEASE_BASE}/v{version}/layout-daemon-{version}.zip");
+    let version = v.get("version")?.as_str().filter(|s| !s.is_empty())?.to_owned();
+    let size = v.get("size")?.as_u64().filter(|n| *n > 0)?;
+    let sha = v.get("sha256")?.as_str().filter(|s| s.len() == 64 && s.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)))?.to_owned();
+    let url = v.get("url")?.as_str()?.to_owned();
     Some(json!({ "version": version, "size": size, "sha256": sha, "url": url }))
 }
 
@@ -49,7 +49,8 @@ pub fn layout_env(data_dir: &Path, exe_dir: Option<&Path>, repo: &Path, kit: Opt
 }
 
 pub fn apply_layout_env(data_dir: &Path, exe_dir: Option<&Path>, repo: &Path) {
-    let kit = embedded_kit(option_env!("ORRERY_DAEMON_KIT"));
+    let dev_built = repo.join("apps").join("layout-daemon").join("build").join("libs").join("layout-daemon.jar").exists();
+    let kit = if dev_built { None } else { embedded_kit(Some(PINNED_KIT)) };
     for (k, v) in layout_env(data_dir, exe_dir, repo, kit) {
         if std::env::var_os(k).is_none() {
             std::env::set_var(k, v);
@@ -60,6 +61,10 @@ pub fn apply_layout_env(data_dir: &Path, exe_dir: Option<&Path>, repo: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn pin(version: &str) -> String {
+        format!(r#"{{"version":"{version}","size":12,"sha256":"{}","url":"https://github.com/JLSoft-Together/Orrery/releases/download/layout-daemon-v{version}/layout-daemon-{version}.zip"}}"#, "ab".repeat(32))
+    }
 
     #[test]
     fn a_mac_bundle_reads_resources_next_to_macos() {
@@ -72,18 +77,19 @@ mod tests {
 
     #[test]
     fn the_embedded_kit_gets_its_release_url() {
-        let kit = embedded_kit(Some(r#"{"version":"3.5.0","size":12,"sha256":"ab"}"#)).unwrap();
-        assert_eq!(kit["url"], "https://github.com/JLSoft-Together/Orrery/releases/download/v3.5.0/layout-daemon-3.5.0.zip");
+        let kit = embedded_kit(Some(&pin("1"))).unwrap();
+        assert_eq!(kit["url"], "https://github.com/JLSoft-Together/Orrery/releases/download/layout-daemon-v1/layout-daemon-1.zip");
         assert!(embedded_kit(Some("{}")).is_none());
         assert!(embedded_kit(None).is_none());
+        assert!(embedded_kit(Some(r#"{"version":"1","size":0,"sha256":"PLACEHOLDER","url":"https://github.com/x"}"#)).is_none());
     }
 
     #[test]
     fn a_packaged_build_unpacks_the_kit_in_the_data_dir() {
-        let kit = embedded_kit(Some(r#"{"version":"3.5.0","size":12,"sha256":"ab"}"#));
+        let kit = embedded_kit(Some(&pin("3")));
         let env = layout_env(Path::new("/d"), None, Path::new("/repo"), kit);
         let get = |k: &str| env.iter().find(|(n, _)| *n == k).map(|(_, v)| PathBuf::from(v));
-        assert_eq!(get("CCM_LAYOUT_JAR"), Some(Path::new("/d/layoutlib/daemon/3.5.0").join("layout-daemon.jar")));
+        assert_eq!(get("CCM_LAYOUT_JAR"), Some(Path::new("/d/layoutlib/daemon/3").join("layout-daemon.jar")));
         assert_eq!(get("CCM_LAYOUT_OVERRIDE"), Some(PathBuf::new()));
         let dev = layout_env(Path::new("/d"), None, Path::new("/repo"), None);
         assert!(dev.iter().any(|(k, v)| *k == "CCM_LAYOUT_OVERRIDE" && v.ends_with("layoutlib-dist")));

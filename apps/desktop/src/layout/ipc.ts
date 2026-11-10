@@ -9,6 +9,7 @@ import type { PreviewServer } from '../preview/server'
 import { LayoutDaemon, LayoutError, type DaemonDeps, type RenderParams } from './daemon'
 import { LayoutlibBundle, type KitSpec } from './download'
 import { layoutHosts } from './deskHosts'
+import { installStatus, uninstallBundle } from './install'
 import { findJdk } from './jdk'
 import { LayoutModelService, type ModelDaemon, type ModelServiceDeps } from './model'
 import { LAYOUTLIB_API_LEVEL } from './types'
@@ -62,7 +63,7 @@ export interface LayoutIpc {
   onDeskEvent: (payload: unknown) => void
 }
 
-const CHANNELS = ['ccm:layout-status', 'ccm:layout-download', 'ccm:layout-render', 'ccm:layout-model-status', 'ccm:layout-model-refresh', 'ccm:layout-model-pick', 'ccm:layout-warmup', 'ccm:drawable-render']
+const CHANNELS = ['ccm:layout-status', 'ccm:layout-download', 'ccm:layout-install-status', 'ccm:layout-uninstall', 'ccm:layout-render', 'ccm:layout-model-status', 'ccm:layout-model-refresh', 'ccm:layout-model-pick', 'ccm:layout-warmup', 'ccm:drawable-render']
 const RENDER_CACHE = 32
 const CLASS_MISSING_RE = /class not found|NoClassDefFoundError/i
 const MAX_SLOT = 3
@@ -382,6 +383,18 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
     if (!(await deps.confirm(event, { bytes: bundle.downloadBytes, host: bundle.hosts ?? 'dl.google.com' }))) return { state: 'cancelled' }
     // Progress goes out as ccm:layout-event; the invoke resolves when the bundle is ready or failed.
     return bundle.download()
+  })
+
+  handle('ccm:layout-install-status', async (event) => (isAppFrame(event) ? installStatus(bundle) : null))
+
+  handle('ccm:layout-uninstall', async (event) => {
+    if (!isAppFrame(event)) return null
+    const res = await uninstallBundle(bundle, async () => {
+      model?.killNow()
+      await daemon.stop()
+    })
+    await fs.mkdir(snapDir, { recursive: true }).catch(() => undefined)
+    return res
   })
 
   handle('ccm:layout-render', async (event, req: unknown): Promise<LayoutRenderResult> => {

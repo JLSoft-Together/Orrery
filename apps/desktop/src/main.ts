@@ -1486,8 +1486,13 @@ function setupBuildClean(): void {
   disposeBuildClean = registerBuildCleanIpc({ ipcMain, isAppFrame, service, desk: deskRouter ? { router: deskRouter, deps } : undefined })
 }
 
+function layoutKitSpec(): ReturnType<typeof embeddedKit> {
+  const devBuilt = !app.isPackaged && existsSync(path.join(REPO, 'apps/layout-daemon/build/libs/layout-daemon.jar'))
+  return devBuilt ? null : embeddedKit()
+}
+
 function layoutDeskEnv(): NodeJS.ProcessEnv {
-  const kit = app.isPackaged ? embeddedKit() : null
+  const kit = layoutKitSpec()
   const kitDir = kit ? kitDirFor(path.join(DATA_DIR, 'layoutlib'), kit.version) : null
   return {
     CCM_LAYOUT_JAR: kitDir ? path.join(kitDir, 'layout-daemon.jar') : resource('layout-daemon/layout-daemon.jar', 'apps/layout-daemon/build/libs/layout-daemon.jar'),
@@ -2225,9 +2230,9 @@ async function ready(): Promise<void> {
       return findSignTools({ jdkSetting: s.jdk, sdkSetting: s.androidSdk, env: process.env, platform: process.platform, home: os.homedir() })
     },
   })
-  const layoutKit = app.isPackaged ? embeddedKit() : null
-  if (app.isPackaged && !layoutKit) {
-    const line = 'packaged build without an embedded layout daemon kit (__DAEMON_KIT__ missing): looking for resources/layout-daemon, XML Preview may be unavailable'
+  const layoutKit = layoutKitSpec()
+  if (!layoutKit) {
+    const line = 'no layout daemon kit pinned (apps/layout-daemon/kit.json is a placeholder) and no local daemon build: XML Preview is unavailable'
     console.warn(line)
     try {
       appendFileSync(path.join(app.getPath('logs'), 'layout.log'), `${new Date().toISOString()} [warn] ${line}\n`)

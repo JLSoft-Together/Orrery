@@ -14,34 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  daemon:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: gradle
-      - name: Tag matches package version
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          version=$(node -p "require('./apps/desktop/package.json').version")
-          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match apps/desktop version v$version"
-            exit 1
-          fi
-      - run: node apps/desktop/build.mjs --daemon-zip-only
-      - uses: actions/upload-artifact@v4
-        with:
-          name: layout-daemon
-          path: apps/layout-daemon/build/dist/layout-daemon-*.zip
-          if-no-files-found: error
   build:
-    needs: daemon
     strategy:
       fail-fast: false
       matrix:
@@ -63,10 +36,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - uses: actions/download-artifact@v4
-        with:
-          name: layout-daemon
-          path: apps/layout-daemon/build/dist
+      - name: Tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match apps/desktop version v$version"
+            exit 1
+          fi
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}

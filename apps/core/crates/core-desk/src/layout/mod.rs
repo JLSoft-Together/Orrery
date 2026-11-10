@@ -4,6 +4,7 @@ pub mod daemon;
 pub mod download;
 pub mod gradle_cache;
 pub mod gradle_graph;
+pub mod install;
 pub mod ipc;
 pub mod ipc_render;
 pub mod jdk;

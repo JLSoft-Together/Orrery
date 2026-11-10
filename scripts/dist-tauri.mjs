@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { kitEmbed, readKitPin } from '../apps/desktop/daemon-kit.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SHELL = path.join(ROOT, 'apps', 'shell')
@@ -49,15 +49,13 @@ function run(cmd, args, opts = {}) {
   }
 }
 
-function daemonKit(version) {
-  const zip = path.join(ROOT, 'apps', 'layout-daemon', 'build', 'dist', `layout-daemon-${version}.zip`)
-  if (!existsSync(zip)) run('node', [path.join(ROOT, 'apps', 'desktop', 'build.mjs'), '--daemon-zip-only'])
-  if (!existsSync(zip)) {
-    console.error(`dist-tauri: ${zip} is missing`)
+export function daemonKit(pin = readKitPin()) {
+  const kit = kitEmbed(pin)
+  if (!kit) {
+    console.error('dist-tauri: apps/layout-daemon/kit.json is not pinned yet (placeholder sha256); run "node scripts/kit-release.mjs" once and publish the kit first')
     process.exit(1)
   }
-  const bytes = readFileSync(zip)
-  return { version, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }
+  return kit
 }
 
 function stageSidecars(triple) {
@@ -89,14 +87,14 @@ function main() {
   const j = jobs(process.env, os.cpus().length)
   run('npm', ['run', 'build', '-w', '@ccm/web'], { cwd: ROOT })
   run('node', [path.join(ROOT, 'scripts', 'gen-desk-shim.mjs')])
-  const kit = daemonKit(version)
+  daemonKit()
   rmSync(OUT, { recursive: true, force: true })
   mkdirSync(OUT, { recursive: true })
   for (const step of TARGETS[which]) {
     run('rustup', ['target', 'add', step.triple])
     run('cargo', ['build', '--release', '--locked', '-p', 'core-bin', '-p', 'core-bridge', '-j', j, '--target', step.triple], { cwd: CORE })
     stageSidecars(step.triple)
-    const env = { ...process.env, ORRERY_DAEMON_KIT: JSON.stringify(kit), CARGO_BUILD_JOBS: j }
+    const env = { ...process.env, CARGO_BUILD_JOBS: j }
     run('npx', ['--yes', TAURI_CLI, 'build', '--config', 'tauri.release.json', '--target', step.triple, '--bundles', step.bundle, '--ci'], { cwd: SHELL, env })
     const built = findBundle(step.triple, step.bundle)
     if (!built) {

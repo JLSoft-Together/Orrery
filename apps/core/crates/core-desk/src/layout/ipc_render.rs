@@ -1,3 +1,4 @@
+use super::install;
 use super::ipc::{Cached, LazySvc, Svc, Warm, WARM_PEEK};
 use super::cache::render_key;
 use super::xml::{clean_device, clean_diagnostics, clean_locale, clean_scale, clean_swatches, clean_text, clean_theme, clean_tree, drawable_device, drawable_kind, is_layout_target, num_or, num_or_zero, MAX_XML};
@@ -243,6 +244,15 @@ fn download(ctx: &Ctx, svc: &Svc) -> Value {
     svc.bundle.download()
 }
 
+fn uninstall(svc: &Svc) -> Value {
+    let res = install::uninstall(&svc.bundle, || {
+        svc.model.kill_now();
+        svc.daemon.stop();
+    });
+    let _ = std::fs::create_dir_all(&svc.snap_dir);
+    res
+}
+
 fn stage_wait(stage: Option<&str>) -> i64 {
     match stage {
         Some("jvm") => 8,
@@ -330,6 +340,10 @@ pub fn register(desk: &mut Desk, lazy: Arc<LazySvc>) {
     desk.on(MODULE, "ccm:layout-status", move |_, _| Ok(l.get().status()));
     let l = lazy.clone();
     desk.on(MODULE, "ccm:layout-download", move |ctx, _| Ok(download(ctx, l.get())));
+    let l = lazy.clone();
+    desk.on(MODULE, "ccm:layout-install-status", move |_, _| Ok(install::install_status(&l.get().bundle)));
+    let l = lazy.clone();
+    desk.on(MODULE, "ccm:layout-uninstall", move |_, _| Ok(uninstall(l.get())));
     let l = lazy.clone();
     desk.on(MODULE, "ccm:layout-render", move |ctx, args| Ok(render(ctx, l.get(), args)));
     let l = lazy.clone();

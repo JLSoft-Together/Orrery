@@ -230,6 +230,18 @@ fn bundle_downloads_the_kit_and_checks_the_hash() {
     let ev = events.lock().unwrap();
     assert!(ev.iter().any(|e| e["state"] == json!("downloading") && e["pct"] == json!(0)));
     assert_eq!(ev.last().unwrap()["state"], json!("ready"));
+    drop(ev);
+    let st = core_desk::layout::install::install_status(&good);
+    assert_eq!((st["available"].clone(), st["installed"].clone(), st["version"].clone(), st["pinnedVersion"].clone(), st["downloadBytes"].clone()), (json!(true), json!(true), json!("9.9.9"), json!("9.9.9"), json!(0)));
+    assert!(st["sizeBytes"].as_u64().unwrap() > 0);
+    let stopped = std::cell::Cell::new(false);
+    let res = core_desk::layout::install::uninstall(&good, || stopped.set(true));
+    assert!(stopped.get());
+    assert_eq!((res["ok"].clone(), res["status"]["installed"].clone(), res["status"]["version"].clone(), res["status"]["sizeBytes"].clone()), (json!(true), json!(false), Value::Null, json!(0)));
+    assert!(!dir.join("base").exists());
+    assert_eq!(good.status(), json!({"state": "missing"}));
+    assert_eq!(events.lock().unwrap().last().unwrap()["state"], json!("missing"));
+    assert_eq!(core_desk::layout::install::uninstall(&good, || {})["ok"], json!(true));
 }
 
 struct Host {
@@ -345,6 +357,9 @@ fn handlers_gate_render_cache_and_report_status() {
     assert_eq!(call(&desk, &host, "ccm:layout-warmup", json!([{"file": f}])), json!({"ok": true}));
     assert_eq!(call(&desk, &host, "ccm:layout-warmup", json!([{"file": "/etc/hosts"}])), json!({"ok": false, "code": "denied"}));
     assert_eq!(call(&desk, &host, "ccm:layout-download", Value::Null)["state"], json!("ready"));
+    let inst = call(&desk, &host, "ccm:layout-install-status", Value::Null);
+    assert_eq!((inst["available"].clone(), inst["installed"].clone()), (json!(true), json!(true)));
+    assert_eq!(call(&desk, &host, "ccm:layout-uninstall", Value::Null)["ok"], json!(true));
 
     let req = call(&desk, &host, "desk:layout-request", json!(["project/load", {"a": 1}, 5000]));
     assert_eq!(req["value"]["echo"], json!({"a": 1}));

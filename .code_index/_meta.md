@@ -2,6 +2,7 @@
 
 One line per change: what, then the key file / symbol. Details live in `collector.md`, `web.md`, `protocol.md`, `desktop.md`, the `.planning/PLAN-v*.md` plans and `docs/*-integration.md`. Paths are relative to the package (`apps/web/src`, `apps/collector/src`, `apps/desktop/src`) unless they start at the repo root. Cleaned 2026-10-17: entries for removed code (`.bat` launchers, `scripts/launch.mjs`, collector borrowing / takeover, PWA, `SessionView.vue`, `AgentContextMenu.vue`, `AgentNode.vue`, `spikes/`) were dropped; full history is in git.
 
+- 2026-11-11 WP-v88-kit: XML Preview opt-in, kit version riêng: `apps/layout-daemon/kit.json`, `scripts/kit-release.mjs`, `apps/desktop/daemon-kit.mjs` (`readKitPin`), build app không Gradle; `ccm:layout-install-status|uninstall` (`layout/install.ts`, `core-desk/src/layout/install.rs`), `components/XmlPreviewSettings.vue`, CI `layout-daemon.yml`.
 - 2026-11-09 — T0 deterministic demo + benchmark: `scripts/demo-fixture.mjs` `--seed` / `--record`; `scripts/perf-bench.mjs` collector Inspector profile; `scripts/usage-corpus.mjs` cold/warm `UsageIndex` corpus; results `docs/perf/v87-step4-baseline-win32.json`.
 
 - 2026-11-10 WP-v87-6-D5b: port nốt devices sang `core-desk`: `devices/{adb_io,recorder,devfs,files,perf,appdata,prefs,sqlguard,sqlwal,ipc_ext}.rs` (rec / devfs / perf / appdata, rusqlite bundled), TS `devices/{filesIpc,perfIpc,appDataIpc,ipc,deskHosts}.ts` + `main.ts` dùng `deskHandle`; twin `test/desk-devices-ext.twin.test.ts`.

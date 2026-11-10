@@ -5,6 +5,7 @@ import { hasDisk } from '../lib/buildClean'
 import { hasAwake, hasCapture } from '../lib/capture'
 import { desktop, hasDeepSeek, hasRun, hasTerminals } from '../lib/desktop'
 import { hasGitHub } from '../lib/github'
+import { hasXmlInstall } from '../lib/layoutPreview'
 import { hasPhone } from '../lib/phone'
 import { hasTelegram } from '../lib/telegram'
 import { isMac } from '../lib/platform'
@@ -36,5 +37,6 @@ export function useSettingsEnv() {
     toast: extras.toast === 'on' || extras.toast === 'off',
     notifyData: Boolean(extras.notify),
     deepseek: hasDeepSeek,
+    xmlPreview: hasXmlInstall,
   }))
 }

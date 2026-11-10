@@ -240,8 +240,8 @@ onBeforeUnmount(() => {
       </div>
       <div v-else-if="!ready" class="grid size-full place-items-center p-6">
         <div class="flex max-w-sm flex-col items-center gap-2 text-center text-sm">
-          <p class="flex items-start gap-2"><CircleAlert :size="16" class="mt-0.5 shrink-0 text-st-error" aria-hidden="true" />{{ !status?.jar ? t('layout.setup.jarMissing') : !status.jdk.ok ? t('layout.setup.jdkMissing') : t('layout.drawable.setup') }}</p>
-          <button v-if="status?.jar && status.jdk.ok" type="button" class="ccm-btn-primary" :disabled="downloading" @click="download">{{ t('layout.setup.download') }}</button>
+          <p class="flex items-start gap-2"><CircleAlert :size="16" class="mt-0.5 shrink-0 text-st-error" aria-hidden="true" />{{ !status?.jar ? t('layout.setup.jarMissing') : status.bundle.state !== 'ready' ? t('layout.drawable.setup') : t('layout.setup.jdkMissing') }}</p>
+          <button v-if="status?.jar && status.bundle.state !== 'ready'" type="button" class="ccm-btn-primary" :disabled="downloading" data-layout-download @click="download">{{ t('layout.setup.download') }}</button>
         </div>
       </div>
       <div v-else-if="ok && ok.kind === 'color'" class="flex min-h-full flex-wrap content-center justify-center gap-3 p-4" role="list" :aria-label="t('layout.drawable.swatches')" data-drawable-swatches>

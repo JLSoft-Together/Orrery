@@ -33,15 +33,5 @@ jobs:
           TAG: ${{ inputs.tag }}
           NOTES: ${{ inputs.notes }}
         run: |
-          shopt -s nullglob
-          zips=(dist/layout-daemon-*.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "::error::expected exactly one dist/layout-daemon-*.zip, found ${#zips[@]}"
-            exit 1
-          fi
-          if [ "${zips[0]}" != "dist/layout-daemon-${TAG#v}.zip" ]; then
-            echo "::error::${zips[0]} does not match tag $TAG (the run was built from another package version)"
-            exit 1
-          fi
           printf '%s\n' "$NOTES" > notes.md
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Orrery $TAG" --notes-file notes.md dist/*.exe dist/*.dmg dist/*.zip
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Orrery $TAG" --notes-file notes.md dist/*.exe dist/*.dmg

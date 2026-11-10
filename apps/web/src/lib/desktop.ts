@@ -25,7 +25,7 @@ import type {
   ToolchainReport,
 } from '@ccm/shared'
 import type { FileView, PreviewChange, PreviewTarget } from './preview'
-import type { BundleStatus, LayoutEvent, LayoutModelInfo, LayoutRenderRequest, LayoutRenderResult, LayoutStatus } from './layoutPreview'
+import type { BundleStatus, LayoutEvent, LayoutInstallStatus, LayoutModelInfo, LayoutRenderRequest, LayoutRenderResult, LayoutStatus, LayoutUninstallResult } from './layoutPreview'
 
 /** Chord pressed inside a browser pane's <webview>, forwarded by the main process (fields of KeyboardEventInit). */
 export interface ForwardedKey {
@@ -200,6 +200,9 @@ interface DesktopBridge {
   layoutStatus?: () => Promise<LayoutStatus | null>
   /** Native consent first; resolves when the bundle is ready / failed, progress via onLayoutEvent. */
   layoutDownload?: () => Promise<BundleStatus | { state: 'cancelled' } | null>
+  /** XML Preview install state (kit + layoutlib on disk, pinned kit version, bytes); install = layoutDownload, remove = layoutUninstall. */
+  layoutInstallStatus?: () => Promise<LayoutInstallStatus | null>
+  layoutUninstall?: () => Promise<LayoutUninstallResult | null>
   /** Main reads the file (res/layout* only) and renders it; the PNG comes back as a preview-server URL. */
   layoutRender?: (req: LayoutRenderRequest) => Promise<LayoutRenderResult>
   /** Project model (Gradle init script) state for the layout's app module; refresh runs the read-only task now. */

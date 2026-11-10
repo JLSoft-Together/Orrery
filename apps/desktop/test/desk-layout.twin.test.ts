@@ -186,6 +186,14 @@ describe.skipIf(process.env.CCM_DESK_LAYOUT?.trim() === 'node' || !HAVE_DESK || 
     expect(await both(nodeMissing, rustMissing, 'ccm:layout-warmup', APP, { file: layout })).toEqual({ ok: false, code: 'bundle-missing' })
   })
 
+  it('install status and uninstall answer the same, gated to the app frame', async () => {
+    expect(await go('ccm:layout-install-status', APP)).toMatchObject({ available: true, installed: true, version: null, pinnedVersion: null, downloadBytes: 0, bundle: { state: 'ready', dir: ll } })
+    expect(await go('ccm:layout-install-status', GUEST)).toBeNull()
+    expect(await both(nodeMissing, rustMissing, 'ccm:layout-install-status', APP)).toMatchObject({ available: false, installed: false, sizeBytes: 0, bundle: { state: 'missing' } })
+    expect(await both(nodeMissing, rustMissing, 'ccm:layout-uninstall', APP)).toMatchObject({ ok: true, status: { installed: false } })
+    expect(await go('ccm:layout-uninstall', GUEST)).toBeNull()
+  })
+
   it('render refuses bad requests the same way', async () => {
     expect(await go('ccm:layout-render', GUEST, { file: layout, device: DEVICE })).toEqual({ ok: false, code: 'denied' })
     expect(await go('ccm:layout-render', APP, { file: path.join(proj, 'notes.txt'), device: DEVICE })).toEqual({ ok: false, code: 'denied' })

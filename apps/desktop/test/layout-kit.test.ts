@@ -5,7 +5,9 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { LayoutlibBundle, compareVersions, followRedirects, kitsToPrune, renameWithRetry, isAllowedKitUrl, JAR_NAME, kitDirFor, type Fetcher, type HttpBody, type KitSpec } from '../src/layout/download'
 import { kitSpecFor } from '../src/layout/kit'
 import { extractZip } from '../src/layout/zip'
-import { buildZip, chooseKitSource, fetchReleaseZip, releaseZipUrl, sha256Of } from '../daemon-kit.mjs'
+import { buildZip, isPinned, KIT_FILE, kitEmbed, kitNames, makeKitPin, readKitPin, sha256Of } from '../daemon-kit.mjs'
+import { parseArgs, releaseCommand } from '../../../scripts/kit-release.mjs'
+import { installStatus, uninstallBundle } from '../src/layout/install'
 
 const root = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'ccm-kit-')))
 afterAll(() => rmSync(root, { recursive: true, force: true }))
@@ -67,9 +69,9 @@ describe('daemon kit zip', () => {
     expect(readFileSync(path.join(out, 'loose-kit', 'classes', 'a.jar')).length).toBe(4000)
   })
 
-  it('release url is pinned to the GitHub release of the same version', () => {
-    const k = kitSpecFor('3.5.0', 10, 'ab')
-    expect(k.url).toBe('https://github.com/JLSoft-Together/Orrery/releases/download/v3.5.0/layout-daemon-3.5.0.zip')
+  it('release url is pinned to the GitHub release of the kit version', () => {
+    const k = kitSpecFor('1', 10, 'ab')
+    expect(k.url).toBe('https://github.com/JLSoft-Together/Orrery/releases/download/layout-daemon-v1/layout-daemon-1.zip')
     expect(isAllowedKitUrl(k.url)).toBe(true)
     expect(isAllowedKitUrl('https://objects.githubusercontent.com/x')).toBe(true)
     expect(isAllowedKitUrl('http://github.com/x')).toBe(false)
@@ -206,22 +208,22 @@ describe('LayoutlibBundle daemon kit', () => {
     expect(f.calls).toHaveLength(0)
   })
 
-  it('prunes older kits down to one spare, never a newer one, and only sweeps its own partials', async () => {
+  it('prunes every other kit and only sweeps its own partials', async () => {
     const c = fresh()
     const daemon = path.join(c.base, 'daemon')
-    for (const v of ['3.2.0', '3.3.0', '3.4.0', '3.9.0']) mkdirSync(path.join(daemon, v), { recursive: true })
+    for (const v of ['3.2.0', '3.9.0']) mkdirSync(path.join(daemon, v), { recursive: true })
     mkdirSync(path.join(daemon, '3.5.0.partial-dead'), { recursive: true })
     mkdirSync(path.join(daemon, '3.9.0.partial-live'), { recursive: true })
     const zip = kitZip('3.5.0')
     const b = bundleOf(c, specOf('3.5.0', zip), serving(zip))
     expect(b.isReady()).toBe(false)
     expect((await b.download()).state).toBe('ready')
-    expect(readdirSync(daemon).sort()).toEqual(['3.5.0', '3.9.0', '3.9.0.partial-live'])
+    expect(readdirSync(daemon).sort()).toEqual(['3.5.0', '3.9.0.partial-live'])
   })
 
-  it('keeps the newest older kit when nothing newer exists', () => {
-    expect(kitsToPrune(['3.1.0', '3.4.0', '3.3.0', '3.5.0'], '3.5.0')).toEqual(['3.3.0', '3.1.0'])
-    expect(kitsToPrune(['3.6.0', '3.5.0'], '3.5.0')).toEqual([])
+  it('kitsToPrune lists every finished kit but the current one', () => {
+    expect(kitsToPrune(['3.1.0', '1', '3.5.0', '3.5.0.partial-x'], '3.5.0')).toEqual(['3.1.0', '1'])
+    expect(kitsToPrune(['1'], '1')).toEqual([])
     expect(compareVersions('3.10.0', '3.9.0')).toBe(1)
     expect(compareVersions('3.5.0', '3.5.0')).toBe(0)
   })
@@ -326,24 +328,122 @@ describe('layout ipc with a pending daemon kit', () => {
   })
 })
 
-describe('build kit source', () => {
-  it('prefers the zip CI handed over, then the published release, then a local build', () => {
-    expect(chooseKitSource({ ci: true, reuseFlag: false, zipExists: true, release: null })).toBe('reuse')
-    expect(chooseKitSource({ ci: true, reuseFlag: false, zipExists: false, release: null })).toBe('local')
-    expect(chooseKitSource({ ci: false, reuseFlag: false, zipExists: true, release: Buffer.from('r') })).toBe('release')
-    expect(chooseKitSource({ ci: false, reuseFlag: true, zipExists: true, release: Buffer.from('r') })).toBe('reuse')
-    expect(chooseKitSource({ ci: false, reuseFlag: false, zipExists: true, release: null })).toBe('local')
+describe('kit pin', () => {
+  const sha = 'ab'.repeat(32)
+
+  it('names the release after the kit version, independent of the app version', () => {
+    expect(kitNames('1')).toEqual({ tag: 'layout-daemon-v1', asset: 'layout-daemon-1.zip', url: 'https://github.com/JLSoft-Together/Orrery/releases/download/layout-daemon-v1/layout-daemon-1.zip' })
+    expect(makeKitPin(2, 10, sha)).toMatchObject({ version: '2', tag: 'layout-daemon-v2', asset: 'layout-daemon-2.zip', size: 10, sha256: sha })
   })
 
-  it('fetchReleaseZip returns the bytes, or null on 404 / network error', async () => {
-    const urls: string[] = []
-    const ok = (async (u: string) => {
-      urls.push(u)
-      return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }
-    }) as never
-    expect((await fetchReleaseZip('3.5.0', ok))?.length).toBe(3)
-    expect(urls).toEqual([releaseZipUrl('3.5.0')])
-    expect(await fetchReleaseZip('3.5.0', (async () => ({ ok: false })) as never)).toBeNull()
-    expect(await fetchReleaseZip('3.5.0', (async () => { throw new Error('offline') }) as never)).toBeNull()
+  it('a placeholder pin embeds nothing, a real one embeds version, size, sha and url', () => {
+    expect(isPinned(JSON.parse(readFileSync(KIT_FILE, 'utf8')))).toBe(isPinned(readKitPin()))
+    expect(kitEmbed({ version: '1', size: 0, sha256: 'PLACEHOLDER' })).toBeNull()
+    expect(kitEmbed({ version: '1', size: 5, sha256: 'xyz', url: 'u' })).toBeNull()
+    expect(kitEmbed(makeKitPin(1, 5, sha))).toEqual({ version: '1', size: 5, sha256: sha, url: kitNames('1').url })
+  })
+
+  it('kit-release parses its flags and prints the publish command', () => {
+    expect(parseArgs([], '1')).toMatchObject({ version: '1', skipGradle: false, zip: null })
+    expect(parseArgs(['--version', '3', '--skip-gradle', '--zip', 'a.zip'], '1')).toMatchObject({ version: '3', skipGradle: true, zip: 'a.zip' })
+    expect(() => parseArgs(['--version', '0'], '1')).toThrow()
+    expect(() => parseArgs(['--nope'], '1')).toThrow()
+    expect(releaseCommand('2', '/tmp/layout-daemon-2.zip')).toContain('gh release create layout-daemon-v2 "/tmp/layout-daemon-2.zip"')
+  })
+})
+
+describe('install status and uninstall', () => {
+  it('reports not installed, then installed with its size, then removes everything under the layoutlib folder', async () => {
+    const c = fresh()
+    const zip = kitZip('1')
+    const stops: number[] = []
+    const b = bundleOf(c, specOf('1', zip), serving(zip))
+    const before = await installStatus(b)
+    expect(before).toMatchObject({ available: true, installed: false, version: null, pinnedVersion: '1', downloadBytes: zip.length, sizeBytes: 0 })
+    expect((await b.download()).state).toBe('ready')
+    const after = await installStatus(b)
+    expect(after).toMatchObject({ installed: true, version: '1', downloadBytes: 0 })
+    expect(after.sizeBytes).toBeGreaterThan(4000)
+    mkdirSync(path.join(c.base, 'cache', 'snap'), { recursive: true })
+    const res = await uninstallBundle(b, async () => void stops.push(1))
+    expect(stops).toEqual([1])
+    expect(res.ok).toBe(true)
+    expect(res.status).toMatchObject({ installed: false, version: null, sizeBytes: 0 })
+    expect(existsSync(c.base)).toBe(false)
+    expect(b.status()).toEqual({ state: 'missing' })
+  })
+
+  it('an old kit installed under the app version is not the pinned kit: not installed, still listed and removable', async () => {
+    const c = fresh()
+    const old = kitDirFor(c.base, '3.5.0')
+    mkdirSync(path.join(old, 'loose-kit'), { recursive: true })
+    writeFileSync(path.join(old, 'layout-daemon.jar'), 'j')
+    writeFileSync(path.join(old, 'loose-kit', 'kit.json'), '{}')
+    writeFileSync(path.join(old, '.ccm-ready'), '3.5.0\n')
+    const zip = kitZip('1')
+    const b = bundleOf(c, specOf('1', zip), serving(zip))
+    const st = await installStatus(b)
+    expect(st).toMatchObject({ installed: false, version: '3.5.0', pinnedVersion: '1' })
+    expect(st.sizeBytes).toBeGreaterThan(0)
+    expect((await b.download()).state).toBe('ready')
+    expect(readdirSync(path.join(c.base, 'daemon'))).toEqual(['1'])
+  })
+
+  it('without a pinned kit and without a dev bundle nothing is available', async () => {
+    const dir = path.join(root, 'nokit')
+    mkdirSync(dir, { recursive: true })
+    const b = new LayoutlibBundle({ base: path.join(dir, 'layoutlib'), platform: 'win32', arch: 'x64', fetcher: serving(Buffer.alloc(0)), overrideDir: null, kit: null })
+    expect(await installStatus(b)).toMatchObject({ available: false, installed: false, pinnedVersion: null })
+  })
+
+  it('refuses to uninstall while a download runs', async () => {
+    const c = fresh()
+    const zip = kitZip('1')
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((r) => (release = r))
+    const slow: Fetcher = async () => {
+      await gate
+      return body(zip)
+    }
+    const b = bundleOf(c, specOf('1', zip), slow)
+    const running = b.download()
+    const res = await uninstallBundle(b, async () => undefined)
+    expect(res).toMatchObject({ ok: false, code: 'busy' })
+    release()
+    expect((await running).state).toBe('ready')
+  })
+
+  it('the ipc channels answer the status and the uninstall', async () => {
+    const handlers = new Map<string, (event: unknown, ...args: unknown[]) => unknown>()
+    const ipcMain = { handle: (ch: string, fn: (event: unknown, ...args: unknown[]) => unknown) => handlers.set(ch, fn), removeHandler: (ch: string) => handlers.delete(ch) }
+    const c = fresh()
+    const zip = kitZip('1')
+    const { registerLayoutIpc } = await import('../src/layout/ipc')
+    const ipc = registerLayoutIpc({
+      ipcMain: ipcMain as never,
+      isAppFrame: (e) => (e as { ok?: boolean }).ok !== false,
+      resolveDir: async () => null,
+      dataDir: path.dirname(c.base),
+      getJdk: () => null,
+      confirm: async () => true,
+      server: { urlFor: async () => null },
+      daemonJar: path.join(kitDirFor(c.base, '1'), 'layout-daemon.jar'),
+      spawn: () => {
+        throw new Error('no spawn')
+      },
+      kill: () => undefined,
+      layoutlibOverride: c.override,
+      kit: specOf('1', zip),
+      bundle: bundleOf(c, specOf('1', zip), serving(zip)),
+      findJava: async () => ({ ok: false, code: 'jdk-missing' }),
+    })
+    const call = (ch: string, ok = true) => handlers.get(ch)!({ sender: { id: 1 }, ok })
+    expect(await call('ccm:layout-install-status', false)).toBeNull()
+    expect(await call('ccm:layout-uninstall', false)).toBeNull()
+    expect(await call('ccm:layout-install-status')).toMatchObject({ available: true, installed: false })
+    expect(await call('ccm:layout-download')).toMatchObject({ state: 'ready' })
+    expect(await call('ccm:layout-install-status')).toMatchObject({ installed: true, version: '1' })
+    expect(await call('ccm:layout-uninstall')).toMatchObject({ ok: true, status: { installed: false } })
+    ipc.dispose()
   })
 })

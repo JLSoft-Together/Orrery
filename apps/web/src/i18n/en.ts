@@ -10,6 +10,7 @@ import rail from './workspace-rail'
 import v28 from './extensions-v28'
 import run from './run-v31'
 import layout from './layout-v32'
+import xmlPreview from './xml-preview-v88'
 import fwp from './flutter-preview-v40'
 import fileEditor from './file-editor-v42'
 import mapV47 from './map-v47'
@@ -86,6 +87,7 @@ export default {
   ...v28.en,
   ...run.en,
   ...layout.en,
+  ...xmlPreview.en,
   ...fwp.en,
   ...fileEditor.en,
   ...monitorV53.en,

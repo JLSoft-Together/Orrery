@@ -4,10 +4,12 @@ import { useI18n } from 'vue-i18n'
 import { Check, CircleAlert, CircleCheck, Copy } from 'lucide-vue-next'
 import { hasCapture } from '../../lib/capture'
 import { hasRun } from '../../lib/desktop'
+import { hasXmlInstall } from '../../lib/layoutPreview'
 import { useExtrasStore } from '../../stores/extras'
 import { useUiStore } from '../../stores/ui'
 import CaptureSettings from '../CaptureSettings.vue'
 import RunSdkSettings from '../RunSdkSettings.vue'
+import XmlPreviewSettings from '../XmlPreviewSettings.vue'
 import SettingEmbed from './SettingEmbed.vue'
 
 const { t } = useI18n()
@@ -61,6 +63,7 @@ async function copySnippet(): Promise<void> {
       </section>
     </SettingEmbed>
     <SettingEmbed v-if="hasRun" id="run"><RunSdkSettings :open="ui.settingsOpen" /></SettingEmbed>
+    <SettingEmbed v-if="hasXmlInstall" id="xmlPreview"><XmlPreviewSettings :open="ui.settingsOpen" /></SettingEmbed>
     <SettingEmbed v-if="hasCapture" id="capture"><CaptureSettings :open="ui.settingsOpen" /></SettingEmbed>
   </div>
 </template>

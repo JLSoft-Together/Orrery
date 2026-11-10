@@ -364,6 +364,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   onDevEvent: (handler: (event: unknown) => void): (() => void) => subscribe('ccm:dev-event', handler),
   layoutStatus: (): Promise<unknown> => ipcRenderer.invoke('ccm:layout-status'),
   layoutDownload: (): Promise<unknown> => ipcRenderer.invoke('ccm:layout-download'),
+  layoutInstallStatus: (): Promise<unknown> => ipcRenderer.invoke('ccm:layout-install-status'),
+  layoutUninstall: (): Promise<unknown> => ipcRenderer.invoke('ccm:layout-uninstall'),
   layoutRender: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:layout-render', req),
   layoutModelStatus: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:layout-model-status', req),
   layoutModelRefresh: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:layout-model-refresh', req),

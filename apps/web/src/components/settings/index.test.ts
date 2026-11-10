@@ -28,6 +28,7 @@ const all: SettingsEnv = {
   toast: true,
   notifyData: true,
   deepseek: true,
+  xmlPreview: true,
 }
 
 function translator(locale: 'en' | 'vi') {

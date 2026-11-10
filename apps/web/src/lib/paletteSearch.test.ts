@@ -28,6 +28,7 @@ const env: SettingsEnv = {
   toast: true,
   notifyData: true,
   deepseek: true,
+  xmlPreview: true,
 }
 
 describe('parsePrefix', () => {

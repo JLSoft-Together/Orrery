@@ -24,6 +24,22 @@ export interface LayoutStatus {
   apiLevel: number
 }
 
+export interface LayoutInstallStatus {
+  available: boolean
+  installed: boolean
+  version: string | null
+  pinnedVersion: string | null
+  sizeBytes: number
+  downloadBytes: number
+  bundle: BundleStatus
+}
+
+export interface LayoutUninstallResult {
+  ok: boolean
+  code?: string
+  status: LayoutInstallStatus
+}
+
 export interface LayoutDevice {
   width: number
   height: number

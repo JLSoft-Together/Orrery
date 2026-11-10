@@ -96,9 +96,7 @@ pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
 }
 
 pub fn kits_to_prune(names: &[String], current: &str) -> Vec<String> {
-    let mut others: Vec<&String> = names.iter().filter(|n| n.as_str() != current && !n.contains(".partial-")).collect();
-    others.sort_by(|x, y| compare_versions(y, x));
-    others.into_iter().skip(1).filter(|n| compare_versions(n, current).is_lt()).cloned().collect()
+    names.iter().filter(|n| n.as_str() != current && !n.contains(".partial-")).cloned().collect()
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -255,7 +253,7 @@ struct DlState {
 }
 
 pub struct Bundle {
-    cfg: BundleCfg,
+    pub(super) cfg: BundleCfg,
     state: Mutex<DlState>,
     done: Condvar,
 }
@@ -314,6 +312,23 @@ impl Bundle {
             None => true,
             Some(d) => d.join(READY_MARKER).exists() && d.join(KIT_JAR).exists() && d.join(KIT_DIR).join("kit.json").exists(),
         }
+    }
+
+    pub fn busy(&self) -> bool {
+        self.state.lock().unwrap().downloading
+    }
+
+    pub fn clear_error(&self) {
+        {
+            let mut st = self.state.lock().unwrap();
+            st.last_error = None;
+            st.pct = 0;
+        }
+        (self.cfg.on_status)(self.status());
+    }
+
+    pub fn overridden(&self) -> bool {
+        self.cfg.override_dir.as_deref().is_some_and(|o| Path::new(o).join(jar_name()).exists())
     }
 
     pub fn kit_pending(&self) -> bool {
@@ -501,9 +516,9 @@ mod tests {
     }
 
     #[test]
-    fn prunes_old_kits() {
-        let names: Vec<String> = ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.3.0.partial-ab"].iter().map(|s| s.to_string()).collect();
-        assert_eq!(kits_to_prune(&names, "1.3.0"), vec!["1.1.0".to_string(), "1.0.0".to_string()]);
+    fn prunes_every_other_kit_and_keeps_partials_alone() {
+        let names: Vec<String> = ["3.5.0", "1", "2", "2.partial-ab"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(kits_to_prune(&names, "2"), vec!["3.5.0".to_string(), "1".to_string()]);
         assert_eq!(compare_versions("1.10.0", "1.9.0"), std::cmp::Ordering::Greater);
     }
 }

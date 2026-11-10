@@ -1,0 +1,64 @@
+name: layout-daemon
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Kit version to build and publish (integer, e.g. 2); empty = the version in apps/layout-daemon/kit.json
+        type: string
+        required: false
+      publish:
+        description: Create the release layout-daemon-v<version> and commit kit.json
+        type: boolean
+        default: false
+  push:
+    branches: [master]
+    paths: ['apps/layout-daemon/**', 'scripts/kit-release.mjs', 'apps/desktop/daemon-kit.mjs']
+
+permissions:
+  contents: write
+
+jobs:
+  kit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - name: Build the kit zip and pin it in kit.json
+        env:
+          KIT_VERSION: ${{ inputs.version }}
+        run: |
+          args=()
+          if [ -n "$KIT_VERSION" ]; then args+=(--version "$KIT_VERSION"); fi
+          node scripts/kit-release.mjs "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layout-daemon
+          path: |
+            apps/layout-daemon/build/dist/layout-daemon-*.zip
+            apps/layout-daemon/kit.json
+          if-no-files-found: error
+      - name: Publish the release and commit the pin
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./apps/layout-daemon/kit.json').version")
+          tag="layout-daemon-v${version}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::release $tag already exists; kit versions are immutable, bump the version"
+            exit 1
+          fi
+          gh release create "$tag" "apps/layout-daemon/build/dist/layout-daemon-${version}.zip" --repo "$GITHUB_REPOSITORY" --title "Layout daemon kit ${version}" --notes "XML Preview render daemon kit ${version}. Downloaded on demand by Orrery (Settings, Integrations)."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/layout-daemon/kit.json
+          git commit -m "layout daemon kit ${version}: pin sha256"
+          git push

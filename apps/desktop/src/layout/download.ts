@@ -28,7 +28,6 @@ interface Pinned {
 
 const RENAME_RETRY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES'])
 const PARTIAL_STALE_MS = 10 * 60_000
-const KEEP_OTHER_KITS = 1
 
 export async function renameWithRetry(
   from: string,
@@ -61,8 +60,7 @@ export function compareVersions(a: string, b: string): number {
 }
 
 export function kitsToPrune(names: string[], current: string): string[] {
-  const others = names.filter((n) => n !== current && !n.includes('.partial-')).sort((x, y) => compareVersions(y, x))
-  return others.slice(KEEP_OTHER_KITS).filter((n) => compareVersions(n, current) < 0)
+  return names.filter((n) => n !== current && !n.includes('.partial-'))
 }
 
 export interface KitSpec {
@@ -240,6 +238,29 @@ export class LayoutlibBundle {
   get kitDir(): string | null {
     const k = this.deps.kit
     return k ? kitDirFor(this.deps.base, k.version) : null
+  }
+
+  get baseDir(): string {
+    return this.deps.base
+  }
+
+  get pinnedKit(): KitSpec | null {
+    return this.deps.kit ?? null
+  }
+
+  get overridden(): boolean {
+    const o = this.deps.overrideDir
+    return !!o && existsSync(path.join(o, JAR_NAME))
+  }
+
+  get busy(): boolean {
+    return this.downloading !== null
+  }
+
+  clearError(): void {
+    this.lastError = null
+    this.pct = 0
+    this.deps.onStatus?.(this.status())
   }
 
   get hosts(): string {

@@ -25,7 +25,7 @@ Orrery 4 runs entirely on Rust: Tauri shell + `orrery-core`, no Electron and no 
 | 6 sessions × 3 subagents | 672 MB | 314 MB (−53%) | 6.2% | 2.5% (−60%) |
 | 30 sessions × 6 subagents | 755 MB | 308 MB (−59%) | 19.0% | 5.4% (−72%) |
 
-Installer (macOS arm64) 147 MB → 24 MB (−84%); installed app 325 MB → 54 MB; first usage scan of 4.29 GB transcripts 6.70 → 2.17 CPU-seconds (3.1x faster). CPU is percent of one core; RAM is the RSS of every app process, WebKit included.
+Installer: macOS arm64 147 MB → 24 MB (−84%), Windows Setup 147 MB → 19 MB (−87%); installed app 325 MB → 54 MB; first usage scan of 4.29 GB transcripts 6.70 → 2.17 CPU-seconds (3.1x faster). CPU is percent of one core; RAM is the RSS of every app process, WebKit included.
 
 ## Tiếng Việt
 - Monitor có tab Bảng mới: 4 cột (Cần anh, Đang chạy, Rảnh, Xong hôm nay), mỗi session 1 thẻ; Alt+1 / Alt+2 chuyển sang Quỹ đạo
@@ -50,4 +50,4 @@ Installer (macOS arm64) 147 MB → 24 MB (−84%); installed app 325 MB → 54 M
 | 6 session × 3 subagent | 672 MB | 314 MB (−53%) | 6,2% | 2,5% (−60%) |
 | 30 session × 6 subagent | 755 MB | 308 MB (−59%) | 19,0% | 5,4% (−72%) |
 
-Bộ cài macOS arm64 147 MB → 24 MB (−84%); app đã cài 325 MB → 54 MB; quét usage lần đầu 4,29 GB transcript 6,70 → 2,17 CPU-giây (nhanh hơn 3,1 lần). CPU = % một core; RAM = tổng RSS mọi process của app, gồm WebKit.
+Bộ cài: macOS arm64 147 MB → 24 MB (−84%), Windows Setup 147 MB → 19 MB (−87%); app đã cài 325 MB → 54 MB; quét usage lần đầu 4,29 GB transcript 6,70 → 2,17 CPU-giây (nhanh hơn 3,1 lần). CPU = % một core; RAM = tổng RSS mọi process của app, gồm WebKit.

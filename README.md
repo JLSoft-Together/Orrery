@@ -27,6 +27,7 @@ Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguy�
 | | 3.4.0 (Electron) | 4.0 |
 |---|---|---|
 | Bộ cài macOS arm64 | 147 MB | **24 MB** (−84%) |
+| Bộ cài Windows (Setup) | 147 MB | **19 MB** (−87%) |
 | App đã cài (macOS) | 325 MB | **54 MB** |
 | Quét usage lần đầu (4,29 GB transcript) | 6,70 CPU-giây | **2,17 CPU-giây** (nhanh hơn 3,1 lần) |
 

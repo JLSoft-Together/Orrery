@@ -5,6 +5,8 @@ import { createInterface } from 'node:readline'
 import type { JobStopResult, MonitorEvent, ServerMessage } from '@ccm/shared'
 import type { CollectorConfig } from '../src/config'
 import { readDiffStat } from '../src/gitstat'
+import { CodexMonitor } from '../src/codex/monitor'
+import { DeepseekMonitor } from '../src/deepseek/monitor'
 import { Monitor } from '../src/monitor'
 import { MonitorStore } from '../src/store'
 import type { Trace, TraceStep } from './trace-scenario'
@@ -76,10 +78,17 @@ class RustSide {
   }
 }
 
+export interface TwinAgents {
+  codexHome: string
+  codewhaleHome: string
+  homeDir: string
+}
+
 export interface TwinOptions {
   root: string
   now: number
   diff?: boolean
+  agents?: TwinAgents
 }
 
 export class MonitorTwin {
@@ -95,6 +104,8 @@ export class MonitorTwin {
   now: number
   stopResult: JobStopResult = 'ok'
   readonly dead = new Set<number>()
+  codexProcs: unknown[] | null = []
+  deepseekProcs: unknown[] | null = []
 
   constructor(
     bin: string,
@@ -115,6 +126,26 @@ export class MonitorTwin {
       stopJob: async () => this.stopResult,
     })
     ;(this.node as unknown as { setupWatchers: () => void }).setupWatchers = () => undefined
+    const agents = options.agents
+    if (agents) {
+      const common = { staleTtlMs: 120 * 60_000, reconcileMs: 5_000, verifyMs: 60_000, verifyProcesses: true }
+      const codex = new CodexMonitor(
+        { ...common, codexHome: agents.codexHome },
+        this.store,
+        () => this.node.claudeTargets(),
+        { listProcesses: async () => this.codexProcs as never, isPidAlive: (pid) => !this.dead.has(pid), now: () => this.now },
+      )
+      const deepseek = new DeepseekMonitor(
+        { ...common, codewhaleHome: agents.codewhaleHome, homeDir: agents.homeDir },
+        this.store,
+        { listProcesses: async () => this.deepseekProcs as never, isPidAlive: (pid) => !this.dead.has(pid), now: () => this.now },
+      )
+      const quiet = (o: object, names: string[]) => names.forEach((n) => ((o as Record<string, unknown>)[n] = () => undefined))
+      quiet(codex, ['setupWatchers', 'scheduleScan'])
+      quiet(deepseek, ['setupWatchers', 'scheduleScan', 'scheduleRead'])
+      this.node.codex = codex
+      this.node.deepseek = deepseek
+    }
     this.store.subscribe((m) => this.nodeStep.frames.push(m))
     this.rust = new RustSide(bin)
   }
@@ -124,7 +155,17 @@ export class MonitorTwin {
   }
 
   async init(): Promise<void> {
-    await this.rust.send({ cmd: 'init', claudeRoot: this.options.root, dataDir: this.options.root, now: this.now, diff: this.options.diff === true, diffDelayMs: 0, batchMs: 3_600_000 })
+    const agents = this.options.agents
+    await this.rust.send({
+      cmd: 'init',
+      claudeRoot: this.options.root,
+      dataDir: this.options.root,
+      now: this.now,
+      diff: this.options.diff === true,
+      diffDelayMs: 0,
+      batchMs: 3_600_000,
+      ...(agents ? { codex: true, codexHome: agents.codexHome, deepseek: true, codewhaleHome: agents.codewhaleHome, homeDir: agents.homeDir } : {}),
+    })
   }
 
   async rustCmd(cmd: Record<string, unknown>): Promise<unknown> {
@@ -146,6 +187,16 @@ export class MonitorTwin {
   async snapshot(): Promise<void> {
     this.nodeStep.frames.push(this.store.snapshotMessage())
     await this.rustCmd({ cmd: 'snapshot' })
+  }
+
+  async setCodexProcs(list: unknown[] | null): Promise<void> {
+    this.codexProcs = list
+    await this.rustCmd({ cmd: 'codexProcs', list })
+  }
+
+  async setDeepseekProcs(list: unknown[] | null): Promise<void> {
+    this.deepseekProcs = list
+    await this.rustCmd({ cmd: 'deepseekProcs', list })
   }
 
   async kill(pid: number): Promise<void> {

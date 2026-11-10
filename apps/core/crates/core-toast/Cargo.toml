@@ -1,0 +1,18 @@
+[package]
+name = "core-toast"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "toast-script"
+path = "src/bin/toast-script.rs"
+
+[dependencies]
+core-store = { path = "../core-store" }
+getrandom = "0.4"
+indexmap = "2"
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+sha1 = "0.11"
+sha2 = "0.11"

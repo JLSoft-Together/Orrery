@@ -1,6 +1,12 @@
+pub mod agentprocs;
 pub mod catalog;
+pub mod cliprocs;
+pub mod codex;
+pub mod deepseek;
+pub mod fswatch;
 pub mod gitstat;
 pub mod hints;
+pub mod host;
 pub mod job_stop;
 pub mod jobs;
 pub mod monitor;

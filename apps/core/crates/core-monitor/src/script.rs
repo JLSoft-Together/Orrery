@@ -7,6 +7,9 @@ use core_store::event::{FocusWindowResult, MonitorEvent, OpenApp, OpenResult, Se
 use core_store::store::{Store, StoreOptions};
 use serde_json::{json, Value};
 
+use crate::agentprocs::AgentProcs;
+use crate::codex::process::{CodexProcess, ProcessMode};
+use crate::deepseek::process::DeepseekProcess;
 use crate::gitstat::DiffStatReader;
 use crate::job_stop::JobStopResult;
 use crate::monitor::{Deps, LaunchError, LaunchMode, Monitor, MonitorConfig, MonitorStores, TerminalApp};
@@ -57,10 +60,55 @@ impl Deps for ScriptDeps {
     }
 }
 
+pub struct FakeProcs {
+    pub codex: Mutex<Option<Vec<CodexProcess>>>,
+    pub deepseek: Mutex<Option<Vec<DeepseekProcess>>>,
+}
+
+impl AgentProcs for FakeProcs {
+    fn codex(&self) -> Option<Vec<CodexProcess>> {
+        self.codex.lock().ok().and_then(|l| l.clone())
+    }
+    fn deepseek(&self) -> Option<Vec<DeepseekProcess>> {
+        self.deepseek.lock().ok().and_then(|l| l.clone())
+    }
+}
+
+fn u32s(v: Option<&Value>) -> Vec<u32> {
+    v.and_then(Value::as_array).map(|a| a.iter().filter_map(|x| x.as_u64().map(|n| n as u32)).collect()).unwrap_or_default()
+}
+
+fn codex_list(v: &Value) -> Option<Vec<CodexProcess>> {
+    let list = v.get("list")?.as_array()?;
+    Some(
+        list.iter()
+            .map(|p| CodexProcess {
+                pid: n(p, "pid").unwrap_or(0) as u32,
+                start: n(p, "start").unwrap_or(0),
+                mode: match s(p, "mode").as_deref() {
+                    Some("exec") => ProcessMode::Exec,
+                    Some("app-server") => ProcessMode::AppServer,
+                    Some("other") => ProcessMode::Other,
+                    _ => ProcessMode::Tui,
+                },
+                resume_id: s(p, "resumeId"),
+                ancestors: u32s(p.get("ancestors")),
+                orphan: p.get("orphan").and_then(Value::as_bool).unwrap_or(false),
+            })
+            .collect(),
+    )
+}
+
+fn deepseek_list(v: &Value) -> Option<Vec<DeepseekProcess>> {
+    let list = v.get("list")?.as_array()?;
+    Some(list.iter().map(|p| DeepseekProcess { pid: n(p, "pid").unwrap_or(0) as u32, start: n(p, "start").unwrap_or(0), ancestors: u32s(p.get("ancestors")), workspace: s(p, "workspace"), resume_id: s(p, "resumeId") }).collect())
+}
+
 pub struct Script {
     pub store: Store,
     pub monitor: Monitor,
     deps: Arc<ScriptDeps>,
+    procs: Arc<FakeProcs>,
     frames: Arc<Mutex<Vec<ServerMessage>>>,
 }
 
@@ -86,8 +134,17 @@ impl Script {
             config.stale_ttl_ms = t;
         }
         let diff = v.get("diff").and_then(Value::as_bool).unwrap_or(false).then(DiffStatReader::system);
+        if v.get("codex").and_then(Value::as_bool).unwrap_or(false) {
+            config.codex_home = Some(PathBuf::from(s(v, "codexHome").ok_or("codexHome")?));
+        }
+        if v.get("deepseek").and_then(Value::as_bool).unwrap_or(false) {
+            config.codewhale_home = Some(PathBuf::from(s(v, "codewhaleHome").ok_or("codewhaleHome")?));
+            config.home_dir = PathBuf::from(s(v, "homeDir").unwrap_or_default());
+        }
         let stores = MonitorStores::memory(deps.clone());
-        let monitor = Monitor::new(config, deps.clone(), stores, diff);
+        let mut monitor = Monitor::new(config, deps.clone(), stores, diff);
+        let procs = Arc::new(FakeProcs { codex: Mutex::new(Some(Vec::new())), deepseek: Mutex::new(Some(Vec::new())) });
+        monitor.enable_agents(procs.clone(), false, true);
         let mut store = Store::new(StoreOptions { activity_limit: n(v, "activityLimit").unwrap_or(300) as usize, batch_ms: n(v, "batchMs").unwrap_or(1) });
         let frames: Arc<Mutex<Vec<ServerMessage>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = frames.clone();
@@ -97,7 +154,7 @@ impl Script {
             }
             Ok(())
         }));
-        Ok(Script { store, monitor, deps, frames })
+        Ok(Script { store, monitor, deps, procs, frames })
     }
 
     pub fn take_frames(&mut self) -> Vec<ServerMessage> {
@@ -147,6 +204,56 @@ impl Script {
             "stopJob" => result = Value::Bool(m.stop_job(&s(v, "jobId").unwrap_or_default())),
             "toggleFavorite" => result = Value::Bool(m.toggle_favorite(store, &s(v, "terminalId").unwrap_or_default())),
             "addFavorite" => result = Value::Bool(m.add_favorite(store, &s(v, "dir").unwrap_or_default(), v.get("label").unwrap_or(&Value::Null))),
+            "codexProcs" => *self.procs.codex.lock().map_err(|_| "lock")? = codex_list(v),
+            "deepseekProcs" => *self.procs.deepseek.lock().map_err(|_| "lock")? = deepseek_list(v),
+            "startAgents" => m.start_agents(store, false),
+            "codexSync" => {
+                let (id, file) = (s(v, "id").unwrap_or_default(), s(v, "file").unwrap_or_default());
+                m.with_codex(store, |c, st, _| c.sync(st, &id, std::path::Path::new(&file)));
+            }
+            "codexScan" => {
+                m.with_codex(store, |c, st, tg| c.scan_now(st, tg));
+            }
+            "codexNames" => {
+                m.with_codex(store, |c, st, _| c.reload_names(st));
+            }
+            "codexTick" => {
+                m.with_codex(store, |c, st, _| c.reconcile(st));
+            }
+            "deepseekRead" => {
+                if let Some(d) = m.deepseek.as_mut() {
+                    d.read_outbox(store, false);
+                }
+            }
+            "deepseekResolve" => {
+                if let Some(d) = m.deepseek.as_mut() {
+                    d.resolve_outbox();
+                }
+            }
+            "deepseekScan" => {
+                if let Some(d) = m.deepseek.as_mut() {
+                    d.scan_now(store);
+                }
+            }
+            "deepseekTick" => {
+                if let Some(d) = m.deepseek.as_mut() {
+                    d.reconcile(store);
+                }
+            }
+            "agentInfo" => {
+                let id = s(v, "terminalId").unwrap_or_default();
+                let codex = m.codex.as_ref();
+                let deep = m.deepseek.as_ref();
+                let (pid, cwd, live) = if id.starts_with("codex:") {
+                    (codex.and_then(|c| c.pid_of(&id)), codex.and_then(|c| c.cwd_of(&id)), codex.is_some_and(|c| c.is_live(&id)))
+                } else {
+                    (deep.and_then(|d| d.pid_of(&id)), deep.and_then(|d| d.cwd_of(&id)), false)
+                };
+                result = json!({ "pid": pid, "cwd": cwd, "live": live });
+            }
+            "diagnostics" => {
+                result = serde_json::to_value(m.diagnostics(None, 0)).map_err(|e| e.to_string())?;
+            }
             "wait" => m.wait_background(store, std::time::Duration::from_millis(n(v, "ms").unwrap_or(10_000) as u64)),
             "stops" => result = json!(self.deps.stops.lock().map(|s| s.clone()).unwrap_or_default()),
             other => return Err(format!("unknown cmd {other}")),

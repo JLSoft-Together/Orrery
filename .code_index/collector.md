@@ -156,3 +156,13 @@ Flow: registry dir + projects dir (fs.watch) + reconcile 5 s → `Monitor` → `
 
 - `monitor.ts` and its helpers stay the Node reference; `apps/core/crates/core-monitor` is the Rust port (see `core.md`). `test/monitor-twin.ts` (`MonitorTwin`: Node `Monitor` with `batchMs` 1 h, watchers patched off, plus the `monitor-script` binary over stdin, one shared fixture root, frames per step for both) + `test/monitor-twin.test.ts` (21-step scenario: `monitor.test` steps, context hints, hooks denied / compacting, status line limits, limit hit, jobs blocked / stop, real git diff when `git` exists; strict + folded compare = 0; `CCM_TRACE_OUT` writes `twin*-node|rust.trace.json`; skipped without the binary or with `CCM_MONITOR_SCRIPT` unset and no build).
 - `scripts/trace-capture.mjs --server=node|rust|both [--rust-out=] [--rust-bin=]`: `both` runs the Node collector and `monitor-serve --dev` on the same live root (own data dirs, own ports, one WS each, settle waits for both); the Rust trace carries `mask: ['diagnostics.data.node']`. `scripts/trace-compare.mjs --mask=type.field` (and `trace.mask` of either trace) replaces that payload field with `<masked>` in both.
+
+- PLAN-v87 S8: `focus.ts` / `opener.ts` / `launcher.ts` / `folder-pick.ts` are unchanged and stay the implementation behind the Rust core's `host.*` RPC (`apps/desktop/src/host-rpc.ts`); Node `Monitor` still calls them directly.
+
+## Rust twin of the agent monitors (v87 step 5, WP S5)
+
+- `codex/*` and `deepseek/*` stay the Node reference; `core-monitor/src/{codex,deepseek}` is the Rust port (see `core.md`). `test/monitor-twin.ts` takes `agents: { codexHome, codewhaleHome, homeDir }` (Node `CodexMonitor` / `DeepseekMonitor` on the shared `MonitorStore`, `scheduleScan` / `scheduleRead` / `setupWatchers` patched off, `setCodexProcs` / `setDeepseekProcs` feed both sides) and `test/agents-twin.test.ts` runs a Codex scenario (exec under Claude sub-agent, standalone, subagent, plugin by cwd, new thread, resume, process gone, reopen, dismiss, stale) and a DeepSeek one (outbox events, session end + resume, rotated outbox), strict + fold = 0.
+
+## Rust twin of the toaster (v87 step 5, WP S7)
+
+- `toast.ts` stays the Node reference; `apps/core/crates/core-toast` is the Rust port (see `core.md`). `test/toast-twin.ts` (`NodeToast` = `Toaster` with recording deps + `onPhone` / `onTelegram`, `RustToast` = bin `toast-script` over stdin, `split` = episodes in order + toast ops per tag) + `test/toast-twin.test.ts` (scripted 37 steps + fuzz seeds 1–6 × 400 steps; each step: result, phone / Telegram order, toast ops per tag equal; skipped without the binary, `CCM_TOAST_SCRIPT` overrides the path).

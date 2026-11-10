@@ -1,4 +1,5 @@
 mod actions;
+mod agents;
 mod deps;
 mod extras;
 mod publish;
@@ -15,6 +16,8 @@ use core_store::time::{iso_of_ms, now_ms};
 use core_store::Store;
 use indexmap::{IndexMap, IndexSet};
 
+use crate::codex::CodexMonitor;
+use crate::deepseek::DeepseekMonitor;
 use crate::gitstat::DiffStatReader;
 use crate::hints::ContextHints;
 use crate::job_stop::JobStopResult;
@@ -24,7 +27,7 @@ use crate::sidefiles::HookRecord;
 use crate::tracker::{MonTracker, SensitiveCheck, SAFETY_NET_MS};
 use crate::watch::{Wake, WatchEvent, Watcher};
 
-pub use actions::{LaunchError, LaunchMode, TerminalApp};
+pub use actions::{ClaudeTarget, LaunchError, LaunchMode, TerminalApp};
 pub use deps::{Deps, MonitorStores, SystemDeps};
 
 pub const DIFF_DEBOUNCE_MS: i64 = 2_000;
@@ -45,6 +48,9 @@ pub struct MonitorConfig {
     pub diff_delay_ms: i64,
     pub safety_net_ms: Option<u64>,
     pub reread_finished: bool,
+    pub codex_home: Option<PathBuf>,
+    pub codewhale_home: Option<PathBuf>,
+    pub home_dir: PathBuf,
 }
 
 impl MonitorConfig {
@@ -61,6 +67,9 @@ impl MonitorConfig {
             diff_delay_ms: DIFF_DEBOUNCE_MS,
             safety_net_ms: Some(SAFETY_NET_MS),
             reread_finished: true,
+            codex_home: None,
+            codewhale_home: None,
+            home_dir: PathBuf::new(),
         }
     }
 }
@@ -105,6 +114,8 @@ pub struct Monitor {
     timers: Option<Timers>,
     project_files: Vec<String>,
     wake: Option<Wake>,
+    pub codex: Option<CodexMonitor>,
+    pub deepseek: Option<DeepseekMonitor>,
 }
 
 #[derive(Clone, Copy)]
@@ -154,6 +165,8 @@ impl Monitor {
             timers: None,
             project_files: Vec::new(),
             wake: None,
+            codex: None,
+            deepseek: None,
         }
     }
 
@@ -183,9 +196,11 @@ impl Monitor {
         self.sync_due.clear();
         self.diff_due.clear();
         self.registry_due = None;
+        self.stop_agents();
     }
 
     pub fn set_wake(&mut self, wake: Wake) {
+        self.set_agents_wake(&wake);
         self.wake = Some(wake);
     }
 
@@ -228,6 +243,7 @@ impl Monitor {
         due.extend(self.stores.timeline.next_flush_at());
         due.extend(self.stores.response.next_flush_at());
         due.extend(self.stores.limit_history.next_flush_at());
+        due.extend(self.agents_due());
         due.extend(self.stores.dismissed_jobs.as_ref().and_then(JsonFile::next_due));
         if self.diff_reader.as_ref().is_some_and(DiffStatReader::busy) || !self.stopping_jobs.is_empty() {
             due.push(now_ms() + 50);
@@ -283,6 +299,7 @@ impl Monitor {
         if self.peers.wake_at().is_some_and(|w| w <= wall) {
             self.flush_peers(store, false);
         }
+        self.tick_agents(store);
         self.drain_done(store);
         self.poll_persist(wall);
     }
@@ -303,6 +320,7 @@ impl Monitor {
         self.stores.timeline.save();
         self.stores.response.save();
         self.stores.limit_history.save();
+        self.flush_agents();
         if let Some(f) = self.stores.dismissed_jobs.as_mut() {
             let snapshot = dismissed_value(&self.dismissed_jobs);
             f.flush_pending(|| snapshot);

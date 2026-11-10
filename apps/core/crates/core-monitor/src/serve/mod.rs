@@ -18,7 +18,8 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 
 use crate::gitstat::DiffStatReader;
-use crate::monitor::{Monitor, MonitorConfig, MonitorStores, SystemDeps};
+use crate::host::{HostClient, HostDeps};
+use crate::monitor::{Deps, Monitor, MonitorConfig, MonitorStores, SystemDeps};
 use crate::repo::RepoRoots;
 use crate::usage::{Usage, UsageEvent};
 
@@ -32,6 +33,7 @@ pub struct ServeConfig {
     pub status_line_command: String,
     pub activity_limit: usize,
     pub batch_ms: i64,
+    pub host_rpc: bool,
 }
 
 fn env_int(k: &str, fallback: i64) -> i64 {
@@ -54,6 +56,14 @@ impl ServeConfig {
         monitor.stale_ttl_ms = env_int("CCM_STALE_TTL_MIN", 120) * 60_000;
         monitor.peer_ttl_ms = env_int("CCM_PEER_TTL_MIN", 60) * 60_000;
         monitor.verify_processes = cfg!(any(windows, target_os = "macos")) && std::env::var("CCM_VERIFY_PROCESSES").as_deref() != Ok("0");
+        let home_dir = PathBuf::from(&home);
+        if env_str("CCM_CODEX").as_deref() != Some("0") {
+            monitor.codex_home = Some(env_str("CODEX_HOME").map_or_else(|| home_dir.join(".codex"), PathBuf::from));
+        }
+        if env_str("CCM_DEEPSEEK").as_deref() != Some("0") {
+            monitor.codewhale_home = Some(crate::deepseek::config::codewhale_home(env_str("CODEWHALE_HOME"), |p| p.exists(), &home_dir));
+            monitor.home_dir = home_dir;
+        }
         let bridge = env_str("CCM_STATUSLINE_BRIDGE").unwrap_or_default();
         ServeConfig {
             port: env_int("CCM_PORT", 4317).clamp(0, 65_535) as u16,
@@ -64,6 +74,7 @@ impl ServeConfig {
             status_line_command: env_str("CCM_STATUSLINE_COMMAND").unwrap_or_else(|| format!("node \"{}\"", bridge.replace('\\', "/"))),
             activity_limit: 1000,
             batch_ms: 50,
+            host_rpc: std::env::var("CCM_HOST_RPC").as_deref() == Ok("1"),
         }
     }
 }
@@ -156,6 +167,11 @@ pub fn run(cfg: ServeConfig) -> i32 {
             }
         };
         write_line(&json!({ "type": "listening", "port": server.port() }));
+        let host = cfg.host_rpc.then(|| HostClient::new(Box::new(std::io::stdout())));
+        let deps: Arc<dyn Deps> = match &host {
+            Some(c) => Arc::new(HostDeps::new(c.clone())),
+            None => Arc::new(SystemDeps),
+        };
         let worker = {
             let (h, mcfg, wake_tx) = (handle.clone(), cfg.monitor.clone(), Mutex::new(tx.clone()));
             std::thread::Builder::new()
@@ -166,16 +182,24 @@ pub fn run(cfg: ServeConfig) -> i32 {
                             let _ = t.send(Cmd::Wake);
                         }
                     });
-                    monitor_loop(h, mcfg, snoozes, new_projects, rx, wake);
+                    monitor_loop(h, mcfg, deps, snoozes, new_projects, rx, wake);
                 })
                 .ok()
         };
         let (ctl_tx, mut ctl_rx) = tokio::sync::mpsc::unbounded_channel();
         spawn_stdin(ctl_tx);
         while let Some(m) = ctl_rx.recv().await {
-            if matches!(m, ControlIn::Shutdown | ControlIn::Eof) {
-                break;
+            match m {
+                ControlIn::Shutdown | ControlIn::Eof => break,
+                ControlIn::Message(v) => {
+                    if let Some(c) = &host {
+                        c.on_message(&v);
+                    }
+                }
             }
+        }
+        if let Some(c) = &host {
+            c.close();
         }
         let _ = tx.send(Cmd::Shutdown);
         if let Some(w) = worker {
@@ -186,15 +210,18 @@ pub fn run(cfg: ServeConfig) -> i32 {
     })
 }
 
-fn monitor_loop(handle: StoreHandle, mcfg: MonitorConfig, snoozes: SnoozeStore, new_projects: Receiver<Vec<String>>, rx: Receiver<Cmd>, wake: Arc<dyn Fn() + Send + Sync>) {
+fn monitor_loop(handle: StoreHandle, mcfg: MonitorConfig, deps: Arc<dyn Deps>, snoozes: SnoozeStore, new_projects: Receiver<Vec<String>>, rx: Receiver<Cmd>, wake: Arc<dyn Fn() + Send + Sync>) {
     let stores = MonitorStores::load_from(&mcfg.data_dir);
     let projects = mcfg.claude_root.join("projects");
     let cache = mcfg.data_dir.join("usage-index.json");
-    let mut monitor = Monitor::new(mcfg, Arc::new(SystemDeps), stores, Some(DiffStatReader::system()));
+    let verify = mcfg.verify_processes;
+    let mut monitor = Monitor::new(mcfg, deps, stores, Some(DiffStatReader::system()));
     monitor.set_wake(wake.clone());
+    monitor.enable_agents(Arc::new(crate::agentprocs::SystemProcs), true, verify);
     let mut rt = Runtime { monitor, snoozes, usage: None, roots: RepoRoots::system(), new_projects, clients: 0 };
     handle.with(|s| rt.monitor.start(s, true));
     handle.with(|s| s.set_loading(false));
+    handle.with(|s| rt.monitor.start_agents(s, true));
     let (usage, snapshot) = Usage::open(projects, Some(cache), wake);
     if let Some(snap) = snapshot {
         handle.with(|s| s.reset_usage(snap));

@@ -158,6 +158,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-toast"
+version = "0.1.0"
+dependencies = [
+ "core-store",
+ "getrandom",
+ "indexmap",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+]
+
+[[package]]
 name = "core-transcript"
 version = "0.1.0"
 dependencies = [

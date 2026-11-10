@@ -122,11 +122,12 @@ impl Monitor {
     }
 
     pub fn dismiss_ended(&mut self, store: &mut Store, id: Option<&str>) -> usize {
+        let agents = self.dismiss_agents(store, id);
         let ids: Vec<String> = self.trackers.values().filter(|t| t.ended() && id.is_none_or(|i| i == t.terminal_id)).map(|t| t.terminal_id.clone()).collect();
         for t in &ids {
             self.forget(store, t);
         }
-        ids.len()
+        ids.len() + agents
     }
 
     pub fn toggle_favorite(&mut self, store: &mut Store, id: &str) -> bool {
@@ -232,7 +233,7 @@ impl Monitor {
     }
 
     pub fn open_folder(&self, id: &str, app: OpenApp, reply: Reply) {
-        let cwd = self.trackers.get(id).and_then(|t| t.record.cwd.clone()).filter(|c| !c.is_empty());
+        let cwd = self.agent_cwd(id).unwrap_or_else(|| self.trackers.get(id).and_then(|t| t.record.cwd.clone())).filter(|c| !c.is_empty());
         let result = match cwd {
             None => OpenResult::NotFound,
             Some(c) => self.deps.open_folder(&c, app).unwrap_or(OpenResult::Unsupported),
@@ -256,8 +257,8 @@ impl Monitor {
             status_line: StatusLineDiagnostics { reports: self.status_reports.0, last_at: self.status_reports.1.clone() },
             clients,
             collector_version: None,
-            codex: None,
-            deepseek: None,
+            codex: self.codex.as_ref().map(|c| c.diagnostics()),
+            deepseek: self.deepseek.as_ref().map(|d| d.diagnostics()),
             usage,
         }
     }
@@ -271,7 +272,7 @@ impl Monitor {
     }
 
     pub fn focus_window(&mut self, store: &mut Store, id: &str, reply: Option<Reply>) -> FocusWindowResult {
-        let pid = self.trackers.get(id).filter(|t| !t.ended()).map(|t| t.record.pid);
+        let pid = self.agent_pid(id).unwrap_or_else(|| self.trackers.get(id).filter(|t| !t.ended()).map(|t| t.record.pid));
         let result = match pid {
             None => FocusWindowResult::NotFound,
             Some(p) => self.deps.focus_window(p).unwrap_or(FocusWindowResult::Unsupported),

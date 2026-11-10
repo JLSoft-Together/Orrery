@@ -9,7 +9,7 @@ import type { LayoutDevice } from './layout/types'
 import { paneScope, planFreePort, serversFor } from './resources/agentPorts'
 import type { ProcRow } from './run/proc'
 import { stringsFor } from './strings'
-import type { TelegramNotifier } from './telegram/notifier'
+import type { TelegramApi } from './telegram/facade'
 
 export interface DeskDeps {
   render: ((file: string, opts: { device: LayoutDevice; night: boolean; slot: string }) => Promise<AgentRenderOutcome>) | null
@@ -25,7 +25,7 @@ export interface DeskDeps {
   kill: (targets: ResKillTarget[], ask: { message: string; detail: (lines: string[]) => string; confirm: string }) => Promise<ResKillResult>
   now?: () => number
   platform?: NodeJS.Platform
-  telegram?: () => TelegramNotifier | null
+  telegram?: () => TelegramApi | null
   confirm?: (spec: { message: string; detail: string; buttons: string[] }) => Promise<number>
 }
 
@@ -110,7 +110,7 @@ export function createDesk(deps: DeskDeps): (call: McpDeskCall) => Promise<McpDe
       return { ok: true, tool: 'telegram_send', topic: res.topic, ...(res.file ? { file: res.file } : {}), ...(res.linkOnly ? { linkOnly: true } : {}), ...(res.uploading ? { uploading: true } : {}), ...(res.buttons ? { buttons: res.buttons } : {}) }
     }
     if (call.tool === 'telegram_receive') {
-      const before = tg.state()
+      const before = await tg.state()
       if (call.state === 'on' && !before.configured) return { ok: false, error: 'telegram-config' }
       if (call.state === 'on' && !before.owner) return { ok: false, error: 'not-paired' }
       if (call.state === 'on' && !before.receiving) {
@@ -128,19 +128,19 @@ export function createDesk(deps: DeskDeps): (call: McpDeskCall) => Promise<McpDe
           confirming = false
         }
         if (response !== 0) return { ok: false, error: 'cancelled' }
-        if (!tg.state().owner) return { ok: false, error: 'not-paired' }
+        if (!(await tg.state()).owner) return { ok: false, error: 'not-paired' }
       }
-      if (call.state !== 'status' && !tg.set({ receiving: call.state === 'on' }).ok) return { ok: false, error: 'failed' }
-      const s = tg.state()
+      if (call.state !== 'status' && !(await tg.set({ receiving: call.state === 'on' })).ok) return { ok: false, error: 'failed' }
+      const s = await tg.state()
       return { ok: true, tool: 'telegram_receive', receiving: s.receiving, paired: !!s.owner, ...(s.owner ? { owner: s.owner.name } : {}) }
     }
     if (call.state !== 'status') {
-      if (call.state === 'on' && !tg.state().configured) return { ok: false, error: 'telegram-config' }
-      const set = tg.set({ enabled: call.state === 'on' })
+      if (call.state === 'on' && !(await tg.state()).configured) return { ok: false, error: 'telegram-config' }
+      const set = await tg.set({ enabled: call.state === 'on' })
       if (!set.ok) return { ok: false, error: 'failed' }
     }
-    const state = tg.state()
-    return { ok: true, tool: 'telegram_notify', enabled: state.enabled, configured: state.configured, projects: state.routes.map((r) => r.label), routed: tg.routeFor(cwd) !== null }
+    const state = await tg.state()
+    return { ok: true, tool: 'telegram_notify', enabled: state.enabled, configured: state.configured, projects: state.routes.map((r) => r.label), routed: (await tg.routeFor(cwd)) !== null }
   }
 
   return async (call) => {

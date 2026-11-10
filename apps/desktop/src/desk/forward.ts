@@ -3,9 +3,9 @@ import { DeskUnavailable, type HostHandlers } from './host'
 
 export type DeskMode = 'rust' | 'node'
 
-export const DESK_MODULES = ['backup', 'buildClean', 'libs', 'previewGit', 'previewFiles', 'previewTools', 'claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge'] as const
+export const DESK_MODULES = ['backup', 'buildClean', 'libs', 'previewGit', 'previewFiles', 'previewTools', 'claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge', 'github', 'phone', 'capture', 'power', 'disk', 'agentStatus', 'resources', 'run', 'flutterPreview', 'apk', 'releaseCheck', 'devices', 'update', 'deepseek', 'layout', 'telegram'] as const
 
-export const DESK_EVENTS: ReadonlySet<string> = new Set(['ccm:build-event'])
+export const DESK_EVENTS: ReadonlySet<string> = new Set(['ccm:build-event', 'ccm:phone-event', 'ccm:awake-event', 'ccm:disk-event', 'ccm:agent-status', 'ccm:run-event', 'ccm:fwp-state', 'ccm:update-event', 'ccm:deepseek-event', 'ccm:layout-event', 'ccm:telegram-event'])
 
 export interface DeskClient {
   readonly dead: string | null
@@ -14,7 +14,7 @@ export interface DeskClient {
 
 export const deskFlag = (module: string): string => `CCM_DESK_${module.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()}`
 
-export const DESK_NODE_DEFAULT: ReadonlySet<string> = new Set(['claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge'])
+export const DESK_NODE_DEFAULT: ReadonlySet<string> = new Set(['claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge', 'github', 'phone', 'capture', 'power', 'disk', 'agentStatus', 'resources', 'apk', 'releaseCheck', 'devices', 'update', 'deepseek', 'layout', 'telegram'])
 
 export function deskMode(env: NodeJS.ProcessEnv, module: string): DeskMode {
   const flag = env[deskFlag(module)]?.trim().toLowerCase()
@@ -52,6 +52,11 @@ export class DeskRouter {
     if (this.fell.has(module)) return
     this.fell.set(module, reason)
     this.opts.onFallback(module, reason, deskFlag(module))
+  }
+
+  invoke(channel: string, args: unknown[] = [], hosts: HostHandlers = {}): Promise<unknown> {
+    const client = this.opts.client
+    return client && client.dead === null ? client.call(channel, args, hosts) : Promise.resolve(null)
   }
 
   route<E>(module: string, channel: string, gate: (event: E) => boolean, node: Handler<E>, hosts?: (event: E) => HostHandlers): Handler<E> {

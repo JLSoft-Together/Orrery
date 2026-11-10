@@ -4,6 +4,8 @@ import type { DevFsFailure, DevFsKind, DevFsProgress, DevFsScope } from '@ccm/sh
 import { safeToOpen, validPath } from './devFiles'
 import { PUSH_MAX, type DeviceFiles } from './fileBrowser'
 import { isPackage } from './uiToggles'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import { androidGateHosts } from '../apk/deskHosts'
 
 export interface FilesIpcDeps {
   ipcMain: IpcMain
@@ -14,6 +16,7 @@ export interface FilesIpcDeps {
   pickFolder: (event: IpcMainInvokeEvent) => Promise<string | null>
   pickFiles: (event: IpcMainInvokeEvent) => Promise<string[] | null>
   openLocal: (local: string, mode: 'open' | 'reveal') => Promise<boolean>
+  desk?: DeskRouter
 }
 
 const CHANNELS = ['ccm:devfs-list', 'ccm:devfs-mkdir', 'ccm:devfs-delete', 'ccm:devfs-pull', 'ccm:devfs-push', 'ccm:devfs-cancel', 'ccm:devfs-open']
@@ -45,22 +48,40 @@ export function registerFilesIpc(deps: FilesIpcDeps): () => void {
     if (!event.sender.isDestroyed()) event.sender.send('ccm:devfs-progress', p)
   }
 
-  ipcMain.handle('ccm:devfs-list', (event, id: unknown, scope: unknown, dir: unknown) => {
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? {
+    router: deps.desk,
+    module: 'devices',
+    hosts: (event) => ({
+      ...androidGateHosts({ resolveDir: deps.resolveDir }),
+      'devfs.pickFolder': () => deps.pickFolder(event),
+      'devfs.pickFiles': () => deps.pickFiles(event),
+      'devfs.progress': (p) => {
+        progressTo(event)(p as DevFsProgress)
+        return true
+      },
+      'devfs.open': (p) => {
+        const o = (p ?? {}) as { local?: unknown; mode?: unknown }
+        return typeof o.local === 'string' && (o.mode === 'open' || o.mode === 'reveal') ? deps.openLocal(o.local, o.mode) : false
+      },
+    }),
+  } : undefined)
+
+  handle('ccm:devfs-list', (event, id: unknown, scope: unknown, dir: unknown) => {
     if (!isAppFrame(event)) return DENIED
     const s = cleanScope(scope)
     return isId(id) && s && validPath(s, dir) ? files.list(id, s, dir) : INVALID
   })
-  ipcMain.handle('ccm:devfs-mkdir', (event, id: unknown, scope: unknown, dir: unknown, name: unknown) => {
+  handle('ccm:devfs-mkdir', (event, id: unknown, scope: unknown, dir: unknown, name: unknown) => {
     if (!isAppFrame(event)) return DENIED
     const s = cleanScope(scope)
     return isId(id) && s && validPath(s, dir) && typeof name === 'string' ? files.mkdir(id, s, dir, name) : INVALID
   })
-  ipcMain.handle('ccm:devfs-delete', (event, id: unknown, scope: unknown, p: unknown, dir: unknown) => {
+  handle('ccm:devfs-delete', (event, id: unknown, scope: unknown, p: unknown, dir: unknown) => {
     if (!isAppFrame(event)) return DENIED
     const s = cleanScope(scope)
     return isId(id) && s && validPath(s, p) && typeof dir === 'boolean' ? files.remove(id, s, p, dir) : INVALID
   })
-  ipcMain.handle('ccm:devfs-pull', async (event, id: unknown, req: unknown) => {
+  handle('ccm:devfs-pull', async (event, id: unknown, req: unknown) => {
     if (!isAppFrame(event)) return DENIED
     const r = obj(req)
     const s = cleanScope(r?.scope)
@@ -78,7 +99,7 @@ export function registerFilesIpc(deps: FilesIpcDeps): () => void {
     } else return INVALID
     return files.pull(id, s, r.path, kind, kind === 'link' ? null : size, dir, r.transfer, progressTo(event))
   })
-  ipcMain.handle('ccm:devfs-push', async (event, id: unknown, req: unknown) => {
+  handle('ccm:devfs-push', async (event, id: unknown, req: unknown) => {
     if (!isAppFrame(event)) return DENIED
     const r = obj(req)
     const s = cleanScope(r?.scope)
@@ -94,8 +115,8 @@ export function registerFilesIpc(deps: FilesIpcDeps): () => void {
     } else return INVALID
     return files.push(id, s, r.dir, locals, r.transfer, progressTo(event))
   })
-  ipcMain.handle('ccm:devfs-cancel', (event, transfer: unknown) => isAppFrame(event) && isTransfer(transfer) && files.cancel(transfer))
-  ipcMain.handle('ccm:devfs-open', (event, local: unknown, mode: unknown) => {
+  handle('ccm:devfs-cancel', (event, transfer: unknown) => isAppFrame(event) && isTransfer(transfer) && files.cancel(transfer))
+  handle('ccm:devfs-open', (event, local: unknown, mode: unknown) => {
     if (!isAppFrame(event) || typeof local !== 'string' || (mode !== 'open' && mode !== 'reveal') || !files.wasPulled(local)) return false
     return deps.openLocal(local, mode === 'open' && safeToOpen(path.basename(local)) ? 'open' : 'reveal')
   })

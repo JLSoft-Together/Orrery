@@ -15,6 +15,11 @@ import { DETECT_FILE, ProjectWatchers, watchDirs } from '../src/run/watch'
 const tmp = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'ccm-run-gaps-')))
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
+const waitFor = async (cond: () => boolean, ms = 10_000): Promise<boolean> => {
+  const end = Date.now() + ms
+  while (!cond() && Date.now() < end) await tick(20)
+  return cond()
+}
 
 describe('createLogMasker', () => {
   const mask = createLogMasker('C:\\Users\\dev', 'win32')
@@ -141,7 +146,7 @@ describe('ProjectWatchers', () => {
     handlers.get('/r')!('README.md')
     handlers.get('/r')!('pubspec.yaml')
     handlers.get('/r/lib')!('main_dev.dart')
-    await tick(40)
+    await waitFor(() => changes.length > 0)
     expect(changes).toEqual(['/r'])
     w.sync('/r', ['/r'])
     expect(closed).toEqual(['/r/lib'])
@@ -234,8 +239,7 @@ describe('RunManager v31 gaps', () => {
     const root = flutterProject()
     await m.hold(root, 'w1:a', true)
     writeFileSync(path.join(root, 'lib', 'main_dev.dart'), 'void main() {}\n')
-    const end = Date.now() + 3000
-    while (Date.now() < end && !events.some((e) => e.type === 'configs')) await tick(50)
+    await waitFor(() => events.some((e) => e.type === 'configs'))
     expect(events.some((e) => e.type === 'projects' && (e.result.projects[0] as FlutterProject).entrypoints.includes('lib/main_dev.dart'))).toBe(true)
     expect(events.some((e) => e.type === 'configs' && e.configs.length === 2)).toBe(true)
     await m.hold(root, 'w1:a', false)
@@ -257,7 +261,7 @@ describe('RunManager v31 gaps', () => {
     const [cfg] = await m.configs(root)
     await m.devices()
     await m.start({ root, configId: cfg!.id, deviceId: 'R58' })
-    await tick(150)
+    await waitFor(() => events.some((e) => e.type === 'log') && events.some((e) => e.type === 'session' && e.session.progress === 'Compiling ~/x'))
     const log = events.flatMap((e) => (e.type === 'log' ? e.lines.map((l) => l.text) : []))
     expect(log[0]).toMatch(/^~[\\/]lib[\\/]main\.dart \[masked\]$/)
     const err = events.find((e) => e.type === 'error')

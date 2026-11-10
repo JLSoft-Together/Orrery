@@ -2,6 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { maskSecrets } from '@ccm/shared'
+import { deskHandle, type DeskRouter } from '../desk/forward'
 import type { ResolvedCommand } from '../run/resolve'
 import { claudeJsonFile, claudeRoot } from '../extensions/status'
 import { defaultRunner, findCodewhale, installPlan, updatePlan, type CliRunner, type CodewhaleInstall, type FsProbe, type InstallOrigin, type InstallRoute, type InstallStep, type RunResult } from './cli'
@@ -78,6 +79,7 @@ export interface DeepSeekDeps {
   platform?: NodeJS.Platform
   probe?: FsProbe
   now?: () => number
+  desk?: DeskRouter
 }
 
 const QUICK_TIMEOUT = 30_000
@@ -112,6 +114,7 @@ type CliPart = Pick<DeepSeekStatus, 'installed' | 'needsDownload' | 'version' | 
 
 export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
   const { ipcMain, isAppFrame } = deps
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'deepseek', hosts: (event) => ({ 'deepseek.confirm': async (plan) => (await deps.confirm(event, plan as DeepSeekConfirm).catch(() => false)) === true }) } : undefined)
   const env = deps.env ?? process.env
   const home = deps.home ?? os.homedir()
   const platform = deps.platform ?? process.platform
@@ -185,7 +188,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }
   }
 
-  ipcMain.handle('ccm:deepseek-status', async (event, fresh: unknown): Promise<DeepSeekStatus | null> => {
+  handle('ccm:deepseek-status', async (event, fresh: unknown): Promise<DeepSeekStatus | null> => {
     if (!isAppFrame(event)) return null
     let cli = cache && fresh !== true && now() - cache.at < STATUS_TTL_MS ? cache.cli : null
     if (!cli) {
@@ -227,7 +230,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }
   }
 
-  ipcMain.handle('ccm:deepseek-install', (event) =>
+  handle('ccm:deepseek-install', (event) =>
     exclusive(event, 'install', async (): Promise<DeepSeekResult> => {
       const cw = find()
       if (cw && !cw.needsDownload) return { ok: false, code: 'installed' }
@@ -242,7 +245,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }),
   )
 
-  ipcMain.handle('ccm:deepseek-check-update', async (event): Promise<DeepSeekUpdateCheck> => {
+  handle('ccm:deepseek-check-update', async (event): Promise<DeepSeekUpdateCheck> => {
     if (!isAppFrame(event)) return { ok: false, code: 'badInput' }
     const cw = ready()
     if (!cw) return { ok: false, code: 'notInstalled' }
@@ -252,7 +255,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     return { ok: true, ...parsed, newer: compareVersions(parsed.latest, parsed.current) > 0 }
   })
 
-  ipcMain.handle('ccm:deepseek-update', (event) =>
+  handle('ccm:deepseek-update', (event) =>
     exclusive(event, 'update', async (): Promise<DeepSeekResult> => {
       const cw = ready()
       if (!cw) return { ok: false, code: 'notInstalled' }
@@ -264,13 +267,13 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }),
   )
 
-  ipcMain.handle('ccm:deepseek-cancel', (event): boolean => {
+  handle('ccm:deepseek-cancel', (event): boolean => {
     if (!isAppFrame(event) || !abort) return false
     abort.abort()
     return true
   })
 
-  ipcMain.handle('ccm:deepseek-login', (event, raw: unknown) =>
+  handle('ccm:deepseek-login', (event, raw: unknown) =>
     exclusive(event, 'login', async (): Promise<DeepSeekResult> => {
       const key = cleanApiKey(raw)
       if (!key) return { ok: false, code: 'badInput' }
@@ -282,7 +285,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }),
   )
 
-  ipcMain.handle('ccm:deepseek-logout', (event) =>
+  handle('ccm:deepseek-logout', (event) =>
     exclusive(event, 'logout', async (): Promise<DeepSeekResult> => {
       const cw = ready()
       if (!cw) return { ok: false, code: 'notInstalled' }
@@ -294,7 +297,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }),
   )
 
-  ipcMain.handle('ccm:deepseek-telemetry', (event, on: unknown) =>
+  handle('ccm:deepseek-telemetry', (event, on: unknown) =>
     exclusive(event, 'telemetry', async (): Promise<DeepSeekResult> => {
       if (typeof on !== 'boolean') return { ok: false, code: 'badInput' }
       const cw = ready()
@@ -305,7 +308,7 @@ export function registerDeepSeekIpc(deps: DeepSeekDeps): () => void {
     }),
   )
 
-  ipcMain.handle('ccm:deepseek-sync', (event) =>
+  handle('ccm:deepseek-sync', (event) =>
     exclusive(event, 'sync', async (): Promise<DeepSeekSyncResult> => {
       const p = await planSync(paths)
       const files = p.files.map((f): DeepSeekSyncFile => ({ id: f.id, file: tilde(f.file), action: f.action, ...(f.reason ? { reason: f.reason } : {}) }))

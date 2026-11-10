@@ -27,13 +27,21 @@ export class CaptureFolder {
   private timer: NodeJS.Timeout | null = null
 
   constructor(private readonly deps: CaptureFolderDeps) {
+    this.cfg = this.read()
+  }
+
+  private read(): CaptureConfig {
     let raw: unknown = null
     try {
-      raw = JSON.parse(readFileSync(deps.file, 'utf8'))
+      raw = JSON.parse(readFileSync(this.deps.file, 'utf8'))
     } catch {
       raw = null
     }
-    this.cfg = parseConfig(raw)
+    return parseConfig(raw)
+  }
+
+  reload(): void {
+    this.cfg = this.read()
   }
 
   config(): CaptureConfig {

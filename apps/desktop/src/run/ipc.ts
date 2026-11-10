@@ -1,6 +1,8 @@
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { RunResult } from '@ccm/shared'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import { runHosts } from './deskHosts'
 import type { RunManager } from './sessions'
 
 export interface RunIpcDeps {
@@ -9,6 +11,7 @@ export interface RunIpcDeps {
   manager: RunManager
   /** Same folder gate as the Explorer (`PreviewIpc.resolveDir`). */
   resolveDir: (dir: unknown) => Promise<string | null>
+  desk?: DeskRouter
 }
 
 const CHANNELS = [
@@ -22,7 +25,7 @@ const DENIED: RunResult = { ok: false, error: { code: 'denied' } }
 const isId = (v: unknown): v is string => typeof v === 'string' && /^[A-Za-z0-9_.:@%-]{1,128}$/.test(v)
 
 export function registerRunIpc(deps: RunIpcDeps): () => void {
-  const { ipcMain, isAppFrame, manager, resolveDir } = deps
+  const { ipcMain, isAppFrame, manager, resolveDir, desk } = deps
   const root = async (event: IpcMainInvokeEvent, dir: unknown): Promise<string | null> => (isAppFrame(event) ? resolveDir(dir) : null)
   // A project dir inside an allowed root (config cwd / pubspec dir); must not escape it.
   const inside = async (event: IpcMainInvokeEvent, dir: unknown): Promise<string | null> => {
@@ -31,6 +34,10 @@ export function registerRunIpc(deps: RunIpcDeps): () => void {
   }
 
   const tracked = new Set<number>()
+  const release = (prefix: string): void => {
+    manager.releaseOwner(prefix)
+    if (desk?.mode('run') === 'rust') void desk.invoke('desk:run-release-owner', [prefix]).catch(() => undefined)
+  }
   // A window that reloads / closes drops its holds, so watchers and device trackers can stop.
   const ownerOf = (event: IpcMainInvokeEvent, key: string): string => {
     const id = event.sender.id
@@ -38,85 +45,87 @@ export function registerRunIpc(deps: RunIpcDeps): () => void {
       tracked.add(id)
       event.sender.once('destroyed', () => {
         tracked.delete(id)
-        manager.releaseOwner(String(id))
+        release(String(id))
       })
       event.sender.on('did-start-navigation', (_e, _url, inPlace, isMainFrame) => {
-        if (isMainFrame && !inPlace) manager.releaseOwner(String(id))
+        if (isMainFrame && !inPlace) release(String(id))
       })
     }
     return `${id}:${key}`
   }
 
-  ipcMain.handle('ccm:run-hold', async (event, dir: unknown, key: unknown, on: unknown) => {
+  const handle = deskHandle(ipcMain, isAppFrame, desk ? { router: desk, module: 'run', hosts: (event) => runHosts({ resolveDir, ownerOf }, event) } : undefined)
+
+  handle('ccm:run-hold', async (event, dir: unknown, key: unknown, on: unknown) => {
     const r = await root(event, dir)
     if (!r || !isId(key)) return false
     await manager.hold(r, ownerOf(event, key), on === true)
     return true
   })
-  ipcMain.handle('ccm:run-config-auto-import', async (event, dir: unknown) => {
+  handle('ccm:run-config-auto-import', async (event, dir: unknown) => {
     const r = await root(event, dir)
     return r ? manager.autoImport(r).catch(() => []) : []
   })
-  ipcMain.handle('ccm:run-toolchain', async (event, dir: unknown, kind: unknown) => {
+  handle('ccm:run-toolchain', async (event, dir: unknown, kind: unknown) => {
     const d = await inside(event, dir)
     return d && (kind === 'flutter' || kind === 'android') ? manager.toolchain(d, kind).catch(() => null) : null
   })
-  ipcMain.handle('ccm:run-templates', (event) => (isAppFrame(event) ? manager.getTemplates() : null))
-  ipcMain.handle('ccm:run-templates-set', (event, next: unknown) => (isAppFrame(event) && next && typeof next === 'object' ? manager.setTemplates(next).catch(() => null) : null))
-  ipcMain.handle('ccm:run-project-sdk-set', async (event, dir: unknown, sdk: unknown) => {
+  handle('ccm:run-templates', (event) => (isAppFrame(event) ? manager.getTemplates() : null))
+  handle('ccm:run-templates-set', (event, next: unknown) => (isAppFrame(event) && next && typeof next === 'object' ? manager.setTemplates(next).catch(() => null) : null))
+  handle('ccm:run-project-sdk-set', async (event, dir: unknown, sdk: unknown) => {
     const d = await inside(event, dir)
     if (!d || (sdk !== null && (typeof sdk !== 'string' || !path.isAbsolute(sdk)))) return null
     return manager.setProjectFlutterSdk(d, sdk).catch(() => null)
   })
-  ipcMain.handle('ccm:run-detect', async (event, dir: unknown) => {
+  handle('ccm:run-detect', async (event, dir: unknown) => {
     const r = await root(event, dir)
     return r ? manager.detect(r, true).catch(() => null) : null
   })
-  ipcMain.handle('ccm:run-env', async (event, dir: unknown, kind: unknown) => {
+  handle('ccm:run-env', async (event, dir: unknown, kind: unknown) => {
     const d = await inside(event, dir)
     return d && (kind === 'flutter' || kind === 'android') ? manager.env(d, kind).catch(() => null) : null
   })
-  ipcMain.handle('ccm:run-devices', (event) => (isAppFrame(event) ? manager.devices().catch(() => []) : []))
-  ipcMain.handle('ccm:run-emulators', (event) => (isAppFrame(event) ? manager.emulators().catch(() => []) : []))
-  ipcMain.handle('ccm:run-launch-emulator', (event, id: unknown, source: unknown) => {
+  handle('ccm:run-devices', (event) => (isAppFrame(event) ? manager.devices().catch(() => []) : []))
+  handle('ccm:run-emulators', (event) => (isAppFrame(event) ? manager.emulators().catch(() => []) : []))
+  handle('ccm:run-launch-emulator', (event, id: unknown, source: unknown) => {
     if (!isAppFrame(event) || !isId(id) || (source !== 'flutter' && source !== 'adb')) return DENIED
     return manager.launchEmulator(id, source)
   })
-  ipcMain.handle('ccm:run-configs', async (event, dir: unknown) => {
+  handle('ccm:run-configs', async (event, dir: unknown) => {
     const r = await root(event, dir)
     return r ? manager.configs(r).catch(() => []) : []
   })
-  ipcMain.handle('ccm:run-config-save', async (event, dir: unknown, cfg: unknown) => {
+  handle('ccm:run-config-save', async (event, dir: unknown, cfg: unknown) => {
     const r = await root(event, dir)
     return r ? manager.saveConfig(r, cfg).catch(() => null) : null
   })
-  ipcMain.handle('ccm:run-config-delete', async (event, dir: unknown, id: unknown) => {
+  handle('ccm:run-config-delete', async (event, dir: unknown, id: unknown) => {
     const r = await root(event, dir)
     return r && isId(id) ? manager.deleteConfig(r, id).catch(() => false) : false
   })
-  ipcMain.handle('ccm:run-config-import', async (event, dir: unknown) => {
+  handle('ccm:run-config-import', async (event, dir: unknown) => {
     const r = await root(event, dir)
     return r ? manager.importConfigs(r).catch(() => []) : []
   })
-  ipcMain.handle('ccm:run-preview', async (event, dir: unknown, cfg: unknown, deviceId: unknown) => {
+  handle('ccm:run-preview', async (event, dir: unknown, cfg: unknown, deviceId: unknown) => {
     const r = await root(event, dir)
     return r ? manager.preview(r, cfg, isId(deviceId) ? deviceId : null).catch(() => null) : null
   })
-  ipcMain.handle('ccm:run-start', async (event, req: unknown) => {
+  handle('ccm:run-start', async (event, req: unknown) => {
     const { root: dir, configId, deviceId } = (req ?? {}) as Record<string, unknown>
     const r = await root(event, dir)
     if (!r || !isId(configId)) return DENIED
     return manager.start({ root: r, configId, deviceId: isId(deviceId) ? deviceId : null })
   })
-  ipcMain.handle('ccm:run-stop', (event, id: unknown) => (isAppFrame(event) && isId(id) ? manager.stop(id) : DENIED))
-  ipcMain.handle('ccm:run-reload', (event, id: unknown, full: unknown) => (isAppFrame(event) && isId(id) ? manager.reload(id, full === true) : DENIED))
-  ipcMain.handle('ccm:run-pub-get', async (event, dir: unknown) => {
+  handle('ccm:run-stop', (event, id: unknown) => (isAppFrame(event) && isId(id) ? manager.stop(id) : DENIED))
+  handle('ccm:run-reload', (event, id: unknown, full: unknown) => (isAppFrame(event) && isId(id) ? manager.reload(id, full === true) : DENIED))
+  handle('ccm:run-pub-get', async (event, dir: unknown) => {
     const d = await inside(event, dir)
     return d ? manager.pubGet(d) : DENIED
   })
-  ipcMain.handle('ccm:run-sessions', (event) => (isAppFrame(event) ? manager.list() : []))
-  ipcMain.handle('ccm:run-settings', (event) => (isAppFrame(event) ? manager.getSettings() : null))
-  ipcMain.handle('ccm:run-settings-set', (event, next: unknown) => {
+  handle('ccm:run-sessions', (event) => (isAppFrame(event) ? manager.list() : []))
+  handle('ccm:run-settings', (event) => (isAppFrame(event) ? manager.getSettings() : null))
+  handle('ccm:run-settings-set', (event, next: unknown) => {
     if (!isAppFrame(event) || !next || typeof next !== 'object') return null
     return manager.setSettings(next as Parameters<RunManager['setSettings']>[0]).catch(() => null)
   })

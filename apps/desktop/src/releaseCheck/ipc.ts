@@ -6,6 +6,8 @@ import { certFinding } from './rules'
 import { newestArtifact, scanRelease } from './scan'
 import { readSigner, type SignTools } from './sign'
 import { ReleaseStore } from './store'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import { androidGateHosts } from '../apk/deskHosts'
 
 export interface ReleaseIpcDeps {
   ipcMain: IpcMain
@@ -17,12 +19,14 @@ export interface ReleaseIpcDeps {
   pickArtifact: (event: IpcMainInvokeEvent, near: string) => Promise<string | null>
   findTools: () => Promise<SignTools>
   readSigner?: typeof readSigner
+  desk?: DeskRouter
 }
 
 const CHANNELS = ['ccm:release-check', 'ccm:release-mark', 'ccm:release-verify', 'ccm:release-remember']
 
 export function registerReleaseIpc(deps: ReleaseIpcDeps): () => void {
   const { ipcMain, isAppFrame } = deps
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'releaseCheck', hosts: (event) => ({ ...androidGateHosts({ resolveDir: deps.resolveDir }), 'release.pick': (p) => deps.pickArtifact(event, String((p as { near?: unknown } | null)?.near ?? '')) }) } : undefined)
   const store = new ReleaseStore(deps.dataDir)
   const signer = deps.readSigner ?? readSigner
   // Remember takes the certificate main itself read this run, never a hash sent by the page.
@@ -56,9 +60,9 @@ export function registerReleaseIpc(deps: ReleaseIpcDeps): () => void {
     return hit ? { root: res.root, app: hit } : { ok: false, error: 'invalid' }
   }
 
-  ipcMain.handle('ccm:release-check', async (event, root: unknown): Promise<ReleaseCheckResult> => (isAppFrame(event) ? check(root) : { ok: false, error: 'denied' }))
+  handle('ccm:release-check', async (event, root: unknown): Promise<ReleaseCheckResult> => (isAppFrame(event) ? check(root) : { ok: false, error: 'denied' }))
 
-  ipcMain.handle('ccm:release-mark', async (event, req: unknown): Promise<ReleaseCheckResult> => {
+  handle('ccm:release-mark', async (event, req: unknown): Promise<ReleaseCheckResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const found = await appOf(req)
     if ('ok' in found) return found
@@ -66,7 +70,7 @@ export function registerReleaseIpc(deps: ReleaseIpcDeps): () => void {
     return check(found.root)
   })
 
-  ipcMain.handle('ccm:release-verify', async (event, req: unknown): Promise<ReleaseVerifyResult> => {
+  handle('ccm:release-verify', async (event, req: unknown): Promise<ReleaseVerifyResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const found = await appOf(req)
     if ('ok' in found) return { ok: false, error: !found.ok && found.error === 'denied' ? 'denied' : 'invalid' }
@@ -94,7 +98,7 @@ export function registerReleaseIpc(deps: ReleaseIpcDeps): () => void {
     }
   })
 
-  ipcMain.handle('ccm:release-remember', async (event, req: unknown): Promise<ReleaseCheckResult> => {
+  handle('ccm:release-remember', async (event, req: unknown): Promise<ReleaseCheckResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const found = await appOf(req)
     if ('ok' in found) return found

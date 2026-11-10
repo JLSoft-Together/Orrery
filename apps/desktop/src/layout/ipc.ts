@@ -3,12 +3,14 @@ import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { drawableFolderKind, drawableKind, DRAWABLE_SNIFF_BYTES, isLooseLayoutXml } from '@ccm/shared'
+import { deskHandle, type DeskRouter } from '../desk/forward'
 import { isWithin } from '../preview/paths'
 import type { PreviewServer } from '../preview/server'
 import { LayoutDaemon, LayoutError, type DaemonDeps, type RenderParams } from './daemon'
 import { LayoutlibBundle, type KitSpec } from './download'
+import { layoutHosts } from './deskHosts'
 import { findJdk } from './jdk'
-import { LayoutModelService, type ModelServiceDeps } from './model'
+import { LayoutModelService, type ModelDaemon, type ModelServiceDeps } from './model'
 import { LAYOUTLIB_API_LEVEL } from './types'
 import type { DaemonRenderResult, DrawableRenderResult, DrawableSwatch, JdkStatus, LayoutDevice, LayoutDiagnostic, LayoutEvent, LayoutModelInfo, LayoutRenderResult, LayoutStatus, LayoutViewNode } from './types'
 
@@ -40,6 +42,8 @@ export interface LayoutIpcDeps {
   /** Project model (Phase 3); absent = framework views only. */
   model?: Omit<ModelServiceDeps, 'modelsDir' | 'daemon' | 'broadcast' | 'log' | 'canRun' | 'sourceModels'>
   renderCacheSize?: number
+  /** Rust `core-desk` module `layout` (docs: .planning/wp/WP-v87-6-D6-report.md); absent = this file's handlers only. */
+  desk?: { router: DeskRouter }
 }
 
 export type AgentRenderOutcome =
@@ -52,7 +56,10 @@ export interface LayoutIpc {
   agentRender: (file: string, opts: { device: LayoutDevice; night: boolean; slot: string }) => Promise<AgentRenderOutcome>
   stop: () => Promise<void>
   killNow: () => void
+  afterBuild: (root: string, module: string, variant: string) => void
   model: LayoutModelService | null
+  /** `ccm:layout-event` frames the Rust desk emitted: the model service follows the daemon state like it does in-process. */
+  onDeskEvent: (payload: unknown) => void
 }
 
 const CHANNELS = ['ccm:layout-status', 'ccm:layout-download', 'ccm:layout-render', 'ccm:layout-model-status', 'ccm:layout-model-refresh', 'ccm:layout-model-pick', 'ccm:layout-warmup', 'ccm:drawable-render']
@@ -267,6 +274,23 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
       onStage: (stage) => broadcast({ type: 'daemon-stage', stage }),
     })
   const jarExists = (): boolean => existsSync(deps.daemonJar) || (bundle.kitPending?.() ?? false)
+  const router = deps.desk?.router
+  const rustMode = (): boolean => !!router && router.mode('layout') === 'rust'
+  const hostDeps = { resolveDir, server: deps.server, confirm: deps.confirm }
+  const handle = deskHandle(ipcMain, isAppFrame, router ? { router, module: 'layout', hosts: (event) => layoutHosts(hostDeps, event) } : undefined)
+  const modelDaemon: ModelDaemon = {
+    request: async (method, params, timeoutMs) => {
+      if (!rustMode()) return daemon.request(method, params, timeoutMs)
+      const r = (await router!.invoke('desk:layout-request', [method, params, timeoutMs]).catch(() => null)) as { ok: boolean; value?: unknown; code?: string; detail?: string | null } | null
+      if (!r) return daemon.request(method, params, timeoutMs)
+      if (r.ok) return r.value
+      throw new LayoutError(r.code ?? 'request-failed', r.detail ?? undefined)
+    },
+    requestRestart: () => {
+      if (rustMode()) void router!.invoke('desk:layout-restart').catch(() => null)
+      else daemon.requestRestart()
+    },
+  }
   let realRender: string | null = null
   let realSnap: string | null = null
   if (deps.model) {
@@ -274,7 +298,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
       ...deps.model,
       modelsDir: path.join(base, 'models'),
       sourceModels: { gradleHome: deps.model.env.GRADLE_USER_HOME?.trim() || path.join(deps.model.home, '.gradle'), aarCacheDir: path.join(base, 'aars') },
-      daemon,
+      daemon: modelDaemon,
       broadcast,
       log: deps.log ?? (() => undefined),
       canRun: () => jarExists() && bundle.isReady(),
@@ -305,28 +329,28 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
 
   const noModel: LayoutModelInfo = { target: null, state: { state: 'none' }, hasModel: false, themes: [] }
 
-  ipcMain.handle('ccm:layout-model-status', async (event, req: unknown): Promise<LayoutModelInfo | null> => {
+  handle('ccm:layout-model-status', async (event, req: unknown): Promise<LayoutModelInfo | null> => {
     const file = await gateFile(event, req)
     if (!file) return null
     return model ? model.info(file).catch(() => noModel) : noModel
   })
 
   // Button: runs the read-only Gradle task now (explicit user action, same trust as Run).
-  ipcMain.handle('ccm:layout-model-refresh', async (event, req: unknown): Promise<LayoutModelInfo | null> => {
+  handle('ccm:layout-model-refresh', async (event, req: unknown): Promise<LayoutModelInfo | null> => {
     const file = await gateFile(event, req)
     if (!file) return null
     return model ? model.refreshFile(file).catch(() => noModel) : noModel
   })
 
   // Library layout: which dependent app's model to borrow (validated against the candidates in the service).
-  ipcMain.handle('ccm:layout-model-pick', async (event, req: unknown): Promise<LayoutModelInfo | null> => {
+  handle('ccm:layout-model-pick', async (event, req: unknown): Promise<LayoutModelInfo | null> => {
     const file = await gateFile(event, req)
     const module = ((req ?? {}) as Record<string, unknown>).module
     if (!file || typeof module !== 'string' || module.length > 300) return null
     return model ? model.pickApp(file, module).catch(() => noModel) : noModel
   })
 
-  ipcMain.handle('ccm:layout-status', async (event): Promise<LayoutStatus | null> => {
+  handle('ccm:layout-status', async (event): Promise<LayoutStatus | null> => {
     if (!isAppFrame(event)) return null
     const jdk = await findJava()
     const { java: _java, ...pub } = jdk
@@ -335,7 +359,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
 
   // A layout was opened: start the JVM (initialize renders a framework-only warm-up layout) and load the cached
   // project model, so the first real render skips the cold start. Never Gradle; the daemon's idle timer still applies.
-  ipcMain.handle('ccm:layout-warmup', async (event, req: unknown): Promise<{ ok: boolean; code?: string }> => {
+  handle('ccm:layout-warmup', async (event, req: unknown): Promise<{ ok: boolean; code?: string }> => {
     // Any explorer-allowed .xml (layouts and drawables); nothing is read here.
     const file = isAppFrame(event) ? await resolveDir(((req ?? {}) as Record<string, unknown>).file) : null
     if (!file || path.extname(file).toLowerCase() !== '.xml') return { ok: false, code: 'denied' }
@@ -351,7 +375,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
     }
   })
 
-  ipcMain.handle('ccm:layout-download', async (event) => {
+  handle('ccm:layout-download', async (event) => {
     if (!isAppFrame(event)) return null
     const now = bundle.status()
     if (now.state === 'ready' || now.state === 'downloading') return now
@@ -360,7 +384,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
     return bundle.download()
   })
 
-  ipcMain.handle('ccm:layout-render', async (event, req: unknown): Promise<LayoutRenderResult> => {
+  handle('ccm:layout-render', async (event, req: unknown): Promise<LayoutRenderResult> => {
     if (!isAppFrame(event)) return { ok: false, code: 'denied' }
     const r = (req ?? {}) as Record<string, unknown>
     const file = await resolveDir(r.file)
@@ -433,7 +457,7 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
   })
 
   // Drawable / color state list (v41): any file the explorer may open, judged by folder or root element (≤ 1 MB).
-  ipcMain.handle('ccm:drawable-render', async (event, req: unknown): Promise<DrawableRenderResult> => {
+  handle('ccm:drawable-render', async (event, req: unknown): Promise<DrawableRenderResult> => {
     if (!isAppFrame(event)) return { ok: false, code: 'denied' }
     const r = (req ?? {}) as Record<string, unknown>
     const file = await resolveDir(r.file)
@@ -491,6 +515,10 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
     err instanceof LayoutError ? { ok: false, code: err.code === 'cancelled' ? 'busy' : err.code, ...(err.detail ? { detail: err.detail.slice(-300) } : {}) } : { ok: false, code: 'failed' }
 
   const agentRender: LayoutIpc['agentRender'] = async (file, o) => {
+    if (rustMode()) {
+      const r = (await router!.invoke('desk:layout-agent-render', [file, o], layoutHosts(hostDeps, null)).catch(() => null)) as AgentRenderOutcome | null
+      if (r) return r
+    }
     if (!(await isLayoutTarget(file, null, platform))) return { ok: false, code: 'not-layout' }
     if (!jarExists()) return { ok: false, code: 'jar-missing' }
     if (!bundle.isReady()) return { ok: false, code: 'bundle-missing' }
@@ -541,14 +569,24 @@ export function registerLayoutIpc(deps: LayoutIpcDeps): LayoutIpc {
     dispose: () => {
       for (const ch of CHANNELS) ipcMain.removeHandler(ch)
     },
-    stop: () => {
+    stop: async () => {
       model?.killNow()
-      return daemon.stop()
+      await daemon.stop()
+      if (rustMode()) await router!.invoke('desk:layout-stop').catch(() => null)
     },
     killNow: () => {
       model?.killNow()
       daemon.killNow()
+      if (rustMode()) void router!.invoke('desk:layout-kill').catch(() => null)
+    },
+    afterBuild: (root, module, variant) => {
+      if (rustMode()) void router!.invoke('desk:layout-after-build', [root, module, variant]).catch(() => null)
+      else model?.afterBuild(root, module, variant)
     },
     model,
+    onDeskEvent: (payload) => {
+      const e = (payload ?? {}) as { type?: unknown; state?: unknown }
+      if (e.type === 'daemon' && typeof e.state === 'string') model?.onDaemonState(e.state)
+    },
   }
 }

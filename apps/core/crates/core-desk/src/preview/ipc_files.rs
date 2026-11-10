@@ -40,7 +40,7 @@ fn history_on(ctx: &Ctx) -> bool {
     gate::has_cap(&gate::caps(ctx), "history")
 }
 
-pub fn register(desk: &mut Desk, env: &DeskEnv) {
+pub fn register(desk: &mut Desk, env: &DeskEnv, history: Arc<LocalHistory>) {
     desk.on(MODULE, "ccm:read-file", |ctx, args| {
         let t = arg(args, 0);
         if !t.is_string() {
@@ -55,7 +55,6 @@ pub fn register(desk: &mut Desk, env: &DeskEnv) {
         }
         Ok(files::read_log_chunk(req, &roots(ctx)))
     });
-    let history = Arc::new(LocalHistory::new(env.data_dir.clone()));
     let h = history.clone();
     desk.on(MODULE, "ccm:file-write", move |ctx, args| {
         let on = history_on(ctx);

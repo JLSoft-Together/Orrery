@@ -1,4 +1,6 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import { httpHosts, PREVIEW_DESK_MODULES } from './deskHosts'
 
 export const HTTP_TIMEOUT_MS = 30_000
 export const MAX_RESPONSE_BYTES = 5 * 1024 * 1024
@@ -144,6 +146,7 @@ export interface HttpIpcDeps {
   /** Native confirm for a public host; true = send. */
   confirmHost: (event: IpcMainInvokeEvent, host: string, method: string) => Promise<boolean>
   fetch?: FetchLike
+  desk?: DeskRouter
 }
 
 /** `ccm:http-send` / `ccm:http-cancel`. Bodies never reach a log. */
@@ -165,7 +168,8 @@ export function registerHttpIpc(deps: HttpIpcDeps): () => void {
     return ok
   }
 
-  deps.ipcMain.handle('ccm:http-send', async (event, input: unknown): Promise<HttpResult> => {
+  const tools = deskHandle(deps.ipcMain as IpcMain, deps.isAppFrame, deps.desk ? { router: deps.desk, module: PREVIEW_DESK_MODULES.tools, hosts: (event) => httpHosts(deps.confirmHost, event) } : undefined)
+  tools('ccm:http-send', async (event, input: unknown): Promise<HttpResult> => {
     if (!deps.isAppFrame(event)) return { ok: false, error: 'bad-request' }
     const req = cleanRequest(input)
     if (!req) return { ok: false, error: 'bad-request' }
@@ -181,7 +185,7 @@ export function registerHttpIpc(deps: HttpIpcDeps): () => void {
       if (req.id && running.get(req.id) === ctl) running.delete(req.id)
     }
   })
-  deps.ipcMain.handle('ccm:http-cancel', (event, id: unknown) => {
+  tools('ccm:http-cancel', (event, id: unknown) => {
     if (!deps.isAppFrame(event) || typeof id !== 'string') return false
     running.get(id)?.abort()
     return running.delete(id)

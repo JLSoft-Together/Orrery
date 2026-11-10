@@ -319,7 +319,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return real && history ? history.list(real) : { ok: false, error: 'denied' }
   })
   const formatter = new Formatter()
-  ipcMain.handle('ccm:format', async (event, req: unknown) => {
+  tools('ccm:format', async (event, req: unknown) => {
     const { path: file, text } = (req ?? {}) as { path?: unknown; text?: unknown }
     if (!isAppFrame(event) || typeof text !== 'string') return { ok: false, error: 'denied' }
     if (text.length > MAX_WRITE_BYTES || Buffer.byteLength(text, 'utf8') > MAX_WRITE_BYTES) return { ok: false, error: 'too-large' }
@@ -481,7 +481,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
 
   // Replace in files: same folder gate as ccm:search, a native confirm with the counts, then file by file (docs §11 v70).
   let replacing = false
-  ipcMain.handle('ccm:replace-files', async (event, req: unknown) => {
+  tools('ccm:replace-files', async (event, req: unknown) => {
     const { dir } = (req ?? {}) as { dir?: unknown }
     if (!isAppFrame(event) || !deps.confirmReplace) return { ok: false, error: 'denied' }
     const clean = cleanReplace(req)
@@ -641,7 +641,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     const real = (await repoOf(dir)) ?? (await allowedPath(dir))?.real
     return real && (await fs.stat(real).catch(() => null))?.isDirectory() ? real : null
   }
-  ipcMain.handle('ccm:check-run', async (event, req: unknown) => {
+  tools('ccm:check-run', async (event, req: unknown) => {
     const { dir, check } = (req ?? {}) as { dir?: unknown; check?: unknown }
     const real = isAppFrame(event) ? await checkDir(dir) : null
     const spec = cleanCheck(check)
@@ -650,7 +650,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     if (!line) return { ok: false, error: 'unknown-script' }
     return checks.run(rootKey(real), real, line)
   })
-  ipcMain.handle('ccm:check-cancel', async (event, dir: unknown) => {
+  tools('ccm:check-cancel', async (event, dir: unknown) => {
     const real = isAppFrame(event) ? await checkDir(dir) : null
     return real ? checks.cancel(rootKey(real)) : false
   })
@@ -791,22 +791,22 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return real ? scanI18n(real) : { ok: false, error: 'denied' }
   })
   // Rule strings, tool names and command prefixes only; the bridge log never holds tool input.
-  ipcMain.handle('ccm:perm-read', async (event, root: unknown) => {
+  tools('ccm:perm-read', async (event, root: unknown) => {
     const real = isAppFrame(event) ? await checkDir(root) : null
     return real ? readPermissions(real, deps.dataDir ?? null) : { ok: false, error: 'denied' }
   })
   // Paths, sizes and line counts only; CLAUDE.md / memory text stays in main.
-  ipcMain.handle('ccm:ctx-sources', async (event, cwd: unknown) => {
+  tools('ccm:ctx-sources', async (event, cwd: unknown) => {
     const real = isAppFrame(event) ? await checkDir(cwd) : null
     return real ? contextSources(real, defaultCtxEnv()) : { ok: false, error: 'denied' }
   })
   // Findings carry a path, a line and the offending token only; no file text crosses to the page.
-  ipcMain.handle('ccm:memory-doctor', async (event, cwd: unknown) => {
+  tools('ccm:memory-doctor', async (event, cwd: unknown) => {
     const real = isAppFrame(event) ? await checkDir(cwd) : null
     return real ? memoryDoctor(real, defaultCtxEnv()) : { ok: false, error: 'denied' }
   })
   let permWriting = false
-  ipcMain.handle('ccm:perm-allow', async (event, req: unknown) => {
+  tools('ccm:perm-allow', async (event, req: unknown) => {
     const { root, rules } = (req ?? {}) as { root?: unknown; rules?: unknown }
     const real = isAppFrame(event) ? await checkDir(root) : null
     if (!real || !deps.confirmPermRules) return { ok: false, error: 'denied' }
@@ -818,7 +818,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
       permWriting = false
     }
   })
-  ipcMain.handle('ccm:sensitive-deny', async (event, req: unknown) => {
+  tools('ccm:sensitive-deny', async (event, req: unknown) => {
     const { project, rule, tool, scope } = (req ?? {}) as { project?: unknown; rule?: unknown; tool?: unknown; scope?: unknown }
     const configDir = deps.claudeConfigDir
     if (!isAppFrame(event) || !deps.confirmDenyRules || !configDir || typeof project !== 'string' || project.length > 1024 || !path.isAbsolute(project)) return { ok: false, error: 'denied' }

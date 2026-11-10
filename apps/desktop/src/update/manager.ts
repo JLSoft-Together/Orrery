@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { UpdateError, UpdateInstallKind, UpdateRelease, UpdateState } from '@ccm/shared'
+import type { UpdateHostEnv } from './deskHosts'
 import { downloadAsset } from './download'
 import { fetchLatest, type FetchFn } from './github'
 import type { Prepared } from './install'
@@ -68,6 +69,11 @@ export class UpdateManager {
 
   state(): UpdateState {
     return { ...this.s }
+  }
+
+  hostEnv(): UpdateHostEnv {
+    const d = this.deps
+    return { kind: d.kind, assetKind: d.assetKind, canDownload: d.canDownload, arch: d.arch, prepare: d.prepare, restart: d.restart, openUrl: d.openUrl, reveal: d.reveal }
   }
 
   /** Leftovers of a finished update are removed; a newer version still waiting in pending.json means the installer did not finish. */

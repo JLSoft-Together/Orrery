@@ -158,6 +158,18 @@ export class DeviceManager {
     return (this.adb = tools.adb)
   }
 
+  confirmRemoveIds(ids: string[]): Promise<boolean> {
+    return this.deps.confirmRemove(ids)
+  }
+
+  confirmWipeAvd(name: string): Promise<boolean> {
+    return this.deps.confirmWipe?.(name) ?? Promise.resolve(false)
+  }
+
+  noteUse(serial: string): void {
+    this.deps.onDeviceUse?.(serial)
+  }
+
   avdList(): Promise<AvdList> {
     return this.avds.list()
   }

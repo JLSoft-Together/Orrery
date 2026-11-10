@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { BrowserWindow, dialog, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import { maskSecrets } from '@ccm/shared'
+import type { DeskRouter } from '../desk/forward'
 import type { PreviewServer } from '../preview/server'
 import { RootWatcher } from '../preview/watch'
 import { defaultSpawner, killTree, killTreeSparing, runEnv } from '../run/proc'
@@ -32,6 +33,7 @@ export interface WireLayoutDeps {
   locale: string
   layoutlibOverride?: string | null
   kit?: KitSpec | null
+  desk?: DeskRouter
 }
 
 const STRINGS = {
@@ -84,6 +86,7 @@ export function wireLayout(deps: WireLayoutDeps): LayoutIpc {
     daemonJar: deps.daemonJar,
     layoutlibOverride: deps.layoutlibOverride,
     kit: deps.kit,
+    desk: deps.desk ? { router: deps.desk } : undefined,
     log,
     model: {
       initScript: deps.initScript,

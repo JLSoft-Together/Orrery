@@ -47,6 +47,11 @@ pub fn check_dir(ctx: &Ctx, dir: &Value) -> Option<String> {
     text(call(ctx, "preview.checkDir", json!({"dir": dir})))
 }
 
+pub fn editable_file(ctx: &Ctx, file: &Value) -> Option<(String, String)> {
+    let v = call(ctx, "preview.editableFile", json!({"file": file}));
+    Some((v.get("real")?.as_str()?.to_string(), v.get("root")?.as_str()?.to_string()))
+}
+
 pub fn caps(ctx: &Ctx) -> Value {
     call(ctx, "preview.caps", json!({}))
 }

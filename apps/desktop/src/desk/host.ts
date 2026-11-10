@@ -16,6 +16,7 @@ export interface DeskHostOptions {
   spawner?: DeskSpawner
   exists?: (file: string) => boolean
   bootTimeoutMs?: number
+  hosts?: HostHandlers
 }
 
 interface Pending {
@@ -190,7 +191,8 @@ export class DeskHost {
   }
 
   private async answer(call: number, forId: unknown, method: unknown, params: unknown): Promise<void> {
-    const handler = typeof forId === 'number' && typeof method === 'string' ? this.pending.get(forId)?.hosts[method] : undefined
+    const own = typeof forId === 'number' && typeof method === 'string' ? this.pending.get(forId)?.hosts[method] : undefined
+    const handler = own ?? (typeof method === 'string' ? this.opts.hosts?.[method] : undefined)
     if (!handler) {
       this.send({ reply: call, ok: false, error: `no host ${String(method)}` })
       return

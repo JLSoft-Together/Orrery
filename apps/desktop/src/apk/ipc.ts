@@ -5,6 +5,8 @@ import type { ApkCompareResult, ApkFailure, ApkResult } from '@ccm/shared'
 import { isWithin, realOrNull, rootKey } from '../preview/paths'
 import { analyzeApk, ApkError, compareSnapshots, isApkName, sideOf, type ApkSnapshot } from './analyze'
 import { ApkHistory } from './history'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import { androidGateHosts } from './deskHosts'
 
 export interface ApkIpcDeps {
   ipcMain: IpcMain
@@ -15,8 +17,10 @@ export interface ApkIpcDeps {
   dialog: Pick<Dialog, 'showOpenDialog'>
   getWindow: () => BrowserWindow | null
   dataDir: string
+  desk?: DeskRouter
 }
 
+const field = (params: unknown, key: string): unknown => (params && typeof params === 'object' ? (params as Record<string, unknown>)[key] : undefined)
 const CHANNELS = ['ccm:apk-pick', 'ccm:apk-analyze', 'ccm:apk-compare']
 const DENIED: ApkFailure = { ok: false, error: 'denied' }
 const INVALID: ApkFailure = { ok: false, error: 'invalid' }
@@ -27,6 +31,26 @@ const failure = (err: unknown): ApkFailure => ({ ok: false, error: err instanceo
 
 export function registerApkIpc(deps: ApkIpcDeps): () => void {
   const { ipcMain, isAppFrame } = deps
+  const handle = deskHandle(
+    ipcMain,
+    isAppFrame,
+    deps.desk
+      ? {
+          router: deps.desk,
+          module: 'apk',
+          hosts: () => ({
+            ...androidGateHosts({ resolveDir: deps.resolveDir, resolveFile: deps.resolveFile }),
+            'apk.pick': async (p) => {
+              const win = deps.getWindow()
+              const dir = field(p, 'defaultPath')
+              const opts: Electron.OpenDialogOptions = { properties: ['openFile'], filters: [{ name: 'Android', extensions: ['apk', 'aab'] }], ...(typeof dir === 'string' && dir ? { defaultPath: dir } : {}) }
+              const res = win ? await deps.dialog.showOpenDialog(win, opts) : await deps.dialog.showOpenDialog(opts)
+              return res.canceled ? null : (res.filePaths[0] ?? null)
+            },
+          }),
+        }
+      : undefined,
+  )
   const history = new ApkHistory(deps.dataDir)
   // Files chosen in the native picker this run: readable even outside every project root.
   const picked = new Set<string>()
@@ -57,7 +81,7 @@ export function registerApkIpc(deps: ApkIpcDeps): () => void {
     return snap
   }
 
-  ipcMain.handle('ccm:apk-pick', async (event, near: unknown) => {
+  handle('ccm:apk-pick', async (event, near: unknown) => {
     if (!isAppFrame(event)) return null
     const win = deps.getWindow()
     const dir = typeof near === 'string' && path.isAbsolute(near) ? await deps.resolveDir(near) : null
@@ -72,7 +96,7 @@ export function registerApkIpc(deps: ApkIpcDeps): () => void {
     return real
   })
 
-  ipcMain.handle('ccm:apk-analyze', async (event, req: unknown): Promise<ApkResult> => {
+  handle('ccm:apk-analyze', async (event, req: unknown): Promise<ApkResult> => {
     if (!isAppFrame(event) || !req || typeof req !== 'object') return DENIED
     const { path: p, root } = req as { path?: unknown; root?: unknown }
     const file = await gate(p)
@@ -88,7 +112,7 @@ export function registerApkIpc(deps: ApkIpcDeps): () => void {
     }
   })
 
-  ipcMain.handle('ccm:apk-compare', async (event, req: unknown): Promise<ApkCompareResult> => {
+  handle('ccm:apk-compare', async (event, req: unknown): Promise<ApkCompareResult> => {
     if (!isAppFrame(event) || !req || typeof req !== 'object') return DENIED
     const { path: p, other: o } = req as { path?: unknown; other?: unknown }
     const [file, other] = await Promise.all([gate(p), gate(o)])

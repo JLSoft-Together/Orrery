@@ -80,9 +80,24 @@ export class GitHubAccounts {
       timeoutMs?: number
     },
   ) {
-    if (!opts.file) return
+    this.load()
+  }
+
+  reload(): void {
+    this.access.clear()
+    this.load()
+  }
+
+  get crypt(): TokenCrypt {
+    return this.opts.crypt
+  }
+
+  private load(): void {
+    const file = this.opts.file
+    if (!file) return
+    this.data = { accounts: [], defaultId: null, repos: {} }
     try {
-      const raw = JSON.parse(readFileSync(opts.file, 'utf8')) as Partial<FileShape>
+      const raw = JSON.parse(readFileSync(file, 'utf8')) as Partial<FileShape>
       const accounts = (Array.isArray(raw.accounts) ? raw.accounts : []).filter(
         (a): a is Stored => !!a && typeof a.id === 'string' && typeof a.login === 'string' && typeof a.token === 'string',
       )

@@ -1,27 +1,45 @@
+pub mod agent_status;
+pub mod apk;
 pub mod appearance;
 pub mod backup;
 pub mod bridge;
 pub mod build_clean;
+pub mod capture;
 pub mod claude;
 pub mod claude_hooks;
+pub mod deepseek;
+pub mod devices;
+pub mod disk;
 pub mod editors;
 pub mod extensions;
+pub mod flutter_preview;
 pub mod fs_tree;
 pub mod git;
+pub mod github;
 pub mod js;
+pub mod keychain;
+pub mod layout;
 pub mod layouts;
 pub mod libs;
 pub mod pages;
 pub mod pages_style;
+pub mod phone;
+pub mod power;
 pub mod preview;
+pub mod release_check;
+pub mod resources;
 pub mod restore;
+pub mod run;
 pub mod stdio;
+pub mod telegram;
+pub mod update;
 pub mod util;
 
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeskError {
@@ -103,10 +121,52 @@ impl DeskEnv {
     }
 }
 
+pub type Sink = Arc<dyn Fn(&str, Value) + Send + Sync>;
+
+#[derive(Clone, Default)]
+pub struct Emitter(Arc<Mutex<Option<Sink>>>);
+
+impl Emitter {
+    pub fn emit(&self, event: &str, payload: Value) {
+        let sink = self.0.lock().unwrap().clone();
+        if let Some(sink) = sink {
+            sink(event, payload)
+        }
+    }
+
+    pub fn set(&self, sink: Sink) {
+        *self.0.lock().unwrap() = Some(sink);
+    }
+}
+
+pub type Closers = Arc<Mutex<Vec<Arc<dyn Fn() + Send + Sync>>>>;
+
+pub type HostFn = Arc<dyn Fn(&str, Value) -> Result<Value, DeskError> + Send + Sync>;
+
+#[derive(Clone, Default)]
+pub struct HostLink(Arc<Mutex<Option<HostFn>>>);
+
+impl HostLink {
+    pub fn call(&self, method: &str, params: Value) -> Result<Value, DeskError> {
+        let f = self.0.lock().unwrap().clone();
+        match f {
+            Some(f) => f(method, params),
+            None => Err(DeskError::Host(format!("no host for {method}"))),
+        }
+    }
+
+    pub fn set(&self, f: HostFn) {
+        *self.0.lock().unwrap() = Some(f);
+    }
+}
+
 #[derive(Default)]
 pub struct Desk {
     handlers: HashMap<String, Handler>,
     modules: Vec<(String, Vec<String>)>,
+    emitter: Emitter,
+    hostlink: HostLink,
+    closers: Closers,
 }
 
 impl Desk {
@@ -127,7 +187,23 @@ impl Desk {
         appearance::register(&mut desk, env);
         pages::register(&mut desk, env);
         editors::register(&mut desk, env);
+        github::register(&mut desk, env);
+        phone::register(&mut desk, env);
+        capture::register(&mut desk, env);
+        power::register(&mut desk, env);
+        disk::register(&mut desk, env);
+        agent_status::register(&mut desk, env);
+        resources::register(&mut desk, env);
+        update::register(&mut desk, env);
+        deepseek::register(&mut desk, env);
+        telegram::register(&mut desk, env);
+        apk::register(&mut desk, env);
+        release_check::register(&mut desk, env);
         preview::register(&mut desk, env);
+        let run_settings = run::ipc::register(&mut desk, env);
+        flutter_preview::ipc::register(&mut desk, env, run_settings.clone());
+        layout::ipc::register(&mut desk, env, run_settings.clone());
+        devices::ipc::register(&mut desk, env, run_settings.clone());
         desk
     }
 
@@ -140,6 +216,33 @@ impl Desk {
             Some((_, list)) => list.push(channel.to_string()),
             None => self.modules.push((module.to_string(), vec![channel.to_string()])),
         }
+    }
+
+    pub fn emitter(&self) -> Emitter {
+        self.emitter.clone()
+    }
+
+    pub fn set_sink(&self, sink: Sink) {
+        self.emitter.set(sink)
+    }
+
+    pub fn on_close(&self, f: Arc<dyn Fn() + Send + Sync>) {
+        self.closers.lock().unwrap().push(f);
+    }
+
+    pub fn close(&self) {
+        let list: Vec<_> = self.closers.lock().unwrap().clone();
+        for f in list {
+            f();
+        }
+    }
+
+    pub fn host_link(&self) -> HostLink {
+        self.hostlink.clone()
+    }
+
+    pub fn set_host(&self, f: HostFn) {
+        self.hostlink.set(f)
     }
 
     pub fn channels(&self) -> Vec<String> {

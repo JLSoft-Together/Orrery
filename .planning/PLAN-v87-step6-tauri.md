@@ -38,18 +38,20 @@ Nguồn: `PLAN-v87-rust-core.md` §6 bước 6, `PLAN-v87-tauri-options.md` (kh�
 | D1 | `claudeHooks`, `bridge` → `orrery-bridge`, `extensions`, `hooks`, `statusline`, `editors`, `appearance`, `layouts`, `pages`, `restore` | |
 | D2 | `github` (+ keyring + migrate safeStorage), `disk`, `power`, `agentStatus`, `resources`, `capture` (phần file), `phone`, `attention` | |
 | D3 | `preview/` git + file workspace (6.4k, 84 handler) | lớn nhất, có thể tách 2 |
-| D4 | `run/` (5.4k) + `flutterPreview/` (1.3k) | |
-| D5 | `devices/` (3.7k, sql.js → rusqlite) + `apk/` + `releaseCheck/` | |
-| D6 | `layout/` (3.6k, JVM daemon spawn + download) | |
-| D7 | `telegram/` (4.1k + grammers) | |
+| D4 | `run/` (5.4k) + `flutterPreview/` (1.3k) | DONE, mặc định rust từ D4b (chờ E2E; `CCM_DESK_RUN=node` / `CCM_DESK_FLUTTER_PREVIEW=node` quay về TS): 23 kênh `ccm:run-*` + 5 kênh `ccm:fwp-*` sang `core-desk`; D4b nối TS consumer qua `run/facade.ts` `RunFacade` (mirror `ccm:run-event` + `desk:run-state` + `desk:run-settings`); xem `WP-v87-6-D4-report.md`, `WP-v87-6-D4b-report.md` |
+| D5 | `devices/` (3.7k, sql.js → rusqlite) + `apk/` + `releaseCheck/` | PARTIAL (chờ E2E, mặc định node; `CCM_DESK_APK|RELEASE_CHECK|DEVICES=rust` bật): `apk` 3 kênh + `releaseCheck` 4 kênh + `devices` 23 kênh (20 `ccm:dev-*` + 3 `ccm:avd-*`) sang `core-desk`; D5b đã port nốt `dev-rec-*`, `devfs-*`, `perf-*`, `appdata-*` (sql.js → `rusqlite` bundled) cùng cờ `CCM_DESK_DEVICES` (`.planning/wp/WP-v87-6-D5-report.md`, `WP-v87-6-D5b-report.md`) |
+| D6 | `layout/` (3.6k, JVM daemon spawn + download + model Gradle) | PARTIAL (chờ E2E, mặc định node; `CCM_DESK_LAYOUT=rust` bật): D6 = 5 kênh `ccm:layout-{status,download,render,warmup}` + `ccm:drawable-render` + `desk:layout-*` sang `core-desk/src/layout/` (JDK, AppCDS, daemon JVM, download pin, cache render). D6b = model service: 3 kênh `ccm:layout-model-{status,refresh,pick}` + `desk:layout-after-build`, `ModelSvc` (resolve / pick app, cache `<hash>.json` cùng format TS, Gradle init script cùng lệnh, source model + AAR cache, loose kit, watch res / code), `model.prepare` chạy trong Rust, vỏ Tauri không Node render đủ. Còn: E2E + chạy `gradlew` thật; vỏ Tauri phải gọi `desk:layout-after-build` khi Run pane `running`. Báo cáo `.planning/wp/WP-v87-6-D6-report.md`, `WP-v87-6-D6b-report.md` |
+| D7 | `telegram/` (4.1k + grammers) | PARTIAL (2026-11-10, chưa E2E): Bot API sang `core-desk/src/telegram/` (15 kênh `ccm:telegram-*` + `desk:tg-*`, poll, lệnh, nút, 429, pin / icon / summary), mặc định node (`CCM_DESK_TELEGRAM=rust` để bật); MTProto (file lớn, tài khoản user) vẫn TS qua host `telegram.bigUpload` / `telegram.user` vì session GramJS không dùng được với `grammers`; xem `WP-v87-6-D7-report.md` |
 | D8 | `pty/` MCP `orrery` + `mcpTools` + `orreryApi` + `mcpDesk` + `agentData` (bỏ host.ts Node) | |
-| D9 | `update/`, `deepseek/` | |
+| D9 | `update/`, `deepseek/` | DONE (chờ E2E, mặc định node; `CCM_DESK_UPDATE=rust` / `CCM_DESK_DEEPSEEK=rust` bật): 9 kênh `ccm:update-*` + `desk:update-start`, 9 kênh `ccm:deepseek-*`; autoUpdater / cài / relaunch / dialog qua host `update.*` / `deepseek.confirm` (`.planning/wp/WP-v87-6-D9-report.md`) |
 
 **D0 xong (2026-11-10)**, báo cáo `.planning/wp/WP-v87-6-D0-report.md`:
 - Hợp đồng `core-desk`: kênh = đúng tên `ccm:*` (args = mảng tham số IPC), kiểm frame (`isAppFrame`) ở vỏ; phần chỉ vỏ làm được (dialog, localStorage trang, confirm có text i18n, thùng rác, dữ liệu main như `resReport` / tài khoản GitHub, relaunch) đi qua gọi ngược `ctx.host("<module>.<việc>", params)` — Electron trả bằng `hosts` của `DeskRouter.route`, Tauri (T0) trả trực tiếp trong process. Text i18n chưa sang Rust: Rust gửi dữ liệu thô (số thư mục, size, dòng), vỏ dựng câu.
 - Event Rust → cửa sổ: phải có trong `DESK_EVENTS` (`forward.ts`).
 - Boot (`applyPending`) và `writeAuto` của update vẫn TS ở Electron (desk chưa chắc đã lên lúc boot); Rust có sẵn `desk:backup-apply-pending` / `desk:backup-write-auto` cho Tauri / D9.
 - HTTP trong desk: `ureq` 3 + rustls + platform verifier (dùng lại được cho D2 / D7 / D9). `orrery-core` release 5,0 → 8,1 MB; nếu cần gọn cho mục tiêu Setup ≤ 35 MB thì đổi sang `native-tls` (SChannel / Security.framework) ở 6b.
+
+**D2 xong phần code (2026-11-10, chưa E2E)**, báo cáo `.planning/wp/WP-v87-6-D2-report.md`: 7 module `github`, `phone`, `capture`, `power`, `disk`, `agentStatus`, `resources` (`ccm:res-kill`) trong `DESK_NODE_DEFAULT` (bật bằng `CCM_DESK_<MODULE>=rust`). Token / URL chỉ seal / unseal qua host `keychain.*` (safeStorage ở vỏ; keyring + migrate safeStorage để T2). Event nền qua `Desk::emitter()` (vỏ Tauri phải gọi `desk.set_sink`). Thuần vỏ, không port: `attention.ts` (dock badge / bounce), `capture.ts` `dustSize` + `ccm:capture-rect` / `ccm:capture-guest` (T1), `resources/deviceUse.ts` (post collector), `resources/agentPorts.ts` (MCP, D8).
 
 ### 6b — vỏ Tauri
 | WP | Việc |

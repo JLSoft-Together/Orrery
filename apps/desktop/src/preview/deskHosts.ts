@@ -36,6 +36,18 @@ export interface PreviewConfirms {
 const field = (params: unknown, key: string): unknown => (params && typeof params === 'object' ? (params as Record<string, unknown>)[key] : undefined)
 const str = (params: unknown, key: string): string => String(field(params, key) ?? '')
 
+export type ConfirmHost = (event: IpcMainInvokeEvent, host: string, method: string) => Promise<boolean>
+
+export function httpHosts(confirmHost: ConfirmHost, event: IpcMainInvokeEvent): HostHandlers {
+  return {
+    'preview.confirm': async (p) => {
+      if (field(p, 'kind') !== 'http') return false
+      const req = field(p, 'req')
+      return (await confirmHost(event, str(req, 'host'), str(req, 'method')).catch(() => false)) === true
+    },
+  }
+}
+
 export function previewHosts(gate: PreviewGate, deps: PreviewConfirms, event: IpcMainInvokeEvent): HostHandlers {
   const confirm = async (kind: unknown, req: unknown): Promise<boolean> => {
     const run = async (): Promise<boolean | undefined> => {

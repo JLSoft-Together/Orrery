@@ -3,6 +3,7 @@ import os from 'node:os'
 import { BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from 'electron'
 import { RootWatcher } from '../preview/watch'
 import { defaultSpawner } from '../run/proc'
+import type { DeskRouter } from '../desk/forward'
 import { registerFlutterPreviewIpc } from './ipc'
 import { FlutterPreviewService } from './service'
 
@@ -11,6 +12,7 @@ export interface WireFlutterPreviewDeps {
   isAppFrame: (event: IpcMainInvokeEvent) => boolean
   resolveDir: (p: unknown) => Promise<string | null>
   getSettings: () => { flutterSdk: string | null; flutterSdkProjects?: Record<string, string> }
+  desk?: DeskRouter
 }
 
 export interface FlutterPreviewWire {
@@ -57,7 +59,7 @@ export function wireFlutterPreview(deps: WireFlutterPreviewDeps): FlutterPreview
     },
     watchPubspec: (root, onChange) => watchPubspec(root, onChange),
   })
-  const disposeIpc = registerFlutterPreviewIpc({ ipcMain: deps.ipcMain, isAppFrame: deps.isAppFrame, resolveDir: deps.resolveDir, service })
+  const disposeIpc = registerFlutterPreviewIpc({ ipcMain: deps.ipcMain, isAppFrame: deps.isAppFrame, resolveDir: deps.resolveDir, service, desk: deps.desk })
   return {
     service,
     dispose: () => {

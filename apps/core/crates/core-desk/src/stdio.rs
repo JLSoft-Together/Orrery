@@ -109,12 +109,18 @@ pub fn serve(desk: Arc<Desk>, input: impl BufRead, pipe: Arc<Pipe>) -> i32 {
         }
     }
     pipe.close();
+    desk.close();
     0
 }
 
 pub fn run() -> i32 {
-    let desk = Arc::new(Desk::standard(&DeskEnv::from_env()));
+    let desk = Desk::standard(&DeskEnv::from_env());
     let pipe = Arc::new(Pipe::new(Box::new(std::io::stdout())));
+    let sink = pipe.clone();
+    desk.set_sink(Arc::new(move |event, payload| sink.emit(event, payload)));
+    let link = pipe.clone();
+    desk.set_host(Arc::new(move |method, params| link.host(0, method, params)));
+    let desk = Arc::new(desk);
     serve(desk, std::io::stdin().lock(), pipe)
 }
 

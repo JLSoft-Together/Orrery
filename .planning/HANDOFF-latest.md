@@ -1,24 +1,24 @@
-# HANDOFF — Orrery: 8 cải tiến Telegram (2026-11-06 16:45)
+# HANDOFF 2026-11-10 23:30 — v87 bước 6 trên Mac
 
-Đọc file này là làm tiếp được. Tiếng Việt, gọi user "chủ nhân", xưng "con"; chủ nhân nhắn qua Telegram → báo bằng MCP `telegram_send`.
-Thay `HANDOFF-2026-11-06-1425.md`. Nhật ký + Bảng WP: `.planning/PROGRESS-2026-11-06-telegram-8.md`.
+Thay `HANDOFF-2026-11-10-2100-v87-step6.md`. Nhật ký: `.planning/PROGRESS-2026-11-09-v87.md`.
 
-## 1. Đang ở đâu
-- `master`, HEAD `24142ee` (cổng chung đã commit). Đợt 8 cải tiến Telegram: **5/5 WP ĐẠT, CHƯA commit** — chủ nhân chọn "gom 1 commit cuối". Message: `.planning/COMMITS-telegram-8.md`.
-- Kiểm cuối (chạy thật): typecheck 0 lỗi; web 1761/1761; desktop 1358/1358; collector 401+1 skip (T3). E2E (T5) rail 37, tier2 28, v49-open 33, v80-mcp 23, links 22, shell-agent 5, project-panes 23, tabs-cwd 17, v50-groups 32 — 0 fail.
-- QA thật: ảnh từ Telegram → khay → Claude thật nhận `[Image #1]` + caption và trả lời (T5). Phần cần bot thật CHƯA KIỂM: nút Esc/tail, /compact /close /focus, /new picker, ghim theo topic, 429, hạn mức, mở topic supergroup → 11 kịch bản thử tay trong `docs/qa/telegram8-2026-11-06/RESULT.md`.
-- Đang chạy: bản dev QA (Vite 5173, Electron 4319/CDP 9333, data `C:/Users/dauph/AppData/Local/Temp/orrery-qa-tg`). Hook toàn cục không đổi.
+## Trạng thái
+- Mac bước 1–3 của handoff 21:00 xong, sửa 5 lỗi chỉ có trên mac (xem `.code_index/_meta.md` dòng "v87 mac").
+- Gói mới (đều không build release, không E2E; cờ mặc định ghi bên cạnh):
+  - D2 PARTIAL — `github`, `phone`, `capture`, `power`, `disk`, `agentStatus`, `resources` → `core-desk`, mặc định node (`DESK_NODE_DEFAULT`). `.planning/wp/WP-v87-6-D2-report.md`.
+  - D3b DONE — 11 kênh previewTools (format, check-run/cancel, perm-*, sensitive-deny, ctx-sources, memory-doctor, http-send/cancel, replace-files qua `regress`), mặc định rust. `WP-v87-6-D3b-report.md`.
+  - D4 PARTIAL — 23 kênh `ccm:run-*` + 5 `ccm:fwp-*`, mặc định node; chặn bật rust: layout model / telegram / runLogs / MCP run tools / settings đọc `runManager` TS → cần cầu nối từ `ccm:run-event`. `WP-v87-6-D4-report.md`.
+- Cổng gộp (main kiểm 23:30): `cargo test` 694/0, clippy sạch, desktop 1617 pass / 29 skip, typecheck 0.
+- Repo Orrery: **chưa commit** (auto mode chặn lệnh commit đầu phiên; chủ nhân chưa nói commit Orrery). jin-workflow đã commit + push (`cec3ea6`, `d0c7f76`).
 
-## 2. Đã làm (chi tiết: `.planning/wp/tg8/T*-report.md`, `T2-review.md`, docs §11an-j)
-- T1 glyph ✈ tab/rail bấm mở topic + mục menu. T2 nút Esc/tail, lệnh /compact /close(owner) /focus có xác nhận TTL 5', /new picker ở General (review opus 6 điểm đã sửa).
-- T3 ghim 1 tin/topic, topicHealth (lastSentAt/lastError), hàng đợi 429, limitAlert (dự báo + chạm thật) vào topic project đang chạy. T4 ảnh → khay đính kèm Claude (clipboard hệ thống), album 1 lượt. T5 QA + docs + index + RELEASE-next.
+## Việc tiếp
+1. Chủ nhân nói "commit" → commit Orrery theo batch (mac fixes; D2; D3b; D4), không trailer.
+2. Chủ nhân build: `cd apps/core && cargo build --release -j 4 -p core-bin -p core-bridge` + `node apps/desktop/build.mjs`.
+3. Sau build, E2E (rust rồi node), lệnh trong từng báo cáo: D1 (`v74`, `extensions`, `tier2`, `run-pane`, `v77b`), D2 (`github-accounts`, `push`, `v76`, `v77a`, `agent-api`, port 4492), D3b (`v70-tools`, `v72`–`v76`, `file-editor`), D4 (port 4511, `rg -l "ccm:run-|ccm:fwp-" apps/desktop/e2e`). Qua → bỏ module khỏi `DESK_NODE_DEFAULT`.
+4. D4b: cầu nối `ccm:run-event` → runManager TS consumers; rồi D5–D9, T2, T3 theo `PLAN-v87-step6-tauri.md`.
+5. Chủ nhân test tay `npm run desktop` (checklist `.planning/CHECKLIST-v87-step6-mac.md`).
 
-## 3. Việc tiếp
-1. Chủ nhân "commit" → `git add` file trong `git status` trừ §4, message `.planning/COMMITS-telegram-8.md`, không trailer.
-2. Chủ nhân thử tay theo RESULT.md trên app cài (cần build/cài bản mới hoặc release) → lỗi nào giao WP sửa.
-3. "tắt dev" / release khi chủ nhân đặt version (`.planning/RELEASE-next.md`).
-
-## 4. Ràng buộc
-- Không tự commit/push; không trailer. Đừng đụng `bg_native_ad_cta.xml`, `git-gui.bat`, `spikes/`, `docs/qa/v79|v80/`, `apps/*/.vitest/`.
-- Đã chốt: topic tự tạo, 1 project = 1 topic; tài khoản Telegram chỉ để quét; bot `/new` tự gửi prompt, MCP/link chỉ điền sẵn; close từ Telegram chỉ owner + xác nhận.
-- Bản dev không bật nhận lệnh (tranh poll với app cài). Vite giữ module cũ khi file sửa dở → touch file + reload.
+## Ghi nhớ
+- `cargo` ở `~/.cargo/bin`; `.zshrc` đã source `~/.cargo/env` (session mới mới có). Session cũ: `export PATH="$HOME/.cargo/bin:$PATH"`.
+- Hook resource-guard đã đọc RAM bằng `vm_stat` (trước luôn báo 91–96% trên mac).
+- Vỏ Tauri phải: gọi `set_sink` của `Emitter` (event awake / disk / agent status), host `keychain.*`, `run.owner` / `run.confirm` / `run.adbUse`, `preview.confirm` kind `http`.

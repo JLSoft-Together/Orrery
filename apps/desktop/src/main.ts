@@ -32,8 +32,10 @@ import { createCustomRunner } from './run/custom'
 import { createFlutterDevices } from './run/flutter/devices'
 import { createFlutterRunner } from './run/flutter/runner'
 import { registerRunIpc } from './run/ipc'
+import { runStandingHosts } from './run/deskHosts'
 import { DeviceHistory, DEVICES_FILE } from './devices/history'
 import { registerDevicesIpc } from './devices/ipc'
+import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
 import { registerApkIpc } from './apk/ipc'
 import { registerReleaseIpc } from './releaseCheck/ipc'
@@ -60,7 +62,7 @@ import { embeddedKit } from './layout/kit'
 import { wireFlutterPreview, type FlutterPreviewWire } from './flutterPreview/wire'
 import { afterRunTarget } from './layout/model'
 import { defaultSpawner, killAdbClient } from './run/proc'
-import { RunManager } from './run/sessions'
+import { RunFacade } from './run/facade'
 import { coreProcsEnv } from './coreProcsEnv'
 import { coreBinaryPath, PtySupervisor } from './pty/supervisor'
 import { paneOpenResult, parseOpenLink, realDir, takeLinkSlot, type OpenLink } from './openLink'
@@ -71,28 +73,32 @@ import { registerClaudeSettingsIpc } from './claudeSettings'
 import { stringsFor, type Strings } from './strings'
 import { DEFAULT_FEED } from './update/github'
 import { prepareMac, prepareNsis, preparePortable, type Prepared } from './update/install'
+import { updateHosts } from './update/deskHosts'
 import { registerUpdateIpc } from './update/ipc'
 import { UpdateManager } from './update/manager'
 import { installKind, platformKind } from './update/pick'
 import { BackupService } from './backup/service'
 import { DeviceUseReporter, RUN_USE_THROTTLE_MS } from './resources/deviceUse'
-import { confirmLines, fixtureKill, killTreeByPid, liveStarts, planKill } from './resources/kill'
+import { confirmLines, fixtureKill, killTreeByPid, liveStarts, planKill, type KillItem } from './resources/kill'
 import { readProcRows } from './resources/agentPorts'
 import { createDesk } from './mcpDesk'
 import type { McpDeskCall } from '../../../packages/shared/src/mcpDesk'
-import { isRunLive, parseBusy, parseKillTargets, parsePhoneEpisode, parseTelegramEpisode, parseInboundResult, formatGb, type ResKillResult, type ResourceReport } from '@ccm/shared'
+import { isRunLive, parseBusy, parseKillTargets, parsePhoneEpisode, parseTelegramEpisode, parseInboundResult, formatGb, type PhoneEpisodeMessage, type ResKillResult, type ResourceReport } from '@ccm/shared'
 import { AWAKE_FILE, KeepAwake, readAwakeMode, writeAwakeMode } from './power/awake'
+import { awakeControl, type AwakeControl } from './power/ipc'
 import { CAPTURE_FILE } from './capture/files'
 import { CaptureFolder } from './capture/folder'
 import { mcpScreenshot } from './devices/mcpShot'
 import { registerCaptureIpc } from './capture/ipc'
 import { PHONE_FILE, PhoneNotifier } from './phone/notifier'
-import { registerPhoneIpc } from './phone/ipc'
+import { phoneEpisodes, registerPhoneIpc, type PhoneHostDeps } from './phone/ipc'
 import { e2eOverride } from './phone/send'
 import { TELEGRAM_FILE, TelegramNotifier } from './telegram/notifier'
 import { createBigUploader } from './telegram/mtproto'
 import { createUserScanner } from './telegram/userScan'
 import { registerTelegramIpc } from './telegram/ipc'
+import { TelegramFacade } from './telegram/facade'
+import { telegramStandingHosts, type TelegramHostDeps } from './telegram/deskHosts'
 import { projectDiff, saveInbound } from './telegram/host'
 import { needsTrust } from './run/configs'
 import { commandFile, commandInstalled, installCommand, RECEIVE_COMMAND } from './telegram/command'
@@ -107,10 +113,10 @@ import { registerAgentDataIpc } from './agentData/ipc'
 import { isInsideOrSame } from './agentData/fsTree'
 import { BuildCleanService } from './buildClean/service'
 import { registerBuildCleanIpc, type BuildCleanDeskDeps } from './buildClean/ipc'
-import { DeskHost } from './desk/host'
+import { DeskHost, type HostHandlers } from './desk/host'
 import { DESK_EVENTS, DESK_MODULES, DeskRouter, deskMode } from './desk/forward'
 import { DISK_FILE, DiskWatch, type DiskSpace } from './disk/watch'
-import { registerDiskIpc } from './disk/ipc'
+import { diskControl, registerDiskIpc, type DiskControl } from './disk/ipc'
 import { registerAgentStatusIpc } from './agentStatus/ipc'
 import { runGit } from './pty/git'
 import { registerRestoreIpc } from './restore/ipc'
@@ -184,18 +190,24 @@ let disposeDeepSeek: (() => void) | null = null
 const DEEPSEEK_FEATURE = process.env.CCM_DEEPSEEK_FEATURE === '1'
 let disposeHttp: (() => void) | null = null
 let disposeGitHub: (() => void) | null = null
-let runManager: RunManager | null = null
+let runManager: RunFacade | null = null
 let disposeRun: (() => void) | null = null
 let deviceManager: DeviceManager | null = null
 let deviceUse: DeviceUseReporter | null = null
+let runConfirm: ((code: string, detail?: string) => Promise<boolean>) | null = null
 let resReport: ResourceReport | null = null
 let recorder: ScreenRecorder | null = null
+let rustRecHeld: string[] = []
+let devicesConfirm: ((req: Record<string, unknown>) => Promise<boolean>) | null = null
 let awake: KeepAwake | null = null
+let awakeCtl: AwakeControl | null = null
 let capture: CaptureFolder | null = null
 let disposeCapture: (() => void) | null = null
 let phone: PhoneNotifier | null = null
+let phoneEpisode: ((m: PhoneEpisodeMessage) => Promise<unknown>) | null = null
 let disposePhone: (() => void) | null = null
-let telegram: TelegramNotifier | null = null
+let telegram: TelegramFacade | null = null
+let telegramHosts: TelegramHostDeps | null = null
 const runLogs = new Map<string, string[]>()
 let disposeTelegram: (() => void) | null = null
 let disposeAgentData: (() => void) | null = null
@@ -203,6 +215,7 @@ let disposeBuildClean: (() => void) | null = null
 let disposeDisk: (() => void) | null = null
 let disposeAgentStatus: (() => void) | null = null
 let disk: DiskWatch | null = null
+let diskCtl: DiskControl | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -275,6 +288,10 @@ async function stopRuns(): Promise<void> {
   if (!manager) return
   await Promise.race([manager.stopAll(), new Promise((r) => setTimeout(r, RUN_STOP_GRACE_MS))])
   manager.killAll()
+  if (deskRouter?.mode('run') === 'rust') {
+    await Promise.race([deskRouter.invoke('desk:run-stop-all').catch(() => undefined), new Promise((r) => setTimeout(r, RUN_STOP_GRACE_MS))])
+    await deskRouter.invoke('desk:run-kill-all').catch(() => undefined)
+  }
 }
 
 interface RunTrustPlan {
@@ -353,10 +370,11 @@ function stopPreview(): Promise<void> {
   disposeDisk = null
   disposeAgentStatus?.()
   disposeAgentStatus = null
-  disk?.stop()
+  void diskCtl?.stop()
+  diskCtl = null
   disk = null
   capture?.dispose()
-  awake?.dispose()
+  void awakeCtl?.dispose()
   deviceManager?.stop(true)
   deviceManager = null
   previewWatch.closeAll()
@@ -634,15 +652,7 @@ async function resKill(sender: WebContents, targets: ReturnType<typeof parseKill
     return items.every((i) => live.get(i.pid) === i.start)
   }
   if (!(await sameStart())) return { ok: false, error: 'gone' }
-  const opts: Electron.MessageBoxOptions = {
-    type: 'warning',
-    message: ask?.message ?? t.resKillTitle(items.length, items[0]!.name),
-    detail: ask ? ask.detail(confirmLines(items, t.resKillSession)) : t.resKillDetail(confirmLines(items, t.resKillSession), items.some((i) => i.session)),
-    buttons: [ask?.confirm ?? t.resKillConfirm(items.length), t.quitCancel],
-    defaultId: 1,
-    cancelId: 1,
-    noLink: true,
-  }
+  const opts = resKillOpts(items, ask)
   const autoYes = fixture !== null && process.env.CCM_E2E_RES_CONFIRM === '1'
   if (!autoYes && !(await confirmBox(BrowserWindow.fromWebContents(sender), opts))) return { ok: false, error: 'cancelled' }
   if (fixture) {
@@ -660,6 +670,29 @@ async function resKill(sender: WebContents, targets: ReturnType<typeof parseKill
     if (await killTreeByPid(i.pid)) killed++
   }
   return killed ? { ok: true, killed } : { ok: false, error: 'failed' }
+}
+
+function resKillOpts(items: KillItem[], ask?: { message: string; detail: (lines: string[]) => string; confirm: string }): Electron.MessageBoxOptions {
+  return {
+    type: 'warning',
+    message: ask?.message ?? t.resKillTitle(items.length, items[0]?.name ?? ''),
+    detail: ask ? ask.detail(confirmLines(items, t.resKillSession)) : t.resKillDetail(confirmLines(items, t.resKillSession), items.some((i) => i.session)),
+    buttons: [ask?.confirm ?? t.resKillConfirm(items.length), t.quitCancel],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  }
+}
+
+function resKillHosts(sender: WebContents): HostHandlers {
+  return {
+    'resources.report': () => resReport,
+    'resources.confirm': (p) => {
+      const items = (p as { items?: KillItem[] } | null)?.items
+      return Array.isArray(items) && items.length > 0 ? confirmBox(BrowserWindow.fromWebContents(sender), resKillOpts(items)) : false
+    },
+    'resources.avdStop': async (p) => (await deviceManager?.avdStop(String((p as { avd?: unknown } | null)?.avd ?? '')))?.ok === true,
+  }
 }
 
 /** Native confirm; the first button is the action. */
@@ -754,7 +787,7 @@ function boot(): Promise<void> {
       const started = earlyStart ?? host.start()
       earlyStart = null
       await started
-      disk?.start()
+      void diskCtl?.start()
       if (DEV_URL) await waitForDevServer(DEV_URL)
       if (showingError) return
       // A login start stays in the tray: nobody watches the intro, so the dashboard loads at once.
@@ -1179,16 +1212,20 @@ function setupCaptureAndAwake(): void {
     readAwakeMode(awakeFile),
   )
   awake = keep
-  powerMonitor.on('on-battery', () => keep.powerChanged())
-  powerMonitor.on('on-ac', () => keep.powerChanged())
+  const ctl = awakeControl(keep, deskRouter ?? undefined)
+  awakeCtl = ctl
+  powerMonitor.on('on-battery', () => void ctl.powerChanged())
+  powerMonitor.on('on-ac', () => void ctl.powerChanged())
+  const onMissing = (dir: string): void => {
+    if (Notification.isSupported()) new Notification({ title: t.captureMissingTitle, body: t.captureMissingBody(dir) }).show()
+  }
+  const held = (): string[] => [...(recorder?.heldFiles() ?? []), ...rustRecHeld]
   const folder = new CaptureFolder({
     file: path.join(DATA_DIR, CAPTURE_FILE),
     tmpRoot: os.tmpdir(),
     videos: () => app.getPath('videos'),
-    held: () => recorder?.heldFiles() ?? [],
-    onMissing: (dir) => {
-      if (Notification.isSupported()) new Notification({ title: t.captureMissingTitle, body: t.captureMissingBody(dir) }).show()
-    },
+    held,
+    onMissing,
   })
   capture = folder
   folder.start()
@@ -1209,6 +1246,9 @@ function setupCaptureAndAwake(): void {
       return res.canceled ? null : (res.filePaths[0] ?? null)
     },
     openFolder: async (dir) => (await shell.openPath(dir)) === '',
+    missing: onMissing,
+    held,
+    desk: deskRouter ?? undefined,
   })
 }
 
@@ -1219,6 +1259,7 @@ function setupAgentStatus(): void {
     send: (event) => {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:agent-status', event)
     },
+    desk: deskRouter ?? undefined,
   })
 }
 
@@ -1228,19 +1269,24 @@ function setupPhone(): void {
   }
   // E2E: a loopback receiver stands in for ntfy / Discord, and system idle time is faked.
   const e2eIdle = Number(process.env.CCM_E2E_IDLE_S)
-  phone = new PhoneNotifier({
-    file: path.join(DATA_DIR, PHONE_FILE),
+  const phoneDeps: PhoneHostDeps = {
     crypt: { available: () => safeStorage.isEncryptionAvailable(), encrypt: (s) => safeStorage.encryptString(s), decrypt: (b) => safeStorage.decryptString(b) },
-    fetch: (url, init) => net.fetch(url, init),
     idleSeconds: () => (Number.isFinite(e2eIdle) && e2eIdle >= 0 && process.env.CCM_E2E_IDLE_S ? e2eIdle : powerMonitor.getSystemIdleTime()),
     locale: () => saved().locale ?? 'vi',
+  }
+  phone = new PhoneNotifier({
+    ...phoneDeps,
+    file: path.join(DATA_DIR, PHONE_FILE),
+    fetch: (url, init) => net.fetch(url, init),
     home: os.homedir(),
     platform: process.platform,
     override: e2eOverride(process.env.CCM_PHONE_URL_OVERRIDE),
     onState: (state) => broadcast('ccm:phone-event', { state }),
     onFailure: (error) => broadcast('ccm:phone-event', { failed: error }),
   })
-  disposePhone = registerPhoneIpc(ipcMain, isAppFrame, phone)
+  const phoneDesk = deskRouter ? { router: deskRouter, hosts: phoneDeps } : undefined
+  disposePhone = registerPhoneIpc(ipcMain, isAppFrame, phone, phoneDesk)
+  phoneEpisode = phoneEpisodes(phone, phoneDesk)
 }
 
 function setupTelegram(): void {
@@ -1249,22 +1295,19 @@ function setupTelegram(): void {
   }
   const bigUploader = createBigUploader()
   const userScanner = createUserScanner()
-  telegram = new TelegramNotifier({
-    file: path.join(DATA_DIR, TELEGRAM_FILE),
+  const confirmCommand = async (kind: 'send' | 'receive', file: string): Promise<boolean> => {
+    const text = stringsFor(saved().locale ?? 'vi')
+    return confirmBox(mainWindow, { type: 'question', message: kind === 'receive' ? text.tgReceiveTitle : text.tgCommandTitle, detail: kind === 'receive' ? text.tgReceiveDetail(file) : text.tgCommandDetail(file), buttons: [text.tgCommandConfirm, text.tgCommandCancel], defaultId: 0, cancelId: 1, noLink: true })
+  }
+  const hostDeps: TelegramHostDeps = {
     crypt: { available: () => safeStorage.isEncryptionAvailable(), encrypt: (s) => safeStorage.encryptString(s), decrypt: (b) => safeStorage.decryptString(b) },
-    fetch: (url, init) => net.fetch(url, init),
     locale: () => ((saved().locale ?? 'vi').startsWith('en') ? 'en' : 'vi'),
-    home: os.homedir(),
-    platform: process.platform,
-    base: e2eOverride(process.env.CCM_TELEGRAM_URL_OVERRIDE),
-    commandInstalled: () => commandInstalled(),
-    receiveInstalled: () => commandInstalled(undefined, RECEIVE_COMMAND),
     askPage: async (req) => parseInboundResult(await orrery(TELEGRAM_INBOUND_ACTION[req.action], req, { source: 'telegram' })),
     focusApp: () => showMain(),
     bigUploader,
     userScanner,
-    diff: (cwd) => projectDiff(cwd, os.homedir(), process.platform),
-    saveFile: (project, name, data) => saveInbound(project, name, data),
+    confirmCommand,
+    progress: (id, fraction) => telegram?.progress(id, fraction),
     runConfigs: async (project) => {
       const runs = runManager
       if (!runs) return []
@@ -1279,7 +1322,8 @@ function setupTelegram(): void {
       const res = await runs.start({ root: project, configId, deviceId: device })
       return res.ok && res.sessionId ? { ok: true, sessionId: res.sessionId } : { ok: false, error: res.ok ? 'failed' : res.error.code }
     },
-    runLog: (sessionId) => runLogs.get(sessionId) ?? [],    screenshot: async (serial) => {
+    runLog: (sessionId) => runLogs.get(sessionId) ?? [],
+    screenshot: async (serial) => {
       const devices = deviceManager
       if (!devices) return { ok: false, error: 'none' }
       const snap = await devices.snapshot()
@@ -1288,29 +1332,38 @@ function setupTelegram(): void {
       const cap = await devices.screencap(dev.id)
       return cap.ok ? { ok: true, png: cap.png, device: dev.name } : { ok: false, error: 'failed' }
     },
+  }
+  telegramHosts = hostDeps
+  const node = new TelegramNotifier({
+    ...hostDeps,
+    file: path.join(DATA_DIR, TELEGRAM_FILE),
+    fetch: (url, init) => net.fetch(url, init),
+    home: os.homedir(),
+    platform: process.platform,
+    base: e2eOverride(process.env.CCM_TELEGRAM_URL_OVERRIDE),
+    commandInstalled: () => commandInstalled(),
+    receiveInstalled: () => commandInstalled(undefined, RECEIVE_COMMAND),
+    diff: (cwd) => projectDiff(cwd, os.homedir(), process.platform),
+    saveFile: (project, name, data) => saveInbound(project, name, data),
     onState: (state) => broadcast('ccm:telegram-event', { state }),
     onFailure: (error) => broadcast('ccm:telegram-event', { failed: error }),
   })
+  telegram = new TelegramFacade(node, () => deskRouter)
   const install = async (): Promise<boolean | null> => {
-    const text = stringsFor(saved().locale ?? 'vi')
-    const ok = await confirmBox(mainWindow, { type: 'question', message: text.tgCommandTitle, detail: text.tgCommandDetail(commandFile()), buttons: [text.tgCommandConfirm, text.tgCommandCancel], defaultId: 0, cancelId: 1, noLink: true })
-    if (!ok) return null
+    if (!(await confirmCommand('send', commandFile()))) return null
     const done = installCommand()
-    if (done) broadcast('ccm:telegram-event', { state: telegram!.state() })
+    if (done) broadcast('ccm:telegram-event', { state: node.state() })
     return done
   }
   const installReceive = async (): Promise<boolean | null> => {
-    const text = stringsFor(saved().locale ?? 'vi')
-    const file = commandFile(undefined, RECEIVE_COMMAND)
-    const ok = await confirmBox(mainWindow, { type: 'question', message: text.tgReceiveTitle, detail: text.tgReceiveDetail(file), buttons: [text.tgCommandConfirm, text.tgCommandCancel], defaultId: 0, cancelId: 1, noLink: true })
-    if (!ok) return null
+    if (!(await confirmCommand('receive', commandFile(undefined, RECEIVE_COMMAND)))) return null
     const done = installCommand(undefined, RECEIVE_COMMAND)
-    if (done) broadcast('ccm:telegram-event', { state: telegram!.state() })
+    if (done) broadcast('ccm:telegram-event', { state: node.state() })
     return done
   }
   const tick = setInterval(() => void telegram?.tick(), 60_000)
   tick.unref?.()
-  disposeTelegram = registerTelegramIpc(ipcMain, isAppFrame, telegram, install, installReceive)
+  disposeTelegram = registerTelegramIpc(ipcMain, isAppFrame, node, install, installReceive, deskRouter ?? undefined)
   const off = disposeTelegram
   disposeTelegram = () => {
     clearInterval(tick)
@@ -1396,13 +1449,34 @@ function setupBuildClean(): void {
   disposeBuildClean = registerBuildCleanIpc({ ipcMain, isAppFrame, service, desk: deskRouter ? { router: deskRouter, deps } : undefined })
 }
 
+function layoutDeskEnv(): NodeJS.ProcessEnv {
+  const kit = app.isPackaged ? embeddedKit() : null
+  const kitDir = kit ? kitDirFor(path.join(DATA_DIR, 'layoutlib'), kit.version) : null
+  return {
+    CCM_LAYOUT_JAR: kitDir ? path.join(kitDir, 'layout-daemon.jar') : resource('layout-daemon/layout-daemon.jar', 'apps/layout-daemon/build/libs/layout-daemon.jar'),
+    CCM_LAYOUT_OVERRIDE: app.isPackaged ? '' : (process.env.CCM_LAYOUTLIB_DIR ?? path.join(REPO, 'apps/layout-daemon/build/layoutlib-dist')),
+    CCM_LAYOUT_KIT: kit ? JSON.stringify(kit) : '',
+    CCM_LAYOUT_LOG: path.join(app.getPath('logs'), 'layout.log'),
+    CCM_LAYOUT_INIT: resource('layout-daemon/ccm-project-model.gradle', 'apps/layout-daemon/init/ccm-project-model.gradle'),
+    CCM_LAYOUT_LOOSEKIT: kitDir ? path.join(kitDir, 'loose-kit') : resource('layout-daemon/loose-kit', 'apps/layout-daemon/build/loose-kit'),
+  }
+}
+
 function setupDesk(): void {
   const client = DESK_MODULES.some((m) => deskMode(process.env, m) === 'rust')
     ? new DeskHost({
         bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
-        env: { ...process.env, CCM_DATA_DIR: DATA_DIR, CCM_APP_VERSION: app.getVersion(), CCM_DOCUMENTS_DIR: app.getPath('documents'), CCM_USER_DATA: app.getPath('userData') },
+        env: { ...process.env, CCM_DATA_DIR: DATA_DIR, CCM_APP_VERSION: app.getVersion(), CCM_DOCUMENTS_DIR: app.getPath('documents'), CCM_USER_DATA: app.getPath('userData'), CCM_VIDEOS_DIR: app.getPath('videos'), ...layoutDeskEnv() },
         logFile: path.join(app.getPath('logs'), 'desk.log'),
+        hosts: { ...runStandingHosts({ confirm: () => runConfirm, onAdbUse: (serial) => deviceUse?.used(serial, RUN_USE_THROTTLE_MS) }), ...updateHosts(() => updates?.hostEnv() ?? null), ...devicesStandingHosts({ manager: () => deviceManager, onUse: (serial) => deviceUse?.used(serial), confirm: (req) => devicesConfirm?.(req) ?? Promise.resolve(false), recDir: () => capture?.recordingsDir() ?? path.join(os.tmpdir(), 'orrery-rec'), recKeeps: (file) => capture?.keeps(file) ?? false }), ...telegramStandingHosts(() => telegramHosts) },
         onEvent: (event, payload) => {
+          if (event === 'desk:disk-alert') return host.post(payload as object)
+          if (runManager?.ingest(event, payload)) return
+          if (event === 'ccm:layout-event') layoutIpc?.onDeskEvent(payload)
+          if (event === 'ccm:dev-rec-held') {
+            rustRecHeld = Array.isArray(payload) ? payload.filter((f): f is string => typeof f === 'string') : []
+            return
+          }
           if (!DESK_EVENTS.has(event)) return
           for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(event, payload)
         },
@@ -1461,6 +1535,7 @@ function setupDisk(): void {
     onAlert: (m) => host.post(m),
   })
   disk = watch
+  diskCtl = diskControl(watch, deskRouter ?? undefined)
   disposeDisk = registerDiskIpc({
     ipcMain,
     isAppFrame,
@@ -1471,6 +1546,7 @@ function setupDisk(): void {
       if (changed) watch.poke(2_000)
     },
     openFolder: async (dir) => (await shell.openPath(dir)) === '',
+    desk: deskRouter ?? undefined,
   })
 }
 
@@ -1521,10 +1597,10 @@ async function ready(): Promise<void> {
       else if (m?.type === 'core-fallback') noteCoreFallback(data)
       else if (m?.type === 'busy') {
         const busy = parseBusy(data)
-        if (busy) awake?.setBusy(busy.agents, busy.jobs)
+        if (busy) void awakeCtl?.setBusy(busy.agents, busy.jobs)
       } else if (m?.type === 'phone') {
         const episode = parsePhoneEpisode(data)
-        if (episode) void phone?.handle(episode)
+        if (episode) void phoneEpisode?.(episode).catch(() => undefined)
         if (episode?.reason === 'limit') void telegram?.alert('limit', { window: episode.window, usedPct: episode.usedPct, resetsAt: episode.resetsAt, hit: episode.hit })
         else if (episode?.reason === 'disk') void telegram?.alert('disk', { label: episode.name, free: episode.freeBytes !== undefined ? formatGb(episode.freeBytes) : '?' })
       } else if (m?.type === 'telegram') {
@@ -1535,7 +1611,7 @@ async function ready(): Promise<void> {
     onExit: () => {
       attention?.clear()
       // A restarting collector re-sends its counts; until then nothing is known to work.
-      awake?.setBusy(0, 0)
+      void awakeCtl?.setBusy(0, 0)
     },
   })
   if (!IS_MAC && process.env.CCM_TOAST !== '0') serveToasts = createServeToasts((m) => host.post(m))
@@ -1693,6 +1769,7 @@ async function ready(): Promise<void> {
       }
       return confirmBox(BrowserWindow.fromWebContents(event.sender), opts)
     },
+    desk: deskRouter ?? undefined,
   })
   previewIpc = registerPreviewIpc({
     ipcMain,
@@ -1795,7 +1872,7 @@ async function ready(): Promise<void> {
     desk: deskRouter ?? undefined,
   })
   disposeLayouts = registerLayoutsIpc({ ipcMain, isAppFrame, store: () => new LayoutStore(path.join(DATA_DIR, LAYOUTS_FILE)), desk: deskRouter ?? undefined })
-  runManager = new RunManager({
+  runManager = new RunFacade({
     dataDir: DATA_DIR,
     env: process.env,
     platform: process.platform,
@@ -1818,7 +1895,7 @@ async function ready(): Promise<void> {
       if (event.type === 'session' && event.session.state === 'failed') void telegram?.runFailedReport(event.session)
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:run-event', event)
     },
-    confirm: async (code, detail) => {
+    confirm: (runConfirm = async (code: string, detail?: string): Promise<boolean> => {
       let opts: Electron.MessageBoxOptions
       if (code === 'reinstall') {
         opts = {
@@ -1844,15 +1921,15 @@ async function ready(): Promise<void> {
         }
       } else return false
       return confirmBox(mainWindow, opts)
-    },
-  })
+    }),
+  }, () => deskRouter)
   await runManager.loadSettings()
   runManager.onSessionState((session, _cfg, device) => {
     if (device?.platform.startsWith('android')) deviceUse?.used(device.id, RUN_USE_THROTTLE_MS)
-    if (!isRunLive(session.state)) disk?.poke()
+    if (!isRunLive(session.state)) void diskCtl?.poke()
   })
   const previewGate = previewIpc
-  disposeRun = registerRunIpc({ ipcMain, isAppFrame, manager: runManager, resolveDir: (dir) => previewGate.resolveDir(dir) })
+  disposeRun = registerRunIpc({ ipcMain, isAppFrame, manager: runManager.node, resolveDir: (dir) => previewGate.resolveDir(dir), desk: deskRouter ?? undefined })
   const devices = new DeviceManager({
     spawn: defaultSpawner,
     env: process.env,
@@ -1887,8 +1964,28 @@ async function ready(): Promise<void> {
       }),
   })
   deviceManager = devices
+  devicesConfirm = (req) => {
+    const text = (k: string): string => String(req[k] ?? '')
+    const box = (message: string, detail: string, confirm: string): Promise<boolean> =>
+      confirmBox(mainWindow, { type: 'warning', message, detail, buttons: [confirm, t.quitCancel], defaultId: 1, cancelId: 1, noLink: true })
+    switch (req.kind) {
+      case 'fs-delete':
+        return box(t.fsDeleteTitle(text('name'), req.dir === true), t.fsDeleteDetail(text('where')), t.fsDeleteConfirm)
+      case 'fs-replace':
+        return box(t.fsReplaceTitle(text('name')), t.fsReplaceDetail(text('where')), t.fsReplaceConfirm)
+      case 'perf-cold':
+        return box(t.perfColdTitle(text('pkg')), t.perfColdDetail, t.perfColdConfirm)
+      case 'pref-write':
+        return box(t.prefsWriteTitle(text('pkg')), t.prefsWriteDetail(text('file'), text('key'), text('before'), text('after')), t.prefsWriteConfirm)
+      case 'pref-restore':
+        return box(t.prefsRestoreTitle(text('pkg')), t.prefsRestoreDetail(text('file')), t.prefsRestoreConfirm)
+      default:
+        return Promise.resolve(false)
+    }
+  }
   deviceUse = new DeviceUseReporter((msg) => host.post(msg), (serial) => devices.avdName(serial))
-  ipcMain.handle('ccm:res-kill', (event, raw: unknown) => resKill(event.sender, isAppFrame(event) ? parseKillTargets(raw) : null))
+  const resNode = (event: Electron.IpcMainInvokeEvent, raw: unknown) => resKill(event.sender, isAppFrame(event) ? parseKillTargets(raw) : null)
+  ipcMain.handle('ccm:res-kill', deskRouter ? deskRouter.route('resources', 'ccm:res-kill', isAppFrame, resNode, (event) => resKillHosts(event.sender)) : resNode)
   const folder = capture
   recorder = new ScreenRecorder({
     withDevice: (id, fn) => devices.withReady(id, fn),
@@ -1903,9 +2000,10 @@ async function ready(): Promise<void> {
     isAppFrame,
     manager: devices,
     resolveDir: (dir) => previewGate.resolveDir(dir),
+    desk: deskRouter ?? undefined,
     recorder,
     saveRecording: async (event, defaultName) => {
-      disk?.poke(15_000)
+      void diskCtl?.poke(15_000)
       if (e2eRecFile) return e2eRecFile
       const opts: Electron.SaveDialogOptions = { title: t.recSaveTitle, defaultPath: path.join(folder?.saveDir() ?? app.getPath('videos'), defaultName), filters: [{ name: t.recFilter, extensions: ['mp4'] }] }
       const win = BrowserWindow.fromWebContents(event.sender)
@@ -1913,7 +2011,8 @@ async function ready(): Promise<void> {
       return res.canceled ? null : (res.filePath ?? null)
     },
   })
-  void devices.autoConnectOnce()
+  if (deskRouter?.mode('devices') === 'rust') void deskRouter.invoke('desk:dev-auto-connect-once').then((r) => (r === null ? devices.autoConnectOnce() : undefined), () => devices.autoConnectOnce())
+  else void devices.autoConnectOnce()
   appData = new AppDataInspector({
     withDevice: (id, fn) => devices.withReady(id, fn),
     sql: loadSqlJs,
@@ -1939,10 +2038,11 @@ async function ready(): Promise<void> {
         noLink: true,
       }),
   })
-  disposeAppData = registerAppDataIpc({ ipcMain, isAppFrame, inspector: appData })
+  disposeAppData = registerAppDataIpc({ ipcMain, isAppFrame, inspector: appData, desk: deskRouter ?? undefined })
   disposePerf = registerPerfIpc({
     ipcMain,
     isAppFrame,
+    desk: deskRouter ?? undefined,
     perf: new PerfService({
       withDevice: (id, fn) => devices.withReady(id, fn),
       dataDir: DATA_DIR,
@@ -1988,6 +2088,7 @@ async function ready(): Promise<void> {
   disposeFiles = registerFilesIpc({
     ipcMain,
     isAppFrame,
+    desk: deskRouter ?? undefined,
     files: deviceFiles,
     resolveDir: (dir) => previewGate.resolveDir(dir),
     pickFolder: async (event) => {
@@ -2064,6 +2165,7 @@ async function ready(): Promise<void> {
     dialog,
     getWindow: () => mainWindow,
     dataDir: DATA_DIR,
+    desk: deskRouter ?? undefined,
   })
   // E2E: the native file picker cannot be driven over CDP.
   const e2eReleaseArtifact = process.env.CCM_E2E_RELEASE_ARTIFACT || null
@@ -2072,6 +2174,7 @@ async function ready(): Promise<void> {
     isAppFrame,
     resolveDir: (dir) => previewGate.resolveDir(dir),
     dataDir: DATA_DIR,
+    desk: deskRouter ?? undefined,
     pickArtifact: async (event, near) => {
       if (e2eReleaseArtifact) return e2eReleaseArtifact
       const opts: Electron.OpenDialogOptions = { title: t.releasePickTitle, defaultPath: near, properties: ['openFile'], filters: [{ name: 'Android', extensions: ['apk', 'aab'] }] }
@@ -2109,12 +2212,14 @@ async function ready(): Promise<void> {
     locale: app.getLocale(),
     // Dev reuses the Gradle-staged bundle instead of the 170 MB download; CCM_LAYOUTLIB_DIR= (empty) tests the download flow.
     layoutlibOverride: app.isPackaged ? null : (process.env.CCM_LAYOUTLIB_DIR ?? path.join(REPO, 'apps/layout-daemon/build/layoutlib-dist')),
+    desk: deskRouter ?? undefined,
   })
   flutterPreview = wireFlutterPreview({
     ipcMain,
     isAppFrame,
     resolveDir: (p) => previewGate.resolveDir(p),
     getSettings: () => runManager?.getSettings() ?? { flutterSdk: null },
+    desk: deskRouter ?? undefined,
   })
   // Owner decision: the Gradle project-model task runs after a successful Android build, never on project open.
   // Flutter goes reloading → running on every hot reload; the native build only happened before the first one.
@@ -2125,7 +2230,7 @@ async function ready(): Promise<void> {
     if (!target) return
     if (modelRefreshed.size >= 100) modelRefreshed.delete(modelRefreshed.values().next().value!)
     modelRefreshed.add(session.id)
-    layoutIpc?.model?.afterBuild(target.root, target.module, target.variant)
+    layoutIpc?.afterBuild(target.root, target.module, target.variant)
   })
   const disposeRunIpc = disposeRun
   disposeRun = () => {
@@ -2157,6 +2262,7 @@ async function ready(): Promise<void> {
   if (DEEPSEEK_FEATURE) disposeDeepSeek = registerDeepSeekIpc({
     ipcMain,
     isAppFrame,
+    desk: deskRouter ?? undefined,
     confirm: async (event, plan) => {
       const d = t.deepseek
       const opts: Electron.MessageBoxOptions =
@@ -2181,6 +2287,7 @@ async function ready(): Promise<void> {
   disposeHttp = registerHttpIpc({
     ipcMain,
     isAppFrame,
+    desk: deskRouter ?? undefined,
     confirmHost: async (event, host, method) => {
       const opts: Electron.MessageBoxOptions = {
         type: 'question',
@@ -2219,8 +2326,10 @@ async function ready(): Promise<void> {
     return { ok: true, path: res.filePath }
   })
   updates = createUpdates()
-  disposeUpdate = registerUpdateIpc({ ipcMain, isAppFrame, manager: updates })
-  updates.start()
+  disposeUpdate = registerUpdateIpc({ ipcMain, isAppFrame, manager: updates, desk: deskRouter ?? undefined })
+  const startedUpdates = updates
+  if (deskRouter?.mode('update') === 'rust') void deskRouter.invoke('desk:update-start').then((ok) => (ok === true ? undefined : startedUpdates.start()), () => startedUpdates.start())
+  else updates.start()
   repairLoginItem()
   removeStaleShortcuts()
   createTray()
@@ -2292,7 +2401,7 @@ if (!app.requestSingleInstanceLock()) {
           launchUpdate()
           app.exit(0)
         }, QUIT_DEADLINE_MS)
-        stopping = Promise.allSettled([host.stop(), ptys?.stop(), deskHost?.stop(), stopPreview(), stopRuns()]).then(() => {
+        stopping = Promise.allSettled([host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview()]).then(() => {
           clearTimeout(hardExit)
           stopped = true
           app.quit()

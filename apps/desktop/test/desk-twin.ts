@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, utimesSync } from 'node:fs'
 import path from 'node:path'
-import { DESK_NODE_DEFAULT, DeskRouter, deskFlag } from '../src/desk/forward'
-import { DeskHost } from '../src/desk/host'
+import { DESK_MODULES, DESK_NODE_DEFAULT, DeskRouter, deskFlag } from '../src/desk/forward'
+import { DeskHost, type HostHandlers } from '../src/desk/host'
 
 const REPO = path.resolve(__dirname, '..', '..', '..')
 const EXE = process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core'
@@ -25,13 +25,21 @@ export interface Twin {
   logs: string[]
 }
 
-export async function startTwin(env: NodeJS.ProcessEnv): Promise<Twin> {
+export async function startTwin(env: NodeJS.ProcessEnv, hosts?: HostHandlers, onEvent?: (event: string, payload: unknown) => void): Promise<Twin> {
   const events: Twin['events'] = []
   const fellBack: string[] = []
   const logs: string[] = []
-  const host = new DeskHost({ bin: DESK_BIN, env: { ...process.env, CCM_APP_VERSION: '9.9.9', ...env }, onEvent: (event, payload) => events.push({ event, payload }) })
+  const host = new DeskHost({
+    bin: DESK_BIN,
+    env: { ...process.env, CCM_APP_VERSION: '9.9.9', ...env },
+    onEvent: (event, payload) => {
+      events.push({ event, payload })
+      onEvent?.(event, payload)
+    },
+    hosts,
+  })
   await host.start()
-  const router = new DeskRouter({ client: host, env: Object.fromEntries([...DESK_NODE_DEFAULT].map((m) => [deskFlag(m), 'rust'])),onFallback: (m) => fellBack.push(m), log: (l) => logs.push(l) })
+  const router = new DeskRouter({ client: host, env: Object.fromEntries([...new Set([...DESK_MODULES, ...DESK_NODE_DEFAULT])].map((m) => [deskFlag(m), process.env[deskFlag(m)]?.trim() || 'rust'])), onFallback: (m) => fellBack.push(m), log: (l) => logs.push(l) })
   return { host, router, events, fellBack, logs }
 }
 

@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { FwpResult, FwpScanResult } from '@ccm/shared'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import type { HostHandlers } from '../desk/host'
 import { readPackage } from './host'
 import type { FlutterPreviewService } from './service'
 
@@ -11,6 +13,7 @@ export interface FlutterPreviewIpcDeps {
   /** Explorer gate (`PreviewIpc.resolveDir`): real path of an allowed file / folder, else null. */
   resolveDir: (p: unknown) => Promise<string | null>
   service: FlutterPreviewService
+  desk?: DeskRouter
 }
 
 const CHANNELS = ['ccm:fwp-scan', 'ccm:fwp-start', 'ccm:fwp-show', 'ccm:fwp-stop', 'ccm:fwp-get']
@@ -34,11 +37,23 @@ export async function findPubspecRoot(start: string, allowed: (p: string) => Pro
   return null
 }
 
+const pathField = (params: unknown): unknown => (params && typeof params === 'object' ? (params as Record<string, unknown>).path : undefined)
+
+export function flutterPreviewHosts(resolveDir: (p: unknown) => Promise<string | null>): HostHandlers {
+  return {
+    'preview.allowed': async (p) => {
+      const real = await resolveDir(pathField(p))
+      return real ? { real, roots: [] } : null
+    },
+  }
+}
+
 export function registerFlutterPreviewIpc(deps: FlutterPreviewIpcDeps): () => void {
   const { ipcMain, isAppFrame, resolveDir, service } = deps
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'flutterPreview', hosts: () => flutterPreviewHosts(resolveDir) } : undefined)
   const gate = async (event: IpcMainInvokeEvent, p: unknown): Promise<string | null> => (isAppFrame(event) ? resolveDir(p) : null)
 
-  ipcMain.handle('ccm:fwp-scan', async (event, p: unknown, withEntries: unknown): Promise<FwpScanResult> => {
+  handle('ccm:fwp-scan', async (event, p: unknown, withEntries: unknown): Promise<FwpScanResult> => {
     const real = await gate(event, p)
     const root = real ? await findPubspecRoot(real, resolveDir) : null
     if (!root) return NONE
@@ -47,21 +62,21 @@ export function registerFlutterPreviewIpc(deps: FlutterPreviewIpcDeps): () => vo
     if (withEntries === false) return { flutter: true, root, entries: [] }
     return { flutter: true, root, entries: await service.scan(root).catch(() => []) }
   })
-  ipcMain.handle('ccm:fwp-start', async (event, root: unknown, deviceId: unknown, flavor: unknown): Promise<FwpResult> => {
+  handle('ccm:fwp-start', async (event, root: unknown, deviceId: unknown, flavor: unknown): Promise<FwpResult> => {
     const r = await gate(event, root)
     if (!r || !isId(deviceId) || (flavor !== undefined && flavor !== null && typeof flavor !== 'string')) return DENIED
     return service.start(r, deviceId, flavor || null)
   })
-  ipcMain.handle('ccm:fwp-show', (event, id: unknown): Promise<FwpResult> | FwpResult => {
+  handle('ccm:fwp-show', (event, id: unknown): Promise<FwpResult> | FwpResult => {
     if (!isAppFrame(event) || typeof id !== 'string' || !id || id.length > 512) return DENIED
     return service.show(id)
   })
-  ipcMain.handle('ccm:fwp-stop', async (event): Promise<FwpResult> => {
+  handle('ccm:fwp-stop', async (event): Promise<FwpResult> => {
     if (!isAppFrame(event)) return DENIED
     await service.stop()
     return { ok: true }
   })
-  ipcMain.handle('ccm:fwp-get', (event) => (isAppFrame(event) ? service.get() : null))
+  handle('ccm:fwp-get', (event) => (isAppFrame(event) ? service.get() : null))
 
   return () => {
     for (const ch of CHANNELS) ipcMain.removeHandler(ch)

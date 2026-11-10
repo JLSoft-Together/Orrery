@@ -27,7 +27,7 @@ export function parseArgs(argv, current) {
 
 export function releaseCommand(version, zip) {
   const { tag } = kitNames(version)
-  return `gh release create ${tag} "${zip}" --repo JLSoft-Together/Orrery --title "Layout daemon kit ${version}" --notes "XML Preview render daemon kit ${version}. Downloaded on demand by Orrery (Settings, Integrations, XML Preview)."`
+  return `gh release create ${tag} "${zip}" --repo JLSoft-Together/Orrery --latest=false --title "Layout daemon kit ${version}" --notes "XML Preview render daemon kit ${version}. Downloaded on demand by Orrery (Settings, Integrations, XML Preview)."`
 }
 
 function jdkMajor(home) {

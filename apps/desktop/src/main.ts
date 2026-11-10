@@ -8,6 +8,7 @@ import { HEX_COLOR, isZoomAction, nextZoom, parseLook, readAppearance, writeAppe
 import { createAttention, type Attention } from './attention'
 import { createEditorTracker, type EditorTracker } from './editors'
 import { installBridge, type BridgeInstall } from './bridge'
+import { BRIDGE_EXE, installRustBridge, migrateBridges, rustBridgeCommand, rustBridgeSource, type MigrateResult } from './bridgeRust'
 import { maskSecrets } from '@ccm/shared'
 import { FatalError, type FatalReason } from './collector-host'
 import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-serve-host'
@@ -65,8 +66,8 @@ import { coreBinaryPath, PtySupervisor } from './pty/supervisor'
 import { paneOpenResult, parseOpenLink, realDir, takeLinkSlot, type OpenLink } from './openLink'
 import { dustSize } from './capture'
 import { removeDeadShortcuts } from './shortcuts'
-import { claudeSettingsFile, plannedStatusLine, readStatusLine, writeStatusLine } from './statusline'
-import { plannedHooks, readHooks, writeHooks } from './hooks'
+import { claudeSettingsFile } from './statusline'
+import { registerClaudeSettingsIpc } from './claudeSettings'
 import { stringsFor, type Strings } from './strings'
 import { DEFAULT_FEED } from './update/github'
 import { prepareMac, prepareNsis, preparePortable, type Prepared } from './update/install'
@@ -770,11 +771,35 @@ function boot(): Promise<void> {
   return booting
 }
 
+function installedRustBridge(): string | null {
+  if (deskMode(process.env, 'bridge') === 'node') return null
+  const source = rustBridgeSource(CORE_PROCS_ENV.CCM_CORE_BIN ?? '')
+  try {
+    return existsSync(source) ? installRustBridge(source, DATA_DIR) : null
+  } catch (err) {
+    console.error('[desktop] orrery-bridge not installed, using the node bridge:', (err as Error).message)
+    return null
+  }
+}
+
+function migrateBridgeSettings(): void {
+  const next = { statusline: bridge?.command ?? null, hook: hookBridge?.command ?? null }
+  if (!deskRouter || !next.statusline?.includes(BRIDGE_EXE)) return
+  const node = (): MigrateResult => migrateBridges(claudeSettings(), DATA_DIR, next)
+  void Promise.resolve(deskRouter.route('bridge', 'desk:bridge-migrate', () => true, node)(null, next))
+    .then((r) => {
+      const res = r as MigrateResult | null
+      if (res && res.result !== 'none') console.warn(`[desktop] bridge entries in settings.json moved to orrery-bridge: ${JSON.stringify(res)}`)
+    })
+    .catch((err: unknown) => console.warn('[desktop] bridge migrate failed:', (err as Error).message))
+}
+
 function collectorEnv(): NodeJS.ProcessEnv {
   const portable = PORTABLE_EXE !== undefined
-  bridge = installBridge(resource('bridge/statusline-bridge.mjs', 'scripts/statusline-bridge.mjs'), DATA_DIR, process.execPath, portable || !app.isPackaged)
+  const rustExe = installedRustBridge()
+  bridge = rustExe ? rustBridgeCommand(rustExe, 'statusline-bridge') : installBridge(resource('bridge/statusline-bridge.mjs', 'scripts/statusline-bridge.mjs'), DATA_DIR, process.execPath, portable || !app.isPackaged)
   try {
-    hookBridge = installBridge(resource('bridge/hook-bridge.mjs', 'scripts/hook-bridge.mjs'), DATA_DIR, process.execPath, portable || !app.isPackaged, 'hook-bridge')
+    hookBridge = rustExe ? rustBridgeCommand(rustExe, 'hook-bridge') : installBridge(resource('bridge/hook-bridge.mjs', 'scripts/hook-bridge.mjs'), DATA_DIR, process.execPath, portable || !app.isPackaged, 'hook-bridge')
   } catch (err) {
     console.error('[desktop] hook bridge not installed:', (err as Error).message)
   }
@@ -1078,6 +1103,7 @@ function setupRestore(): void {
     ipcMain,
     isAppFrame,
     previous,
+    desk: deskRouter ?? undefined,
     saveDialog: async (event) => {
       if (e2eFile) return e2eFile
       const opts: Electron.SaveDialogOptions = { title: t.promptsExportTitle, defaultPath: path.join(app.getPath('documents'), 'orrery-prompts.json'), filters }
@@ -1591,50 +1617,35 @@ async function ready(): Promise<void> {
     if (!isAppFrame(event) || !app.isPackaged) return null
     return typeof on === 'boolean' ? setOpenAtLogin(on) : openAtLogin()
   })
-  ipcMain.handle('ccm:statusline-state', (event) => (isAppFrame(event) ? readStatusLine(claudeSettings()).state : null))
-  // The page only asks; the native confirm shows the exact change and is the consent.
-  ipcMain.handle('ccm:statusline-enable', async (event) => {
-    if (!isAppFrame(event) || !bridge) return 'failed'
-    const command = bridge.command
-    const file = claudeSettings()
-    const read = readStatusLine(file)
-    if (read.state === 'ours' || read.state === 'unreadable') return read.state
-    const win = BrowserWindow.fromWebContents(event.sender)
-    const opts: Electron.MessageBoxOptions = {
-      type: 'question',
-      message: t.statusLineTitle,
-      detail: t.statusLineDetail(file, JSON.stringify({ statusLine: plannedStatusLine(read, command) }, null, 2), read.state === 'other'),
-      buttons: [t.statusLineConfirm, t.statusLineCancel],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true,
-    }
-    if (!(await confirmBox(win, opts))) return 'cancelled'
-    // Re-read: the file may have changed while the dialog was open.
-    return writeStatusLine(file, readStatusLine(file), command)
+  registerClaudeSettingsIpc({
+    ipcMain,
+    isAppFrame,
+    settingsFile: claudeSettings,
+    statusCommand: () => bridge?.command ?? null,
+    hookCommand: () => hookBridge?.command ?? null,
+    confirmStatus: (event, req) =>
+      confirmBox(BrowserWindow.fromWebContents(event.sender), {
+        type: 'question',
+        message: t.statusLineTitle,
+        detail: t.statusLineDetail(req.file, req.planned, req.other),
+        buttons: [t.statusLineConfirm, t.statusLineCancel],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      }),
+    confirmHooks: (event, req) =>
+      confirmBox(BrowserWindow.fromWebContents(event.sender), {
+        type: 'question',
+        message: req.on ? t.hooksOnTitle : t.hooksOffTitle,
+        detail: t.hooksDetail(req.file, req.planned, req.on),
+        buttons: [req.on ? t.statusLineConfirm : t.runConfirm, t.statusLineCancel],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      }),
+    desk: deskRouter ?? undefined,
   })
-  ipcMain.handle('ccm:hooks-state', (event) => (isAppFrame(event) ? readHooks(claudeSettings()).state : null))
-  // Same consent as the status line: the native dialog shows the exact `hooks` block that will be written.
-  ipcMain.handle('ccm:hooks-set', async (event, on: unknown) => {
-    if (!isAppFrame(event) || typeof on !== 'boolean' || !hookBridge) return 'failed'
-    const file = claudeSettings()
-    const read = readHooks(file)
-    if (read.state === 'unreadable' || !read.settings) return 'unreadable'
-    if (on ? read.state === 'ours' : read.state === 'none') return 'ok'
-    const command = on ? hookBridge.command : null
-    const win = BrowserWindow.fromWebContents(event.sender)
-    const opts: Electron.MessageBoxOptions = {
-      type: 'question',
-      message: on ? t.hooksOnTitle : t.hooksOffTitle,
-      detail: t.hooksDetail(file, JSON.stringify({ hooks: plannedHooks(read.settings, command) }, null, 2), on),
-      buttons: [on ? t.statusLineConfirm : t.runConfirm, t.statusLineCancel],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true,
-    }
-    if (!(await confirmBox(win, opts))) return 'cancelled'
-    return writeHooks(file, readHooks(file), command)
-  })
+  migrateBridgeSettings()
   // Native picker so a folder for a terminal comes from the user, not from page script.
   // Quick setup: a whole projects folder (e.g. D:\Code) readable by the browser / file tabs, picked natively.
   ipcMain.handle('ccm:grant-folder', async (event) => {
@@ -1781,8 +1792,9 @@ async function ready(): Promise<void> {
     },
     claudeConfigDir: claudeConfigDir(process.env, os.homedir()),
     dataDir: DATA_DIR,
+    desk: deskRouter ?? undefined,
   })
-  disposeLayouts = registerLayoutsIpc({ ipcMain, isAppFrame, store: new LayoutStore(path.join(DATA_DIR, LAYOUTS_FILE)) })
+  disposeLayouts = registerLayoutsIpc({ ipcMain, isAppFrame, store: () => new LayoutStore(path.join(DATA_DIR, LAYOUTS_FILE)), desk: deskRouter ?? undefined })
   runManager = new RunManager({
     dataDir: DATA_DIR,
     env: process.env,
@@ -2016,6 +2028,7 @@ async function ready(): Promise<void> {
   disposeHooks = registerHooksIpc({
     ipcMain,
     isAppFrame,
+    desk: deskRouter ?? undefined,
     manager: new HooksManager({
       env: process.env,
       home: os.homedir(),
@@ -2124,6 +2137,7 @@ async function ready(): Promise<void> {
   disposeExtensions = registerExtensionsIpc({
     ipcMain,
     isAppFrame,
+    desk: deskRouter ?? undefined,
     confirm: async (event, plan) => {
       const where = plan.scope === 'user' ? t.extWhereUser : plan.scope === 'project' && plan.dir ? t.extWhereProject(plan.dir) : plan.scope === 'local' && plan.dir ? t.extWhereLocal(plan.dir) : t.extWhereNone
       const win = BrowserWindow.fromWebContents(event.sender)

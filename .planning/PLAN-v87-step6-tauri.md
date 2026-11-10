@@ -61,6 +61,8 @@ Nguồn: `PLAN-v87-rust-core.md` §6 bước 6, `PLAN-v87-tauri-options.md` (kh�
 
 Ghi chú T0 (2026-11-10, `.planning/wp/WP-v87-6-T0-report.md`): `apps/shell` chạy core-serve trong process (stdin của process thay bằng pipe vì `core_serve::run` đọc lệnh từ stdin; nên thêm `run_with(cfg, control)` vào core-serve ở WP sau) và spawn `orrery-core` cho terminal (không link `core-pty`: stdin đã dùng, `serve()` private, job object cả process). `core-desk` chưa link (D0 đang làm): kênh chưa port trả `not ported`. Cookie auth xong trong core-http. E2E Tauri: p2 15/15, agent-map 34/36 (2 lỗi clipboard ở menu node).
 
+Ghi chú T1 (2026-11-10, `.planning/wp/WP-v87-6-T1-report.md`): vỏ link thẳng `core-desk` (`Desk::standard`, kênh `ccm:*` chưa có ở vỏ → desk, host callback trong `apps/shell/src/hosts.rs`; `desk:backup-apply-pending` chạy lúc boot). `<webview>` = child webview Tauri qua `webview.js` (vá `createElement('webview')`, bám vị trí, ẩn khi overlay HTML che) + `guest.js` (event / exec / phím) + command `guest` (capability riêng `guest-*`, không gọi được `ccm`). Chụp WebView2 `CapturePreview` (child + dust), mac `takeSnapshot` viết theo `cfg` nhưng chưa biên dịch (máy Windows thiếu `cc` cho objc). Clipboard: quyền `ClipboardRead` cho trang app → agent-map 34/34. E2E riêng `apps/shell/e2e/t1.cjs` 33/33. Còn chặn: `browser.cjs` / `tabs-cwd.cjs` cần preview server + quyền thư mục (D3), `v74` cần inspector Node (thay bằng `CCM_E2E_CONFIRM` + t1).
+
 ### 6c — chốt
 - Đổi bản phát hành sang Tauri, bỏ `apps/desktop` Electron + `apps/collector` sau khi chủ nhân test Mac (checklist trong `.planning/CHECKLIST-v87-step6-mac.md`).
 

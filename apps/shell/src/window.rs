@@ -1,23 +1,25 @@
 use std::sync::atomic::Ordering;
 
 use serde_json::json;
-use tauri::webview::{NewWindowResponse, PageLoadEvent};
+use tauri::webview::{NewWindowResponse, PageLoadEvent, PermissionKind, PermissionResponse};
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::appearance::{rgba, zoom_factor, Bounds};
+use crate::guest;
 use crate::state::{lock, Shell, MAIN};
 
 pub const COMPACT: &str = "compact";
 const SHIM: &str = include_str!("shim.js");
 const HEADER: &str = include_str!("header.js");
+const WEBVIEW: &str = include_str!("webview.js");
 
 pub fn init_script(origin: &str) -> String {
     let platform = if cfg!(windows) { "win32" } else { "darwin" };
     let shell = json!({ "platform": platform, "origin": origin, "sync": { "ccm:core-serve": "rust", "ccm:deepseek-enabled": false } });
-    format!("(function(){{const __ccmShell={shell};if(location.origin!==__ccmShell.origin)return;\n{SHIM}\n{HEADER}\n}})();")
+    format!("(function(){{const __ccmShell={shell};if(location.origin!==__ccmShell.origin)return;\n{SHIM};\n{HEADER};\n{WEBVIEW};\n}})();")
 }
 
 pub fn open_external(app: &AppHandle, url: &str) {
@@ -62,7 +64,18 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
             }
             NewWindowResponse::Deny
         })
+        .on_permission_request(|webview, kind| {
+            let app_page = webview.url().is_ok_and(|u| webview.app_handle().state::<Shell>().is_app_url(&u));
+            if app_page && kind == PermissionKind::ClipboardRead {
+                PermissionResponse::Allow
+            } else {
+                PermissionResponse::Default
+            }
+        })
         .on_page_load(|webview, payload| {
+            if payload.event() == PageLoadEvent::Started {
+                guest::close_owned(webview.app_handle(), webview.label());
+            }
             if payload.event() == PageLoadEvent::Finished {
                 let level = webview.app_handle().state::<Shell>().look.lock().map(|l| l.state.zoom).unwrap_or(0.0);
                 let _ = webview.set_zoom(zoom_factor(level));
@@ -199,6 +212,7 @@ pub fn set_zoom_all(app: &AppHandle, level: f64) {
     for w in app.webview_windows().values() {
         let _ = w.set_zoom(zoom_factor(level));
     }
+    guest::refresh_all(app);
 }
 
 pub fn set_background_all(app: &AppHandle, hex: &str) {
@@ -206,5 +220,20 @@ pub fn set_background_all(app: &AppHandle, hex: &str) {
         for w in app.webview_windows().values() {
             let _ = w.set_background_color(Some(Color(r, g, b, 255)));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_init_script_ends_every_part_with_a_semicolon() {
+        let script = init_script("http://127.0.0.1:4419");
+        for part in [SHIM, HEADER, WEBVIEW] {
+            assert!(script.contains(&format!("{part};\n")));
+        }
+        assert!(script.contains("Document.prototype.createElement"));
+        assert!(script.contains("\"origin\":\"http://127.0.0.1:4419\""));
     }
 }

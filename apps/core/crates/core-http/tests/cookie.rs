@@ -20,13 +20,16 @@ async fn the_key_in_the_url_becomes_a_cookie_that_opens_pages_and_the_websocket(
     assert_eq!(get(port, "/index.html?k=s3cret", &[]).await.status, 403);
     assert_eq!(http(port, "POST", "/?k=s3cret", &[], None).await.unwrap().status, 403);
 
-    assert_eq!(get(port, "/", &[("Cookie", "theme=dark; ccm_app=s3cret")]).await.status, 200);
-    assert_eq!(get(port, "/", &[("Cookie", "ccm_app=s3cre")]).await.status, 403);
-    assert_eq!(get(port, "/snooze?t=a&m=5", &[("Cookie", "ccm_app=s3cret")]).await.status, 404);
+    assert_eq!(get(port, "/", &[("Cookie", "theme=dark; ccm_app=s3cret"), ("Sec-Fetch-Site", "none")]).await.status, 200);
+    assert_eq!(get(port, "/", &[("Cookie", "ccm_app=s3cre"), ("Sec-Fetch-Site", "same-origin")]).await.status, 403);
+    assert_eq!(get(port, "/snooze?t=a&m=5", &[("Cookie", "ccm_app=s3cret"), ("Sec-Fetch-Site", "same-origin")]).await.status, 404);
+    assert_eq!(get(port, "/", &[("Cookie", "ccm_app=s3cret")]).await.status, 403);
+    assert_eq!(get(port, "/", &[("Cookie", "ccm_app=s3cret"), ("Sec-Fetch-Site", "same-site")]).await.status, 403);
     assert_eq!(get(port, "/", &[("x-ccm-app", "s3cret")]).await.status, 200);
 
-    assert!(ws_connect(port, &[("cookie", "ccm_app=wrong!")]).await.is_err());
-    let mut ws = ws_connect(port, &[("cookie", "ccm_app=s3cret")]).await.unwrap();
+    assert!(ws_connect(port, &[("cookie", "ccm_app=wrong!"), ("sec-fetch-site", "same-origin")]).await.is_err());
+    assert!(ws_connect(port, &[("cookie", "ccm_app=s3cret"), ("sec-fetch-site", "same-site")]).await.is_err());
+    let mut ws = ws_connect(port, &[("cookie", "ccm_app=s3cret"), ("sec-fetch-site", "same-origin")]).await.unwrap();
     assert_eq!(next_json(&mut ws).await["events"][0]["type"], "snapshot");
     server.shutdown().await;
 }

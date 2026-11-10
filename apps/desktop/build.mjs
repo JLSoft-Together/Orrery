@@ -53,6 +53,8 @@ function buildDaemon(tasks) {
 const coreDir = path.join(HERE, '..', 'core')
 const coreExe = process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core'
 const coreRelease = path.join(coreDir, 'target', 'release', coreExe)
+const bridgeExe = process.platform === 'win32' ? 'orrery-bridge.exe' : 'orrery-bridge'
+const bridgeRelease = path.join(coreDir, 'target', 'release', bridgeExe)
 const coreBundle = (arch) => path.join(coreDir, 'target', 'bundle', arch, coreExe)
 const skipCore = process.env.CCM_SKIP_CORE_BUILD === '1'
 const MAC_CORE_TARGETS = { arm64: 'aarch64-apple-darwin', x64: 'x86_64-apple-darwin' }
@@ -72,7 +74,7 @@ function coreJobs() {
 }
 
 function cargoBuildCore(cargo, triple) {
-  const args = ['build', '--release', '--locked', '-p', 'core-bin', '-j', coreJobs(), ...(triple ? ['--target', triple] : [])]
+  const args = ['build', '--release', '--locked', '-p', 'core-bin', '-p', 'core-bridge', '-j', coreJobs(), ...(triple ? ['--target', triple] : [])]
   return spawnSync(cargo, args, { cwd: coreDir, stdio: 'inherit' }).status === 0
 }
 
@@ -89,6 +91,12 @@ function stageCore(arch, from) {
   mkdirSync(path.dirname(to), { recursive: true })
   copyFileSync(from, to)
   chmodSync(to, 0o755)
+  const bridgeFrom = path.join(path.dirname(from), bridgeExe)
+  const bridgeTo = path.join(path.dirname(to), bridgeExe)
+  if (existsSync(bridgeFrom)) {
+    copyFileSync(bridgeFrom, bridgeTo)
+    chmodSync(bridgeTo, 0o755)
+  }
 }
 
 function buildCore(forDist) {
@@ -114,7 +122,7 @@ function buildCore(forDist) {
     if (forDist) for (const s of plan) if (!existsSync(coreBundle(s.arch))) stageCore(s.arch, built(s))
     return
   }
-  if (!forDist && existsSync(coreRelease)) return
+  if (!forDist && existsSync(coreRelease) && existsSync(bridgeRelease)) return
   const cargo = toolPath('cargo')
   if (!cargo) return fail('cargo is not installed (https://rustup.rs); apps/core was not built')
   for (const step of plan) {

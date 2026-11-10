@@ -23,7 +23,7 @@ pub fn find_git(path_var: &str) -> Option<PathBuf> {
     dirs.into_iter().map(|d| d.join(name)).find(|f| f.is_file())
 }
 
-fn git_path() -> Option<&'static PathBuf> {
+pub fn git_path() -> Option<&'static PathBuf> {
     static GIT: OnceLock<Option<PathBuf>> = OnceLock::new();
     GIT.get_or_init(|| {
         let path = std::env::var("PATH").or_else(|_| std::env::var("Path")).unwrap_or_default();

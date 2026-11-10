@@ -9,11 +9,15 @@ pub fn cookie_value<'a>(headers: impl Iterator<Item = &'a str>, name: &str) -> O
     headers.flat_map(|h| h.split(';')).filter_map(|pair| pair.trim().split_once('=')).find(|(k, _)| k.trim() == name).map(|(_, v)| v.trim())
 }
 
-pub fn authorized<'a>(header: Option<&str>, cookies: impl Iterator<Item = &'a str>, key: Option<&str>) -> bool {
+fn first_party(fetch_site: Option<&str>) -> bool {
+    fetch_site.is_some_and(|s| matches!(s.trim().to_ascii_lowercase().as_str(), "same-origin" | "none"))
+}
+
+pub fn authorized<'a>(header: Option<&str>, fetch_site: Option<&str>, cookies: impl Iterator<Item = &'a str>, key: Option<&str>) -> bool {
     if has_app_key(header, key) {
         return true;
     }
-    key.is_some() && cookie_value(cookies, COOKIE).is_some_and(|got| has_app_key(Some(got), key))
+    key.is_some() && first_party(fetch_site) && cookie_value(cookies, COOKIE).is_some_and(|got| has_app_key(Some(got), key))
 }
 
 fn cookie_safe(key: &str) -> bool {
@@ -59,14 +63,25 @@ mod tests {
     #[test]
     fn the_cookie_or_the_header_authorizes() {
         let key = Some("s3cret");
-        assert!(authorized(Some("s3cret"), std::iter::empty(), key));
-        assert!(authorized(None, ["ccm_app=s3cret"].into_iter(), key));
-        assert!(authorized(Some("wrong"), ["ccm_app=s3cret"].into_iter(), key));
-        assert!(!authorized(None, ["ccm_app=s3cre"].into_iter(), key));
-        assert!(!authorized(None, ["ccm_app=s3crets"].into_iter(), key));
-        assert!(!authorized(None, ["other=s3cret"].into_iter(), key));
-        assert!(!authorized(None, std::iter::empty(), key));
-        assert!(authorized(None, std::iter::empty(), None));
+        assert!(authorized(Some("s3cret"), None, std::iter::empty(), key));
+        assert!(authorized(None, Some("same-origin"), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(authorized(Some("wrong"), Some("same-origin"), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized(None, Some("same-origin"), ["ccm_app=s3cre"].into_iter(), key));
+        assert!(!authorized(None, Some("same-origin"), ["ccm_app=s3crets"].into_iter(), key));
+        assert!(!authorized(None, Some("same-origin"), ["other=s3cret"].into_iter(), key));
+        assert!(!authorized(None, Some("same-origin"), std::iter::empty(), key));
+        assert!(authorized(None, None, std::iter::empty(), None));
+    }
+
+    #[test]
+    fn the_cookie_only_counts_for_first_party_requests() {
+        let key = Some("s3cret");
+        assert!(authorized(None, Some("none"), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(authorized(None, Some("Same-Origin"), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized(None, Some("same-site"), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized(None, Some("cross-site"), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized(None, None, ["ccm_app=s3cret"].into_iter(), key));
+        assert!(authorized(Some("s3cret"), Some("cross-site"), std::iter::empty(), key));
     }
 
     #[test]

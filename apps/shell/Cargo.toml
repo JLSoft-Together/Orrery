@@ -14,7 +14,7 @@ path = "src/main.rs"
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
-tauri = { version = "=2.12.5", features = ["tray-icon", "unstable"] }
+tauri = { version = "=2.12.5", features = ["tray-icon", "unstable", "devtools"] }
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-autostart = "2"
@@ -25,13 +25,24 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
 getrandom = "0.3"
+arboard = { version = "3", default-features = false, features = ["image-data"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+trash = "5"
 core-serve = { path = "../core/crates/core-serve" }
+core-desk = { path = "../core/crates/core-desk" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes"] }
+webview2-com = "=0.39.1"
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSData", "NSDictionary", "NSError", "NSGeometry"] }
+objc2-app-kit = { version = "0.3", features = ["NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebView", "WKSnapshotConfiguration", "block2", "objc2-app-kit"] }
+block2 = "0.6"
 
 [profile.release]
 opt-level = "s"

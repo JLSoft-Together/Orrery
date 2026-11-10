@@ -59,6 +59,8 @@ mac:
   extraResources:
     - from: ../core/target/bundle/${arch}/orrery-core
       to: core/orrery-core
+    - from: ../core/target/bundle/${arch}/orrery-bridge
+      to: core/orrery-bridge
   protocols:
     - name: Orrery
       schemes: [agent-monitor]
@@ -69,6 +71,8 @@ win:
   extraResources:
     - from: ../core/target/bundle/${arch}/orrery-core.exe
       to: core/orrery-core.exe
+    - from: ../core/target/bundle/${arch}/orrery-bridge.exe
+      to: core/orrery-bridge.exe
   target:
     - target: nsis
       arch: [x64]

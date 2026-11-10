@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { scrubJson } from '../backup/format'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import type { HostHandlers } from '../desk/host'
 import { dirsExist, type PreviousRun } from './runState'
 
 export interface RestoreIpcDeps {
@@ -9,6 +11,7 @@ export interface RestoreIpcDeps {
   previous: PreviousRun
   saveDialog: (event: IpcMainInvokeEvent) => Promise<string | null>
   openDialog: (event: IpcMainInvokeEvent) => Promise<string | null>
+  desk?: DeskRouter
 }
 
 export type PromptsExportResult = { ok: true; file: string; count: number } | { ok: false; error: 'denied' | 'invalid' | 'cancelled' | 'write' }
@@ -30,21 +33,30 @@ export function promptsFileText(raw: unknown): { text: string; count: number } |
   }
 }
 
+export function restoreHosts(deps: RestoreIpcDeps, event: IpcMainInvokeEvent): HostHandlers {
+  return {
+    'restore.saveDialog': () => deps.saveDialog(event),
+    'restore.openDialog': () => deps.openDialog(event),
+    'restore.previous': () => ({ unclean: deps.previous.unclean }),
+  }
+}
+
 export function registerRestoreIpc(deps: RestoreIpcDeps): () => void {
   const { ipcMain, isAppFrame } = deps
   // Only the first window to ask after a start gets `first`: a second window must not restore the agents again.
   let asked = false
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'restore', hosts: (event) => restoreHosts(deps, event) } : undefined)
 
-  ipcMain.handle('ccm:run-state', (event) => {
+  handle('ccm:run-state', (event) => {
     if (!isAppFrame(event)) return null
     const first = !asked
     asked = true
     return { first, unclean: first && deps.previous.unclean }
   })
 
-  ipcMain.handle('ccm:dirs-exist', (event, paths: unknown) => (isAppFrame(event) ? dirsExist(paths) : null))
+  handle('ccm:dirs-exist', (event, paths: unknown) => (isAppFrame(event) ? dirsExist(paths) : null))
 
-  ipcMain.handle('ccm:prompts-export', async (event, raw: unknown): Promise<PromptsExportResult> => {
+  handle('ccm:prompts-export', async (event, raw: unknown): Promise<PromptsExportResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const out = promptsFileText(raw)
     if (!out) return { ok: false, error: 'invalid' }
@@ -58,7 +70,7 @@ export function registerRestoreIpc(deps: RestoreIpcDeps): () => void {
     return { ok: true, file, count: out.count }
   })
 
-  ipcMain.handle('ccm:prompts-import', async (event): Promise<PromptsImportResult> => {
+  handle('ccm:prompts-import', async (event): Promise<PromptsImportResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const file = await deps.openDialog(event)
     if (!file) return { ok: false, error: 'cancelled' }

@@ -1,9 +1,20 @@
+pub mod appearance;
 pub mod backup;
+pub mod bridge;
 pub mod build_clean;
+pub mod claude;
+pub mod claude_hooks;
+pub mod editors;
+pub mod extensions;
 pub mod fs_tree;
 pub mod git;
 pub mod js;
+pub mod layouts;
 pub mod libs;
+pub mod pages;
+pub mod pages_style;
+pub mod preview;
+pub mod restore;
 pub mod stdio;
 pub mod util;
 
@@ -108,6 +119,15 @@ impl Desk {
         backup::register(&mut desk, env);
         build_clean::register(&mut desk, env);
         libs::register(&mut desk, env);
+        claude_hooks::register(&mut desk, env);
+        extensions::register(&mut desk, env);
+        bridge::register(&mut desk, env);
+        layouts::register(&mut desk, env);
+        restore::register(&mut desk, env);
+        appearance::register(&mut desk, env);
+        pages::register(&mut desk, env);
+        editors::register(&mut desk, env);
+        preview::register(&mut desk, env);
         desk
     }
 

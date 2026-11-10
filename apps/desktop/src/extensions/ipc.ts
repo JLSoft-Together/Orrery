@@ -6,6 +6,8 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { AvailablePlugin, ExtInstallRequest, ExtRemoveRequest, ExtResult, ExtScope, ExtSourceRequest, ExtStatus, McpServerRow } from '@ccm/shared'
 import { findClaudeCli, type CliRun } from '../../../collector/src/job-stop'
 import { maskSecrets } from '@ccm/shared'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import type { HostHandlers } from '../desk/host'
 import { childEnv } from '../pty/presets'
 import {
   buildInstall,
@@ -40,6 +42,7 @@ export interface ExtensionsDeps {
   env?: NodeJS.ProcessEnv
   home?: string
   platform?: NodeJS.Platform
+  desk?: DeskRouter
 }
 
 const LIST_TIMEOUT = 60_000
@@ -81,6 +84,19 @@ export async function checkDir(dir: unknown): Promise<string | null | 'bad'> {
 
 const CHANNELS = ['ccm:ext-status', 'ccm:ext-mcp', 'ccm:ext-install', 'ccm:ext-remove', 'ccm:ext-source', 'ccm:ext-login']
 
+const isScope = (v: unknown): v is ExtScope => v === 'user' || v === 'project' || v === 'local'
+
+export function extensionsHosts(deps: ExtensionsDeps, event: IpcMainInvokeEvent): HostHandlers {
+  return {
+    'extensions.confirm': (p) => {
+      const o = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>
+      const kind = o.kind === 'install' || o.kind === 'remove' || o.kind === 'source' ? o.kind : 'install'
+      const commands = Array.isArray(o.commands) ? o.commands.filter((c): c is string => typeof c === 'string') : []
+      return deps.confirm(event, { kind, commands, scope: isScope(o.scope) ? o.scope : null, dir: typeof o.dir === 'string' ? o.dir : null })
+    },
+  }
+}
+
 export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
   const { ipcMain, isAppFrame } = deps
   const env = deps.env ?? process.env
@@ -90,6 +106,7 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
   const run = deps.run ?? defaultRunner(env)
   const mcpCache = new Map<string, { at: number; servers: McpServerRow[] }>()
   let busy = false
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'extensions', hosts: (event) => extensionsHosts(deps, event) } : undefined)
 
   const clean = (text: string, secrets: readonly string[]): string => {
     let out = text
@@ -149,7 +166,7 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
     }
   }
 
-  ipcMain.handle('ccm:ext-status', async (event, rawDir: unknown): Promise<ExtStatus | null> => {
+  handle('ccm:ext-status', async (event, rawDir: unknown): Promise<ExtStatus | null> => {
     if (!isAppFrame(event)) return null
     const dir = await checkDir(rawDir)
     if (dir === 'bad') return null
@@ -175,7 +192,7 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
   })
 
   // `claude mcp list` health-checks every server (seconds), so it is its own call and cached briefly.
-  ipcMain.handle('ccm:ext-mcp', async (event, rawDir: unknown, fresh: unknown): Promise<{ servers: McpServerRow[]; at: number } | null> => {
+  handle('ccm:ext-mcp', async (event, rawDir: unknown, fresh: unknown): Promise<{ servers: McpServerRow[]; at: number } | null> => {
     if (!isAppFrame(event)) return null
     const dir = await checkDir(rawDir)
     if (dir === 'bad') return null
@@ -193,18 +210,18 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
     return out
   })
 
-  ipcMain.handle('ccm:ext-install', async (event, raw: unknown): Promise<ExtResult> => {
+  handle('ccm:ext-install', async (event, raw: unknown): Promise<ExtResult> => {
     const req = (raw ?? {}) as ExtInstallRequest
     const res = await mutate(event, 'install', req.scope ?? null, req.dir, async (cli, cwd) => buildInstall(req, { platform, marketplaces: await marketplaces(cli, cwd) }))
     return strip(res)
   })
 
-  ipcMain.handle('ccm:ext-remove', async (event, raw: unknown): Promise<ExtResult> => {
+  handle('ccm:ext-remove', async (event, raw: unknown): Promise<ExtResult> => {
     const req = (raw ?? {}) as ExtRemoveRequest
     return strip(await mutate(event, 'remove', req.scope ?? null, req.dir, async () => buildRemove(req)))
   })
 
-  ipcMain.handle('ccm:ext-source', async (event, raw: unknown): Promise<(ExtResult & { marketplace?: string; plugins?: AvailablePlugin[] }) | null> => {
+  handle('ccm:ext-source', async (event, raw: unknown): Promise<(ExtResult & { marketplace?: string; plugins?: AvailablePlugin[] }) | null> => {
     const req = (raw ?? {}) as ExtSourceRequest
     const scope = req.type === 'marketplace' ? null : (req.scope ?? null)
     const dir = req.type === 'marketplace' ? undefined : req.dir
@@ -217,7 +234,7 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
   })
 
   // OAuth for an HTTP/SSE server: the CLI opens the browser and waits for the redirect.
-  ipcMain.handle('ccm:ext-login', async (event, name: unknown, rawDir: unknown): Promise<ExtResult> => {
+  handle('ccm:ext-login', async (event, name: unknown, rawDir: unknown): Promise<ExtResult> => {
     if (!isAppFrame(event)) return { ok: false, code: 'badInput' }
     if (typeof name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/.test(name)) return { ok: false, code: 'badInput' }
     if (busy) return { ok: false, code: 'busy' }

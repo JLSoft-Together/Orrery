@@ -11,8 +11,10 @@ const ELECTRON = `
 const tauri = () => window.__TAURI_INTERNALS__
 const call = (channel, args) => tauri().invoke('ccm', { channel, args })
 const listeners = new Map()
+const BINARY = new Set(['ccm:capture-rect'])
+const bytes = (v) => (typeof v === 'string' ? Uint8Array.from(atob(v), (c) => c.charCodeAt(0)) : v)
 export const ipcRenderer = {
-  invoke: (channel, ...args) => call(channel, args),
+  invoke: (channel, ...args) => (BINARY.has(channel) ? call(channel, args).then(bytes) : call(channel, args)),
   send: (channel, ...args) => {
     call(channel, args).catch(() => undefined)
   },

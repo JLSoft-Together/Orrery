@@ -1,0 +1,353 @@
+[
+ {
+  "id": "figma",
+  "kind": "mcp",
+  "name": "Figma",
+  "vendor": "Figma",
+  "docs": "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/",
+  "server": "figma",
+  "match": [
+   "plugin:figma:figma",
+   "figma-desktop"
+  ],
+  "fields": [],
+  "prereqs": [],
+  "install": {
+   "type": "http",
+   "url": "https://mcp.figma.com/mcp",
+   "oauth": true
+  }
+ },
+ {
+  "id": "github",
+  "kind": "mcp",
+  "name": "GitHub",
+  "vendor": "GitHub",
+  "docs": "https://github.com/github/github-mcp-server/blob/main/docs/installation-guides/install-claude.md",
+  "server": "github",
+  "match": [
+   "plugin:github:github"
+  ],
+  "fields": [
+   {
+    "key": "GITHUB_PAT",
+    "secret": true,
+    "required": true,
+    "pattern": "^[A-Za-z0-9_.\\-]{8,512}$"
+   }
+  ],
+  "prereqs": [],
+  "install": {
+   "type": "http",
+   "url": "https://api.githubcopilot.com/mcp/",
+   "oauth": false,
+   "header": {
+    "name": "Authorization",
+    "value": "Bearer {GITHUB_PAT}"
+   }
+  }
+ },
+ {
+  "id": "gitlab",
+  "kind": "mcp",
+  "name": "GitLab",
+  "vendor": "GitLab",
+  "docs": "https://docs.gitlab.com/user/model_context_protocol/mcp_server/",
+  "server": "gitlab",
+  "match": [
+   "GitLab",
+   "plugin:gitlab:gitlab"
+  ],
+  "fields": [
+   {
+    "key": "GITLAB_HOST",
+    "secret": false,
+    "required": true,
+    "pattern": "^[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?$",
+    "default": "gitlab.com"
+   }
+  ],
+  "prereqs": [],
+  "install": {
+   "type": "http",
+   "url": "https://{GITLAB_HOST}/api/v4/mcp",
+   "oauth": true
+  }
+ },
+ {
+  "id": "discord",
+  "kind": "mcp",
+  "name": "Discord",
+  "vendor": "SaseQ/discord-mcp",
+  "docs": "https://github.com/SaseQ/discord-mcp",
+  "server": "discord",
+  "match": [
+   "discord-mcp"
+  ],
+  "fields": [
+   {
+    "key": "DISCORD_TOKEN",
+    "secret": true,
+    "required": true,
+    "pattern": "^[A-Za-z0-9_.\\-]{8,512}$"
+   },
+   {
+    "key": "DISCORD_GUILD_ID",
+    "secret": false,
+    "required": false,
+    "pattern": "^[0-9]{5,25}$"
+   }
+  ],
+  "prereqs": [
+   "docker"
+  ],
+  "install": {
+   "type": "stdio",
+   "command": "docker",
+   "args": [
+    "run",
+    "--rm",
+    "-i",
+    "-e",
+    "DISCORD_TOKEN",
+    "-e",
+    "DISCORD_GUILD_ID",
+    "saseq/discord-mcp:latest"
+   ],
+   "env": [
+    "DISCORD_TOKEN",
+    "DISCORD_GUILD_ID"
+   ]
+  }
+ },
+ {
+  "id": "meshy",
+  "kind": "mcp",
+  "name": "Meshy AI",
+  "vendor": "Meshy",
+  "docs": "https://docs.meshy.ai/api/ai",
+  "server": "meshy",
+  "match": [
+   "meshy-ai"
+  ],
+  "fields": [
+   {
+    "key": "MESHY_API_KEY",
+    "secret": true,
+    "required": true,
+    "pattern": "^[A-Za-z0-9_.\\-]{8,512}$"
+   }
+  ],
+  "prereqs": [
+   "node"
+  ],
+  "install": {
+   "type": "stdio",
+   "command": "npx",
+   "args": [
+    "-y",
+    "@meshy-ai/meshy-mcp-server"
+   ],
+   "env": [
+    "MESHY_API_KEY"
+   ],
+   "winShim": true
+  }
+ },
+ {
+  "id": "unity",
+  "kind": "mcp",
+  "name": "Unity",
+  "vendor": "CoplayDev (MCP for Unity)",
+  "docs": "https://github.com/CoplayDev/unity-mcp",
+  "match": [
+   "unityMCP",
+   "UnityMCP",
+   "unity-mcp",
+   "mcp-for-unity",
+   "unity"
+  ],
+  "fields": [],
+  "prereqs": [
+   "uv"
+  ],
+  "install": {
+   "type": "guide"
+  },
+  "steps": 3
+ },
+ {
+  "id": "blender",
+  "kind": "mcp",
+  "name": "Blender",
+  "vendor": "ahujasid/blender-mcp",
+  "docs": "https://github.com/ahujasid/blender-mcp",
+  "server": "blender",
+  "match": [
+   "blender-mcp"
+  ],
+  "fields": [],
+  "prereqs": [
+   "uv"
+  ],
+  "install": {
+   "type": "stdio",
+   "command": "uvx",
+   "args": [
+    "mcp-for-blender"
+   ],
+   "env": []
+  },
+  "steps": 2
+ },
+ {
+  "id": "godot",
+  "kind": "mcp",
+  "name": "Godot",
+  "vendor": "Coding-Solo/godot-mcp",
+  "docs": "https://github.com/Coding-Solo/godot-mcp",
+  "server": "godot",
+  "match": [
+   "godot-mcp"
+  ],
+  "fields": [
+   {
+    "key": "GODOT_PATH",
+    "secret": false,
+    "required": false,
+    "pattern": "^(?:[A-Za-z]:[\\\\/]|/)[^\"<>|?*\\x00-\\x1f]{1,500}$"
+   }
+  ],
+  "prereqs": [
+   "node"
+  ],
+  "install": {
+   "type": "stdio",
+   "command": "npx",
+   "args": [
+    "-y",
+    "@coding-solo/godot-mcp"
+   ],
+   "env": [
+    "GODOT_PATH"
+   ],
+   "winShim": true
+  }
+ },
+ {
+  "id": "godot-editor",
+  "kind": "mcp",
+  "name": "Godot Editor",
+  "vendor": "tomyud1/godot-mcp",
+  "docs": "https://github.com/tomyud1/godot-mcp",
+  "match": [
+   "godot-editor",
+   "godot-mcp-server",
+   "tomyud1-godot-mcp"
+  ],
+  "fields": [],
+  "prereqs": [
+   "node"
+  ],
+  "install": {
+   "type": "guide"
+  },
+  "steps": 3
+ },
+ {
+  "id": "godot-funplay",
+  "kind": "mcp",
+  "name": "Funplay MCP for Godot",
+  "vendor": "FunplayAI/funplay-godot-mcp",
+  "docs": "https://github.com/FunplayAI/funplay-godot-mcp",
+  "match": [
+   "funplay",
+   "funplay-godot-mcp",
+   "funplayai-funplay-godot-mcp"
+  ],
+  "fields": [],
+  "prereqs": [
+   "node"
+  ],
+  "install": {
+   "type": "guide"
+  },
+  "steps": 3
+ },
+ {
+  "id": "pm-skills",
+  "kind": "plugin",
+  "name": "PM Skills",
+  "vendor": "phuryn",
+  "docs": "https://github.com/phuryn/pm-skills",
+  "fields": [],
+  "prereqs": [],
+  "install": {
+   "type": "plugins",
+   "marketplace": "pm-skills",
+   "repo": "phuryn/pm-skills",
+   "plugins": [
+    "pm-product-discovery",
+    "pm-product-strategy",
+    "pm-execution",
+    "pm-market-research",
+    "pm-data-analytics",
+    "pm-go-to-market",
+    "pm-marketing-growth",
+    "pm-toolkit",
+    "pm-ai-shipping"
+   ]
+  }
+ },
+ {
+  "id": "ui-ux-pro-max",
+  "kind": "plugin",
+  "name": "UI/UX Pro Max",
+  "vendor": "nextlevelbuilder",
+  "docs": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "fields": [],
+  "prereqs": [],
+  "install": {
+   "type": "plugins",
+   "marketplace": "ui-ux-pro-max-skill",
+   "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
+   "plugins": [
+    "ui-ux-pro-max"
+   ]
+  }
+ },
+ {
+  "id": "frontend-design",
+  "kind": "plugin",
+  "name": "Frontend Design",
+  "vendor": "Anthropic",
+  "docs": "https://github.com/anthropics/claude-code/tree/main/plugins/frontend-design",
+  "fields": [],
+  "prereqs": [],
+  "install": {
+   "type": "plugins",
+   "marketplace": "claude-plugins-official",
+   "repo": "anthropics/claude-plugins-official",
+   "plugins": [
+    "frontend-design"
+   ]
+  }
+ },
+ {
+  "id": "unity-plugin",
+  "kind": "plugin",
+  "name": "Unity Agent",
+  "vendor": "Unity Technologies",
+  "docs": "https://github.com/Unity-Technologies/unity-agent-plugin",
+  "fields": [],
+  "prereqs": [],
+  "install": {
+   "type": "plugins",
+   "marketplace": "claude-plugins-official",
+   "repo": "anthropics/claude-plugins-official",
+   "plugins": [
+    "unity"
+   ]
+  }
+ }
+]

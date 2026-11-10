@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync, utimesSync } from 'node:fs'
 import path from 'node:path'
-import { DeskRouter } from '../src/desk/forward'
+import { DESK_NODE_DEFAULT, DeskRouter, deskFlag } from '../src/desk/forward'
 import { DeskHost } from '../src/desk/host'
 
 const REPO = path.resolve(__dirname, '..', '..', '..')
@@ -31,7 +31,7 @@ export async function startTwin(env: NodeJS.ProcessEnv): Promise<Twin> {
   const logs: string[] = []
   const host = new DeskHost({ bin: DESK_BIN, env: { ...process.env, CCM_APP_VERSION: '9.9.9', ...env }, onEvent: (event, payload) => events.push({ event, payload }) })
   await host.start()
-  const router = new DeskRouter({ client: host, env: {}, onFallback: (m) => fellBack.push(m), log: (l) => logs.push(l) })
+  const router = new DeskRouter({ client: host, env: Object.fromEntries([...DESK_NODE_DEFAULT].map((m) => [deskFlag(m), 'rust'])),onFallback: (m) => fellBack.push(m), log: (l) => logs.push(l) })
   return { host, router, events, fellBack, logs }
 }
 

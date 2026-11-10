@@ -252,7 +252,7 @@ fn local(request: &Request, shared: &Shared) -> bool {
 }
 
 fn keyed(request: &Request, shared: &Shared) -> bool {
-    authorized(request.header("x-ccm-app"), request.headers_all("cookie"), shared.app_key.as_deref())
+    authorized(request.header("x-ccm-app"), request.header("sec-fetch-site"), request.headers_all("cookie"), shared.app_key.as_deref())
 }
 
 async fn upgrade(mut stream: TcpStream, request: Request, shared: Arc<Shared>) {

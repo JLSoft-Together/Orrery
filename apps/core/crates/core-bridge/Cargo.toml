@@ -1,0 +1,15 @@
+[package]
+name = "core-bridge"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "orrery-bridge"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = { workspace = true, features = ["preserve_order"] }

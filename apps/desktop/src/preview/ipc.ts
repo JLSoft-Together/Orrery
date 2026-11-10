@@ -39,6 +39,8 @@ import { existingDir } from '../pick-start'
 import type { GitHubAccounts } from '../github/accounts'
 import type { PreviewServer } from './server'
 import type { RootWatcher } from './watch'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import { PREVIEW_DESK_MODULES, previewHosts, type PreviewGate } from './deskHosts'
 
 export const PREVIEW_PARTITION = 'persist:ccm-preview'
 const PREVIEW_PERMISSIONS = new Set(['clipboard-sanitized-write'])
@@ -110,6 +112,7 @@ export interface PreviewIpcDeps {
   confirmFullAccess?: () => Promise<boolean>
   /** GitHub accounts (Settings): push / fetch / pull of a github.com https remote use the repo's account token. */
   github?: GitHubAccounts
+  desk?: DeskRouter
 }
 
 export interface PreviewIpc {
@@ -145,6 +148,24 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   const gitDirs = new GitDirWatcher((root) => notifyChanges(root))
   const hooked = new WeakSet<WebContents>()
   const asking = new Map<string, Promise<boolean>>()
+  const gate: PreviewGate = {
+    repoOf: (root) => repoOf(root),
+    registerRepo: (dir) => registerRepo(dir),
+    addRepo: (root, from) => void repos.set(rootKey(root), { root, from }),
+    allowedPath: (p, fresh) => allowedPath(p, fresh),
+    checkDir: (dir) => checkDir(dir),
+    explorerRoot: (root) => explorerRoot(root),
+    writeRoots: () => writeRoots(),
+    allowedRoots: () => allowedRoots(),
+    editableFile: (file) => editableFile(file),
+    invalidate: (root) => fileLists.invalidate(root),
+    trash: () => trashFn(),
+    recordHistory: (real, previous) => history?.record(real, previous) ?? Promise.resolve(),
+  }
+  const deskFor = (module: string) => deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module, hosts: (event) => previewHosts(gate, deps, event) } : undefined)
+  const git = deskFor(PREVIEW_DESK_MODULES.git)
+  const files = deskFor(PREVIEW_DESK_MODULES.files)
+  const tools = deskFor(PREVIEW_DESK_MODULES.tools)
 
   /** OS trash: injected for tests, else Electron's `shell.trashItem`. */
   const trashFn = (): ((p: string) => Promise<void>) | null => {
@@ -253,12 +274,12 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return res && { ...res, origin: server.origin }
   })
 
-  ipcMain.handle('ccm:read-file', async (event, target: unknown) => {
+  files('ccm:read-file', async (event, target: unknown) => {
     if (!isAppFrame(event) || typeof target !== 'string') return null
     return readFileForView(target, await allowedRoots())
   })
 
-  ipcMain.handle('ccm:log-read', async (event, req: unknown) => {
+  files('ccm:log-read', async (event, req: unknown) => {
     if (!isAppFrame(event) || !req || typeof req !== 'object') return { ok: false, error: 'denied' }
     return readLogChunk(req, await allowedRoots())
   })
@@ -273,7 +294,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   const history = deps.dataDir ? new LocalHistory(deps.dataDir) : null
   const onSaved = history ? (real: string, previous: string) => void history.record(real, previous) : undefined
 
-  ipcMain.handle('ccm:file-write', async (event, req: unknown) => {
+  files('ccm:file-write', async (event, req: unknown) => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     return writeTextFile(req, await writeRoots(), { onSaved })
   })
@@ -293,7 +314,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   }
   const historyFile = async (file: unknown): Promise<string | null> => (await editableFile(file))?.real ?? null
 
-  ipcMain.handle('ccm:lh-list', async (event, file: unknown) => {
+  files('ccm:lh-list', async (event, file: unknown) => {
     const real = history && isAppFrame(event) ? await historyFile(file) : null
     return real && history ? history.list(real) : { ok: false, error: 'denied' }
   })
@@ -305,7 +326,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     const target = await editableFile(file)
     return target ? formatter.format(target.real, target.root, text) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:lh-read', async (event, req: unknown) => {
+  files('ccm:lh-read', async (event, req: unknown) => {
     const { path: file, id } = (req ?? {}) as { path?: unknown; id?: unknown }
     const real = history && isAppFrame(event) ? await historyFile(file) : null
     return real && history ? history.read(real, id) : { ok: false, error: 'denied' }
@@ -404,20 +425,20 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return answer
   })
 
-  ipcMain.handle('ccm:changes-status', async (event, dir: unknown) => {
+  git('ccm:changes-status', async (event, dir: unknown) => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const repo = await registerRepo(dir)
     return typeof repo === 'string' ? changesStatus(repo) : { ok: false, error: repo.error }
   })
 
-  ipcMain.handle('ccm:changes-diff', async (event, req: unknown) => {
+  git('ccm:changes-diff', async (event, req: unknown) => {
     const { root, path: rel, opts } = (req ?? {}) as { root?: unknown; path?: unknown; opts?: unknown }
     const repo = isAppFrame(event) ? await repoOf(root) : null
     if (!repo) return { ok: false, error: 'denied' }
     return changesDiff(repo, rel, opts)
   })
 
-  ipcMain.handle('ccm:git-show-image', async (event, req: unknown) => {
+  git('ccm:git-show-image', async (event, req: unknown) => {
     const { root, path: rel } = (req ?? {}) as { root?: unknown; path?: unknown }
     const repo = isAppFrame(event) ? await repoOf(root) : null
     if (!repo) return { ok: false, error: 'denied' }
@@ -425,7 +446,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   })
 
   // File viewer gutter: the file must be readable here; its repo is registered so a rollback can name it.
-  ipcMain.handle('ccm:changes-file', async (event, file: unknown) => {
+  git('ccm:changes-file', async (event, file: unknown) => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const ok = await allowedPath(file)
     if (!ok || !(await fs.stat(ok.real).catch(() => null))?.isFile()) return { ok: false, error: 'denied' }
@@ -440,7 +461,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
 
   // One search per page: a newer query kills the git grep still running for the older one.
   const searches = new Map<number, AbortController>()
-  ipcMain.handle('ccm:search', async (event, req: unknown) => {
+  files('ccm:search', async (event, req: unknown) => {
     const { dir, query } = (req ?? {}) as { dir?: unknown; query?: unknown }
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const q = cleanQuery(query)
@@ -486,7 +507,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
 
   // Blame on demand for the file a viewer shows; one per page, a newer request (another file) aborts the older one.
   const blames = new Map<number, AbortController>()
-  ipcMain.handle('ccm:git-blame', async (event, file: unknown) => {
+  git('ccm:git-blame', async (event, file: unknown) => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const ok = await allowedPath(file)
     if (!ok || !(await fs.stat(ok.real).catch(() => null))?.isFile()) return { ok: false, error: 'denied' }
@@ -504,7 +525,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   })
 
   // Slash commands for the prompt picker: names + descriptions only, read when the picker opens.
-  ipcMain.handle('ccm:commands-list', async (event, dir: unknown) => {
+  files('ccm:commands-list', async (event, dir: unknown) => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const ok = await allowedPath(dir)
     if (!ok) return { ok: false, error: 'denied' }
@@ -514,7 +535,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return { ok: true, commands: await listCommands(dirs) }
   })
 
-  ipcMain.handle('ccm:log-refs', async (event, dir: unknown) => {
+  git('ccm:log-refs', async (event, dir: unknown) => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const repo = await registerRepo(dir)
     return typeof repo === 'string' ? listRefs(repo) : { ok: false, error: repo.error }
@@ -531,33 +552,33 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     }
   }
 
-  ipcMain.handle('ccm:log-page', async (event, req: unknown) => {
+  git('ccm:log-page', async (event, req: unknown) => {
     const { root, query } = (req ?? {}) as { root?: unknown; query?: unknown }
     const repo = await logRepo(event, root)
     return repo ? logPage(repo, query) : denied
   })
-  ipcMain.handle('ccm:log-commit', async (event, req: unknown) => {
+  git('ccm:log-commit', async (event, req: unknown) => {
     const { root, hash } = (req ?? {}) as { root?: unknown; hash?: unknown }
     const repo = await logRepo(event, root)
     return repo ? commitDetail(repo, hash) : denied
   })
-  ipcMain.handle('ccm:log-contains', async (event, req: unknown) => {
+  git('ccm:log-contains', async (event, req: unknown) => {
     const { root, hash } = (req ?? {}) as { root?: unknown; hash?: unknown }
     const repo = await logRepo(event, root)
     return repo ? branchesContaining(repo, hash) : denied
   })
-  ipcMain.handle('ccm:log-diff', async (event, req: unknown) => {
+  git('ccm:log-diff', async (event, req: unknown) => {
     const { root, hash, path: rel, opts, origPath } = (req ?? {}) as { root?: unknown; hash?: unknown; path?: unknown; opts?: unknown; origPath?: unknown }
     const repo = await logRepo(event, root)
     return repo ? commitDiff(repo, hash, rel, opts, origPath) : denied
   })
 
-  ipcMain.handle('ccm:git-branch-create', async (event, req: unknown) => {
+  git('ccm:git-branch-create', async (event, req: unknown) => {
     const { root, name, base, checkout } = (req ?? {}) as { root?: unknown; name?: unknown; base?: unknown; checkout?: unknown }
     const repo = await logRepo(event, root)
     return repo ? createBranch(repo, name, base, checkout) : denied
   })
-  ipcMain.handle('ccm:git-branch-delete', async (event, req: unknown) => {
+  git('ccm:git-branch-delete', async (event, req: unknown) => {
     const { root, ref } = (req ?? {}) as { root?: unknown; ref?: unknown }
     const repo = await logRepo(event, root)
     if (!repo || !deps.confirmGit) return denied
@@ -571,39 +592,39 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     if (!(await deps.confirmGit({ title: force.label, commands: [`git ${force.args.join(' ')}`], force: true }).catch(() => false))) return { ok: false, error: 'cancelled' }
     return runDelete(repo, force.args, authOf(repo))
   })
-  ipcMain.handle('ccm:git-fetch', async (event, root: unknown) => {
+  git('ccm:git-fetch', async (event, root: unknown) => {
     const repo = await logRepo(event, root)
     return repo ? fetchAll(repo, authOf(repo)) : denied
   })
-  ipcMain.handle('ccm:git-branch-update', async (event, req: unknown) => {
+  git('ccm:git-branch-update', async (event, req: unknown) => {
     const { root, ref } = (req ?? {}) as { root?: unknown; ref?: unknown }
     const repo = await logRepo(event, root)
     return repo ? updateBranch(repo, ref, authOf(repo)) : denied
   })
-  ipcMain.handle('ccm:git-push-preview', async (event, req: unknown) => {
+  git('ccm:git-push-preview', async (event, req: unknown) => {
     const { root, ref, remote, branch } = (req ?? {}) as { root?: unknown; ref?: unknown; remote?: unknown; branch?: unknown }
     const repo = await logRepo(event, root)
     return repo ? pushPreview(repo, ref, remote, branch) : denied
   })
-  ipcMain.handle('ccm:git-push', async (event, req: unknown) => {
+  git('ccm:git-push', async (event, req: unknown) => {
     const { root, ref, remote, branch, setUpstream } = (req ?? {}) as { root?: unknown; ref?: unknown; remote?: unknown; branch?: unknown; setUpstream?: unknown }
     const repo = await logRepo(event, root)
     return repo ? pushBranch(repo, ref, remote, branch, setUpstream, authOf(repo)) : denied
   })
-  ipcMain.handle('ccm:gh-repo-account', async (event, req: unknown) => {
+  git('ccm:gh-repo-account', async (event, req: unknown) => {
     const { root, remote } = (req ?? {}) as { root?: unknown; remote?: unknown }
     const repo = await logRepo(event, root)
     if (!repo || !deps.github) return { github: false }
     const url = await remoteUrl(repo, remote)
     return url ? deps.github.resolve(repo, url) : { github: false }
   })
-  ipcMain.handle('ccm:gh-repo-account-set', async (event, req: unknown) => {
+  git('ccm:gh-repo-account-set', async (event, req: unknown) => {
     const { root, choice } = (req ?? {}) as { root?: unknown; choice?: unknown }
     const repo = await logRepo(event, root)
     return !!repo && !!deps.github && deps.github.setChoice(repo, choice)
   })
 
-  ipcMain.handle('ccm:changes-discard', async (event, req: unknown) => {
+  git('ccm:changes-discard', async (event, req: unknown) => {
     const { root, path: rel, hunk } = (req ?? {}) as { root?: unknown; path?: unknown; hunk?: unknown }
     const repo = isAppFrame(event) ? await repoOf(root) : null
     if (!repo) return { ok: false, error: 'denied' }
@@ -634,34 +655,34 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return real ? checks.cancel(rootKey(real)) : false
   })
 
-  ipcMain.handle('ccm:wt-compare', async (event, req: unknown) => {
+  git('ccm:wt-compare', async (event, req: unknown) => {
     const { dir, branch } = (req ?? {}) as { dir?: unknown; branch?: unknown }
     const real = isAppFrame(event) ? await checkDir(dir) : null
     return real ? compareBranch(real, branch) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:wt-diff', async (event, req: unknown) => {
+  git('ccm:wt-diff', async (event, req: unknown) => {
     const { dir, a, b } = (req ?? {}) as { dir?: unknown; a?: unknown; b?: unknown }
     const real = isAppFrame(event) ? await checkDir(dir) : null
     return real ? diffBetween(real, a, b) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:wt-file-diff', async (event, req: unknown) => {
+  git('ccm:wt-file-diff', async (event, req: unknown) => {
     const { dir, a, b, path: rel } = (req ?? {}) as { dir?: unknown; a?: unknown; b?: unknown; path?: unknown }
     const repo = isAppFrame(event) ? await registerRepo(dir) : null
     return typeof repo === 'string' ? fileBetween(repo, repo, a, b, rel) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:wt-take', async (event, req: unknown) => {
+  git('ccm:wt-take', async (event, req: unknown) => {
     const { dir, from, path: rel } = (req ?? {}) as { dir?: unknown; from?: unknown; path?: unknown }
     const repo = isAppFrame(event) ? await registerRepo(dir) : null
     if (typeof repo !== 'string' || !deps.confirmRun) return { ok: false, error: 'denied' }
     return takeFile(repo, from, rel, (lines, branch, file) => deps.confirmRun!({ kind: 'take', a: file, b: branch, lines }))
   })
-  ipcMain.handle('ccm:overlap-files', async (event, dir: unknown) => {
+  git('ccm:overlap-files', async (event, dir: unknown) => {
     const real = isAppFrame(event) ? await checkDir(dir) : null
     return real ? changedVsBase(real) : { ok: false, error: 'failed' }
   })
   // One dry run per page: a newer pair aborts the older one.
   const dryRuns = new Map<number, AbortController>()
-  ipcMain.handle('ccm:overlap-dryrun', async (event, req: unknown) => {
+  git('ccm:overlap-dryrun', async (event, req: unknown) => {
     const { dir, a, b } = (req ?? {}) as { dir?: unknown; a?: unknown; b?: unknown }
     const real = isAppFrame(event) ? await checkDir(dir) : null
     if (!real) return { ok: false, error: 'unknown' }
@@ -676,7 +697,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     }
   })
   let merging = false
-  ipcMain.handle('ccm:wt-merge', async (event, req: unknown) => {
+  git('ccm:wt-merge', async (event, req: unknown) => {
     const { dir, branch, mode, keep } = (req ?? {}) as { dir?: unknown; branch?: unknown; mode?: unknown; keep?: unknown }
     const real = isAppFrame(event) ? await checkDir(dir) : null
     if (!real || (mode !== 'ff' && mode !== 'squash') || !deps.confirmRun) return { ok: false, error: 'denied' }
@@ -691,11 +712,11 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     }
   })
 
-  ipcMain.handle('ccm:git-merge-state', async (event, root: unknown) => {
+  git('ccm:git-merge-state', async (event, root: unknown) => {
     const repo = isAppFrame(event) ? await repoOf(root) : null
     return repo ? mergeState(repo) : { ok: false, error: 'failed' }
   })
-  ipcMain.handle('ccm:git-merge-abort', async (event, root: unknown) => {
+  git('ccm:git-merge-abort', async (event, root: unknown) => {
     const repo = isAppFrame(event) ? await repoOf(root) : null
     if (!repo || !deps.confirmRun) return { ok: false, error: 'failed' }
     return abortMerge(repo, (kind, command) => deps.confirmRun!({ kind: 'abort', a: kind, b: repo, lines: [`cd ${repo}`, command] }))
@@ -703,39 +724,39 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
 
   const cps = deps.dataDir ? new CheckpointStore(deps.dataDir) : null
   const cpRepo = async (event: IpcMainInvokeEvent, root: unknown): Promise<string | null> => (cps && isAppFrame(event) ? registerRepo(root).then((r) => (typeof r === 'string' ? r : null)) : null)
-  ipcMain.handle('ccm:cp-state', async (event, root: unknown) => {
+  git('ccm:cp-state', async (event, root: unknown) => {
     const repo = await cpRepo(event, root)
     if (!repo || !cps) return { ok: false, error: 'denied' }
     return { ok: true, root: repo, on: await cps.isOn(repo), list: await cps.list(repo) }
   })
-  ipcMain.handle('ccm:cp-set', async (event, req: unknown) => {
+  git('ccm:cp-set', async (event, req: unknown) => {
     const { root, on } = (req ?? {}) as { root?: unknown; on?: unknown }
     const repo = await cpRepo(event, root)
     if (!repo || !cps || typeof on !== 'boolean') return false
     await cps.setOn(repo, on)
     return true
   })
-  ipcMain.handle('ccm:cp-take', async (event, req: unknown) => {
+  git('ccm:cp-take', async (event, req: unknown) => {
     const { root, label } = (req ?? {}) as { root?: unknown; label?: unknown }
     const repo = await cpRepo(event, root)
     return repo && cps ? cps.take(repo, typeof label === 'string' ? label : 'turn') : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:cp-diff', async (event, req: unknown) => {
+  git('ccm:cp-diff', async (event, req: unknown) => {
     const { root, id, to } = (req ?? {}) as { root?: unknown; id?: unknown; to?: unknown }
     const repo = await cpRepo(event, root)
     return repo && cps ? cps.diff(repo, id, to) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:cp-file-diff', async (event, req: unknown) => {
+  git('ccm:cp-file-diff', async (event, req: unknown) => {
     const { root, from, to, path: rel } = (req ?? {}) as { root?: unknown; from?: unknown; to?: unknown; path?: unknown }
     const repo = await cpRepo(event, root)
     return repo && cps ? cps.fileDiff(repo, from, to, rel) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:cp-revert-hunk', async (event, req: unknown) => {
+  git('ccm:cp-revert-hunk', async (event, req: unknown) => {
     const { root, path: rel, patch } = (req ?? {}) as { root?: unknown; path?: unknown; patch?: unknown }
     const repo = await cpRepo(event, root)
     return repo && cps ? cps.revertHunk(repo, rel, patch) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:cp-restore', async (event, req: unknown) => {
+  git('ccm:cp-restore', async (event, req: unknown) => {
     const { root, id, paths } = (req ?? {}) as { root?: unknown; id?: unknown; paths?: unknown }
     const repo = await cpRepo(event, root)
     const trash = trashFn()
@@ -749,23 +770,23 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   })
 
   const notes = deps.dataDir ? new NotesStore(deps.dataDir) : null
-  ipcMain.handle('ccm:notes-read', async (event, root: unknown) => {
+  files('ccm:notes-read', async (event, root: unknown) => {
     const real = notes && isAppFrame(event) ? await checkDir(root) : null
     return real && notes ? notes.read(real) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:notes-write', async (event, req: unknown) => {
+  files('ccm:notes-write', async (event, req: unknown) => {
     const { root, text } = (req ?? {}) as { root?: unknown; text?: unknown }
     const real = notes && isAppFrame(event) ? await checkDir(root) : null
     return real && notes ? notes.write(real, text) : { ok: false, error: 'denied' }
   })
 
   // Keys and empty / non-empty flags only; a value crosses to the page solely through ccm:env-reveal, one per click.
-  ipcMain.handle('ccm:env-check', async (event, root: unknown) => {
+  tools('ccm:env-check', async (event, root: unknown) => {
     const real = isAppFrame(event) ? await checkDir(root) : null
     return real ? checkEnv(real) : { ok: false, error: 'denied' }
   })
   // Key names, files and lines only: translated values never cross to the page.
-  ipcMain.handle('ccm:i18n-scan', async (event, root: unknown) => {
+  tools('ccm:i18n-scan', async (event, root: unknown) => {
     const real = isAppFrame(event) ? await checkDir(root) : null
     return real ? scanI18n(real) : { ok: false, error: 'denied' }
   })
@@ -812,30 +833,30 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
       permWriting = false
     }
   })
-  ipcMain.handle('ccm:env-reveal', async (event, req: unknown) => {
+  tools('ccm:env-reveal', async (event, req: unknown) => {
     const { root, file, key } = (req ?? {}) as { root?: unknown; file?: unknown; key?: unknown }
     const real = isAppFrame(event) ? await checkDir(root) : null
     return real ? revealEnv(real, file, key) : { ok: false, error: 'denied' }
   })
 
-  ipcMain.handle('ccm:git-stage', async (event, req: unknown) => {
+  git('ccm:git-stage', async (event, req: unknown) => {
     const { root, paths, hunk } = (req ?? {}) as { root?: unknown; paths?: unknown; hunk?: unknown }
     const repo = isAppFrame(event) ? await repoOf(root) : null
     if (!repo) return { ok: false, error: 'denied' }
     if (hunk !== undefined) return stageHunk(repo, Array.isArray(paths) ? paths[0] : paths, hunk)
     return stagePaths(repo, paths)
   })
-  ipcMain.handle('ccm:git-unstage', async (event, req: unknown) => {
+  git('ccm:git-unstage', async (event, req: unknown) => {
     const { root, paths } = (req ?? {}) as { root?: unknown; paths?: unknown }
     const repo = isAppFrame(event) ? await repoOf(root) : null
     return repo ? unstagePaths(repo, paths) : { ok: false, error: 'denied' }
   })
-  ipcMain.handle('ccm:git-can-amend', async (event, root: unknown) => {
+  git('ccm:git-can-amend', async (event, root: unknown) => {
     const repo = isAppFrame(event) ? await repoOf(root) : null
     return repo ? headUnpushed(repo) : false
   })
   const commits = new Map<string, AbortController>()
-  ipcMain.handle('ccm:git-commit', async (event, req: unknown) => {
+  git('ccm:git-commit', async (event, req: unknown) => {
     const { root, ...rest } = (req ?? {}) as { root?: unknown }
     const repo = isAppFrame(event) ? await repoOf(root) : null
     const input = cleanCommit(rest)
@@ -855,7 +876,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
       commits.delete(key)
     }
   })
-  ipcMain.handle('ccm:git-commit-cancel', async (event, root: unknown) => {
+  git('ccm:git-commit-cancel', async (event, root: unknown) => {
     const repo = isAppFrame(event) ? await repoOf(root) : null
     const ctl = repo ? commits.get(rootKey(repo)) : undefined
     ctl?.abort()
@@ -899,13 +920,13 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
   const explorerRoot = async (root: unknown): Promise<string | null> =>
     (await repoOf(root)) ?? ((await allowedPath(root)) ?? (await allowedPath(root, true)))?.real ?? null
 
-  ipcMain.handle('ccm:list-dir', async (event, req: unknown) => {
+  files('ccm:list-dir', async (event, req: unknown) => {
     const { root, dir } = (req ?? {}) as { root?: unknown; dir?: unknown }
     const real = isAppFrame(event) ? await explorerRoot(root) : null
     return real ? listDir(real, dir) : null
   })
 
-  ipcMain.handle('ccm:create-entry', async (event, req: unknown) => {
+  files('ccm:create-entry', async (event, req: unknown) => {
     const { root, parent, name, kind } = (req ?? {}) as { root?: unknown; parent?: unknown; name?: unknown; kind?: unknown }
     const real = isAppFrame(event) ? await explorerRoot(root) : null
     if (!real) return { ok: false, error: 'denied' }
@@ -914,7 +935,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return res
   })
 
-  ipcMain.handle('ccm:rename-entry', async (event, req: unknown) => {
+  files('ccm:rename-entry', async (event, req: unknown) => {
     const { root, path: target, name } = (req ?? {}) as { root?: unknown; path?: unknown; name?: unknown }
     const real = isAppFrame(event) ? await explorerRoot(root) : null
     if (!real) return { ok: false, error: 'denied' }
@@ -923,7 +944,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return res
   })
 
-  ipcMain.handle('ccm:trash-entry', async (event, req: unknown) => {
+  files('ccm:trash-entry', async (event, req: unknown) => {
     const { root, path: target } = (req ?? {}) as { root?: unknown; path?: unknown }
     const real = isAppFrame(event) ? await explorerRoot(root) : null
     if (!real) return { ok: false, error: 'denied' }
@@ -984,7 +1005,7 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     return { root: top.root, repo: true, ...(common ? { common } : {}) }
   })
 
-  ipcMain.handle('ccm:scripts', async (event, dir: unknown) => {
+  tools('ccm:scripts', async (event, dir: unknown) => {
     if (!isAppFrame(event)) return null
     const real = (await repoOf(dir)) ?? (await allowedPath(dir))?.real
     if (!real || !(await fs.stat(real).catch(() => null))?.isDirectory()) return null

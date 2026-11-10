@@ -146,7 +146,7 @@ export class HooksManager {
   private readonly approved = new Set<string>()
   private readonly spawn: SpawnFn
 
-  constructor(private readonly deps: HooksManagerDeps) {
+  constructor(readonly deps: HooksManagerDeps) {
     this.spawn = deps.spawn ?? ((file, args, opts) => nodeSpawn(file, args, opts))
   }
 

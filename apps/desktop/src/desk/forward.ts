@@ -3,7 +3,7 @@ import { DeskUnavailable, type HostHandlers } from './host'
 
 export type DeskMode = 'rust' | 'node'
 
-export const DESK_MODULES = ['backup', 'buildClean', 'libs'] as const
+export const DESK_MODULES = ['backup', 'buildClean', 'libs', 'previewGit', 'previewFiles', 'previewTools', 'claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge'] as const
 
 export const DESK_EVENTS: ReadonlySet<string> = new Set(['ccm:build-event'])
 
@@ -14,8 +14,12 @@ export interface DeskClient {
 
 export const deskFlag = (module: string): string => `CCM_DESK_${module.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()}`
 
+export const DESK_NODE_DEFAULT: ReadonlySet<string> = new Set(['claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge'])
+
 export function deskMode(env: NodeJS.ProcessEnv, module: string): DeskMode {
-  return env[deskFlag(module)]?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
+  const flag = env[deskFlag(module)]?.trim().toLowerCase()
+  if (DESK_NODE_DEFAULT.has(module)) return flag === 'rust' ? 'rust' : 'node'
+  return flag === 'node' ? 'node' : 'rust'
 }
 
 type Handler<E> = (event: E, ...args: unknown[]) => unknown

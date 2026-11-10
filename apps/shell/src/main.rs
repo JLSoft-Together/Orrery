@@ -1,12 +1,20 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod appearance;
+mod capture;
 mod ccm;
 mod config;
+mod desk;
+mod desk_text;
+mod guest;
+mod guest_ipc;
+mod hosts;
 mod links;
+mod native;
 mod presets;
 mod pty;
 mod serve;
+mod shot;
 mod state;
 mod stdio;
 mod strings;
@@ -47,7 +55,15 @@ fn capability(app: &AppHandle, origin: &str) -> tauri::Result<()> {
         .permission("core:window:allow-start-dragging")
         .permission("core:window:allow-internal-toggle-maximize")
         .permission("allow-ccm");
-    app.add_capability(cap)
+    app.add_capability(cap)?;
+    let guests = CapabilityBuilder::new("guest")
+        .webview("guest-*")
+        .remote("http://*".into())
+        .remote("http://*:*".into())
+        .remote("https://*".into())
+        .remote("https://*:*".into())
+        .permission("allow-guest");
+    app.add_capability(guests)
 }
 
 fn main() {
@@ -56,6 +72,7 @@ fn main() {
     let appearance = appearance::Store::open(cfg.data_dir.join("shell-appearance.json"));
     let t = strings::strings(appearance.locale());
     let _ = std::fs::create_dir_all(&cfg.data_dir);
+    let desk = desk::boot(&desk::env_for(&cfg.data_dir, env!("CARGO_PKG_VERSION")));
     let serve = match Serve::start(cfg.serve.clone()) {
         Ok(s) => s,
         Err(ServeError::PortInUse) => fail(t.port_in_use.replace("{port}", &cfg.port.to_string())),
@@ -87,7 +104,9 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(shell)
-        .invoke_handler(tauri::generate_handler![ccm::ccm])
+        .manage(desk)
+        .manage(guest::Guests::default())
+        .invoke_handler(tauri::generate_handler![ccm::ccm, guest_ipc::guest])
         .on_window_event(window::on_window_event)
         .setup(move |app| {
             let handle = app.handle().clone();

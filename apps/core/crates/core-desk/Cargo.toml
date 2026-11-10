@@ -5,9 +5,14 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+core-sources = { path = "../core-sources" }
+core-transcript = { path = "../core-transcript" }
 getrandom = "0.4"
 regex = "1"
+sha1 = "0.11"
 serde_json = { workspace = true, features = ["preserve_order"] }
+sha2 = "0.11"
+url = "2"
 ureq = { version = "3.1", default-features = false, features = ["rustls", "platform-verifier"] }
 
 [target.'cfg(windows)'.dependencies]

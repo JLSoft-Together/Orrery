@@ -5,12 +5,14 @@ use tauri::{AppHandle, Manager, Webview};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::appearance::{is_hex, next_zoom, parse_look, zoom_percent};
+use crate::shot;
 use crate::state::{lock, Shell};
+use crate::{desk, guest};
 use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 11] = [
+const LOCAL: [&str; 16] = [
     "ccm:pty-endpoint",
     "ccm:pick-folder",
     "ccm:open-external",
@@ -22,6 +24,11 @@ const LOCAL: [&str; 11] = [
     "ccm:orrery-reply",
     "ccm:focus-reply",
     "shell:window",
+    "shell:guest",
+    "ccm:capture-guest",
+    "ccm:capture-rect",
+    "ccm:clipboard-image",
+    "ccm:clipboard-image-file",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -141,7 +148,29 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             let window = app.get_webview_window(webview.label()).ok_or("no window")?;
             Ok(window_action(&window, arg(&args, 0).as_str().unwrap_or("")))
         }
-        _ => Err(format!("not ported: {channel}")),
+        "shell:guest" => {
+            let owner = webview.window().label().to_owned();
+            let handle = app.clone();
+            blocking(move || guest::op(&handle, &owner, &args)).await?
+        }
+        "ccm:capture-guest" => {
+            let owner = webview.window().label().to_owned();
+            let handle = app.clone();
+            Ok(json!(blocking(move || shot::capture_guest(&handle, &owner, arg(&args, 0))).await?))
+        }
+        "ccm:capture-rect" => {
+            let rect = arg(&args, 0).clone();
+            Ok(blocking(move || shot::capture_rect(&webview, &rect).map_or(Value::Null, |png| json!(shot::base64(&png)))).await?)
+        }
+        "ccm:clipboard-image" => {
+            let raw = arg(&args, 0).clone();
+            Ok(json!(blocking(move || shot::clipboard_data_url(&raw)).await?))
+        }
+        "ccm:clipboard-image-file" => {
+            let raw = arg(&args, 0).clone();
+            Ok(json!(blocking(move || shot::clipboard_file(&raw)).await?))
+        }
+        _ => desk::dispatch(app, webview, channel.to_owned(), args).await,
     }
 }
 

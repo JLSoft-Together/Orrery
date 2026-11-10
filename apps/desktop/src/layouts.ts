@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { isAgentSessionId, isPtyPreset, type PtyPreset } from '@ccm/shared'
+import { deskHandle, type DeskRouter } from './desk/forward'
 import { rootKey } from './preview/paths'
 
 export const LAYOUTS_FILE = 'layouts.json'
@@ -198,13 +199,16 @@ export class LayoutStore {
 
 const LAYOUT_CHANNELS = ['ccm:layouts-list', 'ccm:layouts-save', 'ccm:layouts-delete', 'ccm:layouts-start']
 
-export function registerLayoutsIpc(deps: { ipcMain: IpcMain; isAppFrame: (event: IpcMainInvokeEvent) => boolean; store: LayoutStore }): () => void {
-  const { ipcMain, isAppFrame, store } = deps
-  ipcMain.handle('ccm:layouts-list', (event, project: unknown) => (isAppFrame(event) && isAbs(project) ? store.forProject(project) : []))
-  ipcMain.handle('ccm:layouts-save', (event, layout: unknown) => (isAppFrame(event) ? store.save(layout) : { ok: false, error: 'invalid' }))
-  ipcMain.handle('ccm:layouts-delete', (event, project: unknown, id: unknown) => isAppFrame(event) && isAbs(project) && str(id, 64) && store.delete(project, id))
-  ipcMain.handle('ccm:layouts-start', (event, project: unknown, id: unknown) =>
-    isAppFrame(event) && isAbs(project) && (id === null || str(id, 64)) && store.setOpenOnStart(project, id as string | null),
+export function registerLayoutsIpc(deps: { ipcMain: IpcMain; isAppFrame: (event: IpcMainInvokeEvent) => boolean; store: LayoutStore | (() => LayoutStore); desk?: DeskRouter }): () => void {
+  const { ipcMain, isAppFrame } = deps
+  let made: LayoutStore | null = typeof deps.store === 'function' ? null : deps.store
+  const store = (): LayoutStore => (made ??= (deps.store as () => LayoutStore)())
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'layouts' } : undefined)
+  handle('ccm:layouts-list', (event, project: unknown) => (isAppFrame(event) && isAbs(project) ? store().forProject(project) : []))
+  handle('ccm:layouts-save', (event, layout: unknown) => (isAppFrame(event) ? store().save(layout) : { ok: false, error: 'invalid' }))
+  handle('ccm:layouts-delete', (event, project: unknown, id: unknown) => isAppFrame(event) && isAbs(project) && str(id, 64) && store().delete(project, id))
+  handle('ccm:layouts-start', (event, project: unknown, id: unknown) =>
+    isAppFrame(event) && isAbs(project) && (id === null || str(id, 64)) && store().setOpenOnStart(project, id as string | null),
   )
   return () => {
     for (const ch of LAYOUT_CHANNELS) ipcMain.removeHandler(ch)

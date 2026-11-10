@@ -1,0 +1,1508 @@
+{
+ "format": "ccm-store-ops/1",
+ "header": {
+  "scenario": "monitor-fixture",
+  "wall": {
+   "start": 1794285014190,
+   "end": 1794285014247
+  },
+  "pids": {},
+  "replace": [
+   [
+    "<root>",
+    "<root>"
+   ]
+  ],
+  "ignore": []
+ },
+ "ops": [
+  {
+   "op": "step",
+   "name": "boot",
+   "sent": []
+  },
+  {
+   "op": "init",
+   "startedMs": 1794285014195,
+   "activityLimit": 300,
+   "batchMs": 1
+  },
+  {
+   "op": "call",
+   "name": "setFavorites",
+   "args": [
+    []
+   ]
+  },
+  {
+   "op": "call",
+   "name": "setResponse",
+   "args": [
+    {
+     "day": "2026-11-10",
+     "count": 0,
+     "totalMs": 0,
+     "longWaits": 0
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "setModelNames",
+   "args": [
+    {}
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "call",
+   "name": "setJobs",
+   "args": [
+    []
+   ]
+  },
+  {
+   "op": "call",
+   "name": "setLimits",
+   "args": [
+    null
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T09:59:03.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "currentTool": "Bash",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T09:59:02.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "working",
+     "currentTool": "Grep",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T09:59:03.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "snapshot"
+  },
+  {
+   "op": "step",
+   "name": "tool-result",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:00.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "working",
+     "currentTool": "Grep",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T09:59:03.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "toolSpan",
+   "args": [
+    {
+     "id": "toolu_bash",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "4242:134358400013081891:main",
+     "tool": "Bash",
+     "start": "2026-10-07T09:59:02.000Z",
+     "end": "2026-10-07T10:00:00.000Z",
+     "outcome": "ok"
+    }
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "toolSpans.get",
+   "sent": []
+  },
+  {
+   "op": "direct",
+   "message": {
+    "seq": -1,
+    "direct": true,
+    "events": [
+     {
+      "type": "toolSpans.data",
+      "payload": {
+       "terminalId": "4242:134358400013081891",
+       "spans": [
+        {
+         "id": "toolu_agent",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "4242:134358400013081891:main",
+         "tool": "Agent",
+         "start": "2026-10-07T09:59:00.000Z",
+         "end": "2026-10-07T09:59:01.000Z",
+         "outcome": "ok"
+        },
+        {
+         "id": "toolu_bash",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "4242:134358400013081891:main",
+         "tool": "Bash",
+         "start": "2026-10-07T09:59:02.000Z",
+         "end": "2026-10-07T10:00:00.000Z",
+         "outcome": "ok"
+        },
+        {
+         "id": "toolu_grep",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "a1",
+         "tool": "Grep",
+         "start": "2026-10-07T09:59:03.000Z"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "op": "direct",
+   "message": {
+    "seq": -1,
+    "direct": true,
+    "events": [
+     {
+      "type": "toolSpans.data",
+      "payload": {
+       "spans": [
+        {
+         "id": "toolu_agent",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "4242:134358400013081891:main",
+         "tool": "Agent",
+         "start": "2026-10-07T09:59:00.000Z",
+         "end": "2026-10-07T09:59:01.000Z",
+         "outcome": "ok"
+        },
+        {
+         "id": "toolu_bash",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "4242:134358400013081891:main",
+         "tool": "Bash",
+         "start": "2026-10-07T09:59:02.000Z",
+         "end": "2026-10-07T10:00:00.000Z",
+         "outcome": "ok"
+        },
+        {
+         "id": "toolu_grep",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "a1",
+         "tool": "Grep",
+         "start": "2026-10-07T09:59:03.000Z"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "op": "direct",
+   "message": {
+    "seq": -1,
+    "direct": true,
+    "events": [
+     {
+      "type": "toolSpans.data",
+      "payload": {
+       "terminalId": "4242:134358400013081891",
+       "since": "2026-10-07T10:00:00.500Z",
+       "spans": [
+        {
+         "id": "toolu_grep",
+         "terminalId": "4242:134358400013081891",
+         "agentId": "a1",
+         "tool": "Grep",
+         "start": "2026-10-07T09:59:03.000Z"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "op": "step",
+   "name": "alias-note",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:00.000Z",
+     "alias": "Ads work"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "working",
+     "currentTool": "Grep",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T09:59:03.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "terminal.renamed",
+     "terminalId": "4242:134358400013081891",
+     "data": {
+      "from": "demo-1a",
+      "to": "Ads work"
+     }
+    }
+   ],
+   "now": 1794285014216,
+   "at": "2026-11-10T04:30:14.216Z"
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:00.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "working",
+     "currentTool": "Grep",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T09:59:03.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "nested-subagent",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:00.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "working",
+     "currentTool": "Grep",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T09:59:05.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a2",
+     "parentId": "a1",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "nested",
+     "toolUseId": "toolu_nested",
+     "spawnDepth": 2,
+     "status": "working",
+     "startedAt": "2026-11-10T04:30:14.218Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "toolSpan",
+   "args": [
+    {
+     "id": "toolu_nested",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a1",
+     "tool": "Agent",
+     "start": "2026-10-07T09:59:04.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "toolSpan",
+   "args": [
+    {
+     "id": "toolu_nested",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a1",
+     "tool": "Agent",
+     "start": "2026-10-07T09:59:04.000Z",
+     "end": "2026-10-07T09:59:05.000Z",
+     "outcome": "ok"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "agent.started",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a2",
+     "at": "2026-11-10T04:30:14.218Z",
+     "data": {
+      "agentType": "Explore",
+      "description": "nested"
+     }
+    }
+   ],
+   "now": 1794285014224,
+   "at": "2026-11-10T04:30:14.218Z"
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "tool.started",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a1",
+     "at": "2026-10-07T09:59:04.000Z",
+     "data": {
+      "tool": "Agent"
+     }
+    }
+   ],
+   "now": 1794285014224,
+   "at": "2026-10-07T09:59:04.000Z"
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "nested-failed",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:06.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "working",
+     "currentTool": "Grep",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T10:00:06.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a2",
+     "parentId": "a1",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "nested",
+     "toolUseId": "toolu_nested",
+     "spawnDepth": 2,
+     "status": "error",
+     "startedAt": "2026-11-10T04:30:14.218Z",
+     "completedAt": "2026-10-07T10:00:06.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "agent.failed",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a2",
+     "at": "2026-10-07T10:00:06.000Z",
+     "data": {
+      "agentType": "Explore",
+      "description": "nested"
+     }
+    }
+   ],
+   "now": 1794285014228,
+   "at": "2026-10-07T10:00:06.000Z"
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "subagent-completed",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "demo-1a",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "busy",
+     "status": "working",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:06.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "demo-1a",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "working",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "completed",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T10:00:06.000Z",
+     "completedAt": "2026-10-07T10:00:05.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a2",
+     "parentId": "a1",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "nested",
+     "toolUseId": "toolu_nested",
+     "spawnDepth": 2,
+     "status": "error",
+     "startedAt": "2026-11-10T04:30:14.218Z",
+     "completedAt": "2026-10-07T10:00:06.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "toolSpan",
+   "args": [
+    {
+     "id": "toolu_grep",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a1",
+     "tool": "Grep",
+     "start": "2026-10-07T09:59:03.000Z",
+     "end": "2026-10-07T10:00:05.000Z",
+     "outcome": "interrupted"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "agent.completed",
+     "terminalId": "4242:134358400013081891",
+     "agentId": "a1",
+     "at": "2026-10-07T10:00:05.000Z",
+     "data": {
+      "agentType": "Explore",
+      "description": "Find ads code"
+     }
+    }
+   ],
+   "now": 1794285014232,
+   "at": "2026-10-07T10:00:05.000Z"
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "rename-waiting",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "terminal.renamed",
+     "terminalId": "4242:134358400013081891",
+     "data": {
+      "from": "demo-1a",
+      "to": "Android Ads"
+     }
+    }
+   ],
+   "now": 1794285014234,
+   "at": "2026-11-10T04:30:14.234Z"
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "terminal.status",
+     "terminalId": "4242:134358400013081891",
+     "data": {
+      "to": "waiting",
+      "waitingFor": "permission prompt"
+     }
+    }
+   ],
+   "now": 1794285014234,
+   "at": "2026-11-10T04:30:14.234Z"
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "Android Ads",
+     "nameSource": "user",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "waiting",
+     "status": "waiting",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "waitingFor": "permission prompt",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:06.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "Android Ads",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "waiting",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "completed",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T10:00:06.000Z",
+     "completedAt": "2026-10-07T10:00:05.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a2",
+     "parentId": "a1",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "nested",
+     "toolUseId": "toolu_nested",
+     "spawnDepth": 2,
+     "status": "error",
+     "startedAt": "2026-11-10T04:30:14.218Z",
+     "completedAt": "2026-10-07T10:00:06.000Z"
+    }
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "shell",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "Android Ads",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "shell",
+     "status": "idle",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "backgroundShell": true,
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T10:00:06.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "Android Ads",
+     "type": "main",
+     "model": "claude-opus-5-5",
+     "status": "idle",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "updatedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 150,
+     "outputTokens": 25,
+     "cacheReadTokens": 0,
+     "totalTokens": 175,
+     "contextTokens": 50,
+     "contextWindow": 200000,
+     "contextPct": 0,
+     "firstContextTokens": 100,
+     "cacheAt": "2026-10-07T09:59:02.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a1",
+     "parentId": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "Find ads code",
+     "toolUseId": "toolu_agent",
+     "spawnDepth": 1,
+     "status": "completed",
+     "startedAt": "2026-11-10T04:30:14.194Z",
+     "updatedAt": "2026-10-07T10:00:06.000Z",
+     "completedAt": "2026-10-07T10:00:05.000Z",
+     "inputTokens": 7,
+     "outputTokens": 2,
+     "cacheReadTokens": 0,
+     "totalTokens": 9,
+     "contextTokens": 7
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "a2",
+     "parentId": "a1",
+     "terminalId": "4242:134358400013081891",
+     "role": "subagent",
+     "name": "Explore",
+     "type": "Explore",
+     "description": "nested",
+     "toolUseId": "toolu_nested",
+     "spawnDepth": 2,
+     "status": "error",
+     "startedAt": "2026-11-10T04:30:14.218Z",
+     "completedAt": "2026-10-07T10:00:06.000Z"
+    }
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "clear",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "removeAgent",
+   "args": [
+    "a1"
+   ]
+  },
+  {
+   "op": "call",
+   "name": "removeAgent",
+   "args": [
+    "a2"
+   ]
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "session.cleared",
+     "terminalId": "4242:134358400013081891",
+     "data": {
+      "title": "Android Ads"
+     }
+    }
+   ],
+   "now": 1794285014241,
+   "at": "2026-11-10T04:30:14.241Z"
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "Android Ads",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "66666666-7777-8888-9999-000000000000",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "idle",
+     "status": "idle",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T09:46:45.292Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "Android Ads",
+     "type": "main",
+     "status": "idle",
+     "startedAt": "2026-10-07T09:46:45.292Z"
+    }
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "end",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "Android Ads",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "66666666-7777-8888-9999-000000000000",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "idle",
+     "status": "idle",
+     "statusSince": "2026-10-07T09:46:45.292Z",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T09:46:45.292Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "Android Ads",
+     "type": "main",
+     "status": "idle",
+     "startedAt": "2026-10-07T09:46:45.292Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertTerminal",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "processId": 4242,
+     "title": "Android Ads",
+     "nameSource": "derived",
+     "kind": "interactive",
+     "entrypoint": "cli",
+     "cwd": "D:\\work\\demo",
+     "claudeSessionId": "66666666-7777-8888-9999-000000000000",
+     "claudeVersion": "2.1.289",
+     "rawStatus": "idle",
+     "status": "stale",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "lastActivityAt": "2026-10-07T09:46:45.292Z",
+     "endedAt": "2026-10-07T10:00:00.000Z",
+     "alias": "Ads work",
+     "note": "remember the ads key"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "upsertAgent",
+   "args": [
+    {
+     "id": "4242:134358400013081891:main",
+     "terminalId": "4242:134358400013081891",
+     "role": "main",
+     "name": "Android Ads",
+     "type": "main",
+     "status": "completed",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "completedAt": "2026-10-07T10:00:00.000Z"
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "historyAdded",
+   "args": [
+    {
+     "id": "4242:134358400013081891",
+     "sessionId": "66666666-7777-8888-9999-000000000000",
+     "title": "Ads work",
+     "cwd": "D:\\work\\demo",
+     "startedAt": "2026-10-07T09:46:45.292Z",
+     "endedAt": "2026-10-07T10:00:00.000Z",
+     "inputTokens": 0,
+     "outputTokens": 0,
+     "cacheReadTokens": 0,
+     "subagents": 0
+    }
+   ]
+  },
+  {
+   "op": "call",
+   "name": "pushActivity",
+   "args": [
+    {
+     "kind": "terminal.ended",
+     "terminalId": "4242:134358400013081891",
+     "data": {
+      "title": "Android Ads"
+     }
+    }
+   ],
+   "now": 1794285014243,
+   "at": "2026-11-10T04:30:14.243Z"
+  },
+  {
+   "op": "direct",
+   "message": {
+    "seq": -1,
+    "direct": true,
+    "events": [
+     {
+      "type": "history.data",
+      "payload": {
+       "sessions": [
+        {
+         "id": "4242:134358400013081891",
+         "sessionId": "66666666-7777-8888-9999-000000000000",
+         "title": "Ads work",
+         "cwd": "D:\\work\\demo",
+         "startedAt": "2026-10-07T09:46:45.292Z",
+         "endedAt": "2026-10-07T10:00:00.000Z",
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "cacheReadTokens": 0,
+         "subagents": 0
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "op": "direct",
+   "message": {
+    "seq": -1,
+    "direct": true,
+    "events": [
+     {
+      "type": "timeline.data",
+      "payload": {
+       "day": "2026-10-07",
+       "lanes": [
+        {
+         "id": "4242:134358400013081891",
+         "title": "Ads work",
+         "segments": [
+          {
+           "from": "2026-10-07T09:46:45.292Z",
+           "to": "2026-10-07T09:46:45.292Z",
+           "status": "working"
+          },
+          {
+           "from": "2026-10-07T09:46:45.292Z",
+           "to": "2026-10-07T09:46:45.292Z",
+           "status": "waiting"
+          },
+          {
+           "from": "2026-10-07T09:46:45.292Z",
+           "to": "2026-10-07T10:00:00.000Z",
+           "status": "idle"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "stale-removal",
+   "sent": []
+  },
+  {
+   "op": "call",
+   "name": "removeTerminal",
+   "args": [
+    "4242:134358400013081891"
+   ]
+  },
+  {
+   "op": "flush",
+   "dropped": false
+  },
+  {
+   "op": "step",
+   "name": "final",
+   "sent": []
+  },
+  {
+   "op": "snapshot"
+  }
+ ]
+}

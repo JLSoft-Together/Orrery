@@ -4,13 +4,15 @@ import { appendFile, mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile } 
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import WebSocket from 'ws'
 import { TRACE_FORMAT } from './trace-compare.mjs'
+import { opsDocument, withSteps } from './trace-replay.mjs'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DEMO = path.join(REPO, 'scripts', 'demo-fixture.mjs')
 const ENTRY = path.join(REPO, 'apps', 'collector', 'src', 'index.ts')
+const HOOK = pathToFileURL(path.join(REPO, 'scripts', 'trace-store-hook.mjs')).href
 const CORE_KEYS = ['CCM_CORE_PROCS', 'CCM_CORE_USAGE', 'CCM_CORE_TRANSCRIPT', 'CCM_CORE_SIDEFILES', 'CCM_CORE_CODEX']
 
 const args = Object.fromEntries(
@@ -20,6 +22,7 @@ const args = Object.fromEntries(
   }),
 )
 const OUT = args.out ? path.resolve(args.out) : null
+const OPS = args.ops ? path.resolve(args.ops) : null
 const SESSIONS = Number(args.sessions ?? 30)
 const SUBAGENTS = Number(args.subagents ?? 6)
 const SEED = Number(args.seed ?? 8704)
@@ -34,7 +37,7 @@ const CORE = args.core ?? 'node'
 const ENDED = Math.min(3, SESSIONS)
 
 if (!OUT) {
-  console.error('usage: node scripts/trace-capture.mjs --out=<file.trace.json> [--sessions=30 --subagents=6 --seed=8704 --steps=10 --quiet=800 --core=node|inherit --keep]')
+  console.error('usage: node scripts/trace-capture.mjs --out=<file.trace.json> [--sessions=30 --subagents=6 --seed=8704 --steps=10 --quiet=800 --core=node|inherit --ops=<file.ops.json> --keep]')
   process.exit(2)
 }
 if (CORE !== 'node' && CORE !== 'inherit') throw new Error('--core must be node or inherit')
@@ -199,8 +202,10 @@ async function main() {
       CCM_STATUSLINE_BRIDGE: path.join(tmp, 'statusline-bridge.mjs'),
       CCM_WEB_DIST: path.join(tmp, 'web'),
     })
+    const opsLog = path.join(tmp, 'store-ops.ndjson')
+    if (OPS) env.CCM_TRACE_OPS = opsLog
     const log = []
-    collector = spawn(process.execPath, ['--import', 'tsx', ENTRY, '--dev'], { cwd: REPO, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    collector = spawn(process.execPath, ['--import', 'tsx', ...(OPS ? ['--import', HOOK] : []), ENTRY, '--dev'], { cwd: REPO, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     collector.stdout.on('data', (d) => log.push(String(d)))
     collector.stderr.on('data', (d) => log.push(String(d)))
     const exited = new Promise((resolve) => collector.once('exit', resolve))
@@ -236,9 +241,11 @@ async function main() {
       }
       current.frames.push(msg)
     })
+    const marks = []
     const begin = (name) => {
       current = { name, sent: [], frames: [] }
       steps.push(current)
+      marks.push({ name, sent: current.sent, at: Date.now() })
     }
     const send = (m) => {
       current.sent.push(m)
@@ -322,6 +329,12 @@ async function main() {
     }
     await mkdir(path.dirname(OUT), { recursive: true })
     await writeFile(OUT, JSON.stringify(trace))
+    if (OPS) {
+      const ops = (await readFile(opsLog, 'utf8')).split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l))
+      await mkdir(path.dirname(OPS), { recursive: true })
+      await writeFile(OPS, JSON.stringify(opsDocument(trace, withSteps(ops, marks))))
+      console.log(`[trace-capture] ${ops.length} store ops → ${OPS}`)
+    }
     const frames = steps.reduce((n, s) => n + s.frames.length, 0)
     const events = steps.reduce((n, s) => n + s.frames.reduce((m, f) => m + f.events.length, 0), 0)
     console.log(`[trace-capture] ${trace.scenario}: ${steps.length} steps, ${frames} frames, ${events} events, ${((wallEnd - wallStart) / 1000).toFixed(1)} s → ${OUT}`)

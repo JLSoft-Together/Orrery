@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::extra::GitDiffStat;
 use crate::num::JsNum;
 
@@ -100,9 +102,9 @@ entity! {
             compacting_since: String,
             compact_trigger: CompactTrigger,
             denied_count: u64,
-            denied_tools: Vec<String>,
-            diff: GitDiffStat,
-            limit_hit: LimitHit,
+            denied_tools: Arc<Vec<String>>,
+            diff: Arc<GitDiffStat>,
+            limit_hit: Arc<LimitHit>,
             started_at: String,
             last_activity_at: String,
             ended_at: String,

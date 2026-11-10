@@ -1,6 +1,7 @@
 import { appendFile, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { MonitorEvent, ServerMessage } from '@ccm/shared'
 import type { CollectorConfig } from '../src/config'
 import { Monitor } from '../src/monitor'
@@ -98,7 +99,13 @@ async function seed(root: string, projectDir: string): Promise<void> {
   )
 }
 
-export async function monitorScenario(): Promise<Trace> {
+interface Recorder {
+  instrumentStore: (target: object, sink: { op: (op: Record<string, unknown>) => void; sends: () => number; wall?: boolean }) => () => void
+}
+
+const RECORDER = pathToFileURL(path.resolve(__dirname, '../../../scripts/trace-store-record.mjs')).href
+
+export async function monitorScenario(options: { ops?: Record<string, unknown>[] } = {}): Promise<Trace> {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'ccm-trace-root-')))
   const projectDir = path.join(root, 'projects', SLUG)
   const subDir = path.join(projectDir, SID, 'subagents')
@@ -111,11 +118,25 @@ export async function monitorScenario(): Promise<Trace> {
   const monitor = new Monitor(config(root), store, { isPidAlive: () => true, queryProcesses: async () => null, now: () => now })
   const steps: TraceStep[] = []
   let current: TraceStep = { name: '', sent: [], frames: [] }
-  store.subscribe((m) => current.frames.push(m))
-  const reply = (event: MonitorEvent) => current.frames.push({ seq: -1, direct: true, events: [event] })
+  let sends = 0
+  const ops = options.ops
+  if (ops) {
+    const recorder = (await import(RECORDER)) as Recorder
+    recorder.instrumentStore(store, { op: (op) => ops.push(op), sends: () => sends })
+  }
+  store.subscribe((m) => {
+    sends++
+    current.frames.push(m)
+  })
+  const reply = (event: MonitorEvent) => {
+    const message: ServerMessage = { seq: -1, direct: true, events: [event] }
+    ops?.push({ op: 'direct', message: JSON.parse(JSON.stringify(message)) as unknown })
+    current.frames.push(message)
+  }
   const step = async (name: string, run: () => Promise<void> | void) => {
     current = { name, sent: [], frames: [] }
     steps.push(current)
+    ops?.push({ op: 'step', name, sent: [] })
     await run()
     store.flush()
   }

@@ -1,0 +1,744 @@
+{
+ "sources": [
+  "monitor-fixture"
+ ],
+ "types": {
+  "activity": 4,
+  "agent.created": 3,
+  "agent.removed": 1,
+  "agent.updated": 4,
+  "favorites.updated": 1,
+  "history.added": 1,
+  "history.data": 1,
+  "response.updated": 1,
+  "snapshot": 2,
+  "terminal.created": 1,
+  "terminal.removed": 1,
+  "terminal.updated": 4,
+  "timeline.data": 1,
+  "tool.span": 2,
+  "toolSpans.data": 2
+ },
+ "messages": [
+  {
+   "seq": 13,
+   "events": [
+    {
+     "type": "activity",
+     "payload": {
+      "kind": "terminal.ended",
+      "terminalId": "4242:134358400013081891",
+      "data": {
+       "title": "Android Ads"
+      },
+      "id": "mwa6446l-8",
+      "at": "2026-11-10T04:06:16.365Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 5,
+   "events": [
+    {
+     "type": "activity",
+     "payload": {
+      "kind": "tool.started",
+      "terminalId": "4242:134358400013081891",
+      "agentId": "a1",
+      "at": "2026-10-07T09:59:04.000Z",
+      "data": {
+       "tool": "Agent"
+      },
+      "id": "mwa6445v-2"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 4,
+   "events": [
+    {
+     "type": "activity",
+     "payload": {
+      "kind": "terminal.renamed",
+      "terminalId": "4242:134358400013081891",
+      "data": {
+       "from": "demo-1a",
+       "to": "Ads work"
+      },
+      "id": "mwa6445n-0",
+      "at": "2026-11-10T04:06:16.331Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 8,
+   "events": [
+    {
+     "type": "activity",
+     "payload": {
+      "kind": "terminal.status",
+      "terminalId": "4242:134358400013081891",
+      "data": {
+       "to": "waiting",
+       "waitingFor": "permission prompt"
+      },
+      "id": "mwa6446a-6",
+      "at": "2026-11-10T04:06:16.354Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 5,
+   "events": [
+    {
+     "type": "agent.created",
+     "payload": {
+      "id": "a2",
+      "parentId": "a1",
+      "terminalId": "4242:134358400013081891",
+      "role": "subagent",
+      "name": "Explore",
+      "type": "Explore",
+      "description": "nested",
+      "toolUseId": "toolu_nested",
+      "spawnDepth": 2,
+      "status": "working",
+      "startedAt": "2026-11-10T04:06:16.333Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 2,
+   "events": [
+    {
+     "type": "agent.created",
+     "payload": {
+      "id": "a1",
+      "parentId": "4242:134358400013081891:main",
+      "terminalId": "4242:134358400013081891",
+      "role": "subagent",
+      "name": "Explore",
+      "type": "Explore",
+      "description": "Find ads code",
+      "toolUseId": "toolu_agent",
+      "spawnDepth": 1,
+      "status": "working",
+      "currentTool": "Grep",
+      "startedAt": "2026-11-10T04:06:16.306Z",
+      "updatedAt": "2026-10-07T09:59:03.000Z",
+      "inputTokens": 7,
+      "outputTokens": 2,
+      "cacheReadTokens": 0,
+      "totalTokens": 9,
+      "contextTokens": 7
+     }
+    }
+   ]
+  },
+  {
+   "seq": 2,
+   "events": [
+    {
+     "type": "agent.created",
+     "payload": {
+      "id": "4242:134358400013081891:main",
+      "terminalId": "4242:134358400013081891",
+      "role": "main",
+      "name": "demo-1a",
+      "type": "main",
+      "model": "claude-opus-5-5",
+      "status": "working",
+      "currentTool": "Bash",
+      "startedAt": "2026-10-07T09:46:45.292Z",
+      "updatedAt": "2026-10-07T09:59:02.000Z",
+      "inputTokens": 150,
+      "outputTokens": 25,
+      "cacheReadTokens": 0,
+      "totalTokens": 175,
+      "contextTokens": 50,
+      "contextWindow": 200000,
+      "contextPct": 0,
+      "firstContextTokens": 100,
+      "cacheAt": "2026-10-07T09:59:02.000Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 11,
+   "events": [
+    {
+     "type": "agent.removed",
+     "payload": {
+      "id": "a1"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 5,
+   "events": [
+    {
+     "type": "agent.updated",
+     "payload": {
+      "updatedAt": "2026-10-07T09:59:05.000Z",
+      "id": "a1"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 10,
+   "events": [
+    {
+     "type": "agent.updated",
+     "payload": {
+      "status": "idle",
+      "id": "4242:134358400013081891:main"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 6,
+   "events": [
+    {
+     "type": "agent.updated",
+     "payload": {
+      "status": "error",
+      "completedAt": "2026-10-07T10:00:06.000Z",
+      "id": "a2"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 9,
+   "events": [
+    {
+     "type": "agent.updated",
+     "payload": {
+      "name": "Android Ads",
+      "status": "waiting",
+      "id": "4242:134358400013081891:main"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 1,
+   "events": [
+    {
+     "type": "favorites.updated",
+     "payload": {
+      "favorites": []
+     }
+    }
+   ]
+  },
+  {
+   "seq": 13,
+   "events": [
+    {
+     "type": "history.added",
+     "payload": {
+      "id": "4242:134358400013081891",
+      "sessionId": "66666666-7777-8888-9999-000000000000",
+      "title": "Ads work",
+      "cwd": "D:\\work\\demo",
+      "startedAt": "2026-10-07T09:46:45.292Z",
+      "endedAt": "2026-10-07T10:00:00.000Z",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cacheReadTokens": 0,
+      "subagents": 0
+     }
+    }
+   ]
+  },
+  {
+   "seq": -1,
+   "events": [
+    {
+     "type": "history.data",
+     "payload": {
+      "sessions": [
+       {
+        "id": "4242:134358400013081891",
+        "sessionId": "66666666-7777-8888-9999-000000000000",
+        "title": "Ads work",
+        "cwd": "D:\\work\\demo",
+        "startedAt": "2026-10-07T09:46:45.292Z",
+        "endedAt": "2026-10-07T10:00:00.000Z",
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "subagents": 0
+       }
+      ]
+     }
+    }
+   ],
+   "direct": true
+  },
+  {
+   "seq": 1,
+   "events": [
+    {
+     "type": "response.updated",
+     "payload": {
+      "day": "2026-11-10",
+      "count": 0,
+      "totalMs": 0,
+      "longWaits": 0
+     }
+    }
+   ]
+  },
+  {
+   "seq": 2,
+   "events": [
+    {
+     "type": "snapshot",
+     "payload": {
+      "protocolVersion": 1,
+      "collectorStartedAt": "2026-11-10T04:06:16.307Z",
+      "supportedClaudeVersion": "2.1.289",
+      "terminals": [
+       {
+        "id": "4242:134358400013081891",
+        "processId": 4242,
+        "title": "demo-1a",
+        "nameSource": "derived",
+        "kind": "interactive",
+        "entrypoint": "cli",
+        "cwd": "D:\\work\\demo",
+        "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+        "claudeVersion": "2.1.289",
+        "rawStatus": "busy",
+        "status": "working",
+        "statusSince": "2026-10-07T09:46:45.292Z",
+        "startedAt": "2026-10-07T09:46:45.292Z",
+        "lastActivityAt": "2026-10-07T09:59:03.000Z"
+       }
+      ],
+      "agents": [
+       {
+        "id": "4242:134358400013081891:main",
+        "terminalId": "4242:134358400013081891",
+        "role": "main",
+        "name": "demo-1a",
+        "type": "main",
+        "model": "claude-opus-5-5",
+        "status": "working",
+        "currentTool": "Bash",
+        "startedAt": "2026-10-07T09:46:45.292Z",
+        "updatedAt": "2026-10-07T09:59:02.000Z",
+        "inputTokens": 150,
+        "outputTokens": 25,
+        "cacheReadTokens": 0,
+        "totalTokens": 175,
+        "contextTokens": 50,
+        "contextWindow": 200000,
+        "contextPct": 0,
+        "firstContextTokens": 100,
+        "cacheAt": "2026-10-07T09:59:02.000Z"
+       },
+       {
+        "id": "a1",
+        "parentId": "4242:134358400013081891:main",
+        "terminalId": "4242:134358400013081891",
+        "role": "subagent",
+        "name": "Explore",
+        "type": "Explore",
+        "description": "Find ads code",
+        "toolUseId": "toolu_agent",
+        "spawnDepth": 1,
+        "status": "working",
+        "currentTool": "Grep",
+        "startedAt": "2026-11-10T04:06:16.306Z",
+        "updatedAt": "2026-10-07T09:59:03.000Z",
+        "inputTokens": 7,
+        "outputTokens": 2,
+        "cacheReadTokens": 0,
+        "totalTokens": 9,
+        "contextTokens": 7
+       }
+      ],
+      "activity": [],
+      "usage": {
+       "buckets": [],
+       "scan": {
+        "state": "idle",
+        "filesDone": 0,
+        "filesTotal": 0
+       },
+       "roots": {}
+      },
+      "favorites": [],
+      "jobs": [],
+      "response": {
+       "day": "2026-11-10",
+       "count": 0,
+       "totalMs": 0,
+       "longWaits": 0
+      },
+      "modelNames": {},
+      "snoozes": {},
+      "peerLinks": []
+     }
+    }
+   ]
+  },
+  {
+   "seq": 14,
+   "events": [
+    {
+     "type": "snapshot",
+     "payload": {
+      "protocolVersion": 1,
+      "collectorStartedAt": "2026-11-10T04:06:16.307Z",
+      "supportedClaudeVersion": "2.1.289",
+      "terminals": [],
+      "agents": [],
+      "activity": [
+       {
+        "kind": "tool.started",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "a1",
+        "at": "2026-10-07T09:59:04.000Z",
+        "data": {
+         "tool": "Agent"
+        },
+        "id": "mwa6445v-2"
+       },
+       {
+        "kind": "agent.completed",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "a1",
+        "at": "2026-10-07T10:00:05.000Z",
+        "data": {
+         "agentType": "Explore",
+         "description": "Find ads code"
+        },
+        "id": "mwa64467-4"
+       },
+       {
+        "kind": "agent.failed",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "a2",
+        "at": "2026-10-07T10:00:06.000Z",
+        "data": {
+         "agentType": "Explore",
+         "description": "nested"
+        },
+        "id": "mwa64463-3"
+       },
+       {
+        "kind": "terminal.renamed",
+        "terminalId": "4242:134358400013081891",
+        "data": {
+         "from": "demo-1a",
+         "to": "Ads work"
+        },
+        "id": "mwa6445n-0",
+        "at": "2026-11-10T04:06:16.331Z"
+       },
+       {
+        "kind": "agent.started",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "a2",
+        "at": "2026-11-10T04:06:16.333Z",
+        "data": {
+         "agentType": "Explore",
+         "description": "nested"
+        },
+        "id": "mwa6445v-1"
+       },
+       {
+        "kind": "terminal.renamed",
+        "terminalId": "4242:134358400013081891",
+        "data": {
+         "from": "demo-1a",
+         "to": "Android Ads"
+        },
+        "id": "mwa6446a-5",
+        "at": "2026-11-10T04:06:16.354Z"
+       },
+       {
+        "kind": "terminal.status",
+        "terminalId": "4242:134358400013081891",
+        "data": {
+         "to": "waiting",
+         "waitingFor": "permission prompt"
+        },
+        "id": "mwa6446a-6",
+        "at": "2026-11-10T04:06:16.354Z"
+       },
+       {
+        "kind": "session.cleared",
+        "terminalId": "4242:134358400013081891",
+        "data": {
+         "title": "Android Ads"
+        },
+        "id": "mwa6446j-7",
+        "at": "2026-11-10T04:06:16.363Z"
+       },
+       {
+        "kind": "terminal.ended",
+        "terminalId": "4242:134358400013081891",
+        "data": {
+         "title": "Android Ads"
+        },
+        "id": "mwa6446l-8",
+        "at": "2026-11-10T04:06:16.365Z"
+       }
+      ],
+      "usage": {
+       "buckets": [],
+       "scan": {
+        "state": "idle",
+        "filesDone": 0,
+        "filesTotal": 0
+       },
+       "roots": {}
+      },
+      "favorites": [],
+      "jobs": [],
+      "response": {
+       "day": "2026-11-10",
+       "count": 0,
+       "totalMs": 0,
+       "longWaits": 0
+      },
+      "modelNames": {},
+      "snoozes": {},
+      "peerLinks": []
+     }
+    }
+   ]
+  },
+  {
+   "seq": 2,
+   "events": [
+    {
+     "type": "terminal.created",
+     "payload": {
+      "id": "4242:134358400013081891",
+      "processId": 4242,
+      "title": "demo-1a",
+      "nameSource": "derived",
+      "kind": "interactive",
+      "entrypoint": "cli",
+      "cwd": "D:\\work\\demo",
+      "claudeSessionId": "11111111-2222-3333-4444-555555555555",
+      "claudeVersion": "2.1.289",
+      "rawStatus": "busy",
+      "status": "working",
+      "statusSince": "2026-10-07T09:46:45.292Z",
+      "startedAt": "2026-10-07T09:46:45.292Z",
+      "lastActivityAt": "2026-10-07T09:59:03.000Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 14,
+   "events": [
+    {
+     "type": "terminal.removed",
+     "payload": {
+      "id": "4242:134358400013081891"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 3,
+   "events": [
+    {
+     "type": "terminal.updated",
+     "payload": {
+      "lastActivityAt": "2026-10-07T10:00:00.000Z",
+      "id": "4242:134358400013081891"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 4,
+   "events": [
+    {
+     "type": "terminal.updated",
+     "payload": {
+      "alias": "Ads work",
+      "id": "4242:134358400013081891",
+      "note": "remember the ads key"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 13,
+   "events": [
+    {
+     "type": "terminal.updated",
+     "payload": {
+      "status": "stale",
+      "statusSince": null,
+      "endedAt": "2026-10-07T10:00:00.000Z",
+      "id": "4242:134358400013081891"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 10,
+   "events": [
+    {
+     "type": "terminal.updated",
+     "payload": {
+      "nameSource": "derived",
+      "rawStatus": "shell",
+      "status": "idle",
+      "waitingFor": null,
+      "backgroundShell": true,
+      "id": "4242:134358400013081891"
+     }
+    }
+   ]
+  },
+  {
+   "seq": -1,
+   "events": [
+    {
+     "type": "timeline.data",
+     "payload": {
+      "day": "2026-10-07",
+      "lanes": [
+       {
+        "id": "4242:134358400013081891",
+        "title": "Ads work",
+        "segments": [
+         {
+          "from": "2026-10-07T09:46:45.292Z",
+          "to": "2026-10-07T09:46:45.292Z",
+          "status": "working"
+         },
+         {
+          "from": "2026-10-07T09:46:45.292Z",
+          "to": "2026-10-07T09:46:45.292Z",
+          "status": "waiting"
+         },
+         {
+          "from": "2026-10-07T09:46:45.292Z",
+          "to": "2026-10-07T10:00:00.000Z",
+          "status": "idle"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "direct": true
+  },
+  {
+   "seq": 5,
+   "events": [
+    {
+     "type": "tool.span",
+     "payload": {
+      "id": "toolu_nested",
+      "terminalId": "4242:134358400013081891",
+      "agentId": "a1",
+      "tool": "Agent",
+      "start": "2026-10-07T09:59:04.000Z"
+     }
+    }
+   ]
+  },
+  {
+   "seq": 5,
+   "events": [
+    {
+     "type": "tool.span",
+     "payload": {
+      "id": "toolu_nested",
+      "terminalId": "4242:134358400013081891",
+      "agentId": "a1",
+      "tool": "Agent",
+      "start": "2026-10-07T09:59:04.000Z",
+      "end": "2026-10-07T09:59:05.000Z",
+      "outcome": "ok"
+     }
+    }
+   ]
+  },
+  {
+   "seq": -1,
+   "events": [
+    {
+     "type": "toolSpans.data",
+     "payload": {
+      "terminalId": "4242:134358400013081891",
+      "since": "2026-10-07T10:00:00.500Z",
+      "spans": [
+       {
+        "id": "toolu_grep",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "a1",
+        "tool": "Grep",
+        "start": "2026-10-07T09:59:03.000Z"
+       }
+      ]
+     }
+    }
+   ],
+   "direct": true
+  },
+  {
+   "seq": -1,
+   "events": [
+    {
+     "type": "toolSpans.data",
+     "payload": {
+      "spans": [
+       {
+        "id": "toolu_agent",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "4242:134358400013081891:main",
+        "tool": "Agent",
+        "start": "2026-10-07T09:59:00.000Z",
+        "end": "2026-10-07T09:59:01.000Z",
+        "outcome": "ok"
+       },
+       {
+        "id": "toolu_bash",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "4242:134358400013081891:main",
+        "tool": "Bash",
+        "start": "2026-10-07T09:59:02.000Z",
+        "end": "2026-10-07T10:00:00.000Z",
+        "outcome": "ok"
+       },
+       {
+        "id": "toolu_grep",
+        "terminalId": "4242:134358400013081891",
+        "agentId": "a1",
+        "tool": "Grep",
+        "start": "2026-10-07T09:59:03.000Z"
+       }
+      ]
+     }
+    }
+   ],
+   "direct": true
+  }
+ ]
+}

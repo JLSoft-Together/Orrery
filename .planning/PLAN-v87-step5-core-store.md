@@ -50,6 +50,34 @@ Chạy trong utilityProcess `collector.cjs` (host: `apps/desktop/src/collector-h
 
 Song song được: S3 // S5 // S6 sau S1; S7 sau S4; S9 sau S2 + S4. Không chạy 2 tool nặng cùng lúc, `cargo -j <= 6` (`JIN_MAX_THREADS`).
 
+### 3.1 Harness so trace (S0, dùng cho S1–S11)
+
+**Thu trace WS thật** — `node scripts/trace-capture.mjs --out=<file>.trace.json` (mặc định `--sessions=30 --subagents=6 --seed=8704 --steps=10`):
+
+- Tạo `demo-fixture` seed vào thư mục tạm, rồi phát lại theo 10 bước vào một Claude root tạm. Mỗi session: subagent jsonl → chờ 250 ms (`--split`, để subagent được đọc trước task-notification của main) → main jsonl → meta mới + jsonl rỗng (như Claude tạo lúc spawn), cách session sau 40 ms (`--gap`). Hết lượt ghi, chờ 500 ms rồi `utimes` lại đúng các file vừa ghi theo cùng thứ tự (`--nudge`): watch Windows có lúc rơi event, lượt chạm này cho collector đọc nốt — nếu event đầu đã tới thì lượt chạm không sinh event nào. Session chẵn có registry từ đầu, session lẻ vào ở bước 5. Pid trong registry = process giữ chỗ (`PING.EXE -n 86400` / `sleep`) do script tự spawn và tự kill.
+- Chạy collector `node --import tsx apps/collector/src/index.ts --dev` với `CCM_PORT` trống (không bao giờ 4317), `CCM_DATA_DIR` / `CODEX_HOME` / `CODEWHALE_HOME` tạm, `CCM_CODEX=0`, `CCM_DEEPSEEK=0`, `CCM_TOAST=0`, `CCM_VERIFY_PROCESSES=0`, `CCM_RES_FIXTURE` bảng rỗng, mọi `CCM_CORE_*=node` (`--core=inherit` giữ env hiện tại). Bản Rust (S10) sẽ thêm `--server=rust` chạy `orrery-core serve` cùng env.
+- Bước: `boot` → `snapshot-boot` (gửi `resync`) → `replay-2..10` → `client` (alias, note, snooze, `favorite.toggle`, `favorite.add`, alias id sai) → `end` (xoá registry + kill 3 session) → `queries` (`history.get`, `timeline.get`, `toolSpans.get` ×2, `diagnostics.get`, `toolstats.get`, `heatmap.get`) → `dismiss` → `final` (`resync`). Mỗi bước chờ ít nhất 5,7 s (≥ 1 lượt reconcile 5 s, `--stepMin`) rồi tới khi 800 ms không có message, không `loading`, không `scanning` (`--quiet`, max 60 s).
+- File `ccm-trace/1`: `wall` (start / end), `pids` (pid giữ chỗ → `p<i>`), `replace` (đường tạm → `<root>` / `<data>` / `<tmp>`), `ignore` (`resources`), `steps[] { name, sent[], frames[] }` (frame = `ServerMessage` nguyên văn, kể cả `direct`).
+
+**So 2 trace** — `node scripts/trace-compare.mjs a.trace.json b.trace.json [--strict] [--limit=N] [--ignore=type,...]`, exit 0 khi 0 khác biệt. Quy tắc chuẩn hoá:
+
+1. Bỏ `seq`, ranh giới batch và thứ tự key (so bằng JSON canonical, key sort).
+2. Thời gian thật (thêm: key trong `durations` của trace — `workingMs`, `waitingMs`, `totalMs`, `medianMs`, đo bằng đồng hồ thật — → `<ms>`): chuỗi ISO và số epoch ms nằm trong `[wall.start − 10 phút, wall.end + 10 phút]` → `<now>`; ngày `YYYY-MM-DD` của khoảng đó → `<today>`. Thời gian logic của fixture (2027) và thời gian giả trong test giữ nguyên.
+3. Activity bỏ `id` (`Date.now` base36 + bộ đếm).
+4. Pid giữ chỗ → alias (`processId`, `parentProcessId`, `pid`, và tiền tố `<pid>:` trong mọi chuỗi: terminal id, agent id `…:main`, link id). Peer link xoay lại `a < b` sau alias (đổi `ab` / `ba` / `lastDir`) vì Node chọn chiều theo thứ tự chuỗi id có pid.
+5. Đường tạm theo `replace` (cả `\` lẫn `/`).
+6. Khi báo khác biệt, mảng có `id` so theo id, mảng activity so multiset. Mảng object có `id` / `key` (terminals, agents, links, buckets, history, spans, lanes, jobs) và activity → sắp xếp; mảng khác (favorites, deniedTools, segments) giữ thứ tự.
+7. Mỗi bước so: `state` (fold như client: terminals / agents / links theo created-updated(null = xoá)-removed, usage buckets + roots + scan, favorites, jobs, limits, codexLimits, response, modelNames, notify, snoozes, loading, sensitive), `fired` (multiset: activity, tool.span, history.added, favorite.rejected, …), `direct` (multiset), `snapshots` (mọi snapshot trừ snapshot boot đầu tiên, vì lúc nối WS collector còn đang load). `--strict` so thêm danh sách event phẳng theo thứ tự (chỉ dùng cho kịch bản trong process, thời gian giả).
+8. `ignore` (trace + `--ignore`): bỏ event đó và key cùng tên trong snapshot; mặc định `resources` (sampler 30 s, thời điểm không cố định — S6 so riêng).
+
+**Kịch bản trong process** — `npm test -w @ccm/collector -- test/trace-golden.test.ts`: kịch bản kiểu `monitor.test` (fixture 1 session + subagent, tool result, `toolSpans.get`, alias / note, subagent xong, subagent lồng + fail, rename / waiting / shell / `/clear` / end / TTL) chạy 2 lần → `--strict` và fold = 0 khác biệt; `CCM_TRACE_OUT=<dir>` ghi `monitor-a|b.trace.json`.
+
+**Mẫu cho Rust** — `node scripts/trace-samples.mjs <trace...> --out=apps/core/crates/core-store/tests/golden/<name>.json [--per-type=4]`: mỗi loại event lấy message nhỏ nhất có thêm đường field mới (pid → 10000+i, đường tạm thay như trên); `cargo test --locked -j 4 -p core-store` round-trip từng message.
+
+**Kết quả S0 (2026-11-10, Windows, CPU 7–36 % lúc chạy)**: 4 lượt thu (mỗi lượt ~175–193 s, 816–865 frame, ~23 100 event) → so a↔b = 0, c↔d = 0, a↔d = 0 khác biệt. Trước khi có `--split` / `--nudge` cùng một Node collector cho 2 trace lệch (span `interrupted` ↔ `ok`, subagent thiếu dòng cuối, usage thiếu 4 message) — đó là hành vi thật của Node, không phải lỗi harness; Rust (S4) nên đọc lại file khi subagent xong để không phụ thuộc thứ tự này, và khi đó trace Rust có thể "đúng hơn" Node trên kịch bản không có `--split`.
+
+**Giới hạn đã biết**: Node collector tự nó phụ thuộc thời điểm đọc file (watch Windows rơi event, subagent xong trước khi jsonl được đọc → span `interrupted` thay vì `ok`, agent thiếu token). Harness giảm bằng thứ tự ghi + giãn cách ở trên; máy bận (CPU > 80 %) làm lệch lại — chỉ chạy khi máy rảnh. Fixture thật (27 MB + 41 sub) chưa có trong S0: dùng `--keep` + chép `projects/` vào nguồn khi cần (việc cho S4).
+
 ## 4. Cổng cuối
 
 - Parity: trace WS Node vs Rust (S0) = 0 khác biệt sau chuẩn hoá trên demo 30×6, fixture thật, `monitor` + `tracker` + `codex` + `deepseek` + `office` kịch bản; toàn bộ test collector có bản Rust / parity tương đương (liệt kê trong báo cáo S11).

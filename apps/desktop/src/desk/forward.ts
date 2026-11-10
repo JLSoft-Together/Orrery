@@ -5,7 +5,7 @@ export type DeskMode = 'rust' | 'node'
 
 export const DESK_MODULES = ['backup', 'buildClean', 'libs', 'previewGit', 'previewFiles', 'previewTools', 'claudeHooks', 'extensions', 'statusline', 'hooks', 'layouts', 'restore', 'bridge', 'github', 'phone', 'capture', 'power', 'disk', 'agentStatus', 'resources', 'run', 'flutterPreview', 'apk', 'releaseCheck', 'devices', 'update', 'deepseek', 'layout', 'telegram', 'mcp', 'agentData'] as const
 
-export const DESK_EVENTS: ReadonlySet<string> = new Set(['ccm:build-event', 'ccm:phone-event', 'ccm:awake-event', 'ccm:disk-event', 'ccm:agent-status', 'ccm:run-event', 'ccm:fwp-state', 'ccm:update-event', 'ccm:deepseek-event', 'ccm:layout-event', 'ccm:telegram-event', 'ccm:agentdata-event'])
+export const DESK_EVENTS: ReadonlySet<string> = new Set(['ccm:build-event', 'ccm:phone-event', 'ccm:awake-event', 'ccm:disk-event', 'ccm:agent-status', 'ccm:run-event', 'ccm:fwp-state', 'ccm:update-event', 'ccm:deepseek-event', 'ccm:layout-event', 'ccm:telegram-event', 'ccm:agentdata-event', 'ccm:dev-event'])
 
 export interface DeskClient {
   readonly dead: string | null

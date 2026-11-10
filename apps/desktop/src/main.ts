@@ -801,7 +801,7 @@ function tailOf(file: string): string {
 }
 
 const CORE_READERS = { usage: 'CCM_CORE_USAGE', transcript: 'CCM_CORE_TRANSCRIPT', codex: 'CCM_CORE_CODEX', sidefiles: 'CCM_CORE_SIDEFILES' } as const
-const CORE_READERS_NODE_DEFAULT = new Set(['codex'])
+const CORE_READERS_NODE_DEFAULT = new Set<string>()
 
 function coreReadersLine(): string {
   const parts = Object.entries(CORE_READERS).map(([kind, flag]) => {

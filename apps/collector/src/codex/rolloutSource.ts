@@ -18,7 +18,7 @@ export interface RolloutSources {
 export type CodexCoreMode = 'rust' | 'node'
 
 export function codexCoreMode(env: NodeJS.ProcessEnv = process.env): CodexCoreMode {
-  return env.CCM_CORE_CODEX?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+  return env.CCM_CORE_CODEX?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 }
 
 export function createRolloutSources(env: NodeJS.ProcessEnv = process.env): RolloutSources {

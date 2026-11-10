@@ -33,14 +33,15 @@ afterEach(() => {
 })
 
 describe('codex rollout source', () => {
-  it('reads in Node unless CCM_CORE_CODEX=rust and a core binary is set', () => {
-    expect(codexCoreMode({})).toBe('node')
+  it('reads in Rust unless CCM_CORE_CODEX=node or no core binary is set', () => {
+    expect(codexCoreMode({})).toBe('rust')
+    expect(codexCoreMode({ CCM_CORE_CODEX: 'node' })).toBe('node')
     expect(codexCoreMode({ CCM_CORE_CODEX: ' Rust ' })).toBe('rust')
     const got: CoreFallbackMessage[] = []
     onCoreFallback((m) => got.push(m))
+    expect(createRolloutSources({ CCM_CORE_CODEX: 'node', CCM_CORE_BIN: 'x' })).toBe(nodeRollouts)
     expect(createRolloutSources({})).toBe(nodeRollouts)
-    expect(createRolloutSources({ CCM_CORE_BIN: 'x' })).toBe(nodeRollouts)
-    expect(createRolloutSources({ CCM_CORE_CODEX: 'rust' })).toBe(nodeRollouts)
+    expect(createRolloutSources({ CCM_CORE_BIN: 'x' })).toBeInstanceOf(CoreRollouts)
     expect(createRolloutSources({ CCM_CORE_CODEX: 'rust', CCM_CORE_BIN: 'x' })).toBeInstanceOf(CoreRollouts)
     expect(got.map((m) => m.kind)).toEqual(['codex'])
   })

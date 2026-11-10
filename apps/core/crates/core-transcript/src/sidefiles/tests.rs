@@ -12,7 +12,9 @@ fn temp() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("ccm-sidefiles-{}-{n}", std::process::id()));
+    static SEQ: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("ccm-sidefiles-{}-{n}-{seq}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
     dir
 }

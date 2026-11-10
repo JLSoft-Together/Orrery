@@ -13,7 +13,9 @@ use tungstenite::{Message, WebSocket};
 const KEY: &str = "serve-test-key";
 
 fn temp(tag: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ccm-serve-{tag}-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    static SEQ: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("ccm-serve-{tag}-{}-{}-{seq}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
     for sub in ["claude/sessions", "claude/projects", "data", "codex", "codewhale", "web"] {
         std::fs::create_dir_all(dir.join(sub)).unwrap();
     }

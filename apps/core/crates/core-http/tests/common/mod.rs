@@ -18,7 +18,9 @@ pub type Ws = WebSocketStream<TcpStream>;
 
 pub fn temp_dir(tag: &str) -> PathBuf {
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
-    let dir = std::env::temp_dir().join(format!("ccm-http-{tag}-{}-{nanos}", std::process::id()));
+    static SEQ: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("ccm-http-{tag}-{}-{nanos}-{seq}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }

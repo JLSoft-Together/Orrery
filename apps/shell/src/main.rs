@@ -34,6 +34,10 @@ use crate::config::ShellConfig;
 use crate::serve::{Serve, ServeError};
 use crate::state::{Shell, MAIN};
 
+fn context() -> tauri::Context<tauri::Wry> {
+    tauri::generate_context!()
+}
+
 fn fail(message: String) -> ! {
     eprintln!("[shell] {message}");
     let _ = tauri::Builder::default()
@@ -43,7 +47,7 @@ fn fail(message: String) -> ! {
             app.handle().exit(1);
             Ok(())
         })
-        .run(tauri::generate_context!());
+        .run(context());
     std::process::exit(1)
 }
 
@@ -124,7 +128,7 @@ fn main() {
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context())
         .unwrap_or_else(|e| fail(e.to_string()));
     app.run(|app, event| match event {
         RunEvent::ExitRequested { api, code, .. } => {

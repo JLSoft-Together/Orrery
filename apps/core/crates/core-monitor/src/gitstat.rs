@@ -248,7 +248,7 @@ mod tests {
         for w in ["a", "b", "c", "d"] {
             r.request(w, "D:\\Repo");
         }
-        r.request("e", "d:\\repo");
+        r.request("e", if cfg!(windows) { "d:\\repo" } else { "D:\\Repo" });
         let out = drain(&mut r);
         assert_eq!(calls.load(Ordering::SeqCst), 2);
         assert_eq!(out.len(), 5);

@@ -33,10 +33,14 @@ else out('ok')
 function fixture(): void {
   rmSync(tmp, { recursive: true, force: true })
   for (const d of [bin, path.join(home, '.claude', 'skills', 'b-skill'), path.join(home, '.claude', 'skills', 'a-skill'), path.join(home, '.claude', 'skills', '.hidden'), path.join(project, '.claude', 'skills', 'p')]) mkdirSync(d, { recursive: true })
-  try {
-    linkSync(process.execPath, path.join(bin, CLI))
-  } catch {
-    copyFileSync(process.execPath, path.join(bin, CLI))
+  if (process.platform !== 'win32') {
+    writeFileSync(path.join(bin, CLI), `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} "$@"\n`, { mode: 0o755 })
+  } else {
+    try {
+      linkSync(process.execPath, path.join(bin, CLI))
+    } catch {
+      copyFileSync(process.execPath, path.join(bin, CLI))
+    }
   }
   for (const dir of [home, project]) for (const name of ['plugin', 'mcp']) writeFileSync(path.join(dir, name), FAKE)
   writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ mcpServers: { figma: {}, shared: {} }, projects: { [project.replace(/\\/g, '/')]: { mcpServers: { localonly: {}, shared: {} } } } }))

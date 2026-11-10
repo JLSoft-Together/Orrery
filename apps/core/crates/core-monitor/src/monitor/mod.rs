@@ -2,10 +2,11 @@ mod actions;
 mod agents;
 mod deps;
 mod extras;
+mod presync;
 mod publish;
 mod reconcile;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
@@ -25,7 +26,7 @@ use crate::jobs::JobReader;
 use crate::peers::{PeerLinkStore, PEER_TTL_MS};
 use crate::sidefiles::HookRecord;
 use crate::tracker::{MonTracker, SensitiveCheck, SAFETY_NET_MS};
-use crate::watch::{Wake, WatchEvent, Watcher};
+use crate::watch::{Wake, Watcher};
 
 pub use actions::{ClaudeTarget, LaunchError, LaunchMode, TerminalApp};
 pub use deps::{Deps, MonitorStores, SystemDeps};
@@ -118,6 +119,10 @@ pub struct Monitor {
     pub deepseek: Option<DeepseekMonitor>,
     pre_registry: Option<Vec<(u32, crate::registry::RegistryEntry)>>,
     pre_trackers: HashMap<String, MonTracker>,
+    pre_used: HashSet<String>,
+    staged: HashMap<String, VecDeque<presync::Staged>>,
+    covered: HashSet<String>,
+    tick_wall: Option<i64>,
 }
 
 #[derive(Clone, Copy)]
@@ -171,6 +176,10 @@ impl Monitor {
             deepseek: None,
             pre_registry: None,
             pre_trackers: HashMap::new(),
+            pre_used: HashSet::new(),
+            staged: HashMap::new(),
+            covered: HashSet::new(),
+            tick_wall: None,
         }
     }
 
@@ -184,6 +193,7 @@ impl Monitor {
         self.refresh_hints(store);
         self.poll_extras(store);
         self.reconcile(store, true, watch);
+        self.end_tick();
         if !watch {
             return;
         }
@@ -259,19 +269,14 @@ impl Monitor {
         if self.stopped {
             return;
         }
-        let wall = now_ms();
-        let events = self.watcher.as_mut().map(Watcher::drain).unwrap_or_default();
-        for e in events {
-            match e {
-                WatchEvent::Registry => self.schedule_registry(wall),
-                WatchEvent::Project(rel) => {
-                    self.route_project_change(&rel, wall);
-                    self.project_files.push(rel);
-                }
-                WatchEvent::SessionsLost => self.sessions_watched = false,
-                WatchEvent::ProjectsLost => self.projects_watched = false,
+        let wall = match self.tick_wall {
+            Some(w) => w,
+            None => {
+                let w = now_ms();
+                self.drain_watch(w);
+                w
             }
-        }
+        };
         if self.registry_due.is_some_and(|d| d <= wall) {
             self.registry_due = None;
             self.reconcile(store, false, true);
@@ -306,6 +311,12 @@ impl Monitor {
         self.tick_agents(store);
         self.drain_done(store);
         self.poll_persist(wall);
+        self.end_tick();
+    }
+
+    fn end_tick(&mut self) {
+        self.clear_presync();
+        self.pre_registry = None;
     }
 
     fn poll_persist(&mut self, wall: i64) {

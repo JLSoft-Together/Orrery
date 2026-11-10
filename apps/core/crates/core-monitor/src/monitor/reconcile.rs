@@ -7,6 +7,7 @@ use core_store::Store;
 use core_transcript::time::parse_iso;
 use indexmap::IndexSet;
 
+use super::presync::{Staged, Synced};
 use super::{Monitor, PROJECT_DEBOUNCE_MS, REGISTRY_DEBOUNCE_MS, RESOLVED_SWEEP_MS};
 use crate::process::proc_start_matches;
 use crate::registry::{read_registry, RegistryEntry, RegistryRecord};
@@ -86,7 +87,7 @@ impl Monitor {
         if watch && (!self.sessions_watched || !self.projects_watched) {
             self.setup_watchers(true);
         }
-        let registry = self.pre_registry.take().unwrap_or_else(|| read_registry(&self.sessions_dir));
+        let registry = self.pre_registry.clone().unwrap_or_else(|| read_registry(&self.sessions_dir));
         let now = self.deps.now();
         let mut seen: HashSet<String> = HashSet::new();
         let mut created: Vec<MonTracker> = Vec::new();
@@ -107,6 +108,9 @@ impl Monitor {
             if !self.trackers.contains_key(&id) {
                 if !created.iter().any(|t| t.terminal_id == id) {
                     let pre = self.pre_trackers.remove(&id).filter(|t| t.record == rec);
+                    if pre.is_some() {
+                        self.pre_used.insert(id.clone());
+                    }
                     created.push(pre.unwrap_or_else(|| MonTracker::new(&id, rec, self.projects_dir.clone(), self.config.safety_net_ms, self.config.reread_finished)));
                 }
                 seen.insert(id);
@@ -125,7 +129,7 @@ impl Monitor {
             self.trackers.insert(id.clone(), tracker);
             self.swept_at.insert(id.clone(), now);
             let sensitive = self.sensitive.as_deref_mut().map(|s| s as &mut dyn crate::tracker::SensitiveCheck);
-            if let Some(t) = self.trackers.get_mut(&id) {
+            if let Some(t) = self.trackers.get_mut(&id).filter(|_| !self.pre_used.contains(&id)) {
                 t.sync(true, &SyncScope::All, now, sensitive);
             }
             self.publish(store, &id);
@@ -160,7 +164,7 @@ impl Monitor {
         self.prune_peers(store);
     }
 
-    fn reconcile_scope(&mut self, id: &str, now: i64) -> SyncScope {
+    pub(super) fn reconcile_scope(&mut self, id: &str, now: i64) -> SyncScope {
         if let Some(last) = self.swept_at.get(id) {
             if now - last < RESOLVED_SWEEP_MS {
                 return SyncScope::SkipResolved;
@@ -264,19 +268,31 @@ impl Monitor {
     }
 
     pub(super) fn sync_tracker(&mut self, store: &mut Store, id: &str, scope: &SyncScope) {
-        let now = self.deps.now();
-        let sensitive = self.sensitive.as_deref_mut().map(|s| s as &mut dyn crate::tracker::SensitiveCheck);
+        if !self.trackers.contains_key(id) {
+            return;
+        }
+        let staged = match self.take_synced(id) {
+            Synced::Staged(s) => s,
+            Synced::Covered => Staged::default(),
+            Synced::Read => {
+                let now = self.deps.now();
+                let sensitive = self.sensitive.as_deref_mut().map(|s| s as &mut dyn crate::tracker::SensitiveCheck);
+                let Some(t) = self.trackers.get_mut(id) else { return };
+                Staged { drafts: t.sync(false, scope, now, sensitive), ..Staged::default() }
+            }
+        };
         let Some(t) = self.trackers.get_mut(id) else { return };
-        let drafts = t.sync(false, scope, now, sensitive);
-        if t.take_changed() {
+        if t.take_changed() || staged.changed {
             self.publish(store, id);
         }
+        let mut spans = staged.spans;
         if let Some(t) = self.trackers.get_mut(id) {
-            for span in t.drain_spans() {
-                store.tool_span(span);
-            }
+            spans.extend(t.drain_spans());
         }
-        for d in drafts {
+        for span in spans {
+            store.tool_span(span);
+        }
+        for d in staged.drafts {
             store.push_activity(d);
         }
         self.drain_peers(id);

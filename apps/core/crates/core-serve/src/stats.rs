@@ -11,6 +11,7 @@ pub struct Stats {
     lock_ms: Vec<f64>,
     phase_ms: [Vec<f64>; 3],
     prefetch_ms: Vec<f64>,
+    outside_ms: Vec<f64>,
 }
 
 fn ms(d: Duration) -> f64 {
@@ -33,7 +34,7 @@ fn summary(mut v: Vec<f64>) -> serde_json::Value {
 
 impl Stats {
     pub fn new(on: bool) -> Stats {
-        Stats { on, ticks: 0, lock_ms: Vec::new(), phase_ms: Default::default(), prefetch_ms: Vec::new() }
+        Stats { on, ticks: 0, lock_ms: Vec::new(), phase_ms: Default::default(), prefetch_ms: Vec::new(), outside_ms: Vec::new() }
     }
 
     pub fn tick(&mut self, held: Duration, phases: [Duration; 3]) {
@@ -52,6 +53,12 @@ impl Stats {
         }
     }
 
+    pub fn outside(&mut self, d: Duration) {
+        if self.on {
+            self.outside_ms.push(ms(d));
+        }
+    }
+
     pub fn report(&mut self, cache: &ProcCache) {
         if !self.on {
             return;
@@ -64,6 +71,7 @@ impl Stats {
             "tickMs": summary(std::mem::take(&mut self.phase_ms[1])),
             "afterTickMs": summary(std::mem::take(&mut self.phase_ms[2])),
             "prefetchMs": summary(std::mem::take(&mut self.prefetch_ms)),
+            "outsideLockMs": summary(std::mem::take(&mut self.outside_ms)),
             "tableReadsUnderLock": cache.missed.load(Ordering::Relaxed),
         });
         eprintln!("{out}");

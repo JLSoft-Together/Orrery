@@ -119,7 +119,10 @@ pub fn run(setup: Setup, rx: Receiver<Cmd>, wake: Arc<dyn Fn() + Send + Sync>) {
         if rt.monitor.procs_wanted(now) {
             stats.prefetch(rt.cache.prefetch());
         }
+        let outside = Instant::now();
         rt.monitor.prepare(now);
+        rt.monitor.presync(now);
+        stats.outside(outside.elapsed());
         let started = Instant::now();
         let phases = handle.with(|s| {
             for c in cmds {

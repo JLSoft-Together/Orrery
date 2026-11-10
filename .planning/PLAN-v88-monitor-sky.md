@@ -28,3 +28,10 @@ Wireframe chốt: artifact "Monitor redesign directions", artboard **H4 · Hàng
 3. Hàng chờ thay `SessionList` (vòng quỹ đạo mini).
 4. Quỹ đạo: layout radial trong `AgentMap`.
 5. Test (Vitest web), E2E Monitor, cập nhật `.code_index/web.md`, tour `lib/tour.ts`.
+
+## Đổi hướng tab Quỹ đạo (chủ nhân 2026-11-11, canvas Q2 + Q3)
+Thay bố cục hàng chờ + bầu trời H4 bằng 2 tầng:
+1. **Tổng quan (Q2 · vòng ưu tiên):** tâm = "Bạn"; 3 vòng đồng tâm: trong = Cần anh, giữa = Đang chạy, ngoài = Rảnh / xong (mờ). Mỗi project 1 góc (sector) cố định theo hash tên, nhãn project ở rìa. Mỗi session main = node tròn có icon agent, viền màu trạng thái, Cần anh có vầng cam. Subagent = chấm nhỏ cạnh node (đặc = chạy, viền = chờ, xanh lá = xong). Panel phải (~320 px): session đang chọn — trạng thái + thời gian, câu hỏi / lệnh xin quyền + "Mở pane trả lời", danh sách subagent + tool, 3–5 tool gần nhất.
+2. **Tiêu điểm (Q3):** bấm đúp node / nút "Xem hệ" / Enter → 1 hệ phóng lớn: mặt trời = agent chính (tool đang chạy), hành tinh = subagent trên quỹ đạo, vệt cung trên quỹ đạo = tool call gần nhất (dài theo thời gian), cột trái = danh sách hệ (Cần anh trên cùng) để nhảy hệ, cột phải = dòng tool theo giờ. Esc / nút Quay lại → tổng quan.
+- Bất biến cũ giữ: không quay liên tục, chỉ nhích khi có tool call; reduced motion đứng yên; vị trí cố định theo hash; > ~8 session rảnh / xong thu thành chấm mờ ở vòng ngoài; status = icon + chữ + màu; không blur / gradient; i18n en + vi; Monitor không gửi gì vào agent; Office để yên; panel lệnh + Alt+1/Alt+2 giữ.
+- Tab Bảng: giữ như W2 (A1 / A2 chưa chọn).

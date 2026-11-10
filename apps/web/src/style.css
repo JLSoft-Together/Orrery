@@ -1327,22 +1327,6 @@ body {
 .ccm-map-motion .vue-flow__node:not(.dragging) {
   transition: transform var(--ccm-dur-base) var(--ease-out-quint);
 }
-.ccm-sky [data-sun='needs'] {
-  border-color: var(--color-warning);
-  box-shadow: 0 0 0 6px var(--color-warning-soft);
-}
-.ccm-sky [data-sun='running'] {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 6px var(--color-accent-soft);
-}
-.ccm-sky [data-sun='idle'],
-.ccm-sky [data-sun='ended'] {
-  box-shadow: 0 0 0 6px var(--color-fill);
-}
-.ccm-sky .vue-flow__node-orbit {
-  pointer-events: none;
-}
-
 .vue-flow__node.ccm-node-leaving,
 .ccm-map-motion .vue-flow__node.ccm-node-leaving {
   opacity: 0;
@@ -1655,4 +1639,12 @@ body {
     animation: none;
     opacity: 0.85;
   }
+}
+
+.ccm-orbit-needs {
+  box-shadow: 0 0 0 6px var(--color-warning-soft);
+}
+.ccm-orbit-selected {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 6px;
 }

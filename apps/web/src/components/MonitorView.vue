@@ -12,7 +12,7 @@ import PortConflictBar from './PortConflictBar.vue'
 import AgentMap from './AgentMap.vue'
 import CommandPanel from './monitor/CommandPanel.vue'
 import ModeBar from './monitor/ModeBar.vue'
-import OrbitQueue from './monitor/OrbitQueue.vue'
+import OrbitView from './monitor/OrbitView.vue'
 import SessionBoard from './monitor/SessionBoard.vue'
 import PanelHeader from './PanelHeader.vue'
 import PanelSplitter from './PanelSplitter.vue'
@@ -55,6 +55,7 @@ const PANEL_BASE = 'flex min-h-0 flex-col bg-canvas p-3'
 const PANEL_FLOAT = 'absolute inset-y-2 z-20 rounded-card shadow-pop'
 const SHEET = 'absolute inset-x-0 bottom-0 z-30 h-[min(70%,560px)] rounded-t-card border-t border-line shadow-pop'
 const sheet = computed(() => ui.narrow)
+const orbit = computed(() => !ui.sessionTab && ui.mapView === 'map')
 function panelClass(p: Panel): string {
   if (sheet.value) return `${PANEL_BASE} ${SHEET} pt-1`
   const { pinned } = ui.panels[p]
@@ -77,7 +78,7 @@ function panelTransition(p: Panel): string {
     <div class="flex shrink-0 flex-col gap-2 px-3 pt-2 empty:hidden">
       <AwaySummary />
       <PortConflictBar />
-      <WaitingStrip v-if="ui.monitorMode === 'sky' && !ui.sessionTab && !ui.panels.sessions.open" data-tour="waiting" />
+      <WaitingStrip v-if="ui.monitorMode === 'sky' && !ui.sessionTab && !orbit" data-tour="waiting" />
     </div>
 
     <ModeBar :projects="monitor.groups.value" :groups="monitor.sessionGroups.value" />
@@ -85,9 +86,11 @@ function panelTransition(p: Panel): string {
     <SessionBoard v-if="ui.monitorMode === 'board'" :groups="monitor.sessionGroups.value" :freeze-bind="monitor.freezeBind" data-tour="sessions" />
 
     <div v-else id="monitor-panel-sky" ref="stage" role="tabpanel" aria-labelledby="monitor-tab-sky" class="relative flex min-h-0 flex-1" :class="dragging ? 'select-none' : ''">
+      <OrbitView v-if="orbit" :groups="monitor.sessionGroups.value" data-tour="map" />
+      <template v-else>
       <Transition name="ccm-fade">
         <div
-          v-if="sheet && ui.panels.sessions.open"
+          v-if="sheet && ui.sessionTab && ui.panels.sessions.open"
           class="ccm-scrim absolute inset-0 z-30"
           aria-hidden="true"
           data-sheet-scrim
@@ -96,6 +99,7 @@ function panelTransition(p: Panel): string {
       </Transition>
       <Transition :name="panelTransition('sessions')">
         <aside
+          v-if="ui.sessionTab"
           v-show="ui.panels.sessions.open"
           data-tour="sessions"
           :data-sheet="sheet || undefined"
@@ -112,8 +116,7 @@ function panelTransition(p: Panel): string {
           >
             <span class="h-1 w-9 rounded-full bg-fill-strong" aria-hidden="true" />
           </button>
-          <OrbitQueue v-if="!ui.sessionTab" :groups="monitor.sessionGroups.value" :projects="monitor.groups.value" :freeze-bind="monitor.freezeBind" />
-          <section v-else-if="tabTerminal" aria-labelledby="session-panel-title" class="flex h-full min-h-0 flex-col">
+          <section v-if="tabTerminal" aria-labelledby="session-panel-title" class="flex h-full min-h-0 flex-col">
             <PanelHeader panel="sessions" title-id="session-panel-title" :title="t('panel.session')" />
             <div class="ccm-scroll -m-1 min-h-0 flex-1 overflow-y-auto p-1">
               <SessionCard :terminal="tabTerminal" />
@@ -132,8 +135,8 @@ function panelTransition(p: Panel): string {
         </aside>
       </Transition>
 
-      <AgentMap :key="ui.sessionTab ?? 'all'" :terminal-id="ui.sessionTab" :layout="ui.sessionTab ? 'tree' : 'radial'" data-tour="map" class="min-w-0 flex-1" />
-
+      <AgentMap :key="ui.sessionTab ?? 'all'" :terminal-id="ui.sessionTab" data-tour="map" class="min-w-0 flex-1" />
+      </template>
     </div>
 
     <CommandPanel />

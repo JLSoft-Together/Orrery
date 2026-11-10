@@ -38,7 +38,7 @@ const LOG_TAIL = 40
 const LINE_MAX = 1024 * 1024
 
 export function coreServeMode(env: NodeJS.ProcessEnv): CoreServeMode {
-  return env.CCM_CORE?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+  return env.CCM_CORE?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 }
 
 const defaultSpawner: ServeSpawner = (bin, args, env) => spawn(bin, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })

@@ -85,10 +85,11 @@ function host(over: Partial<ConstructorParameters<typeof CoreServeHost>[0]> = {}
 }
 
 describe('core serve mode', () => {
-  it('is node unless CCM_CORE=rust', () => {
-    expect(coreServeMode({})).toBe('node')
+  it('is rust unless CCM_CORE=node', () => {
+    expect(coreServeMode({})).toBe('rust')
     expect(coreServeMode({ CCM_CORE: ' Rust ' })).toBe('rust')
     expect(coreServeMode({ CCM_CORE: 'node' })).toBe('node')
+    expect(coreServeMode({ CCM_CORE: 'x' })).toBe('rust')
   })
 })
 

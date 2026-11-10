@@ -15,8 +15,11 @@
     "shell:dev": "npm run build -w @ccm/web && node scripts/gen-desk-shim.mjs && cargo run -j 4 --manifest-path apps/shell/Cargo.toml",
     "desktop:dev": "concurrently -k -n web,desktop -c green,magenta \"npm:dev -w @ccm/web\" \"npm:start:dev -w @ccm/desktop\"",
     "dist": "node scripts/dist.mjs",
-    "dist:win": "npm run build -w @ccm/web && npm run dist -w @ccm/desktop",
-    "dist:mac": "npm run build -w @ccm/web && npm run dist:mac -w @ccm/desktop"
+    "dist:win": "node scripts/dist-tauri.mjs --win",
+    "dist:mac": "node scripts/dist-tauri.mjs --mac",
+    "dist:electron": "node scripts/dist.mjs --electron",
+    "dist:electron:win": "npm run build -w @ccm/web && npm run dist -w @ccm/desktop",
+    "dist:electron:mac": "npm run build -w @ccm/web && npm run dist:mac -w @ccm/desktop"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

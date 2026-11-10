@@ -77,18 +77,21 @@ import { updateHosts } from './update/deskHosts'
 import { registerUpdateIpc } from './update/ipc'
 import { UpdateManager } from './update/manager'
 import { installKind, platformKind } from './update/pick'
+import { DUMP_ALL_LOCAL_JS, exportWebStorage } from './webstorageExport'
 import { BackupService } from './backup/service'
 import { DeviceUseReporter, RUN_USE_THROTTLE_MS } from './resources/deviceUse'
 import { confirmLines, fixtureKill, killTreeByPid, liveStarts, planKill, type KillItem } from './resources/kill'
 import { readProcRows } from './resources/agentPorts'
-import { createDesk } from './mcpDesk'
+import { createDesk, type DeskDeps } from './mcpDesk'
+import { mcpDeskHosts } from './mcpDeskHosts'
+import { rustMcpHandle } from './pty/mcpRust'
 import type { McpDeskCall } from '../../../packages/shared/src/mcpDesk'
 import { isRunLive, parseBusy, parseKillTargets, parsePhoneEpisode, parseTelegramEpisode, parseInboundResult, formatGb, type PhoneEpisodeMessage, type ResKillResult, type ResourceReport } from '@ccm/shared'
 import { AWAKE_FILE, KeepAwake, readAwakeMode, writeAwakeMode } from './power/awake'
 import { awakeControl, type AwakeControl } from './power/ipc'
 import { CAPTURE_FILE } from './capture/files'
 import { CaptureFolder } from './capture/folder'
-import { mcpScreenshot } from './devices/mcpShot'
+import { mcpScreenshot, type McpShotDeps } from './devices/mcpShot'
 import { registerCaptureIpc } from './capture/ipc'
 import { PHONE_FILE, PhoneNotifier } from './phone/notifier'
 import { phoneEpisodes, registerPhoneIpc, type PhoneHostDeps } from './phone/ipc'
@@ -109,7 +112,7 @@ import { createOrrery, createPageAsker, type OrreryCall } from './orreryApi'
 import { AgentDataService } from './agentData/service'
 import { MoveStore, freeBytes, isLocalDir } from './agentData/move'
 import { agentProcs } from './agentData/procs'
-import { registerAgentDataIpc } from './agentData/ipc'
+import { registerAgentDataIpc, type AgentDataDeskDeps } from './agentData/ipc'
 import { isInsideOrSame } from './agentData/fsTree'
 import { BuildCleanService } from './buildClean/service'
 import { registerBuildCleanIpc, type BuildCleanDeskDeps } from './buildClean/ipc'
@@ -935,21 +938,37 @@ function paneHandles(terminalId: string): Promise<boolean> {
 }
 
 /** device_screenshot needs adb and the capture folder, both in main: the page is not asked. */
-function screenshotMcp(call: { cwd: string; serial?: string }): Promise<unknown> {
+function shotDeps(): McpShotDeps | null {
   const devices = deviceManager
-  if (!devices) return Promise.resolve({ ok: false, error: 'unavailable' })
-  return mcpScreenshot(call, {
+  if (!devices) return null
+  return {
     snapshot: () => devices.snapshot(),
     screencap: (id) => devices.screencap(id),
     runs: () => runManager?.list() ?? [],
     writeShot: (png, device) => capture?.writeShot(png, device, null) ?? Promise.resolve(null),
     captureActive: () => !!capture?.active(),
     tmpRoot: os.tmpdir(),
+  }
+}
+
+const mcpDeskRust = (): boolean => deskRouter?.mode('mcp') === 'rust'
+
+async function viaRustDesk(channel: string, call: unknown, ts: () => Promise<unknown>): Promise<unknown> {
+  if (!mcpDeskRust() || !deskRouter) return ts()
+  const opts = { deps: 'host', selfPid: process.pid, tmpRoot: os.tmpdir() }
+  const res = await deskRouter.invoke(channel, [call, opts], mcpDeskHosts({ desk: deskDeps, shot: shotDeps })).catch(() => null)
+  return res ?? ts()
+}
+
+function screenshotMcp(call: { cwd: string; serial?: string }): Promise<unknown> {
+  return viaRustDesk('desk:mcp-screenshot', call, () => {
+    const deps = shotDeps()
+    return deps ? mcpScreenshot(call, deps) : Promise.resolve({ ok: false, error: 'unavailable' })
   })
 }
 
 /** v80 WP-5 MCP tools answered here (docs §11w): preview_layout, list_servers, free_port. */
-const desk: (call: McpDeskCall) => Promise<unknown> = createDesk({
+const deskDeps: DeskDeps = {
   render: (file, opts) => (layoutIpc ? layoutIpc.agentRender(file, opts) : Promise.resolve({ ok: false, code: 'unavailable' })),
   writeShot: async (png, name) => (capture ? capture.writeShot(png, name, null) : null),
   fallbackDir: path.join(os.tmpdir(), 'orrery-layout'),
@@ -970,7 +989,9 @@ const desk: (call: McpDeskCall) => Promise<unknown> = createDesk({
     const { response } = mainWindow ? await dialog.showMessageBox(mainWindow, opts) : await dialog.showMessageBox(opts)
     return response
   },
-})
+}
+const deskTs = createDesk(deskDeps)
+const desk = (call: McpDeskCall): Promise<unknown> => viaRustDesk('desk:mcp-desk', call, () => deskTs(call))
 
 const askPage = createPageAsker<Electron.IpcMainEvent>({
   target: () => {
@@ -1078,6 +1099,18 @@ function readPageLocal(contents: Electron.WebContents): Promise<Record<string, u
     contents.executeJavaScript(LOCAL_SNAPSHOT_JS, false).then((v: unknown) => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})),
     new Promise<Record<string, unknown>>((resolve) => setTimeout(() => resolve({}), 3_000)),
   ])
+}
+
+function exportPageStorage(): Promise<boolean> {
+  const page = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null
+  if (!page) return Promise.resolve(false)
+  let origin = ''
+  try {
+    origin = new URL(page.getURL()).origin
+  } catch {
+    return Promise.resolve(false)
+  }
+  return exportWebStorage(() => page.executeJavaScript(DUMP_ALL_LOCAL_JS, false), DATA_DIR, origin)
 }
 
 function wireBackup(): void {
@@ -1381,14 +1414,7 @@ async function setupAgentData(): Promise<void> {
   // E2E: the folder dialogs cannot be driven over CDP.
   const e2eFolders = { target: process.env.CCM_E2E_AGENT_TARGET || null, backup: process.env.CCM_E2E_AGENT_BACKUP || null }
   const claudeApp = path.join(app.getPath('appData'), 'Claude')
-  const service = new AgentDataService({
-    roots: () => ({
-      claude: claudeConfigDir(process.env, os.homedir()),
-      codex: process.env.CODEX_HOME || path.join(os.homedir(), '.codex'),
-      claudeApp: existsSync(claudeApp) && !process.env.CCM_E2E_AGENT_TARGET ? claudeApp : null,
-    }),
-    store: new MoveStore(path.join(DATA_DIR, 'agent-data-move.json')),
-    procs: (agent) => agentProcs(agent),
+  const deskDeps: AgentDataDeskDeps = {
     confirm: async (spec) => {
       const opts: Electron.MessageBoxOptions = { type: 'warning', message: spec.message, detail: spec.detail, buttons: spec.buttons, defaultId: spec.buttons.length - 1, cancelId: spec.buttons.length - 1, noLink: true }
       if (mainWindow && !mainWindow.isVisible()) showMain()
@@ -1410,13 +1436,24 @@ async function setupAgentData(): Promise<void> {
         showError(err instanceof FatalError ? err.reason : { kind: 'exited', code: null })
       }
     },
+    texts: () => ({ ...t.agentData, cancel: t.quitCancel }),
+  }
+  const service = new AgentDataService({
+    ...deskDeps,
+    roots: () => ({
+      claude: claudeConfigDir(process.env, os.homedir()),
+      codex: process.env.CODEX_HOME || path.join(os.homedir(), '.codex'),
+      claudeApp: existsSync(claudeApp) && !process.env.CCM_E2E_AGENT_TARGET ? claudeApp : null,
+    }),
+    store: new MoveStore(path.join(DATA_DIR, 'agent-data-move.json')),
+    procs: (agent) => agentProcs(agent),
     emit: (progress) => broadcast('ccm:agentdata-event', progress),
     isLocal: (dir) => isLocalDir(dir),
     freeBytes: (dir) => freeBytes(dir),
-    texts: () => ({ ...t.agentData, cancel: t.quitCancel }),
   })
+  if (deskRouter?.mode('agentData') === 'rust') await deskRouter.invoke('desk:agentdata-recover').catch(() => undefined)
   await service.recover().catch(() => undefined)
-  disposeAgentData = registerAgentDataIpc({ ipcMain, isAppFrame, service })
+  disposeAgentData = registerAgentDataIpc({ ipcMain, isAppFrame, service, desk: deskRouter ? { router: deskRouter, deps: deskDeps } : undefined })
 }
 
 /** v77 R8: rebuildable build folders of known projects; deletes only what the last scan offered. */
@@ -1466,7 +1503,7 @@ function setupDesk(): void {
   const client = DESK_MODULES.some((m) => deskMode(process.env, m) === 'rust')
     ? new DeskHost({
         bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
-        env: { ...process.env, CCM_DATA_DIR: DATA_DIR, CCM_APP_VERSION: app.getVersion(), CCM_DOCUMENTS_DIR: app.getPath('documents'), CCM_USER_DATA: app.getPath('userData'), CCM_VIDEOS_DIR: app.getPath('videos'), ...layoutDeskEnv() },
+        env: { ...process.env, CCM_DATA_DIR: DATA_DIR, CCM_AGENT_DATA_RECOVER: '0', CCM_APP_VERSION: app.getVersion(), CCM_DOCUMENTS_DIR: app.getPath('documents'), CCM_USER_DATA: app.getPath('userData'), CCM_VIDEOS_DIR: app.getPath('videos'), ...layoutDeskEnv() },
         logFile: path.join(app.getPath('logs'), 'desk.log'),
         hosts: { ...runStandingHosts({ confirm: () => runConfirm, onAdbUse: (serial) => deviceUse?.used(serial, RUN_USE_THROTTLE_MS) }), ...updateHosts(() => updates?.hostEnv() ?? null), ...devicesStandingHosts({ manager: () => deviceManager, onUse: (serial) => deviceUse?.used(serial), confirm: (req) => devicesConfirm?.(req) ?? Promise.resolve(false), recDir: () => capture?.recordingsDir() ?? path.join(os.tmpdir(), 'orrery-rec'), recKeeps: (file) => capture?.keeps(file) ?? false }), ...telegramStandingHosts(() => telegramHosts) },
         onEvent: (event, payload) => {
@@ -1631,6 +1668,7 @@ async function ready(): Promise<void> {
     shellInitDir: path.join(DATA_DIR, 'shell-init'),
     onOrrery: orrery,
     mcpConfig: path.join(DATA_DIR, 'orrery-mcp.json'),
+    mcpHandle: (body, toolHost) => (deskRouter?.mode('mcp') === 'rust' ? rustMcpHandle((c, a, h) => deskRouter!.invoke(c, a, h), app.getVersion(), DEEPSEEK_FEATURE)(body, toolHost) : Promise.resolve(null)),
     onFallback: (reason) => {
       ptyFellBack = true
       console.warn(`[ccm] terminal host: rust core unusable (${reason}); using node`)
@@ -2401,7 +2439,7 @@ if (!app.requestSingleInstanceLock()) {
           launchUpdate()
           app.exit(0)
         }, QUIT_DEADLINE_MS)
-        stopping = Promise.allSettled([host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview()]).then(() => {
+        stopping = Promise.allSettled([exportPageStorage(), host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview()]).then(() => {
           clearTimeout(hardExit)
           stopped = true
           app.quit()

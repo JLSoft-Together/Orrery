@@ -11,6 +11,7 @@ pub struct Strings {
     pub link_live: &'static str,
     pub port_in_use: &'static str,
     pub start_failed: &'static str,
+    pub tokens_lost: &'static str,
 }
 
 const EN: Strings = Strings {
@@ -26,6 +27,7 @@ const EN: Strings = Strings {
     link_live: "This session is still running in another terminal. Close it there first, then open the link again.",
     port_in_use: "Port {port} is taken: an older Orrery (.bat / npm start) or another app (4317 is also the OpenTelemetry collector default). Close it or set CCM_PORT.",
     start_failed: "Orrery could not start its monitor: {reason}",
+    tokens_lost: "Orrery could not read a token saved by the previous version. Add the GitHub account / Telegram token again in Settings.",
 };
 
 const VI: Strings = Strings {
@@ -41,6 +43,7 @@ const VI: Strings = Strings {
     link_live: "Session này vẫn đang chạy ở một terminal khác. Hãy đóng nó ở đó trước rồi mở lại liên kết.",
     port_in_use: "Cổng {port} đang bị chiếm: Orrery bản cũ (.bat / npm start) hoặc app khác (4317 cũng là cổng mặc định của OpenTelemetry collector). Hãy tắt nó hoặc đặt CCM_PORT.",
     start_failed: "Orrery không khởi động được phần monitor: {reason}",
+    tokens_lost: "Orrery không đọc được token bản cũ đã lưu. Hãy thêm lại tài khoản GitHub / token Telegram trong Settings.",
 };
 
 pub fn strings(locale: &str) -> &'static Strings {

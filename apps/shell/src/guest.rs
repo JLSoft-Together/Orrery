@@ -130,7 +130,7 @@ fn builder(app: &AppHandle, id: u64, url: Url) -> WebviewBuilder<tauri::Wry> {
         .data_directory(shell.webview_dir.clone())
         .initialization_script(SCRIPT)
         .zoom_hotkeys_enabled(false)
-        .devtools(true)
+        .devtools(crate::config::devtools_allowed())
         .on_navigation(move |u| web_url(u.as_str(), &nav_origin).is_some())
         .on_new_window(move |u, _| {
             match web_url(u.as_str(), &origin) {
@@ -250,7 +250,7 @@ fn devtools(wv: &Webview, action: &str) -> bool {
         "open" => true,
         "close" => false,
         _ => !wv.is_devtools_open(),
-    };
+    } && crate::config::devtools_allowed();
     if open {
         wv.open_devtools();
     } else {

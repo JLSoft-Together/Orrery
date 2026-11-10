@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use core_desk::{Ctx, Desk, DeskEnv, DeskError, DeskIo};
 use serde_json::Value;
@@ -27,6 +28,23 @@ pub fn boot(env: &DeskEnv) -> DeskState {
         eprintln!("[shell] backup apply pending: {e}");
     }
     DeskState { desk }
+}
+
+pub fn wire(app: &AppHandle) {
+    let secrets = crate::vault::Keyring { service: crate::legacy::keyring_service() };
+    app.manage(crate::vault::Vault::new(Box::new(secrets), crate::legacy::source()));
+    let state = app.state::<DeskState>();
+    let sink = app.clone();
+    state.desk.set_sink(Arc::new(move |event, payload| emit_app(&sink, event, payload)));
+    let host = app.clone();
+    state.desk.set_host(Arc::new(move |method, params| hosts::call(&host, None, method, &params).map_err(DeskError::Host)));
+    crate::mcp::start(app);
+    let boot = app.clone();
+    std::thread::spawn(move || {
+        if let Err(e) = boot.state::<DeskState>().desk.dispatch("desk:update-start", Value::Null) {
+            eprintln!("[shell] update start: {e}");
+        }
+    });
 }
 
 pub fn emit_app(app: &AppHandle, event: &str, payload: Value) {
@@ -61,6 +79,12 @@ pub fn error_text(e: DeskError) -> String {
         DeskError::UnknownChannel(c) => format!("not ported: {c}"),
         other => other.to_string(),
     }
+}
+
+pub fn call_inside(app: &AppHandle, channel: &str, args: Value) -> Result<Value, String> {
+    let io = Io { app: app.clone(), caller: None };
+    let state = app.state::<DeskState>();
+    state.desk.dispatch_with(&Ctx::new(&io, 0), channel, args).map_err(error_text)
 }
 
 pub async fn dispatch(app: AppHandle, webview: Webview, channel: String, args: Vec<Value>) -> Result<Value, String> {

@@ -50,17 +50,47 @@ pub fn safe_shell(shell_env: Option<&str>, mac: bool) -> String {
     }
 }
 
-fn agent_command(preset: &str, resume: Option<&str>, session: Option<&str>) -> String {
+#[derive(Debug, Clone, Default)]
+pub struct AgentOpts {
+    pub mcp: bool,
+    pub name: Option<String>,
+    pub shim: bool,
+    pub zsh_init: Option<String>,
+}
+
+pub fn is_pane_name(v: &str) -> bool {
+    let mut chars = v.chars();
+    let Some(first) = chars.next() else { return false };
+    v.trim() == v && first.is_alphanumeric() && v.chars().count() <= 40 && chars.all(|c| c.is_alphanumeric() || matches!(c, ' ' | '.' | '_' | '-'))
+}
+
+fn agent_command(preset: &str, windows: bool, resume: Option<&str>, session: Option<&str>, opts: &AgentOpts) -> String {
     let resume = resume.filter(|r| is_session_id(r));
-    match (preset, resume) {
-        ("codex", Some(r)) => format!("codex resume {r}"),
-        ("codex", None) => "codex".to_owned(),
-        (_, Some(r)) => format!("claude --resume {r}"),
-        (_, None) => match session.filter(|s| is_session_id(s)) {
-            Some(s) => format!("claude --session-id {s}"),
-            None => "claude".to_owned(),
-        },
+    if preset == "codex" {
+        let mcp = if !opts.mcp {
+            String::new()
+        } else if windows {
+            " -c \"mcp_servers.orrery.url=$env:ORRERY_API/mcp\" -c mcp_servers.orrery.bearer_token_env_var=ORRERY_TOKEN".to_owned()
+        } else {
+            " -c \"mcp_servers.orrery.url=$ORRERY_API/mcp\" -c mcp_servers.orrery.bearer_token_env_var=ORRERY_TOKEN".to_owned()
+        };
+        return match resume {
+            Some(r) => format!("codex{mcp} resume {r}"),
+            None => format!("codex{mcp}"),
+        };
     }
+    let base = match resume {
+        Some(r) => format!("claude --resume {r}"),
+        None => {
+            let id = session.filter(|s| is_session_id(s)).map(|s| format!(" --session-id {s}")).unwrap_or_default();
+            let name = opts.name.as_deref().filter(|n| is_pane_name(n)).map(|n| format!(" -n '{n}'")).unwrap_or_default();
+            format!("claude{id}{name}")
+        }
+    };
+    if !opts.mcp {
+        return base;
+    }
+    format!("{base} --mcp-config {}", if windows { "$env:ORRERY_MCP_CONFIG" } else { "\"$ORRERY_MCP_CONFIG\"" })
 }
 
 pub fn windows_powershell(system_root: Option<&str>) -> String {
@@ -68,10 +98,16 @@ pub fn windows_powershell(system_root: Option<&str>) -> String {
     format!("{root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe")
 }
 
+#[cfg(test)]
 pub fn preset_command(preset: &str, windows: bool, env: &dyn Fn(&str) -> Option<String>, resume: Option<&str>, session: Option<&str>) -> LaunchSpec {
+    preset_command_with(preset, windows, env, resume, session, &AgentOpts::default())
+}
+
+pub fn preset_command_with(preset: &str, windows: bool, env: &dyn Fn(&str) -> Option<String>, resume: Option<&str>, session: Option<&str>, opts: &AgentOpts) -> LaunchSpec {
     if windows {
         let file = windows_powershell(env("SystemRoot").or_else(|| env("SYSTEMROOT")).as_deref());
-        let script = if preset == "shell" { PS_CWD_HOOK.to_owned() } else { format!("{PS_CWD_HOOK}; {}", agent_command(preset, resume, session)) };
+        let shell_hook = if opts.shim { format!("{PS_CWD_HOOK}\n{}", crate::shim::PS_SHIM_FIRST) } else { PS_CWD_HOOK.to_owned() };
+        let script = if preset == "shell" { shell_hook } else { format!("{PS_CWD_HOOK}; {}", agent_command(preset, true, resume, session, opts)) };
         let args = vec!["-NoLogo".into(), "-NoExit".into(), "-EncodedCommand".into(), encode_powershell(&script)];
         return LaunchSpec { file, args, env: Vec::new() };
     }
@@ -79,9 +115,16 @@ pub fn preset_command(preset: &str, windows: bool, env: &dyn Fn(&str) -> Option<
     let bash = Path::new(&shell).file_name().is_some_and(|n| n == "bash");
     let hook = if bash { vec![("PROMPT_COMMAND".to_owned(), BASH_PROMPT_COMMAND.to_owned())] } else { Vec::new() };
     if preset == "shell" {
-        return LaunchSpec { file: shell, args: vec!["-l".into()], env: hook };
+        let zsh = Path::new(&shell).file_name().is_some_and(|n| n == "zsh");
+        let mut vars = hook;
+        if let Some(init) = opts.zsh_init.as_deref().filter(|i| opts.shim && zsh && Path::new(i).is_absolute() && !i.contains('\'')) {
+            let user = env("ZDOTDIR").filter(|z| Path::new(z).is_absolute()).unwrap_or_default();
+            vars.push(("ZDOTDIR".to_owned(), init.to_owned()));
+            vars.push(("AGENT_MONITOR_ZDOTDIR".to_owned(), user));
+        }
+        return LaunchSpec { file: shell, args: vec!["-l".into()], env: vars };
     }
-    let command = format!("{}; exec {shell} -l", agent_command(preset, resume, session));
+    let command = format!("{}; exec {shell} -l", agent_command(preset, false, resume, session, opts));
     LaunchSpec { file: shell, args: vec!["-l".into(), "-i".into(), "-c".into(), command], env: hook }
 }
 
@@ -164,6 +207,39 @@ mod tests {
         assert_eq!(shell.env, vec![("PROMPT_COMMAND".to_owned(), BASH_PROMPT_COMMAND.to_owned())]);
         let claude = preset_command("claude", false, &env, None, None);
         assert_eq!(claude.args, ["-l", "-i", "-c", "claude; exec /bin/bash -l"]);
+    }
+
+    #[test]
+    fn agents_get_the_orrery_mcp_flags_like_the_electron_presets() {
+        let env = |k: &str| (k == "SHELL").then(|| "/bin/zsh".to_owned());
+        let on = AgentOpts { mcp: true, name: Some("Fix 2".into()), ..Default::default() };
+        let claude = preset_command_with("claude", false, &env, None, None, &on);
+        assert_eq!(claude.args[3], "claude -n 'Fix 2' --mcp-config \"$ORRERY_MCP_CONFIG\"; exec /bin/zsh -l");
+        let codex = preset_command_with("codex", false, &env, None, None, &on);
+        assert_eq!(codex.args[3], "codex -c \"mcp_servers.orrery.url=$ORRERY_API/mcp\" -c mcp_servers.orrery.bearer_token_env_var=ORRERY_TOKEN; exec /bin/zsh -l");
+        let win = preset_command_with("claude", true, &|_| None, None, None, &AgentOpts { mcp: true, name: Some("x'; calc".into()), ..Default::default() });
+        assert_eq!(win.args[3], encode_powershell(&format!("{PS_CWD_HOOK}; claude --mcp-config $env:ORRERY_MCP_CONFIG")));
+        assert!(!is_pane_name(" a") && !is_pane_name("-a") && is_pane_name("Đức 1"));
+    }
+
+    #[test]
+    fn shell_panes_with_shims_get_the_path_hook_and_the_zsh_wrappers() {
+        let on = AgentOpts { shim: true, zsh_init: Some("/data/shell-init-tauri".into()), ..Default::default() };
+        let zsh = |k: &str| match k {
+            "SHELL" => Some("/bin/zsh".to_owned()),
+            "ZDOTDIR" => Some("/home/u/zdot".to_owned()),
+            _ => None,
+        };
+        let spec = preset_command_with("shell", false, &zsh, None, None, &on);
+        assert_eq!(spec.env, vec![("ZDOTDIR".to_owned(), "/data/shell-init-tauri".to_owned()), ("AGENT_MONITOR_ZDOTDIR".to_owned(), "/home/u/zdot".to_owned())]);
+        let off = preset_command_with("shell", false, &zsh, None, None, &AgentOpts { zsh_init: on.zsh_init.clone(), ..Default::default() });
+        assert!(off.env.is_empty());
+        let quoted = preset_command_with("shell", false, &zsh, None, None, &AgentOpts { shim: true, zsh_init: Some("/d'x".into()), ..Default::default() });
+        assert!(quoted.env.is_empty());
+        let agent = preset_command_with("claude", false, &zsh, None, None, &on);
+        assert!(agent.env.is_empty());
+        let win = preset_command_with("shell", true, &|_| None, None, None, &on);
+        assert_eq!(win.args[3], encode_powershell(&format!("{PS_CWD_HOOK}\n{}", crate::shim::PS_SHIM_FIRST)));
     }
 
     #[test]

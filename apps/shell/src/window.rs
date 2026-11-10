@@ -46,6 +46,7 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
         .initialization_script(shell.init_script.as_str())
         .background_color(background(shell))
         .zoom_hotkeys_enabled(false)
+        .devtools(crate::config::devtools_allowed())
         .on_navigation(move |u| {
             let shell = nav.state::<Shell>();
             if shell.is_app_url(u) || u.scheme() == "about" {
@@ -77,6 +78,9 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
                 guest::close_owned(webview.app_handle(), webview.label());
             }
             if payload.event() == PageLoadEvent::Finished {
+                if webview.label() == MAIN {
+                    crate::webstorage::loaded(&webview, &webview.app_handle().state::<Shell>().data_dir);
+                }
                 let level = webview.app_handle().state::<Shell>().look.lock().map(|l| l.state.zoom).unwrap_or(0.0);
                 let _ = webview.set_zoom(zoom_factor(level));
             }

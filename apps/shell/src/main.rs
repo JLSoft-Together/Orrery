@@ -3,23 +3,34 @@
 mod appearance;
 mod capture;
 mod ccm;
+mod collector;
 mod config;
 mod desk;
 mod desk_text;
 mod guest;
 mod guest_ipc;
 mod hosts;
+mod legacy;
 mod links;
+mod mcp;
 mod native;
+mod notice;
 mod presets;
 mod pty;
+mod resources;
 mod serve;
 mod shot;
 mod state;
 mod stdio;
 mod strings;
 mod tray;
+mod update_host;
+mod vault;
+mod webstorage;
 mod window;
+mod worktree;
+mod wtcopy;
+mod shim;
 
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
@@ -76,7 +87,7 @@ fn main() {
     let appearance = appearance::Store::open(cfg.data_dir.join("shell-appearance.json"));
     let t = strings::strings(appearance.locale());
     let _ = std::fs::create_dir_all(&cfg.data_dir);
-    let desk = desk::boot(&desk::env_for(&cfg.data_dir, env!("CARGO_PKG_VERSION")));
+    let desk = desk::boot(&desk::env_for(&cfg.data_dir, config::APP_VERSION));
     let serve = match Serve::start(cfg.serve.clone()) {
         Ok(s) => s,
         Err(ServeError::PortInUse) => fail(t.port_in_use.replace("{port}", &cfg.port.to_string())),
@@ -89,9 +100,10 @@ fn main() {
         origin: origin.clone(),
         data_dir: cfg.data_dir.clone(),
         webview_dir: cfg.webview_dir.clone(),
-        init_script: window::init_script(&origin),
-        pty: pty::PtyHost::new(cfg.core_bin.clone(), origin.clone(), env!("CARGO_PKG_VERSION").into(), cfg.data_dir.join("pty.log")),
+        init_script: webstorage::with_import(&cfg.data_dir, &origin, window::init_script(&origin)),
+        pty: pty::PtyHost::new(cfg.core_bin.clone(), origin.clone(), config::APP_VERSION.into(), cfg.data_dir.join("pty.log")),
         serve: Mutex::new(Some(serve)),
+        serve_cfg: cfg.serve.clone(),
         look: Mutex::new(appearance),
         replies: Mutex::new(HashMap::new()),
         link_times: Mutex::new(Vec::new()),
@@ -115,6 +127,7 @@ fn main() {
         .setup(move |app| {
             let handle = app.handle().clone();
             capability(&handle, &origin)?;
+            desk::wire(&handle);
             window::create_main(&handle, hidden).map_err(std::io::Error::other)?;
             tray::create(&handle)?;
             let links_app = handle.clone();

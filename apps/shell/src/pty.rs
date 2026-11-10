@@ -8,7 +8,10 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 
 use crate::config::{random_hex, uuid};
-use crate::presets::{child_env, is_session_id, preset_command, resolve_cwd, PRESETS};
+use crate::mcp::McpLink;
+use crate::presets::{child_env, is_session_id, preset_command_with, resolve_cwd, AgentOpts, PRESETS};
+use crate::shim::{apply_shim_env, init_dir_for, shim_dir_for, write_shims, write_zsh_init};
+use crate::worktree::{self, PaneDir};
 
 pub const PROTOCOL_PREFIX: &str = "ccm.pty.";
 const START_TIMEOUT: Duration = Duration::from_secs(10);
@@ -31,6 +34,13 @@ struct Host {
 #[derive(Default)]
 struct Panes {
     live: HashMap<String, bool>,
+    dirs: HashMap<String, PaneDir>,
+}
+
+impl Panes {
+    fn dirs(&self) -> Vec<PaneDir> {
+        self.dirs.values().cloned().collect()
+    }
 }
 
 pub struct PtyHost {
@@ -58,7 +68,7 @@ fn home() -> PathBuf {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map_or_else(std::env::temp_dir, PathBuf::from)
 }
 
-pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path) -> (Value, Option<String>) {
+pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path, mcp: Option<&McpLink>) -> (Value, Option<String>) {
     let fail = |m: &str| (json!({ "t": "resolved", "rid": rid, "ok": false, "message": m }), None);
     let preset = msg.get("preset").and_then(Value::as_str).unwrap_or("");
     if !PRESETS.contains(&preset) {
@@ -72,51 +82,104 @@ pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path) -> (Value, Opti
     if msg.get("resume").is_some() && (preset == "shell" || !resume.is_some_and(is_session_id)) {
         return fail("preset");
     }
-    let session = (preset == "claude" && resume.is_none() && msg.get("open").is_none()).then(|| msg.get("session").and_then(Value::as_str)).flatten().filter(|s| is_session_id(s));
+    let minted = (preset == "claude" && resume.is_none() && msg.get("open").is_none()).then(|| msg.get("session").and_then(Value::as_str)).flatten().filter(|s| is_session_id(s));
+    let open = msg.get("open").and_then(Value::as_str);
+    let ticket = open.and_then(|o| mcp.and_then(|m| m.reg.take_ticket(o, preset)));
+    let (ticket_session, ticket_name) = ticket.clone().unwrap_or((None, None));
+    let session = ticket_session.as_deref().or(minted);
+    let config = mcp.and_then(|m| m.config.as_deref());
+    let want_shim = preset == "shell" && msg.get("shim").and_then(Value::as_bool) == Some(true);
+    let shim_dir = config.filter(|_| want_shim).and_then(shim_dir_for).filter(|d| write_shims(d, cfg!(windows)));
+    let zsh_init = config.filter(|_| shim_dir.is_some() && !cfg!(windows)).and_then(init_dir_for).filter(|d| write_zsh_init(d));
+    let opts = AgentOpts { mcp: config.is_some(), name: ticket_name, shim: shim_dir.is_some(), zsh_init: zsh_init.map(|d| d.to_string_lossy().into_owned()) };
     let get = |k: &str| std::env::var(k).ok();
-    let spec = preset_command(preset, cfg!(windows), &get, resume, session);
+    let spec = preset_command_with(preset, cfg!(windows), &get, resume, session, &opts);
     let mut env: serde_json::Map<String, Value> = serde_json::Map::new();
     for (k, v) in child_env(std::env::vars()).into_iter().chain(spec.env) {
         env.insert(k, Value::String(v));
     }
+    if let Some(dir) = &shim_dir {
+        apply_shim_env(&mut env, cfg!(windows), &dir.to_string_lossy());
+    }
     let id = uuid();
+    let agent = resume.or(session);
+    if let Some(m) = mcp {
+        let cwd_text = cwd.to_string_lossy().into_owned();
+        let token = m.reg.add(&id, preset, &cwd_text, agent, open.filter(|_| ticket.is_some()));
+        env.insert("ORRERY_API".into(), json!(format!("http://127.0.0.1:{}", m.port)));
+        env.insert("ORRERY_TOKEN".into(), json!(token));
+        if let Some(file) = &m.config {
+            env.insert("ORRERY_MCP_CONFIG".into(), json!(file.to_string_lossy()));
+        }
+    }
     let mut reply = json!({ "t": "resolved", "rid": rid, "ok": true, "id": id, "file": spec.file, "args": spec.args, "env": env, "cwd": cwd.to_string_lossy() });
-    if let Some(agent) = resume.or(session) {
+    if let Some(agent) = agent {
         reply["agentSession"] = json!(agent);
     }
     (reply, Some(id))
 }
 
-fn answer(msg: &Value, panes: &mut Panes, home: &Path) -> Option<Value> {
+fn answer(msg: &Value, panes: &mut Panes, home: &Path, mcp: Option<&McpLink>) -> Option<Value> {
+    let pane_id = msg.get("id").and_then(Value::as_str);
     let t = msg.get("t").and_then(Value::as_str)?;
     let rid = msg.get("rid").and_then(Value::as_str).unwrap_or("");
     match t {
         "resolve" => {
             let live = panes.live.values().filter(|alive| **alive).count();
-            let (reply, id) = resolve(rid, msg.get("msg").unwrap_or(&Value::Null), live, home);
+            let (reply, id) = resolve(rid, msg.get("msg").unwrap_or(&Value::Null), live, home, mcp);
             if let Some(id) = id {
+                let cwd = reply.get("cwd").and_then(Value::as_str).unwrap_or("").to_owned();
+                panes.dirs.insert(id.clone(), PaneDir { cwd, live_cwd: None, exited: false });
                 panes.live.insert(id, true);
             }
             Some(reply)
         }
+        "spawned" | "pid" => {
+            let pid = msg.get("pid").and_then(Value::as_u64).and_then(|p| u32::try_from(p).ok()).unwrap_or(0);
+            if let (Some(id), Some(m)) = (pane_id, mcp) {
+                if t == "spawned" {
+                    m.reg.spawned(id, pid);
+                } else {
+                    m.reg.set_pid(id, pid);
+                }
+            }
+            None
+        }
         "exited" => {
-            if let Some(id) = msg.get("id").and_then(Value::as_str) {
+            if let Some(id) = pane_id {
                 panes.live.insert(id.to_owned(), false);
+                if let Some(d) = panes.dirs.get_mut(id) {
+                    d.exited = true;
+                }
+                if let Some(m) = mcp {
+                    m.reg.exited(id);
+                }
             }
             None
         }
         "removed" => {
-            if let Some(id) = msg.get("id").and_then(Value::as_str) {
+            if let Some(id) = pane_id {
                 panes.live.remove(id);
+                panes.dirs.remove(id);
+                if let Some(m) = mcp {
+                    m.reg.removed(id);
+                }
             }
             None
         }
         "cwd" => {
             let raw = msg.get("cwd").and_then(Value::as_str).unwrap_or("");
             let ok = (!raw.is_empty()).then(|| resolve_cwd(Some(raw), home)).flatten().filter(|p| p.parent().is_some());
+            if let (Some(id), Some(p)) = (pane_id, ok.as_ref()) {
+                if let Some(d) = panes.dirs.get_mut(id) {
+                    d.live_cwd = Some(p.to_string_lossy().into_owned());
+                }
+                if let Some(m) = mcp {
+                    m.reg.set_live_cwd(id, &p.to_string_lossy());
+                }
+            }
             Some(json!({ "t": "cwd-ok", "rid": rid, "cwd": ok.map(|p| p.to_string_lossy().into_owned()) }))
         }
-        "wt" => Some(json!({ "t": "wt-reply", "rid": rid, "reply": { "t": "wt.error", "code": "git" } })),
         _ => None,
     }
 }
@@ -179,7 +242,15 @@ impl PtyHost {
                     }
                     continue;
                 }
-                if let Some(reply) = answer(&msg, &mut panes, &home) {
+                if msg.get("t").and_then(Value::as_str) == Some("wt") {
+                    let (rid, req, dirs, out, home) = (msg.get("rid").and_then(Value::as_str).unwrap_or("").to_owned(), msg.get("msg").cloned().unwrap_or(Value::Null), panes.dirs(), writer.clone(), home.clone());
+                    let _ = std::thread::Builder::new().name("pty-worktree".into()).spawn(move || {
+                        let reply = worktree::answer(&req, &dirs, &home);
+                        send(&out, &json!({ "t": "wt-reply", "rid": rid, "reply": reply }));
+                    });
+                    continue;
+                }
+                if let Some(reply) = answer(&msg, &mut panes, &home, crate::mcp::link()) {
                     send(&writer, &reply);
                 }
             }
@@ -219,7 +290,7 @@ mod tests {
     fn a_shell_spawn_is_resolved_in_home_and_counted() {
         let home = std::env::temp_dir();
         let mut panes = Panes::default();
-        let reply = answer(&json!({ "t": "resolve", "rid": "r1", "msg": { "preset": "shell", "cols": 80, "rows": 24 } }), &mut panes, &home).unwrap();
+        let reply = answer(&json!({ "t": "resolve", "rid": "r1", "msg": { "preset": "shell", "cols": 80, "rows": 24 } }), &mut panes, &home, None).unwrap();
         assert_eq!(reply["ok"], true);
         assert_eq!(reply["rid"], "r1");
         assert!(reply["file"].as_str().is_some_and(|f| !f.is_empty()));
@@ -227,35 +298,38 @@ mod tests {
         assert!(reply["env"].get("CCM_APP_KEY").is_none());
         let id = reply["id"].as_str().unwrap().to_owned();
         assert_eq!(panes.live.get(&id), Some(&true));
-        assert!(answer(&json!({ "t": "exited", "id": id, "code": 0 }), &mut panes, &home).is_none());
+        assert_eq!(panes.dirs().len(), 1);
+        assert!(answer(&json!({ "t": "exited", "id": id, "code": 0 }), &mut panes, &home, None).is_none());
         assert_eq!(panes.live.get(&id), Some(&false));
-        answer(&json!({ "t": "removed", "id": id }), &mut panes, &home);
-        assert!(panes.live.is_empty());
+        assert!(panes.dirs()[0].exited);
+        answer(&json!({ "t": "removed", "id": id }), &mut panes, &home, None);
+        assert!(panes.live.is_empty() && panes.dirs().is_empty());
     }
 
     #[test]
     fn bad_spawns_are_refused_with_the_core_error_names() {
         let home = std::env::temp_dir();
-        let msg = |m: Value| resolve("r", &m, 0, &home).0["message"].clone();
+        let msg = |m: Value| resolve("r", &m, 0, &home, None).0["message"].clone();
         assert_eq!(msg(json!({ "preset": "deepseek" })), "preset");
         assert_eq!(msg(json!({ "preset": "rm" })), "preset");
         assert_eq!(msg(json!({ "preset": "shell", "cwd": "relative/dir" })), "cwd");
         assert_eq!(msg(json!({ "preset": "shell", "resume": "0f8fad5b-d9cb-469f-a165-70867728950e" })), "preset");
         assert_eq!(msg(json!({ "preset": "claude", "resume": "nope" })), "preset");
-        assert_eq!(resolve("r", &json!({ "preset": "shell" }), MAX_LIVE, &home).0["message"], "limit");
-        let resumed = resolve("r", &json!({ "preset": "claude", "resume": "0f8fad5b-d9cb-469f-a165-70867728950e" }), 0, &home).0;
+        assert_eq!(resolve("r", &json!({ "preset": "shell" }), MAX_LIVE, &home, None).0["message"], "limit");
+        let resumed = resolve("r", &json!({ "preset": "claude", "resume": "0f8fad5b-d9cb-469f-a165-70867728950e" }), 0, &home, None).0;
         assert_eq!(resumed["agentSession"], "0f8fad5b-d9cb-469f-a165-70867728950e");
     }
 
     #[test]
-    fn cwd_reports_are_validated_and_worktrees_are_not_ported_yet() {
+    fn cwd_reports_are_validated_and_tracked_per_pane() {
         let home = std::env::temp_dir();
         let mut panes = Panes::default();
-        let ok = answer(&json!({ "t": "cwd", "rid": "c", "id": "x", "cwd": home.to_string_lossy() }), &mut panes, &home).unwrap();
+        panes.dirs.insert("x".into(), PaneDir { cwd: "/old".into(), live_cwd: None, exited: false });
+        let ok = answer(&json!({ "t": "cwd", "rid": "c", "id": "x", "cwd": home.to_string_lossy() }), &mut panes, &home, None).unwrap();
         assert!(ok["cwd"].is_string());
-        let bad = answer(&json!({ "t": "cwd", "rid": "c", "id": "x", "cwd": "nope" }), &mut panes, &home).unwrap();
+        assert!(panes.dirs["x"].live_cwd.is_some());
+        let bad = answer(&json!({ "t": "cwd", "rid": "c", "id": "x", "cwd": "nope" }), &mut panes, &home, None).unwrap();
         assert!(bad["cwd"].is_null());
-        let wt = answer(&json!({ "t": "wt", "rid": "w", "msg": { "t": "wt.list" } }), &mut panes, &home).unwrap();
-        assert_eq!(wt["reply"]["t"], "wt.error");
+        assert!(answer(&json!({ "t": "wt", "rid": "w", "msg": { "t": "wt.list" } }), &mut panes, &home, None).is_none());
     }
 }

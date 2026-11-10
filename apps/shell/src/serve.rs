@@ -80,6 +80,12 @@ impl Serve {
         Err(ServeError::Timeout)
     }
 
+    pub fn post(&mut self, msg: &serde_json::Value) {
+        if self.thread.is_some() {
+            self.control.send(&msg.to_string());
+        }
+    }
+
     pub fn stop(&mut self) {
         let Some(thread) = self.thread.take() else { return };
         self.control.send("{\"type\":\"shutdown\"}");

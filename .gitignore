@@ -71,3 +71,5 @@ spikes/tauri-shell/target/
 spikes/tauri-shell/gen/
 apps/shell/target/
 apps/shell/gen/
+apps/shell/binaries/
+apps/shell/release/

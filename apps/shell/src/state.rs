@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
+use core_serve::config::ServeConfig;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -23,6 +24,7 @@ pub struct Shell {
     pub init_script: String,
     pub pty: PtyHost,
     pub serve: Mutex<Option<Serve>>,
+    pub serve_cfg: ServeConfig,
     pub look: Mutex<appearance::Store>,
     pub replies: Mutex<HashMap<String, mpsc::Sender<Value>>>,
     pub link_times: Mutex<Vec<Instant>>,

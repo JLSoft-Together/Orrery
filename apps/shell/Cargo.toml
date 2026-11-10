@@ -30,9 +30,16 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 trash = "5"
 core-serve = { path = "../core/crates/core-serve" }
 core-desk = { path = "../core/crates/core-desk" }
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+aes-gcm = "0.10"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+pbkdf2 = "0.12"
+sha1 = "0.10"
+rusty-leveldb = "3"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography"] }
 webview2-com = "=0.39.1"
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
 

@@ -2,6 +2,11 @@ name: desktop
 
 on:
   workflow_dispatch:
+    inputs:
+      electron:
+        description: Build the old Electron installers instead of the Tauri ones
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -43,10 +48,14 @@ jobs:
         include:
           - os: macos-latest
             script: dist:mac
-            files: apps/desktop/release/*.dmg
+            electron: dist:electron:mac
+            files: apps/shell/release/*.dmg
+            electron_files: apps/desktop/release/*.dmg
           - os: windows-latest
             script: dist:win
-            files: apps/desktop/release/*.exe
+            electron: dist:electron:win
+            files: apps/shell/release/*.exe
+            electron_files: apps/desktop/release/*.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -63,14 +72,16 @@ jobs:
           targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: apps/core
+          workspaces: |
+            apps/core
+            apps/shell
       - run: npm ci
       # One dmg per arch, but npm only installs the host's node-pty prebuilt: fetch the other one too.
-      - if: runner.os == 'macOS'
+      - if: runner.os == 'macOS' && inputs.electron
         run: npm install --no-save --force @lydell/node-pty-darwin-x64@1.2.0-beta.15 @lydell/node-pty-darwin-arm64@1.2.0-beta.15
-      - run: npm run ${{ matrix.script }}
+      - run: npm run ${{ inputs.electron && matrix.electron || matrix.script }}
       - uses: actions/upload-artifact@v4
         with:
           name: agent-monitor-${{ runner.os }}
-          path: ${{ matrix.files }}
+          path: ${{ inputs.electron && matrix.electron_files || matrix.files }}
           if-no-files-found: error

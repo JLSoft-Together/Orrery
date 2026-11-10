@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use core_serve::config::{parse_port, ServeConfig};
 
 pub const DEV_PORT: u16 = 4419;
+pub const APP_VERSION: &str = env!("ORRERY_VERSION");
 pub const LINK_SCHEME: &str = "agent-monitor";
 
 pub struct ShellConfig {
@@ -16,15 +17,17 @@ pub struct ShellConfig {
     pub hidden: bool,
 }
 
-pub fn random_hex(bytes: usize) -> String {
+pub fn try_random_hex(bytes: usize) -> Result<String, String> {
     let mut buf = vec![0u8; bytes];
-    if getrandom::fill(&mut buf).is_err() {
-        let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
-        for (i, b) in buf.iter_mut().enumerate() {
-            *b = (seed >> ((i % 16) * 8)) as u8 ^ (i as u8).wrapping_mul(151);
-        }
-    }
-    buf.iter().map(|b| format!("{b:02x}")).collect()
+    getrandom::fill(&mut buf).map_err(|e| format!("system random source failed: {e}"))?;
+    Ok(buf.iter().map(|b| format!("{b:02x}")).collect())
+}
+
+pub fn random_hex(bytes: usize) -> String {
+    try_random_hex(bytes).unwrap_or_else(|e| {
+        eprintln!("orrery: {e}");
+        std::process::exit(1)
+    })
 }
 
 pub fn uuid() -> String {
@@ -32,6 +35,23 @@ pub fn uuid() -> String {
     let v = format!("4{}", &h[13..16]);
     let variant = ["8", "9", "a", "b"][usize::from(h.as_bytes()[16] % 4)];
     format!("{}-{}-{}-{}{}-{}", &h[0..8], &h[8..12], v, variant, &h[17..20], &h[20..32])
+}
+
+pub fn devtools_gate(debug: bool, get: &dyn Fn(&str) -> Option<String>) -> bool {
+    if debug {
+        return true;
+    }
+    let set = |k: &str| get(k).is_some_and(|v| !v.is_empty());
+    get("CCM_E2E_DEVTOOLS").is_some_and(|v| v == "1")
+        && get("CCM_PORT").and_then(|v| v.parse::<u16>().ok()).is_some_and(|p| p != 0)
+        && set("CCM_SHELL_WEBVIEW_DIR")
+        && set("CCM_DATA_DIR")
+        && set("CCM_KEYRING_SERVICE")
+        && get("CCM_KEYRING_SERVICE").is_some_and(|v| v != "Orrery")
+}
+
+pub fn devtools_allowed() -> bool {
+    devtools_gate(cfg!(debug_assertions), &|k| std::env::var(k).ok())
 }
 
 fn free_port() -> u16 {
@@ -68,7 +88,7 @@ pub fn pick_web_dist(env: Option<String>, exe: Option<&Path>, repo: &Path) -> Pa
     if let Some(p) = env.filter(|p| !p.trim().is_empty()) {
         return PathBuf::from(p);
     }
-    if let Some(web) = exe.map(|d| d.join("web")).filter(|p| p.join("index.html").is_file()) {
+    if let Some(web) = crate::resources::find_resource(exe, "web/index.html").and_then(|p| p.parent().map(Path::to_path_buf)) {
         return web;
     }
     repo.join("apps").join("web").join("dist")
@@ -83,7 +103,7 @@ impl ShellConfig {
             raw => parse_port(raw.as_deref()).map_err(|e| e.to_string())?,
         };
         let port = if port == 0 { free_port() } else { port };
-        let key = random_hex(32);
+        let key = try_random_hex(32)?;
         let exe = exe_dir();
         let repo = repo_root();
         let mut over: HashMap<&str, String> = HashMap::new();
@@ -102,6 +122,7 @@ impl ShellConfig {
         };
         let serve = ServeConfig::from_vars(&get, false).map_err(|e| e.to_string())?;
         let data_dir = serve.monitor.data_dir.clone();
+        crate::resources::apply_layout_env(&data_dir, exe.as_deref(), &repo);
         let webview_dir = var("CCM_SHELL_WEBVIEW_DIR").map_or_else(|| data_dir.join("shell-webview"), PathBuf::from);
         Ok(ShellConfig {
             serve,
@@ -124,6 +145,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_app_version_is_the_desktop_package_version() {
+        let pkg: serde_json::Value = serde_json::from_str(include_str!("../../desktop/package.json")).unwrap();
+        assert_eq!(pkg["version"].as_str(), Some(APP_VERSION));
+    }
+
+    #[test]
     fn uuid_has_the_v4_shape() {
         let id = uuid();
         assert_eq!(id.len(), 36);
@@ -132,6 +159,26 @@ mod tests {
         assert!(parts[2].starts_with('4'));
         assert!(matches!(&parts[3][..1], "8" | "9" | "a" | "b"));
         assert_ne!(uuid(), id);
+    }
+
+    #[test]
+    fn release_devtools_need_the_whole_e2e_environment() {
+        let full = |k: &str| match k {
+            "CCM_E2E_DEVTOOLS" => Some("1".to_owned()),
+            "CCM_PORT" => Some("4399".to_owned()),
+            "CCM_SHELL_WEBVIEW_DIR" => Some("/tmp/ud".to_owned()),
+            "CCM_DATA_DIR" => Some("/tmp/data".to_owned()),
+            "CCM_KEYRING_SERVICE" => Some("Orrery E2E".to_owned()),
+            _ => None,
+        };
+        assert!(devtools_gate(false, &full));
+        assert!(devtools_gate(true, &|_| None));
+        assert!(!devtools_gate(false, &|_| None));
+        for missing in ["CCM_E2E_DEVTOOLS", "CCM_PORT", "CCM_SHELL_WEBVIEW_DIR", "CCM_DATA_DIR", "CCM_KEYRING_SERVICE"] {
+            assert!(!devtools_gate(false, &|k| if k == missing { None } else { full(k) }), "{missing}");
+        }
+        assert!(!devtools_gate(false, &|k| if k == "CCM_KEYRING_SERVICE" { Some("Orrery".into()) } else { full(k) }));
+        assert!(!devtools_gate(false, &|k| if k == "CCM_E2E_DEVTOOLS" { Some("0".into()) } else { full(k) }));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use core_http::StoreHandle;
@@ -13,6 +13,18 @@ use core_store::time::now_ms;
 use serde_json::{json, Value};
 
 use crate::alerts::{lock, Emit, SharedAlerts};
+
+static LATEST: OnceLock<Mutex<Option<Value>>> = OnceLock::new();
+
+pub fn latest_resources() -> Option<Value> {
+    LATEST.get().and_then(|m| m.lock().ok()).and_then(|r| r.clone())
+}
+
+fn keep_latest(report: &Value) {
+    if let Ok(mut r) = LATEST.get_or_init(|| Mutex::new(None)).lock() {
+        *r = Some(report.clone());
+    }
+}
 
 #[derive(Default, Clone)]
 pub struct SampleExtras {
@@ -64,6 +76,7 @@ impl Sampling {
                 a.toaster.observe_idle(&report);
                 a.pump();
             });
+            keep_latest(&report);
             emit(&json!({ "type": "resources", "report": report }));
         });
         Arc::new(Sampling { sampler, runner: Mutex::new(Some(runner)), windows: AtomicUsize::new(0), extras })
@@ -123,5 +136,12 @@ mod tests {
         for bad in [json!({"type": "device.used", "serial": "a b", "at": 1}), json!({"type": "device.used", "serial": "x", "at": 0}), json!({"type": "device.used", "serial": "x", "at": 1, "avd": "a:b"}), json!({"type": "x", "serial": "x", "at": 1})] {
             assert!(device_used(&bad).is_none(), "{bad}");
         }
+    }
+
+    #[test]
+    fn the_latest_report_is_kept_for_in_process_readers() {
+        keep_latest(&json!({"servers": [], "marker": 41}));
+        keep_latest(&json!({"servers": [], "marker": 42}));
+        assert_eq!(latest_resources().unwrap()["marker"], 42);
     }
 }

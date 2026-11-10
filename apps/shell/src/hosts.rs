@@ -6,10 +6,12 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager, Webview};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
+use tauri_plugin_notification::NotificationExt;
 
 use crate::desk_text::desk_text;
 use crate::state::{lock, Shell, MAIN};
+use crate::vault::{UnsealError, Vault};
 use crate::window::show_main;
 
 pub const LOCAL_SNAPSHOT_JS: &str =
@@ -43,7 +45,7 @@ fn page(app: &AppHandle, caller: Option<&Webview>) -> Option<Webview> {
     caller.cloned().or_else(|| app.get_webview(MAIN))
 }
 
-fn read_local(app: &AppHandle, caller: Option<&Webview>) -> Value {
+pub fn read_local(app: &AppHandle, caller: Option<&Webview>) -> Value {
     page(app, caller).and_then(|w| eval_value(&w, LOCAL_SNAPSHOT_JS, READ_LOCAL)).filter(Value::is_object).unwrap_or_else(|| json!({}))
 }
 
@@ -146,9 +148,73 @@ fn build_confirm(app: &AppHandle, p: &Value) -> i64 {
     }
 }
 
+fn mcp_confirm_kill(app: &AppHandle, p: &Value) -> bool {
+    let t = desk_text(&locale(app));
+    let items = field(p, "items").as_array().cloned().unwrap_or_default();
+    let pane = field(p, "pane").as_str().unwrap_or("");
+    confirm(app, &t.free_port_title(pane, num(field(p, "port"))), &t.free_port_detail(&t.kill_lines(&items)), t.free_port_confirm(), t.cancel)
+}
+
+fn mcp_confirm(app: &AppHandle, p: &Value) -> i64 {
+    let t = desk_text(&locale(app));
+    let pane = field(p, "pane").as_str().unwrap_or("");
+    let owner = field(p, "owner").as_str().unwrap_or("");
+    if confirm(app, &t.tg_receive_title(pane), &t.tg_receive_detail(owner), t.tg_receive_confirm(), t.cancel) {
+        0
+    } else {
+        1
+    }
+}
+
 fn trash(p: &Value) -> bool {
     let Some(file) = field(p, "path").as_str().map(Path::new).filter(|f| f.is_absolute()) else { return false };
     trash::delete(file).is_ok()
+}
+
+fn agent_confirm(app: &AppHandle, p: &Value) -> i64 {
+    let Some((message, detail, buttons)) = desk_text(&locale(app)).agent_data_spec(p) else { return 1 };
+    let last = buttons.len() as i64 - 1;
+    if buttons.len() == 2 {
+        return if confirm(app, &message, &detail, &buttons[0], &buttons[1]) { 0 } else { 1 };
+    }
+    if let Some(answer) = e2e_answer(app, &message) {
+        return if answer { 0 } else { last };
+    }
+    if app.get_webview_window(MAIN).is_some_and(|w| !w.is_visible().unwrap_or(true)) {
+        show_main(app);
+    }
+    let mut d = app
+        .dialog()
+        .message(format!("{message}\n\n{detail}"))
+        .title("Orrery")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(buttons[0].clone(), buttons[1].clone(), buttons[2].clone()));
+    if let Some(w) = app.get_webview_window(MAIN) {
+        d = d.parent(&w);
+    }
+    match d.blocking_show_with_result() {
+        MessageDialogResult::Yes => 0,
+        MessageDialogResult::No => 1,
+        MessageDialogResult::Custom(s) if s == buttons[0] => 0,
+        MessageDialogResult::Custom(s) if s == buttons[1] => 1,
+        _ => last,
+    }
+}
+
+fn agent_pick(app: &AppHandle, p: &Value) -> Value {
+    let purpose = match field(p, "purpose").as_str() {
+        Some(k @ ("target" | "backup")) => k,
+        _ => return Value::Null,
+    };
+    let forced = std::env::var(if purpose == "target" { "CCM_E2E_AGENT_TARGET" } else { "CCM_E2E_AGENT_BACKUP" }).ok().filter(|v| !v.is_empty());
+    if let Some(dir) = forced {
+        return json!(dir);
+    }
+    let mut d = app.dialog().file().set_title(desk_text(&locale(app)).agent_pick_title(purpose));
+    if let Some(w) = app.get_webview_window(MAIN) {
+        d = d.set_parent(&w);
+    }
+    as_path(d.blocking_pick_folder())
 }
 
 fn relaunch(app: &AppHandle) {
@@ -158,8 +224,28 @@ fn relaunch(app: &AppHandle) {
     app.restart();
 }
 
-pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) -> Result<Value, String> {
+fn keychain(app: &AppHandle, method: &str, p: &Value) -> Result<Value, String> {
+    let vault = app.try_state::<Vault>().ok_or("no keychain")?;
+    let text = field(p, if method == "keychain.seal" { "plain" } else { "sealed" }).as_str().unwrap_or_default();
     match method {
+        "keychain.available" => Ok(json!(vault.available())),
+        "keychain.seal" => vault.seal(text).map(|s| json!(s)).ok_or_else(|| "seal failed".into()),
+        _ => vault.unseal(text).map(|s| json!(s)).map_err(|e| {
+            if e == UnsealError::Legacy && vault.first_warning() {
+                let t = app.state::<Shell>().t();
+                let _ = app.notification().builder().title(t.app_name).body(t.tokens_lost).show();
+            }
+            "unseal failed".into()
+        }),
+    }
+}
+
+pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) -> Result<Value, String> {
+    if let Some(v) = crate::update_host::call(app, method, p) {
+        return Ok(v);
+    }
+    match method {
+        "keychain.available" | "keychain.seal" | "keychain.unseal" => keychain(app, method, p),
         "backup.readLocal" => Ok(read_local(app, caller)),
         "backup.github" | "buildClean.running" | "buildClean.daemons" => Ok(json!([])),
         "backup.saveDialog" => Ok(save_dialog(app, p)),
@@ -175,6 +261,14 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
         }
         "buildClean.trash" => Ok(json!(trash(p))),
         "buildClean.confirm" => Ok(json!(build_confirm(app, p))),
+        "mcpDesk.confirmKill" => Ok(json!(mcp_confirm_kill(app, p))),
+        "mcpDesk.confirm" => Ok(json!(mcp_confirm(app, p))),
+        "agentData.confirm" => Ok(json!(agent_confirm(app, p))),
+        "agentData.pickFolder" => Ok(agent_pick(app, p)),
+        "agentData.stopCollector" => Ok(crate::collector::stop(app)),
+        "agentData.startCollector" => Ok(crate::collector::start(app)),
+        "telegram.notice" => Ok(json!(crate::notice::telegram_notice(app, &locale(app), p))),
+        "resources.report" => Ok(core_serve::sampler::latest_resources().unwrap_or(Value::Null)),
         _ => Err(format!("no host for {method}")),
     }
 }

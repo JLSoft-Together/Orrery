@@ -1,4 +1,5 @@
 use crate::extract::{extract_signals, MAX_ENUM};
+use crate::held::keep_default;
 use crate::jsonline::deep_signals;
 use crate::jsstr::js_slice;
 use crate::omap::OMap;
@@ -109,10 +110,13 @@ pub struct Tracker {
     sent_main: Map<String, Value>,
     sent_subs: HashMap<String, Map<String, Value>>,
     pub reread_finished: bool,
+    pub hold: bool,
 }
 
-pub fn tailer(file: PathBuf) -> JsonlTailer {
-    JsonlTailer::new(file, CHUNK_BYTES, TailOptions { from_end: None, max_line: Some(MAX_LINE) })
+pub fn tailer(file: PathBuf, keep: bool) -> JsonlTailer {
+    let mut t = JsonlTailer::new(file, CHUNK_BYTES, TailOptions { from_end: None, max_line: Some(MAX_LINE) });
+    t.keep = keep;
+    t
 }
 
 pub fn signals_of(item: Item) -> Vec<Signal> {
@@ -156,6 +160,26 @@ impl Tracker {
             sent_main: Map::new(),
             sent_subs: HashMap::new(),
             reread_finished: false,
+            hold: keep_default(),
+        }
+    }
+
+    pub fn held_files(&self) -> usize {
+        usize::from(self.main_tailer.as_ref().is_some_and(JsonlTailer::holds)) + self.subs.iter().filter(|(_, s)| s.tailer.holds()).count()
+    }
+
+    pub fn release(&mut self) {
+        self.hold = false;
+        if let Some(t) = self.main_tailer.as_mut() {
+            t.keep = false;
+            t.release();
+        }
+        let slots: Vec<usize> = self.subs.iter_slots().map(|(i, _, _)| i).collect();
+        for i in slots {
+            if let Some(s) = self.subs.at_mut(i) {
+                s.tailer.keep = false;
+                s.tailer.release();
+            }
         }
     }
 
@@ -188,7 +212,7 @@ impl Tracker {
         let mut read_main = a.plan.all || a.plan.unresolved || a.plan.files.contains(&format!("{sid}.jsonl"));
         if self.transcript.is_none() {
             let Some(found) = subs::find_transcript(&self.projects_dir, &sid, self.cwd.as_deref()) else { return false };
-            self.main_tailer = Some(tailer(found.clone()));
+            self.main_tailer = Some(tailer(found.clone(), self.hold));
             self.transcript = Some(found);
             read_main = true;
         }

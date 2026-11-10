@@ -60,7 +60,9 @@ impl Trackers {
         if self.open.len() >= MAX_TRACKERS {
             return Err("trackers");
         }
-        self.open.insert(key.to_owned(), Tracker::new(terminal, PathBuf::from(projects)));
+        let mut t = Tracker::new(terminal, PathBuf::from(projects));
+        t.hold = false;
+        self.open.insert(key.to_owned(), t);
         Ok(Map::new())
     }
 

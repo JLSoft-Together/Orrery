@@ -130,7 +130,7 @@ impl Tracker {
             let sub = Sub {
                 agent_id: agent_id.to_owned(),
                 meta,
-                tailer: tailer(dir.join(format!("agent-{agent_id}.jsonl"))),
+                tailer: tailer(dir.join(format!("agent-{agent_id}.jsonl")), self.hold),
                 state: TranscriptState::default(),
                 started_at: Some(started),
                 status: "working",
@@ -188,6 +188,8 @@ impl Tracker {
         let Some(sub) = self.subs.get_mut(id) else { return };
         sub.status = status;
         sub.resolved = true;
+        sub.tailer.keep = false;
+        sub.tailer.release();
         sub.completed_at = at.or_else(|| sub.state.last_at.clone());
         let completed = sub.completed_at.clone();
         let data = agent_data(&sub.meta);

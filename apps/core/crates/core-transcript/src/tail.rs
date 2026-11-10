@@ -1,3 +1,4 @@
+use crate::held::{self, Held, Opened};
 use crate::jsonline::{parse_line, Parsed};
 use crate::jsstr::js_trim;
 use memchr::memmem;
@@ -36,6 +37,8 @@ pub struct JsonlTailer {
     started: bool,
     skipping: bool,
     target: Option<u64>,
+    held: Option<Held>,
+    pub keep: bool,
 }
 
 const TYPE_KEY: &[u8] = b"\"type\":\"";
@@ -123,7 +126,15 @@ pub fn lite_filter(line: &[u8], end: u64, size: u64, agent_tool_uses: &HashSet<S
 
 impl JsonlTailer {
     pub fn new(file: PathBuf, chunk_bytes: usize, options: TailOptions) -> Self {
-        JsonlTailer { file, chunk_bytes: chunk_bytes.max(1), options, offset: 0, remainder: Vec::new(), started: false, skipping: false, target: None }
+        JsonlTailer { file, chunk_bytes: chunk_bytes.max(1), options, offset: 0, remainder: Vec::new(), started: false, skipping: false, target: None, held: None, keep: false }
+    }
+
+    pub fn holds(&self) -> bool {
+        self.held.is_some()
+    }
+
+    pub fn release(&mut self) {
+        self.held = None;
     }
 
     pub fn offset(&self) -> u64 {
@@ -135,10 +146,24 @@ impl JsonlTailer {
     }
 
     pub fn read_some(&mut self, budget: u64, filter: &mut dyn FnMut(&[u8], u64, u64) -> Verdict, on: &mut dyn FnMut(Item)) -> bool {
-        let Some((mut f, now)) = File::open(&self.file).ok().and_then(|f| f.metadata().ok().map(|m| (f, m.len()))) else {
+        let Some((opened, now)) = held::open(&self.file, &mut self.held, self.keep) else {
             self.target = None;
             return false;
         };
+        let held = self.held.take();
+        let fresh = match opened {
+            Opened::Fresh(f) => Some(f),
+            Opened::Held => None,
+        };
+        let more = match fresh.as_ref().or(held.as_ref().map(Held::file)) {
+            Some(f) => self.read_from(f, now, budget, filter, on),
+            None => false,
+        };
+        self.held = held;
+        more
+    }
+
+    fn read_from(&mut self, mut f: &File, now: u64, budget: u64, filter: &mut dyn FnMut(&[u8], u64, u64) -> Verdict, on: &mut dyn FnMut(Item)) -> bool {
         let size = match self.target.take() {
             Some(t) if now >= self.offset => t,
             _ => now,

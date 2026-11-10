@@ -3,6 +3,7 @@ pub mod codex;
 pub mod collate;
 pub mod conflict;
 pub mod extract;
+pub mod held;
 pub mod index;
 pub mod jobs;
 pub mod json;
@@ -30,3 +31,5 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 mod tests;
 #[cfg(test)]
 mod sigtests;
+#[cfg(test)]
+mod heldtests;

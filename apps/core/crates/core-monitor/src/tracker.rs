@@ -124,6 +124,7 @@ impl MonTracker {
             self.changed = true;
         }
         self.ended_at = Some(at.to_owned());
+        self.core.release();
     }
 
     pub fn take_changed(&mut self) -> bool {

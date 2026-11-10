@@ -73,6 +73,7 @@ impl Stats {
             "prefetchMs": summary(std::mem::take(&mut self.prefetch_ms)),
             "outsideLockMs": summary(std::mem::take(&mut self.outside_ms)),
             "tableReadsUnderLock": cache.missed.load(Ordering::Relaxed),
+            "heldFiles": core_transcript::held::held_count(),
         });
         eprintln!("{out}");
     }

@@ -64,15 +64,14 @@ async function twinDirs(kind: 'hooks' | 'statusline', fixtures: SideFixture[], n
 }
 
 describe('side files source', () => {
-  it('reads in Node unless CCM_CORE_SIDEFILES=rust and a core binary is set', () => {
-    expect(sideFilesMode({})).toBe('node')
-    expect(sideFilesMode({ CCM_CORE_SIDEFILES: ' Rust ' })).toBe('rust')
+  it('reads in Rust by default when a core binary is set, Node with CCM_CORE_SIDEFILES=node', () => {
+    expect(sideFilesMode({})).toBe('rust')
+    expect(sideFilesMode({ CCM_CORE_SIDEFILES: ' Node ' })).toBe('node')
     const got: CoreFallbackMessage[] = []
     onCoreFallback((m) => got.push(m))
+    expect(createSideFileSources({ CCM_CORE_SIDEFILES: 'node', CCM_CORE_BIN: 'x' })).toBe(nodeSideFiles)
     expect(createSideFileSources({})).toBe(nodeSideFiles)
-    expect(createSideFileSources({ CCM_CORE_BIN: 'x' })).toBe(nodeSideFiles)
-    expect(createSideFileSources({ CCM_CORE_SIDEFILES: 'rust' })).toBe(nodeSideFiles)
-    expect(createSideFileSources({ CCM_CORE_SIDEFILES: 'rust', CCM_CORE_BIN: 'x' })).toBeInstanceOf(CoreSideFiles)
+    expect(createSideFileSources({ CCM_CORE_BIN: 'x' })).toBeInstanceOf(CoreSideFiles)
     expect(got.map((m) => m.kind)).toEqual(['sidefiles'])
   })
 

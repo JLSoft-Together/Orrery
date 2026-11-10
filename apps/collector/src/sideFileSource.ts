@@ -28,7 +28,7 @@ export interface SideFileSources {
 export type SideFilesMode = 'rust' | 'node'
 
 export function sideFilesMode(env: NodeJS.ProcessEnv = process.env): SideFilesMode {
-  return env.CCM_CORE_SIDEFILES?.trim().toLowerCase() === 'rust' ? 'rust' : 'node'
+  return env.CCM_CORE_SIDEFILES?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 }
 
 let shared: { bin: string; sources: CoreSideFiles } | null = null

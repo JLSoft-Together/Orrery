@@ -1,0 +1,80 @@
+# PLAN v87 bước 5 — `core-store` + `core-sources`, bỏ Node collector
+
+Ngày 2026-11-10. Con của `PLAN-v87-rust-core.md` §6 bước 5. Nối sau `PLAN-v87-step4-core-transcript.md` (usage, tracker, codex rollout, side files đã Rust, mặc định `rust`).
+Bước 6 (vỏ Tauri không Node sidecar) chỉ quyết sau số đo của bước này.
+
+## 1. Hiện trạng — `apps/collector/src` = 14 592 dòng, test 9 820 dòng / 51 file
+
+Chạy trong utilityProcess `collector.cjs` (host: `apps/desktop/src/collector-host.ts`, 142 dòng; `main.ts` ~1440 `new CollectorHost`). Cổng cố định `127.0.0.1:4317` (origin của localStorage renderer: **không đổi**), header `x-ccm-app`, `/health` không cần key, exit 3 = port in use, tắt qua `parentPort 'shutdown'`.
+
+| Nhóm | File (dòng) | Vai trò / phụ thuộc ngoài | Rust? |
+|---|---|---|---|
+| Entry / config | `index.ts` 403, `config.ts` 75, `datadir` 8, `json-file` 56 | boot, dispatch client msg, `parentPort` (busy, resources, phone, telegram, core-fallback; nhận shutdown, deviceUsed, diskAlert, agent.note) | chưa |
+| Store + server | `store.ts` 475, `server.ts` 446 | diff / coalesce / batch 50 ms / seq; HTTP `/health` `/snooze?` `/focus` `/api/timeline/*` + static web dist; WS `/ws` (heartbeat 30 s, 128 KB) | chưa |
+| Monitor | `monitor.ts` 942, `registry` 112, `process` 186, `repo` 69, `peers` 178, `jobs` 128, `job-stop` 79, `model-catalog` 90, `claude-settings` 14, `gitstat` 92 (spawn git), `daystart` 26 | fs.watch registry + projects, reconcile 5 s, verifyLive 60 s, extras poll, spawn `claude stop`, spawn git | chưa |
+| Stores nhỏ | `aliases` 70, `favorites` 142, `history` 60, `snooze` 68, `response` 103, `timeline` 124, `forecast` 145 | file JSON trong `CCM_DATA_DIR` (aliases, notes, snooze, history, timeline, limit-history…) | chưa |
+| Seam đã có Rust | `tracker` 685 + `trackerSource` 85 + `coreTracker` 341 + `trackerView` 248 + `spanMirror` 70; `transcript` 401, `tailer` 134, `tool-spans` 84; `usage` 675 + `usageSource` 186 + `coreTranscript` 215; `hooks` 85, `statusline` 102, `sideFileSource` 49, `nodeSideFiles` 26, `coreSideFiles` 134; `coreProcs` 297, `procSource` 65, `coreFallback` 24; `codex/{coreRollout,rolloutSource,nodeRollout,rollout,reader}` | chỉ còn là **seam + bản Node dự phòng**: xoá ở S11, thay bằng gọi trực tiếp crate | Rust xong |
+| Codex | `codex/monitor` 687, `processes` 310, `link` 157 | watch `sessions/`, link Claude agent, `LimitHistory` | rollout Rust; monitor chưa |
+| DeepSeek | `deepseek/monitor` 456, `outbox` 241, `processes` 120 | tail outbox, match process (đang tắt: `CCM_DEEPSEEK_FEATURE`) | outbox Rust; monitor chưa |
+| Resources | `resources/{sampler 290, procs 209, ports 230, tree 234, idle 41, fixture 69}`, `ps-host` 125 | sampler 15 s, report → main; bảng procs/ports từ core | bảng Rust; sampler chưa |
+| Sensitive / search | `sensitive/rules` 302 + `watch` 132, `prompt-search` 350 | luật lệnh nguy hiểm (tracker đang gọi bản Node), đọc prompt cũ (chủ nhân đã duyệt) | chưa |
+| OS actions | `focus` 131, `focus-mac` 93, `osascript` 26, `opener` 88, `launcher` 90, `folder-pick` 128, `win-exe` 41 | PowerShell / osascript / wt.exe, dialog chọn folder | chưa |
+| Toast | `toast` 869, `toast-electron` 17 | waiting / done / limit / stuck / context / disk / note, quiet hours, snooze, phone + Telegram episode (qua parentPort) | chưa |
+| Office (v60) | `office/{hub 110, model 315, runtime 67, locale 6}` + `@ccm/habblaud` timeline recorder / handler | chỉ chạy khi client gửi `office.enable`; ghi `timeline/<day>.jsonl`, `office-names.json` | chưa |
+
+## 2. Ranh giới đích
+
+- Subcommand mới `orrery-core serve` (crate `core-store` = state + diff + batch + persistence; `core-sources` = monitor, registry, codex, deepseek, resources, sensitive, prompt-search, toast logic; `core-http` = HTTP + WS + static). Gọi **trực tiếp** `core-procs` / `core-transcript` như thư viện, bỏ NDJSON pipe + `FinalizationRegistry` + seam.
+- **Giữ nguyên**: protocol WS (`packages/shared` `MonitorEvent` / `ClientMessage`), mọi HTTP route, `x-ccm-app`, `/health`, cổng 4317, exit 3, env `CCM_*`, format file trong `CCM_DATA_DIR` (Node đọc được file Rust và ngược lại). Web + renderer không sửa.
+- Kênh điều khiển main ↔ `serve` qua stdin / stdout NDJSON (thay `parentPort`): vào = `shutdown`, `deviceUsed`, `diskAlert`, `agentNote`; ra = `busy`, `resources`, `phone`, `telegram`, `core-fallback`, và RPC `host.*`.
+- **Chuyển sang desktop main (TS) thay vì Rust**: `focus` / `opener` / `launcher` / `folder-pick` (qua RPC `host.focus|open|launch|pickFolder`; Electron có sẵn `dialog` / `shell`, tránh viết lại PowerShell / osascript bằng Rust). Hiển thị toast Windows (`ps-host`) + `Notification` + phone + Telegram vẫn ở main; Rust chỉ quyết định episode và gửi ra.
+- PTY: giữ process `orrery-core` (PTY) riêng, không gộp vào `serve` (panic hay treo ở store không giết pane; core PTY có job `KILL_ON_JOB_CLOSE`).
+
+## 3. Work package (thứ tự phụ thuộc)
+
+| WP | Việc | File chính | Model | Cổng parity |
+|---|---|---|---|---|
+| S0 | Hợp đồng + harness: thu golden trace WS (snapshot + events + direct reply) từ collector Node với `demo-fixture` 30×6, fixture thật (27 MB + 41 sub), kịch bản `monitor.test`; script so 2 trace (bỏ `seq` / thời gian); sinh type Rust từ `packages/shared` bằng `ts-rs`, test khớp | `apps/core/crates/core-store`, `scripts/trace-compare.mjs`, `test/` | opus (hợp đồng) + sonnet | so trace tự chạy được trên Node vs Node = 0 khác biệt |
+| S1 | `core-store`: maps terminal / agent / link, activity + toolActivity ring, diff → patch, coalesce, batch 50 ms, seq, mọi setter (usage, jobs, limits, favorites, notify, snooze, peerLinks, loading, contextPct, projectRoots) | `store.ts` | opus | test `store` / `monitor.test` phần store chuyển thành Rust; coalesce + `null` xoá field khớp |
+| S2 | `core-http`: bind 127.0.0.1, `hasAppKey` constant-time, origin check, WS heartbeat / `maxPayload`, validate client msg, `/health`, `/snooze`, `/focus`, static web dist + `cacheControlFor` + CSP, stdin shutdown, `port in use` exit 3 | `server.ts`, `hardening.test`, `csp.test` | sonnet | `hardening` + `csp` chuyển thành test Rust; snapshot đầu khớp golden |
+| S3 | Stores nhỏ + `JsonFile` (tmp + rename, debounce): aliases / notes, favorites (rule path), history, snooze, StatusTimeline, LimitHistory + forecast, ResponseTracker, daystart, `notify.json` | 7 file ở mục 1 | sonnet | Node ghi → Rust đọc và ngược lại, deep-equal; `favorites` / `daystart` / `datadir` test |
+| S4 | Registry + Monitor: `notify` watch registry + projects, reconcile 5 s, verifyLive, TTL, dismiss, extras poll (jobs, limits, hooks, cost, day roll), RepoRoots, gitstat (coalesce, NOT_A_REPO 5 min), peers, `claude stop`, model catalog; nối thẳng core-procs / core-transcript | `monitor.ts` + 8 file | opus | `monitor.test`, `tracker-parity`, `peers`, `job-actions`, `extras`, `context` chuyển sang test Twin Rust vs Node trên cùng fixture |
+| S5 | Codex monitor + link + processes; DeepSeek monitor + processes + outbox watcher | `codex/`, `deepseek/` | sonnet | `codex-parity`, `codex.test`, `deepseek.test`; link Claude↔Codex đúng |
+| S6 | Resources sampler + tree + idle + `busy` / `resources` ra main; Sensitive rules + watch (bỏ bản Node đang gọi từ `coreTracker`); prompt-search | `resources/`, `sensitive/`, `prompt-search.ts` | sonnet | `resources.test`, `hints.sensitive`, `prompt-search` fixture; CPU sampler không tăng |
+| S7 | Toast logic (episode, quiet hours, snooze, forecast / limit / stuck / context / disk / note, Telegram `reply_text`, phone episode) trong Rust; render vẫn ở main | `toast.ts` | opus | `toast.test` (513 dòng) chuyển 1:1, cùng chuỗi episode trên cùng chuỗi event |
+| S8 | RPC `host.*` giữa `serve` và main + đổi `focus` / `opener` / `launcher` / `folder-pick` thành handler main | `main.ts`, `host-rpc.ts` (mới) | sonnet | `focus-mac` test; thủ công Win + mac: focus, mở folder, launch, chọn folder |
+| S9 | Office: model + hub + runtime (refcount `office.enable`) + TimelineRecorder + `/api/timeline/*`, `office-names.json`, retention 7 ngày | `office/`, habblaud server | opus | `office-model` + `office-hub` chuyển Rust; `timeline/*.jsonl` Node↔Rust đọc chéo; không ghi gì khi chưa ai bật |
+| S10 | Supervisor + build: `CoreServeHost` (spawn binary, stdin / stdout, log, restart max 3, boot timeout 30 s, exit 3) thay `CollectorHost`; cờ `CCM_CORE=rust|node`; boot fail → fallback Node + thông báo 1 lần; `collectorEnv`; `build.mjs` / `electron-builder.yml` / CI | `collector-host.ts`, `main.ts`, `build.mjs` | sonnet | e2e khởi động / tắt, port clash, kill main không để mồ côi |
+| S11 | Nghiệm thu (Codex chạy đo / test): parity cả bộ, E2E Win + mac, RAM / CPU; đổi mặc định `CCM_CORE=rust`; ghi `.code_index` + `docs/` | `scripts/`, `docs/perf/` | Codex (opus duyệt) | mục 4 |
+| S12 | (Bước 6, Tauri) xoá `collector.cjs`, seam + bản Node, test Node thừa | nhiều file | sonnet | bỏ khi 1 release không ai dùng `CCM_CORE=node` |
+
+Song song được: S3 // S5 // S6 sau S1; S7 sau S4; S9 sau S2 + S4. Không chạy 2 tool nặng cùng lúc, `cargo -j <= 6` (`JIN_MAX_THREADS`).
+
+## 4. Cổng cuối
+
+- Parity: trace WS Node vs Rust (S0) = 0 khác biệt sau chuẩn hoá trên demo 30×6, fixture thật, `monitor` + `tracker` + `codex` + `deepseek` + `office` kịch bản; toàn bộ test collector có bản Rust / parity tương đương (liệt kê trong báo cáo S11).
+- E2E: `npm run e2e -w @ccm/desktop` pass trên Windows (CDP); macOS: workflow `desktop` + checklist tay (không có CDP): focus, open, toast, Telegram, Workspace, Office, Devices.
+- Số đo (so với bước 0, `docs/perf/`): RAM private tổng **530 → 280–330 MB**; CPU lúc rảnh gần 0; CPU nhiều agent giảm 2–3 lần; giữ cold usage scan 4 GB <= 5 CPU-s; boot tới `/health` không chậm hơn Node. Không đạt → không đổi mặc định.
+- Dự phòng: 1 release vẫn bundle `collector.cjs`; `CCM_CORE=node` bật lại; `serve` không lên được → app tự chạy Node và báo 1 lần (như `noteCoreFallback`). Giữa phiên không chuyển qua lại (state khởi động lại).
+
+## 5. Rủi ro + Không được phá
+
+| Rủi ro | Cách giảm |
+|---|---|
+| Lệch diff / coalesce → web nhấp nháy hoặc mất update | S0 trace compare từ đầu, S1 chạy trước mọi thứ |
+| Hai bản ghi cùng file `CCM_DATA_DIR` (Node cũ + Rust) | một process ghi tại một lúc (cờ chọn bản); format giữ nguyên; test đọc chéo |
+| Cổng 4317 / origin đổi → mất localStorage | Rust serve web dist trên đúng `127.0.0.1:4317` |
+| Toast / Telegram sai thời điểm hoặc gửi trùng | S7 so chuỗi episode; quiet hours + snooze test 1:1 |
+| Rust panic kéo sập cả monitor | `panic = abort` + supervisor restart max 3, giữ `loading` đúng; PTY ở process khác |
+| Cargo + Node + Gradle build lâu | `CCM_SKIP_CORE_BUILD`, cache cargo CI |
+
+**Không được phá**: (1) không gửi prompt / không gọi Claude API / không tốn token, chỉ các ngoại lệ đã ghi trong `CLAUDE.md` (Compact, `hand_back`, Telegram receive, `telegram_send` button, `open_session submit`) — các luồng này chạy ở main, giữ nguyên; (2) redaction: chỉ counter / id / whitelist rời Rust, không nội dung session, env, secret, tool args, đường dẫn socket (`sockKey` = sha256); (3) identity terminal = `pid:procStart`, không từ title; (4) Telegram reply (`lastReply` <= 3000, chỉ memory, không ghi đĩa); (5) Office timeline: chỉ ghi khi có client bật, giữ 7 ngày, tên trong `office-names.json`; (6) bind 127.0.0.1 + `x-ccm-app` mọi route trừ `/health`; (7) client msg validate theo shape, drop khi sai; (8) app đang chạy của chủ nhân: dev dùng `CCM_PORT` + `CCM_DATA_DIR` riêng, không chiếm 4317, không ghi vào data thật; không build / test nặng khi chủ nhân đang dùng máy (<= 80% CPU / RAM, `JIN_MAX_THREADS`); (9) không comment trong code, file <= ~400 dòng, không commit tự động.
+
+## 6. Quyết định chủ nhân (2026-11-10)
+
+1. **Hai process Rust**: `orrery-core serve` riêng, PTY riêng.
+2. **Toast / alert logic ở Rust** (S7), desktop main chỉ hiển.
+3. Focus / mở folder / launch / chọn folder ở desktop main qua RPC `host.*` (S8) — theo đề xuất.
+4. **Office làm sau**: S9 tách khỏi cổng đổi mặc định. Chế độ `CCM_CORE=rust` chưa có Office thì Office báo rõ "cần `CCM_CORE=node`" (không im lặng), S9 làm sau S11.
+5. Shadow trong dev trên bản copy dữ liệu thật (cổng + `CCM_DATA_DIR` riêng) — theo đề xuất.
+6. **Giữ bản Node tới bước 6 (Tauri)**: `CCM_CORE=node` + tự lui khi `serve` không lên vẫn bundle tới khi làm Tauri; S12 chuyển sang bước 6.

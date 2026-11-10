@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ccm"
+description = "Enables the ccm command without any pre-configured scope."
+commands.allow = ["ccm"]
+
+[[permission]]
+identifier = "deny-ccm"
+description = "Denies the ccm command without any pre-configured scope."
+commands.deny = ["ccm"]

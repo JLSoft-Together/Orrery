@@ -1,5 +1,6 @@
 pub mod client;
 pub mod control;
+mod cookie;
 pub mod csp;
 mod http;
 pub mod js;

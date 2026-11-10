@@ -17,7 +17,8 @@ use tokio::task::JoinHandle;
 use crate::client::ClientMessage;
 use crate::http::{read_body, read_head, write_response, HeadError, Request, Response};
 use crate::js::len16;
-use crate::origin::{has_app_key, is_local_request};
+use crate::cookie::{authorized, login};
+use crate::origin::is_local_request;
 use crate::query::{js_number, Params};
 use crate::static_files::{serve as serve_static, url_pathname};
 use crate::ws::{self, ClientContext, Clients, Session};
@@ -250,8 +251,12 @@ fn local(request: &Request, shared: &Shared) -> bool {
     is_local_request(request.header("host"), request.header("origin"), &shared.ports)
 }
 
+fn keyed(request: &Request, shared: &Shared) -> bool {
+    authorized(request.header("x-ccm-app"), request.headers_all("cookie"), shared.app_key.as_deref())
+}
+
 async fn upgrade(mut stream: TcpStream, request: Request, shared: Arc<Shared>) {
-    let allowed = url_pathname(request.path()) == "/ws" && local(&request, &shared) && has_app_key(request.header("x-ccm-app"), shared.app_key.as_deref());
+    let allowed = url_pathname(request.path()) == "/ws" && local(&request, &shared) && keyed(&request, &shared);
     if !allowed {
         return;
     }
@@ -272,7 +277,12 @@ async fn route(stream: &mut TcpStream, request: &Request, shared: &Shared) -> Op
     if request.target == "/health" {
         return Some(Response::json(200, json!({ "ok": true, "seq": shared.store.seq() }).to_string()));
     }
-    if !has_app_key(request.header("x-ccm-app"), shared.app_key.as_deref()) {
+    if request.method == "GET" && request.path() == "/" {
+        if let Some(response) = login(request.query(), shared.app_key.as_deref()) {
+            return Some(response);
+        }
+    }
+    if !keyed(request, shared) {
         return Some(Response::text(403, "text/plain; charset=utf-8", DENIED));
     }
     if request.target.starts_with("/snooze?") && request.method == "GET" {

@@ -109,6 +109,7 @@ fn reason(status: u16) -> &'static str {
     match status {
         101 => "Switching Protocols",
         200 => "OK",
+        302 => "Found",
         204 => "No Content",
         400 => "Bad Request",
         403 => "Forbidden",

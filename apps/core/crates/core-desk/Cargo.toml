@@ -1,0 +1,17 @@
+[package]
+name = "core-desk"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+getrandom = "0.4"
+regex = "1"
+serde_json = { workspace = true, features = ["preserve_order"] }
+ureq = { version = "3.1", default-features = false, features = ["rustls", "platform-verifier"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_SystemInformation"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"

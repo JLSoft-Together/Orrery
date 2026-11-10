@@ -2,7 +2,9 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent, WebContents } from 'electron'
 import type { BackupApplyResult, BackupExportResult, BackupPreview, BackupSectionId } from '@ccm/shared'
-import { cleanSectionIds, exportName, MAX_BACKUP_BYTES, sectionsOf } from './format'
+import { deskHandle, type DeskRouter } from '../desk/forward'
+import type { HostHandlers } from '../desk/host'
+import { cleanSectionIds, exportName, MAX_BACKUP_BYTES, sectionsOf, type BackupGitHub } from './format'
 import type { BackupService } from './service'
 
 export interface BackupIpcDeps {
@@ -15,6 +17,8 @@ export interface BackupIpcDeps {
   confirmApply: (event: IpcMainInvokeEvent, sections: BackupSectionId[]) => Promise<boolean>
   relaunch: () => void
   documentsDir: string
+  github?: () => BackupGitHub[]
+  desk?: DeskRouter
 }
 
 const CHANNELS = ['ccm:backup-export', 'ccm:backup-pick', 'ccm:backup-apply', 'ccm:backup-relaunch']
@@ -23,10 +27,33 @@ const CHANNELS = ['ccm:backup-export', 'ccm:backup-pick', 'ccm:backup-apply', 'c
 export const LOCAL_SNAPSHOT_JS =
   "(() => { const o = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('ccm.')) o[k] = localStorage.getItem(k) } return o })()"
 
+const field = (params: unknown, key: string): unknown => (params && typeof params === 'object' ? (params as Record<string, unknown>)[key] : undefined)
+
+export function backupHosts(deps: BackupIpcDeps, event: IpcMainInvokeEvent): HostHandlers {
+  return {
+    'backup.readLocal': () => deps.readLocal(event.sender).catch(() => ({})),
+    'backup.github': () => deps.github?.() ?? [],
+    'backup.saveDialog': (p) => {
+      const defaultPath = field(p, 'defaultPath')
+      return deps.saveDialog(event, typeof defaultPath === 'string' ? defaultPath : path.join(deps.documentsDir, exportName(new Date())))
+    },
+    'backup.openDialog': () => deps.openDialog(event),
+    'backup.confirmApply': (p) => {
+      const ids = cleanSectionIds(field(p, 'sections'))
+      return ids && ids.size ? deps.confirmApply(event, [...ids]) : false
+    },
+    'backup.relaunch': () => {
+      deps.relaunch()
+      return true
+    },
+  }
+}
+
 export function registerBackupIpc(deps: BackupIpcDeps): () => void {
   const { ipcMain, isAppFrame, service } = deps
+  const handle = deskHandle(ipcMain, isAppFrame, deps.desk ? { router: deps.desk, module: 'backup', hosts: (event) => backupHosts(deps, event) } : undefined)
 
-  ipcMain.handle('ccm:backup-export', async (event): Promise<BackupExportResult> => {
+  handle('ccm:backup-export', async (event): Promise<BackupExportResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const backup = service.snapshot(await deps.readLocal(event.sender).catch(() => ({})))
     const file = await deps.saveDialog(event, path.join(deps.documentsDir, exportName(new Date())))
@@ -39,7 +66,7 @@ export function registerBackupIpc(deps: BackupIpcDeps): () => void {
     return { ok: true, file, sections: sectionsOf(backup) }
   })
 
-  ipcMain.handle('ccm:backup-pick', async (event): Promise<BackupPreview> => {
+  handle('ccm:backup-pick', async (event): Promise<BackupPreview> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const file = await deps.openDialog(event)
     if (!file) return { ok: false, error: 'cancelled' }
@@ -51,7 +78,7 @@ export function registerBackupIpc(deps: BackupIpcDeps): () => void {
     }
   })
 
-  ipcMain.handle('ccm:backup-apply', async (event, token: unknown, ids: unknown): Promise<BackupApplyResult> => {
+  handle('ccm:backup-apply', async (event, token: unknown, ids: unknown): Promise<BackupApplyResult> => {
     if (!isAppFrame(event)) return { ok: false, error: 'denied' }
     const picked = cleanSectionIds(ids)
     if (typeof token !== 'string' || !picked || !picked.size) return { ok: false, error: 'invalid' }
@@ -60,7 +87,7 @@ export function registerBackupIpc(deps: BackupIpcDeps): () => void {
     return service.stage(token, picked, await deps.readLocal(event.sender).catch(() => ({})))
   })
 
-  ipcMain.handle('ccm:backup-relaunch', (event) => {
+  handle('ccm:backup-relaunch', (event) => {
     if (!isAppFrame(event)) return false
     deps.relaunch()
     return true

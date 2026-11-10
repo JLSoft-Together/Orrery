@@ -105,7 +105,9 @@ import { agentProcs } from './agentData/procs'
 import { registerAgentDataIpc } from './agentData/ipc'
 import { isInsideOrSame } from './agentData/fsTree'
 import { BuildCleanService } from './buildClean/service'
-import { registerBuildCleanIpc } from './buildClean/ipc'
+import { registerBuildCleanIpc, type BuildCleanDeskDeps } from './buildClean/ipc'
+import { DeskHost } from './desk/host'
+import { DESK_EVENTS, DESK_MODULES, DeskRouter, deskMode } from './desk/forward'
 import { DISK_FILE, DiskWatch, type DiskSpace } from './disk/watch'
 import { registerDiskIpc } from './disk/ipc'
 import { registerAgentStatusIpc } from './agentStatus/ipc'
@@ -157,6 +159,8 @@ let ptys: PtySupervisor | null = null
 const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 let ptyFellBack = false
 const coreFellBack = new Map<string, string>()
+let deskHost: DeskHost | null = null
+let deskRouter: DeskRouter | null = null
 let attention: Attention | null = null
 let mainWindow: BrowserWindow | null = null
 let compactWindow: BrowserWindow | null = null
@@ -788,7 +792,7 @@ function collectorEnv(): NodeJS.ProcessEnv {
   }
 }
 
-const LOG_FILES = ['collector.log', 'pty.log', 'layout.log']
+const LOG_FILES = ['collector.log', 'pty.log', 'layout.log', 'desk.log']
 const LOG_TAIL_BYTES = 256 * 1024
 
 function tailOf(file: string): string {
@@ -833,6 +837,7 @@ function logReport(pageReport: string): string {
     `terminal host: ${ptyFellBack ? 'node (rust core unusable, fell back)' : PTY_HOST}`,
     coreReadersLine(),
     host?.describe() ?? 'core serve: not started',
+    ...(deskRouter?.lines() ?? []),
     `generated ${new Date().toISOString()}`,
   ]
   const sections = [head.join('\n'), pageReport && `## Diagnostics\n${pageReport}`]
@@ -1028,6 +1033,8 @@ function wireBackup(): void {
     isAppFrame,
     service,
     readLocal: readPageLocal,
+    github: () => ghStore?.list() ?? [],
+    desk: deskRouter ?? undefined,
     documentsDir: app.getPath('documents'),
     saveDialog: async (event, defaultPath) => {
       if (e2eFile) return e2eFile
@@ -1335,16 +1342,12 @@ async function setupAgentData(): Promise<void> {
 
 /** v77 R8: rebuildable build folders of known projects; deletes only what the last scan offered. */
 function setupBuildClean(): void {
-  const service = new BuildCleanService({
-    git: (cwd, args) => runGit(cwd, args),
+  const deps: BuildCleanDeskDeps = {
     confirm: async (spec) => {
       const opts: Electron.MessageBoxOptions = { type: 'warning', message: spec.message, detail: spec.detail, buttons: spec.buttons, defaultId: spec.buttons.length - 1, cancelId: spec.buttons.length - 1, noLink: true }
       if (mainWindow && !mainWindow.isVisible()) showMain()
       const { response } = mainWindow ? await dialog.showMessageBox(mainWindow, opts) : await dialog.showMessageBox(opts)
       return response
-    },
-    emit: (progress) => {
-      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:build-event', progress)
     },
     running: (root) => [
       ...(resReport?.servers ?? []).filter((s) => s.cwd && isInsideOrSame(root, s.cwd)).map((s) => `${s.name} (${s.pid})`),
@@ -1356,8 +1359,40 @@ function setupBuildClean(): void {
         .map((s) => ({ pid: s.pid, start: s.start, name: s.name })),
     trash: (p) => shell.trashItem(p),
     texts: () => ({ ...t.buildClean, cancel: t.quitCancel }),
+  }
+  const service = new BuildCleanService({
+    ...deps,
+    git: (cwd, args) => runGit(cwd, args),
+    emit: (progress) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:build-event', progress)
+    },
   })
-  disposeBuildClean = registerBuildCleanIpc({ ipcMain, isAppFrame, service })
+  disposeBuildClean = registerBuildCleanIpc({ ipcMain, isAppFrame, service, desk: deskRouter ? { router: deskRouter, deps } : undefined })
+}
+
+function setupDesk(): void {
+  const client = DESK_MODULES.some((m) => deskMode(process.env, m) === 'rust')
+    ? new DeskHost({
+        bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
+        env: { ...process.env, CCM_DATA_DIR: DATA_DIR, CCM_APP_VERSION: app.getVersion(), CCM_DOCUMENTS_DIR: app.getPath('documents'), CCM_USER_DATA: app.getPath('userData') },
+        logFile: path.join(app.getPath('logs'), 'desk.log'),
+        onEvent: (event, payload) => {
+          if (!DESK_EVENTS.has(event)) return
+          for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(event, payload)
+        },
+      })
+    : null
+  deskHost = client
+  deskRouter = new DeskRouter({
+    client,
+    env: process.env,
+    log: (line) => console.warn(line),
+    onFallback: (module, reason, flag) => {
+      console.warn(`[ccm] desk ${module}: rust desk unusable (${reason}); using node`)
+      if (Notification.isSupported()) new Notification({ title: t.coreFallbackTitle(module), body: t.deskFallbackBody(module, reason, flag) }).show()
+    },
+  })
+  void client?.start().catch(() => undefined)
 }
 
 function androidDirs(): string[] {
@@ -1431,6 +1466,7 @@ async function ready(): Promise<void> {
   backups = new BackupService({ dataDir: DATA_DIR, app: app.getVersion(), platform: process.platform, github: () => ghStore?.list() ?? [] })
   // An import staged before the restart lands before the collector and the main stores read their files.
   backups.applyPending()
+  setupDesk()
   mainWindow = createMainWindow()
   intro = showIntro()
   setupCaptureAndAwake()
@@ -1975,6 +2011,7 @@ async function ready(): Promise<void> {
       override: isAllowedOverride(libsOverride) ? libsOverride : undefined,
       osvOverride: isAllowedOverride(osvOverride) ? osvOverride : undefined,
     }),
+    desk: deskRouter ?? undefined,
   })
   disposeHooks = registerHooksIpc({
     ipcMain,
@@ -2241,7 +2278,7 @@ if (!app.requestSingleInstanceLock()) {
           launchUpdate()
           app.exit(0)
         }, QUIT_DEADLINE_MS)
-        stopping = Promise.allSettled([host.stop(), ptys?.stop(), stopPreview(), stopRuns()]).then(() => {
+        stopping = Promise.allSettled([host.stop(), ptys?.stop(), deskHost?.stop(), stopPreview(), stopRuns()]).then(() => {
           clearTimeout(hardExit)
           stopped = true
           app.quit()

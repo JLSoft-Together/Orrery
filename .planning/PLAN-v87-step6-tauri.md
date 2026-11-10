@@ -45,6 +45,12 @@ Nguồn: `PLAN-v87-rust-core.md` §6 bước 6, `PLAN-v87-tauri-options.md` (kh�
 | D8 | `pty/` MCP `orrery` + `mcpTools` + `orreryApi` + `mcpDesk` + `agentData` (bỏ host.ts Node) | |
 | D9 | `update/`, `deepseek/` | |
 
+**D0 xong (2026-11-10)**, báo cáo `.planning/wp/WP-v87-6-D0-report.md`:
+- Hợp đồng `core-desk`: kênh = đúng tên `ccm:*` (args = mảng tham số IPC), kiểm frame (`isAppFrame`) ở vỏ; phần chỉ vỏ làm được (dialog, localStorage trang, confirm có text i18n, thùng rác, dữ liệu main như `resReport` / tài khoản GitHub, relaunch) đi qua gọi ngược `ctx.host("<module>.<việc>", params)` — Electron trả bằng `hosts` của `DeskRouter.route`, Tauri (T0) trả trực tiếp trong process. Text i18n chưa sang Rust: Rust gửi dữ liệu thô (số thư mục, size, dòng), vỏ dựng câu.
+- Event Rust → cửa sổ: phải có trong `DESK_EVENTS` (`forward.ts`).
+- Boot (`applyPending`) và `writeAuto` của update vẫn TS ở Electron (desk chưa chắc đã lên lúc boot); Rust có sẵn `desk:backup-apply-pending` / `desk:backup-write-auto` cho Tauri / D9.
+- HTTP trong desk: `ureq` 3 + rustls + platform verifier (dùng lại được cho D2 / D7 / D9). `orrery-core` release 5,0 → 8,1 MB; nếu cần gọn cho mục tiêu Setup ≤ 35 MB thì đổi sang `native-tls` (SChannel / Security.framework) ở 6b.
+
 ### 6b — vỏ Tauri
 | WP | Việc |
 |---|---|
@@ -52,6 +58,8 @@ Nguồn: `PLAN-v87-rust-core.md` §6 bước 6, `PLAN-v87-tauri-options.md` (kh�
 | T1 | child webview BrowserPane / FilePane + capture + forward-key + ẩn khi overlay; dust capture |
 | T2 | migrate localStorage + safeStorage, đóng gói NSIS (WebView2 bootstrapper download), icon, ký; `cdp.cjs --shell=tauri` |
 | T3 (Codex) | nghiệm thu: E2E đủ bộ Tauri trên Windows, size, RAM / CPU, so Electron |
+
+Ghi chú T0 (2026-11-10, `.planning/wp/WP-v87-6-T0-report.md`): `apps/shell` chạy core-serve trong process (stdin của process thay bằng pipe vì `core_serve::run` đọc lệnh từ stdin; nên thêm `run_with(cfg, control)` vào core-serve ở WP sau) và spawn `orrery-core` cho terminal (không link `core-pty`: stdin đã dùng, `serve()` private, job object cả process). `core-desk` chưa link (D0 đang làm): kênh chưa port trả `not ported`. Cookie auth xong trong core-http. E2E Tauri: p2 15/15, agent-map 34/36 (2 lỗi clipboard ở menu node).
 
 ### 6c — chốt
 - Đổi bản phát hành sang Tauri, bỏ `apps/desktop` Electron + `apps/collector` sau khi chủ nhân test Mac (checklist trong `.planning/CHECKLIST-v87-step6-mac.md`).

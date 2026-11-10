@@ -9,6 +9,7 @@ name = "orrery-core"
 path = "src/main.rs"
 
 [dependencies]
+core-desk = { path = "../core-desk" }
 core-procs = { path = "../core-procs" }
 core-pty = { path = "../core-pty" }
 core-serve = { path = "../core-serve" }

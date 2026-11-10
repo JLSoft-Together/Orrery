@@ -10,6 +10,8 @@ const OUT = process.env.CCM_E2E_OUT || path.join(os.tmpdir(), 'ccm-e2e')
 const PORT = Number(process.env.CCM_E2E_PORT) || 4399
 const DBG = Number(process.env.CCM_E2E_DBG) || 9333
 const TMP = path.join(OUT, 'run')
+const SHELL = process.env.CCM_E2E_SHELL === 'tauri'
+const SHELL_EXE = process.env.CCM_E2E_SHELL_EXE || path.join(REPO, 'apps/shell/target/debug', process.platform === 'win32' ? 'orrery-shell.exe' : 'orrery-shell')
 fs.mkdirSync(OUT, { recursive: true })
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -70,11 +72,12 @@ async function launch(opts = {}) {
   fs.mkdirSync(path.join(TMP, 'data'), { recursive: true })
   fs.mkdirSync(path.join(TMP, 'appdata'), { recursive: true })
   if (!fs.existsSync(path.join(TMP, 'data', 'preview-full-access.json'))) fs.writeFileSync(path.join(TMP, 'data', 'preview-full-access.json'), '{"full":false}')
-  const electron = opts.exe ?? require(path.join(REPO, 'node_modules/electron'))
-  const child = spawn(electron, [`--user-data-dir=${path.join(TMP, 'ud')}`, `--remote-debugging-port=${DBG}`, "--disable-features=CalculateNativeWinOcclusion", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", ...(opts.args ?? []), ...(opts.exe ? [] : [path.join(REPO, 'apps/desktop/stage')])], {
-    env: { ...process.env, ...opts.env, CCM_PORT: String(PORT), CCM_DATA_DIR: path.join(TMP, 'data'), CCM_TOAST: '0', ...(process.platform === 'win32' ? { APPDATA: path.join(TMP, 'appdata') } : {}) },
-    stdio: ['ignore', fs.openSync(path.join(OUT, 'electron.log'), 'w'), fs.openSync(path.join(OUT, 'electron.err'), 'w')],
-  })
+  const flags = ['--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding']
+  const env = { ...process.env, ...opts.env, CCM_PORT: String(PORT), CCM_DATA_DIR: path.join(TMP, 'data'), CCM_TOAST: '0', ...(process.platform === 'win32' ? { APPDATA: path.join(TMP, 'appdata') } : {}) }
+  const stdio = ['ignore', fs.openSync(path.join(OUT, 'electron.log'), 'w'), fs.openSync(path.join(OUT, 'electron.err'), 'w')]
+  const child = SHELL
+    ? spawn(SHELL_EXE, opts.args ?? [], { env: { ...env, CCM_SHELL_WEBVIEW_DIR: path.join(TMP, 'ud'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${DBG}`, ...flags].join(' ') }, stdio })
+    : spawn(opts.exe ?? require(path.join(REPO, 'node_modules/electron')), [`--user-data-dir=${path.join(TMP, 'ud')}`, `--remote-debugging-port=${DBG}`, ...flags, ...(opts.args ?? []), ...(opts.exe ? [] : [path.join(REPO, 'apps/desktop/stage')])], { env, stdio })
   let target
   for (let i = 0; i < 120 && !target; i++) {
     await sleep(500)
@@ -154,4 +157,4 @@ async function launch(opts = {}) {
   return { child, cmd, evaluate, shot, type, key, waitFor, stop, sleep }
 }
 
-module.exports = { launch, sleep, PORT, REPO, OUT }
+module.exports = { launch, sleep, PORT, REPO, OUT, SHELL }

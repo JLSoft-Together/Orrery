@@ -1,0 +1,119 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod appearance;
+mod ccm;
+mod config;
+mod links;
+mod presets;
+mod pty;
+mod serve;
+mod state;
+mod stdio;
+mod strings;
+mod tray;
+mod window;
+
+use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
+use std::sync::Mutex;
+
+use tauri::ipc::CapabilityBuilder;
+use tauri::{AppHandle, Manager, RunEvent};
+use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+
+use crate::config::ShellConfig;
+use crate::serve::{Serve, ServeError};
+use crate::state::{Shell, MAIN};
+
+fn fail(message: String) -> ! {
+    eprintln!("[shell] {message}");
+    let _ = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .setup(move |app| {
+            app.dialog().message(message.clone()).title("Orrery").kind(MessageDialogKind::Error).blocking_show();
+            app.handle().exit(1);
+            Ok(())
+        })
+        .run(tauri::generate_context!());
+    std::process::exit(1)
+}
+
+fn capability(app: &AppHandle, origin: &str) -> tauri::Result<()> {
+    let cap = CapabilityBuilder::new("app")
+        .remote(format!("{origin}/*"))
+        .windows([MAIN, window::COMPACT])
+        .permission("core:default")
+        .permission("core:window:allow-start-dragging")
+        .permission("core:window:allow-internal-toggle-maximize")
+        .permission("allow-ccm");
+    app.add_capability(cap)
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let cfg = ShellConfig::from_env(&args).unwrap_or_else(|e| fail(e));
+    let appearance = appearance::Store::open(cfg.data_dir.join("shell-appearance.json"));
+    let t = strings::strings(appearance.locale());
+    let _ = std::fs::create_dir_all(&cfg.data_dir);
+    let serve = match Serve::start(cfg.serve.clone()) {
+        Ok(s) => s,
+        Err(ServeError::PortInUse) => fail(t.port_in_use.replace("{port}", &cfg.port.to_string())),
+        Err(e) => fail(t.start_failed.replace("{reason}", &format!("{e:?}"))),
+    };
+    let origin = cfg.origin();
+    let shell = Shell {
+        port: cfg.port,
+        key: cfg.key.clone(),
+        origin: origin.clone(),
+        data_dir: cfg.data_dir.clone(),
+        webview_dir: cfg.webview_dir.clone(),
+        init_script: window::init_script(&origin),
+        pty: pty::PtyHost::new(cfg.core_bin.clone(), origin.clone(), env!("CARGO_PKG_VERSION").into(), cfg.data_dir.join("pty.log")),
+        serve: Mutex::new(Some(serve)),
+        look: Mutex::new(appearance),
+        replies: Mutex::new(HashMap::new()),
+        link_times: Mutex::new(Vec::new()),
+        quitting: AtomicBool::new(false),
+        stopped: AtomicBool::new(false),
+    };
+    let hidden = cfg.hidden;
+    let first_link = links::link_in(&args);
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| links::second_instance(app, argv)))
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .manage(shell)
+        .invoke_handler(tauri::generate_handler![ccm::ccm])
+        .on_window_event(window::on_window_event)
+        .setup(move |app| {
+            let handle = app.handle().clone();
+            capability(&handle, &origin)?;
+            window::create_main(&handle, hidden).map_err(std::io::Error::other)?;
+            tray::create(&handle)?;
+            let links_app = handle.clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    links::handle(&links_app, url.as_str());
+                }
+            });
+            if let Some(link) = first_link.clone() {
+                links::handle(&handle, &link);
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .unwrap_or_else(|e| fail(e.to_string()));
+    app.run(|app, event| match event {
+        RunEvent::ExitRequested { api, code, .. } => {
+            if code.is_none() && !app.state::<Shell>().quitting.load(std::sync::atomic::Ordering::SeqCst) {
+                api.prevent_exit();
+            }
+        }
+        RunEvent::Exit => app.state::<Shell>().shutdown(),
+        _ => {}
+    });
+}

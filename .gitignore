@@ -69,3 +69,5 @@ apps/core/target/
 
 spikes/tauri-shell/target/
 spikes/tauri-shell/gen/
+apps/shell/target/
+apps/shell/gen/

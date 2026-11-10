@@ -246,7 +246,7 @@ impl Replayer {
     }
 }
 
-pub fn replay(doc: &Value) -> Result<(Value, ReplayStats), String> {
+fn execute(doc: &Value) -> Result<Replayer, String> {
     if doc.get("format").and_then(Value::as_str) != Some(OPS_FORMAT) {
         return Err(format!("not a {OPS_FORMAT} document"));
     }
@@ -263,6 +263,17 @@ pub fn replay(doc: &Value) -> Result<(Value, ReplayStats), String> {
         r.op(op).map_err(|e| format!("op {i}: {e}"))?;
     }
     r.take_frames(true);
+    Ok(r)
+}
+
+pub fn replay_store(doc: &Value) -> Result<(Store, ReplayStats), String> {
+    let r = execute(doc)?;
+    let store = r.store.ok_or("no init op")?;
+    Ok((store, r.stats))
+}
+
+pub fn replay(doc: &Value) -> Result<(Value, ReplayStats), String> {
+    let r = execute(doc)?;
     let mut trace = match doc.get("header") {
         Some(Value::Object(h)) => h.clone(),
         _ => Map::new(),

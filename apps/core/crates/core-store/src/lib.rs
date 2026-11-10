@@ -7,6 +7,7 @@ pub mod extra;
 pub mod jseq;
 pub mod model;
 pub mod num;
+pub mod persist;
 pub mod replay;
 pub mod store;
 pub mod time;

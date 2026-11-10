@@ -76,6 +76,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-http"
+version = "0.1.0"
+dependencies = [
+ "core-store",
+ "futures-util",
+ "httparse",
+ "serde",
+ "serde_json",
+ "sha2",
+ "subtle",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
 name = "core-procs"
 version = "0.1.0"
 dependencies = [
@@ -106,8 +121,10 @@ name = "core-store"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "libc",
  "serde",
  "serde_json",
+ "windows-sys",
 ]
 
 [[package]]

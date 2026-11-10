@@ -16,7 +16,7 @@ Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguy�
 
 ## Hiệu năng: 4.0 (Tauri + Rust) so với Electron + Node
 
-Đo trên MacBook Apple Silicon (10 core, 24 GB), cùng code giao diện, 60 giây sau 20 giây chờ, demo `scripts/demo-fixture.mjs --seed=8704`. RAM = tổng RSS mọi process của app (macOS: gồm 3 process WebKit). CPU = % một core. Số thô: `docs/perf/4.0.0-tauri-darwin.json`, `docs/perf/4.0.0-electron-node-darwin.json`.
+Đo trên MacBook Pro M5 (24 GB RAM, 512 GB SSD), cùng code giao diện, 60 giây sau 20 giây chờ, demo `scripts/demo-fixture.mjs --seed=8704`. RAM = tổng RSS mọi process của app (macOS: gồm 3 process WebKit). CPU = % một core. Số thô: `docs/perf/4.0.0-tauri-darwin.json`, `docs/perf/4.0.0-electron-node-darwin.json`.
 
 | Kịch bản | RAM Electron + Node | RAM 4.0 | CPU Electron + Node | CPU 4.0 |
 |---|---|---|---|---|

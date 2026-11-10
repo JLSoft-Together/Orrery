@@ -24,6 +24,7 @@ async function run(app) {
   await cmd('Page.reload')
   await sleep(1500)
   await waitFor(`!!${S}.get('ui')`, 30000, 'reloaded')
+  await evaluate(`${S}.get('settings').compactAuto = false`)
   await evaluate(`${S}.get('ui').view = 'workspace'`)
   await waitFor(`!!document.querySelector('[data-launch-row]')`, 15000, 'picker')
 

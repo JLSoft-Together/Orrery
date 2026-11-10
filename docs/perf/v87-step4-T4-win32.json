@@ -1,0 +1,183 @@
+{
+  "label": "v87-step4-T4",
+  "platform": "win32",
+  "date": "2026-11-10",
+  "machine": {
+    "os": "Windows 11 Pro 10.0.26200",
+    "cpu": "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz",
+    "logicalProcessors": 8,
+    "ramGB": 47.9
+  },
+  "scenario": {
+    "name": "demo-30x6",
+    "seed": 8704,
+    "stage": true,
+    "settleSeconds": 20,
+    "measureSeconds": 120,
+    "cpuUnit": "percent of one core",
+    "gateTotalPct": 7.6
+  },
+  "calculation": "(collector cpuSec + sum(cpuSec for every orrery-core PID)) / 120 * 100",
+  "runs": [
+    {
+      "mode": "rust",
+      "lap": "1",
+      "effectiveEnv": "CCM_CORE_PTY=rust (default); CCM_CORE_TRANSCRIPT=rust (default); CCM_CORE_USAGE=rust (default)",
+      "ticks": 56,
+      "collector": {
+        "cpuAvgPct": 4.8,
+        "cpuP95Pct": 8.4,
+        "cpuSec": 5.7,
+        "rssMB": 98.5
+      },
+      "orreryCore": [
+        {
+          "pid": 31924,
+          "command": "transcript",
+          "cpuSec": 1.8,
+          "privateMB": 9,
+          "cpuAvgPct": 1.5
+        },
+        {
+          "pid": 18008,
+          "command": "transcript",
+          "cpuSec": 0.5,
+          "privateMB": 4.1,
+          "cpuAvgPct": 0.42
+        },
+        {
+          "pid": 25540,
+          "command": "procs",
+          "cpuSec": 0.1,
+          "privateMB": 1.1,
+          "cpuAvgPct": 0.08
+        }
+      ],
+      "orreryCoreCpuSec": 2.4,
+      "collectorPlusOrreryCoreCpuSec": 8.1,
+      "collectorPlusOrreryCoreAvgPct": 6.75,
+      "stageTotalCpuAvgPct": 67.6,
+      "rendererCpuAvgPct": 40.2,
+      "gpuCpuAvgPct": 20,
+      "perfBenchFailures": {}
+    },
+    {
+      "mode": "rust",
+      "lap": "2",
+      "effectiveEnv": "CCM_CORE_PTY=rust (default); CCM_CORE_TRANSCRIPT=rust (default); CCM_CORE_USAGE=rust (default)",
+      "ticks": 57,
+      "collector": {
+        "cpuAvgPct": 4.5,
+        "cpuP95Pct": 8.3,
+        "cpuSec": 5.4,
+        "rssMB": 97.6
+      },
+      "orreryCore": [
+        {
+          "pid": 29100,
+          "command": "transcript",
+          "cpuSec": 1.5,
+          "privateMB": 9,
+          "cpuAvgPct": 1.25
+        },
+        {
+          "pid": 27580,
+          "command": "transcript",
+          "cpuSec": 0.6,
+          "privateMB": 4,
+          "cpuAvgPct": 0.5
+        },
+        {
+          "pid": 7824,
+          "command": "procs",
+          "cpuSec": 0.1,
+          "privateMB": 1.1,
+          "cpuAvgPct": 0.08
+        }
+      ],
+      "orreryCoreCpuSec": 2.2,
+      "collectorPlusOrreryCoreCpuSec": 7.6,
+      "collectorPlusOrreryCoreAvgPct": 6.33,
+      "stageTotalCpuAvgPct": 26.2,
+      "rendererCpuAvgPct": 14.8,
+      "gpuCpuAvgPct": 4.6,
+      "perfBenchFailures": {}
+    },
+    {
+      "mode": "node",
+      "lap": "1",
+      "effectiveEnv": "CCM_CORE_PTY=node; CCM_CORE_TRANSCRIPT=node; CCM_CORE_USAGE=node",
+      "ticks": 57,
+      "collector": {
+        "cpuAvgPct": 9.9,
+        "cpuP95Pct": 15.7,
+        "cpuSec": 12.0,
+        "rssMB": 120.9
+      },
+      "orreryCore": [
+        {
+          "pid": 23244,
+          "command": "procs",
+          "cpuSec": 0.1,
+          "privateMB": 1.1,
+          "cpuAvgPct": 0.08
+        }
+      ],
+      "orreryCoreCpuSec": 0.1,
+      "collectorPlusOrreryCoreCpuSec": 12.1,
+      "collectorPlusOrreryCoreAvgPct": 10.08,
+      "stageTotalCpuAvgPct": 79.3,
+      "rendererCpuAvgPct": 45.8,
+      "gpuCpuAvgPct": 22.8,
+      "perfBenchFailures": {}
+    },
+    {
+      "mode": "node",
+      "lap": "2",
+      "effectiveEnv": "CCM_CORE_PTY=node; CCM_CORE_TRANSCRIPT=node; CCM_CORE_USAGE=node",
+      "ticks": 56,
+      "collector": {
+        "cpuAvgPct": 11.4,
+        "cpuP95Pct": 19.7,
+        "cpuSec": 13.5,
+        "rssMB": 110.2
+      },
+      "orreryCore": [
+        {
+          "pid": 24660,
+          "command": "procs",
+          "cpuSec": 0.1,
+          "privateMB": 1.1,
+          "cpuAvgPct": 0.08
+        }
+      ],
+      "orreryCoreCpuSec": 0.1,
+      "collectorPlusOrreryCoreCpuSec": 13.6,
+      "collectorPlusOrreryCoreAvgPct": 11.33,
+      "stageTotalCpuAvgPct": 77.8,
+      "rendererCpuAvgPct": 43,
+      "gpuCpuAvgPct": 22.3,
+      "perfBenchFailures": {}
+    }
+  ],
+  "averages": {
+    "rustCollectorPlusOrreryCorePct": 6.54,
+    "nodeCollectorPlusOrreryCorePct": 10.7,
+    "reductionVsNodePct": 38.9
+  },
+  "comparisonT3b": {
+    "source": "docs/perf/v87-step4-T3b-win32.json",
+    "rustUsagePct": [
+      6.7,
+      6.1
+    ],
+    "rustUsageAvgPct": 6.4,
+    "deltaPercentagePoints": 0.14,
+    "nodePct": [
+      10.3,
+      10.1
+    ],
+    "nodeAvgPct": 10.2
+  },
+  "gatePassed": true
+}

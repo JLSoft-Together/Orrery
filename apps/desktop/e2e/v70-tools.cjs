@@ -184,6 +184,7 @@ async function main() {
       await evaluate(`${filePane('api.http')}.querySelector('[data-http-send]').click()`)
       const status = await waitFor(`${filePane('api.http')}.querySelector('[data-http-status]')?.textContent.trim() || ${filePane('api.http')}.querySelector('[data-http-error]')?.textContent.trim()`, 15000, 'http result').catch(() => '')
       check('.http Send to a loopback server shows 200', /^200\b/.test(status ?? ''), status)
+      await waitFor(`/pong/.test(${filePane('api.http')}.querySelector('[data-http-result]')?.textContent ?? '')`, 5000, 'http body').catch(() => {})
       check('response body is shown', /pong/.test(await evaluate(`${filePane('api.http')}.querySelector('[data-http-result]')?.textContent ?? ''`)))
       await shot('v70-04-http')
     })

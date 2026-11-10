@@ -4,6 +4,7 @@ use crate::jobs::{drain, full_scan, sweep, Shared, Sink};
 use crate::omap::OMap;
 use crate::query::scan_json;
 use crate::sigserve::Handles;
+use crate::sidefiles::SideFiles;
 use crate::tracker::serve::Trackers;
 use crate::time::{now_ms, today};
 use core_procs::lines::Lines;
@@ -333,6 +334,16 @@ fn codex_op(m: &Map<String, Value>, rollouts: &mut Rollouts) -> Option<Option<Va
     }))
 }
 
+fn sidefiles_op(m: &Map<String, Value>, sidefiles: &mut SideFiles) -> Option<Value> {
+    let op = m.get("op").and_then(Value::as_str).filter(|o| o.starts_with("sidefiles."))?;
+    let Some(id) = m.get("id").filter(|v| v.is_number() || v.is_string()) else { return Some(Value::Null) };
+    Some(match sidefiles.handle(op, m) {
+        Some(Ok(extra)) => ok(id, extra),
+        Some(Err(kind)) => failed(id, kind),
+        None => failed(id, "op"),
+    })
+}
+
 fn tracker_op(m: &Map<String, Value>, trackers: &mut Trackers) -> Option<Option<Value>> {
     let op = m.get("op").and_then(Value::as_str).filter(|o| o.starts_with("tracker."))?;
     let id = m.get("id").filter(|v| v.is_number() || v.is_string());
@@ -353,9 +364,14 @@ pub fn run() -> i32 {
     let mut signals = Handles::default();
     let mut trackers = Trackers::default();
     let mut rollouts = Rollouts::default();
+    let mut sidefiles = SideFiles;
     let mut lines = Lines::new(std::io::stdin().lock());
     while let Some(line) = lines.next_line() {
         let Ok(Value::Object(m)) = serde_json::from_slice::<Value>(&line) else { continue };
+        if let Some(reply) = sidefiles_op(&m, &mut sidefiles) {
+            if !reply.is_null() { write(&reply); }
+            continue;
+        }
         if let Some(reply) = codex_op(&m, &mut rollouts) {
             if let Some(reply) = reply {
                 write(&reply);

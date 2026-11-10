@@ -29,6 +29,13 @@ export class JsonlTailer {
     private readonly options: TailOptions = {},
   ) {}
 
+  resumeAt(offset: number, skipping: boolean): void {
+    this.started = true
+    this.offset = offset
+    this.remainder = Buffer.alloc(0)
+    this.skipping = skipping
+  }
+
   async read(): Promise<unknown[]> {
     const records: unknown[] = []
     await this.readEach((r) => records.push(r))

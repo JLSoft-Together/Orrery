@@ -1,4 +1,4 @@
-export type CoreFallbackKind = 'usage' | 'transcript' | 'codex'
+export type CoreFallbackKind = 'usage' | 'transcript' | 'codex' | 'sidefiles'
 
 export interface CoreFallbackMessage {
   type: 'core-fallback'

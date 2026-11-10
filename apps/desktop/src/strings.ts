@@ -226,6 +226,7 @@ It runs in ${cwd} with a made-up JSON input on stdin and a minimal environment, 
   coreFallbackUsage: 'Usage',
   coreFallbackTranscript: 'Session tracking',
   coreFallbackCodex: 'Codex runs',
+  coreFallbackSidefiles: 'Hook, status line and DeepSeek outbox files',
   captureMissingBody: (dir: string) => `${dir} cannot be found (drive removed?). Recordings go to the temp folder and screenshots to the clipboard until it is back.`,
   backupApplyTitle: (n: number) => (n === 1 ? 'Import 1 section and restart Orrery?' : `Import ${n} sections and restart Orrery?`),
   backupApplyDetail: (names: string[]) =>
@@ -523,6 +524,7 @@ Lệnh chạy trong ${cwd} với input JSON giả trên stdin và môi trường
   coreFallbackUsage: 'Usage',
   coreFallbackTranscript: 'Theo dõi session',
   coreFallbackCodex: 'Lượt chạy Codex',
+  coreFallbackSidefiles: 'File hook, status line và outbox DeepSeek',
   captureMissingBody: (dir) => `Không tìm thấy ${dir} (đã rút ổ?). Video quay tạm ghi vào thư mục temp và ảnh chụp đi qua clipboard cho tới khi thư mục có lại.`,
   backupApplyTitle: (n) => `Nhập ${n} mục và khởi động lại Orrery?`,
   backupApplyDetail: (names) =>

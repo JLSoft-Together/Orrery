@@ -15,6 +15,7 @@ pub mod query;
 pub mod record;
 pub mod rules;
 pub mod serve;
+pub mod sidefiles;
 pub mod signal;
 pub mod sigserve;
 pub mod spans;

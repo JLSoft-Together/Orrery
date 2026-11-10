@@ -3,9 +3,9 @@ import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import type { ActivityKind, Agent, AgentStatus, TerminalSession, TerminalStatus } from '@ccm/shared'
 import type { MonitorStore } from '../store'
-import { JsonlTailer } from '../tailer'
+import { createSideFileSources, type OutboxTail, type SideFileSources } from '../sideFileSource'
 import type { ActivityDraft } from '../tracker'
-import { DeepseekThreadState, outboxPathFrom, parseOutboxLine, type StateChange, type SubagentState } from './outbox'
+import { DeepseekThreadState, outboxPathFrom, type StateChange, type SubagentState } from './outbox'
 import { matchDeepseekProcesses, type DeepseekProcess } from './processes'
 
 export interface DeepseekMonitorOptions {
@@ -21,6 +21,7 @@ export interface DeepseekMonitorDeps {
   listProcesses: () => Promise<DeepseekProcess[] | null>
   isPidAlive: (pid: number) => boolean
   now: () => number
+  sideFiles?: SideFileSources
 }
 
 interface Thread {
@@ -72,7 +73,7 @@ export class DeepseekMonitor {
   private outbox: string | null = null
   private outboxWatcher: { dir: string; w: FSWatcher } | null = null
   private homeWatched = false
-  private tailer: JsonlTailer | null = null
+  private tailer: OutboxTail | null = null
   private fileKey: string | null = null
   private everOpened = false
   private reading: Promise<void> = Promise.resolve()
@@ -198,15 +199,13 @@ export class DeepseekMonitor {
     }
     if (key !== this.fileKey || !this.tailer) {
       // Only the first open starts near the end; a rotated file is new, so it is read whole.
-      this.tailer = new JsonlTailer(file, undefined, { fromEnd: this.everOpened ? undefined : TAIL_BYTES, maxLine: MAX_LINE })
+      this.tailer = (this.deps.sideFiles ?? createSideFileSources()).outbox(file, { fromEnd: this.everOpened ? undefined : TAIL_BYTES, maxLine: MAX_LINE })
       this.fileKey = key
       this.everOpened = true
     }
     const touched = new Map<string, ActivityDraft[]>()
     let fresh = false
-    await this.tailer.readEach((record) => {
-      const e = parseOutboxLine(record)
-      if (!e) return
+    await this.tailer.readEach((e) => {
       let t = this.threads.get(e.threadId)
       if (!t) {
         // An ended session seen again (resume) comes back as a new entry; a stray end of an unknown one is ignored.

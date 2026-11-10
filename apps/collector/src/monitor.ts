@@ -23,8 +23,9 @@ import { readModelCatalog } from './model-catalog'
 import { PEER_TTL_MS, PeerLinkStore, type PeerMessage } from './peers'
 import { readRegistry } from './registry'
 import { ResponseTracker } from './response'
-import { latestLimits, StatusLineReader } from './statusline'
-import { COMPACT_STALE_MS, HookReader, type HookRecord } from './hooks'
+import { latestLimits, type StatusLineRecord } from './statusline'
+import { COMPACT_STALE_MS, type HookRecord } from './hooks'
+import { createSideFileSources, type DirReader, type SideFileSources } from './sideFileSource'
 import type { MonitorStore } from './store'
 import { createTracker, terminalIdOf, type ActivityDraft, type ContextHints, type SyncScope, type Tracker as SessionTracker } from './trackerSource'
 import { CodexMonitor } from './codex/monitor'
@@ -65,6 +66,7 @@ export interface MonitorDeps {
   diffDelayMs?: number
   peerHoldMs?: number
   stopJob?: (jobId: string) => Promise<JobStopResult>
+  sideFiles?: SideFileSources
 }
 
 /** Sends an answer to the socket that asked; without one (tests, internal calls) it falls back to a broadcast. */
@@ -98,10 +100,10 @@ export class Monitor {
     bufferPct: autocompactBufferPct(Number(process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW)),
   }
   private readonly jobReader: JobReader
-  private readonly statusLine: StatusLineReader
+  private readonly statusLine: DirReader<StatusLineRecord>
   private readonly costs = new Map<string, number>()
   private readonly hooks = new Map<string, HookRecord>()
-  private readonly hookReader: HookReader
+  private readonly hookReader: DirReader<HookRecord>
   private jobs = new Map<string, BackgroundJob>()
   private jobsLoaded = false
   private readonly dismissedJobs = new Map<string, string>()
@@ -140,8 +142,8 @@ export class Monitor {
     this.sessionsDir = path.join(config.claudeRoot, 'sessions')
     this.projectsDir = path.join(config.claudeRoot, 'projects')
     this.jobReader = new JobReader(path.join(config.claudeRoot, 'jobs'))
-    this.statusLine = new StatusLineReader(path.join(config.dataDir, 'statusline'))
-    this.hookReader = new HookReader(path.join(config.dataDir, 'hooks'))
+    this.statusLine = (deps.sideFiles ?? createSideFileSources()).statusLine(path.join(config.dataDir, 'statusline'))
+    this.hookReader = (deps.sideFiles ?? createSideFileSources()).hooks(path.join(config.dataDir, 'hooks'))
     this.peers = new PeerLinkStore(store, {
       ttlMs: config.peerTtlMs ?? PEER_TTL_MS,
       holdMs: deps.peerHoldMs,

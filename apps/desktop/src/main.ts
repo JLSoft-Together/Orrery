@@ -797,8 +797,8 @@ function tailOf(file: string): string {
   }
 }
 
-const CORE_READERS = { usage: 'CCM_CORE_USAGE', transcript: 'CCM_CORE_TRANSCRIPT', codex: 'CCM_CORE_CODEX' } as const
-const CORE_READERS_NODE_DEFAULT = new Set(['codex'])
+const CORE_READERS = { usage: 'CCM_CORE_USAGE', transcript: 'CCM_CORE_TRANSCRIPT', codex: 'CCM_CORE_CODEX', sidefiles: 'CCM_CORE_SIDEFILES' } as const
+const CORE_READERS_NODE_DEFAULT = new Set(['codex', 'sidefiles'])
 
 function coreReadersLine(): string {
   const parts = Object.entries(CORE_READERS).map(([kind, flag]) => {
@@ -812,12 +812,12 @@ function coreReadersLine(): string {
 
 function noteCoreFallback(data: unknown): void {
   const m = data as { kind?: unknown; reason?: unknown }
-  if (m.kind !== 'usage' && m.kind !== 'transcript' && m.kind !== 'codex') return
+  if (m.kind !== 'usage' && m.kind !== 'transcript' && m.kind !== 'codex' && m.kind !== 'sidefiles') return
   if (coreFellBack.has(m.kind)) return
   const reason = typeof m.reason === 'string' ? m.reason.slice(0, 200) : 'unknown'
   coreFellBack.set(m.kind, reason)
   console.warn(`[ccm] ${m.kind}: rust core unusable (${reason}); using node`)
-  const what = m.kind === 'usage' ? t.coreFallbackUsage : m.kind === 'codex' ? t.coreFallbackCodex : t.coreFallbackTranscript
+  const what = m.kind === 'usage' ? t.coreFallbackUsage : m.kind === 'codex' ? t.coreFallbackCodex : m.kind === 'sidefiles' ? t.coreFallbackSidefiles : t.coreFallbackTranscript
   if (Notification.isSupported()) new Notification({ title: t.coreFallbackTitle(what), body: t.coreFallbackBody(what, reason, CORE_READERS[m.kind]) }).show()
 }
 

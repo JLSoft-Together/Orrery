@@ -12,11 +12,11 @@ import PortConflictBar from './PortConflictBar.vue'
 import AgentMap from './AgentMap.vue'
 import CommandPanel from './monitor/CommandPanel.vue'
 import ModeBar from './monitor/ModeBar.vue'
+import OrbitQueue from './monitor/OrbitQueue.vue'
 import SessionBoard from './monitor/SessionBoard.vue'
 import PanelHeader from './PanelHeader.vue'
 import PanelSplitter from './PanelSplitter.vue'
 import SessionCard from './SessionCard.vue'
-import SessionList from './SessionList.vue'
 import WaitingStrip from './WaitingStrip.vue'
 
 const { t } = useI18n()
@@ -112,7 +112,7 @@ function panelTransition(p: Panel): string {
           >
             <span class="h-1 w-9 rounded-full bg-fill-strong" aria-hidden="true" />
           </button>
-          <SessionList v-if="!ui.sessionTab" />
+          <OrbitQueue v-if="!ui.sessionTab" :groups="monitor.sessionGroups.value" :projects="monitor.groups.value" :freeze-bind="monitor.freezeBind" />
           <section v-else-if="tabTerminal" aria-labelledby="session-panel-title" class="flex h-full min-h-0 flex-col">
             <PanelHeader panel="sessions" title-id="session-panel-title" :title="t('panel.session')" />
             <div class="ccm-scroll -m-1 min-h-0 flex-1 overflow-y-auto p-1">
@@ -132,7 +132,7 @@ function panelTransition(p: Panel): string {
         </aside>
       </Transition>
 
-      <AgentMap :key="ui.sessionTab ?? 'all'" :terminal-id="ui.sessionTab" data-tour="map" class="min-w-0 flex-1" />
+      <AgentMap :key="ui.sessionTab ?? 'all'" :terminal-id="ui.sessionTab" :layout="ui.sessionTab ? 'tree' : 'radial'" data-tour="map" class="min-w-0 flex-1" />
 
     </div>
 

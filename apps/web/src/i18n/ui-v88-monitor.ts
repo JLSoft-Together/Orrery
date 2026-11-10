@@ -2,7 +2,8 @@ const en = {
   monitorV88: {
     modes: 'Monitor view',
     board: 'Board',
-    sky: 'Sky',
+    queue: 'Queue',
+    sky: 'Orbit',
     modeHint: 'Alt+{n}',
     chipNeeds: 'Needs you',
     chipRunning: 'Running',
@@ -37,7 +38,8 @@ const vi = {
   monitorV88: {
     modes: 'Chế độ Monitor',
     board: 'Bảng',
-    sky: 'Bầu trời',
+    queue: 'Hàng chờ',
+    sky: 'Quỹ đạo',
     modeHint: 'Alt+{n}',
     chipNeeds: 'Cần chủ nhân',
     chipRunning: 'Đang chạy',

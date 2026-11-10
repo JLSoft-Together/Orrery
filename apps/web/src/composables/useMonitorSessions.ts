@@ -26,7 +26,6 @@ export function useMonitorSessions() {
     return sameGroups(prev, next) ? prev! : next
   })
   const filterIds = computed(() => {
-    if (ui.monitorMode !== 'board') return null
     const g = ui.monitorProject ? groups.value.find((x) => x.key === ui.monitorProject) : undefined
     return g && groups.value.length > 1 ? new Set(g.ids) : null
   })

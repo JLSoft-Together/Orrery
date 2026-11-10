@@ -1,7 +1,7 @@
 # Release 3.5.0 (2026-11-11)
 
 ## English
-- Monitor has a new Board tab: four columns (Needs you, Running, Idle, Done today) with one card per session; Alt+1 / Alt+2 switch between Board and the Sky view (the previous Monitor)
+- Monitor has a new Board tab: four columns (Needs you, Running, Idle, Done today) with one card per session; Alt+1 / Alt+2 switch between Board and the Orbit view (the previous Monitor)
 - Running commands panel at the bottom of Monitor: every running tool with its full command (secrets masked, home shown as ~), how long it has run and a button that opens the pane; toggle it with the bar or the ` key
 - Agents show by icon (Claude, Codex, DeepSeek) instead of a text label on Board cards
 - New lightweight app: Orrery now runs on Tauri with a Rust core instead of Electron and Node; the installer is several times smaller and the app uses less RAM. Settings, layouts and GitHub tokens carry over; the old Electron app is removed on Windows, your data stays
@@ -16,7 +16,7 @@
 - Fixes: a shell server is named after the process that listens (no more `cut` / `tee`), subagent start time is exact, macOS paths under /tmp and /var are handled
 
 ## Tiếng Việt
-- Monitor có tab Bảng mới: 4 cột (Cần anh, Đang chạy, Rảnh, Xong hôm nay), mỗi session 1 thẻ; Alt+1 / Alt+2 chuyển giữa Bảng và Bầu trời (Monitor cũ)
+- Monitor có tab Bảng mới: 4 cột (Cần anh, Đang chạy, Rảnh, Xong hôm nay), mỗi session 1 thẻ; Alt+1 / Alt+2 chuyển giữa Bảng và Quỹ đạo (Monitor cũ)
 - Panel "Lệnh đang chạy" ở dưới Monitor: mọi tool đang chạy kèm lệnh đầy đủ (che secret, home hiện là ~), thời gian đã chạy và nút mở pane; bấm thanh hoặc phím ` để ẩn / hiện
 - Agent trên thẻ Bảng hiện bằng icon (Claude, Codex, DeepSeek), không ghi chữ
 - App mới nhẹ hơn: Orrery chạy trên Tauri với core Rust thay Electron + Node; bộ cài nhỏ hơn nhiều lần, app ít RAM hơn. Settings, layout và token GitHub được giữ; trên Windows bản Electron cũ tự gỡ, dữ liệu giữ nguyên

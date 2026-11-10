@@ -45,7 +45,7 @@ describe('ModeBar', () => {
     setActivePinia(pinia)
     w = mount(ModeBar, { props: { projects: [], groups: [{ key: 'needs', ids: ['a', 'b'] }] }, global: { plugins: [i18n, pinia] } })
     const tabs = w.findAll('[role=tab]')
-    expect(tabs.map((t) => t.text())).toEqual(['Board', 'Sky'])
+    expect(tabs.map((t) => t.text())).toEqual(['Board', 'Orbit'])
     expect(tabs[0]!.attributes('aria-selected')).toBe('true')
     await tabs[1]!.trigger('click')
     expect(useUiStore().monitorMode).toBe('sky')
@@ -205,7 +205,7 @@ describe('useMonitorSessions', () => {
     expect(api.sessionGroups.value).toEqual([])
   })
 
-  it('filters by project only on the board', () => {
+  it('filters by project in both modes', () => {
     const api = harness()
     const ui = useUiStore()
     useTerminalsStore().replaceAll([
@@ -215,6 +215,6 @@ describe('useMonitorSessions', () => {
     ui.monitorProject = api.groups.value[0]!.key
     expect(api.sessionGroups.value[0]!.ids).toHaveLength(1)
     ui.monitorMode = 'sky'
-    expect(api.sessionGroups.value[0]!.ids).toHaveLength(2)
+    expect(api.sessionGroups.value[0]!.ids).toHaveLength(1)
   })
 })

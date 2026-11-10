@@ -60,17 +60,22 @@ import { useMapFind } from './map/useMapFind'
 import { useLiveAnnounce } from './map/useLiveAnnounce'
 import { useOffscreenCapsules } from './map/useOffscreenCapsules'
 import { nodeSize, SeenNodes } from '../lib/mapNodeSize'
+import { computeSky, dotId, splitDimmed, trayPoint } from '../lib/skyLayout'
+import { folderName, projectOf } from '../lib/sidebarRows'
+import SkyDot from './SkyDot.vue'
+import SkyOrbit from './SkyOrbit.vue'
 import { useOfficeControls } from './map/useOfficeControls'
 
 const OfficeView = defineAsyncComponent(() => import('./office/OfficeView.vue'))
 
-const props = defineProps<{ terminalId?: string | null }>()
+const props = defineProps<{ terminalId?: string | null; layout?: 'tree' | 'radial' }>()
 const { t } = useI18n()
 const agents = useAgentsStore()
 const terminals = useTerminalsStore()
 const ui = useUiStore()
 
 const scoped = !!props.terminalId
+const radial = !scoped && props.layout === 'radial'
 const FLOW_ID = scoped ? `agent-map-${props.terminalId}` : 'agent-map'
 const {
   addNodes,
@@ -105,7 +110,11 @@ const flyIn = nextMapIsSwitch()
 const highlighted = computed(() => (ui.selectedAgentId ? agents.lineage(ui.selectedAgentId) : null))
 provide('ccm-highlight', highlighted)
 
-const source = computed(() => (props.terminalId ? (agents.byTerminal[props.terminalId] ?? []) : agents.list))
+const dimmedIds = computed<ReadonlySet<string>>(() => (radial ? new Set(splitDimmed(terminals.list).dimmed) : new Set()))
+const source = computed(() => {
+  if (props.terminalId) return agents.byTerminal[props.terminalId] ?? []
+  return dimmedIds.value.size ? agents.list.filter((a) => !dimmedIds.value.has(a.terminalId)) : agents.list
+})
 const sourceByTerminal = computed(() => {
   const out: Record<string, Agent[]> = {}
   for (const a of source.value) (out[a.terminalId] ??= []).push(a)
@@ -174,6 +183,7 @@ const shownByTerminal = computed(() => {
   const out: Record<string, typeof agents.list> = {}
   for (const [id, list] of Object.entries(agents.byTerminal)) {
     if (props.terminalId && id !== props.terminalId) continue
+    if (dimmedIds.value.has(id)) continue
     const kept = list.filter((a) => visibility.value.visible.has(a.id))
     if (kept.length) out[id] = kept
   }
@@ -236,7 +246,7 @@ watch(
 )
 
 const terminalOrder = computed(() =>
-  [...terminals.list].filter((x) => !props.terminalId || x.id === props.terminalId).sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '') || a.id.localeCompare(b.id)),
+  [...terminals.list].filter((x) => (!props.terminalId || x.id === props.terminalId) && !dimmedIds.value.has(x.id)).sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '') || a.id.localeCompare(b.id)),
 )
 
 const structureKey = computed(() =>
@@ -247,6 +257,7 @@ const structureKey = computed(() =>
       .sort()
       .join('|'),
     trayIds.value.join(','),
+    [...dimmedIds.value].sort().join(','),
   ].join('#'),
 )
 
@@ -277,9 +288,7 @@ function offsetFrom(from: Point, to: Point): Record<string, string> {
   return { '--ccm-to-x': `${Math.round(to.x - from.x - GLYPH.x)}px`, '--ccm-to-y': `${Math.round(to.y - from.y - GLYPH.y)}px` }
 }
 
-function syncNodes(fit = false): void {
-  const box = canvas.value
-  const terminalIds = terminalOrder.value.map((x) => x.id)
+function treePlaced(terminalIds: string[], box: HTMLElement | null): Map<string, Point> {
   const picked = pickLayout(
     {
       terminals: terminalIds,
@@ -307,9 +316,67 @@ function syncNodes(fit = false): void {
       }
     }
   }
+  return placed
+}
+
+const nudges = shallowRef<Readonly<Record<string, number>>>({})
+const projectKey = (cwd: string | undefined): string => {
+  const dir = projectOf(cwd)
+  return dir ? folderName(dir) : '~'
+}
+function radialPlaced(): Map<string, Point> {
+  const systems = terminalOrder.value.flatMap((x) => {
+    const list = shownByTerminal.value[x.id]
+    const main = list?.find((a) => a.role === 'main')
+    if (!list || !main) return []
+    const subs = list
+      .filter((a) => a.role !== 'main')
+      .sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '') || a.id.localeCompare(b.id))
+      .map((a) => a.id)
+    return [{ terminalId: x.id, project: projectKey(x.cwd), mainId: main.id, subs }]
+  })
+  const dots = [...dimmedIds.value].flatMap((id) => {
+    const x = terminals.byId[id]
+    return x ? [{ id, project: projectKey(x.cwd) }] : []
+  })
+  const sky = computeSky({ systems, dots, nudges: nudges.value, reduced: reducedMotion() })
+  const out = new Map(sky.positions)
+  for (const o of sky.orbits) out.set(o.id, { x: o.cx - o.rx, y: o.cy - o.ry })
+  for (const [id, at] of sky.dots) out.set(dotId(id), at)
+  for (const tid of trayIds.value) {
+    const sun = sky.suns.get(tid)
+    if (sun) out.set(trayId(tid), trayPoint(sun))
+  }
+  skyOrbits = sky.orbits
+  return out
+}
+let skyOrbits: { id: string; rx: number; ry: number }[] = []
+
+function syncNodes(fit = false): void {
+  const box = canvas.value
+  const terminalIds = terminalOrder.value.map((x) => x.id)
+  const placed = radial ? radialPlaced() : treePlaced(terminalIds, box)
   lastPlaced = placed
   const wanted = new Map<string, Node>()
-  for (const a of shownList.value) wanted.set(a.id, { id: a.id, type: a.role === 'main' ? 'main' : 'sub', position: { x: 0, y: 0 }, data: { agentId: a.id }, draggable: true, selectable: false })
+  if (radial) {
+    for (const o of skyOrbits) {
+      wanted.set(o.id, {
+        id: o.id,
+        type: 'orbit',
+        position: { x: 0, y: 0 },
+        data: { rx: o.rx, ry: o.ry },
+        draggable: false,
+        selectable: false,
+        focusable: false,
+        zIndex: -1,
+        style: { width: `${o.rx * 2}px`, height: `${o.ry * 2}px`, pointerEvents: 'none' },
+      })
+    }
+    for (const id of dimmedIds.value) {
+      if (placed.has(dotId(id))) wanted.set(dotId(id), { id: dotId(id), type: 'dot', position: { x: 0, y: 0 }, data: { terminalId: id }, draggable: false, selectable: false })
+    }
+  }
+  for (const a of shownList.value) wanted.set(a.id, { id: a.id, type: a.role === 'main' ? 'main' : 'sub', position: { x: 0, y: 0 }, data: { agentId: a.id }, draggable: !radial, selectable: false })
   for (const tid of trayIds.value) wanted.set(trayId(tid), { id: trayId(tid), type: 'tray', position: { x: 0, y: 0 }, data: { terminalId: tid }, draggable: false, selectable: false })
   const current = new Map(allNodes.value.map((n) => [n.id, n]))
   seenNodes.prune(new Set(wanted.keys()))
@@ -321,7 +388,7 @@ function syncNodes(fit = false): void {
 
   const fresh: Node[] = []
   for (const [id, spec] of wanted) {
-    const position = (scoped || spec.type === 'tray' ? undefined : ui.nodePos[id]) ?? placed.get(id)
+    const position = (scoped || radial || spec.type === 'tray' ? undefined : ui.nodePos[id]) ?? placed.get(id)
     if (!position) continue
     const node = current.get(id)
     if (node && leaving.has(id)) keepNode(id)
@@ -359,7 +426,9 @@ const FROM_TRAY_MS = 460
 const leaving = new Map<string, number>()
 const dusting = new Set<string>()
 function retireNodes(ids: string[], placed: Map<string, Point>): void {
-  const fresh = ids.filter((id) => !leaving.has(id) && !dusting.has(id))
+  const plain = ids.filter((id) => id.startsWith('orbit:') || id.startsWith('dot:'))
+  if (plain.length) removeNodes(plain)
+  const fresh = ids.filter((id) => !leaving.has(id) && !dusting.has(id) && !plain.includes(id))
   if (!fresh.length) return
   if (!motionMs(NODE_EXIT_MS)) return removeNodes(fresh)
   const gone: string[] = []
@@ -546,6 +615,28 @@ watch(
   },
   { immediate: true },
 )
+
+if (radial) {
+  watch(
+    () => source.value.map((a) => `${a.id}\u0000${a.currentToolStartedAt ?? ''}`),
+    (rows, before) => {
+      if (!before) return
+      const prev = new Map(before.map((r) => r.split('\u0000') as [string, string]))
+      let changed = false
+      const next = { ...nudges.value }
+      for (const r of rows) {
+        const [id, at] = r.split('\u0000') as [string, string]
+        const was = prev.get(id)
+        if (!at || was === undefined || was === at) continue
+        next[id] = (next[id] ?? 0) + 1
+        changed = true
+      }
+      if (!changed) return
+      nudges.value = next
+      syncNodes(false)
+    },
+  )
+}
 
 const peers = usePeersStore()
 const nameOf = usePeerName()
@@ -784,6 +875,7 @@ onBeforeUnmount(() => {
 const edges = computed<Edge[]>((prev) => stableEdges(prev, buildEdges()))
 
 function buildEdges(): Edge[] {
+  if (radial) return [...peerEdges.value]
   const out: Edge[] = [...peerEdges.value]
   for (const [id, parent] of edgeParent.value) {
     const a = agents.byId[id]
@@ -1310,7 +1402,7 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
     <div
       ref="canvas"
       class="relative min-h-0 flex-1 overflow-hidden"
-      :class="[nodeMotion ? 'ccm-map-motion' : '', 'bg-canvas', officeFullscreen ? 'ccm-office-fullscreen' : '']"
+      :class="[nodeMotion ? 'ccm-map-motion' : '', radial ? 'ccm-sky' : '', 'bg-canvas', officeFullscreen ? 'ccm-office-fullscreen' : '']"
       :data-office-fullscreen="officeFullscreen ? '' : undefined"
       role="region"
       :aria-label="regionLabel"
@@ -1343,6 +1435,12 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
         </template>
         <template #node-sub="nodeProps">
           <SubPill :id="nodeProps.id" :data="nodeProps.data" :picked="nodeProps.selected" />
+        </template>
+        <template #node-orbit="nodeProps">
+          <SkyOrbit :id="nodeProps.id" :data="nodeProps.data" />
+        </template>
+        <template #node-dot="nodeProps">
+          <SkyDot :id="nodeProps.id" :data="nodeProps.data" />
         </template>
         <template #node-tray="nodeProps">
           <DoneTray :id="nodeProps.id" :data="nodeProps.data" />

@@ -6,6 +6,7 @@ import { ArrowRightLeft, ChevronDown, ChevronRight, CornerDownRight, FoldVertica
 import { useMapNode, usePeerMap, usePeerName } from '../composables/useMapNode'
 import { duration, now } from '../lib/format'
 import { MAIN_HEIGHT, MAIN_WIDTH, TRUNK_X } from '../lib/layout'
+import { groupOf } from '../lib/sessionGroups'
 import { effortLabel, modelLabel } from '../lib/model'
 import { contextPctOf } from '../lib/provider'
 import { displayTitle } from '../lib/title'
@@ -32,6 +33,7 @@ const attention = computed(() => terminal.value?.status === 'waiting' || agent.v
 const wait = computed(() => (terminal.value?.status === 'waiting' ? waitDisplay(terminal.value.waitingFor, agent.value?.currentTool, t) : null))
 
 const ended = computed(() => !terminal.value || terminal.value.status === 'stale')
+const sun = computed(() => (terminal.value ? groupOf(terminal.value.status) : 'ended'))
 const compacting = computed(() => !ended.value && !!terminal.value?.compactingSince)
 const denied = computed(() => {
   const n = ended.value ? 0 : (terminal.value?.deniedCount ?? 0)
@@ -199,6 +201,7 @@ onBeforeUnmount(() => stop?.())
         ref="box"
         data-agent-node
         data-node-kind="main"
+        :data-sun="sun"
         :tabindex="tabbable ? 0 : -1"
         role="group"
         :aria-roledescription="t('mapV53.node.main')"

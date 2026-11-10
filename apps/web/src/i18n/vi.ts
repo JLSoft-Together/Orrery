@@ -678,7 +678,7 @@ const vi: typeof en = {
       ...v48.vi.keys,
       sessions: 'Hiện/ẩn Sessions',
       sessionsPin: 'Ghim Sessions thành cột hoặc cho nổi',
-      monitorMode: 'Chuyển Monitor giữa Bảng và Bầu trời',
+      monitorMode: 'Chuyển Monitor giữa Bảng và Quỹ đạo',
       cmdPanel: 'Mở hoặc đóng lệnh đang chạy',
       activity: 'Hiện/ẩn Hoạt động',
       activityPin: 'Ghim Hoạt động thành cột hoặc cho nổi',

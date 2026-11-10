@@ -677,7 +677,7 @@ export default {
       ...v48.en.keys,
       sessions: 'Show or hide Sessions',
       sessionsPin: 'Pin Sessions as a column, or float it',
-      monitorMode: 'Switch Monitor between Board and Sky',
+      monitorMode: 'Switch Monitor between Board and Orbit',
       cmdPanel: 'Show or hide running commands',
       activity: 'Show or hide Activity',
       activityPin: 'Pin Activity as a column, or float it',

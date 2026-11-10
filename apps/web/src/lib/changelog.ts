@@ -18,6 +18,17 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '3.5.0',
+    date: '2026-11-11',
+    items: [
+      { en: 'Monitor Board tab: Needs you, Running, Idle, Done today; Alt+1 / Alt+2 switch to the Sky view', vi: 'Monitor có tab Bảng: Cần anh, Đang chạy, Rảnh, Xong hôm nay; Alt+1 / Alt+2 chuyển sang Bầu trời' },
+      { en: 'Running commands panel: full command (secrets masked), run time, open pane; ` toggles it', vi: 'Panel "Lệnh đang chạy": lệnh đầy đủ (che secret), thời gian chạy, mở pane; phím ` để ẩn / hiện' },
+      { en: 'New lightweight app on Tauri + Rust (no Electron / Node): smaller installer, less RAM', vi: 'App mới nhẹ hơn trên Tauri + Rust (bỏ Electron / Node): bộ cài nhỏ hơn, ít RAM hơn' },
+      { en: 'Telegram: sign in to your account once more for topics and large files; Office not in this version', vi: 'Telegram: đăng nhập lại tài khoản 1 lần để quét topic và gửi file lớn; bản này chưa có Office' },
+      { en: 'No blur, shorter tours; Linux and Windows portable builds dropped', vi: 'Bỏ blur, tour ngắn hơn; bỏ bản Linux và bản Windows portable' },
+    ],
+  },
+  {
     version: '3.4.0',
     date: '2026-11-08',
     items: [

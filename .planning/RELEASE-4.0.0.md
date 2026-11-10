@@ -18,7 +18,7 @@ Orrery 4 runs entirely on Rust: Tauri shell + `orrery-core`, no Electron and no 
 - Linux builds are dropped (Windows and macOS only)
 - Fixes: a shell server is named after the process that listens (no more `cut` / `tee`), subagent start time is exact, macOS paths under /tmp and /var are handled
 
-## Speed and memory (MacBook Pro M5, 24 GB RAM, 512 GB SSD, same UI code, vs Electron + Node)
+## Speed and memory (MacBook Pro M5, 24 GB RAM, 1 TB SSD, same UI code, vs Electron + Node)
 | Scenario | RAM Electron + Node | RAM 4.0 | CPU Electron + Node | CPU 4.0 |
 |---|---|---|---|---|
 | Monitor, no sessions | 651 MB | 291 MB (−55%) | 0.6% | 0.3% |
@@ -43,7 +43,7 @@ Installer (macOS arm64) 147 MB → 24 MB (−84%); installed app 325 MB → 54 M
 - Bỏ bản Linux (chỉ còn Windows và macOS)
 - Sửa: server chạy từ shell mang tên process đang listen (không còn hiện `cut` / `tee`), giờ bắt đầu subagent chính xác, đường dẫn /tmp và /var trên macOS đúng
 
-## Tốc độ và RAM (MacBook Pro M5, 24 GB RAM, 512 GB SSD, cùng code giao diện, so với Electron + Node)
+## Tốc độ và RAM (MacBook Pro M5, 24 GB RAM, 1 TB SSD, cùng code giao diện, so với Electron + Node)
 | Kịch bản | RAM Electron + Node | RAM 4.0 | CPU Electron + Node | CPU 4.0 |
 |---|---|---|---|---|
 | Monitor, không session | 651 MB | 291 MB (−55%) | 0,6% | 0,3% |

@@ -155,6 +155,10 @@ impl Tracker {
         self.links.foreground.get(id).map(|(err, at)| (if *err { "error" } else { "completed" }, at.clone()))
     }
 
+    pub(super) fn about_to_resolve(&self, sub: &Sub) -> bool {
+        !sub.resolved && self.linked_outcome(sub).is_some_and(|(status, _)| finished(status) || status == "unknown")
+    }
+
     pub(super) fn is_lite_catch_up(&self, id: &str, now: i64) -> bool {
         let Some(sub) = self.subs.get(id) else { return false };
         let cutoff = now - SPAN_RETENTION_MS;

@@ -176,9 +176,30 @@ function eventShape(e) {
   return e
 }
 
+function maskMap(list) {
+  const out = new Map()
+  for (const m of list) {
+    const dot = m.lastIndexOf('.')
+    if (dot <= 0) continue
+    const type = m.slice(0, dot)
+    if (!out.has(type)) out.set(type, [])
+    out.get(type).push(m.slice(dot + 1))
+  }
+  return out
+}
+
+function masked(event, masks) {
+  const keys = masks.get(event.type)
+  if (!keys || !event.payload || typeof event.payload !== 'object') return event
+  const payload = { ...event.payload }
+  for (const k of keys) if (k in payload) payload[k] = '<masked>'
+  return { ...event, payload }
+}
+
 export function digest(trace, options = {}) {
   const norm = makeNormalizer(trace)
   const ignore = new Set([...(trace.ignore ?? []), ...(options.ignore ?? [])])
+  const masks = maskMap([...(trace.mask ?? []), ...(options.mask ?? [])])
   let state = emptyState()
   let first = true
   const steps = []
@@ -190,7 +211,7 @@ export function digest(trace, options = {}) {
     for (const message of step.frames) {
       for (const original of message.events) {
         if (ignore.has(original.type)) continue
-        const raw = original.type === 'snapshot' ? { ...original, payload: withoutKeys(original.payload, ignore) } : original
+        const raw = original.type === 'snapshot' ? { ...original, payload: withoutKeys(original.payload, ignore) } : masked(original, masks)
         const e = eventShape(raw)
         if (options.strict) events.push({ direct: message.direct === true, event: e })
         if (message.direct) {
@@ -277,8 +298,9 @@ function multisetDiff(a, b, at, out, limit) {
 
 export function compareTraces(a, b, options = {}) {
   const limit = options.limit ?? 50
-  const da = digest(a, options)
-  const db = digest(b, options)
+  const both = { ...options, mask: [...(options.mask ?? []), ...(a.mask ?? []), ...(b.mask ?? [])] }
+  const da = digest(a, both)
+  const db = digest(b, both)
   const diffs = []
   if (da.length !== db.length) diffs.push(`steps: ${da.length} ≠ ${db.length}`)
   for (let i = 0; i < Math.min(da.length, db.length); i++) {
@@ -299,7 +321,7 @@ export function readTrace(file) {
 function main(argv) {
   const files = argv.filter((a) => !a.startsWith('--'))
   if (files.length !== 2) {
-    console.error('usage: node scripts/trace-compare.mjs <a.trace.json> <b.trace.json> [--strict] [--limit=N] [--ignore=type,type]')
+    console.error('usage: node scripts/trace-compare.mjs <a.trace.json> <b.trace.json> [--strict] [--limit=N] [--ignore=type,type] [--mask=type.field,...]')
     return 2
   }
   const strict = argv.includes('--strict')
@@ -307,7 +329,9 @@ function main(argv) {
   const ignoreArg = argv.find((a) => a.startsWith('--ignore='))
   const limit = limitArg ? Number(limitArg.slice(8)) : 50
   const ignore = ignoreArg ? ignoreArg.slice(9).split(',').filter(Boolean) : []
-  const result = compareTraces(readTrace(files[0]), readTrace(files[1]), { strict, limit, ignore })
+  const maskArg = argv.find((a) => a.startsWith('--mask='))
+  const mask = maskArg ? maskArg.slice(7).split(',').filter(Boolean) : []
+  const result = compareTraces(readTrace(files[0]), readTrace(files[1]), { strict, limit, ignore, mask })
   for (const d of result.diffs) console.log(d)
   console.log(`[trace-compare] ${result.steps} steps, frames ${result.frames.join(' / ')}, ${result.diffs.length}${result.diffs.length >= limit ? '+' : ''} differences${strict ? ' (strict)' : ''}`)
   return result.diffs.length === 0 ? 0 : 1

@@ -34,13 +34,20 @@ const GAP_MS = Number(args.gap ?? 40)
 const NUDGE_MS = Number(args.nudge ?? 500)
 const SPLIT_MS = Number(args.split ?? 250)
 const CORE = args.core ?? 'node'
+const SERVER = args.server ?? 'node'
+const RUST_OUT = args['rust-out'] ? path.resolve(args['rust-out']) : null
+const RUST_BIN = args['rust-bin'] ?? process.env.CCM_MONITOR_SERVE ?? ['debug', 'release'].map((d) => path.join(REPO, 'apps', 'core', 'target', d, process.platform === 'win32' ? 'monitor-serve.exe' : 'monitor-serve')).find((p) => existsSync(p))
 const ENDED = Math.min(3, SESSIONS)
 
 if (!OUT) {
-  console.error('usage: node scripts/trace-capture.mjs --out=<file.trace.json> [--sessions=30 --subagents=6 --seed=8704 --steps=10 --quiet=800 --core=node|inherit --ops=<file.ops.json> --keep]')
+  console.error('usage: node scripts/trace-capture.mjs --out=<file.trace.json> [--sessions=30 --subagents=6 --seed=8704 --steps=10 --quiet=800 --core=node|inherit --ops=<file.ops.json> --server=node|rust|both --rust-out=<file> --rust-bin=<exe> --keep]')
   process.exit(2)
 }
 if (CORE !== 'node' && CORE !== 'inherit') throw new Error('--core must be node or inherit')
+if (!['node', 'rust', 'both'].includes(SERVER)) throw new Error('--server must be node, rust or both')
+if (SERVER !== 'node' && !RUST_BIN) throw new Error('monitor-serve binary not found: cargo build --locked -j 4 -p core-monitor, or --rust-bin=')
+if (SERVER === 'both' && !RUST_OUT) throw new Error('--server=both needs --rust-out=<file>')
+if (SERVER === 'rust' && OPS) throw new Error('--ops records the Node store (--server=node or both)')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -152,19 +159,72 @@ function replayer(source, live) {
   }
 }
 
+async function startServer(kind, tmp, env) {
+  const data = path.join(tmp, kind === 'rust' ? 'data-rust' : 'data')
+  await mkdir(data, { recursive: true })
+  const port = await freePort()
+  if (port === 4317) throw new Error('refusing port 4317')
+  const opsLog = path.join(tmp, 'store-ops.ndjson')
+  const own = { ...env, CCM_DATA_DIR: data, CCM_PORT: String(port) }
+  if (kind === 'node' && OPS) own.CCM_TRACE_OPS = opsLog
+  const proc =
+    kind === 'rust'
+      ? spawn(RUST_BIN, ['--dev'], { cwd: REPO, env: own, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+      : spawn(process.execPath, ['--import', 'tsx', ...(OPS ? ['--import', HOOK] : []), ENTRY, '--dev'], { cwd: REPO, env: own, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+  const log = []
+  proc.stdout.on('data', (d) => log.push(String(d)))
+  proc.stderr.on('data', (d) => log.push(String(d)))
+  const exited = new Promise((resolve) => proc.once('exit', resolve))
+  return { name: kind, data, port, proc, log, exited, opsLog, steps: [], current: null, lastAt: Date.now(), loading: true, scanning: false, ws: null }
+}
+
+async function waitHealth(s, deadline) {
+  for (;;) {
+    if (s.proc.exitCode !== null) throw new Error(`${s.name} collector exited ${s.proc.exitCode}\n${s.log.join('')}`)
+    try {
+      const res = await fetch(`http://127.0.0.1:${s.port}/health`)
+      if (res.ok) return
+    } catch {}
+    if (Date.now() > deadline) throw new Error(`${s.name} collector did not answer /health\n${s.log.join('')}`)
+    await sleep(200)
+  }
+}
+
+function listen(s) {
+  s.ws = new WebSocket(`ws://127.0.0.1:${s.port}/ws`)
+  s.ws.on('message', (raw) => {
+    const msg = JSON.parse(String(raw))
+    s.lastAt = Date.now()
+    for (const e of msg.events) {
+      if (e.type === 'snapshot') {
+        s.loading = e.payload.loading === true
+        s.scanning = e.payload.usage?.scan?.state === 'scanning'
+      }
+      if (e.type === 'sessions.loading') s.loading = e.payload.loading
+      if (e.type === 'usage.scan' || e.type === 'usage.reset') s.scanning = (e.payload.scan ?? e.payload).state === 'scanning'
+    }
+    s.current.frames.push(msg)
+  })
+  return new Promise((resolve, reject) => {
+    s.ws.once('open', resolve)
+    s.ws.once('error', reject)
+  })
+}
+
+function traceOf(s, base, live, tmp) {
+  return { ...base, source: s.name, ...(s.name === 'rust' ? { mask: ['diagnostics.data.node'] } : {}), replace: [[live, '<root>'], [s.data, '<data>'], [tmp, '<tmp>']], steps: s.steps }
+}
+
 async function main() {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'ccm-trace-'))
   const src = path.join(tmp, 'src')
   const live = path.join(tmp, 'live')
-  const data = path.join(tmp, 'data')
   const sleepers = []
-  let collector = null
-  let ws = null
+  const servers = []
   try {
     execFileSync(process.execPath, [DEMO, `--root=${src}`, `--sessions=${SESSIONS}`, `--subagents=${SUBAGENTS}`, `--seed=${SEED}`, '--tick=5', '--duration=1', '--peers=10'], { stdio: 'ignore', timeout: 120_000 })
     const source = await loadSource(src)
     await mkdir(path.join(live, 'sessions'), { recursive: true })
-    await mkdir(data, { recursive: true })
     await writeFile(path.join(tmp, 'res-fixture.json'), JSON.stringify({ procs: [], ports: {} }))
     const pids = {}
     const sessions = source.registry.map((r, i) => {
@@ -179,10 +239,8 @@ async function main() {
     await place(1)
     for (const [i, s] of sessions.entries()) if (i % 2 === 0) await writeFile(s.file, JSON.stringify(s.record))
 
-    const port = await freePort()
-    if (port === 4317) throw new Error('refusing port 4317')
     const env = { ...process.env }
-    for (const k of ['CCM_APP_KEY', 'CCM_TOAST_LINK', 'CCM_RES_FIXTURE']) delete env[k]
+    for (const k of ['CCM_APP_KEY', 'CCM_TOAST_LINK', 'CCM_RES_FIXTURE', 'CCM_DATA_DIR', 'CCM_PORT', 'CCM_TRACE_OPS']) delete env[k]
     if (CORE === 'node') {
       delete env.CCM_CORE_BIN
       for (const k of CORE_KEYS) env[k] = 'node'
@@ -191,8 +249,6 @@ async function main() {
       CLAUDE_CONFIG_DIR: live,
       CODEX_HOME: path.join(tmp, 'codex'),
       CODEWHALE_HOME: path.join(tmp, 'codewhale'),
-      CCM_DATA_DIR: data,
-      CCM_PORT: String(port),
       CCM_CODEX: '0',
       CCM_DEEPSEEK: '0',
       CCM_TOAST: '0',
@@ -202,70 +258,36 @@ async function main() {
       CCM_STATUSLINE_BRIDGE: path.join(tmp, 'statusline-bridge.mjs'),
       CCM_WEB_DIST: path.join(tmp, 'web'),
     })
-    const opsLog = path.join(tmp, 'store-ops.ndjson')
-    if (OPS) env.CCM_TRACE_OPS = opsLog
-    const log = []
-    collector = spawn(process.execPath, ['--import', 'tsx', ...(OPS ? ['--import', HOOK] : []), ENTRY, '--dev'], { cwd: REPO, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
-    collector.stdout.on('data', (d) => log.push(String(d)))
-    collector.stderr.on('data', (d) => log.push(String(d)))
-    const exited = new Promise((resolve) => collector.once('exit', resolve))
+    for (const kind of SERVER === 'both' ? ['node', 'rust'] : [SERVER]) servers.push(await startServer(kind, tmp, env))
 
     const wallStart = Date.now()
-    const deadline = Date.now() + MAX_WAIT_MS
-    for (;;) {
-      if (collector.exitCode !== null) throw new Error(`collector exited ${collector.exitCode}\n${log.join('')}`)
-      try {
-        const res = await fetch(`http://127.0.0.1:${port}/health`)
-        if (res.ok) break
-      } catch {}
-      if (Date.now() > deadline) throw new Error(`collector did not answer /health\n${log.join('')}`)
-      await sleep(200)
-    }
+    for (const s of servers) await waitHealth(s, Date.now() + MAX_WAIT_MS)
 
-    const steps = []
-    let current = null
-    let lastAt = Date.now()
-    let loading = true
-    let scanning = false
-    ws = new WebSocket(`ws://127.0.0.1:${port}/ws`)
-    ws.on('message', (raw) => {
-      const msg = JSON.parse(String(raw))
-      lastAt = Date.now()
-      for (const e of msg.events) {
-        if (e.type === 'snapshot') {
-          loading = e.payload.loading === true
-          scanning = e.payload.usage?.scan?.state === 'scanning'
-        }
-        if (e.type === 'sessions.loading') loading = e.payload.loading
-        if (e.type === 'usage.scan' || e.type === 'usage.reset') scanning = (e.payload.scan ?? e.payload).state === 'scanning'
-      }
-      current.frames.push(msg)
-    })
     const marks = []
     const begin = (name) => {
-      current = { name, sent: [], frames: [] }
-      steps.push(current)
-      marks.push({ name, sent: current.sent, at: Date.now() })
+      const sent = []
+      for (const s of servers) {
+        s.current = { name, sent, frames: [] }
+        s.steps.push(s.current)
+      }
+      marks.push({ name, sent, at: Date.now() })
     }
     const send = (m) => {
-      current.sent.push(m)
-      ws.send(JSON.stringify(m))
+      servers[0].current.sent.push(m)
+      for (const s of servers) s.ws.send(JSON.stringify(m))
     }
     const settle = async (minMs = 300) => {
       const started = Date.now()
       await sleep(minMs)
       while (Date.now() - started < MAX_WAIT_MS) {
-        if (!loading && !scanning && Date.now() - lastAt >= QUIET_MS) return
+        if (servers.every((s) => !s.loading && !s.scanning && Date.now() - s.lastAt >= QUIET_MS)) return
         await sleep(50)
       }
-      throw new Error(`step ${current.name} did not settle in ${MAX_WAIT_MS} ms`)
+      throw new Error(`step ${servers[0].current.name} did not settle in ${MAX_WAIT_MS} ms`)
     }
 
     begin('boot')
-    await new Promise((resolve, reject) => {
-      ws.once('open', resolve)
-      ws.once('error', reject)
-    })
+    await Promise.all(servers.map(listen))
     await settle(STEP_MIN_MS)
     begin('snapshot-boot')
     send({ type: 'resync' })
@@ -308,39 +330,42 @@ async function main() {
     await settle()
     const wallEnd = Date.now()
 
-    ws.close()
-    collector.kill()
-    await Promise.race([exited, sleep(5000)])
-    const trace = {
+    for (const s of servers) {
+      s.ws.close()
+      if (s.name === 'rust') s.proc.stdin.end(`${JSON.stringify({ type: 'shutdown' })}\n`)
+      else s.proc.kill()
+    }
+    await Promise.race([Promise.all(servers.map((s) => s.exited)), sleep(5000)])
+    const base = {
       format: TRACE_FORMAT,
       scenario: `demo-${SESSIONS}x${SUBAGENTS}-seed${SEED}-steps${STEPS}`,
-      source: 'node',
       core: CORE,
       wall: { start: wallStart, end: wallEnd },
       pids,
-      replace: [
-        [live, '<root>'],
-        [data, '<data>'],
-        [tmp, '<tmp>'],
-      ],
       ignore: ['resources'],
       durations: ['workingMs', 'waitingMs', 'totalMs', 'medianMs'],
-      steps,
     }
-    await mkdir(path.dirname(OUT), { recursive: true })
-    await writeFile(OUT, JSON.stringify(trace))
+    for (const [i, s] of servers.entries()) {
+      const file = i === 0 ? OUT : RUST_OUT
+      const trace = traceOf(s, base, live, tmp)
+      await mkdir(path.dirname(file), { recursive: true })
+      await writeFile(file, JSON.stringify(trace))
+      const frames = s.steps.reduce((n, st) => n + st.frames.length, 0)
+      const events = s.steps.reduce((n, st) => n + st.frames.reduce((m, f) => m + f.events.length, 0), 0)
+      console.log(`[trace-capture] ${s.name} ${trace.scenario}: ${s.steps.length} steps, ${frames} frames, ${events} events, ${((wallEnd - wallStart) / 1000).toFixed(1)} s → ${file}`)
+    }
     if (OPS) {
-      const ops = (await readFile(opsLog, 'utf8')).split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l))
+      const node = servers[0]
+      const ops = (await readFile(node.opsLog, 'utf8')).split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l))
       await mkdir(path.dirname(OPS), { recursive: true })
-      await writeFile(OPS, JSON.stringify(opsDocument(trace, withSteps(ops, marks))))
+      await writeFile(OPS, JSON.stringify(opsDocument(traceOf(node, base, live, tmp), withSteps(ops, marks))))
       console.log(`[trace-capture] ${ops.length} store ops → ${OPS}`)
     }
-    const frames = steps.reduce((n, s) => n + s.frames.length, 0)
-    const events = steps.reduce((n, s) => n + s.frames.reduce((m, f) => m + f.events.length, 0), 0)
-    console.log(`[trace-capture] ${trace.scenario}: ${steps.length} steps, ${frames} frames, ${events} events, ${((wallEnd - wallStart) / 1000).toFixed(1)} s → ${OUT}`)
   } finally {
-    ws?.terminate()
-    if (collector && collector.exitCode === null) collector.kill()
+    for (const s of servers) {
+      s.ws?.terminate()
+      if (s.proc.exitCode === null) s.proc.kill()
+    }
     for (const c of sleepers) if (c.exitCode === null) c.kill()
     if (!args.keep) await rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }).catch(() => undefined)
     else console.log(`[trace-capture] kept ${tmp}`)

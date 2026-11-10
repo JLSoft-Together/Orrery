@@ -108,6 +108,7 @@ pub struct Tracker {
     dirty: HashSet<String>,
     sent_main: Map<String, Value>,
     sent_subs: HashMap<String, Map<String, Value>>,
+    pub reread_finished: bool,
 }
 
 pub fn tailer(file: PathBuf) -> JsonlTailer {
@@ -154,6 +155,7 @@ impl Tracker {
             dirty: HashSet::new(),
             sent_main: Map::new(),
             sent_subs: HashMap::new(),
+            reread_finished: false,
         }
     }
 
@@ -219,7 +221,7 @@ impl Tracker {
         if let Stage::Subs { order, at, lite } = &mut run.stage {
             while *at < order.len() {
                 let id = order[*at].clone();
-                let wanted = self.subs.get(&id).is_some_and(|e| run.plan.all || run.fresh.contains(&id) || run.plan.files.contains(&format!("agent-{id}.jsonl")) || (run.plan.unresolved && !e.resolved));
+                let wanted = self.subs.get(&id).is_some_and(|e| run.plan.all || run.fresh.contains(&id) || run.plan.files.contains(&format!("agent-{id}.jsonl")) || (run.plan.unresolved && !e.resolved) || (self.reread_finished && self.about_to_resolve(e)));
                 if wanted {
                     let l = match *lite {
                         Some(l) => l,

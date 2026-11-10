@@ -80,7 +80,14 @@ export class RolloutTailer {
   constructor(
     readonly file: string,
     private readonly fromEnd = Number.POSITIVE_INFINITY,
+    private readonly chunk = CHUNK,
   ) {}
+
+  resumeAt(offset: number, skipping: boolean): void {
+    this.offset = offset
+    this.remainder = EMPTY
+    this.skipping = skipping
+  }
 
   read(): Promise<unknown[]> {
     if (!this.reading) {
@@ -110,7 +117,7 @@ export class RolloutTailer {
     while (this.offset < size) {
       let chunk: Buffer
       try {
-        chunk = await readRange(this.file, this.offset, Math.min(CHUNK, size - this.offset))
+        chunk = await readRange(this.file, this.offset, Math.min(this.chunk, size - this.offset))
       } catch {
         break
       }

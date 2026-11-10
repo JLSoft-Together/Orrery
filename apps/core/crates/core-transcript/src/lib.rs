@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod codex;
 pub mod collate;
 pub mod conflict;
 pub mod extract;

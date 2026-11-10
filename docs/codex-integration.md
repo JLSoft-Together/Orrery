@@ -45,6 +45,7 @@ plugin's app-server `clientInfo.name`) → **plugin**; `source` object → **sub
 - Tail: `RolloutTailer` starts 8 MB before the end for files seen first, drops the cut line, reads in 4 MB chunks and
   never buffers a line it will skip. Turn state works mid-file because `total_token_usage` is cumulative and a turn's
   last line is `task_complete` (any turn activity after the last marker = open turn).
+- `CCM_CORE_CODEX=rust` (default `node`) moves meta / tail reading and parsing into `orrery-core transcript` (ops `codex.*`, plan `.planning/PLAN-v87-step4-core-transcript.md` §2.4); signals and the shown agents are the same, a failing core falls back to the TS reader once.
 - Measured: meta of the 1.5 GB rollout 4 ms, 8 MB tail 29 ms; collector start with the Codex side ≈ 0.6 s (one
   PowerShell process query).
 

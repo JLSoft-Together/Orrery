@@ -1,3 +1,4 @@
+use crate::codex::serve::Rollouts;
 use crate::index::{Options, UsageIndex};
 use crate::jobs::{drain, full_scan, sweep, Shared, Sink};
 use crate::omap::OMap;
@@ -317,6 +318,21 @@ fn signal_op(m: &Map<String, Value>, signals: &mut Handles) -> Option<Option<Val
     }))
 }
 
+fn codex_op(m: &Map<String, Value>, rollouts: &mut Rollouts) -> Option<Option<Value>> {
+    let op = m.get("op").and_then(Value::as_str).filter(|o| o.starts_with("codex."))?;
+    let id = m.get("id").filter(|v| v.is_number() || v.is_string());
+    if id.is_none() && op != "codex.close" {
+        return Some(None);
+    }
+    let reply = rollouts.handle(op, m);
+    let Some(id) = id else { return Some(None) };
+    Some(Some(match reply {
+        Some(Ok(extra)) => ok(id, extra),
+        Some(Err(kind)) => failed(id, kind),
+        None => failed(id, "op"),
+    }))
+}
+
 fn tracker_op(m: &Map<String, Value>, trackers: &mut Trackers) -> Option<Option<Value>> {
     let op = m.get("op").and_then(Value::as_str).filter(|o| o.starts_with("tracker."))?;
     let id = m.get("id").filter(|v| v.is_number() || v.is_string());
@@ -336,9 +352,16 @@ pub fn run() -> i32 {
     let mut state: Option<Open> = None;
     let mut signals = Handles::default();
     let mut trackers = Trackers::default();
+    let mut rollouts = Rollouts::default();
     let mut lines = Lines::new(std::io::stdin().lock());
     while let Some(line) = lines.next_line() {
         let Ok(Value::Object(m)) = serde_json::from_slice::<Value>(&line) else { continue };
+        if let Some(reply) = codex_op(&m, &mut rollouts) {
+            if let Some(reply) = reply {
+                write(&reply);
+            }
+            continue;
+        }
         if let Some(reply) = tracker_op(&m, &mut trackers) {
             if let Some(reply) = reply {
                 write(&reply);

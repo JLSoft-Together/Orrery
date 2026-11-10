@@ -7,8 +7,8 @@ import type { MonitorStore } from '../store'
 import type { ActivityDraft } from '../tracker'
 import { callerOf, claudeTargetFor, matchProcesses, type ClaudeTarget } from './link'
 import type { CodexProcess } from './processes'
-import { readSessionMeta, RolloutTailer } from './reader'
-import { CodexThreadState, extractCodexSignals, modeOf, type CodexLimits, type CodexMeta, type CodexMode } from './rollout'
+import { CodexThreadState, modeOf, type CodexLimits, type CodexMeta, type CodexMode } from './rollout'
+import { createRolloutSources, type RolloutSource, type RolloutSources } from './rolloutSource'
 
 /** A watcher that errored is dead (dir deleted / handle lost); close it so the next setupWatchers() starts a fresh one. */
 function retireWatcher(watchers: FSWatcher[], w: FSWatcher): void {
@@ -41,7 +41,7 @@ interface Thread {
   meta: CodexMeta
   mode: CodexMode
   state: CodexThreadState
-  tailer: RolloutTailer
+  tailer: RolloutSource
   proc?: { pid: number; start: number }
   procGone: boolean
   superseded: boolean
@@ -127,6 +127,7 @@ export class CodexMonitor {
     private readonly targets: () => ClaudeTarget[],
     private readonly deps: CodexMonitorDeps,
     private readonly limitHistory: LimitHistory | null = null,
+    private readonly rollouts: RolloutSources = createRolloutSources(),
   ) {
     this.sessionsDir = path.join(options.codexHome, 'sessions')
     this.indexFile = path.join(options.codexHome, 'session_index.jsonl')
@@ -239,7 +240,7 @@ export class CodexMonitor {
       // exec / TUI always run in a process of their own: unmatched after a good scan means it already exited.
       const ownProcess = this.lastScanOk && (t.mode === 'exec' || t.mode === 'tui')
       const live = t.proc ? !t.procGone && !t.superseded : !ownProcess && t.state.turnOpen === true && now - t.lastWriteAt < IDLE_END_MS
-      if (!live) this.threads.delete(t.id)
+      if (!live && this.threads.delete(t.id)) t.tailer.close?.()
     }
     await this.seedLimits(files)
     this.booting = false
@@ -251,7 +252,7 @@ export class CodexMonitor {
     const newest = files.reduce<{ file: string; mtime: number } | undefined>((a, b) => (!a || b.mtime > a.mtime ? b : a), undefined)
     if (!newest) return
     const state = new CodexThreadState()
-    for (const rec of await new RolloutTailer(newest.file, LIMITS_TAIL_BYTES).read()) state.apply(extractCodexSignals(rec))
+    for (const signals of await this.rollouts.once(newest.file, LIMITS_TAIL_BYTES)) state.apply(signals)
     if (state.limits) this.applyLimits(state.limits)
   }
 
@@ -267,7 +268,7 @@ export class CodexMonitor {
   }
 
   private async createThread(id: string, file: string, initial: boolean, mtime?: number): Promise<Thread | null> {
-    const meta = await readSessionMeta(file)
+    const meta = await this.rollouts.meta(file)
     const mode = meta ? modeOf(meta) : null
     if (!meta || !mode || meta.id !== id) {
       // A file without its meta line yet is retried on the next write; a Desktop/IDE thread never is.
@@ -280,7 +281,7 @@ export class CodexMonitor {
       meta,
       mode,
       state: new CodexThreadState(),
-      tailer: new RolloutTailer(file, TAIL_BYTES),
+      tailer: this.rollouts.tail(file, TAIL_BYTES),
       procGone: false,
       superseded: false,
       awaitingScan: !initial,
@@ -301,8 +302,7 @@ export class CodexMonitor {
     const records = await t.tailer.read()
     if (records.length === 0) return { drafts, turnStarted }
     if (!catchUp) t.lastWriteAt = this.deps.now()
-    for (const rec of records) {
-      const signals = extractCodexSignals(rec)
+    for (const signals of records) {
       for (const s of signals) {
         if (s.k === 'turn_start') turnStarted = true
         if (s.k === 'tool_call' && !catchUp && t.published) {
@@ -679,7 +679,7 @@ export class CodexMonitor {
 
   private forget(t: Thread): void {
     this.unpublish(t)
-    this.threads.delete(t.id)
+    if (this.threads.delete(t.id)) t.tailer.close?.()
     for (const child of this.threads.values()) {
       if (child.meta.parentThreadId === t.id && !child.link) this.forget(child)
     }

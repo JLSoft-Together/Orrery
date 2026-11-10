@@ -225,6 +225,7 @@ It runs in ${cwd} with a made-up JSON input on stdin and a minimal environment, 
   coreFallbackBody: (what: string, reason: string, flag: string) => `${what}: the Rust core did not work (${reason}). This session uses Node instead, which uses more CPU. Details are in collector.log; set ${flag}=node to skip the Rust core.`,
   coreFallbackUsage: 'Usage',
   coreFallbackTranscript: 'Session tracking',
+  coreFallbackCodex: 'Codex runs',
   captureMissingBody: (dir: string) => `${dir} cannot be found (drive removed?). Recordings go to the temp folder and screenshots to the clipboard until it is back.`,
   backupApplyTitle: (n: number) => (n === 1 ? 'Import 1 section and restart Orrery?' : `Import ${n} sections and restart Orrery?`),
   backupApplyDetail: (names: string[]) =>
@@ -521,6 +522,7 @@ Lệnh chạy trong ${cwd} với input JSON giả trên stdin và môi trường
   coreFallbackBody: (what, reason, flag) => `${what}: core Rust không chạy được (${reason}). Phiên này dùng Node thay thế, tốn CPU hơn. Chi tiết trong collector.log; đặt ${flag}=node để bỏ qua core Rust.`,
   coreFallbackUsage: 'Usage',
   coreFallbackTranscript: 'Theo dõi session',
+  coreFallbackCodex: 'Lượt chạy Codex',
   captureMissingBody: (dir) => `Không tìm thấy ${dir} (đã rút ổ?). Video quay tạm ghi vào thư mục temp và ảnh chụp đi qua clipboard cho tới khi thư mục có lại.`,
   backupApplyTitle: (n) => `Nhập ${n} mục và khởi động lại Orrery?`,
   backupApplyDetail: (names) =>

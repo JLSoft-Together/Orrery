@@ -13,6 +13,7 @@ import { paneOpenResult } from '../openLink'
 import { PtyBroker } from './broker'
 import { mcpHttpHandler } from './mcp'
 import { mcpToolsFor } from './mcpTools'
+import type { McpHandle } from './mcpRust'
 
 export interface PtySupervisorOptions {
   script: string
@@ -24,6 +25,7 @@ export interface PtySupervisorOptions {
   /** Orrery dispatcher: `open_session` and every MCP tool the host cannot answer alone; the host re-checks each reply. */
   onOrrery?: (action: string, args: unknown, caller: OrreryCaller) => Promise<unknown>
   mcpConfig?: string
+  mcpHandle?: McpHandle
   core?: string
   onFallback?: (reason: string) => void
 }
@@ -218,6 +220,7 @@ export class PtySupervisor implements PtyHost {
         version: app.getVersion(),
         tools: mcpToolsFor(process.env.CCM_DEEPSEEK_FEATURE === '1'),
         log: (line) => this.logLine(line),
+        handle: this.opts.mcpHandle,
       }),
     )
     this.mcp = server

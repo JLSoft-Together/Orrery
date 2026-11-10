@@ -245,6 +245,31 @@ pub fn mask_secrets(text: &str, home: &str, platform: &str) -> String {
     long_runs(&out, class_wide, 32, |run| if !run.starts_with('/') && all_cases(run) { "[masked]".to_owned() } else { run.to_owned() })
 }
 
+fn mixed_log(s: &str) -> bool {
+    if !all_cases(s) {
+        return false;
+    }
+    let t: Vec<char> = s.chars().collect();
+    let digits = t.iter().rev().take_while(|c| c.is_ascii_digit()).count();
+    let head = &t[..t.len() - digits];
+    let ident = !head.is_empty() && digits <= 3 && head.iter().all(|c| c.is_ascii_alphabetic() || *c == '_' || *c == '$');
+    !ident
+}
+
+pub fn mask_log(text: &str, home: &str, platform: &str) -> String {
+    let ci = platform == "win32";
+    let out = mask_key_values(&mask_common(text, &home_forms(home, platform), ci));
+    long_runs(&out, class_wide, 32, |run| {
+        if run.starts_with('/') {
+            return run.to_owned();
+        }
+        if !run.contains('.') {
+            return if mixed_log(run) { "[masked]".to_owned() } else { run.to_owned() };
+        }
+        run.split('.').map(|seg| if seg.chars().count() >= 24 && mixed_log(seg) { "[masked]" } else { seg }).collect::<Vec<_>>().join(".")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,6 +291,9 @@ mod tests {
         assert_eq!(mask_secrets(&blob, "", "linux"), "[masked]");
         let mixed = "abcDEF123abcDEF123-abcDEF123abcDEF123";
         assert_eq!(mask_secrets(mixed, "", "linux"), "[masked]");
+        assert_eq!(mask_log("generateDebugUnitTestResourceValues12", "", "linux"), "generateDebugUnitTestResourceValues12");
+        assert_eq!(mask_log("com.example.VeryLongQualifiedClassNameHere.Inner", "", "linux"), "com.example.VeryLongQualifiedClassNameHere.Inner");
+        assert_eq!(mask_log("tok eyJhbGciOiJIUzI1NiJ9abcDEF123xyz.payload", "/Users/a", "darwin"), "tok [masked].payload");
         let path = "/usr/local/lib/abcDEF123abcDEF123-abcDEF123abcDEF123";
         assert_eq!(mask_secrets(path, "", "linux"), path);
         assert_eq!(mask_secrets("AKIAABCDEFGHIJKLMNOP end", "", "linux"), "[masked] end");

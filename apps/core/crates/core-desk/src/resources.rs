@@ -145,6 +145,10 @@ fn fail(e: &str) -> Value {
 }
 
 pub fn res_kill(ctx: &Ctx, raw: &Value) -> Value {
+    res_kill_with(ctx, raw, &|items| matches!(ctx.host("resources.confirm", json!({"items": items})), Ok(Value::Bool(true))))
+}
+
+pub fn res_kill_with(ctx: &Ctx, raw: &Value, confirm: &dyn Fn(&[Value]) -> bool) -> Value {
     let Some(targets) = parse_targets(raw) else { return fail("invalid") };
     let report = ctx.host("resources.report", Value::Null).unwrap_or(Value::Null);
     let items = match plan(&report, &targets, util::now_ms()) {
@@ -162,7 +166,7 @@ pub fn res_kill(ctx: &Ctx, raw: &Value) -> Value {
         }
     }
     let auto_yes = fixture.is_some() && std::env::var("CCM_E2E_RES_CONFIRM").ok().as_deref() == Some("1");
-    if !auto_yes && !matches!(ctx.host("resources.confirm", json!({"items": items})), Ok(Value::Bool(true))) {
+    if !auto_yes && !confirm(&items) {
         return fail("cancelled");
     }
     if let Some(f) = fixture {

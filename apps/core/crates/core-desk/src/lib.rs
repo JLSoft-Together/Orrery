@@ -1,3 +1,4 @@
+pub mod agent_data;
 pub mod agent_status;
 pub mod apk;
 pub mod appearance;
@@ -21,6 +22,8 @@ pub mod keychain;
 pub mod layout;
 pub mod layouts;
 pub mod libs;
+pub mod mcp;
+pub mod mcp_desk;
 pub mod pages;
 pub mod pages_style;
 pub mod phone;
@@ -39,7 +42,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeskError {
@@ -160,9 +163,28 @@ impl HostLink {
     }
 }
 
+#[derive(Clone, Default)]
+pub struct Caller(Arc<RwLock<HashMap<String, Arc<Handler>>>>);
+
+impl Caller {
+    fn insert(&self, channel: &str, handler: Handler) {
+        self.0.write().unwrap().insert(channel.to_string(), Arc::new(handler));
+    }
+
+    pub fn call(&self, ctx: &Ctx, channel: &str, args: Value) -> Result<Value, DeskError> {
+        let handler = self.0.read().unwrap().get(channel).cloned().ok_or_else(|| DeskError::UnknownChannel(channel.to_string()))?;
+        let list = match args {
+            Value::Array(a) => a,
+            Value::Null => Vec::new(),
+            other => vec![other],
+        };
+        handler(ctx, &list)
+    }
+}
+
 #[derive(Default)]
 pub struct Desk {
-    handlers: HashMap<String, Handler>,
+    handlers: Caller,
     modules: Vec<(String, Vec<String>)>,
     emitter: Emitter,
     hostlink: HostLink,
@@ -193,6 +215,7 @@ impl Desk {
         power::register(&mut desk, env);
         disk::register(&mut desk, env);
         agent_status::register(&mut desk, env);
+        agent_data::register(&mut desk, env);
         resources::register(&mut desk, env);
         update::register(&mut desk, env);
         deepseek::register(&mut desk, env);
@@ -200,10 +223,12 @@ impl Desk {
         apk::register(&mut desk, env);
         release_check::register(&mut desk, env);
         preview::register(&mut desk, env);
+        mcp::ipc::register(&mut desk, env);
         let run_settings = run::ipc::register(&mut desk, env);
         flutter_preview::ipc::register(&mut desk, env, run_settings.clone());
         layout::ipc::register(&mut desk, env, run_settings.clone());
         devices::ipc::register(&mut desk, env, run_settings.clone());
+        mcp_desk::register(&mut desk, env);
         desk
     }
 
@@ -211,11 +236,15 @@ impl Desk {
     where
         F: Fn(&Ctx, &[Value]) -> Result<Value, DeskError> + Send + Sync + 'static,
     {
-        self.handlers.insert(channel.to_string(), Box::new(handler));
+        self.handlers.insert(channel, Box::new(handler));
         match self.modules.iter_mut().find(|(m, _)| m == module) {
             Some((_, list)) => list.push(channel.to_string()),
             None => self.modules.push((module.to_string(), vec![channel.to_string()])),
         }
+    }
+
+    pub fn caller(&self) -> Caller {
+        self.handlers.clone()
     }
 
     pub fn emitter(&self) -> Emitter {
@@ -258,13 +287,7 @@ impl Desk {
     }
 
     pub fn dispatch_with(&self, ctx: &Ctx, channel: &str, args: Value) -> Result<Value, DeskError> {
-        let handler = self.handlers.get(channel).ok_or_else(|| DeskError::UnknownChannel(channel.to_string()))?;
-        let list = match args {
-            Value::Array(a) => a,
-            Value::Null => Vec::new(),
-            other => vec![other],
-        };
-        handler(ctx, &list)
+        self.handlers.call(ctx, channel, args)
     }
 }
 

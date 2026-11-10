@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { MCP_TOOLS } from './mcpTools'
 import type { Json, McpTool, ToolHost } from './mcpTools/types'
+import type { McpHandle } from './mcpRust'
 
 export { OPEN_SESSION_TOOL, openText, toOpenResult } from './mcpTools/openSession'
 export type { OpenArgs, OpenOutcome, ToolHost } from './mcpTools/types'
@@ -10,7 +11,7 @@ export const MCP_PROTOCOL_VERSION = '2025-06-18'
 export const MCP_INSTRUCTIONS =
   'This server connects you to the Orrery workspace you run in. Use open_session to open new Claude Code, Codex, DeepSeek or shell sessions as panes instead of launching terminal windows; notify_owner to leave the user a short note; open_in_workspace to show the user a file or its diff; who_is_editing before editing a file other sessions may be changing; run_app, run_status and run_log to run the project app and read its log; device_screenshot to see a connected device; preview_layout to render an Android XML layout; list_servers and free_port for ports your session left listening; list_sessions, send_to_session, close_session and wait_session to see, prefill, close and wait for the other sessions of your project; hand_back, in a DeepSeek session another agent opened, to return the finished work to that agent.'
 
-const MCP_INSTRUCTIONS_NO_DEEPSEEK =
+export const MCP_INSTRUCTIONS_NO_DEEPSEEK =
   'This server connects you to the Orrery workspace you run in. Use open_session to open new Claude Code, Codex or shell sessions as panes instead of launching terminal windows; notify_owner to leave the user a short note; open_in_workspace to show the user a file or its diff; who_is_editing before editing a file other sessions may be changing; run_app, run_status and run_log to run the project app and read its log; device_screenshot to see a connected device; preview_layout to render an Android XML layout; list_servers and free_port for ports your session left listening; list_sessions, send_to_session, close_session and wait_session to see, prefill, close and wait for the other sessions of your project.'
 
 const isObj = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -92,6 +93,7 @@ export interface McpHttpOptions {
   version: string
   tools: readonly McpTool[]
   log?: (line: string) => void
+  handle?: McpHandle
 }
 
 function readBody(req: IncomingMessage): Promise<string | null> {
@@ -128,7 +130,7 @@ async function onMcpRequest(req: IncomingMessage, res: ServerResponse, opts: Mcp
   } catch {
     return replyJson(res, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })
   }
-  const out = await handleMcp(body, host, opts.version, opts.tools)
+  const out = (await opts.handle?.(body, host)) ?? (await handleMcp(body, host, opts.version, opts.tools))
   if (out.json === undefined) res.writeHead(out.status).end()
   else replyJson(res, out.status, out.json)
 }

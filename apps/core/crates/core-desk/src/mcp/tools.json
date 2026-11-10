@@ -1,0 +1,665 @@
+{
+  "protocolVersion": "2025-06-18",
+  "instructions": "This server connects you to the Orrery workspace you run in. Use open_session to open new Claude Code, Codex, DeepSeek or shell sessions as panes instead of launching terminal windows; notify_owner to leave the user a short note; open_in_workspace to show the user a file or its diff; who_is_editing before editing a file other sessions may be changing; run_app, run_status and run_log to run the project app and read its log; device_screenshot to see a connected device; preview_layout to render an Android XML layout; list_servers and free_port for ports your session left listening; list_sessions, send_to_session, close_session and wait_session to see, prefill, close and wait for the other sessions of your project; hand_back, in a DeepSeek session another agent opened, to return the finished work to that agent.",
+  "instructionsNoDeepseek": "This server connects you to the Orrery workspace you run in. Use open_session to open new Claude Code, Codex or shell sessions as panes instead of launching terminal windows; notify_owner to leave the user a short note; open_in_workspace to show the user a file or its diff; who_is_editing before editing a file other sessions may be changing; run_app, run_status and run_log to run the project app and read its log; device_screenshot to see a connected device; preview_layout to render an Android XML layout; list_servers and free_port for ports your session left listening; list_sessions, send_to_session, close_session and wait_session to see, prefill, close and wait for the other sessions of your project.",
+  "tools": [
+    {
+      "name": "open_session",
+      "description": "Open a new Claude Code (default), Codex, DeepSeek (Codewhale) or shell session as a pane in the Orrery workspace, next to the calling session. Use it instead of starting a terminal window (wt.exe, powershell, cmd start, Terminal.app, iTerm) whenever the user asks to open, start or spawn another session, agent or terminal. DeepSeek is for side code, generating tests and running the clone-app-re skill; when you hand it work, the prompt should state the goal, the files it may change, the test command and when it is done, and ask it to call hand_back when finished so its report comes back to you. The result carries paneId (once the pane has started, within about 10 seconds) for send_to_session, close_session and wait_session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "string",
+            "enum": [
+              "claude",
+              "codex",
+              "deepseek",
+              "shell"
+            ],
+            "default": "claude",
+            "description": "Program to run in the new pane."
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Absolute path of an existing local folder. Defaults to the calling session's current folder."
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 8000,
+            "description": "Text typed into the new agent's input box once it is ready. It is NOT submitted unless submit is true: the user reviews it and presses Enter. Ignored for shell."
+          },
+          "submit": {
+            "type": "boolean",
+            "default": false,
+            "description": "Press Enter on the prompt once the agent is ready, so it starts without the user. Only for work the user already asked to continue unattended, e.g. handing an unfinished task to Codex when Claude hit its usage limit; otherwise leave it off so the user reviews the prompt."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "Display name of the new session, Claude only. Starts with a letter or digit; then letters, digits, spaces, dots, underscores and dashes."
+          },
+          "resume": {
+            "type": "string",
+            "description": "Session id (UUID) of an earlier Claude Code, Codex or DeepSeek session to continue instead of starting a new one; cwd must be the project folder of that session. If an Orrery pane already runs it, that pane is shown instead."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Open Orrery session",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "notify_owner",
+      "description": "Tell the user something without waiting for them: the note goes to Orrery's Inbox with this session's name, and as a desktop notification (and to their phone if they enabled it) for level attention, or done if they turned on done notifications, subject to their quiet hours. Use it sparingly, when a long task finished or something needs a human decision. It never reaches another agent.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "One short line for the user, at most 200 characters. No secrets: it may be shown on a phone."
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "info",
+              "attention",
+              "done"
+            ],
+            "default": "info",
+            "description": "info: Inbox only. attention: needs the user. done: a task finished."
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Notify the Orrery user",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "open_in_workspace",
+      "description": "Show the user a file of this session's project in the Orrery workspace, next to this session: the file viewer at a line, or with diff the Changes view (git diff) of that file. Keyboard focus stays where the user is. Use it to point the user at code you want them to look at, instead of pasting it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "File inside this session's project folder: absolute, or relative to the project folder."
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Line to scroll to (1-based). File viewer only."
+          },
+          "diff": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show the uncommitted changes of the file (Changes view) instead of the file itself."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Show a file in Orrery",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "who_is_editing",
+      "description": "Before editing a file, ask which other Orrery agent sessions changed the same file in their checkout (another git worktree of this repository, or the same folder) and have not merged it yet, to avoid conflicting edits. Lists name, agent, branch, status and when they were last active. Reads git status only, never file contents.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "File inside this session's project folder: absolute, or relative to the project folder."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Who else is editing a file",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "preview_layout",
+      "description": "Render an Android XML layout of this session's project (res/layout*/…xml) to a PNG with Orrery's layout preview (layoutlib), and get the image path plus render diagnostics. The first call starts the renderer: it then answers that it is starting and how many seconds to wait before calling again.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Layout XML inside this session's project folder: absolute, or relative to the project folder."
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "tablet"
+            ],
+            "default": "phone",
+            "description": "phone (1080×2340, 440 dpi) or tablet (1600×2560, 320 dpi), portrait."
+          },
+          "theme": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark"
+            ],
+            "default": "light",
+            "description": "dark renders with night mode on."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Preview an Android layout",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "list_servers",
+      "description": "List servers and listening ports that agent sessions started (dev servers, daemons, emulators), from Orrery Resources (sampled every 30 s): name, kind, ports, how long idle, and whether it belongs to this session or project (mine: free_port may stop it). Ports held by processes outside every agent are listed by name only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "List servers and ports",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "free_port",
+      "description": "Stop the process listening on a local port, only when it was started from this session (its process tree or agent session) or runs inside this session's project folder. The user always confirms in a native Orrery dialog first; the answer says whether it was stopped or the user declined. Use list_servers to see which ports are yours.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "Local TCP port to free."
+          }
+        },
+        "required": [
+          "port"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Free a port (asks the user)",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false,
+        "idempotentHint": false
+      }
+    },
+    {
+      "name": "run_app",
+      "description": "Start, hot reload, restart or stop the app of this session's project with one of its Orrery Run configurations, exactly like the Run pane's buttons (shared or imported configurations still ask the user to trust them). Returns at once with the run's state; follow it with run_status and run_log. Only configurations and devices Orrery lists (run_status) are accepted.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "reload",
+              "restart",
+              "stop"
+            ],
+            "description": "start: run (refused when already running). reload: hot reload (Flutter debug). restart: stop and run again. stop: the Stop button."
+          },
+          "config": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Run configuration id from run_status. Default: the one selected in the project's Run bar."
+          },
+          "device": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Device serial / id from run_status. Default: the device selected in the Run bar (or the one the configuration pins)."
+          },
+          "full": {
+            "type": "boolean",
+            "default": false,
+            "description": "With reload: hot restart instead of hot reload."
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Run the app in Orrery",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "run_status",
+      "description": "What runs for this session's project in Orrery: its Run configurations (id, name, which one the Run bar selects), the devices it can run on (serial, name, ready or not) and the recent runs with their state (starting, running, stopping, crashed, stopped) and last error in one line.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Orrery Run status",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "run_log",
+      "description": "The last lines of the Run log of this session's project (the run the Run pane shows: build output, app output, logcat), with secrets masked, plus the build errors Orrery parsed (file:line:col). Use errorsOnly to get just error lines, match (a JavaScript regex per line, optional ignoreCase) to get just matching lines. Every result has a cursor: pass it back as since to get only the lines logged after it, oldest first, up to lines per call (call again while more come); reset=true means the cursor belonged to another run so the log restarts, truncated=true means older lines were dropped from the buffer before you read them.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50,
+            "description": "How many of the last lines, at most 200."
+          },
+          "errorsOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only error / fatal lines and lines that read like errors."
+          },
+          "match": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "JavaScript regular expression tested on each line; only matching lines are returned (also with errorsOnly: both must hold)."
+          },
+          "ignoreCase": {
+            "type": "boolean",
+            "default": false,
+            "description": "Case-insensitive match."
+          },
+          "since": {
+            "type": "string",
+            "description": "The cursor of a previous run_log result: only lines after it, oldest first."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Orrery Run log",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "device_screenshot",
+      "description": "Take a screenshot of a connected Android device (adb screencap) and save it as a PNG in the user's Orrery capture folder (or a temp folder when none is set). Returns the file path and size, so you can look at the image. Default device: the one this project's app runs on, else the only connected one. It never installs anything or changes device settings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "adb serial from run_status. Needed when several devices are connected."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Screenshot an Android device",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "telegram_notify",
+      "description": "Turn Orrery's Telegram reports on or off for the whole app, or read the current state (the user's /bot-tele-send-notify command). While on, every session whose project has a Telegram topic reports to that topic when it finishes or waits for the user. Only call it when the user asked for it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "on",
+              "off",
+              "status"
+            ],
+            "default": "status",
+            "description": "on, off, or status to only read it."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Turn Telegram reports on or off",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "telegram_send",
+      "description": "Send the user a result report in the Telegram topic of this session's project (set up in Orrery Settings › Notifications › Telegram), optionally with one file from the project such as a built APK or a log (up to 50 MB, or 2 GB when large files are on in Orrery Settings; larger files are reported by path). Works only while the user has Telegram reports on (/bot-tele-send-notify on). Use it once when a task finishes: what was done, the result, what needs the user. When you send one, Orrery does not send its own \"finished\" message for that turn. To ask the user a choice, add buttons: when the paired user taps one, its value is typed into this session (and submitted only if this session is idle at that moment); only the first tap counts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000,
+            "description": "The report, plain text, at most 3000 characters (1000 when a file is attached, as its caption). No secrets: it leaves the machine."
+          },
+          "file": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Optional file inside this session's project folder: absolute, or relative to the project folder. Secret files (.env, keystores, google-services.json, …) are refused."
+          },
+          "buttons": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 6,
+            "description": "Optional reply buttons under the message (not with file). A tap types `value` into this session as the next prompt; it is submitted only while this session is idle, otherwise only typed. One tap per message.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32,
+                  "description": "Button text, at most 32 characters."
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "Prompt typed into this session on a tap, at most 200 characters."
+                }
+              },
+              "required": [
+                "label",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Report to Telegram",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "telegram_receive",
+      "description": "Turn Orrery's Telegram commands on or off, or read the state (the user's /bot-tele-receive command). While on, the paired Telegram account of the user (and nobody else) can mention the bot in a project topic to send a message into that project's Orrery session. Turning it on asks the user to confirm in a dialog on the machine. Off again after Orrery restarts. Only call it when the user asked for it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "on",
+              "off",
+              "status"
+            ],
+            "default": "status",
+            "description": "on, off, or status to only read it."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Turn Telegram commands on or off",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "hand_back",
+      "description": "DeepSeek sessions opened by another Orrery agent only: when the task you were given is finished, write a Markdown report in your project folder (what you did, files changed, tests run and their result, what is left), then call this once. Orrery submits a prompt pointing at the report into the agent that opened you as soon as it is idle. Stop working on the task after it succeeds.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Path of the .md report you wrote, inside your project folder: absolute, or relative to the project folder. At most 1 MB."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "One line saying what was done, at most 200 characters."
+          }
+        },
+        "required": [
+          "report",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Hand work back in Orrery",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "list_sessions",
+      "description": "List the other Orrery sessions (Claude Code, Codex, shell panes) in this session's project: name, agent, status, session id, whether you opened it, since when it is idle (idleSince) and whether a Claude session is at its usage limit (limit, with resetsAt / window when known). Read-only: no terminal content. `id` is the Orrery pane id (open_session returns it as paneId): use it with send_to_session, close_session and wait_session. `agent session` is the agent's own conversation uuid: never pass it to those tools.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "List project sessions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "send_to_session",
+      "description": "Type a message into the input box of another agent session in this session's project (from list_sessions). It is NOT submitted: the user reviews it and presses Enter. Not for yourself, other projects or shell panes. At most 20 a minute.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Session id from list_sessions."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000,
+            "description": "Text for the input box."
+          }
+        },
+        "required": [
+          "session",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Prefill another session",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "close_session",
+      "description": "Close a session pane that you opened with open_session. Closes like the owner does: a pane that still runs something asks the owner first, and the owner can undo the close. Sessions you did not open cannot be closed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Session id from list_sessions."
+          }
+        },
+        "required": [
+          "session"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Close a session you opened",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "wait_session",
+      "description": "Wait until another session of this project (from list_sessions) is idle or has exited, or until timeoutMs. Returns its status and whether it got there; never terminal content. Returns at once when it already is there. Not for yourself. At most 30 a minute.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Session id from list_sessions."
+          },
+          "until": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "exited"
+            ],
+            "default": "idle",
+            "description": "idle: the agent finished its turn (an exited pane also ends the wait, with reached false). exited: the pane was closed or its program ended."
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 600000,
+            "default": 120000,
+            "description": "How long to wait at most, in milliseconds."
+          }
+        },
+        "required": [
+          "session"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Wait for a session",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    }
+  ],
+  "openSessionNoDeepseek": {
+    "name": "open_session",
+    "description": "Open a new Claude Code (default), Codex or shell session as a pane in the Orrery workspace, next to the calling session. Use it instead of starting a terminal window (wt.exe, powershell, cmd start, Terminal.app, iTerm) whenever the user asks to open, start or spawn another session, agent or terminal. The result carries paneId (once the pane has started, within about 10 seconds) for send_to_session, close_session and wait_session.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agent": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "codex",
+            "shell"
+          ],
+          "default": "claude",
+          "description": "Program to run in the new pane."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Absolute path of an existing local folder. Defaults to the calling session's current folder."
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 8000,
+          "description": "Text typed into the new agent's input box once it is ready. It is NOT submitted unless submit is true: the user reviews it and presses Enter. Ignored for shell."
+        },
+        "submit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Press Enter on the prompt once the agent is ready, so it starts without the user. Only for work the user already asked to continue unattended, e.g. handing an unfinished task to Codex when Claude hit its usage limit; otherwise leave it off so the user reviews the prompt."
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Display name of the new session, Claude only. Starts with a letter or digit; then letters, digits, spaces, dots, underscores and dashes."
+        },
+        "resume": {
+          "type": "string",
+          "description": "Session id (UUID) of an earlier Claude Code, Codex or DeepSeek session to continue instead of starting a new one; cwd must be the project folder of that session. If an Orrery pane already runs it, that pane is shown instead."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "title": "Open Orrery session",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  }
+}

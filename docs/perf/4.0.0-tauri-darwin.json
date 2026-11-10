@@ -1,0 +1,91 @@
+{
+  "label": "tauri-4.0.0",
+  "platform": "darwin",
+  "date": "2026-11-10",
+  "seconds": 60,
+  "settle": 20,
+  "cpuUnit": "percent of one core (ps cputime, 1 s resolution on long runs)",
+  "scenarios": [
+    {
+      "name": "idle-monitor",
+      "sessions": 0,
+      "subagents": 0,
+      "rssMBAvg": 291,
+      "rssMBMax": 293,
+      "cpuAvgPct": 0.3,
+      "procs": 4,
+      "last": [
+        {
+          "comm": "Orrery",
+          "rssMB": 118
+        },
+        {
+          "comm": "com.apple.WebKit.GPU",
+          "rssMB": 32
+        },
+        {
+          "comm": "com.apple.WebKit.WebContent",
+          "rssMB": 113
+        },
+        {
+          "comm": "com.apple.WebKit.Networking",
+          "rssMB": 29
+        }
+      ]
+    },
+    {
+      "name": "demo-6x3",
+      "sessions": 6,
+      "subagents": 3,
+      "rssMBAvg": 314,
+      "rssMBMax": 334,
+      "cpuAvgPct": 2.5,
+      "procs": 4,
+      "last": [
+        {
+          "comm": "Orrery",
+          "rssMB": 123
+        },
+        {
+          "comm": "com.apple.WebKit.GPU",
+          "rssMB": 33
+        },
+        {
+          "comm": "com.apple.WebKit.WebContent",
+          "rssMB": 161
+        },
+        {
+          "comm": "com.apple.WebKit.Networking",
+          "rssMB": 17
+        }
+      ]
+    },
+    {
+      "name": "demo-30x6",
+      "sessions": 30,
+      "subagents": 6,
+      "rssMBAvg": 308,
+      "rssMBMax": 314,
+      "cpuAvgPct": 5.4,
+      "procs": 4,
+      "last": [
+        {
+          "comm": "Orrery",
+          "rssMB": 134
+        },
+        {
+          "comm": "com.apple.WebKit.GPU",
+          "rssMB": 33
+        },
+        {
+          "comm": "com.apple.WebKit.WebContent",
+          "rssMB": 127
+        },
+        {
+          "comm": "com.apple.WebKit.Networking",
+          "rssMB": 19
+        }
+      ]
+    }
+  ]
+}

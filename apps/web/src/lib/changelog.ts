@@ -24,7 +24,7 @@ export const CHANGELOG: Release[] = [
       { en: 'Monitor Board tab: Needs you, Running, Idle, Done today; Alt+1 / Alt+2 switch to Orbit', vi: 'Monitor có tab Bảng: Cần anh, Đang chạy, Rảnh, Xong hôm nay; Alt+1 / Alt+2 chuyển sang Quỹ đạo' },
       { en: 'Orbit tab: priority rings around you, detail panel, focus view with tool arcs', vi: 'Tab Quỹ đạo: vòng ưu tiên quanh bạn, panel chi tiết, màn tiêu điểm có vệt tool' },
       { en: 'Running commands panel: full command (secrets masked), run time, open pane; ` toggles it', vi: 'Panel "Lệnh đang chạy": lệnh đầy đủ (che secret), thời gian chạy, mở pane; phím ` để ẩn / hiện' },
-      { en: 'New lightweight app on Tauri + Rust (no Electron / Node): smaller installer, less RAM', vi: 'App mới nhẹ hơn trên Tauri + Rust (bỏ Electron / Node): bộ cài nhỏ hơn, ít RAM hơn' },
+      { en: 'Runs on Tauri + Rust (no Electron / Node): RAM −53 to −59%, CPU up to −72%, installer 147 → 24 MB', vi: 'Chạy bằng Tauri + Rust (bỏ Electron / Node): RAM −53 đến −59%, CPU max −72%, bộ cài 147 → 24 MB' },
       { en: 'Telegram: sign in to your account once more for topics and large files; Office not in this version', vi: 'Telegram: đăng nhập lại tài khoản 1 lần để quét topic và gửi file lớn; bản này chưa có Office' },
       { en: 'XML Preview installs on demand; no blur; Linux and Windows portable builds dropped', vi: 'XML Preview chỉ cài khi cần; bỏ blur; bỏ bản Linux và bản Windows portable' },
     ],

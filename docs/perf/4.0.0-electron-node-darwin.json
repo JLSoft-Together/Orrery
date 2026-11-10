@@ -1,0 +1,393 @@
+{
+  "version": "4.0.0",
+  "label": "electron-node",
+  "platform": "darwin",
+  "date": "2026-11-10",
+  "exe": "electron dev (apps/desktop/stage)",
+  "cores": 10,
+  "totalMemMB": 24576,
+  "cpuUnit": "percent of one core",
+  "seconds": 60,
+  "settle": 20,
+  "scenarios": {
+    "idle-monitor": {
+      "sampled": {
+        "seconds": 60,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 29
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 6,
+          "privateMB": 650.7,
+          "privateMBMax": 655.8,
+          "rssMB": 650.7,
+          "cpuAvgPct": 0.6,
+          "cpuP95Pct": 4.8,
+          "cpuSec": 0.4
+        },
+        "main": {
+          "procs": 2,
+          "privateMB": 200.4,
+          "privateMBMax": 203.1,
+          "rssMB": 200.4,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 1,
+          "cpuSec": 0.1
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 188.3,
+          "privateMBMax": 193.5,
+          "rssMB": 188.3,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0.1
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 102.9,
+          "privateMBMax": 102.9,
+          "rssMB": 102.9,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 102.7,
+          "privateMBMax": 104.2,
+          "rssMB": 102.7,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 1,
+          "cpuSec": 0.1
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 56.4,
+          "privateMBMax": 56.7,
+          "rssMB": 56.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 30968,
+          "role": "main",
+          "privateMB": 192.1,
+          "rssMB": 192.1,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 1,
+          "cpuSec": 0.1,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --user-data-dir=/var/folders/_w/f0xvbrpx375dxmy9t42w6cpm0000gn/T/perf"
+        },
+        {
+          "pid": 30999,
+          "role": "collector",
+          "privateMB": 102.7,
+          "rssMB": 102.7,
+          "cpuAvgPct": 0.2,
+          "cpuP95Pct": 1,
+          "cpuSec": 0.1,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=utility --utili"
+        },
+        {
+          "pid": 31000,
+          "role": "renderer",
+          "privateMB": 188.3,
+          "rssMB": 188.3,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0.1,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS/Electron Helper (Renderer) "
+        },
+        {
+          "pid": 30969,
+          "role": "gpu",
+          "privateMB": 102.9,
+          "rssMB": 102.9,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=gpu-process --u"
+        },
+        {
+          "pid": 30970,
+          "role": "network",
+          "privateMB": 56.4,
+          "rssMB": 56.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=utility --utili"
+        },
+        {
+          "pid": 30996,
+          "role": "main",
+          "privateMB": 8.4,
+          "rssMB": 8.4,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "/Users/jin/work/web/Orrery/apps/core/target/release/orrery-core desk"
+        }
+      ]
+    },
+    "demo-6x3": {
+      "sampled": {
+        "seconds": 60,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 29
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 6,
+          "privateMB": 671.9,
+          "privateMBMax": 685.4,
+          "rssMB": 671.9,
+          "cpuAvgPct": 6.2,
+          "cpuP95Pct": 14.5,
+          "cpuSec": 3.7
+        },
+        "main": {
+          "procs": 2,
+          "privateMB": 200.8,
+          "privateMBMax": 201.4,
+          "rssMB": 200.8,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 1.9,
+          "cpuSec": 0.2
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 202.2,
+          "privateMBMax": 216.5,
+          "rssMB": 202.2,
+          "cpuAvgPct": 2.5,
+          "cpuP95Pct": 5.8,
+          "cpuSec": 1.5
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 105,
+          "privateMBMax": 105.5,
+          "rssMB": 105,
+          "cpuAvgPct": 1.5,
+          "cpuP95Pct": 3.4,
+          "cpuSec": 0.9
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 107.2,
+          "privateMBMax": 109.1,
+          "rssMB": 107.2,
+          "cpuAvgPct": 1.9,
+          "cpuP95Pct": 3.4,
+          "cpuSec": 1.1
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 56.7,
+          "privateMBMax": 56.7,
+          "rssMB": 56.7,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0
+        }
+      },
+      "pids": [
+        {
+          "pid": 31616,
+          "role": "renderer",
+          "privateMB": 202.2,
+          "rssMB": 202.2,
+          "cpuAvgPct": 2.5,
+          "cpuP95Pct": 5.8,
+          "cpuSec": 1.5,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS/Electron Helper (Renderer) "
+        },
+        {
+          "pid": 31581,
+          "role": "collector",
+          "privateMB": 107.2,
+          "rssMB": 107.2,
+          "cpuAvgPct": 1.9,
+          "cpuP95Pct": 3.4,
+          "cpuSec": 1.1,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=utility --utili"
+        },
+        {
+          "pid": 31551,
+          "role": "gpu",
+          "privateMB": 105,
+          "rssMB": 105,
+          "cpuAvgPct": 1.5,
+          "cpuP95Pct": 3.4,
+          "cpuSec": 0.9,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=gpu-process --u"
+        },
+        {
+          "pid": 31550,
+          "role": "main",
+          "privateMB": 192.1,
+          "rssMB": 192.1,
+          "cpuAvgPct": 0.3,
+          "cpuP95Pct": 1.5,
+          "cpuSec": 0.2,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --user-data-dir=/var/folders/_w/f0xvbrpx375dxmy9t42w6cpm0000gn/T/perf"
+        },
+        {
+          "pid": 31552,
+          "role": "network",
+          "privateMB": 56.7,
+          "rssMB": 56.7,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=utility --utili"
+        },
+        {
+          "pid": 31578,
+          "role": "main",
+          "privateMB": 8.7,
+          "rssMB": 8.7,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "/Users/jin/work/web/Orrery/apps/core/target/release/orrery-core desk"
+        }
+      ]
+    },
+    "demo-30x6": {
+      "sampled": {
+        "seconds": 60,
+        "settle": 20,
+        "tickMs": 2000,
+        "ticks": 29
+      },
+      "roles": {
+        "TOTAL": {
+          "procs": 6,
+          "privateMB": 755.1,
+          "privateMBMax": 764.4,
+          "rssMB": 755.1,
+          "cpuAvgPct": 19,
+          "cpuP95Pct": 27.6,
+          "cpuSec": 11.4
+        },
+        "main": {
+          "procs": 2,
+          "privateMB": 200.8,
+          "privateMBMax": 201.4,
+          "rssMB": 200.8,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 1,
+          "cpuSec": 0.3
+        },
+        "renderer": {
+          "procs": 1,
+          "privateMB": 267.9,
+          "privateMBMax": 270.7,
+          "rssMB": 267.9,
+          "cpuAvgPct": 10.5,
+          "cpuP95Pct": 17.4,
+          "cpuSec": 6.3
+        },
+        "gpu": {
+          "procs": 1,
+          "privateMB": 109.1,
+          "privateMBMax": 109.6,
+          "rssMB": 109.1,
+          "cpuAvgPct": 2.7,
+          "cpuP95Pct": 4.8,
+          "cpuSec": 1.6
+        },
+        "collector": {
+          "procs": 1,
+          "privateMB": 120.4,
+          "privateMBMax": 128.8,
+          "rssMB": 120.4,
+          "cpuAvgPct": 5.2,
+          "cpuP95Pct": 7.3,
+          "cpuSec": 3.1
+        },
+        "network": {
+          "procs": 1,
+          "privateMB": 56.9,
+          "privateMBMax": 56.9,
+          "rssMB": 56.9,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0.1
+        }
+      },
+      "pids": [
+        {
+          "pid": 32308,
+          "role": "renderer",
+          "privateMB": 267.9,
+          "rssMB": 267.9,
+          "cpuAvgPct": 10.5,
+          "cpuP95Pct": 17.4,
+          "cpuSec": 6.3,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper (Renderer).app/Contents/MacOS/Electron Helper (Renderer) "
+        },
+        {
+          "pid": 32271,
+          "role": "collector",
+          "privateMB": 120.4,
+          "rssMB": 120.4,
+          "cpuAvgPct": 5.2,
+          "cpuP95Pct": 7.3,
+          "cpuSec": 3.1,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=utility --utili"
+        },
+        {
+          "pid": 32239,
+          "role": "gpu",
+          "privateMB": 109.1,
+          "rssMB": 109.1,
+          "cpuAvgPct": 2.7,
+          "cpuP95Pct": 4.8,
+          "cpuSec": 1.6,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=gpu-process --u"
+        },
+        {
+          "pid": 32238,
+          "role": "main",
+          "privateMB": 192.1,
+          "rssMB": 192.1,
+          "cpuAvgPct": 0.5,
+          "cpuP95Pct": 1,
+          "cpuSec": 0.3,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --user-data-dir=/var/folders/_w/f0xvbrpx375dxmy9t42w6cpm0000gn/T/perf"
+        },
+        {
+          "pid": 32240,
+          "role": "network",
+          "privateMB": 56.9,
+          "rssMB": 56.9,
+          "cpuAvgPct": 0.1,
+          "cpuP95Pct": 0.5,
+          "cpuSec": 0.1,
+          "cmd": "/Users/jin/work/web/Orrery/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper --type=utility --utili"
+        },
+        {
+          "pid": 32268,
+          "role": "main",
+          "privateMB": 8.7,
+          "rssMB": 8.7,
+          "cpuAvgPct": 0,
+          "cpuP95Pct": 0,
+          "cpuSec": 0,
+          "cmd": "/Users/jin/work/web/Orrery/apps/core/target/release/orrery-core desk"
+        }
+      ]
+    }
+  },
+  "failures": {}
+}

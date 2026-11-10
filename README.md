@@ -2,6 +2,8 @@
 
 App desktop (Windows, macOS) theo dõi realtime mọi session Claude Code CLI đang chạy, kèm các lần Codex CLI do chúng gọi. Có thêm **Workspace**: terminal, editor, Git và Run ngay trong app.
 
+Từ **4.0** app chạy hoàn toàn bằng Rust: vỏ Tauri + `orrery-core`, không còn Electron và Node.
+
 Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguyên (`dev.ccm.monitor`, data `ccm`, biến `CCM_*`) nên bản cũ cập nhật thẳng, không mất cài đặt.
 
 ![Monitor: danh sách session và Agent Map](docs/screenshots/monitor.png)
@@ -11,6 +13,22 @@ Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguy�
 | ![Workspace](docs/screenshots/workspace.png) | ![Changes](docs/screenshots/changes.png) |
 | **Run pane: bắt crash, điền vào agent** | **Có gì mới** |
 | ![Run pane](docs/screenshots/run-pane.png) | ![What's new](docs/screenshots/whats-new.png) |
+
+## Hiệu năng: 4.0 (Tauri + Rust) so với Electron + Node
+
+Đo trên MacBook Apple Silicon (10 core, 24 GB), cùng code giao diện, 60 giây sau 20 giây chờ, demo `scripts/demo-fixture.mjs --seed=8704`. RAM = tổng RSS mọi process của app (macOS: gồm 3 process WebKit). CPU = % một core. Số thô: `docs/perf/4.0.0-tauri-darwin.json`, `docs/perf/4.0.0-electron-node-darwin.json`.
+
+| Kịch bản | RAM Electron + Node | RAM 4.0 | CPU Electron + Node | CPU 4.0 |
+|---|---|---|---|---|
+| Monitor, không session | 651 MB | **291 MB** (−55%) | 0,6% | **0,3%** |
+| 6 session × 3 subagent | 672 MB | **314 MB** (−53%) | 6,2% | **2,5%** (−60%) |
+| 30 session × 6 subagent | 755 MB | **308 MB** (−59%) | 19,0% | **5,4%** (−72%) |
+
+| | 3.4.0 (Electron) | 4.0 |
+|---|---|---|
+| Bộ cài macOS arm64 | 147 MB | **24 MB** (−84%) |
+| App đã cài (macOS) | 325 MB | **54 MB** |
+| Quét usage lần đầu (4,29 GB transcript) | 6,70 CPU-giây | **2,17 CPU-giây** (nhanh hơn 3,1 lần) |
 
 ## Nguyên tắc
 
@@ -84,13 +102,14 @@ Tải bản mới nhất ở [GitHub Releases](https://github.com/JLSoft-Togethe
 
 | Hệ điều hành | File |
 |---|---|
-| Windows 10 / 11 | `Orrery-Setup-<ver>.exe` hoặc `Orrery-Portable-<ver>.exe` |
+| Windows 10 / 11 | `Orrery-Setup-<ver>.exe` (từ 4.0 không còn bản Portable) |
 | macOS Apple Silicon / Intel | `Orrery-<ver>-arm64.dmg` / `Orrery-<ver>-x64.dmg` |
 
 - **Yêu cầu**: Claude Code CLI `2.1.289` (bản khác vẫn chạy, có cảnh báo). Git, VS Code không bắt buộc.
 - Mở app rồi chạy `claude` ở terminal bất kỳ: session hiện lên trong khoảng 1 giây.
 - **Windows**: exe chưa ký số. SmartScreen cảnh báo lần đầu → **More info → Run anyway**. Đóng cửa sổ = ẩn xuống tray.
 - **macOS**: app ký ad-hoc, chưa notarize. Kéo vào **Applications**, mở → bị chặn → **System Settings → Privacy & Security → Open Anyway** (hoặc `xattr -dr com.apple.quarantine "/Applications/Orrery.app"`).
+- Từ 3.x lên 4.0: cập nhật trong app như bình thường; cài đặt, layout và token GitHub được giữ (macOS có thể hỏi quyền Keychain 1 lần). Tài khoản Telegram cần đăng nhập lại 1 lần. Windows tự gỡ bản Electron cũ, dữ liệu giữ nguyên.
 - Đã cài bản tên cũ: cài đè (Windows) hoặc xoá `GolAIm.app` / `Agent Monitor.app` / `Claude Code Monitor.app` sau khi chép bản mới (macOS).
 - **Giới hạn gói**: bật ở Cài đặt → Status line, chép lệnh vào `~/.claude/settings.json`.
 
@@ -110,20 +129,23 @@ Gặp lỗi: mở **Cài đặt → Chẩn đoán**, **Lưu file log…** để 
 
 ## Build từ source
 
-Cần Node.js `20.19+` hoặc `22.12+`.
+Cần Node.js `20.19+` hoặc `22.12+` (build giao diện, test) và Rust stable (`rustup`).
 
 ```powershell
 npm install
-npm run desktop       # build web rồi chạy app Electron (dev)
+npm run shell:dev     # build web rồi chạy app Tauri (dev)
+npm run desktop       # bản Electron cũ (dev, để so sánh / fallback)
 npm test              # Vitest mọi workspace
 npm run typecheck     # tsc / vue-tsc
-npm run dist          # đóng gói theo OS (không cross build)
+npm run dist          # đóng gói Tauri theo OS (không cross build); bản Electron: npm run dist:electron
 ```
 
 ```
 apps/collector      Node.js + TS: đọc session, transcript, hook; WebSocket
 apps/web            Vue 3 + Vite + Tailwind + Pinia + vue-i18n + Vue Flow + xterm.js
 apps/desktop        Electron: collector + PTY host, tray, Run, thiết bị, Git, đóng gói
+apps/core           Rust: orrery-core (collector, terminal, desk), orrery-bridge
+apps/shell          Tauri 2: cửa sổ, tray, webview, đóng gói 4.0
 packages/shared     Kiểu dữ liệu + protocol dùng chung
 ```
 

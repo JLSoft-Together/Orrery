@@ -1122,45 +1122,15 @@ export default {
     steps: {
       welcome: {
         title: 'Welcome to Orrery',
-        body: 'This page watches every Claude Code session running on this machine, plus the Codex CLI runs they start, and tells you which one needs you. It only reads local files: it never types into an agent, never calls an API and costs no tokens. Take a one-minute tour?',
+        body: 'Watches every Claude Code and Codex session on this machine and shows which one needs you. Reads local files only, costs no tokens.',
       },
       tabs: {
         title: 'Monitor and Workspace',
-        body: 'Monitor shows what is running right now. Workspace holds your terminals, editor and git. The … button next to them opens Usage (tokens and cost by day, model and project), History (how today went), Extensions and Devices.',
-      },
-      waiting: {
-        title: 'Who needs you',
-        body: 'When a session stops to ask for permission or an answer, it moves to the first group of the Sessions column, Needs you, with how long it has waited. With the column closed, this thin strip shows the same and opens the column when clicked.',
-        absent: 'Nobody is waiting right now. A session that needs you appears at the top of the Sessions column, or in a thin strip above the map while the column is closed.',
-      },
-      sessions: {
-        title: 'Your sessions',
-        body: 'One card per terminal: status, folder, git branch, uncommitted changes and context use. Its buttons jump to the terminal, open the folder in Explorer or VS Code, rename the session or pin it. Favorites below start a new session in a saved folder with one click. The panel starts closed; open it from the map toolbar.',
-      },
-      map: {
-        title: 'Agent Map',
-        body: 'Each session with the sub-agents it started, live. Click a node for details. Drag nodes, resize them from any edge, scroll to zoom. The layout is remembered; Rearrange resets it.',
-      },
-      limits: {
-        title: 'Plan limits',
-        body: 'Your 5-hour and weekly usage with time until reset and a forecast. Click for details.',
-        absent: 'Not shown yet: these numbers come from the status line bridge. Turn it on in Settings (one click, after you confirm) and they appear after the next Claude reply.',
+        body: 'Monitor: what runs now. Workspace: terminals, editor, git. The … button opens Usage, History, Extensions and Devices.',
       },
       palette: {
         title: 'Find anything: {palette}',
-        body: 'Type part of a session name, folder or branch to jump to it. {reveal} brings its terminal to the front. Commands for theme, language, notifications and diagnostics live here too.',
-      },
-      compact: {
-        title: 'Compact view',
-        body: 'Shows only who is waiting and what is running, in larger text. Handy in a small window beside your editor. Also in the tray menu: Compact window.',
-      },
-      settings: {
-        title: 'Notifications and settings',
-        body: 'This menu turns on desktop notifications when a session waits (its icon becomes a bell). It also holds sound, reminders for long waits, a daily budget, the status line bridge and Diagnostics for when something looks wrong.',
-      },
-      finish: {
-        title: 'You are set',
-        body: 'Leave Orrery open while you work; it updates on its own, also from the tray. Open this guide again from Settings or {palette}.',
+        body: 'Jump to a session, folder or branch, or run a command. Reopen this guide from here or Settings.',
       },
     },
   },

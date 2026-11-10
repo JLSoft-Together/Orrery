@@ -11,24 +11,13 @@ export interface TourStep {
 export const TOUR_STEPS: TourStep[] = [
   { id: 'welcome' },
   { id: 'tabs', target: 'tabs' },
-  { id: 'waiting', target: 'waiting', absent: true },
-  { id: 'sessions', target: 'sessions', panel: 'sessions' },
-  { id: 'map', target: 'map' },
-  { id: 'limits', target: 'limits', absent: true },
   { id: 'palette', target: 'palette' },
-  { id: 'compact', target: 'compact' },
-  { id: 'settings', target: 'settings' },
-  { id: 'finish' },
 ]
 
 /** Workspace (desktop only): the parts used every day, nothing more. i18n under `wsTour.<id>`. */
 export const WORKSPACE_TOUR_STEPS: TourStep[] = [
-  { id: 'welcome' },
   { id: 'new', target: 'ws-new' },
   { id: 'split', target: 'ws-split', absent: true },
-  { id: 'pane', target: 'ws-pane', absent: true },
-  { id: 'sidebar', target: 'ws-sidebar', absent: true },
-  { id: 'attach', target: 'ws-attach', absent: true },
   { id: 'keys', target: 'compact' },
 ]
 

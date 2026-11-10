@@ -1123,45 +1123,15 @@ const vi: typeof en = {
     steps: {
       welcome: {
         title: 'Chào mừng tới Orrery',
-        body: 'Trang này theo dõi mọi session Claude Code đang chạy trên máy, cả các lần Codex CLI do chúng gọi, và cho biết session nào đang cần chủ nhân. Nó chỉ đọc file trên máy: không gõ gì vào agent, không gọi API, không tốn token. Xem nhanh một phút nhé?',
+        body: 'Theo dõi mọi session Claude Code và Codex trên máy, báo session nào cần chủ nhân. Chỉ đọc file trên máy, không tốn token.',
       },
       tabs: {
         title: 'Giám sát và Workspace',
-        body: 'Giám sát: những gì đang chạy. Workspace: terminal, editor và git. Nút … bên cạnh mở Thống kê (token và chi phí theo ngày, model, project), Lịch sử (hôm nay làm việc bao lâu, chờ chủ nhân bao lâu), Mở rộng và Thiết bị.',
-      },
-      waiting: {
-        title: 'Session đang cần chủ nhân',
-        body: 'Khi một session dừng lại để xin quyền hoặc hỏi ý, nó lên nhóm đầu của cột Session, Cần chủ nhân, kèm thời gian đã chờ. Khi cột đóng, dải mỏng này hiện cùng thông tin, bấm vào để mở cột.',
-        absent: 'Hiện chưa có session nào chờ. Có session cần chủ nhân là nó hiện ở đầu cột Session, hoặc ở dải mỏng phía trên map khi cột đóng.',
-      },
-      sessions: {
-        title: 'Danh sách session',
-        body: 'Mỗi terminal là một thẻ: trạng thái, thư mục, git branch, thay đổi chưa commit, mức dùng context. Các nút trên thẻ dùng để nhảy tới terminal, mở thư mục bằng Explorer hoặc VS Code, đổi tên hay ghim session. Mục Yêu thích bên dưới mở session mới trong thư mục đã lưu chỉ với một cú bấm. Panel này đóng sẵn khi mở app; mở lại bằng nút trên thanh công cụ của Agent Map.',
-      },
-      map: {
-        title: 'Agent Map',
-        body: 'Mỗi session cùng các subagent nó gọi, cập nhật trực tiếp. Bấm vào node để xem chi tiết. Kéo để di chuyển, kéo cạnh để đổi kích thước, cuộn chuột để phóng to. Bố cục được ghi nhớ; nút Sắp xếp lại đặt về mặc định.',
-      },
-      limits: {
-        title: 'Giới hạn gói',
-        body: 'Mức dùng 5 giờ và weekly, thời gian tới lúc reset và dự báo. Bấm vào để xem chi tiết.',
-        absent: 'Chưa hiện vì số liệu này lấy từ status line bridge. Bật nó trong Cài đặt (một cú bấm, sau khi chủ nhân xác nhận), sau lần Claude trả lời kế tiếp là có.',
+        body: 'Giám sát: những gì đang chạy. Workspace: terminal, editor, git. Nút … mở Thống kê, Lịch sử, Mở rộng và Thiết bị.',
       },
       palette: {
         title: 'Tìm mọi thứ: {palette}',
-        body: 'Gõ một phần tên session, thư mục hay branch để nhảy tới. {reveal} đưa terminal của session lên trước. Các lệnh đổi theme, ngôn ngữ, thông báo, chẩn đoán cũng nằm ở đây.',
-      },
-      compact: {
-        title: 'Chế độ gọn',
-        body: 'Chỉ hiện session đang chờ và đang chạy, chữ to. Hợp với cửa sổ nhỏ đặt cạnh editor. Cũng mở được từ menu khay: Cửa sổ gọn.',
-      },
-      settings: {
-        title: 'Thông báo và cài đặt',
-        body: 'Menu này bật thông báo desktop khi có session chờ (biểu tượng đổi thành cái chuông). Trong đó còn âm thanh, nhắc khi chờ lâu, ngân sách ngày, status line bridge và Chẩn đoán khi có gì không ổn.',
-      },
-      finish: {
-        title: 'Xong rồi',
-        body: 'Cứ để Orrery mở trong lúc làm việc, nó tự cập nhật, kể cả khi thu xuống khay. Muốn xem lại hướng dẫn thì mở trong Cài đặt hoặc {palette}.',
+        body: 'Nhảy tới session, thư mục, branch hoặc chạy lệnh. Mở lại hướng dẫn này ở đây hoặc trong Cài đặt.',
       },
     },
   },

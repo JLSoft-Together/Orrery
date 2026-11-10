@@ -3,36 +3,21 @@ const en = {
   wsTour: {
     welcome: {
       title: 'Your terminals, inside the app',
-      body: 'Workspace runs Claude Code, Codex and shells in tabs, linked to what Monitor shows. A few quick stops cover what you will use every day.',
+      body: 'Claude Code, Codex and shells in tabs.',
     },
     new: {
       title: 'Open a tab',
-      body: 'Click + (or press {keys}) to pick Claude, Codex or a shell and the folder to start in. The same menu opens a browser, a file or the Changes view.',
+      body: '+ or {keys}: Claude, Codex, shell, browser or file.',
     },
     split: {
-      title: 'Split instead of switching',
-      body: 'Put a second terminal or a browser next to this one. {right} splits right, {down} splits down, {focus} moves between panes.',
-      absent: 'Open a terminal first: every pane has this button in its header.',
-    },
-    pane: {
-      title: 'The pane header',
-      body: 'Branch and worktrees, project scripts (▶) and find in the output ({find}). {click}+click a file path or URL in the output to open it in a tab.',
-      absent: 'Open a terminal first to see its header.',
-    },
-    sidebar: {
-      title: 'Projects',
-      body: 'Panes grouped by project. Save the tabs of a project as a layout to reopen them later, or have one open on start.',
-      absent: 'Shows beside the tabs on wider windows once a tab is open (toggle at the left of the tab strip).',
-    },
-    attach: {
-      title: 'What goes to the agent',
-      body: "Paste or drop images and files here. The list shows each one with the name the agent gives it ([Image #1], {'@'}file), so you know exactly what the prompt carries.",
-      absent: 'Shown in the header of Claude and Codex panes.',
+      title: 'Split',
+      body: '{right} right, {down} down, {focus} moves between panes.',
+      absent: 'Open a terminal first.',
     },
     keys: {
-      title: 'All shortcuts',
-      body: 'The ⋯ menu in the top bar lists every shortcut and reopens this guide. When you do the same thing by mouse a few times, a small tip shows its shortcut; you can turn tips off.',
-      absent: 'Appears at the right end of the tab strip once a tab is open.',
+      title: 'Shortcuts',
+      body: 'The ⋯ menu lists every shortcut and reopens this guide.',
+      absent: 'At the right end of the tab strip once a tab is open.',
     },
   },
   tips: {
@@ -93,36 +78,21 @@ const vi: typeof en = {
   wsTour: {
     welcome: {
       title: 'Terminal ngay trong ứng dụng',
-      body: 'Workspace chạy Claude Code, Codex và shell trong các tab, gắn với những gì Giám sát hiển thị. Vài bước nhanh dưới đây là những phần bạn dùng hằng ngày.',
+      body: 'Claude Code, Codex và shell trong các tab.',
     },
     new: {
       title: 'Mở tab',
-      body: 'Bấm + (hoặc {keys}) để chọn Claude, Codex hay shell và thư mục bắt đầu. Cùng menu này mở trình duyệt, file hoặc tab Thay đổi.',
+      body: '+ hoặc {keys}: Claude, Codex, shell, trình duyệt hoặc file.',
     },
     split: {
-      title: 'Chia đôi thay vì chuyển qua lại',
-      body: 'Đặt thêm một terminal hoặc trình duyệt cạnh pane này. {right} chia sang phải, {down} chia xuống dưới, {focus} chuyển giữa các pane.',
-      absent: 'Hãy mở một terminal trước: mỗi pane đều có nút này ở thanh tiêu đề.',
-    },
-    pane: {
-      title: 'Thanh tiêu đề pane',
-      body: 'Nhánh và worktree, script của dự án (▶) và tìm trong output ({find}). {click}+click vào đường dẫn file hoặc URL trong output để mở trong tab.',
-      absent: 'Hãy mở một terminal trước để xem thanh tiêu đề.',
-    },
-    sidebar: {
-      title: 'Dự án',
-      body: 'Các pane được nhóm theo dự án. Lưu các tab của dự án thành layout để mở lại sau, hoặc đặt một layout tự mở khi khởi động.',
-      absent: 'Hiện cạnh các tab khi cửa sổ đủ rộng và đã có tab (nút bật/tắt ở đầu dải tab).',
-    },
-    attach: {
-      title: 'Những gì gửi cho agent',
-      body: "Dán hoặc kéo thả ảnh và file vào đây. Danh sách hiện từng mục kèm tên agent gán cho nó ([Image #1], {'@'}file), để bạn biết chính xác prompt đang mang theo gì.",
-      absent: 'Có ở thanh tiêu đề của pane Claude và Codex.',
+      title: 'Chia pane',
+      body: '{right} sang phải, {down} xuống dưới, {focus} chuyển giữa các pane.',
+      absent: 'Hãy mở một terminal trước.',
     },
     keys: {
-      title: 'Toàn bộ phím tắt',
-      body: 'Menu ⋯ trên thanh đầu liệt kê mọi phím tắt và mở lại hướng dẫn này. Khi bạn làm cùng một việc bằng chuột vài lần, một mẹo nhỏ sẽ gợi ý phím tắt; bạn có thể tắt mẹo.',
-      absent: 'Xuất hiện ở cuối bên phải dải tab khi đã có tab.',
+      title: 'Phím tắt',
+      body: 'Menu ⋯ liệt kê mọi phím tắt và mở lại hướng dẫn này.',
+      absent: 'Ở cuối bên phải dải tab khi đã có tab.',
     },
   },
   tips: {

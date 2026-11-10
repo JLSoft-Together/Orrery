@@ -1,0 +1,16 @@
+[package]
+name = "core-serve"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+core-http = { path = "../core-http" }
+core-monitor = { path = "../core-monitor" }
+core-procs = { path = "../core-procs" }
+core-sources = { path = "../core-sources" }
+core-store = { path = "../core-store" }
+core-toast = { path = "../core-toast" }
+core-transcript = { path = "../core-transcript" }
+serde_json = { workspace = true, features = ["preserve_order"] }
+tokio = { workspace = true }

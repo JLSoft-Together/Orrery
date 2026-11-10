@@ -116,6 +116,10 @@ impl DeepseekMonitor {
         self.wake = Some(wake);
     }
 
+    pub fn scan_wanted(&self, now: i64) -> bool {
+        self.config.verify_processes && !self.threads.is_empty() && self.scan_due.is_some_and(|d| d <= now)
+    }
+
     pub fn start(&mut self, store: &mut Store, watch: bool) {
         self.resolve_outbox();
         self.read_outbox(store, true);

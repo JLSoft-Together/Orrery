@@ -53,6 +53,8 @@ import TreeEdge from './TreeEdge.vue'
 import KeyHint from './KeyHint.vue'
 import SegmentedControl from './ui/SegmentedControl.vue'
 import OfficeOptions from './office/OfficeOptions.vue'
+import OfficeNeedsNode from './office/OfficeNeedsNode.vue'
+import { officeNeedsNode } from '../lib/desktop'
 import { useOfficeStore } from '../stores/office'
 import { useMapFind } from './map/useMapFind'
 import { useLiveAnnounce } from './map/useLiveAnnounce'
@@ -1315,7 +1317,8 @@ const regionLabel = computed(() => t(ui.mapView === 'office' ? 'officeV60.view' 
       @keydown="onCanvasKey"
       @focusin="onCanvasFocusIn"
     >
-      <OfficeView v-if="settings.officeEnabled && ui.mapView === 'office'" :terminal-id="terminalId" />
+      <OfficeNeedsNode v-if="settings.officeEnabled && ui.mapView === 'office' && officeNeedsNode" />
+      <OfficeView v-else-if="settings.officeEnabled && ui.mapView === 'office'" :terminal-id="terminalId" />
       <VueFlow
         v-else
         :id="FLOW_ID"

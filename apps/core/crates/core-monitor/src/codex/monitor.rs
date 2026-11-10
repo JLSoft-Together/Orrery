@@ -133,6 +133,10 @@ impl CodexMonitor {
         self.wake = Some(wake);
     }
 
+    pub fn scan_wanted(&self, now: i64) -> bool {
+        self.config.verify_processes && self.scan_due.is_some_and(|d| d <= now)
+    }
+
     pub fn start(&mut self, store: &mut Store, targets: Targets, watch: bool) {
         self.load_names();
         self.discover_initial(store, targets);

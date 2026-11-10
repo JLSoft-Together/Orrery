@@ -104,13 +104,19 @@ fn start_of(r: &core_procs::Proc) -> Option<ProcessStart> {
     is_lstart(&raw).then_some(ProcessStart::Lstart(raw))
 }
 
-pub fn query_processes(pids: &[u32]) -> Option<HashMap<u32, ProcessInfo>> {
+fn valid_pids(pids: &[u32]) -> Option<Vec<u32>> {
     let valid: Vec<u32> = pids.iter().copied().filter(|p| *p > 0).collect();
-    if valid.is_empty() || !(cfg!(windows) || cfg!(target_os = "macos")) {
-        return None;
-    }
+    (!valid.is_empty() && (cfg!(windows) || cfg!(target_os = "macos"))).then_some(valid)
+}
+
+pub fn query_processes(pids: &[u32]) -> Option<HashMap<u32, ProcessInfo>> {
+    let valid = valid_pids(pids)?;
     let rows = core_procs::table()?;
     info_from_rows(&valid, &rows)
+}
+
+pub fn query_processes_in(pids: &[u32], rows: &[core_procs::Proc]) -> Option<HashMap<u32, ProcessInfo>> {
+    info_from_rows(&valid_pids(pids)?, rows)
 }
 
 #[cfg(test)]

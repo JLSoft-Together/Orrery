@@ -36,11 +36,57 @@ pub(super) fn titled(title: Option<String>) -> ActivityData {
 }
 
 impl Monitor {
+    pub fn procs_wanted(&self, now: i64) -> bool {
+        let agents = self.codex.as_ref().is_some_and(|c| c.scan_wanted(now)) || self.deepseek.as_ref().is_some_and(|d| d.scan_wanted(now));
+        if !self.config.verify_processes || self.stopped {
+            return agents;
+        }
+        let timers = self.timers;
+        let live = timers.is_some_and(|t| t.verify <= now) && self.trackers.values().any(|t| !t.ended());
+        let reconcile = self.registry_due.is_some_and(|d| d <= now) || timers.is_some_and(|t| t.reconcile <= now);
+        agents || live || (reconcile && self.registry_has_new())
+    }
+
+    pub fn prepare(&mut self, now: i64) {
+        self.pre_registry = None;
+        self.pre_trackers.clear();
+        if self.stopped {
+            return;
+        }
+        let due = self.timers.is_none_or(|t| t.reconcile <= now) || self.registry_due.is_some_and(|d| d <= now);
+        if due {
+            self.precreate(now);
+        }
+    }
+
+    fn precreate(&mut self, now: i64) {
+        let registry = read_registry(&self.sessions_dir);
+        for (pid, entry) in &registry {
+            let RegistryEntry::Record(rec) = entry else { continue };
+            let id = terminal_id_of(rec);
+            if self.trackers.contains_key(&id) || self.rejected.contains(&id) || self.pre_trackers.contains_key(&id) || !self.deps.is_pid_alive(*pid) {
+                continue;
+            }
+            let mut t = MonTracker::new(&id, (**rec).clone(), self.projects_dir.clone(), self.config.safety_net_ms, self.config.reread_finished);
+            let sensitive = self.sensitive.as_deref_mut().map(|s| s as &mut dyn crate::tracker::SensitiveCheck);
+            t.sync(true, &SyncScope::All, now, sensitive);
+            self.pre_trackers.insert(id, t);
+        }
+        self.pre_registry = Some(registry);
+    }
+
+    fn registry_has_new(&self) -> bool {
+        let rejected = self.rejected.iter().filter_map(|id| id.split(':').next().and_then(|p| p.parse::<u32>().ok()));
+        let known: HashSet<u32> = self.trackers.values().map(|t| t.record.pid).chain(rejected).collect();
+        let Ok(dir) = std::fs::read_dir(&self.sessions_dir) else { return false };
+        dir.filter_map(Result::ok).any(|e| e.file_name().to_str().and_then(|n| n.strip_suffix(".json")).and_then(|p| p.parse::<u32>().ok()).is_some_and(|p| !known.contains(&p)))
+    }
+
     pub fn reconcile(&mut self, store: &mut Store, initial: bool, watch: bool) {
         if watch && (!self.sessions_watched || !self.projects_watched) {
             self.setup_watchers(true);
         }
-        let registry = read_registry(&self.sessions_dir);
+        let registry = self.pre_registry.take().unwrap_or_else(|| read_registry(&self.sessions_dir));
         let now = self.deps.now();
         let mut seen: HashSet<String> = HashSet::new();
         let mut created: Vec<MonTracker> = Vec::new();
@@ -60,7 +106,8 @@ impl Monitor {
             }
             if !self.trackers.contains_key(&id) {
                 if !created.iter().any(|t| t.terminal_id == id) {
-                    created.push(MonTracker::new(&id, rec, self.projects_dir.clone(), self.config.safety_net_ms, self.config.reread_finished));
+                    let pre = self.pre_trackers.remove(&id).filter(|t| t.record == rec);
+                    created.push(pre.unwrap_or_else(|| MonTracker::new(&id, rec, self.projects_dir.clone(), self.config.safety_net_ms, self.config.reread_finished)));
                 }
                 seen.insert(id);
                 continue;
@@ -108,6 +155,7 @@ impl Monitor {
                 self.forget(store, &id);
             }
         }
+        self.pre_trackers.clear();
         self.flush_peers(store, true);
         self.prune_peers(store);
     }

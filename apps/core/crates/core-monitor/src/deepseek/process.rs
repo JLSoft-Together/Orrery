@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::cliprocs::{list_named, split_args, top_level, CliProcess, Rooted};
+use crate::cliprocs::{list_named, list_named_in, split_args, top_level, CliProcess, Rooted};
 use crate::codex::link::normalize_dir;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -97,6 +97,10 @@ pub fn deepseek_processes(rows: Vec<CliProcess>) -> Vec<DeepseekProcess> {
 
 pub fn list_deepseek_processes() -> Option<Vec<DeepseekProcess>> {
     list_named(&WIN_EXE, &UNIX_NAMES).map(deepseek_processes)
+}
+
+pub fn list_deepseek_processes_in(table: &[core_procs::Proc]) -> Option<Vec<DeepseekProcess>> {
+    list_named_in(table, &WIN_EXE, &UNIX_NAMES).map(deepseek_processes)
 }
 
 #[derive(Debug, Clone)]

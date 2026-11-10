@@ -179,18 +179,21 @@ fn flatten_cmd(raw: &str) -> String {
 }
 
 pub fn list_named(win: &[&str], unix: &[&str]) -> Option<Vec<CliProcess>> {
-    let table = core_procs::table()?;
+    list_named_in(&core_procs::table()?, win, unix)
+}
+
+pub fn list_named_in(table: &[Proc], win: &[&str], unix: &[&str]) -> Option<Vec<CliProcess>> {
     if cfg!(windows) {
         let wanted: HashSet<String> = win.iter().map(|s| (*s).to_owned()).collect();
         let pids: Vec<u32> = table.iter().filter(|p| wanted.contains(&p.name.to_lowercase()) && p.start_ms.is_some()).map(|p| p.pid).collect();
         let cmds: HashMap<u32, String> = core_procs::cmdline(&pids).into_iter().map(|c| (c.pid, c.cmd)).collect();
-        return windows_processes_named(&table, &wanted, &|pid| cmds.get(&pid).cloned());
+        return windows_processes_named(table, &wanted, &|pid| cmds.get(&pid).cloned());
     }
     if cfg!(target_os = "macos") {
         let wanted: HashSet<String> = unix.iter().map(|s| (*s).to_owned()).collect();
         let pids: Vec<u32> = table.iter().filter(|p| p.start_ms.is_some() && wanted.contains(&unix_name(&p.name))).map(|p| p.pid).collect();
         let cmds: HashMap<u32, String> = core_procs::cmdline(&pids).into_iter().map(|c| (c.pid, c.cmd)).collect();
-        return Some(unix_processes_named(&table, &cmds, &wanted));
+        return Some(unix_processes_named(table, &cmds, &wanted));
     }
     None
 }

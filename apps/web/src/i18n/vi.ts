@@ -846,6 +846,7 @@ const vi: typeof en = {
     minimap: 'Minimap code',
     minimapHint: 'Bản thu nhỏ của cả tệp bên cạnh trình xem tệp. Bấm hoặc kéo trên đó để cuộn.',
     office: 'Office view',
+    officeNeedsNode: 'Office chưa chạy trên core Rust. Mở Orrery với CCM_CORE=node để dùng Office.',
     officeHint: 'Văn phòng pixel-art trên map của Monitor, kèm timelapse theo ngày. Tắt (mặc định): không load, không vẽ, không ghi gì cho Office. Bật lên thì timelapse bắt đầu ghi từ lúc đó.',
     dust: 'Hiệu ứng tan biến khi đóng',
     dustHint: 'Session, pane và tab bị đóng tan thành bụi, hoàn tác thì bụi bay về ghép lại. Tắt: chỉ mờ dần.',

@@ -2,7 +2,8 @@ use std::future::Future;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::Duration;
 
 use core_store::event::FocusWindowResult;
@@ -23,6 +24,7 @@ use crate::ws::{self, ClientContext, Clients, Session};
 
 pub const PORT_IN_USE_EXIT: i32 = 3;
 const FOCUS_BODY_MAX: usize = 2048;
+const BUSY_RETRY_MS: i64 = 10;
 const DENIED: &str = "Orrery only opens in its desktop app.";
 
 pub type MessageHook = Arc<dyn Fn(ClientMessage, &ClientContext) + Send + Sync>;
@@ -77,11 +79,13 @@ impl std::error::Error for StartError {}
 pub struct StoreHandle {
     inner: Arc<Mutex<Store>>,
     wake: Arc<Notify>,
+    seq: Arc<AtomicI64>,
 }
 
 impl StoreHandle {
     pub fn new(store: Store) -> StoreHandle {
-        StoreHandle { inner: Arc::new(Mutex::new(store)), wake: Arc::new(Notify::new()) }
+        let seq = Arc::new(AtomicI64::new(store.seq()));
+        StoreHandle { inner: Arc::new(Mutex::new(store)), wake: Arc::new(Notify::new()), seq }
     }
 
     fn lock(&self) -> MutexGuard<'_, Store> {
@@ -89,13 +93,27 @@ impl StoreHandle {
     }
 
     pub fn with<R>(&self, f: impl FnOnce(&mut Store) -> R) -> R {
-        let result = f(&mut self.lock());
+        let mut guard = self.lock();
+        let result = f(&mut guard);
+        self.seq.store(guard.seq(), Ordering::SeqCst);
+        drop(guard);
         self.wake.notify_one();
         result
     }
 
+    pub fn try_with<R>(&self, f: impl FnOnce(&mut Store) -> R) -> Option<R> {
+        let mut guard = match self.inner.try_lock() {
+            Ok(g) => g,
+            Err(TryLockError::Poisoned(e)) => e.into_inner(),
+            Err(TryLockError::WouldBlock) => return None,
+        };
+        let result = f(&mut guard);
+        self.seq.store(guard.seq(), Ordering::SeqCst);
+        Some(result)
+    }
+
     pub fn seq(&self) -> i64 {
-        self.lock().seq()
+        self.seq.load(Ordering::SeqCst)
     }
 }
 
@@ -168,7 +186,7 @@ pub async fn start(config: Config, store: StoreHandle, hooks: Hooks) -> Result<R
 
 async fn flush_loop(store: StoreHandle, mut shutdown: watch::Receiver<bool>) {
     loop {
-        let next = store.lock().next_flush_at();
+        let next = store.try_with(|s| s.next_flush_at()).unwrap_or_else(|| Some(now_ms() + BUSY_RETRY_MS));
         let wait = next.map(|at| Duration::from_millis((at - now_ms()).max(0) as u64));
         tokio::select! {
             changed = shutdown.changed() => {
@@ -183,7 +201,7 @@ async fn flush_loop(store: StoreHandle, mut shutdown: watch::Receiver<bool>) {
                     None => std::future::pending::<()>().await,
                 }
             } => {
-                store.lock().poll(now_ms());
+                store.try_with(|s| s.poll(now_ms()));
             }
         }
     }

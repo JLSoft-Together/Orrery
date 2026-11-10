@@ -106,6 +106,7 @@ export type DeepSeekEvent = { phase: 'install'; line: string } | { phase: 'downl
 
 interface DesktopBridge {
   platform: string
+  coreServe?: string
   titleBar?: string
   ptyEndpoint: () => Promise<PtyEndpoint | null>
   /** `near`: the last project; the dialog opens in its parent folder. */
@@ -229,6 +230,8 @@ export const titleBar: 'mac' | 'overlay' | null = desktop?.titleBar === 'mac' ||
 export const hasTerminals = typeof desktop?.ptyEndpoint === 'function'
 
 export const hasExtensions = typeof desktop?.extStatus === 'function'
+
+export const officeNeedsNode = desktop?.coreServe === 'rust'
 
 /** Off unless the app runs with CCM_DEEPSEEK_FEATURE=1: preload then exposes no DeepSeek bridge (owner pause, 2026-11-03). */
 export const hasDeepSeek = typeof desktop?.deepseekStatus === 'function'

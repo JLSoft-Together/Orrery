@@ -116,6 +116,8 @@ pub struct Monitor {
     wake: Option<Wake>,
     pub codex: Option<CodexMonitor>,
     pub deepseek: Option<DeepseekMonitor>,
+    pre_registry: Option<Vec<(u32, crate::registry::RegistryEntry)>>,
+    pre_trackers: HashMap<String, MonTracker>,
 }
 
 #[derive(Clone, Copy)]
@@ -167,6 +169,8 @@ impl Monitor {
             wake: None,
             codex: None,
             deepseek: None,
+            pre_registry: None,
+            pre_trackers: HashMap::new(),
         }
     }
 

@@ -26,6 +26,7 @@ const deepseek =
 // Sandboxed preload: only this narrow surface reaches the page. The main process re-checks the caller's origin.
 contextBridge.exposeInMainWorld('ccmDesktop', {
   platform: process.platform,
+  coreServe: ipcRenderer.sendSync('ccm:core-serve') === 'rust' ? 'rust' : 'node',
   titleBar: process.platform === 'darwin' ? 'mac' : 'overlay',
   ptyEndpoint: (): Promise<unknown> => ipcRenderer.invoke('ccm:pty-endpoint'),
   pickFolder: (near?: string): Promise<unknown> => ipcRenderer.invoke('ccm:pick-folder', near),

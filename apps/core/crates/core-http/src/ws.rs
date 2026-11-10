@@ -103,9 +103,12 @@ fn handle(session: &Session, tx: &Outbox, client_id: u64, text: &str) {
     let Ok(value) = serde_json::from_str::<Value>(text) else { return };
     match parse_client_message(&value) {
         Some(ClientMessage::Resync) => {
-            if let Some(json) = snapshot_json(&session.store) {
-                let _ = tx.send(json);
-            }
+            let (store, tx) = (session.store.clone(), tx.clone());
+            tokio::task::spawn_blocking(move || {
+                if let Some(json) = snapshot_json(&store) {
+                    let _ = tx.send(json);
+                }
+            });
         }
         Some(message) => {
             if let Some(hook) = &session.hooks.on_client_message {
@@ -136,17 +139,22 @@ pub async fn run(mut stream: TcpStream, key: &str, protocol: Option<&str>, sessi
 
     let (tx, mut rx) = unbounded_channel::<Arc<str>>();
     let client_id = session.clients.next_id();
-    let count = session.store.with(|s| {
-        s.flush();
-        let count = session.clients.add(client_id, tx.clone());
-        match serde_json::to_string(&s.snapshot_message()) {
-            Ok(json) => {
-                let _ = tx.send(json.into());
+    let (store, clients, first) = (session.store.clone(), session.clients.clone(), tx.clone());
+    let joined = tokio::task::spawn_blocking(move || {
+        store.with(|s| {
+            s.flush();
+            let count = clients.add(client_id, first.clone());
+            match serde_json::to_string(&s.snapshot_message()) {
+                Ok(json) => {
+                    let _ = first.send(json.into());
+                }
+                Err(e) => eprintln!("[collector] snapshot: {e}"),
             }
-            Err(e) => eprintln!("[collector] snapshot: {e}"),
-        }
-        count
-    });
+            count
+        })
+    })
+    .await;
+    let Ok(count) = joined else { return };
     if let Some(hook) = &session.hooks.on_client_count {
         hook(count);
     }

@@ -9,7 +9,9 @@ import { createAttention, type Attention } from './attention'
 import { createEditorTracker, type EditorTracker } from './editors'
 import { installBridge, type BridgeInstall } from './bridge'
 import { maskSecrets } from '@ccm/shared'
-import { CollectorHost, FatalError, type FatalReason } from './collector-host'
+import { FatalError, type FatalReason } from './collector-host'
+import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-serve-host'
+import { createServeToasts, type ServeToasts } from './serve-toast'
 import { adoptLoginShellPath, offerMoveToApplications, setMacMenu } from './mac'
 import { errorPage, INTRO_MS, LEAVE_MS, LEAVE_SCRIPT, loadingPage, RETRY_URL } from './pages'
 import { pickStartDir } from './pick-start'
@@ -149,7 +151,8 @@ const CORE_PROCS_ENV = coreProcsEnv({ env: process.env, packaged: app.isPackaged
 Object.assign(process.env, CORE_PROCS_ENV)
 
 let t: Strings
-let host: CollectorHost
+let host: SwitchingHost
+let serveToasts: ServeToasts | null = null
 let ptys: PtySupervisor | null = null
 const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 let ptyFellBack = false
@@ -829,6 +832,7 @@ function logReport(pageReport: string): string {
     `collector port ${PORT}: ${host?.ownsPort ? 'running' : 'not running'}`,
     `terminal host: ${ptyFellBack ? 'node (rust core unusable, fell back)' : PTY_HOST}`,
     coreReadersLine(),
+    host?.describe() ?? 'core serve: not started',
     `generated ${new Date().toISOString()}`,
   ]
   const sections = [head.join('\n'), pageReport && `## Diagnostics\n${pageReport}`]
@@ -1437,7 +1441,13 @@ async function ready(): Promise<void> {
   setupBuildClean()
   setupDisk()
   setupAgentStatus()
-  host = new CollectorHost({
+  host = createMonitorHost({
+    mode: coreServeMode(process.env),
+    bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
+    onFallback: (reason) => {
+      console.warn(`[ccm] core serve: rust unusable (${reason}); using node`)
+      if (Notification.isSupported()) new Notification({ title: t.serveFallbackTitle, body: t.serveFallbackBody(reason) }).show()
+    },
     script: path.join(__dirname, 'collector.cjs').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`),
     port: PORT,
     env: collectorEnv(),
@@ -1458,7 +1468,7 @@ async function ready(): Promise<void> {
       } else if (m?.type === 'telegram') {
         const episode = parseTelegramEpisode(data)
         if (episode) void telegram?.handle(episode)
-      } else attention?.handle(data)
+      } else if (!serveToasts?.handle(data)) attention?.handle(data)
     },
     onExit: () => {
       attention?.clear()
@@ -1466,8 +1476,14 @@ async function ready(): Promise<void> {
       awake?.setBusy(0, 0)
     },
   })
-  earlyStart = host.start()
+  if (!IS_MAC && process.env.CCM_TOAST !== '0') serveToasts = createServeToasts((m) => host.post(m))
+  earlyStart = host.start().then(() => {
+    if (host.mode === 'rust') serveToasts?.refreshHealth()
+  })
   earlyStart.catch(() => undefined)
+  ipcMain.on('ccm:core-serve', (event) => {
+    event.returnValue = isAppFrame(event) ? host.mode : null
+  })
   const unpacked = (file: string): string => path.join(__dirname, file).replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
   ptys = new PtySupervisor({
     script: unpacked('pty-host.cjs'),

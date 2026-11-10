@@ -1,4 +1,4 @@
-use crate::cliprocs::{list_named, split_args, top_level, CliProcess, Rooted};
+use crate::cliprocs::{list_named, list_named_in, split_args, top_level, CliProcess, Rooted};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProcessMode {
@@ -100,6 +100,10 @@ pub fn codex_processes(rows: Vec<CliProcess>) -> Vec<CodexProcess> {
 
 pub fn list_codex_processes() -> Option<Vec<CodexProcess>> {
     list_named(&CODEX_EXE, &CODEX_NAMES).map(codex_processes)
+}
+
+pub fn list_codex_processes_in(table: &[core_procs::Proc]) -> Option<Vec<CodexProcess>> {
+    list_named_in(table, &CODEX_EXE, &CODEX_NAMES).map(codex_processes)
 }
 
 #[cfg(test)]

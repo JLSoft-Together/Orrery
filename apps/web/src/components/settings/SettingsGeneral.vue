@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { desktop, hasTerminals } from '../../lib/desktop'
+import { desktop, hasTerminals, officeNeedsNode } from '../../lib/desktop'
+import OfficeNeedsNode from '../office/OfficeNeedsNode.vue'
 import { hasAwake } from '../../lib/capture'
 import { isMac } from '../../lib/platform'
 import { RESTORE_MODES, restoreMode } from '../../lib/workspaceRestore'
@@ -44,6 +45,7 @@ const terminalApps = computed(() => (['terminal', 'iterm'] as const).map((app) =
         <SegmentedControl v-model="settings.locale" :options="locales" :label="t('settings.language')" />
       </SettingRow>
       <ToggleSwitch v-model="settings.officeEnabled" :label="t('settings.office')" :info="t('settings.officeHint')" class="px-3" data-setting-row="office" />
+      <OfficeNeedsNode v-if="settings.officeEnabled && officeNeedsNode" inline />
       <ToggleSwitch v-model="settings.keyHints" :label="t('keys.hints')" :info="t('keys.hintsHint')" class="px-3" data-setting-row="keyHints" />
       <ToggleSwitch v-if="hasTerminals" v-model="tipsOn" :label="t('tips.setting')" :info="t('tips.settingHint')" class="px-3" data-setting-row="tips" />
       <SettingRow v-if="isMac" :label="t('settings.launchTerminal')" :info="t('settings.launchTerminalHint')" data-setting-row="launch">

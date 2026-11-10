@@ -190,9 +190,17 @@ impl Monitor {
     }
 
     pub fn open_favorite(&mut self, store: &mut Store, dir: &str, mode: LaunchMode, app: Option<TerminalApp>) -> bool {
-        let Some(fav) = self.stores.favorites.get(dir).cloned() else { return false };
-        let Some(result) = self.deps.launch(&fav.dir, mode, app) else { return false };
-        let mut data = ActivityData { title: Some(fav.label), mode: Some(mode_str(mode).into()), ..ActivityData::default() };
+        let Some((target, label)) = self.favorite_target(dir) else { return false };
+        let Some(result) = self.deps.launch(&target, mode, app) else { return false };
+        Self::launch_done(store, label, mode, result)
+    }
+
+    pub fn favorite_target(&self, dir: &str) -> Option<(String, String)> {
+        self.stores.favorites.get(dir).map(|f| (f.dir.clone(), f.label.clone()))
+    }
+
+    pub fn launch_done(store: &mut Store, label: String, mode: LaunchMode, result: Result<(), LaunchError>) -> bool {
+        let mut data = ActivityData { title: Some(label), mode: Some(mode_str(mode).into()), ..ActivityData::default() };
         match result {
             Ok(()) => {
                 store.push_activity(activity(ActivityKind::LaunchStarted, None, Some(data)));
@@ -232,9 +240,12 @@ impl Monitor {
         }
     }
 
+    pub fn open_dir(&self, id: &str) -> Option<String> {
+        self.agent_cwd(id).unwrap_or_else(|| self.trackers.get(id).and_then(|t| t.record.cwd.clone())).filter(|c| !c.is_empty())
+    }
+
     pub fn open_folder(&self, id: &str, app: OpenApp, reply: Reply) {
-        let cwd = self.agent_cwd(id).unwrap_or_else(|| self.trackers.get(id).and_then(|t| t.record.cwd.clone())).filter(|c| !c.is_empty());
-        let result = match cwd {
+        let result = match self.open_dir(id) {
             None => OpenResult::NotFound,
             Some(c) => self.deps.open_folder(&c, app).unwrap_or(OpenResult::Unsupported),
         };
@@ -271,9 +282,12 @@ impl Monitor {
         }
     }
 
+    pub fn focus_pid(&self, id: &str) -> Option<u32> {
+        self.agent_pid(id).unwrap_or_else(|| self.trackers.get(id).filter(|t| !t.ended()).map(|t| t.record.pid))
+    }
+
     pub fn focus_window(&mut self, store: &mut Store, id: &str, reply: Option<Reply>) -> FocusWindowResult {
-        let pid = self.agent_pid(id).unwrap_or_else(|| self.trackers.get(id).filter(|t| !t.ended()).map(|t| t.record.pid));
-        let result = match pid {
+        let result = match self.focus_pid(id) {
             None => FocusWindowResult::NotFound,
             Some(p) => self.deps.focus_window(p).unwrap_or(FocusWindowResult::Unsupported),
         };

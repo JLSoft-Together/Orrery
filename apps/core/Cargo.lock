@@ -70,6 +70,7 @@ version = "0.1.0"
 dependencies = [
  "core-procs",
  "core-pty",
+ "core-serve",
  "core-transcript",
  "serde_json",
  "tungstenite",
@@ -132,6 +133,21 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "core-serve"
+version = "0.1.0"
+dependencies = [
+ "core-http",
+ "core-monitor",
+ "core-procs",
+ "core-sources",
+ "core-store",
+ "core-toast",
+ "core-transcript",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

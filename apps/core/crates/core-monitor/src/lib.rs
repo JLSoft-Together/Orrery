@@ -15,7 +15,6 @@ pub mod process;
 pub mod registry;
 pub mod repo;
 pub mod script;
-pub mod serve;
 pub mod shared;
 pub mod sidefiles;
 pub mod spans;

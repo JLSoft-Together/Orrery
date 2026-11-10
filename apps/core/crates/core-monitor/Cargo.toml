@@ -8,10 +8,6 @@ publish.workspace = true
 name = "monitor-script"
 path = "src/bin/monitor-script.rs"
 
-[[bin]]
-name = "monitor-serve"
-path = "src/bin/monitor-serve.rs"
-
 [dependencies]
 core-procs = { path = "../core-procs" }
 core-store = { path = "../core-store" }

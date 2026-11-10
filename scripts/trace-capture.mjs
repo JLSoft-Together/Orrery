@@ -36,7 +36,7 @@ const SPLIT_MS = Number(args.split ?? 250)
 const CORE = args.core ?? 'node'
 const SERVER = args.server ?? 'node'
 const RUST_OUT = args['rust-out'] ? path.resolve(args['rust-out']) : null
-const RUST_BIN = args['rust-bin'] ?? process.env.CCM_MONITOR_SERVE ?? ['debug', 'release'].map((d) => path.join(REPO, 'apps', 'core', 'target', d, process.platform === 'win32' ? 'monitor-serve.exe' : 'monitor-serve')).find((p) => existsSync(p))
+const RUST_BIN = args['rust-bin'] ?? process.env.CCM_CORE_BIN ?? ['release', 'debug'].map((d) => path.join(REPO, 'apps', 'core', 'target', d, process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core')).find((p) => existsSync(p))
 const ENDED = Math.min(3, SESSIONS)
 
 if (!OUT) {
@@ -45,7 +45,7 @@ if (!OUT) {
 }
 if (CORE !== 'node' && CORE !== 'inherit') throw new Error('--core must be node or inherit')
 if (!['node', 'rust', 'both'].includes(SERVER)) throw new Error('--server must be node, rust or both')
-if (SERVER !== 'node' && !RUST_BIN) throw new Error('monitor-serve binary not found: cargo build --locked -j 4 -p core-monitor, or --rust-bin=')
+if (SERVER !== 'node' && !RUST_BIN) throw new Error('orrery-core binary not found: cargo build --release --locked -j 4 -p core-bin, or --rust-bin=')
 if (SERVER === 'both' && !RUST_OUT) throw new Error('--server=both needs --rust-out=<file>')
 if (SERVER === 'rust' && OPS) throw new Error('--ops records the Node store (--server=node or both)')
 
@@ -169,7 +169,7 @@ async function startServer(kind, tmp, env) {
   if (kind === 'node' && OPS) own.CCM_TRACE_OPS = opsLog
   const proc =
     kind === 'rust'
-      ? spawn(RUST_BIN, ['--dev'], { cwd: REPO, env: own, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+      ? spawn(RUST_BIN, ['serve', '--dev'], { cwd: REPO, env: own, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
       : spawn(process.execPath, ['--import', 'tsx', ...(OPS ? ['--import', HOOK] : []), ENTRY, '--dev'], { cwd: REPO, env: own, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
   const log = []
   proc.stdout.on('data', (d) => log.push(String(d)))

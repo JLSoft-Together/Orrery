@@ -18,6 +18,20 @@ export interface TelegramHostDeps {
   userScanner?: UserScanner
   confirmCommand?: (kind: 'send' | 'receive', file: string) => Promise<boolean>
   progress?: (id: number, fraction: number) => void
+  notice?: (kind: 'relogin') => void
+}
+
+const RELOGIN = {
+  en: { title: 'Telegram: sign in again', body: 'Orrery now talks to Telegram in a new way. Open Settings › Telegram and sign in to your account again to list topics.' },
+  vi: { title: 'Telegram: cần đăng nhập lại', body: 'Orrery đổi sang cách kết nối Telegram mới. Mở Settings › Telegram và đăng nhập lại tài khoản để đọc danh sách topic.' },
+}
+
+async function showRelogin(locale: 'en' | 'vi'): Promise<boolean> {
+  const electron = (await import('electron').catch(() => null)) as { Notification?: typeof import('electron').Notification } | null
+  const N = electron?.Notification
+  if (typeof N?.isSupported !== 'function' || !N.isSupported()) return false
+  new N({ title: RELOGIN[locale].title, body: RELOGIN[locale].body }).show()
+  return true
 }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
@@ -87,6 +101,15 @@ export function telegramStandingHosts(deps: () => TelegramHostDeps | null): Host
         .upload({ chatId: str(req.chatId), threadId: typeof req.threadId === 'number' ? req.threadId : null, file: str(req.file), name: str(req.name), size: typeof req.size === 'number' ? req.size : 0, caption: str(req.caption), onProgress: (f) => d.progress?.(id, f) }, creds)
         .catch(() => ({ ok: false as const, error: 'failed' as const }))
       return session === undefined ? { result } : { result, session }
+    },
+    'telegram.notice': async (p) => {
+      const d = need()
+      if (obj(p).kind !== 'relogin') return false
+      if (d.notice) {
+        d.notice('relogin')
+        return true
+      }
+      return showRelogin(d.locale())
     },
     'telegram.user': async (p) => {
       const scanner = need().userScanner

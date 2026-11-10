@@ -12,6 +12,7 @@ pub mod files;
 pub mod html;
 pub mod inbound;
 pub mod jsx;
+pub mod mt;
 pub mod message;
 pub mod outbound;
 pub mod parse;
@@ -58,7 +59,17 @@ pub fn deps_from(env: &DeskEnv, desk: &Desk) -> Deps {
         sleep: Arc::new(|ms| std::thread::sleep(std::time::Duration::from_millis(ms))),
         local: Arc::new(clock::local),
         album_ms: 1500,
+        mt: mt_connector(),
     }
+}
+
+pub const MTPROTO_FLAG: &str = "CCM_TELEGRAM_MTPROTO";
+
+pub fn mt_connector() -> Option<Arc<dyn mt::Connector>> {
+    if std::env::var(MTPROTO_FLAG).ok().as_deref().map(str::trim) == Some("node") {
+        return None;
+    }
+    Some(Arc::new(mt::grammers::Grammers::default()))
 }
 
 fn failed() -> Value {

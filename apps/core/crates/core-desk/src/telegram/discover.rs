@@ -183,7 +183,7 @@ impl Tg {
         json!({"ok": true, "state": set["state"], "topic": {"threadId": thread, "name": topic_name}})
     }
 
-    fn user_keys(&self) -> Option<Value> {
+    pub(crate) fn user_keys(&self) -> Option<Value> {
         let (hash, id) = {
             let st = self.lock();
             (st.data.api_hash.clone(), st.data.api_id)
@@ -197,13 +197,19 @@ impl Tg {
         self.unseal(s.as_deref())
     }
 
-    fn drop_user(&self) {
+    pub(crate) fn drop_user(&self) {
         let mut st = self.lock();
         st.data.user_session = None;
         st.data.user_name = None;
     }
 
     fn scan_as_user(&self, seen: &mut Seen) {
+        if let Some(c) = self.deps.mt.clone() {
+            if let Some(chats) = self.mt_topics(&c) {
+                Self::apply_user_chats(seen, chats);
+            }
+            return;
+        }
         let (Some(keys), Some(session)) = (self.user_keys(), self.user_session()) else { return };
         let res = self.host("telegram.user", json!({"op": "topics", "keys": keys, "session": session})).unwrap_or_else(|| json!({"ok": false, "error": "failed"}));
         if res["ok"] != true {
@@ -213,7 +219,11 @@ impl Tg {
             }
             return;
         }
-        for c in res["chats"].as_array().cloned().unwrap_or_default() {
+        Self::apply_user_chats(seen, res["chats"].as_array().cloned().unwrap_or_default());
+    }
+
+    fn apply_user_chats(seen: &mut Seen, chats: Vec<Value>) {
+        for c in chats {
             let Some(id) = c["chatId"].as_str().filter(|id| super::sanitize::chat_id_ok(id)) else { continue };
             let title = c["title"].as_str().filter(|t| !t.is_empty()).map(str::to_string).or_else(|| seen.chat(id).map(|x| x.0.clone())).unwrap_or_else(|| id.to_string());
             seen.set_chat(id, &title, true);
@@ -224,6 +234,9 @@ impl Tg {
 
     pub fn user(self: &Arc<Self>, input: &Value) -> Value {
         let failed = json!({"ok": false, "error": "failed"});
+        if let Some(c) = self.deps.mt.clone() {
+            return self.mt_user(&c, input);
+        }
         let action = input["action"].as_str().unwrap_or("");
         if action == "logout" {
             let keys = self.user_keys();

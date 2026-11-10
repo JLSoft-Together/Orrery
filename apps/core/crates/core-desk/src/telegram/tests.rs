@@ -111,6 +111,7 @@ fn world() -> World {
         sleep: Arc::new(|ms| std::thread::sleep(std::time::Duration::from_millis(ms.min(5)))),
         local: Arc::new(super::clock::local),
         album_ms: 0,
+        mt: None,
     };
     World { tg: Tg::new(deps), http, asks, answer, clock, events, keychain, _dir: dir }
 }

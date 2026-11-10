@@ -45,6 +45,7 @@ pub struct Deps {
     pub sleep: Arc<dyn Fn(u64) + Send + Sync>,
     pub local: Arc<dyn Fn(i64) -> Local + Send + Sync>,
     pub album_ms: u64,
+    pub mt: Option<Arc<dyn super::mt::Connector>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -186,6 +187,7 @@ pub struct Tg {
     pub st: Mutex<St>,
     pub heavy: Condvar,
     pub light: Mutex<Option<std::sync::mpsc::Sender<Value>>>,
+    pub mt: super::mt::service::Service,
 }
 
 pub fn topic_key(chat: &str, thread: Option<i64>) -> String {
@@ -270,7 +272,8 @@ impl Tg {
             uploads: HashMap::new(),
             upload_next: 1,
         };
-        Arc::new(Tg { deps, st: Mutex::new(st), heavy: Condvar::new(), light: Mutex::new(None) })
+        let mt = super::mt::service::Service::new(deps.file.as_deref());
+        Arc::new(Tg { deps, st: Mutex::new(st), heavy: Condvar::new(), light: Mutex::new(None), mt })
     }
 
     pub fn lock(&self) -> MutexGuard<'_, St> {

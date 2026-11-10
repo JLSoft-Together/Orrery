@@ -187,7 +187,10 @@ impl Tg {
             id
         };
         req["progress"] = json!(id);
-        let res = self.host("telegram.bigUpload", json!({"req": req, "creds": creds}));
+        let res = match self.deps.mt.clone() {
+            Some(c) => Some(self.mt_upload(&c, &req, &creds)),
+            None => self.host("telegram.bigUpload", json!({"req": req, "creds": creds})),
+        };
         self.lock().uploads.remove(&id);
         let _hold = gate.lock().unwrap_or_else(|e| e.into_inner());
         let res = res.unwrap_or_else(|| json!({"result": {"ok": false, "error": "failed"}}));

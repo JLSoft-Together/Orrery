@@ -153,6 +153,10 @@ impl Tg {
         let cmd = self.command_installed(SEND_COMMAND);
         let recv = self.command_installed(RECEIVE_COMMAND);
         let now = self.now();
+        let rust_account = self.deps.mt.as_ref().map(|_| {
+            self.mt_notice();
+            self.mt_account()
+        });
         let st = self.lock();
         let d = &st.data;
         let pairing = st.pair_code.is_some() && st.pair_until.unwrap_or(0) > now;
@@ -185,7 +189,7 @@ impl Tg {
             "pinStatus": d.pin_status,
             "topicIcons": d.topic_icons,
             "health": {"lastSentAt": h.last_sent, "lastReceivedAt": h.last_received, "lastPollAt": h.last_poll, "sentToday": h.sent_today, "errorsToday": h.errors_today},
-            "userAccount": d.user_session.as_ref().map(|_| d.user_name.clone().unwrap_or_else(|| "Telegram".into())),
+            "userAccount": rust_account.unwrap_or_else(|| d.user_session.as_ref().map(|_| d.user_name.clone().unwrap_or_else(|| "Telegram".into()))),
             "bigFiles": {"enabled": d.big_files, "apiId": d.api_id, "hasHash": has_hash},
             "sessionRoutes": d.session_routes.iter().map(|r| Tg::route_state(&st, super::shape::session_value(r), &r.chat_id, r.thread_id)).collect::<Vec<_>>(),
             "stranger": d.stranger,

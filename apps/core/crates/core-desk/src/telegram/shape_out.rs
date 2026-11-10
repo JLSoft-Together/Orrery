@@ -113,7 +113,7 @@ impl Shape {
 }
 
 #[cfg(unix)]
-fn write_private(file: &Path, text: &str) -> std::io::Result<()> {
+pub(crate) fn write_private(file: &Path, text: &str) -> std::io::Result<()> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
     let mut f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(file)?;
@@ -121,6 +121,6 @@ fn write_private(file: &Path, text: &str) -> std::io::Result<()> {
 }
 
 #[cfg(not(unix))]
-fn write_private(file: &Path, text: &str) -> std::io::Result<()> {
+pub(crate) fn write_private(file: &Path, text: &str) -> std::io::Result<()> {
     std::fs::write(file, text)
 }

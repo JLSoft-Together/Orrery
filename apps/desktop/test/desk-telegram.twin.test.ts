@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import os from 'node:os'
@@ -170,7 +170,7 @@ describe.skipIf(SKIP)('telegram: TS notifier and orrery-core desk give the same 
     for (const s of SIDES) mkdirSync(path.join(tmp, s), { recursive: true })
     mkdirSync(project, { recursive: true })
     const rustHosts = hostFor('rust')
-    twin = await startTwin({ CCM_DATA_DIR: path.join(tmp, 'rust'), CCM_TELEGRAM_URL_OVERRIDE: `${base}/rust`, CLAUDE_CONFIG_DIR: claude('rust'), HOME: os.homedir() }, telegramStandingHosts(() => rustHosts))
+    twin = await startTwin({ CCM_TELEGRAM_MTPROTO: 'node', CCM_DATA_DIR: path.join(tmp, 'rust'), CCM_TELEGRAM_URL_OVERRIDE: `${base}/rust`, CLAUDE_CONFIG_DIR: claude('rust'), HOME: os.homedir() }, telegramStandingHosts(() => rustHosts))
     const make = (side: Side) =>
       new TelegramNotifier({
         ...hostFor(side),
@@ -357,4 +357,38 @@ describe.skipIf(SKIP)('telegram: TS notifier and orrery-core desk give the same 
     expect(twin.logs).toEqual([])
     expect(twin.fellBack).toEqual([])
   }, 60_000)
+})
+
+describe.skipIf(SKIP)('telegram: orrery-core desk speaks MTProto itself', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'ccm-desk-tg-mt-'))
+  const notices: string[] = []
+  const sealed = (s: string) => Buffer.from(`sealed:${s}`).toString('base64')
+  let mt: Twin
+
+  beforeAll(async () => {
+    writeFileSync(path.join(dir, TELEGRAM_FILE), JSON.stringify({ apiId: 12345, apiHash: sealed('0123456789abcdef0123456789abcdef'), userSession: sealed('1BQANOTEgramjs'), userName: 'Jin' }))
+    const deps: TelegramHostDeps = { crypt, locale: () => 'vi', notice: (k) => notices.push(k) }
+    mt = await startTwin({ CCM_DATA_DIR: dir, CCM_TELEGRAM_URL_OVERRIDE: 'http://127.0.0.1:9', CLAUDE_CONFIG_DIR: path.join(dir, 'claude'), HOME: os.homedir() }, telegramStandingHosts(() => deps))
+  })
+
+  afterAll(async () => {
+    await mt?.router.invoke('desk:tg-stop', []).catch(() => undefined)
+    await mt?.host.stop()
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('drops the GramJS account from the state and asks once to sign in again', async () => {
+    const first = (await mt.router.invoke('ccm:telegram-state', [])) as { userAccount: string | null }
+    await mt.router.invoke('ccm:telegram-state', [])
+    expect(first.userAccount).toBeNull()
+    expect(notices).toEqual(['relogin'])
+    const saved = JSON.parse(readFileSync(path.join(dir, 'telegram-mtproto.json'), 'utf8')) as Record<string, unknown>
+    expect(saved).toEqual({ v: 1, noticed: true })
+    expect(JSON.parse(readFileSync(path.join(dir, TELEGRAM_FILE), 'utf8')).userSession).toBe(sealed('1BQANOTEgramjs'))
+    if (process.platform !== 'win32') expect(statSync(path.join(dir, 'telegram-mtproto.json')).mode & 0o777).toBe(0o600)
+    expect(await mt.router.invoke('ccm:telegram-user', [{ action: 'signin', code: '12345' }])).toEqual({ ok: false, error: 'expired' })
+    expect(await mt.router.invoke('ccm:telegram-user', [{ action: 'password', password: 'x' }])).toEqual({ ok: false, error: 'expired' })
+    expect(mt.logs).toEqual([])
+    expect(mt.fellBack).toEqual([])
+  })
 })

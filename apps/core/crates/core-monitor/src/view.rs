@@ -30,6 +30,8 @@ pub struct StateView {
     pub model: Option<String>,
     pub effort: Option<String>,
     pub current_tool: Option<String>,
+    pub current_tool_summary: Option<String>,
+    pub current_tool_started_at: Option<String>,
     pub last_at: Option<String>,
     pub tokens: Option<Tokens>,
     pub context_tokens: Option<f64>,
@@ -249,6 +251,8 @@ pub fn build_agents(c: &ViewContext, terminal: &TerminalSession) -> Vec<Agent> {
     m.model = main.model.clone();
     m.effort = main.effort.clone();
     m.current_tool = if show_tool { main.current_tool.clone() } else { None };
+    m.current_tool_summary = if show_tool { main.current_tool_summary.clone() } else { None };
+    m.current_tool_started_at = if show_tool { main.current_tool_started_at.clone() } else { None };
     m.started_at = terminal.started_at.clone();
     m.updated_at = main.last_at.clone();
     m.completed_at = terminal.ended_at.clone();
@@ -271,7 +275,10 @@ pub fn build_agents(c: &ViewContext, terminal: &TerminalSession) -> Vec<Agent> {
         a.spawn_depth = e.meta.spawn_depth.map(|d| d as u64);
         a.model = model.clone();
         a.effort = e.state.effort.clone();
-        a.current_tool = if status == AgentStatus::Working { e.state.current_tool.clone() } else { None };
+        let working = status == AgentStatus::Working;
+        a.current_tool = if working { e.state.current_tool.clone() } else { None };
+        a.current_tool_summary = if working { e.state.current_tool_summary.clone() } else { None };
+        a.current_tool_started_at = if working { e.state.current_tool_started_at.clone() } else { None };
         a.started_at = e.started_at.clone();
         a.updated_at = e.state.last_at.clone();
         a.completed_at = if e.resolved { e.completed_at.clone() } else { None };

@@ -13,6 +13,12 @@ fn state_view(s: &TranscriptState, main: bool) -> Obj {
     if let Some(t) = s.current_tool() {
         put(&mut m, "currentTool", t);
     }
+    if let Some(t) = s.current_tool_summary() {
+        put(&mut m, "currentToolSummary", t);
+    }
+    if let Some(t) = s.current_tool_started_at() {
+        put(&mut m, "currentToolStartedAt", t);
+    }
     put_opt(&mut m, "lastAt", &s.last_at);
     if let Some(t) = s.tokens() {
         let mut o = Map::new();

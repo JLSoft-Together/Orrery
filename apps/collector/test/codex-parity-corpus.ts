@@ -12,6 +12,8 @@ export const meta = (over: Record<string, unknown> = {}, at = T0) =>
 export const started = (at = T0) => rec('event_msg', { type: 'task_started', turn_id: 't1', model_context_window: 258400 }, at)
 export const context = (at = T0) => rec('turn_context', { turn_id: 't1', model: 'gpt-6-luna', effort: 'medium', approval_policy: 'never' }, at)
 export const call = (id: string, at = T0) => rec('response_item', { type: 'custom_tool_call', call_id: id, name: 'exec', input: 'secret command' }, at)
+export const execCall = (id: string, cmd: string, at = T0) => rec('response_item', { type: 'function_call', call_id: id, name: 'exec_command', arguments: JSON.stringify({ cmd, workdir: '/tmp' }) }, at)
+export const patchCall = (id: string, at = T0) => rec('response_item', { type: 'custom_tool_call', call_id: id, name: 'apply_patch', input: '*** Begin Patch\n*** Update File: src/a.ts\n+secret line\n*** End Patch' }, at)
 export const output = (id: string, at = T0) => rec('response_item', { type: 'custom_tool_call_output', call_id: id, output: 'secret output' }, at)
 export const tokens = (at = T0, used = 7) =>
   rec('event_msg', {

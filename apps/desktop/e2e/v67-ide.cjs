@@ -27,7 +27,7 @@ async function main() {
 
     const now = new Date().toISOString()
     const since = new Date(Date.now() - 65_000).toISOString()
-    await evaluate(`${UI}.view = 'monitor'; ${S}.get('terminals').upsert({ id: '${FAKE}', title: 'E2E compacting', status: 'working', statusSince: '${since}', lastActivityAt: '${now}', compactingSince: '${since}', compactTrigger: 'auto', deniedCount: 3, deniedTools: ['Bash', 'WebFetch'] })`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.view = 'monitor'; ${S}.get('terminals').upsert({ id: '${FAKE}', title: 'E2E compacting', status: 'working', statusSince: '${since}', lastActivityAt: '${now}', compactingSince: '${since}', compactTrigger: 'auto', deniedCount: 3, deniedTools: ['Bash', 'WebFetch'] })`)
     await evaluate(`${UI}.panels.sessions.open = true`)
     await sleep(600)
     const signals = await evaluate(`(() => { const c = document.querySelector('[data-card-compacting]'); const d = document.querySelector('[data-card-denied]'); return { c: c?.textContent.trim(), d: d?.textContent.trim(), tip: d?.title } })()`)

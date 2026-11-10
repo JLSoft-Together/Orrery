@@ -83,7 +83,7 @@ describe('Monitor with fixture claude root', () => {
       path.join(projectDir, `${SID}.jsonl`),
       line({ type: 'assistant', timestamp: '2026-10-07T09:59:00.000Z', message: { id: 'm1', model: 'claude-opus-5-5', stop_reason: 'tool_use', usage: { input_tokens: 100, output_tokens: 20 }, content: [{ type: 'tool_use', id: 'toolu_agent', name: 'Agent', input: { prompt: 'secret prompt' } }] } }) +
         line({ type: 'user', timestamp: '2026-10-07T09:59:01.000Z', toolUseResult: { status: 'async_launched', prompt: 'secret prompt' }, message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_agent' }] } }) +
-        line({ type: 'assistant', timestamp: '2026-10-07T09:59:02.000Z', message: { id: 'm2', stop_reason: 'tool_use', usage: { input_tokens: 50, output_tokens: 5 }, content: [{ type: 'tool_use', id: 'toolu_bash', name: 'Bash', input: { command: 'echo secret' } }] } }),
+        line({ type: 'assistant', timestamp: '2026-10-07T09:59:02.000Z', message: { id: 'm2', stop_reason: 'tool_use', usage: { input_tokens: 50, output_tokens: 5 }, content: [{ type: 'tool_use', id: 'toolu_bash', name: 'Bash', input: { command: 'echo hi --token secret' } }] } }),
     )
     await writeFile(
       path.join(projectDir, SID, 'subagents', 'agent-a1.meta.json'),

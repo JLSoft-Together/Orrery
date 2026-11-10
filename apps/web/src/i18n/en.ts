@@ -56,6 +56,7 @@ import resourcesV76 from './resources-v76'
 import uiV79Rail from './ui-v79-rail'
 import uiV79Settings from './ui-v79-settings'
 import uiV79Monitor from './ui-v79-monitor'
+import uiV88Monitor from './ui-v88-monitor'
 import * as uiV79Header from './ui-v79-header'
 import uiV79Pages from './ui-v79-pages'
 import uiV80Limits from './ui-v80-limits'
@@ -124,6 +125,7 @@ export default {
   ...uiV79Rail.en,
   ...uiV79Settings.en,
   ...uiV79Monitor.en,
+  ...uiV88Monitor.en,
   ...uiV79Header.en,
   ...uiV79Pages.en,
   ...uiV80Limits.en,
@@ -675,6 +677,8 @@ export default {
       ...v48.en.keys,
       sessions: 'Show or hide Sessions',
       sessionsPin: 'Pin Sessions as a column, or float it',
+      monitorMode: 'Switch Monitor between Board and Sky',
+      cmdPanel: 'Show or hide running commands',
       activity: 'Show or hide Activity',
       activityPin: 'Pin Activity as a column, or float it',
       tabs: 'Switch tab (0 = all sessions)',

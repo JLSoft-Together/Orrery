@@ -656,6 +656,8 @@ export class CodexMonitor {
       effort: s.effort,
       status,
       currentTool: status === 'working' ? s.currentTool() : undefined,
+      currentToolSummary: status === 'working' ? s.currentToolSummary() : undefined,
+      currentToolStartedAt: status === 'working' ? s.currentToolStartedAt() : undefined,
       startedAt: iso(t.meta.createdAt),
       updatedAt: s.lastAt,
       completedAt: finished(status) ? (s.turnEndedAt ?? s.lastAt) : undefined,

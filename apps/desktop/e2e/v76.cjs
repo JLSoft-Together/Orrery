@@ -186,7 +186,7 @@ async function main() {
     await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.whatsNew.seen','${VERSION}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.locale','en'); localStorage.setItem('ccm.theme','dark')`)
     await cmd('Page.reload')
     await waitFor(`!!${UI}`, 15000, 'reloaded')
-    await evaluate(`${UI}.setView('monitor')`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor')`)
     await waitFor(`Object.keys(${TERMS}.byId).length >= 2`, 20000, 'two sessions')
     const A = await termId('a')
     const B = await termId('b')
@@ -293,7 +293,7 @@ async function main() {
     })
 
     await step('sensitive', async () => {
-      await evaluate(`${UI}.setView('monitor')`)
+      await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor')`)
       toolCall('b', 'Edit', { file_path: path.join(DIR_B, '.env'), old_string: 'A=1', new_string: 'A=2' })
       toolCall('b', 'Bash', { command: 'git push --force origin main' })
       await waitFor(`${S}.get('activity').items.filter((e) => e.kind === 'sensitive').length >= 2`, 15000, 'sensitive events')
@@ -339,7 +339,7 @@ async function main() {
         const userFile = path.join(CONFIG, 'settings.json')
         const sharedBefore = '{\n  "model": "opus",\n  "permissions": {\n    "allow": ["Read"]\n  },\n  "env": {}\n}\n'
         write(sharedFile, sharedBefore)
-        await evaluate(`${UI}.setView('monitor')`)
+        await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor')`)
         await evaluate(`${UI}.panels.sessions.open = true`)
         await waitFor(`!!document.querySelector('[data-card-sensitive]')`, 5000, 'card badge')
         if (!(await evaluate(`!!document.querySelector('[data-card-sensitive-list]')`))) await click('[data-card-sensitive]')

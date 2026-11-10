@@ -57,6 +57,7 @@ import resourcesV76 from './resources-v76'
 import uiV79Rail from './ui-v79-rail'
 import uiV79Settings from './ui-v79-settings'
 import uiV79Monitor from './ui-v79-monitor'
+import uiV88Monitor from './ui-v88-monitor'
 import * as uiV79Header from './ui-v79-header'
 import uiV79Pages from './ui-v79-pages'
 import uiV80Limits from './ui-v80-limits'
@@ -125,6 +126,7 @@ const vi: typeof en = {
   ...uiV79Rail.vi,
   ...uiV79Settings.vi,
   ...uiV79Monitor.vi,
+  ...uiV88Monitor.vi,
   ...uiV79Header.vi,
   ...uiV79Pages.vi,
   ...uiV80Limits.vi,
@@ -676,6 +678,8 @@ const vi: typeof en = {
       ...v48.vi.keys,
       sessions: 'Hiện/ẩn Sessions',
       sessionsPin: 'Ghim Sessions thành cột hoặc cho nổi',
+      monitorMode: 'Chuyển Monitor giữa Bảng và Bầu trời',
+      cmdPanel: 'Mở hoặc đóng lệnh đang chạy',
       activity: 'Hiện/ẩn Hoạt động',
       activityPin: 'Ghim Hoạt động thành cột hoặc cho nổi',
       tabs: 'Chuyển tab (0 = tất cả)',

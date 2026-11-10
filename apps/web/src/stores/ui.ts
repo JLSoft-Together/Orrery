@@ -27,6 +27,23 @@ function initialView(): View {
 }
 
 export type MapView = 'map' | 'office'
+export type MonitorMode = 'board' | 'sky'
+
+function initialMonitorMode(): MonitorMode {
+  try {
+    return localStorage.getItem('ccm.monitorMode') === 'sky' ? 'sky' : 'board'
+  } catch {
+    return 'board'
+  }
+}
+
+function initialCmdPanelOpen(): boolean {
+  try {
+    return localStorage.getItem('ccm.cmdPanelOpen') === '1'
+  } catch {
+    return false
+  }
+}
 
 function initialLaunchTerminal(): TerminalApp {
   try {
@@ -271,6 +288,25 @@ export const useUiStore = defineStore('ui', () => {
     }
   })
 
+  const monitorMode = ref<MonitorMode>(initialMonitorMode())
+  watch(monitorMode, (value) => {
+    try {
+      localStorage.setItem('ccm.monitorMode', value)
+    } catch {
+      return
+    }
+  })
+
+  const cmdPanelOpen = ref(initialCmdPanelOpen())
+  watch(cmdPanelOpen, (value) => {
+    try {
+      localStorage.setItem('ccm.cmdPanelOpen', value ? '1' : '0')
+    } catch {
+      return
+    }
+  })
+  const monitorProject = ref<string | null>(null)
+
   const launchTerminal = ref<TerminalApp>(initialLaunchTerminal())
   watch(launchTerminal, (value) => {
     try {
@@ -453,6 +489,9 @@ export const useUiStore = defineStore('ui', () => {
   return {
     view,
     mapView,
+    monitorMode,
+    cmdPanelOpen,
+    monitorProject,
     launchTerminal,
     timelineWindow,
     compact,

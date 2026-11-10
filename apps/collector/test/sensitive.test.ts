@@ -96,7 +96,8 @@ describe('extraction', () => {
     expect(touchOf('Bash', { command: 'ls -la' })).toBeNull()
     const sig = extractSignals({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'git push -f' } }] } })
     expect(sig.find((s) => s.k === 'tool_use')).toMatchObject({ touch: { cmds: [{ rule: 'git-force-push' }] } })
-    expect(JSON.stringify(sig)).not.toContain('git push')
+    expect(sig.find((s) => s.k === 'tool_use')).toMatchObject({ summary: 'git push -f' })
+    expect(JSON.stringify(sig, (k, v: unknown) => (k === 'summary' ? undefined : v))).not.toContain('git push')
   })
 
   it('watch drops repeats within 10 minutes and keeps the project', () => {

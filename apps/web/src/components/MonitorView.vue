@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useMonitorKeys } from '../composables/useMonitorKeys'
+import { useMonitorSessions } from '../composables/useMonitorSessions'
 import { useShortcuts } from '../composables/useShortcuts'
 import { useConnectionStore } from '../stores/connection'
 import { useTerminalsStore } from '../stores/terminals'
@@ -8,6 +10,9 @@ import { useUiStore, type Panel } from '../stores/ui'
 import AwaySummary from './AwaySummary.vue'
 import PortConflictBar from './PortConflictBar.vue'
 import AgentMap from './AgentMap.vue'
+import CommandPanel from './monitor/CommandPanel.vue'
+import ModeBar from './monitor/ModeBar.vue'
+import SessionBoard from './monitor/SessionBoard.vue'
 import PanelHeader from './PanelHeader.vue'
 import PanelSplitter from './PanelSplitter.vue'
 import SessionCard from './SessionCard.vue'
@@ -19,6 +24,8 @@ const connection = useConnectionStore()
 const terminals = useTerminalsStore()
 const ui = useUiStore()
 useShortcuts()
+useMonitorKeys()
+const monitor = useMonitorSessions()
 
 const MAP_MIN = 360
 const FLOAT_INSET = 8
@@ -70,10 +77,14 @@ function panelTransition(p: Panel): string {
     <div class="flex shrink-0 flex-col gap-2 px-3 pt-2 empty:hidden">
       <AwaySummary />
       <PortConflictBar />
-      <WaitingStrip v-if="!ui.sessionTab && !ui.panels.sessions.open" data-tour="waiting" />
+      <WaitingStrip v-if="ui.monitorMode === 'sky' && !ui.sessionTab && !ui.panels.sessions.open" data-tour="waiting" />
     </div>
 
-    <div ref="stage" class="relative flex min-h-0 flex-1" :class="dragging ? 'select-none' : ''">
+    <ModeBar :projects="monitor.groups.value" :groups="monitor.sessionGroups.value" />
+
+    <SessionBoard v-if="ui.monitorMode === 'board'" :groups="monitor.sessionGroups.value" :freeze-bind="monitor.freezeBind" data-tour="sessions" />
+
+    <div v-else id="monitor-panel-sky" ref="stage" role="tabpanel" aria-labelledby="monitor-tab-sky" class="relative flex min-h-0 flex-1" :class="dragging ? 'select-none' : ''">
       <Transition name="ccm-fade">
         <div
           v-if="sheet && ui.panels.sessions.open"
@@ -125,5 +136,6 @@ function panelTransition(p: Panel): string {
 
     </div>
 
+    <CommandPanel />
   </main>
 </template>

@@ -25,6 +25,7 @@ pub struct Totals {
 #[derive(Default)]
 pub struct TranscriptState {
     pub open_tools: OMap<String>,
+    open_calls: OMap<(Option<String>, Option<String>)>,
     open_asks: OMap<Ask>,
     pub codex_calls: Vec<String>,
     pub device_call_at: Option<String>,
@@ -102,8 +103,9 @@ impl TranscriptState {
             }
             Signal::PermissionMode { mode } => self.permission_mode = Some(mode.clone()),
             Signal::Branch { branch } => self.git_branch = Some(branch.clone()),
-            Signal::ToolUse { id, name, at, codex, device, ask, .. } => {
+            Signal::ToolUse { id, name, summary, at, codex, device, ask, .. } => {
                 self.open_tools.insert(id, name.clone());
+                self.open_calls.insert(id, (summary.clone(), truthy(at).cloned()));
                 if let Some(a) = ask {
                     self.open_asks.insert(id, a.clone());
                 }
@@ -122,6 +124,7 @@ impl TranscriptState {
             }
             Signal::ToolResult { tool_use_id, at, port_conflict, .. } => {
                 self.open_tools.remove(tool_use_id);
+                self.open_calls.remove(tool_use_id);
                 self.open_asks.remove(tool_use_id);
                 self.ended = false;
                 if let (Some(port), Some(at)) = (port_conflict.filter(|p| *p != 0), truthy(at)) {
@@ -132,6 +135,7 @@ impl TranscriptState {
             }
             Signal::TurnEnd { .. } => {
                 self.open_tools.clear();
+                self.open_calls.clear();
                 self.open_asks.clear();
             }
             Signal::ReplyText { message_id, text } => {
@@ -165,6 +169,19 @@ impl TranscriptState {
 
     pub fn current_tool(&self) -> Option<&str> {
         self.open_tools.iter().last().map(|(_, n)| n.as_str())
+    }
+
+    fn current_call(&self) -> Option<&(Option<String>, Option<String>)> {
+        let (id, _) = self.open_tools.iter().last()?;
+        self.open_calls.get(id)
+    }
+
+    pub fn current_tool_summary(&self) -> Option<&str> {
+        self.current_call()?.0.as_deref()
+    }
+
+    pub fn current_tool_started_at(&self) -> Option<&str> {
+        self.current_call()?.1.as_deref()
     }
 
     pub fn tokens(&self) -> Option<Totals> {
@@ -227,6 +244,12 @@ impl TranscriptState {
         }
         if let Some(t) = self.current_tool() {
             put(&mut m, "currentTool", t);
+        }
+        if let Some(t) = self.current_tool_summary() {
+            put(&mut m, "currentToolSummary", t);
+        }
+        if let Some(t) = self.current_tool_started_at() {
+            put(&mut m, "currentToolStartedAt", t);
         }
         if let Some(a) = self.pending_ask() {
             put(&mut m, "pendingAsk", a.to_json());

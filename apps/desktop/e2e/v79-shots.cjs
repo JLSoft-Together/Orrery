@@ -80,7 +80,7 @@ async function main() {
     await evaluate(`${ST}.hideFinished = false`)
 
     // Monitor
-    await evaluate(`${UI}.setView('monitor'); ${UI}.openSessionTab(null)`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor'); ${UI}.openSessionTab(null)`)
     await waitFor(`${TM}.list.length >= 4`, 30000, 'fixture sessions').catch(() => {})
     await sleep(1500)
     await evaluate(`${UI}.panels.sessions.open = true`)

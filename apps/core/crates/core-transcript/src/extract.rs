@@ -3,6 +3,7 @@ use crate::jsstr::{iso_of_ms, js_slice, js_trim, word};
 use crate::origin::{ask_of, effort_ok, origin_signals, peer_sent, record_id, task_notifications, window_ok};
 use crate::rules::{touch_of, SHELL_TOOLS};
 use crate::signal::Signal;
+use crate::toolsum::{host_home, host_platform, tool_summary_of};
 use serde_json::{Map, Value};
 
 pub const MAX_ENUM: usize = 120;
@@ -133,6 +134,7 @@ fn assistant(rec: &Obj, msg: &Obj, at: &Option<String>, out: &mut Vec<Signal>) {
             out.push(Signal::ToolUse {
                 id: bid.to_owned(),
                 name: name.to_owned(),
+                summary: tool_summary_of(name, input, host_home(), host_platform()),
                 at: at.clone(),
                 codex: cmd.is_some_and(mentions_codex),
                 device: cmd.is_some_and(mentions_device),

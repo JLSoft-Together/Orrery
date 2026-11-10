@@ -54,7 +54,7 @@ async function scenario(twin: MonitorTwin, root: string, cwd: string, withGit: b
     main,
     line({ type: 'assistant', timestamp: '2026-10-07T09:59:00.000Z', message: { id: 'm1', model: 'claude-opus-5-5', stop_reason: 'tool_use', usage: { input_tokens: 100, output_tokens: 20 }, content: [{ type: 'tool_use', id: 'toolu_agent', name: 'Agent', input: { prompt: 'p' } }] } }) +
       line({ type: 'user', timestamp: '2026-10-07T09:59:01.000Z', toolUseResult: { status: 'async_launched' }, message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_agent' }] } }) +
-      line({ type: 'assistant', timestamp: '2026-10-07T09:59:02.000Z', message: { id: 'm2', stop_reason: 'tool_use', usage: { input_tokens: 50, output_tokens: 5 }, content: [{ type: 'tool_use', id: 'toolu_bash', name: 'Bash', input: { command: 'echo' } }] } }),
+      line({ type: 'assistant', timestamp: '2026-10-07T09:59:02.000Z', message: { id: 'm2', stop_reason: 'tool_use', usage: { input_tokens: 50, output_tokens: 5 }, content: [{ type: 'tool_use', id: 'toolu_bash', name: 'Bash', input: { command: 'echo hi --password hunter22' } }] } }),
   )
   await writeFile(path.join(subDir, 'agent-a1.meta.json'), JSON.stringify({ agentType: 'Explore', description: 'Find ads code', toolUseId: 'toolu_agent', spawnDepth: 1, requestShape: 'background' }))
   await writeFile(path.join(subDir, 'agent-a1.jsonl'), line({ type: 'assistant', isSidechain: true, timestamp: '2026-10-07T09:59:03.000Z', message: { id: 's1', stop_reason: 'tool_use', usage: { input_tokens: 7, output_tokens: 2 }, content: [{ type: 'tool_use', id: 'toolu_grep', name: 'Grep' }] } }))
@@ -243,6 +243,8 @@ describe.skipIf(!SCRIPT_BIN)('Rust monitor twin (core-monitor vs Node Monitor on
       }
       expect(compare.compareTraces(node, rust).diffs).toEqual([])
       expect(compare.compareTraces(node, rust, { strict: true }).diffs).toEqual([])
+      expect(JSON.stringify(rust)).toContain('"currentToolSummary":"echo hi --password [masked]"')
+      expect(JSON.stringify([node, rust])).not.toContain('hunter22')
       const kinds = node.steps.flatMap((s) => s.frames.flatMap((f) => f.events.map((e) => (e.type === 'activity' ? `activity:${e.payload.kind}` : e.type))))
       for (const k of ['activity:job.blocked', 'activity:job.stopped', 'limits.updated', 'models.updated', 'history.added', 'tool.span', 'activity:agent.failed', 'activity:session.cleared', 'activity:terminal.started', 'activity:agent.completed', 'favorites.updated', 'favorite.rejected', 'terminal.removed']) expect(kinds).toContain(k)
       const terminalPatches = node.steps.flatMap((s) => s.frames.flatMap((f) => f.events.filter((e) => e.type === 'terminal.updated' || e.type === 'terminal.created').map((e) => e.payload as Record<string, unknown>)))

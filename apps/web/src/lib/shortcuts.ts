@@ -13,6 +13,8 @@ export const SHORTCUTS: Shortcut[] = [
   { id: 'sessionsPin', keys: ['Shift', 'S'], group: 'panels' },
   { id: 'tabs', keys: ['0', '…', '9'], group: 'map' },
   { id: 'fit', keys: ['F'], group: 'map' },
+  { id: 'monitorMode', keys: ['Alt', '1', '/', '2'], group: 'panels' },
+  { id: 'cmdPanel', keys: ['`'], group: 'panels' },
   { id: 'esc', keys: ['Esc'], group: 'map' },
   { id: 'mapNav', keys: ['←↑↓→'], group: 'map' },
   { id: 'mapEnter', keys: ['Enter'], group: 'map' },

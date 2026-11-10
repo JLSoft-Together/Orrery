@@ -9,6 +9,7 @@ pub mod jobs;
 pub mod json;
 pub mod jsonline;
 pub mod jsstr;
+pub mod mask;
 pub mod omap;
 pub mod origin;
 pub mod prune;
@@ -23,6 +24,7 @@ pub mod spans;
 pub mod state;
 pub mod tail;
 pub mod time;
+pub mod toolsum;
 pub mod tracker;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

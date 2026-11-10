@@ -62,8 +62,23 @@ enum Level {
     Any(u8),
 }
 
-const PAYLOAD_SCALARS: [&str; 13] =
-    ["id", "session_id", "timestamp", "cwd", "originator", "cli_version", "model", "effort", "type", "model_context_window", "call_id", "namespace", "name"];
+const PAYLOAD_SCALARS: [&str; 15] = [
+    "id",
+    "session_id",
+    "timestamp",
+    "cwd",
+    "originator",
+    "cli_version",
+    "model",
+    "effort",
+    "type",
+    "model_context_window",
+    "call_id",
+    "namespace",
+    "name",
+    "arguments",
+    "input",
+];
 
 fn child(level: Level, key: &str) -> Option<Level> {
     match (level, key) {

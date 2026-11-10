@@ -1,0 +1,349 @@
+{
+ "home": "/Users/me",
+ "platform": "darwin",
+ "sanitize": [
+  {
+   "in": "git push https://user:hunter2@github.com/x.git",
+   "out": "git push https://[masked]@github.com/x.git"
+  },
+  {
+   "in": "curl -H 'Authorization: Bearer abcd1234efgh' https://api.x",
+   "out": "curl -H 'Authorization: Bearer [masked] https://api.x"
+  },
+  {
+   "in": "export GITHUB_TOKEN=ghp_abcdefghijklmnop1234",
+   "out": "export GITHUB_TOKEN=[masked]"
+  },
+  {
+   "in": "OPENAI_API_KEY=sk-proj-abcdefgh123 node x.js",
+   "out": "OPENAI_API_KEY=[masked] node x.js"
+  },
+  {
+   "in": "slack xoxb-1234567890-abc",
+   "out": "slack [masked]"
+  },
+  {
+   "in": "aws AKIAABCDEFGHIJKLMNOP s3 ls",
+   "out": "aws [masked] s3 ls"
+  },
+  {
+   "in": "mysql --password hunter2 -u root",
+   "out": "mysql --password [masked] -u root"
+  },
+  {
+   "in": "login --token=abcd1234 now",
+   "out": "login --token=[masked] now"
+  },
+  {
+   "in": "psql password=supersecret",
+   "out": "psql password=[masked]"
+  },
+  {
+   "in": "--api-key   sk-abc",
+   "out": "--api-key [masked]"
+  },
+  {
+   "in": "--token-file /x",
+   "out": "--token-file /x"
+  },
+  {
+   "in": "Bearer abc",
+   "out": "Bearer abc"
+  },
+  {
+   "in": "git clone https://ghp_abcdefghijklmnop1234@github.com/o/r",
+   "out": "git clone https://[masked]@github.com/o/r"
+  },
+  {
+   "in": "cat /Users/me/work/app/.env",
+   "out": "cat ~/work/app/.env"
+  },
+  {
+   "in": "ls   -la\n\t/tmp\r\n",
+   "out": "ls -la /tmp"
+  },
+  {
+   "in": "  \n\t ",
+   "out": null
+  },
+  {
+   "in": "echo 'Xin chào thế giới'",
+   "out": "echo 'Xin chào thế giới'"
+  },
+  {
+   "in": "type C:\\Users\\ME\\x.txt",
+   "out": "type ~\\x.txt",
+   "home": "C:\\Users\\me",
+   "platform": "win32"
+  },
+  {
+   "in": "ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ",
+   "out": "ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab…"
+  },
+  {
+   "in": "x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x 😀😀",
+   "out": "x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x 😀…"
+  },
+  {
+   "in": "a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a b😀c",
+   "out": "a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a b…"
+  },
+  {
+   "in": "é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é ",
+   "out": "é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é é …"
+  }
+ ],
+ "claude": [
+  [
+   "Bash",
+   {
+    "command": "npm test -- --token abc12345"
+   },
+   "npm test -- --token [masked]"
+  ],
+  [
+   "Bash",
+   {
+    "command": "cd /Users/me/p &&\n  git status"
+   },
+   "cd ~/p && git status"
+  ],
+  [
+   "PowerShell",
+   {
+    "command": "Get-ChildItem"
+   },
+   "Get-ChildItem"
+  ],
+  [
+   "Read",
+   {
+    "file_path": "/Users/me/a.ts",
+    "limit": 5
+   },
+   "~/a.ts"
+  ],
+  [
+   "Edit",
+   {
+    "file_path": "/Users/me/b.ts",
+    "old_string": "password=hunter2",
+    "new_string": "x"
+   },
+   "~/b.ts"
+  ],
+  [
+   "Write",
+   {
+    "file_path": "/tmp/c.txt",
+    "content": "secret"
+   },
+   "/tmp/c.txt"
+  ],
+  [
+   "NotebookEdit",
+   {
+    "notebook_path": "/Users/me/n.ipynb"
+   },
+   "~/n.ipynb"
+  ],
+  [
+   "Grep",
+   {
+    "pattern": "foo.*bar",
+    "path": "/Users/me/src"
+   },
+   "foo.*bar ~/src"
+  ],
+  [
+   "Grep",
+   {
+    "pattern": "x"
+   },
+   "x"
+  ],
+  [
+   "Glob",
+   {
+    "pattern": "**/*.ts"
+   },
+   "**/*.ts"
+  ],
+  [
+   "Task",
+   {
+    "description": "Find bugs",
+    "prompt": "secret prompt"
+   },
+   "Find bugs"
+  ],
+  [
+   "Agent",
+   {
+    "description": "Review diff",
+    "prompt": "p"
+   },
+   "Review diff"
+  ],
+  [
+   "WebFetch",
+   {
+    "url": "https://x.com/a?token=abc#frag",
+    "prompt": "p"
+   },
+   "https://x.com/a"
+  ],
+  [
+   "WebFetch",
+   {
+    "url": "https://u:p4ss@x.com/b#f"
+   },
+   "https://[masked]@x.com/b"
+  ],
+  [
+   "WebSearch",
+   {
+    "query": "rust serde"
+   },
+   "rust serde"
+  ],
+  [
+   "mcp__github__search",
+   {
+    "query": "x"
+   },
+   null
+  ],
+  [
+   "TodoWrite",
+   {
+    "todos": []
+   },
+   null
+  ],
+  [
+   "Bash",
+   {
+    "command": 5
+   },
+   null
+  ],
+  [
+   "Bash",
+   "notobject",
+   null
+  ],
+  [
+   "Bash",
+   {
+    "command": ""
+   },
+   null
+  ]
+ ],
+ "codex": [
+  [
+   "function_call",
+   "exec_command",
+   false,
+   {
+    "arguments": "{\"cmd\": \"ls -la /Users/me\", \"workdir\": \"/x\"}"
+   },
+   "ls -la ~"
+  ],
+  [
+   "function_call",
+   "shell",
+   false,
+   {
+    "arguments": "{\"command\": [\"bash\", \"-lc\", \"cargo test\"]}"
+   },
+   "cargo test"
+  ],
+  [
+   "function_call",
+   "shell",
+   false,
+   {
+    "arguments": "{\"command\": [\"git\", \"status\"]}"
+   },
+   "git status"
+  ],
+  [
+   "function_call",
+   "shell_command",
+   false,
+   {
+    "arguments": "{\"command\": \"curl -H 'Authorization: Bearer abcdefgh1234'\"}"
+   },
+   "curl -H 'Authorization: Bearer [masked]"
+  ],
+  [
+   "custom_tool_call",
+   "apply_patch",
+   false,
+   {
+    "input": "*** Begin Patch\n*** Update File: /Users/me/a.rs\n@@\n-x\n+y\n*** Add File: b.ts\r\n+z\n*** End Patch"
+   },
+   "~/a.rs, b.ts"
+  ],
+  [
+   "function_call",
+   "apply_patch",
+   false,
+   {
+    "arguments": "{\"input\": \"*** Begin Patch\\n*** Delete File: c.txt\\n*** End Patch\"}"
+   },
+   "c.txt"
+  ],
+  [
+   "custom_tool_call",
+   "exec",
+   false,
+   {
+    "input": "secret command"
+   },
+   null
+  ],
+  [
+   "function_call",
+   "run",
+   true,
+   {
+    "arguments": "{\"cmd\": \"x\"}"
+   },
+   null
+  ],
+  [
+   "function_call",
+   "exec",
+   false,
+   {
+    "arguments": "secret"
+   },
+   null
+  ],
+  [
+   "function_call",
+   "update_plan",
+   false,
+   {
+    "arguments": "{\"plan\": []}"
+   },
+   null
+  ],
+  [
+   "local_shell_call",
+   "shell",
+   false,
+   {
+    "action": {
+     "command": [
+      "ls"
+     ]
+    }
+   },
+   null
+  ]
+ ]
+}

@@ -132,6 +132,8 @@ Unknown `type`s must be ignored — the set grows between versions.
 
 Last `tool_use` block (name only) whose `id` has no matching `tool_result` yet. Clear it when the result arrives or on `system/turn_duration`.
 
+Since v88 the same call also gives `Agent.currentToolSummary` + `currentToolStartedAt` (record `timestamp` of that `tool_use`, cleared together with `currentTool`). The summary is one line taken from a single `input` key: Bash / PowerShell `command`; Read / Edit / Write / NotebookEdit `file_path` (`notebook_path`); Grep `pattern` + ` ` + `path`; Glob `pattern`; Task / Agent `description`; WebFetch `url` without query / fragment; WebSearch `query`; MCP and other tools none. Codex: `exec_command` / `shell` `cmd` / `command` (`[sh, -lc, x]` → `x`), `apply_patch` the `*** Add|Update|Delete File:` paths; MCP, `local_shell_call` and other calls none. Sanitized inside `extractSignals` / `extract_signals` (and the Codex extractors) before anything leaves collector / core, same rules in `packages/shared/src/toolSummary.ts` and `core-transcript/src/toolsum.rs` (case table `packages/shared/test/toolSummary.cases.json`): whitespace collapsed to one space, `maskSecrets` / `mask_secrets` (home → `~`, known tokens, key=value, opaque runs), then `://user:pass@` → `://[masked]@`, `Bearer <x>`, `-password|-token|-secret|-api-key <value>`; max 200 UTF-16 units + `…`. The raw `input` is never stored or sent.
+
 ### Tokens
 
 Each assistant API message is written once **per content block** with the **same** `message.id` and identical `usage` (1 318 duplicates, 0 mismatches). Sum `usage` once per `message.id`.
@@ -224,7 +226,7 @@ Never read: `sessions/*.key`, `.credentials.json`, `session-env/`, `shell-snapsh
 
 Never forward to frontend: `messagingSocketPath`, tool inputs, message text, thinking, `lastPrompt`, `ai-title`, task-notification `<summary>`/`<result>`, `toolUseResult.prompt`, env values.
 
-Forwarded: name, cwd, pid, status, `waitingFor`, tool **names**, `agentType`, `description`, model, token counts, timestamps.
+Forwarded: name, cwd, pid, status, `waitingFor`, tool **names**, the sanitized one-line tool summary (§5 Current tool, v88), `agentType`, `description`, model, token counts, timestamps.
 
 Messages between sessions and agents (v54, §11y / §11z): `messagingSocketPath` and the `uds:` sender address are reduced to `sockKey` (first 16 hex of sha256 of the lower-cased path) at parse time and kept in RAM only; the path is never stored, sent or logged. The message text in `origin.body`, `origin.name` (sender-chosen label), `message.content`, `attachment.prompt`, the `queue-operation` envelope, the `SendMessage` input and `toolUseResult.message` / `display` is never read out of `extractSignals`. Only counts, ids (`msg_id`, record uuid, agent id), terminal ids and timestamps leave it; display names come from the registry / dashboard alias.
 

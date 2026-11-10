@@ -11,7 +11,7 @@ import { NodeRolloutSource, nodeRollouts } from '../src/codex/nodeRollout'
 import type { CodexProcess } from '../src/codex/processes'
 import { codexCoreMode, createRolloutSources, type RolloutSources } from '../src/codex/rolloutSource'
 import { MonitorStore } from '../src/store'
-import { call, CHILD, complete, context, corpus, line, message, meta, output, started, T0, TID, tokens } from './codex-parity-corpus'
+import { call, CHILD, execCall, patchCall, complete, context, corpus, line, message, meta, output, started, T0, TID, tokens } from './codex-parity-corpus'
 import { BIN } from './tracker-twin'
 
 const describeCore = BIN ? describe : describe.skip
@@ -253,6 +253,30 @@ describeCore('codex rollouts: Node ↔ Rust parity', () => {
       const views = await run(() => write(TID, [meta(), started(), context(), call('c1'), tokens()]), [append(TID, [output('c1'), call('c2')]), sync(TID), kill], init)
       expect(JSON.stringify(views)).not.toContain('secret')
       expect(JSON.stringify(views)).toContain('"parentId":"sub-a"')
+    })
+
+    it('publishes the running command summary, masked, and clears it with the call output', async () => {
+      const init = (s: MonitorStore) => {
+        s.upsertTerminal({ id: 'claude-1', title: 'demo', status: 'working' })
+        targets = [{ terminalId: 'claude-1', pid: 100, mainAgentId: 'claude-1:main', ended: false, codexCalls: [{ agentId: 'claude-1:main', at: new Date(T0 - 1_000).toISOString() }] }]
+        procs = [{ pid: 300, start: T0 - 200, mode: 'exec', ancestors: [250, 100], orphan: false }]
+        alive.add(300)
+      }
+      const views = await run(
+        () => write(TID, [meta(), started(), context(), execCall('c1', 'npm test -- --password hunter22', T0 + 10), tokens()]),
+        [append(TID, [output('c1'), patchCall('c2', T0 + 20)]), sync(TID), append(TID, [output('c2')]), sync(TID)],
+        init,
+      )
+      const agents = views.map((v) => (v as { agents: { provider?: string; currentToolSummary?: string; currentToolStartedAt?: string }[] }).agents.find((a) => a.provider === 'codex'))
+      expect(agents.map((a) => [a?.currentToolSummary, a?.currentToolStartedAt])).toEqual([
+        ['npm test -- --password [masked]', new Date(T0 + 10).toISOString()],
+        ['npm test -- --password [masked]', new Date(T0 + 10).toISOString()],
+        ['src/a.ts', new Date(T0 + 20).toISOString()],
+        ['src/a.ts', new Date(T0 + 20).toISOString()],
+        [undefined, undefined],
+      ])
+      expect(JSON.stringify(views)).not.toContain('hunter22')
+      expect(JSON.stringify(views)).not.toContain('secret')
     })
 
     it('shows other runs on their own with their subagent, ends them with the process and reopens a resumed thread', async () => {

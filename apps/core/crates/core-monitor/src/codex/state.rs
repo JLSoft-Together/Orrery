@@ -49,6 +49,7 @@ pub struct CodexThreadState {
     pub turn_started_at: Option<String>,
     pub turn_ended_at: Option<String>,
     pub open_calls: IndexMap<String, String>,
+    pub call_info: IndexMap<String, (Option<String>, Option<String>)>,
     pub total: Option<Usage>,
     pub last: Option<Usage>,
     pub context_window: Option<f64>,
@@ -84,6 +85,7 @@ impl CodexThreadState {
                     self.aborted = false;
                     self.turn_started_at.clone_from(at);
                     self.open_calls.clear();
+                    self.call_info.clear();
                     if context_window.is_some() {
                         self.context_window = *context_window;
                     }
@@ -93,13 +95,16 @@ impl CodexThreadState {
                     self.aborted = *aborted;
                     self.turn_ended_at.clone_from(at);
                     self.open_calls.clear();
+                    self.call_info.clear();
                 }
-                CodexSignal::ToolCall { id, name, .. } => {
+                CodexSignal::ToolCall { id, name, summary, at } => {
                     self.open_calls.insert(id.clone(), name.clone());
+                    self.call_info.insert(id.clone(), (summary.clone(), at.clone().filter(|a| !a.is_empty())));
                     self.turn_open.get_or_insert(true);
                 }
                 CodexSignal::ToolOutput { id } => {
                     self.open_calls.shift_remove(id);
+                    self.call_info.shift_remove(id);
                 }
                 CodexSignal::Tokens { total, last, context_window } => {
                     self.total = Some(total.clone());
@@ -123,6 +128,18 @@ impl CodexThreadState {
 
     pub fn current_tool(&self) -> Option<&str> {
         self.open_calls.values().last().map(String::as_str)
+    }
+
+    fn current_call(&self) -> Option<&(Option<String>, Option<String>)> {
+        self.call_info.get(self.open_calls.keys().last()?)
+    }
+
+    pub fn current_tool_summary(&self) -> Option<&str> {
+        self.current_call()?.0.as_deref()
+    }
+
+    pub fn current_tool_started_at(&self) -> Option<&str> {
+        self.current_call()?.1.as_deref()
     }
 }
 
@@ -161,6 +178,17 @@ mod tests {
         st.apply(&rec("event_msg", &at(3), serde_json::json!({ "type": "task_complete" })));
         assert_eq!(st.turn_open, Some(false));
         assert_eq!(st.current_tool(), None);
+    }
+
+    #[test]
+    fn keeps_the_call_summary_until_its_output() {
+        let mut st = CodexThreadState::default();
+        let at = "2026-11-10T10:00:01.000Z";
+        let args = serde_json::json!({ "cmd": "cargo test -j 4" }).to_string();
+        st.apply(&rec("response_item", at, serde_json::json!({ "type": "function_call", "call_id": "c1", "name": "exec_command", "arguments": args })));
+        assert_eq!((st.current_tool(), st.current_tool_summary(), st.current_tool_started_at()), (Some("exec_command"), Some("cargo test -j 4"), Some(at)));
+        st.apply(&rec("response_item", at, serde_json::json!({ "type": "function_call_output", "call_id": "c1" })));
+        assert_eq!((st.current_tool(), st.current_tool_summary(), st.current_tool_started_at()), (None, None, None));
     }
 
     #[test]

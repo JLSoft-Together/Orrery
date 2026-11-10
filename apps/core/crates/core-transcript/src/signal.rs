@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Signal {
-    ToolUse { id: String, name: String, at: Option<String>, codex: bool, device: bool, touch: Option<Touch>, ask: Option<Ask> },
+    ToolUse { id: String, name: String, summary: Option<String>, at: Option<String>, codex: bool, device: bool, touch: Option<Touch>, ask: Option<Ask> },
     ToolResult { tool_use_id: String, is_error: bool, async_launched: bool, at: Option<String>, port_conflict: Option<u32> },
     TurnEnd { at: Option<String> },
     AssistantEnd { message_id: Option<String>, at: Option<String> },
@@ -57,9 +57,10 @@ impl Signal {
         let mut m = Map::new();
         put(&mut m, "k", self.kind());
         match self {
-            Signal::ToolUse { id, name, at, codex, device, touch, ask } => {
+            Signal::ToolUse { id, name, summary, at, codex, device, touch, ask } => {
                 put(&mut m, "id", id.as_str());
                 put(&mut m, "name", name.as_str());
+                put_opt(&mut m, "summary", summary);
                 put_opt(&mut m, "at", at);
                 if *codex {
                     put(&mut m, "codex", true);

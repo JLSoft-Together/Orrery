@@ -67,7 +67,7 @@ fn signals_keep_only_whitelisted_fields() {
     assert_eq!(out[0]["branch"].as_str().unwrap().len(), 120);
     assert_eq!(out[2], json!({ "k": "model", "model": "claude-opus-5-5" }));
     assert_eq!(out[3], json!({ "k": "usage", "messageId": "m1", "input": 3, "output": 3, "cacheRead": 0, "at": "2026-10-07T10:00:00.000Z" }));
-    assert_eq!(out[4], json!({ "k": "tool_use", "id": "t1", "name": "Bash", "at": "2026-10-07T10:00:00.000Z", "codex": true, "device": true, "touch": { "cmds": [{ "rule": "git-force-push" }] } }));
+    assert_eq!(out[4], json!({ "k": "tool_use", "id": "t1", "name": "Bash", "summary": "codex exec [masked] && git push -f && adb install x", "at": "2026-10-07T10:00:00.000Z", "codex": true, "device": true, "touch": { "cmds": [{ "rule": "git-force-push" }] } }));
     assert_eq!(out[5]["text"].as_str().unwrap().len(), 3000);
     assert_eq!(out[6], json!({ "k": "assistant_end", "messageId": "m1", "at": "2026-10-07T10:00:00.000Z" }));
 }

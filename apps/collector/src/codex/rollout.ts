@@ -1,4 +1,5 @@
-import type { LimitWindow } from '@ccm/shared'
+import os from 'node:os'
+import { codexToolSummaryOf, type LimitWindow } from '@ccm/shared'
 
 export type CodexMode = 'exec' | 'tui' | 'plugin' | 'subagent' | 'app-server'
 
@@ -32,7 +33,7 @@ export type CodexSignal =
   | { k: 'context'; model?: string; effort?: string }
   | { k: 'turn_start'; at?: string; contextWindow?: number }
   | { k: 'turn_end'; at?: string; aborted: boolean }
-  | { k: 'tool_call'; id: string; name: string; at?: string }
+  | { k: 'tool_call'; id: string; name: string; summary?: string; at?: string }
   | { k: 'tool_output'; id: string }
   | { k: 'tokens'; total: TokenUsage; last?: TokenUsage; contextWindow?: number }
   | { k: 'limits'; limits: CodexLimits }
@@ -45,6 +46,7 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 const int = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0)
 const MAX_ENUM = 80
+const HOME = os.homedir()
 const ENUM_RE = /^[\w.:/@+-]{1,80}$/
 const enumOf = (v: unknown): string | undefined => {
   const s = str(v)
@@ -177,8 +179,12 @@ export function extractCodexSignals(rec: unknown): CodexSignal[] {
       if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') out.push({ k: 'tool_output', id })
       else if (p.type === 'local_shell_call') out.push({ k: 'tool_call', id, name: 'shell', at })
       else if (p.type === 'function_call' || p.type === 'custom_tool_call') {
-        const name = enumOf(p.namespace) && enumOf(p.name) ? `${p.namespace}.${p.name}` : enumOf(p.name)
-        if (name) out.push({ k: 'tool_call', id, name: name.slice(0, MAX_ENUM), at })
+        const namespaced = !!(enumOf(p.namespace) && enumOf(p.name))
+        const name = namespaced ? `${p.namespace}.${p.name}` : enumOf(p.name)
+        if (name) {
+          const summary = codexToolSummaryOf(p.type, name, namespaced, p, HOME, process.platform)
+          out.push({ k: 'tool_call', id, name: name.slice(0, MAX_ENUM), ...(summary ? { summary } : {}), at })
+        }
       }
       break
     }
@@ -196,6 +202,7 @@ export class CodexThreadState {
   turnStartedAt?: string
   turnEndedAt?: string
   readonly openCalls = new Map<string, string>()
+  private readonly callInfo = new Map<string, { summary?: string; at?: string }>()
   total?: TokenUsage
   last?: TokenUsage
   contextWindow?: number
@@ -221,6 +228,7 @@ export class CodexThreadState {
           this.aborted = false
           this.turnStartedAt = s.at
           this.openCalls.clear()
+          this.callInfo.clear()
           if (s.contextWindow) this.contextWindow = s.contextWindow
           break
         case 'turn_end':
@@ -228,13 +236,16 @@ export class CodexThreadState {
           this.aborted = s.aborted
           this.turnEndedAt = s.at
           this.openCalls.clear()
+          this.callInfo.clear()
           break
         case 'tool_call':
           this.openCalls.set(s.id, s.name)
+          this.callInfo.set(s.id, { summary: s.summary, at: s.at || undefined })
           this.turnOpen ??= true
           break
         case 'tool_output':
           this.openCalls.delete(s.id)
+          this.callInfo.delete(s.id)
           break
         case 'tokens':
           this.total = s.total
@@ -256,6 +267,20 @@ export class CodexThreadState {
     let last: string | undefined
     for (const name of this.openCalls.values()) last = name
     return last
+  }
+
+  private currentCall(): { summary?: string; at?: string } | undefined {
+    let last: string | undefined
+    for (const id of this.openCalls.keys()) last = id
+    return last === undefined ? undefined : this.callInfo.get(last)
+  }
+
+  currentToolSummary(): string | undefined {
+    return this.currentCall()?.summary
+  }
+
+  currentToolStartedAt(): string | undefined {
+    return this.currentCall()?.at
   }
 }
 

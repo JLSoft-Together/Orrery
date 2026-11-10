@@ -1,6 +1,7 @@
 use super::value::J;
 use crate::jsstr::{iso_of_ms, js_slice, num, put, put_num, put_opt};
 use crate::time::parse_iso;
+use crate::toolsum::{codex_tool_summary_of, host_home, host_platform};
 use serde_json::{Map, Value};
 
 pub const MAX_ENUM: usize = 80;
@@ -46,7 +47,7 @@ pub enum CodexSignal {
     Context { model: Option<String>, effort: Option<String> },
     TurnStart { at: Option<String>, context_window: Option<f64> },
     TurnEnd { at: Option<String>, aborted: bool },
-    ToolCall { id: String, name: String, at: Option<String> },
+    ToolCall { id: String, name: String, summary: Option<String>, at: Option<String> },
     ToolOutput { id: String },
     Tokens { total: Usage, last: Option<Usage>, context_window: Option<f64> },
     Limits(Limits),
@@ -146,12 +147,16 @@ fn limits_of(v: Option<&J>, at: Option<&str>) -> Option<Limits> {
     (out.five_hour.is_some() || out.seven_day.is_some()).then_some(out)
 }
 
-fn tool_name(p: &J) -> Option<String> {
-    let name = match (enum_of(p.get("namespace")), enum_of(p.get("name"))) {
-        (Some(ns), Some(n)) => format!("{ns}.{n}"),
-        (_, n) => n?,
+fn tool_call(p: &J, item_type: &str, id: String, at: Option<String>) -> Option<CodexSignal> {
+    let (name, bare, namespaced) = match (enum_of(p.get("namespace")), enum_of(p.get("name"))) {
+        (Some(ns), Some(n)) => (format!("{ns}.{n}"), n, true),
+        (_, n) => {
+            let n = n?;
+            (n.clone(), n, false)
+        }
     };
-    Some(js_slice(&name, MAX_ENUM).to_owned())
+    let summary = codex_tool_summary_of(item_type, &bare, namespaced, p, host_home(), host_platform());
+    Some(CodexSignal::ToolCall { id, name: js_slice(&name, MAX_ENUM).to_owned(), summary, at })
 }
 
 pub fn compacted_signals(at: Option<String>) -> Vec<CodexSignal> {
@@ -197,8 +202,8 @@ pub fn extract_codex_signals(rec: &J) -> Vec<CodexSignal> {
             let Some(id) = s(p.get("call_id")).map(str::to_owned) else { return out };
             match sub {
                 Some("function_call_output" | "custom_tool_call_output") => out.push(CodexSignal::ToolOutput { id }),
-                Some("local_shell_call") => out.push(CodexSignal::ToolCall { id, name: "shell".to_owned(), at }),
-                Some("function_call" | "custom_tool_call") => out.extend(tool_name(p).map(|name| CodexSignal::ToolCall { id, name, at })),
+                Some("local_shell_call") => out.push(CodexSignal::ToolCall { id, name: "shell".to_owned(), summary: None, at }),
+                Some(t @ ("function_call" | "custom_tool_call")) => out.extend(tool_call(p, t, id, at)),
                 _ => {}
             }
         }
@@ -270,9 +275,10 @@ impl CodexSignal {
                 put_opt(&mut m, "at", at);
                 put(&mut m, "aborted", *aborted);
             }
-            CodexSignal::ToolCall { id, name, at } => {
+            CodexSignal::ToolCall { id, name, summary, at } => {
                 put(&mut m, "id", id.as_str());
                 put(&mut m, "name", name.as_str());
+                put_opt(&mut m, "summary", summary);
                 put_opt(&mut m, "at", at);
             }
             CodexSignal::ToolOutput { id } => put(&mut m, "id", id.as_str()),

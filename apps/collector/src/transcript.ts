@@ -1,10 +1,11 @@
-import { parseTelegramAsk, type CacheTtl, type LimitHit, type TelegramAsk } from '@ccm/shared'
+import os from 'node:os'
+import { parseTelegramAsk, toolSummaryOf, type CacheTtl, type LimitHit, type TelegramAsk } from '@ccm/shared'
 import { socketKey } from './registry'
 import { portConflictIn } from './resources/ports'
 import { touchOf, type ToolTouch } from './sensitive/rules'
 
 export type Signal =
-  | { k: 'tool_use'; id: string; name: string; at?: string; codex?: true; device?: true; touch?: ToolTouch; ask?: TelegramAsk }
+  | { k: 'tool_use'; id: string; name: string; summary?: string; at?: string; codex?: true; device?: true; touch?: ToolTouch; ask?: TelegramAsk }
   | { k: 'tool_result'; toolUseId: string; isError: boolean; asyncLaunched: boolean; at?: string; portConflict?: number }
   | { k: 'turn_end'; at?: string }
   | { k: 'assistant_end'; messageId?: string; at?: string }
@@ -42,6 +43,7 @@ const int = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v)
 
 const MAX_ENUM = 120
 const SHELL_TOOLS = new Set(['Bash', 'PowerShell'])
+const HOME = os.homedir()
 const CODEX_COMMAND_RE = /\bcodex\b/i
 const MAX_CODEX_CALLS = 20
 const REPLY_MAX = 3000
@@ -179,10 +181,12 @@ export function extractSignals(rec: unknown): Signal[] {
         if (isObj(b) && b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
           const touch = touchOf(b.name, b.input)
           const ask = askOf(b.name, b.input)
+          const summary = toolSummaryOf(b.name, b.input, HOME, process.platform)
           out.push({
             k: 'tool_use',
             id: b.id,
             name: b.name,
+            ...(summary ? { summary } : {}),
             at,
             ...(mentionsCodex(b.name, b.input) ? { codex: true as const } : {}),
             ...(mentionsDevice(b.name, b.input) ? { device: true as const } : {}),
@@ -265,6 +269,7 @@ export interface UsageTotals {
 
 export class TranscriptState {
   readonly openTools = new Map<string, string>()
+  private readonly openCalls = new Map<string, { summary?: string; at?: string }>()
   /** AskUserQuestion calls without a tool_result yet; memory only, read by the Telegram episode and nowhere else. */
   private readonly openAsks = new Map<string, TelegramAsk>()
   /** When shell calls that mention codex were made, newest last (links Codex runs to the agent that started them). */
@@ -332,6 +337,7 @@ export class TranscriptState {
           break
         case 'tool_use':
           this.openTools.set(s.id, s.name)
+          this.openCalls.set(s.id, { summary: s.summary, at: s.at || undefined })
           if (s.ask) this.openAsks.set(s.id, s.ask)
           this.ended = false
           if (s.codex && s.at) {
@@ -342,12 +348,14 @@ export class TranscriptState {
           break
         case 'tool_result':
           this.openTools.delete(s.toolUseId)
+          this.openCalls.delete(s.toolUseId)
           this.openAsks.delete(s.toolUseId)
           this.ended = false
           if (s.portConflict && s.at && (!this.portConflict || s.at > this.portConflict.at)) this.portConflict = { port: s.portConflict, at: s.at }
           break
         case 'turn_end':
           this.openTools.clear()
+          this.openCalls.clear()
           this.openAsks.clear()
           break
         case 'reply_text':
@@ -384,6 +392,20 @@ export class TranscriptState {
     let last: string | undefined
     for (const name of this.openTools.values()) last = name
     return last
+  }
+
+  private currentCall(): { summary?: string; at?: string } | undefined {
+    let last: string | undefined
+    for (const id of this.openTools.keys()) last = id
+    return last === undefined ? undefined : this.openCalls.get(last)
+  }
+
+  currentToolSummary(): string | undefined {
+    return this.currentCall()?.summary
+  }
+
+  currentToolStartedAt(): string | undefined {
+    return this.currentCall()?.at
   }
 
   tokens(): UsageTotals | undefined {

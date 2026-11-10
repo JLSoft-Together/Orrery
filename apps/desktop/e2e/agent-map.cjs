@@ -52,7 +52,7 @@ async function main() {
     await cmd('Page.reload')
     await sleep(1500)
     await waitFor(`!!${UI}`, 30000, 'reloaded')
-    await evaluate(`${UI}.setView('monitor'); ${UI}.openSessionTab(null); ${S}.get('settings').hideFinished = false`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor'); ${UI}.openSessionTab(null); ${S}.get('settings').hideFinished = false`)
     await cmd('Page.bringToFront')
 
     const terminalId = await waitFor(`(() => { const t = ${TM}.list.find((x) => x.claudeSessionId && (${AG}.byTerminal[x.id]?.length ?? 0) >= 4); return t?.id })()`, 30000, 'fixture session with subagents').catch(() => null)

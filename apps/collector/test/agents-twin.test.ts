@@ -40,6 +40,7 @@ const meta = (tid: string, over: Record<string, unknown> = {}, at = T0) =>
 const started = (at = T0) => rec('event_msg', { type: 'task_started', turn_id: 't1', model_context_window: 258400 }, at)
 const context = (at = T0) => rec('turn_context', { turn_id: 't1', model: 'gpt-6-luna', effort: 'medium', approval_policy: 'never' }, at)
 const call = (cid: string, at = T0) => rec('response_item', { type: 'custom_tool_call', call_id: cid, name: 'exec', input: 'secret command' }, at)
+const execCall = (cid: string, cmd: string, at = T0) => rec('response_item', { type: 'function_call', call_id: cid, name: 'exec_command', arguments: JSON.stringify({ cmd }) }, at)
 const output = (cid: string, at = T0) => rec('response_item', { type: 'custom_tool_call_output', call_id: cid, output: 'secret output' }, at)
 const tokens = (at = T0, used = 7) =>
   rec(
@@ -111,7 +112,7 @@ async function codexScenario(twin: MonitorTwin, root: string, codexHome: string)
   await twin.step('tool-started', async () => {
     await appendFile(file(T.claude), [output('c1', T0 + 3_000), call('c2', T0 + 3_100)].map(line).join(''))
     await sync(T.claude)
-    await appendFile(file(T.alone), [call('x1', T0 + 3_200)].map(line).join(''))
+    await appendFile(file(T.alone), [execCall('x1', 'cargo test --token hunter22', T0 + 3_200)].map(line).join(''))
     await sync(T.alone)
   })
   await twin.step('names', async () => {
@@ -284,6 +285,8 @@ describe.skipIf(!SCRIPT_BIN)('Rust agent monitors twin (Codex + DeepSeek vs Node
     const { node, rust } = await run('codex', codexScenario)
     expect(compare.compareTraces(node, rust).diffs).toEqual([])
     expect(compare.compareTraces(node, rust, { strict: true }).diffs).toEqual([])
+    expect(JSON.stringify(rust)).toContain('"currentToolSummary":"cargo test --token [masked]"')
+    expect(JSON.stringify([node, rust])).not.toContain('hunter22')
     const kinds = kindsOf(node)
     for (const k of ['codexLimits.updated', 'activity:tool.started', 'activity:agent.started', 'activity:agent.completed', 'activity:terminal.started', 'activity:terminal.ended', 'agent.created', 'agent.removed', 'terminal.created', 'terminal.removed']) expect(kinds).toContain(k)
     const agents = node.steps.flatMap((s) => s.frames.flatMap((f) => f.events.filter((e) => e.type === 'agent.created').map((e) => e.payload as unknown as Record<string, unknown>)))

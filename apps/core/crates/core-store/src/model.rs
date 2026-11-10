@@ -126,6 +126,8 @@ entity! {
             model: String,
             effort: String,
             current_tool: String,
+            current_tool_summary: String,
+            current_tool_started_at: String,
             started_at: String,
             updated_at: String,
             completed_at: String,

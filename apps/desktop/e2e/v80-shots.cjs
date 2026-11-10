@@ -57,7 +57,7 @@ async function main() {
     await cmd('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
 
     // Ctrl+K: groups and prefixes
-    await evaluate(`${UI}.setView('monitor'); ${UI}.openSessionTab(null)`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor'); ${UI}.openSessionTab(null)`)
     await waitFor(`${TM}.list.length >= 4`, 30000, 'fixture sessions').catch(() => {})
     await sleep(1500)
     await key('k', 'KeyK', 75, 2)
@@ -141,7 +141,7 @@ async function main() {
     soft('History rows have a Continue button', cont > 0, String(cont))
 
     // Limits popover
-    await evaluate(`${UI}.setView('monitor')`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor')`)
     await sleep(600)
     await evaluate(`document.querySelector('[data-status-button]')?.click()`)
     await sleep(600)

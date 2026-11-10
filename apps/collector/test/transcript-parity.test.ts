@@ -44,6 +44,8 @@ function stateJson(s: TranscriptState) {
     lastReply: s.lastReply,
     tokens: s.tokens(),
     currentTool: s.currentTool(),
+    currentToolSummary: s.currentToolSummary(),
+    currentToolStartedAt: s.currentToolStartedAt(),
     pendingAsk: s.pendingAsk(),
   })
 }

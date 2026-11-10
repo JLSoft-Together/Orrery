@@ -30,3 +30,34 @@ describe('start view', () => {
     expect(localStorage.getItem('ccm.view')).toBeNull()
   })
 })
+
+describe('monitor mode and command panel', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('defaults to the board with the panel closed', () => {
+    const ui = useUiStore()
+    expect(ui.monitorMode).toBe('board')
+    expect(ui.cmdPanelOpen).toBe(false)
+  })
+
+  it('persists the mode and the panel state', async () => {
+    const ui = useUiStore()
+    ui.monitorMode = 'sky'
+    ui.cmdPanelOpen = true
+    await nextTick()
+    expect(localStorage.getItem('ccm.monitorMode')).toBe('sky')
+    expect(localStorage.getItem('ccm.cmdPanelOpen')).toBe('1')
+    setActivePinia(createPinia())
+    const again = useUiStore()
+    expect(again.monitorMode).toBe('sky')
+    expect(again.cmdPanelOpen).toBe(true)
+  })
+
+  it('ignores an unknown stored mode', () => {
+    localStorage.setItem('ccm.monitorMode', 'radar')
+    expect(useUiStore().monitorMode).toBe('board')
+  })
+})

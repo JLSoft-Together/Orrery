@@ -211,7 +211,8 @@ describe('transcript codex calls', () => {
     const state = new TranscriptState()
     state.apply(signals)
     expect(state.codexCalls).toEqual([iso(T0)])
-    expect(JSON.stringify(signals)).not.toContain('read-only')
+    expect(signals.filter((s) => s.k === 'tool_use').map((s) => (s as { summary?: string }).summary)).toEqual(['cat p.md | codex exec -s read-only -', 'echo codexify'])
+    expect(JSON.stringify(signals, (k, v: unknown) => (k === 'summary' ? undefined : v))).not.toContain('read-only')
   })
 })
 

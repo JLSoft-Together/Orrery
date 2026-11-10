@@ -105,7 +105,7 @@ async function main() {
     await waitFor(`!document.querySelector('[data-project-switcher]')`, 3000, 'Esc closes')
     check('Esc clears the query, then closes', true)
 
-    await evaluate(`${UI}.view = 'monitor'`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.view = 'monitor'`)
     await sleep(300)
     await key('k', 'KeyK', 75, 2)
     await waitFor(`!!document.querySelector('[role="dialog"] input')`, 5000, 'palette')

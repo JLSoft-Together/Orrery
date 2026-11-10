@@ -7,6 +7,8 @@ export interface StateView {
   model?: string
   effort?: string
   currentTool?: string
+  currentToolSummary?: string
+  currentToolStartedAt?: string
   lastAt?: string
   tokens?: { input: number; output: number; cacheRead: number }
   contextTokens?: number
@@ -178,6 +180,8 @@ export function buildAgentsOf(c: ViewContext, terminal: TerminalSession): Agent[
       effort: main.effort,
       status: mainStatus,
       currentTool: showTool ? main.currentTool : undefined,
+      currentToolSummary: showTool ? main.currentToolSummary : undefined,
+      currentToolStartedAt: showTool ? main.currentToolStartedAt : undefined,
       startedAt: terminal.startedAt,
       updatedAt: main.lastAt,
       completedAt: terminal.endedAt,
@@ -211,6 +215,8 @@ export function buildAgentsOf(c: ViewContext, terminal: TerminalSession): Agent[
       effort: e.state.effort,
       status,
       currentTool: status === 'working' ? e.state.currentTool : undefined,
+      currentToolSummary: status === 'working' ? e.state.currentToolSummary : undefined,
+      currentToolStartedAt: status === 'working' ? e.state.currentToolStartedAt : undefined,
       startedAt: e.startedAt,
       updatedAt: e.state.lastAt,
       completedAt: e.resolved ? e.completedAt : undefined,

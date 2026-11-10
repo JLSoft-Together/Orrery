@@ -171,7 +171,7 @@ mod tests {
     const T0: i64 = 1_791_400_000_000;
 
     fn use_(id: &str, at: &str) -> Signal {
-        Signal::ToolUse { id: id.into(), name: "Bash".into(), at: Some(at.into()), codex: false, device: false, touch: None, ask: None }
+        Signal::ToolUse { id: id.into(), name: "Bash".into(), summary: None, at: Some(at.into()), codex: false, device: false, touch: None, ask: None }
     }
 
     fn result(id: &str, at: &str, err: bool) -> Signal {

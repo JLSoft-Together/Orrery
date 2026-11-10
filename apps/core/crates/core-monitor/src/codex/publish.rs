@@ -240,6 +240,8 @@ fn agent_of(t: &Thread, place: &Place, status: AgentStatus, title: &str) -> Agen
     a.effort.clone_from(&s.effort);
     if status == AgentStatus::Working {
         a.current_tool = s.current_tool().map(str::to_owned);
+        a.current_tool_summary = s.current_tool_summary().map(str::to_owned);
+        a.current_tool_started_at = s.current_tool_started_at().map(str::to_owned);
     }
     a.started_at = Some(iso_of_ms(t.meta.created_at));
     a.updated_at.clone_from(&s.last_at);

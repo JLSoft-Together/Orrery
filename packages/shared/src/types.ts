@@ -98,6 +98,8 @@ export interface Agent {
   status: AgentStatus
 
   currentTool?: string
+  currentToolSummary?: string
+  currentToolStartedAt?: string
 
   startedAt?: string
   updatedAt?: string

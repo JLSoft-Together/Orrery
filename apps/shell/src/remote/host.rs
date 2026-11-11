@@ -75,6 +75,27 @@ impl Host for AppHost {
         let ep = self.app.state::<Shell>().pty.endpoint().ok()?;
         Some(PtyEndpoint { url: ep.url, protocol: ep.protocol })
     }
+
+    fn viewer(&self, owner: &str, channel: &str, args: Value, accept: &[String]) -> Value {
+        let guard = super::scope::enter(accept);
+        let list = args.as_array().map_or(&[][..], Vec::as_slice);
+        let raw = if crate::preview_ipc::handles(channel) {
+            crate::preview_ipc::dispatch(&self.app, owner, channel, list)
+        } else {
+            crate::desk::call_inside(&self.app, channel, args.clone())
+        };
+        if let Some(need) = guard.finish() {
+            return json!({ "needsConfirm": need });
+        }
+        match raw {
+            Ok(v) => json!({ "raw": v }),
+            Err(_) => json!({ "error": "internal" }),
+        }
+    }
+
+    fn viewer_release(&self, owner: &str) {
+        crate::preview_ipc::release(&self.app, owner);
+    }
 }
 
 pub fn install(app: &AppHandle) {
@@ -99,5 +120,21 @@ pub fn dispatch(app: &AppHandle, channel: &str, args: &[Value]) -> Result<Value,
 pub fn shutdown(app: &AppHandle) {
     if let Some(r) = app.try_state::<Remote>() {
         r.shutdown();
+    }
+}
+
+pub fn is_viewer_owner(owner: &str) -> bool {
+    owner.starts_with("remote:")
+}
+
+pub fn viewer_event(app: &AppHandle, owner: &str, event: super::VEvent) {
+    if let Some(r) = app.try_state::<Remote>() {
+        r.viewer_event(owner, event);
+    }
+}
+
+pub fn run_event(app: &AppHandle, payload: &Value) {
+    if let Some(r) = app.try_state::<Remote>() {
+        r.run_event(payload);
     }
 }

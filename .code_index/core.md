@@ -201,3 +201,7 @@ PLAN-v87 step 2: `orrery-core` replaces the Node PTY host behind `CCM_CORE_PTY=r
 - Key: `StaticKeypair` (private trong `Zeroizing`, Debug ẩn), `RelayKey` tương tự. Public key tính qua `DefaultResolver` của snow (không thêm crate x25519).
 - Vector cố định: `src/vectors.rs` (test, dùng `fixed_ephemeral_key_for_testing_only` qua `start_with` / `accept_with` pub(crate)) so với `tests/vectors.json`; sinh lại bằng `CRP_WRITE_VECTORS=1 cargo test -p core-remote-proto --lib`. WP-10 (Dart) kiểm chéo từ file này.
 - Test: `tests/{pair,session,transport,frame,relay,fuzz}.rs`; fuzz = xorshift 10 000 vòng qua mọi parser.
+
+## Link mở pane trên điện thoại (v97 WP-13)
+- `core-desk/src/phone/link.rs`: `terminal_of` (từ khoá episode `w:|d:`), `valid_link`, `from_host`, `label`; `phone/send.rs` `Text{link, link_label}` -> ntfy `click` + `actions[view]`.
+- `core-desk/src/telegram/pane_link.rs`: `Tg::with_pane_link(keys, episode, vi)` thêm hàng nút URL khi host `remote.link` trả link hợp lệ (gọi trong `episodes.rs::handle`).

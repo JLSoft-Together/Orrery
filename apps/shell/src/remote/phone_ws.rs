@@ -11,6 +11,8 @@ use super::confirm::{ask_event, command_of, Confirms};
 use super::ctx::Asked;
 use super::dashboard::{error, Phone};
 use super::pty_bridge::{Attach, FromHub};
+use super::viewer::{fits, with_accept, ViewerState};
+use super::viewer_map::lookup;
 use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS};
 
 pub const WS_TIMEOUT: Duration = Duration::from_secs(5);
@@ -40,10 +42,18 @@ pub struct Extra {
     pub(super) claims: HashSet<u32>,
     pub(super) backlog: Arc<AtomicUsize>,
     pub(super) nonce: String,
+    pub(super) v: ViewerState,
+}
+
+impl Done {
+    pub(super) fn new(id: String, action: String, cmd: Value, confirmed: bool, result: Result<Value, &'static str>) -> Done {
+        Done { id, action, cmd, confirmed, result }
+    }
 }
 
 impl Extra {
-    pub fn new(ws_rx: broadcast::Receiver<WsEvent>) -> Extra {
+    pub fn new(ws_rx: broadcast::Receiver<WsEvent>, device: &str) -> Extra {
+        let nonce = crate::config::try_random_hex(8).unwrap_or_default();
         let (done_tx, done_rx) = mpsc::channel(16);
         let (hub_tx, hub_rx) = mpsc::channel(64);
         Extra {
@@ -59,7 +69,8 @@ impl Extra {
             hub_rx,
             claims: HashSet::new(),
             backlog: Arc::new(AtomicUsize::new(0)),
-            nonce: crate::config::try_random_hex(8).unwrap_or_default(),
+            v: ViewerState::new(device, &nonce),
+            nonce,
         }
     }
 }
@@ -143,7 +154,10 @@ impl Phone {
                 }
                 self.call(id, t, command_of(v), false).await
             }
-            _ => self.sec.json(&error(Value::from(id), "denied")).await,
+            _ => match lookup(t) {
+                Some(spec) => self.viewer_command(id, spec, v).await,
+                None => self.sec.json(&error(Value::from(id), "denied")).await,
+            },
         }
     }
 
@@ -185,6 +199,7 @@ impl Phone {
 
     pub(super) async fn on_done(&mut self, done: Done) -> bool {
         self.x.in_flight = self.x.in_flight.saturating_sub(1);
+        self.viewer_settle(&done.action, &done.cmd);
         let id = done.id.as_str();
         let v = match done.result {
             Ok(v) => v,
@@ -198,11 +213,22 @@ impl Phone {
             self.x.ws_rev = None;
             return self.sec.json(&json!({ "re": id, "ok": true })).await && self.send_ws_snapshot().await;
         }
-        let Some(needs) = v.get("needsConfirm").filter(|n| n.is_object()) else { return self.sec.json(&reply_of(id, &v)).await };
-        if done.confirmed {
+        let viewer = lookup(&done.action).is_some();
+        if viewer {
+            self.viewer_after(&done.action, &done.cmd, &v);
+        }
+        let Some(needs) = v.get("needsConfirm").filter(|n| n.is_object()) else {
+            let reply = reply_of(id, &v);
+            if viewer && !fits(&reply) {
+                return self.sec.json(&error(Value::from(id), "limit")).await;
+            }
+            return self.sec.json(&reply).await;
+        };
+        if done.confirmed && !viewer {
             return self.sec.json(&error(Value::from(id), "busy")).await;
         }
-        let Some(cid) = self.x.confirms.add(done.cmd, Instant::now()) else { return self.sec.json(&error(Value::from(id), "internal")).await };
+        let cmd = if viewer { with_accept(done.cmd, needs) } else { done.cmd };
+        let Some(cid) = self.x.confirms.add(cmd, Instant::now()) else { return self.sec.json(&error(Value::from(id), "internal")).await };
         let event = ask_event(&cid, id, needs);
         self.sec.json(&json!({ "re": id, "ok": true, "confirm": cid })).await && self.sec.json(&event).await
     }
@@ -213,9 +239,21 @@ impl Phone {
         if v.get("ok") != Some(&Value::Bool(true)) {
             return self.sec.json(&json!({ "re": id, "ok": true, "cancelled": true })).await;
         }
-        let Some(t) = cmd.get("t").and_then(Value::as_str).filter(|t| WS_COMMANDS.contains(t)).map(str::to_owned) else {
+        let Some(t) = cmd.get("t").and_then(Value::as_str).map(str::to_owned) else {
             return self.sec.json(&error(Value::from(id), "invalid")).await;
         };
-        self.call(id, &t, cmd, true).await
+        if WS_COMMANDS.contains(&t.as_str()) {
+            return self.call(id, &t, cmd, true).await;
+        }
+        match lookup(&t) {
+            Some(spec) => {
+                let now = Instant::now();
+                if !self.ctx.viewer.take_rate(&self.device, now) || (spec.write && !self.ctx.viewer.take_write(&self.device, now)) {
+                    return self.sec.json(&error(Value::from(id), "rate")).await;
+                }
+                self.viewer_call(id, spec, cmd, true).await
+            }
+            None => self.sec.json(&error(Value::from(id), "invalid")).await,
+        }
     }
 }

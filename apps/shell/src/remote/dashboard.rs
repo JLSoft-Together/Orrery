@@ -114,7 +114,7 @@ async fn next_event(feed: &mut Option<Feed>) -> Option<Arc<str>> {
 impl Phone {
     pub fn new(ctx: Arc<Ctx>, sec: Secure, device: String) -> Phone {
         let (direct_tx, direct_rx) = mpsc::channel(32);
-        let x = Extra::new(ctx.board.subscribe());
+        let x = Extra::new(ctx.board.subscribe(), &device);
         Phone { ctx, sec, device, reasm: Reassembler::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, x }
     }
 
@@ -160,6 +160,11 @@ impl Phone {
                 }
                 Some(msg) = self.x.hub_rx.recv() => {
                     if !self.on_hub(msg).await {
+                        break;
+                    }
+                }
+                Some(ev) = self.x.v.rx.recv() => {
+                    if !self.on_vevent(ev).await {
                         break;
                     }
                 }

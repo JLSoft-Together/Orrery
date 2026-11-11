@@ -38,6 +38,10 @@ pub fn handles(channel: &str) -> bool {
 fn notify_changes(app: &AppHandle, root: &str) {
     let Some(w) = app.try_state::<PreviewWatch>() else { return };
     for owner in w.changes.owners_of(root) {
+        if crate::remote::host::is_viewer_owner(&owner) {
+            crate::remote::host::viewer_event(app, &owner, crate::remote::VEvent::Git { root: root.to_owned() });
+            continue;
+        }
         let _ = app.emit_to(owner.as_str(), "ccm:changes-updated", json!({"root": root}));
     }
 }
@@ -49,6 +53,10 @@ fn on_root_change(app: &AppHandle, root: &str, changed: Vec<String>) {
     notify_changes(app, root);
     let Some(w) = app.try_state::<PreviewWatch>() else { return };
     for owner in w.files.owners_of(root) {
+        if crate::remote::host::is_viewer_owner(&owner) {
+            crate::remote::host::viewer_event(app, &owner, crate::remote::VEvent::Fs { root: root.to_owned(), paths: changed.clone() });
+            continue;
+        }
         let _ = app.emit_to(owner.as_str(), "ccm:preview-changed", json!({"root": root, "tokens": crate::preview_serve::tokens_under(root), "paths": changed}));
     }
 }

@@ -82,12 +82,30 @@ Event `ws.snapshot {rev, tabs[]}` / `ws.patch {base, rev, ops[]}` (`ops` = JSON 
 Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Workspace summary (không thì `notFound`). Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}` (`code:null` = mất hub), `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị (thứ 5 → `limit`).
 
 ### 4.5 Viewer
-`fs.list {root, dir}` · `fs.files {root}` · `fs.read {path}` · `fs.write {path, text, base?}` · `fs.watch {root}` / `fs.unwatch` ·
-`git.status {root}` · `git.diff {root, path}` · `git.stage|unstage {root, paths[]}` · `git.commit {root, message, amend?}` · `git.discard {root, path}` ·
-`log.refs {root}` · `log.page {root, query}` · `log.commit {root, hash}` · `log.diff {root, hash, path}` ·
-`branch.create|delete|update|fetch|push {root, ...}` · `run.configs {root}` · `run.start|stop|reload {…}` · `run.sessions`.
-Map 1–1 sang kênh `ccm:*` của core-desk (`.planning/research/v97-rust-side.md` §5), cùng Gate preview.
-Event: `fs.changed {root, paths[]}`, `git.changed {root}`, `run.event {...}`.
+Bảng cố định (lệnh ngoài bảng → `denied`); path luôn tuyệt đối, phải nằm trong root pane đang sống hoặc grant của desktop (full-access của desktop KHÔNG áp cho điện thoại); không có `grant-folder`, chọn thư mục / file, mở path, reveal.
+
+| Lệnh | Args | Kênh | Reply `data` |
+|---|---|---|---|
+| `fs.list` | `{root, dir}` | `ccm:list-dir` | kết quả list-dir |
+| `fs.files` | `{root}` | `ccm:list-files` | danh sách file |
+| `fs.read` | `{path}` | `ccm:read-file` | `{kind: text|binary|image|too-large|missing, path, size, mtimeMs, text?, eol?, bom?}` (desk đọc max 2 MiB, nhị phân / ảnh không có nội dung) |
+| `fs.write` | `{path, text, base?}` (`base` = `mtimeMs` đã đọc → `conflict`) | `ccm:file-write` | `{ok, …}` hoặc `{ok:false, error}` (chỉ ghi đè file có sẵn, 20 / phút) |
+| `fs.watch` / `fs.unwatch` | `{root}` | `ccm:watch` / `unwatch` | `true` / `false` |
+| `git.status` · `git.diff` · `git.file` | `{root}` · `{root, path, opts?}` · `{path}` | `ccm:changes-status` / `changes-diff` / `changes-file` | như desktop |
+| `git.watch` / `git.unwatch` | `{root}` | `ccm:changes-watch` / `changes-unwatch` | `true` / `false` |
+| `git.stage` · `git.unstage` · `git.commit` | `{root, paths[]|hunk}` · `{root, paths[]}` · `{root, message, amend?}` | `ccm:git-stage` / `git-unstage` / `git-commit` | `{ok, …}`; amend hỏi xác nhận |
+| `git.discard` | `{root, path, hunk?}` | `ccm:changes-discard` | luôn hỏi xác nhận trước (gateway) |
+| `log.refs` · `log.page` · `log.commit` · `log.diff` | `{root}` · `{root, query}` · `{root, hash}` · `{root, hash, path}` | `ccm:log-refs` / `log-page` / `log-commit` / `log-diff` | như desktop |
+| `branch.create` · `branch.update` · `branch.fetch` · `branch.push-preview` | `{root, …}` | `ccm:git-branch-create` / `git-branch-update` / `git-fetch` / `git-push-preview` | timeout 60 s với update / fetch |
+| `branch.delete` | `{root, ref}` | `ccm:git-branch-delete` | hỏi xác nhận (kể cả force khi chưa merge) |
+| `branch.push` | `{root, ref, remote?, branch?, setUpstream?}` | `ccm:git-push` | luôn hỏi xác nhận trước (gateway), 60 s |
+| `run.configs` · `run.devices` · `run.sessions` | `{root}` · — · — | `ccm:run-configs` / `run-devices` / `run-sessions` | list |
+| `run.start` | `{root, configId, deviceId?}` | `ccm:run-start` | config chưa trust → hỏi xác nhận |
+| `run.stop` · `run.reload` | `{sessionId}` · `{sessionId, hot?}` | `ccm:run-stop` / `run-reload` | |
+
+Reply thành công `{re, ok:true, data}` (`data` là kết quả nguyên của desk; lỗi nghiệp vụ nằm trong `data.ok === false` + `data.error`: `conflict`, `not-merged`, `failed`…); từ chối / ngoài root → `{ok:false, error:"denied"}`; thiếu / sai field → `invalid`; reply quá ~900 000 byte → `limit` (proto 1 MiB / message); desktop không phản hồi → `timeout` (15 s, 60 s với fetch / push / run.start) hoặc `offline`. Max 120 lệnh viewer / phút / thiết bị, `fs.write` 20 / phút, 8 watch / phiên (thứ 9 → `limit`), 4 lệnh chờ / phiên (`busy`).
+Event (chỉ tới phiên đã đăng ký, gom 100 ms): `fs.changed {root, paths[]}` (sau `fs.watch`), `git.changed {root}` (sau `git.watch`), `run.event {event}` (`event` = payload `ccm:run-event`; tự đăng ký khi phiên gọi `run.sessions` / `run.start`). Phiên đóng → mọi watch nhả.
+Xác nhận (4.6) dùng cho `branch.delete`, `git.discard`, `branch.push`, `git.commit` amend, `run.start` config lạ: không hộp native nào hiện trên desktop; có thể có 2 lượt `confirm.ask` liên tiếp (vd xoá nhánh chưa merge → xoá cưỡng bức).
 
 ### 4.6 Xác nhận
 Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confirm.ask {cid, re, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}` (`cid` dùng 1 lần); từ chối / quá 60 s / phiên đóng → lệnh gốc kết thúc `{cancelled:true}`. `confirmed` chỉ gateway đặt.
@@ -103,3 +121,10 @@ Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confir
 - URL: `https://orrery-relay.jinvu.workers.dev` (route, giới hạn, lệnh test / deploy: `apps/relay/README.md`).
 - `POST /register` / `/revoke`: body có `ts` (giây), chữ ký Ed25519 trên `"orrery-register/1" ‖ machineId ‖ ts`. Desktop WS `/m/<id>?ts&sig` ký `"orrery-machine/1" ‖ machineId ‖ ts`; `ts` mỗi lần nối lại phải lớn hơn lần trước (không thì 409).
 - Desktop mất kết nối → mọi điện thoại của máy đó bị đóng `4503`.
+
+### 7.1 Link mở pane từ Telegram / ntfy
+- Tin `waiting` / `question` / `permission` / `done` của 1 pane có nút URL Telegram "Mở trên điện thoại" (hàng riêng dưới các nút trả lời) / ntfy `click` + action `view` → `https://orrery-relay.jinvu.workers.dev/o/<machineId>/<paneKey>` (trang bounce của relay, mục trên). Tin `job` / `limit` / `disk` / `note` không có link.
+- Core gọi host `remote.link {terminalId}` → vỏ trả `{url}` hoặc `{url: null}`. `url` chỉ có khi remote đang chạy, có ≥ 1 điện thoại đã ghép, Workspace summary mới nhất có pane với `terminalId` đó, relay `https`, `paneKey` khớp `[A-Za-z0-9_.:-]{1,128}`. Core kiểm lại (https, đúng dạng `/o/<machine>/<pane>`, không query) trước khi gắn; không hợp lệ → tin y như cũ.
+- ntfy suy `terminalId` từ khoá episode (`w:<terminalId>|…`, `d:<terminalId>|…`) vì tin phone không mang `terminalId`.
+- App: `orrery-remote://m/<machineId>/p/<paneKey>` (Android intent-filter, iOS `CFBundleURLTypes`) và `https://orrery-relay.jinvu.workers.dev/o/<machineId>/<paneKey>` (Android App Links `autoVerify`, iOS Associated Domains `applinks:`). Máy không có trong danh sách đã ghép → snackbar "Chưa ghép máy này". Máy có rồi → chọn máy, mở Workspace, chờ summary (max 20 s), mở tab chứa pane; summary mới mà không có pane → "Pane này không còn mở".
+- Deploy relay cần `ANDROID_CERT_SHA256` (keystore debug: `1C:73:97:…:D6:61`, trong `apps/relay/wrangler.jsonc`) và `APPLE_APP_ID` (để trống tới khi có Team ID); sau đó `GET /.well-known/assetlinks.json` trả package `dev.ccm.orrery.remote`.

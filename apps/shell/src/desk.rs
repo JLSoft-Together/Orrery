@@ -52,6 +52,9 @@ pub fn wire(app: &AppHandle) {
 }
 
 pub fn emit_app(app: &AppHandle, event: &str, payload: Value) {
+    if event == "ccm:run-event" {
+        crate::remote::host::run_event(app, &payload);
+    }
     for label in [MAIN, COMPACT] {
         if app.get_webview_window(label).is_some() {
             let _ = app.emit_to(label, event, payload.clone());

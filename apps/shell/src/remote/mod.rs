@@ -11,15 +11,20 @@ mod limits;
 mod link;
 mod mdns;
 mod pair;
+pub mod pane_link;
 mod patch;
 mod phone_pty;
 mod phone_ws;
 pub mod pty_bridge;
 mod rebind;
+pub mod scope;
 mod relay;
 mod session;
 mod status;
 mod text;
+mod viewer;
+mod viewer_events;
+mod viewer_map;
 mod workspace;
 
 #[cfg(test)]
@@ -35,6 +40,10 @@ mod unit_tests;
 #[cfg(test)]
 mod ws_tests;
 #[cfg(test)]
+mod viewer_tests;
+#[cfg(test)]
+mod viewer_guard_tests;
+#[cfg(test)]
 mod pty_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
@@ -48,6 +57,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::watch;
 
 pub use ctx::{Asked, Control, Host, PtyEndpoint, Welcome};
+pub use viewer_events::VEvent;
 
 use config::{now_secs, port_override, Config};
 use ctx::Ctx;
@@ -287,6 +297,18 @@ impl Remote {
                 true
             }
             None => false,
+        }
+    }
+
+    pub fn viewer_event(&self, owner: &str, event: VEvent) {
+        if let Some(c) = lock(&self.ctx).clone() {
+            c.viewer.push(owner, event);
+        }
+    }
+
+    pub fn run_event(&self, payload: &Value) {
+        if let Some(c) = lock(&self.ctx).clone() {
+            c.viewer.push_run(payload);
         }
     }
 

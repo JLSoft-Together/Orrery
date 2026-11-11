@@ -98,6 +98,9 @@ fn e2e_answer(app: &AppHandle, message: &str) -> Option<bool> {
 }
 
 pub fn confirm(app: &AppHandle, message: &str, detail: &str, ok: &str, cancel: &str) -> bool {
+    if let Some(answer) = crate::remote::scope::confirm(message, detail, ok, cancel) {
+        return answer;
+    }
     if let Some(answer) = e2e_answer(app, message) {
         return answer;
     }
@@ -272,6 +275,7 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
         "agentData.pickFolder" => Ok(agent_pick(app, p)),
         "agentData.stopCollector" => Ok(crate::collector::stop(app)),
         "agentData.startCollector" => Ok(crate::collector::start(app)),
+        "remote.link" => Ok(crate::remote::pane_link::call(app, p)),
         "telegram.notice" => Ok(json!(crate::notice::telegram_notice(app, &locale(app), p))),
         "resources.report" => Ok(core_serve::sampler::latest_resources().unwrap_or(Value::Null)),
         m if m.starts_with("preview.") => crate::preview_host::call(app, m, p),

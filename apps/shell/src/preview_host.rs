@@ -107,7 +107,7 @@ impl Gate {
     pub fn allowed_roots(&self, roots: Roots, fresh: bool) -> Vec<String> {
         let mut all = roots(fresh);
         all.extend(self.grants.list());
-        if self.full.get() {
+        if self.full.get() && !crate::remote::scope::active() {
             all.extend(self.filesystem_roots());
         }
         real_roots(&all)

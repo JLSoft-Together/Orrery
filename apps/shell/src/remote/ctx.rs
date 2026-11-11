@@ -17,6 +17,7 @@ use super::keys::Keys;
 use super::limits::{Gate, MAX_SESSIONS};
 use super::pair::Pairing;
 use super::status::Shape;
+use super::viewer_events::Hub;
 use super::workspace::Board;
 use crate::state::lock;
 
@@ -57,6 +58,8 @@ pub trait Host: Send + Sync + 'static {
     fn awake(&self, on: bool);
     fn ask(&self, action: &str, args: Value) -> Asked;
     fn pty(&self) -> Option<PtyEndpoint>;
+    fn viewer(&self, owner: &str, channel: &str, args: Value, accept: &[String]) -> Value;
+    fn viewer_release(&self, owner: &str);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,6 +93,7 @@ pub struct Ctx {
     unknown_at: Mutex<Option<Instant>>,
     pair_tries: Mutex<HashMap<String, Vec<Instant>>>,
     pub board: Board,
+    pub viewer: Hub,
 }
 
 impl Ctx {
@@ -114,6 +118,7 @@ impl Ctx {
             unknown_at: Mutex::new(None),
             pair_tries: Mutex::new(HashMap::new()),
             board: Board::default(),
+            viewer: Hub::default(),
         }
     }
 

@@ -37,9 +37,16 @@ pub struct TestHost {
     pub asks: Mutex<Vec<(String, Value)>>,
     pub answer_with: Mutex<Option<Answer>>,
     pub pty: Mutex<Option<(String, String)>>,
+    pub viewer: Mutex<Option<ViewerFn>>,
+    pub released: Mutex<Vec<String>>,
+    pub on_release: Mutex<Option<ReleaseFn>>,
+    pub views: Mutex<Vec<Viewed>>,
 }
 
 pub type Answer = Box<dyn Fn(&str, &Value) -> Option<Value> + Send + Sync>;
+pub type ReleaseFn = Box<dyn Fn(&str) + Send + Sync>;
+pub type Viewed = (String, String, Value, Vec<String>);
+pub type ViewerFn = Box<dyn Fn(&str, &str, Value, &[String]) -> Value + Send + Sync>;
 
 impl Host for TestHost {
     fn confirm_pair(&self, name: &str) -> bool {
@@ -74,6 +81,19 @@ impl Host for TestHost {
     }
     fn pty(&self) -> Option<PtyEndpoint> {
         lock(&self.pty).clone().map(|(url, protocol)| PtyEndpoint { url, protocol })
+    }
+    fn viewer(&self, owner: &str, channel: &str, args: Value, accept: &[String]) -> Value {
+        lock(&self.views).push((owner.to_owned(), channel.to_owned(), args.clone(), accept.to_vec()));
+        match lock(&self.viewer).as_ref() {
+            Some(f) => f(owner, channel, args, accept),
+            None => json!({ "error": "offline" }),
+        }
+    }
+    fn viewer_release(&self, owner: &str) {
+        lock(&self.released).push(owner.to_owned());
+        if let Some(f) = lock(&self.on_release).as_ref() {
+            f(owner);
+        }
     }
 }
 

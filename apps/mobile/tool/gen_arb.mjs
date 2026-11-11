@@ -87,6 +87,8 @@ const T = {
   filterIdle: S('Idle', 'Rảnh'),
   missionEmpty: S('No pane matches this filter', 'Không có pane nào khớp bộ lọc'),
   tabClosed: S('This tab was closed on the computer', 'Tab này đã đóng trên máy tính'),
+  linkUnknownMachine: S('This computer is not paired on this phone', 'Chưa ghép máy này'),
+  linkPaneGone: S('That pane is no longer open', 'Pane này không còn mở'),
   paneClosed: S('The pane you were viewing was closed', 'Pane đang xem đã đóng'),
   tabActions: S('Tab actions', 'Thao tác tab'),
   renameTab: S('Rename tab', 'Đổi tên tab'),

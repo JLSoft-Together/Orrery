@@ -590,6 +590,18 @@ abstract class AppLocalizations {
   /// **'This tab was closed on the computer'**
   String get tabClosed;
 
+  /// No description provided for @linkUnknownMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer is not paired on this phone'**
+  String get linkUnknownMachine;
+
+  /// No description provided for @linkPaneGone.
+  ///
+  /// In en, this message translates to:
+  /// **'That pane is no longer open'**
+  String get linkPaneGone;
+
   /// No description provided for @paneClosed.
   ///
   /// In en, this message translates to:

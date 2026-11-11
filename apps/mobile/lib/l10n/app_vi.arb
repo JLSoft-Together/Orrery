@@ -82,6 +82,8 @@
   "filterIdle": "Rảnh",
   "missionEmpty": "Không có pane nào khớp bộ lọc",
   "tabClosed": "Tab này đã đóng trên máy tính",
+  "linkUnknownMachine": "Chưa ghép máy này",
+  "linkPaneGone": "Pane này không còn mở",
   "paneClosed": "Pane đang xem đã đóng",
   "tabActions": "Thao tác tab",
   "renameTab": "Đổi tên tab",

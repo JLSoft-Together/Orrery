@@ -285,6 +285,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tabClosed => 'Tab này đã đóng trên máy tính';
 
   @override
+  String get linkUnknownMachine => 'Chưa ghép máy này';
+
+  @override
+  String get linkPaneGone => 'Pane này không còn mở';
+
+  @override
   String get paneClosed => 'Pane đang xem đã đóng';
 
   @override

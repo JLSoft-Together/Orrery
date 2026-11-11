@@ -86,7 +86,7 @@ impl Tg {
             }
         }
         let vi = self.vi();
-        let keys = receiving.then(|| self.episode_keys(e, &route, vi));
+        let keys = self.with_pane_link(receiving.then(|| self.episode_keys(e, &route, vi)), e, vi);
         let target = Target::Terminal(terminal);
         if reason == "done" && digest {
             return self.digest_done(&route, e, vi, target, keys, include_reply);

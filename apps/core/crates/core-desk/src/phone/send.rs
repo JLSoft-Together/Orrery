@@ -12,6 +12,8 @@ pub struct Dest {
 pub struct Text {
     pub title: String,
     pub body: String,
+    pub link: Option<String>,
+    pub link_label: &'static str,
 }
 
 fn has_query(u: &url::Url) -> bool {
@@ -130,12 +132,12 @@ pub fn phone_text(m: &Value, en: bool, now_ms: f64, home: &str, platform: &str) 
     let waited = m.get("since").and_then(Value::as_f64).map(|s| js_round((now_ms - s) / 60_000.0).max(0.0));
     let name = m.get("name").and_then(Value::as_str).unwrap_or("");
     let body = if en { body_en(m, reason, waited) } else { body_vi(m, reason, waited) };
-    Text { title: mask(&format!("Orrery · {name}"), home, platform), body: mask(&body, home, platform) }
+    Text { title: mask(&format!("Orrery · {name}"), home, platform), body: mask(&body, home, platform), link: None, link_label: "" }
 }
 
 pub fn test_text(en: bool) -> Text {
     let body = if en { "Test from Orrery: phone notifications work." } else { "Thử từ Orrery: báo ra điện thoại đang chạy." };
-    Text { title: "Orrery".into(), body: body.into() }
+    Text { title: "Orrery".into(), body: body.into(), link: None, link_label: "" }
 }
 
 pub fn build_request(dest: &Dest, msg: &Text, over: Option<&str>) -> (String, String) {
@@ -148,6 +150,10 @@ pub fn build_request(dest: &Dest, msg: &Text, over: Option<&str>) -> (String, St
         m.insert("title".into(), json!(msg.title));
         m.insert("message".into(), json!(msg.body));
         m.insert("tags".into(), json!(["robot"]));
+        if let Some(link) = &msg.link {
+            m.insert("click".into(), json!(link));
+            m.insert("actions".into(), json!([{"action": "view", "label": msg.link_label, "url": link}]));
+        }
         Value::Object(m)
     } else {
         json!({"username": "Orrery", "content": format!("**{}**\n{}", msg.title, msg.body), "allowed_mentions": {"parse": []}})
@@ -204,6 +210,14 @@ mod tests {
         let t = phone_text(&m, true, 150_000.0, "/h", "darwin");
         assert_eq!(t.title, "Orrery · proj");
         assert_eq!(t.body, "Needs approval: Bash (3 min)");
+        let dest = Dest { channel: "ntfy", url: "https://ntfy.sh".into(), topic: Some("t".into()) };
+        let plain: Value = serde_json::from_str(&build_request(&dest, &t, None).1).unwrap();
+        assert!(plain.get("click").is_none() && plain.get("actions").is_none());
+        let linked = Text { link: Some("https://r.dev/o/m/p1".into()), link_label: "Open on phone", ..t };
+        let with: Value = serde_json::from_str(&build_request(&dest, &linked, None).1).unwrap();
+        assert_eq!(with["click"], "https://r.dev/o/m/p1");
+        assert_eq!(with["actions"][0]["url"], "https://r.dev/o/m/p1");
+        assert_eq!(with["actions"][0]["label"], "Open on phone");
         let mut r = RateLimiter::new(2, 10.0);
         assert!(r.take(0.0) && r.take(1.0) && !r.take(2.0) && r.take(10.0));
         assert_eq!(e2e_override(Some("http://localhost:9/x")).as_deref(), Some("http://localhost:9/x"));

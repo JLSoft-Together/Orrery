@@ -301,6 +301,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabClosed => 'This tab was closed on the computer';
 
   @override
+  String get linkUnknownMachine => 'This computer is not paired on this phone';
+
+  @override
+  String get linkPaneGone => 'That pane is no longer open';
+
+  @override
   String get paneClosed => 'The pane you were viewing was closed';
 
   @override

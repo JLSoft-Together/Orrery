@@ -15,6 +15,7 @@ pub mod jsx;
 pub mod mt;
 pub mod message;
 pub mod outbound;
+pub mod pane_link;
 pub mod parse;
 pub mod poll;
 pub mod report;

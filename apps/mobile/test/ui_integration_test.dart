@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orrery_remote/app/link_source.dart';
 import 'package:orrery_remote/main.dart';
 import 'package:orrery_remote/remote/connection.dart';
 import 'package:orrery_remote/remote/crypto_rust.dart';
@@ -90,7 +91,11 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [remoteHostProvider.overrideWithValue(host)],
-          child: OrreryRemoteApp(rustStatus: '', host: host),
+          child: OrreryRemoteApp(
+            rustStatus: '',
+            host: host,
+            linkSource: const _NoLinks(),
+          ),
         ),
       );
       await until(
@@ -150,4 +155,11 @@ void main() {
       }
     },
   );
+}
+
+class _NoLinks implements LinkSource {
+  const _NoLinks();
+
+  @override
+  Stream<Uri> get links => const Stream<Uri>.empty();
 }

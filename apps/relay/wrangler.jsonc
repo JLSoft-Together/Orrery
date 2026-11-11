@@ -13,7 +13,7 @@
     { "name": "LIMITER", "namespace_id": "9701", "simple": { "limit": 30, "period": 60 } }
   ],
   "vars": {
-    "ANDROID_CERT_SHA256": "",
+    "ANDROID_CERT_SHA256": "1C:73:97:FC:D7:37:54:00:04:77:4E:13:E5:47:71:45:AB:13:57:8D:95:BF:3D:9A:B9:20:30:15:88:15:D6:61",
     "APPLE_APP_ID": ""
   }
 }

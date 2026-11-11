@@ -166,6 +166,8 @@
   "filterIdle": "Idle",
   "missionEmpty": "No pane matches this filter",
   "tabClosed": "This tab was closed on the computer",
+  "linkUnknownMachine": "This computer is not paired on this phone",
+  "linkPaneGone": "That pane is no longer open",
   "paneClosed": "The pane you were viewing was closed",
   "tabActions": "Tab actions",
   "renameTab": "Rename tab",

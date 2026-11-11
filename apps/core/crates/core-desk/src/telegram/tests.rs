@@ -53,6 +53,7 @@ struct World {
     clock: Arc<AtomicI64>,
     events: Arc<Mutex<Vec<Value>>>,
     keychain: Arc<Mutex<bool>>,
+    link: Arc<Mutex<Value>>,
     _dir: std::path::PathBuf,
 }
 
@@ -90,6 +91,8 @@ fn world() -> World {
     let clock = Arc::new(AtomicI64::new(1_800_000_000_000));
     let events: Arc<Mutex<Vec<Value>>> = Arc::default();
     let keychain = Arc::new(Mutex::new(true));
+    let link: Arc<Mutex<Value>> = Arc::new(Mutex::new(Value::Null));
+    let lk = link.clone();
     let (a, ans, kc) = (asks.clone(), answer.clone(), keychain.clone());
     let host = Arc::new(move |m: &str, p: Value| -> Result<Value, DeskError> {
         match m {
@@ -97,6 +100,7 @@ fn world() -> World {
             "keychain.seal" => Ok(json!(format!("S{}", p["plain"].as_str().unwrap_or("")))),
             "keychain.unseal" => p["sealed"].as_str().and_then(|s| s.strip_prefix('S')).map(|s| json!(s)).ok_or(DeskError::Host("bad".into())),
             "telegram.locale" => Ok(json!("en")),
+            "remote.link" => Ok(lk.lock().unwrap().clone()),
             "telegram.ask" => {
                 a.lock().unwrap().push(p["req"].clone());
                 Ok(ans.lock().unwrap().clone())
@@ -121,7 +125,7 @@ fn world() -> World {
         album_ms: 0,
         mt: None,
     };
-    World { tg: Tg::new(deps), http, asks, answer, clock, events, keychain, _dir: dir }
+    World { tg: Tg::new(deps), http, asks, answer, clock, events, keychain, link, _dir: dir }
 }
 
 fn msg(from: i64, text: &str, reply_to: Option<i64>) -> Value {
@@ -289,5 +293,31 @@ fn episodes_go_to_the_topic_with_buttons_only_when_receiving() {
     let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
     assert_eq!(last["reply_markup"]["inline_keyboard"][0][0]["text"], "✅ Approve plan");
     assert_eq!(last["message_thread_id"], 5);
+    w.tg.stop();
+}
+
+#[test]
+fn pane_link_button_only_when_the_shell_returns_a_valid_link() {
+    let w = world();
+    setup(&w, false);
+    let ep = |id: &str| json!({"type": "telegram", "episode": id, "reason": "done", "terminalId": "t1", "name": "app", "cwd": proj("/p/app"), "worked": 600_000});
+    assert!(w.tg.handle(&ep("l0")));
+    let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
+    assert!(last.get("reply_markup").is_none());
+    *w.link.lock().unwrap() = json!({"url": "https://evil.dev/x"});
+    assert!(w.tg.handle(&ep("l1")));
+    let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
+    assert!(last.get("reply_markup").is_none());
+    *w.link.lock().unwrap() = json!({"url": "https://r.dev/o/abcdefghijklmnop/p1"});
+    assert!(w.tg.handle(&ep("l2")));
+    let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
+    assert_eq!(last["reply_markup"]["inline_keyboard"], json!([[{"text": "Open on phone", "url": "https://r.dev/o/abcdefghijklmnop/p1"}]]));
+    w.tg.lock().receiving = true;
+    assert!(w.tg.handle(&ep("l3")));
+    let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
+    let rows = last["reply_markup"]["inline_keyboard"].as_array().unwrap();
+    assert!(rows.len() >= 2);
+    assert_eq!(rows[rows.len() - 1][0]["url"], "https://r.dev/o/abcdefghijklmnop/p1");
+    assert!(rows[0][0].get("callback_data").is_some());
     w.tg.stop();
 }

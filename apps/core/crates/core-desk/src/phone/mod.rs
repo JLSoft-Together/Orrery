@@ -1,3 +1,4 @@
+pub mod link;
 pub mod send;
 
 use crate::claude::{js_trim, Sys};
@@ -270,7 +271,10 @@ impl Phone {
                 st.seen.remove(&old);
             }
         }
-        let text = phone_text(m, locale_en(ctx), util::now_ms(), &self.sys.home, self.sys.platform());
+        let en = locale_en(ctx);
+        let mut text = phone_text(m, en, util::now_ms(), &self.sys.home, self.sys.platform());
+        text.link = link::terminal_of(m).and_then(|t| link::from_host(ctx.host("remote.link", json!({"terminalId": t})).ok()));
+        text.link_label = link::label(en);
         self.send(ctx, &mut st, &dest, &text).is_none()
     }
 }

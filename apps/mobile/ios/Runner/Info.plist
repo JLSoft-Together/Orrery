@@ -66,6 +66,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>dev.ccm.orrery.remote</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>orrery-remote</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Orrery Remote connects to Orrery on your computer over the local network.</string>
 	<key>NSBonjourServices</key>

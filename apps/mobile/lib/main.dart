@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orrery_remote/app/bootstrap.dart';
+import 'package:orrery_remote/app/deep_link_host.dart';
 import 'package:orrery_remote/app/home_page.dart';
+import 'package:orrery_remote/app/link_source.dart';
 import 'package:orrery_remote/l10n/app_localizations.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
@@ -38,11 +40,13 @@ class OrreryRemoteApp extends StatefulWidget {
     required this.rustStatus,
     this.terminal,
     this.host,
+    this.linkSource = const AppLinksSource(),
   });
 
   final String rustStatus;
   final Terminal? terminal;
   final RemoteHost? host;
+  final LinkSource linkSource;
 
   @override
   State<OrreryRemoteApp> createState() => _OrreryRemoteAppState();
@@ -116,6 +120,11 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => DeepLinkHost(
+            navigatorKey: _navigator,
+            source: widget.linkSource,
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: HomePage(onOpenSpike: _openSpike),
         );
       },

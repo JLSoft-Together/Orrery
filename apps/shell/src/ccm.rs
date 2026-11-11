@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 16] = [
+const LOCAL: [&str; 24] = [
     "ccm:pty-endpoint",
     "ccm:pick-folder",
     "ccm:open-external",
@@ -29,6 +29,14 @@ const LOCAL: [&str; 16] = [
     "ccm:capture-rect",
     "ccm:clipboard-image",
     "ccm:clipboard-image-file",
+    "ccm:remote-status",
+    "ccm:remote-enable",
+    "ccm:remote-keep-awake",
+    "ccm:remote-pair-start",
+    "ccm:remote-pair-cancel",
+    "ccm:remote-revoke",
+    "ccm:remote-revoke-all",
+    "ccm:remote-publish",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -177,6 +185,10 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         c if crate::files_ipc::handles(c) => {
             let (handle, channel) = (app.clone(), c.to_owned());
             blocking(move || crate::files_ipc::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::remote::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::remote::host::dispatch(&handle, &channel, &args)).await?
         }
         c if crate::preview_ipc::handles(c) => {
             let (handle, owner, channel) = (app.clone(), webview.label().to_owned(), c.to_owned());

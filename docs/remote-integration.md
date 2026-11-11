@@ -12,7 +12,9 @@ relay (`apps/relay`) và app `apps/mobile`. Thiết kế + lý do: `.planning/PL
 | Relay | desktop `wss://<relay>/m/<machineId>`, điện thoại `wss://<relay>/p/<machineId>?t=<token>` | desktop: `[u16 connId BE][noise msg]`; `connId = 0` = control JSON của DO `{t:"open"\|"close", conn}`; điện thoại: không có envelope (DO thêm / bỏ) |
 
 - Keepalive relay: text frame `"ping"` → DO tự trả `"pong"` (`setWebSocketAutoResponse`), ngoài Noise, mỗi 30 s.
-- Trước khi vào Noise không có dữ liệu ứng dụng nào. Handshake chưa xong trong 5 s → đóng.
+- Trước khi vào Noise không có dữ liệu ứng dụng nào. Handshake chưa xong trong 5 s → đóng. Frame đầu sau bắt tay IK phải là `hello` giải mã được trong 5 s, chỉ từ đó phiên mới được tính (`lastSeen`, thông báo, max 16 phiên); trước đó inbox max 4 frame / 64 KB.
+- mDNS `_orrery._tcp`, TXT `{v, k, n}`: `k` = base64url 8 byte đầu SHA-256(key tĩnh Noise của máy), `n` = tên máy; không có machineId.
+- Ghép sai: không huỷ QR; max 5 lần thử / phút / IP (LAN) hoặc / connId (relay) → `4429`.
 
 ## 2. Noise
 
@@ -46,7 +48,7 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 |---|---|
 | `hello {proto, app, platform, caps[]}` | `{ok, machine, name, version, minProto, theme{mode, palette{token: color}}, locale}` + event `snapshot` + `ws.snapshot` |
 | `resync` | event `snapshot` |
-| — | event `machine.restarting`, `device.revoked`, `remote.off` |
+| — | event `machine.restarting`, `device.revoked`, `remote.off` (gửi trước khi đóng socket), `relay.token {token}` (khi token còn < 7 ngày, token mới hạn 30 ngày) |
 
 ### 4.2 Dashboard
 - Event `snapshot {seq, data}` và `events {seq, events[]}`: đúng `MonitorSnapshot` / `ServerMessage` của `/ws` (`packages/shared/src/types.ts`), đã bỏ field chỉ desktop dùng. Hụt `seq` → điện thoại gửi `resync`.

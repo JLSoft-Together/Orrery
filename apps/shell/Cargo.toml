@@ -39,9 +39,25 @@ pbkdf2 = "0.12"
 sha1 = "0.10"
 rusty-leveldb = "3"
 zip = { version = "=7.2.0", default-features = false, features = ["deflate"] }
+core-remote-proto = { path = "../core/crates/core-remote-proto" }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake", "connect", "rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = "1"
+ring = "0.17"
+ureq = { version = "3", default-features = false, features = ["rustls", "platform-verifier"] }
+mdns-sd = "0.21"
+if-addrs = "0.15"
+socket2 = { version = "0.6", features = ["all"] }
+zeroize = "1"
+
+[dev-dependencies]
+core-http = { path = "../core/crates/core-http" }
+core-store = { path = "../core/crates/core-store" }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography", "Win32_Networking_WinSock"] }
 webview2-com = "=0.39.1"
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
 

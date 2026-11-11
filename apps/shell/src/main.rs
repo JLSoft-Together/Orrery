@@ -35,6 +35,7 @@ mod preview_text;
 mod preview_watch;
 mod pty;
 mod pty_branch;
+mod remote;
 mod resources;
 mod serve;
 mod shot;
@@ -151,8 +152,12 @@ fn main() {
             let handle = app.handle().clone();
             capability(&handle, &origin)?;
             desk::wire(&handle);
+            remote::host::install(&handle);
             let stopping = handle.clone();
-            *state::lock(&handle.state::<Shell>().before_stop) = Some(Box::new(move || lifecycle::clean(&stopping)));
+            *state::lock(&handle.state::<Shell>().before_stop) = Some(Box::new(move || {
+                remote::host::shutdown(&stopping);
+                lifecycle::clean(&stopping)
+            }));
             window::create_main(&handle, hidden).map_err(std::io::Error::other)?;
             tray::create(&handle)?;
             let links_app = handle.clone();

@@ -18,12 +18,12 @@ relay (`apps/relay`) và app `apps/mobile`. Thiết kế + lý do: `.planning/PL
 
 - Prologue: `b"orrery-remote/" ‖ proto (u16 BE)`. Msg 1 của cả 2 bắt tay gửi dạng `proto (u16 BE) ‖ noise msg1`: responder đọc proto trước để dựng prologue, nhờ đó trả được `ProtoTooOld {min}` / `ProtoTooNew {max}` thay vì lỗi giải mã. Payload msg 2 IK = `{proto}`; msg 1 / msg 2 ghép payload rỗng. Vector cố định: `apps/core/crates/core-remote-proto/tests/vectors.json`. Bên nhận gặp lỗi giải mã 1 lần → đóng kết nối.
 - **Ghép**: `Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s`, điện thoại initiator. PSK = HKDF-SHA256(ikm = `code` 16 B, salt = `"orrery-pair"`, info = `machineId`). Sau msg 2 điện thoại so key tĩnh desktop với `mkey` trong QR, khác → dừng (không gửi msg 3). Payload msg 3 (JSON): `{deviceId, name, platform}`. Desktop hỏi xác nhận native, lưu thiết bị, gửi frame `pair.ok {machine, name, relay?, relayToken?}` hoặc `pair.denied`.
-- **Phiên**: `Noise_IK_25519_ChaChaPoly_BLAKE2s`, điện thoại initiator. Payload msg 1: `{deviceId, proto}`. Desktop kiểm `deviceId` + key tĩnh trong `devices.json`, sai → đóng (`4401`); `proto < minProto` → đóng (`4426`) sau khi gửi lỗi trong payload msg 2 `{error:"proto", min}`.
+- **Phiên**: `Noise_IK_25519_ChaChaPoly_BLAKE2s`, điện thoại initiator. Payload msg 1: `{deviceId, proto}`. Desktop kiểm `deviceId` + key tĩnh trong `devices.json`, sai → đóng (`4401`); `proto < minProto` → đóng `4426` ngay (không payload). Gateway phân biệt ghép / phiên theo độ dài msg 1 (ghép luôn 50 B = 2 B proto + 48 B Noise, IK dài hơn). Sau `pair.ok` gateway đóng `1000`, điện thoại nối lại bằng IK. Qua relay desktop chưa đóng được 1 điện thoại: `4401` / `4426` qua relay = ngừng trả lời (cần control close từ desktop ở relay — việc tồn).
 - QR (base64url JSON, ≤ 300 B): `{v:1, machine, name, host?, port?, relay?, mkey, code, exp}`; hết hạn 5 phút, dùng 1 lần, chỉ hợp lệ khi Settings đang hiện QR.
 
 ## 3. Frame trong Noise
 
-`[u8 kind][u8 flags][u32 stream BE][payload]`, flags bit 0 = `more`. Payload mỗi khúc ≤ 60 KiB, ghép lại max 1 MiB.
+`[u8 kind][u8 flags][u32 stream BE][payload]`, flags bit 0 = `more`, bit 1 = `claim` (chỉ kind 2: phím người dùng thật gõ / dán → gateway gửi `claim` cho hub; phím tự trả lời query của terminal không bật bit này). Payload mỗi khúc ≤ 60 KiB, ghép lại max 1 MiB.
 
 | kind | Tên | stream | payload |
 |---|---|---|---|

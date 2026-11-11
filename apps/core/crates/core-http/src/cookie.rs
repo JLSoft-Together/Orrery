@@ -20,6 +20,14 @@ pub fn authorized<'a>(header: Option<&str>, fetch_site: Option<&str>, cookies: i
     key.is_some() && first_party(fetch_site) && cookie_value(cookies, COOKIE).is_some_and(|got| has_app_key(Some(got), key))
 }
 
+pub fn authorized_ws<'a>(header: Option<&str>, fetch_site: Option<&str>, origin: Option<&str>, cookies: impl Iterator<Item = &'a str>, key: Option<&str>) -> bool {
+    let site = match (fetch_site, origin) {
+        (None, Some(o)) if !o.trim().is_empty() => Some("same-origin"),
+        _ => fetch_site,
+    };
+    authorized(header, site, cookies, key)
+}
+
 fn cookie_safe(key: &str) -> bool {
     !key.is_empty() && key.len() <= KEY_MAX && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
@@ -82,6 +90,19 @@ mod tests {
         assert!(!authorized(None, Some("cross-site"), ["ccm_app=s3cret"].into_iter(), key));
         assert!(!authorized(None, None, ["ccm_app=s3cret"].into_iter(), key));
         assert!(authorized(Some("s3cret"), Some("cross-site"), std::iter::empty(), key));
+    }
+
+    #[test]
+    fn a_websocket_without_fetch_metadata_counts_its_checked_origin() {
+        let key = Some("s3cret");
+        let origin = Some("http://127.0.0.1:4317");
+        assert!(authorized_ws(None, None, origin, ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized_ws(None, None, None, ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized_ws(None, None, Some(" "), ["ccm_app=s3cret"].into_iter(), key));
+        assert!(!authorized_ws(None, None, origin, ["ccm_app=wrong"].into_iter(), key));
+        assert!(!authorized_ws(None, None, origin, std::iter::empty(), key));
+        assert!(!authorized_ws(None, Some("cross-site"), origin, ["ccm_app=s3cret"].into_iter(), key));
+        assert!(authorized_ws(None, Some("same-origin"), None, ["ccm_app=s3cret"].into_iter(), key));
     }
 
     #[test]

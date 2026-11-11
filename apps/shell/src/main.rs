@@ -12,6 +12,7 @@ mod guest_ipc;
 mod hosts;
 mod legacy;
 mod links;
+mod log;
 mod mcp;
 mod native;
 mod notice;
@@ -87,6 +88,7 @@ fn main() {
     let appearance = appearance::Store::open(cfg.data_dir.join("shell-appearance.json"));
     let t = strings::strings(appearance.locale());
     let _ = std::fs::create_dir_all(&cfg.data_dir);
+    log::install(&cfg.data_dir, config::APP_VERSION);
     let desk = desk::boot(&desk::env_for(&cfg.data_dir, config::APP_VERSION));
     let serve = match Serve::start(cfg.serve.clone()) {
         Ok(s) => s,

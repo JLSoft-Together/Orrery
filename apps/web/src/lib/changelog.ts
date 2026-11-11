@@ -18,6 +18,14 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.1',
+    date: '2026-11-11',
+    items: [
+      { en: 'Windows: Monitor no longer stuck on "Connection lost" after updating to 4.0.0', vi: 'Windows: Monitor hết kẹt "Mất kết nối" sau khi lên 4.0.0' },
+      { en: 'Errors are written to shell.log in the data folder (tray → Open log folder)', vi: 'Lỗi được ghi vào shell.log trong thư mục dữ liệu (tray → Mở thư mục log)' },
+    ],
+  },
+  {
     version: '4.0.0',
     date: '2026-11-11',
     items: [

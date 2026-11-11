@@ -17,7 +17,7 @@ use tokio::task::JoinHandle;
 use crate::client::ClientMessage;
 use crate::http::{read_body, read_head, write_response, HeadError, Request, Response};
 use crate::js::len16;
-use crate::cookie::{authorized, login};
+use crate::cookie::{authorized, authorized_ws, login};
 use crate::origin::is_local_request;
 use crate::query::{js_number, Params};
 use crate::static_files::{serve as serve_static, url_pathname};
@@ -255,8 +255,12 @@ fn keyed(request: &Request, shared: &Shared) -> bool {
     authorized(request.header("x-ccm-app"), request.header("sec-fetch-site"), request.headers_all("cookie"), shared.app_key.as_deref())
 }
 
+fn ws_keyed(request: &Request, shared: &Shared) -> bool {
+    authorized_ws(request.header("x-ccm-app"), request.header("sec-fetch-site"), request.header("origin"), request.headers_all("cookie"), shared.app_key.as_deref())
+}
+
 async fn upgrade(mut stream: TcpStream, request: Request, shared: Arc<Shared>) {
-    let allowed = url_pathname(request.path()) == "/ws" && local(&request, &shared) && keyed(&request, &shared);
+    let allowed = url_pathname(request.path()) == "/ws" && local(&request, &shared) && ws_keyed(&request, &shared);
     if !allowed {
         return;
     }

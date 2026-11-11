@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../l10n/app_localizations.dart';
 import '../remote/pairing.dart';
 import '../remote/providers.dart';
 
-String pairFailureText(PairFailure failure) => switch (failure) {
-  PairFailure.badQr => 'Mã QR không đúng',
-  PairFailure.expired => 'Mã QR đã hết hạn, tạo mã mới trên máy tính',
-  PairFailure.noRoute => 'Không thấy máy trong mạng LAN',
-  PairFailure.network => 'Mất kết nối khi ghép, quét lại mã',
-  PairFailure.keyMismatch => 'Khoá máy không khớp mã QR, dừng ghép',
-  PairFailure.timeout => 'Máy không trả lời kịp',
-  PairFailure.denied => 'Máy tính từ chối',
-  PairFailure.protocol => 'Lỗi giao thức khi ghép',
-};
+String pairFailureText(AppLocalizations l, PairFailure failure) =>
+    switch (failure) {
+      PairFailure.badQr => l.pairBadQr,
+      PairFailure.expired => l.pairExpired,
+      PairFailure.noRoute => l.pairNoRoute,
+      PairFailure.network => l.pairNetwork,
+      PairFailure.keyMismatch => l.pairKeyMismatch,
+      PairFailure.timeout => l.pairTimeout,
+      PairFailure.denied => l.pairDenied,
+      PairFailure.protocol => l.pairProtocol,
+    };
 
 class PairPage extends ConsumerStatefulWidget {
   const PairPage({super.key});
@@ -45,7 +47,7 @@ class _PairPageState extends ConsumerState<PairPage> {
     if (text == null) return;
     setState(() {
       _busy = true;
-      _message = 'Đang ghép...';
+      _message = AppLocalizations.of(context).pairing;
     });
     final navigator = Navigator.of(context);
     try {
@@ -56,7 +58,7 @@ class _PairPageState extends ConsumerState<PairPage> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _message = pairFailureText(error.failure);
+        _message = pairFailureText(AppLocalizations.of(context), error.failure);
       });
     }
   }
@@ -64,7 +66,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ghép máy')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).pairMachine)),
       body: Column(
         children: [
           Expanded(
@@ -72,7 +74,7 @@ class _PairPageState extends ConsumerState<PairPage> {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(_message ?? 'Quét mã QR trong Settings của Orrery'),
+            child: Text(_message ?? AppLocalizations.of(context).pairScanHint),
           ),
         ],
       ),

@@ -1,0 +1,908 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_en.dart';
+import 'app_localizations_vi.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('vi'),
+  ];
+
+  /// No description provided for @appTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orrery Remote'**
+  String get appTitle;
+
+  /// No description provided for @spikeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal benchmark'**
+  String get spikeTooltip;
+
+  /// No description provided for @pairMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair a computer'**
+  String get pairMachine;
+
+  /// No description provided for @noMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'No computer paired yet'**
+  String get noMachines;
+
+  /// No description provided for @noMachinesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings > Remote in Orrery on your computer and scan the QR code.'**
+  String get noMachinesHint;
+
+  /// No description provided for @forgetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String forgetTitle(String name);
+
+  /// No description provided for @forgetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone forgets the computer and its cached data. You can pair again later.'**
+  String get forgetBody;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @forget.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get forget;
+
+  /// No description provided for @lastSeenAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Old data, {time}'**
+  String lastSeenAt(String time);
+
+  /// No description provided for @panesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No panes} =1{1 pane} other{{count} panes}}'**
+  String panesCount(int count);
+
+  /// No description provided for @needsYouCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} need you'**
+  String needsYouCount(int count);
+
+  /// No description provided for @runningCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} running'**
+  String runningCount(int count);
+
+  /// No description provided for @doneCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} done'**
+  String doneCount(int count);
+
+  /// No description provided for @subagentsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} subagents'**
+  String subagentsCount(int count);
+
+  /// No description provided for @statusWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get statusWorking;
+
+  /// No description provided for @statusSubagents.
+  ///
+  /// In en, this message translates to:
+  /// **'Subagents running'**
+  String get statusSubagents;
+
+  /// No description provided for @statusAsked.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs permission'**
+  String get statusAsked;
+
+  /// No description provided for @statusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get statusFailed;
+
+  /// No description provided for @statusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get statusDone;
+
+  /// No description provided for @statusStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get statusStarting;
+
+  /// No description provided for @statusEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get statusEnded;
+
+  /// No description provided for @statusParked.
+  ///
+  /// In en, this message translates to:
+  /// **'Parked'**
+  String get statusParked;
+
+  /// No description provided for @statusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get statusIdle;
+
+  /// No description provided for @linkIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get linkIdle;
+
+  /// No description provided for @linkDiscovering.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for computer'**
+  String get linkDiscovering;
+
+  /// No description provided for @linkHandshaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get linkHandshaking;
+
+  /// No description provided for @linkLan.
+  ///
+  /// In en, this message translates to:
+  /// **'LAN'**
+  String get linkLan;
+
+  /// No description provided for @linkRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay'**
+  String get linkRelay;
+
+  /// No description provided for @linkReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting, try {attempt}'**
+  String linkReconnecting(int attempt);
+
+  /// No description provided for @linkOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get linkOffline;
+
+  /// No description provided for @linkProtoTooOld.
+  ///
+  /// In en, this message translates to:
+  /// **'Update needed'**
+  String get linkProtoTooOld;
+
+  /// No description provided for @linkRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoked'**
+  String get linkRevoked;
+
+  /// No description provided for @reasonDesktopAbsent.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer is not reachable through the relay.'**
+  String get reasonDesktopAbsent;
+
+  /// No description provided for @reasonRemoteOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote is turned off on the computer.'**
+  String get reasonRemoteOff;
+
+  /// No description provided for @reasonRestarting.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer is restarting Orrery.'**
+  String get reasonRestarting;
+
+  /// No description provided for @reasonTokenExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay access expired. Join the same Wi-Fi once to renew it.'**
+  String get reasonTokenExpired;
+
+  /// No description provided for @reasonRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Waiting before retrying.'**
+  String get reasonRateLimited;
+
+  /// No description provided for @reasonNetworkLost.
+  ///
+  /// In en, this message translates to:
+  /// **'No network on this phone.'**
+  String get reasonNetworkLost;
+
+  /// No description provided for @reasonNoRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'No route to the computer.'**
+  String get reasonNoRoute;
+
+  /// No description provided for @reasonHandshakeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure handshake failed.'**
+  String get reasonHandshakeFailed;
+
+  /// No description provided for @offlineBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer offline, data from {time}'**
+  String offlineBanner(String time);
+
+  /// No description provided for @offlineNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer offline, no saved data'**
+  String get offlineNoData;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @errDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer refused this action.'**
+  String get errDenied;
+
+  /// No description provided for @errBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The pane is busy. Try again in a moment.'**
+  String get errBusy;
+
+  /// No description provided for @errLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit reached.'**
+  String get errLimit;
+
+  /// No description provided for @errNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found. It may have been closed.'**
+  String get errNotFound;
+
+  /// No description provided for @errInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid request.'**
+  String get errInvalid;
+
+  /// No description provided for @errTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer did not answer in time.'**
+  String get errTimeout;
+
+  /// No description provided for @errOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer offline.'**
+  String get errOffline;
+
+  /// No description provided for @errRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many commands. Slow down.'**
+  String get errRate;
+
+  /// No description provided for @errProto.
+  ///
+  /// In en, this message translates to:
+  /// **'App and desktop versions do not match.'**
+  String get errProto;
+
+  /// No description provided for @errInternal.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong on the computer.'**
+  String get errInternal;
+
+  /// No description provided for @revokedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer revoked this phone'**
+  String get revokedTitle;
+
+  /// No description provided for @revokedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved data was deleted. Pair again from Settings > Remote on the computer.'**
+  String get revokedBody;
+
+  /// No description provided for @removeMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove computer'**
+  String get removeMachine;
+
+  /// No description provided for @protoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the app or the desktop'**
+  String get protoTitle;
+
+  /// No description provided for @protoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This app and Orrery on the computer speak different protocol versions.'**
+  String get protoBody;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @confirmMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more waiting'**
+  String confirmMore(int count);
+
+  /// No description provided for @confirmExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancels itself in {seconds} s'**
+  String confirmExpires(int seconds);
+
+  /// No description provided for @missionControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Mission Control'**
+  String get missionControl;
+
+  /// No description provided for @inbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get inbox;
+
+  /// No description provided for @more.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get more;
+
+  /// No description provided for @reopenPane.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Reopen closed pane} other{Reopen closed pane ({count})}}'**
+  String reopenPane(int count);
+
+  /// No description provided for @openPane.
+  ///
+  /// In en, this message translates to:
+  /// **'Open pane'**
+  String get openPane;
+
+  /// No description provided for @workspaceLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading workspace'**
+  String get workspaceLoading;
+
+  /// No description provided for @workspaceEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace is empty'**
+  String get workspaceEmpty;
+
+  /// No description provided for @workspaceEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a pane to start working from your phone.'**
+  String get workspaceEmptyHint;
+
+  /// No description provided for @otherProject.
+  ///
+  /// In en, this message translates to:
+  /// **'No project'**
+  String get otherProject;
+
+  /// No description provided for @inboxEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing needs you'**
+  String get inboxEmpty;
+
+  /// No description provided for @inboxEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission requests and finished work show up here.'**
+  String get inboxEmptyHint;
+
+  /// No description provided for @inboxWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for you'**
+  String get inboxWaiting;
+
+  /// No description provided for @inboxDone.
+  ///
+  /// In en, this message translates to:
+  /// **'finished'**
+  String get inboxDone;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get filterAll;
+
+  /// No description provided for @filterNeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you'**
+  String get filterNeeds;
+
+  /// No description provided for @filterRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get filterRunning;
+
+  /// No description provided for @filterDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get filterDone;
+
+  /// No description provided for @filterIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get filterIdle;
+
+  /// No description provided for @missionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No pane matches this filter'**
+  String get missionEmpty;
+
+  /// No description provided for @tabClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This tab was closed on the computer'**
+  String get tabClosed;
+
+  /// No description provided for @paneClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'The pane you were viewing was closed'**
+  String get paneClosed;
+
+  /// No description provided for @tabActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab actions'**
+  String get tabActions;
+
+  /// No description provided for @renameTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename tab'**
+  String get renameTab;
+
+  /// No description provided for @renameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty = default name'**
+  String get renameHint;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @movePane.
+  ///
+  /// In en, this message translates to:
+  /// **'Move pane to another tab'**
+  String get movePane;
+
+  /// No description provided for @compact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get compact;
+
+  /// No description provided for @compactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact this agent?'**
+  String get compactTitle;
+
+  /// No description provided for @compactBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Orrery sends the handoff prompt and /compact into this pane.'**
+  String get compactBody;
+
+  /// No description provided for @closePane.
+  ///
+  /// In en, this message translates to:
+  /// **'Close pane'**
+  String get closePane;
+
+  /// No description provided for @closePaneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Close {title}?'**
+  String closePaneTitle(String title);
+
+  /// No description provided for @closePaneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The pane closes on the computer too. You can reopen it from the menu.'**
+  String get closePaneBody;
+
+  /// No description provided for @tapToView.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view'**
+  String get tapToView;
+
+  /// No description provided for @typerYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You are typing'**
+  String get typerYou;
+
+  /// No description provided for @typerViewOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'View only'**
+  String get typerViewOnly;
+
+  /// No description provided for @typeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Type straight into the terminal'**
+  String get typeDirect;
+
+  /// No description provided for @inputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message or command'**
+  String get inputHint;
+
+  /// No description provided for @inputOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline, cannot type'**
+  String get inputOffline;
+
+  /// No description provided for @send.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get send;
+
+  /// No description provided for @answerYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get answerYes;
+
+  /// No description provided for @answerYesAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, always'**
+  String get answerYesAlways;
+
+  /// No description provided for @answerNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get answerNo;
+
+  /// No description provided for @answerEsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc'**
+  String get answerEsc;
+
+  /// No description provided for @paneNotTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'This pane is not a terminal. Open it on the computer.'**
+  String get paneNotTerminal;
+
+  /// No description provided for @attachLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Only 4 terminals can be watched at once. Close one first.'**
+  String get attachLimit;
+
+  /// No description provided for @sessionEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Session ended (code {code})'**
+  String sessionEnded(int code);
+
+  /// No description provided for @sessionLost.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost the terminal on the computer'**
+  String get sessionLost;
+
+  /// No description provided for @pickProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get pickProject;
+
+  /// No description provided for @noProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No project yet. Add favorites on the computer first.'**
+  String get noProjects;
+
+  /// No description provided for @pickAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Open with'**
+  String get pickAgent;
+
+  /// No description provided for @shell.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell'**
+  String get shell;
+
+  /// No description provided for @promptOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt (optional)'**
+  String get promptOptional;
+
+  /// No description provided for @promptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should the agent do first?'**
+  String get promptHint;
+
+  /// No description provided for @submitNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Send it right away'**
+  String get submitNow;
+
+  /// No description provided for @submitNowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the prompt is only typed in, you press Enter later.'**
+  String get submitNowHint;
+
+  /// No description provided for @openPaneAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get openPaneAction;
+
+  /// No description provided for @paneOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Pane opened'**
+  String get paneOpened;
+
+  /// No description provided for @pairBadQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid QR code'**
+  String get pairBadQr;
+
+  /// No description provided for @pairExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code expired. Create a new one on the computer.'**
+  String get pairExpired;
+
+  /// No description provided for @pairNoRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot find the computer on this Wi-Fi.'**
+  String get pairNoRoute;
+
+  /// No description provided for @pairNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection lost while pairing. Scan again.'**
+  String get pairNetwork;
+
+  /// No description provided for @pairKeyMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer key does not match the QR code. Pairing stopped.'**
+  String get pairKeyMismatch;
+
+  /// No description provided for @pairTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer did not answer in time.'**
+  String get pairTimeout;
+
+  /// No description provided for @pairDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer refused the pairing.'**
+  String get pairDenied;
+
+  /// No description provided for @pairProtocol.
+  ///
+  /// In en, this message translates to:
+  /// **'Protocol error while pairing.'**
+  String get pairProtocol;
+
+  /// No description provided for @pairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing...'**
+  String get pairing;
+
+  /// No description provided for @pairScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR code in Orrery Settings'**
+  String get pairScanHint;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) =>
+      <String>['en', 'vi'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
+    case 'vi':
+      return AppLocalizationsVi();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
+}

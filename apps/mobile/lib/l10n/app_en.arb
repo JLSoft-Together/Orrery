@@ -1,0 +1,230 @@
+{
+  "@@locale": "en",
+  "appTitle": "Orrery Remote",
+  "spikeTooltip": "Terminal benchmark",
+  "pairMachine": "Pair a computer",
+  "noMachines": "No computer paired yet",
+  "noMachinesHint": "Open Settings > Remote in Orrery on your computer and scan the QR code.",
+  "forgetTitle": "Remove {name}?",
+  "@forgetTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "forgetBody": "This phone forgets the computer and its cached data. You can pair again later.",
+  "cancel": "Cancel",
+  "forget": "Remove",
+  "lastSeenAt": "Old data, {time}",
+  "@lastSeenAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "panesCount": "{count, plural, =0{No panes} =1{1 pane} other{{count} panes}}",
+  "@panesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "needsYouCount": "{count} need you",
+  "@needsYouCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "runningCount": "{count} running",
+  "@runningCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "doneCount": "{count} done",
+  "@doneCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subagentsCount": "{count} subagents",
+  "@subagentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statusWorking": "Running",
+  "statusSubagents": "Subagents running",
+  "statusAsked": "Needs permission",
+  "statusFailed": "Failed",
+  "statusDone": "Done",
+  "statusStarting": "Starting",
+  "statusEnded": "Ended",
+  "statusParked": "Parked",
+  "statusIdle": "Idle",
+  "linkIdle": "Not connected",
+  "linkDiscovering": "Looking for computer",
+  "linkHandshaking": "Connecting",
+  "linkLan": "LAN",
+  "linkRelay": "Relay",
+  "linkReconnecting": "Reconnecting, try {attempt}",
+  "@linkReconnecting": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "linkOffline": "Offline",
+  "linkProtoTooOld": "Update needed",
+  "linkRevoked": "Revoked",
+  "reasonDesktopAbsent": "The computer is not reachable through the relay.",
+  "reasonRemoteOff": "Remote is turned off on the computer.",
+  "reasonRestarting": "The computer is restarting Orrery.",
+  "reasonTokenExpired": "Relay access expired. Join the same Wi-Fi once to renew it.",
+  "reasonRateLimited": "Too many attempts. Waiting before retrying.",
+  "reasonNetworkLost": "No network on this phone.",
+  "reasonNoRoute": "No route to the computer.",
+  "reasonHandshakeFailed": "Secure handshake failed.",
+  "offlineBanner": "Computer offline, data from {time}",
+  "@offlineBanner": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineNoData": "Computer offline, no saved data",
+  "retry": "Retry",
+  "errDenied": "The computer refused this action.",
+  "errBusy": "The pane is busy. Try again in a moment.",
+  "errLimit": "Limit reached.",
+  "errNotFound": "Not found. It may have been closed.",
+  "errInvalid": "Invalid request.",
+  "errTimeout": "The computer did not answer in time.",
+  "errOffline": "Computer offline.",
+  "errRate": "Too many commands. Slow down.",
+  "errProto": "App and desktop versions do not match.",
+  "errInternal": "Something went wrong on the computer.",
+  "revokedTitle": "The computer revoked this phone",
+  "revokedBody": "Saved data was deleted. Pair again from Settings > Remote on the computer.",
+  "removeMachine": "Remove computer",
+  "protoTitle": "Update the app or the desktop",
+  "protoBody": "This app and Orrery on the computer speak different protocol versions.",
+  "back": "Back",
+  "confirmMore": "{count} more waiting",
+  "@confirmMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmExpires": "Cancels itself in {seconds} s",
+  "@confirmExpires": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionControl": "Mission Control",
+  "inbox": "Inbox",
+  "more": "More",
+  "reopenPane": "{count, plural, =0{Reopen closed pane} other{Reopen closed pane ({count})}}",
+  "@reopenPane": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openPane": "Open pane",
+  "workspaceLoading": "Loading workspace",
+  "workspaceEmpty": "Workspace is empty",
+  "workspaceEmptyHint": "Open a pane to start working from your phone.",
+  "otherProject": "No project",
+  "inboxEmpty": "Nothing needs you",
+  "inboxEmptyHint": "Permission requests and finished work show up here.",
+  "inboxWaiting": "waiting for you",
+  "inboxDone": "finished",
+  "filterAll": "All",
+  "filterNeeds": "Needs you",
+  "filterRunning": "Running",
+  "filterDone": "Done",
+  "filterIdle": "Idle",
+  "missionEmpty": "No pane matches this filter",
+  "tabClosed": "This tab was closed on the computer",
+  "paneClosed": "The pane you were viewing was closed",
+  "tabActions": "Tab actions",
+  "renameTab": "Rename tab",
+  "renameHint": "Empty = default name",
+  "save": "Save",
+  "movePane": "Move pane to another tab",
+  "compact": "Compact",
+  "compactTitle": "Compact this agent?",
+  "compactBody": "Orrery sends the handoff prompt and /compact into this pane.",
+  "closePane": "Close pane",
+  "closePaneTitle": "Close {title}?",
+  "@closePaneTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "closePaneBody": "The pane closes on the computer too. You can reopen it from the menu.",
+  "tapToView": "Tap to view",
+  "typerYou": "You are typing",
+  "typerViewOnly": "View only",
+  "typeDirect": "Type straight into the terminal",
+  "inputHint": "Message or command",
+  "inputOffline": "Offline, cannot type",
+  "send": "Send",
+  "answerYes": "Yes",
+  "answerYesAlways": "Yes, always",
+  "answerNo": "No",
+  "answerEsc": "Esc",
+  "paneNotTerminal": "This pane is not a terminal. Open it on the computer.",
+  "attachLimit": "Only 4 terminals can be watched at once. Close one first.",
+  "sessionEnded": "Session ended (code {code})",
+  "@sessionEnded": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionLost": "Lost the terminal on the computer",
+  "pickProject": "Project",
+  "noProjects": "No project yet. Add favorites on the computer first.",
+  "pickAgent": "Open with",
+  "shell": "Shell",
+  "promptOptional": "Prompt (optional)",
+  "promptHint": "What should the agent do first?",
+  "submitNow": "Send it right away",
+  "submitNowHint": "Off: the prompt is only typed in, you press Enter later.",
+  "openPaneAction": "Open",
+  "paneOpened": "Pane opened",
+  "pairBadQr": "Invalid QR code",
+  "pairExpired": "QR code expired. Create a new one on the computer.",
+  "pairNoRoute": "Cannot find the computer on this Wi-Fi.",
+  "pairNetwork": "Connection lost while pairing. Scan again.",
+  "pairKeyMismatch": "Computer key does not match the QR code. Pairing stopped.",
+  "pairTimeout": "The computer did not answer in time.",
+  "pairDenied": "The computer refused the pairing.",
+  "pairProtocol": "Protocol error while pairing.",
+  "pairing": "Pairing...",
+  "pairScanHint": "Scan the QR code in Orrery Settings"
+}

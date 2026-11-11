@@ -224,6 +224,34 @@ void main() {
     expect(h.sent, hasLength(2));
   });
 
+  test('ws.patch with base applies only on the current rev', () {
+    final h = Harness();
+    h.s.handleEvent(wsSnapshot(1));
+    h.s.handleEvent({
+      't': 'ws.patch',
+      'base': 1,
+      'rev': 3,
+      'ops': [
+        {'op': 'replace', 'path': '/tabs/0/name', 'value': 'jumped'},
+      ],
+    });
+    expect(h.s.view.wsRev, 3);
+    expect((h.s.view.tabs.first as Map)['name'], 'jumped');
+    h.s.handleEvent({
+      't': 'ws.patch',
+      'base': 2,
+      'rev': 4,
+      'ops': [
+        {'op': 'replace', 'path': '/tabs/0/name', 'value': 'lost'},
+      ],
+    });
+    expect(h.s.view.wsRev, 3);
+    expect((h.s.view.tabs.first as Map)['name'], 'jumped');
+    expect(h.sent, [
+      {'t': 'ws.get'},
+    ]);
+  });
+
   test('stale ws.patch is ignored', () {
     final h = Harness();
     h.s.handleEvent(wsSnapshot(3));

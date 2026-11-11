@@ -37,3 +37,15 @@ Hợp đồng: `docs/remote-integration.md`. Crypto + frame nằm ở crate `app
 
 ## Android
 - network_security_config (cleartext), data_extraction_rules, allowBackup=false, minSdk 24, org.gradle.workers.max=4; rust_builder/ cargokit build 3 ABI
+
+## UI (WP-11) lib/ui/ + lib/l10n/
+- main.dart: `Consumer` đọc `remoteThemeProvider` / `remoteLocaleProvider` (hello.theme + hello.locale của máy đang chọn `activeMachineProvider`), MaterialApp light + dark + l10n; `host == null` vẫn mở SpikePage
+- l10n: `lib/l10n/app_{en,vi}.arb` sinh bằng `node tool/gen_arb.mjs` (nguồn chữ ở script) rồi `flutter gen-l10n` (l10n.yaml); `context.l10n` ở ui/widgets/common.dart
+- ui/theme/orrery_theme.dart: `RemoteTheme.fromHello`, `buildOrreryTheme`, `StatusColors` (working / asked / failed / done / idle)
+- ui/machine_api.dart: `MachineApi` / `PtyHandle` (cầu UI -> RemoteHost bundle; test thay bằng FakeMachineApi); ui/ui_providers.dart: `machineApiProvider`, `workspaceModelProvider`, `paneFactsProvider`, `activeMachineProvider`
+- ui/model: `workspace_model.dart` (`WorkspaceModel` / `ProjectInfo` / `TabInfo` / `PaneInfo` / `LayoutNode`, pane theo `leaves(tree)`, inbox), `pane_facts.dart` (tool đang chạy + statusSince từ snapshot dashboard qua terminalId)
+- ui/workspace: `workspace_page` (list project, needs nổi lên đầu), `tab_page` (PageView NeverScrollable + chấm tap / vuốt ở header + chấm; >= 700 dp `split_view` dựng cây chia, max 4 attach, ô < 260x220 thành placeholder), `mission_page`, `inbox_page`, `open_pane_page` (favorites từ snapshot + project trong Workspace), `pane_actions` (đổi tên tab / chuyển / mở lại / Compact / đóng), `machine_scope` (`machineRoute`: ConnectionGate + bottom sheet `confirm.ask` đếm 60 s), `connection_gate` (revoked xoá cache, protoTooOld)
+- ui/terminal: `terminal_pane` (attach khi hiện / detach khi rời, `pty.ready` xoá terminal, `pty.exit` code null = mất terminal, đổi cỡ theo điện thoại khi đang gõ, giữ cỡ desktop + cuộn ngang khi chỉ xem), `terminal_surface` (xterm + pinch zoom), `input_bar` (khung nhập dòng + phím phụ), `permission_bar` (`ws.keys` kèm since), `pane_header`
+- app/home_page.dart: danh sách máy (vuốt xoá có hỏi); app/pair_page.dart dùng l10n
+- remote/store.dart: `ws.patch {base, rev}` áp khi base == rev hiện tại, lệch -> `ws.get`
+- Test: workspace_model_test, ui_screens_test, terminal_pane_test (FakeMachineApi, test/support/ui_fakes.dart), screenshots_test (chỉ chạy khi `WP11_SHOTS=1`, ghi PNG vào `WP11_OUT`, font Roboto + MaterialIcons từ Flutter SDK, Consolas)

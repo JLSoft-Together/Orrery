@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orrery_remote/app/bootstrap.dart';
 import 'package:orrery_remote/app/home_page.dart';
+import 'package:orrery_remote/l10n/app_localizations.dart';
+import 'package:orrery_remote/ui/theme/orrery_theme.dart';
+import 'package:orrery_remote/ui/ui_providers.dart';
 import 'package:orrery_remote/remote/providers.dart';
 import 'package:orrery_remote/remote/remote_host.dart';
 import 'package:orrery_remote/src/rust/api/simple.dart';
@@ -87,17 +90,35 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigator,
-      title: 'Orrery Remote',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.dark,
-      ),
-      home: widget.host == null
-          ? SpikePage(rustStatus: widget.rustStatus, terminal: widget.terminal)
-          : HomePage(onOpenSpike: _openSpike),
+    if (widget.host == null) {
+      return MaterialApp(
+        navigatorKey: _navigator,
+        title: 'Orrery Remote',
+        debugShowCheckedModeBanner: false,
+        theme: buildOrreryTheme(RemoteTheme.fallback, Brightness.dark),
+        home: SpikePage(
+          rustStatus: widget.rustStatus,
+          terminal: widget.terminal,
+        ),
+      );
+    }
+    return Consumer(
+      builder: (context, ref, _) {
+        final remote = ref.watch(remoteThemeProvider);
+        final locale = ref.watch(remoteLocaleProvider);
+        return MaterialApp(
+          navigatorKey: _navigator,
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          debugShowCheckedModeBanner: false,
+          theme: buildOrreryTheme(remote, Brightness.light),
+          darkTheme: buildOrreryTheme(remote, Brightness.dark),
+          themeMode: remote.mode,
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: HomePage(onOpenSpike: _openSpike),
+        );
+      },
     );
   }
 }

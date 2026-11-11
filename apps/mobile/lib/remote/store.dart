@@ -249,11 +249,19 @@ class MachineStore {
     final workspace = _view.workspace;
     if (rev is! num || ops is! List) return;
     final value = rev.toInt();
-    if (workspace == null || value > _view.wsRev + 1) {
+    final base = event['base'];
+    if (workspace == null) {
       _requestWsGet();
       return;
     }
     if (value <= _view.wsRev) return;
+    final lost = base is num
+        ? base.toInt() != _view.wsRev
+        : value > _view.wsRev + 1;
+    if (lost) {
+      _requestWsGet();
+      return;
+    }
     try {
       final next = applyJsonPatch(workspace, ops);
       if (next is! Map) throw const PatchException('root');

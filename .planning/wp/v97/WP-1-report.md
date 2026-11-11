@@ -1,0 +1,11 @@
+## WP-1 — PARTIAL
+- Đã đổi: apps/mobile/** (flutter create, appId dev.ccm.orrery.remote, label Orrery Remote, minSdk 24, manifest + network_security_config + dataExtractionRules + quyền, Info.plist keys, FRB 2.13 + rust/api/simple.rs, màn spike xterm, assets/fixture.ansi 262383 B, tool/gen_fixture.mjs, test widget, .code_index/mobile.md); docs/qa/v97/WP-1/00-lock.png.
+- Tiêu chí: 3/7 đạt (appId/analyze/test; cleartext+backup+quyền+plist; APK build + cài được). Chưa đạt: gọi Rust trên máy thật, bảng số đo, Telex, ảnh sau sửa cuối, kết luận terminal. CHƯA KIỂM: Galaxy A21s khoá màn hình bằng PIN, không có PIN, con không mở khoá được; không đổi setting máy.
+- Số đo xterm.dart: CHƯA KIỂM trên máy. Số trong flutter test (PC, không phải máy thật): write 256 KiB = 55 ms, frame đầu 665 ms, 6451 dòng buffer.
+- Kết luận terminal: CHƯA KẾT LUẬN (cần số trên máy). Chưa làm xterm.js WebView.
+- Audit: diff chỉ trong apps/mobile + docs/qa/v97/WP-1. Review: analyze + test xem dưới. 
+- Test: `flutter analyze` -> No issues found; `flutter test --concurrency=4` -> All tests passed (1 test: Rust status, nạp fixture, Gửi UTF-8 = 58 69 6e 20 63 68 c3 a0 6f 20 e2 ac 9b). Build: `flutter build apk --debug --target-platform android-arm64` OK, 718s, 80.8 MB (cargokit vẫn build cả 3 ABI). Cài `adb install -r` Success, app khởi động (log Impeller Vulkan, Dart VM service lên).
+- Nhìn: docs/qa/v97/WP-1/00-lock.png (màn khoá PIN, chặn).
+- Việc còn lại sau khi chủ nhân mở khoá máy: mở app, bấm "Nạp fixture", "Đo cuộn" (log tag flutter, dòng "SPIKE ..."), gõ Telex + Gửi, chụp ảnh; lưu ý bản debug đo FPS thấp hơn thật, nên đo thêm `flutter build apk --profile`.
+- Hot file cần thêm / ngoài phạm vi: không.
+- Commit message đề xuất: Add Orrery Remote Flutter spike app with xterm terminal and flutter_rust_bridge toolchain

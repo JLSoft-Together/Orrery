@@ -32,3 +32,4 @@
 
 ### Nhật ký
 - 12/11: tạo apps/mobile (flutter create, appId, manifest, plist), FRB integrate + proto_version/echo, màn spike + fixture 256KiB, analyze sạch, test pass. Tiếp: build APK + đo trên máy.
+- 12/11: build+cài APK OK; máy khoá PIN, dừng ở bước đo/chụp. Xem WP-1-report.md

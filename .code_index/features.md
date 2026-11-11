@@ -300,3 +300,7 @@ Rà trước khi đề xuất ý tưởng mới. Cập nhật khi thêm / bỏ t
 - **Ctrl+K gộp** session / dự án / file / cài đặt, tiền tố > @ # : · `apps/web/src/lib/paletteSearch.ts`, `CommandPalette.vue`; timeline tool trong panel sub-agent · `lib/agentTools.ts`
 - **Chồng toast chung** (tối đa 3, dừng khi rê chuột, Esc) · `apps/web/src/stores/toasts.ts`, `components/ToastHost.vue`
 - **Dialog ít dùng tải ngầm** · `apps/web/src/lib/lazyOverlay.ts`; đo bundle / khởi động · `scripts/measure.mjs`
+
+## v97 (2026-11-12)
+
+- **Orrery Remote (điện thoại điều khiển Workspace)** — Settings → Điều khiển từ xa (bật, QR ghép 5 phút, thu hồi, giữ máy thức, log lệnh), chip điện thoại trên pane; gateway LAN port 4320 + relay Cloudflare, Noise đầu-cuối; app Flutter Android (terminal, pane, Explorer, file, Changes, Git Log, Run, Monitor dạng list); nút "Mở trên điện thoại" trong tin Telegram / ntfy. Chưa có: push APNs / FCM, build iOS · `apps/shell/src/remote/`, `apps/core/crates/core-remote-proto`, `apps/relay`, `apps/mobile`, `apps/web/src/components/settings/SettingsRemote.vue`, docs §11as, `docs/orrery-remote.md`

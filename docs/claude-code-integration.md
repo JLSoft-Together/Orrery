@@ -1066,3 +1066,29 @@ What is never sent: file content, `old_string` / `new_string`, edits, Bash / Pow
 Emitted by both trackers: Node `transcript.ts` `extractSignals` → `file` on the `tool_use` signal → `tool-spans.ts`; Rust `core-transcript` `file_access_of` → `Signal::ToolUse.access` → `ToolSpan.file` → JSON `path` / `access` → `core-store` `ToolSpan`. Codex rollouts and DeepSeek are not covered (no file tool paths read there); Codex panes show no marks.
 
 Page: `lib/agentTouches.ts` keeps only the current turn plus 2 minutes after the turn ends, capped at 2000 files and 6 agents per file; spans already live 2 h in `stores/toolSpans.ts`, the marks only read them. Old clients ignore the new fields.
+
+## 11as. Orrery Remote: session content and commands to and from a phone (v97, 2026-11-12, `.planning/SPEC-v97-remote-control.md`, `PLAN-v97-mobile.md`, `docs/remote-integration.md`, user guide `docs/orrery-remote.md`)
+
+Documented exception, owner-approved 2026-11-12, to two hard rules: "never expose session contents / raw tool arguments outside the frontend" and "monitoring never sends input to Claude Code". The Flutter app `apps/mobile` (Android first, iOS not built yet) is a second frontend of the same Workspace; typing from the phone is the owner typing, as on the desktop, and costs no extra token.
+
+What the phone gets (only after pairing, only inside the end-to-end Noise channel):
+- the dashboard snapshot / events of `/ws` (sessions, agents, tool spans, status), the Workspace summary (tabs, panes, project, state) and the raw terminal bytes of the panes it attached (max 4 attaches per device, replay from the 256 KiB ring);
+- viewer data for Explorer, file read, Changes / diff, Git Log, Run: only paths inside the root of a live pane or a desktop grant; desktop full-access does not apply to the phone.
+
+What the phone never gets: environment variables, secrets, the app key (`CCM_APP_KEY`), PTY tokens, GitHub tokens, the Noise keys of other devices.
+
+What the phone may do:
+- open / close / rename / move panes, `ws.send` text (max 2000 characters), answer a permission prompt (`ws.keys`), type into a terminal, resize its own view, viewer writes (`fs.write` over an existing file only, `base` mtime conflict guard, 20 a minute), stage / unstage / commit, branch ops, run start / stop / reload;
+- **only an idle pane is submitted by itself**: `ws.send` to a pane that is not idle is typed but not submitted (`submitted: false`). Commands outside the fixed table are `denied`.
+
+Conditions (all must hold):
+1. **Paired**: QR with a one-time code valid 5 minutes, only while Settings shows the QR; the desktop asks a native confirm for every new device (Noise `XXpsk3`); device list in `<data>/remote/devices.json`, keys in the OS keyring, never in JSON. A device unused for 30 days expires; revoke one or all in Settings.
+2. **End-to-end encrypted**: Noise `IK` per session on LAN and on the relay; the relay (Cloudflare Worker, `apps/relay`) only forwards ciphertext and sees `machineId`.
+3. **Off by default**: Settings → Remote control switch; port `CCM_REMOTE_PORT` (default 4320) is opened on the LAN only while on; `127.0.0.1:4317` is untouched.
+4. **Confirms stay on the phone**: dangerous actions started from a phone (`branch.delete`, `git.discard`, `branch.push`, commit amend, `run.start` of an untrusted config, run reinstall) ask on that phone with a 60 s timeout, no native box on the desktop; pairing a new device is still confirmed on the desktop.
+5. **Visible on the desktop**: phone chip on panes a phone just commanded or resized, command log (last 50) in Settings, "disconnect all phones" button.
+6. **Limits**: max 16 live sessions, max 32 paired devices, 5 wrong pair tries a minute per IP, frame max 1 MiB.
+
+Not built yet (do not describe as working): native push through APNs / FCM (WP-14 waits for a Firebase project), iOS build and iOS Associated Domains, Android App Links verification on a real phone, deploy of the relay "close one phone" control, camera QR scan on a real device, measured terminal performance on a real phone (WP-1 PARTIAL), end-to-end QA (WP-15).
+
+Main code: `apps/shell/src/remote/` (`mod.rs`, `ctx.rs`, `host.rs`, `pair.rs`, `session.rs`, `lan.rs`, `relay.rs`, `dashboard.rs`, `phone_ws.rs`, `phone_pty.rs`, `pty_bridge.rs`, `confirm.rs`, `devices.rs`, `limits.rs`, `pane_link.rs`), `apps/core/crates/core-remote-proto`, `apps/relay`, `apps/mobile`, renderer `apps/web/src/stores/remote.ts` + `components/settings/SettingsRemote.vue`. Tests: `cargo test -p core-remote-proto`, `cd apps/shell && cargo test`, `cd apps/relay && npm test`, `cd apps/mobile && flutter test`.

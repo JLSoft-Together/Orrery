@@ -76,7 +76,8 @@ for (const f of changed) {
   const m = f.match(/^apps\/desktop\/e2e\/([^/]+)\.cjs$/)
   if (m && m[1] !== 'cdp' && !flag('no-e2e')) e2e.add(m[1])
 }
-for (const x of [...e2e]) if (!existsSync(path.join(REPO, 'apps/desktop/e2e', x + '.cjs'))) e2e.delete(x)
+const e2eFile = (x) => ['apps/desktop/e2e', 'apps/shell/e2e'].map((d) => path.join(d, x + '.cjs')).find((p) => existsSync(path.join(REPO, p)))
+for (const x of [...e2e]) if (!e2eFile(x)) e2e.delete(x)
 const tauri = !flag('electron')
 const webChanged = touchedWs.has('apps/web') || touchedWs.has('packages/shared')
 const needShellBuild = tauri && e2e.size > 0 && (shell || crates.size > 0 || changed.includes('apps/shell/src/shim.js'))
@@ -133,7 +134,7 @@ if (e2e.size && !buildFailed) {
   const outRoot = path.join(os.tmpdir(), 'ccm-qa-fast')
   mkdirSync(outRoot, { recursive: true })
   const tasks = [...e2e].map((name) => (i) => {
-    return run(`e2e ${name}`, process.execPath, [path.join('apps/desktop/e2e', name + '.cjs'), ...(tauri ? ['--shell=tauri'] : [])], {
+    return run(`e2e ${name}`, process.execPath, [e2eFile(name), ...(tauri ? ['--shell=tauri'] : [])], {
       env: { CCM_E2E_PORT: String(4399 + i * 10), CCM_E2E_DBG: String(9333 + i * 10), CCM_E2E_OUT: path.join(outRoot, name) },
     })
   })

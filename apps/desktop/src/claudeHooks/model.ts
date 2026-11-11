@@ -92,12 +92,14 @@ export function restoreHookEntry(settings: Obj, flat: FlatHook): Obj {
 
 const SECRET_NAME = '[A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|AUTH|CREDENTIALS?|COOKIE|SESSION)[A-Za-z0-9_]*'
 
+const isCount = (name: string, value: string): boolean => /^sessions?$/i.test(name) && /^[0-9]{1,4}$/.test(value)
+
 /** Display text of a command / URL with the home folder and anything credential-like replaced. */
 export function maskHookText(text: string, home: string, platform: NodeJS.Platform = process.platform): string {
   let out = text
     .replace(/(:\/\/)[^/\s:@]+:[^/\s@]+@/g, '$1••••@')
     .replace(/\b(Bearer|Basic|token)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ••••')
-    .replace(new RegExp(`\\b(${SECRET_NAME})(\\s*[=:]\\s*)("[^"]*"|'[^']*'|[^\\s;&|"']+)`, 'gi'), '$1$2••••')
+    .replace(new RegExp(`\\b(${SECRET_NAME})(\\s*[=:]\\s*)("[^"]*"|'[^']*'|[^\\s;&|"']+)`, 'gi'), (all: string, name: string, sep: string, value: string) => (isCount(name, value) ? all : `${name}${sep}••••`))
     .replace(/(--?[A-Za-z0-9-]*(?:token|secret|password|passwd|api-?key|auth|key)[A-Za-z0-9-]*)(=|\s+)("[^"]*"|'[^']*'|[^\s;&|"'-][^\s;&|"']*)/gi, '$1$2••••')
     .replace(/([?&](?:token|key|secret|sig|signature|access_token|api_key|apikey|password)=)[^&\s"']+/gi, '$1••••')
   out = maskSecrets(out, home, platform)

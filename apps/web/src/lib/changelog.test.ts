@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import desktopPkg from '../../../desktop/package.json'
-import { APP_VERSION, CHANGELOG, compareSemver, markSeen, SEEN_KEY, seenVersion, shouldShowWhatsNew } from './changelog'
+import { APP_VERSION, CHANGELOG, compareSemver, isFreshInstall, markSeen, SEEN_KEY, seenVersion, shouldShowWhatsNew } from './changelog'
 
 describe('changelog', () => {
   it('lists versions newest first, strictly descending semver', () => {
@@ -57,5 +57,15 @@ describe('shouldShowWhatsNew', () => {
     markSeen()
     expect(seenVersion()).toBe(APP_VERSION)
     expect(shouldShowWhatsNew(seenVersion(), APP_VERSION)).toBe(false)
+  })
+})
+
+describe('isFreshInstall', () => {
+  afterEach(() => ['ccm.setupDone', 'ccm.tourDone', 'ccm.tourWorkspaceDone'].forEach((k) => localStorage.removeItem(k)))
+
+  it('is fresh until quick setup or a tour has been finished', () => {
+    expect(isFreshInstall()).toBe(true)
+    localStorage.setItem('ccm.tourDone', '1')
+    expect(isFreshInstall()).toBe(false)
   })
 })

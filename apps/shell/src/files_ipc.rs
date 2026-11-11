@@ -132,10 +132,6 @@ pub fn build_report(head: &[String], page: &str, logs: &[(&str, String)], home: 
     format!("{}\n", core_desk::claude::mask::mask_hook_text(&sections.join("\n\n"), home, platform))
 }
 
-pub fn file_stamp(iso: &str) -> String {
-    iso.chars().take(16).filter(|c| *c != '-' && *c != ':').collect::<String>().replace('T', "-")
-}
-
 pub fn save_dialog(app: &AppHandle, name: &str, filter: &str, exts: &[&str]) -> Option<PathBuf> {
     let mut d = dialog(app).set_file_name(name).add_filter(filter, exts);
     if let Ok(dir) = app.path().download_dir() {
@@ -166,7 +162,7 @@ fn logs(app: &AppHandle, action: &Value, page: &Value) -> Value {
     if action == "copy" {
         return json!({"ok": arboard::Clipboard::new().and_then(|mut c| c.set_text(text)).is_ok()});
     }
-    let stamp = file_stamp(&core_desk::util::iso_string(core_desk::util::now_ms()));
+    let stamp = core_desk::util::local_file_stamp();
     let mut d = dialog(app).set_file_name(format!("agent-monitor-log-{stamp}.txt")).add_filter("Text", &["txt"]);
     if let Ok(dir) = app.path().download_dir() {
         d = d.set_directory(dir);
@@ -256,10 +252,5 @@ mod tests {
         assert!(tail.ends_with("END"));
         assert_eq!(tail_of(&dir.join("gone.log")), "(missing)");
         let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn the_saved_file_name_uses_the_utc_minute() {
-        assert_eq!(file_stamp("2026-11-11T08:30:12.000Z"), "20261111-0830");
     }
 }

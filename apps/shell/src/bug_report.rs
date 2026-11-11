@@ -350,7 +350,7 @@ pub fn save(app: &AppHandle, req: &Value) -> Value {
     let page = crate::files_ipc::page_report(req.get("page").unwrap_or(&Value::Null));
     let errors = req.get("errors").and_then(Value::as_str).unwrap_or("");
     let dumps = req.get("dumps").and_then(Value::as_bool).unwrap_or(false);
-    let stamp = crate::files_ipc::file_stamp(&core_desk::util::iso_string(core_desk::util::now_ms()));
+    let stamp = core_desk::util::local_file_stamp();
     let Some(path) = crate::files_ipc::save_dialog(app, &format!("orrery-bugreport-{stamp}.zip"), "Zip", &["zip"]) else { return json!({"ok": false, "code": "cancel"}) };
     let sel = select(gather(app, &page, errors, dumps), LIMIT);
     let text = manifest(&sel, LIMIT);

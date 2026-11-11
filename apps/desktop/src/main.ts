@@ -10,7 +10,7 @@ import { createEditorTracker, type EditorTracker } from './editors'
 import { installBridge, type BridgeInstall } from './bridge'
 import { BRIDGE_EXE, installRustBridge, migrateBridges, rustBridgeCommand, rustBridgeSource, type MigrateResult } from './bridgeRust'
 import { maskSecrets } from '@ccm/shared'
-import { BUG_REPORT_LIMIT, clampErrors, gatherCandidates, previewItems, selectEntries, writeZipFile, zipItems, type Roots as BugRoots } from './bugReport'
+import { BUG_REPORT_LIMIT, clampErrors, localFileStamp, gatherCandidates, previewItems, selectEntries, writeZipFile, zipItems, type Roots as BugRoots } from './bugReport'
 import { FatalError, type FatalReason } from './collector-host'
 import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-serve-host'
 import { createServeToasts, type ServeToasts } from './serve-toast'
@@ -2354,7 +2354,7 @@ async function ready(): Promise<void> {
       return { ok: true }
     }
     const win = BrowserWindow.fromWebContents(event.sender)
-    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')
+    const stamp = localFileStamp(new Date())
     const opts: Electron.SaveDialogOptions = {
       defaultPath: path.join(app.getPath('downloads'), `agent-monitor-log-${stamp}.txt`),
       filters: [{ name: 'Text', extensions: ['txt'] }],
@@ -2379,7 +2379,7 @@ async function ready(): Promise<void> {
     if (!isAppFrame(event) || !req || typeof req !== 'object') return null
     const r = req as { page?: unknown; errors?: unknown; dumps?: unknown }
     const win = BrowserWindow.fromWebContents(event.sender)
-    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')
+    const stamp = localFileStamp(new Date())
     const opts: Electron.SaveDialogOptions = {
       defaultPath: path.join(app.getPath('downloads'), `orrery-bugreport-${stamp}.zip`),
       filters: [{ name: 'Zip', extensions: ['zip'] }],

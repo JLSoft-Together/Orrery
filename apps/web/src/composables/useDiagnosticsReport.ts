@@ -24,7 +24,7 @@ export function useDiagnosticsReport() {
     const usage = d.usage
     const codex = d.codex
     return [
-      { key: 'collector', level: 'ok' as DiagLevel, value: t('diag.collectorValue', { ago: ago(d.startedAt), clients: d.clients }), detail: `${d.platform}, Node ${d.node}` },
+      { key: 'collector', level: 'ok' as DiagLevel, value: t('diag.collectorValue', { ago: ago(d.startedAt), clients: d.clients }), detail: d.node ? `${d.platform}, Node ${d.node}` : d.platform },
       {
         key: 'claudeRoot',
         level: (d.claudeRootFound && d.watchers.sessions && d.watchers.projects ? 'ok' : 'warn') as DiagLevel,

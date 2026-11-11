@@ -4,6 +4,7 @@ import path from 'node:path'
 import { inflateRawSync } from 'node:zlib'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
+  localFileStamp,
   assembleCandidates,
   buildZip,
   crashCandidates,
@@ -157,5 +158,12 @@ describe('zip writer', () => {
     expect(files.get('a/é.txt')!.equals(big)).toBe(true)
     expect(files.get('b.bin')!.equals(noise)).toBe(true)
     expect(files.get('c.txt')!.length).toBe(0)
+  })
+})
+
+describe('localFileStamp', () => {
+  it('uses the local date and minute', () => {
+    expect(localFileStamp(new Date(2026, 10, 11, 15, 46, 59))).toBe('20261111-1546')
+    expect(localFileStamp(new Date(2026, 0, 2, 3, 4))).toBe('20260102-0304')
   })
 })

@@ -29,3 +29,36 @@ export function contextCrossings(armed: ReadonlySet<string>, samples: readonly C
   }
   return { fire, armed: next }
 }
+
+export const CONTEXT_WARNED_KEY = 'ccm.contextWarned'
+const WARNED_MAX = 200
+
+export function parseWarned(raw: string | null): Set<string> {
+  if (!raw) return new Set()
+  try {
+    const list: unknown = JSON.parse(raw)
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string').slice(-WARNED_MAX) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+export function serializeWarned(armed: ReadonlySet<string>): string {
+  return JSON.stringify([...armed].slice(-WARNED_MAX))
+}
+
+export function loadWarned(): Set<string> {
+  try {
+    return parseWarned(localStorage.getItem(CONTEXT_WARNED_KEY))
+  } catch {
+    return new Set()
+  }
+}
+
+export function saveWarned(armed: ReadonlySet<string>): void {
+  try {
+    localStorage.setItem(CONTEXT_WARNED_KEY, serializeWarned(armed))
+  } catch {
+    return
+  }
+}

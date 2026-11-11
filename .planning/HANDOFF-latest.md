@@ -1,39 +1,35 @@
-# HANDOFF 2026-11-11 15:29 — Orrery 4.0.2 (v89–v91) đã push, chủ nhân sang MacBook test
+# HANDOFF 2026-11-11 16:21 — 4.0.2 test macOS xong, IME tiếng Việt + 6 lỗi nhỏ đã sửa, chủ nhân sang Windows chạy E2E
 
-Đọc file này là làm tiếp được. Trả lời tiếng Việt, gọi "chủ nhân", xưng "con". Thay bản 10:17 (Tauri gaps, còn trong git history `d5d5e53b`).
+Đọc file này là làm tiếp được. Trả lời tiếng Việt, gọi "chủ nhân", xưng "con". Thay bản 15:29 (`HANDOFF-2026-11-11-1529-v89-v91.md`).
 
 ## 1. Đang ở đâu
-- `master` = `origin/master` = `4bd8a614` (+ `41bbc597` Tauri Windows drop / fit / CSP). Working tree sạch trừ rác không track (`.vitest/`, `docs/qa/v79|v80`, `spikes/layoutlib`, `bg_native_ad_cta.xml`, `git-gui.bat`): **không commit** mấy file đó.
-- Windows: `npm run qa --e2e=v89-pane,v89-session-tools,v90-bug-report,v91-themes` 16/16 pass (typecheck, vitest related, cargo core-desk + shell, 5 E2E Tauri). Review sonnet: 2 lỗi đã sửa (pre-paint theme khi storage bị chặn; `writeAtomic` giữ mode 0600 của `~/.claude.json` trên unix — TS `apps/desktop/src/extensions/project.ts`, Rust `apps/core/crates/core-desk/src/claude/mod.rs`).
-- Release note nháp: `.planning/RELEASE-4.0.2.md` (en + vi). Chưa bump version, chưa release.
+- `master` có commit "🐛 4.0.2 macOS test fixes" (sau `e3bc9726`), đã push. Version vẫn **4.0.1**, chưa bump, chưa release.
+- macOS: `npm run typecheck` pass; `npm test` pass (1 test twin fail lúc đầu do `apps/core/target/release/orrery-core` cũ, build lại `cargo build -p core-bin --release` là hết; crate của binary `orrery-core` là `core-bin`); `cargo test` shell + core-desk pass (`layout_model.rs::refresh_failures_are_reported_with_codes` fail 1 lần rồi pass 5 lần: timing, theo dõi). `npm run qa --no-e2e` 6/6.
+- Test tay trên `apps/shell/target/debug/orrery-shell` (data tạm `$TMPDIR/orrery-shell-dev`, cổng 4419), lái app bằng System Events / AX (WKWebView không có CDP): checklist 5 mục của handoff 15:29 đều đạt (theme Orrery lần đầu + giữ Console sau mở lại; sheet MCP ghi `disabledMcpServers` / `enabledPlugins`, `~/.claude.json` vẫn 600, `--resume` đúng id, `/mcp` thấy blender tắt; zip báo lỗi không chứa home path / secret; Explorer + Git Log + editor; chip context + toast).
+- Ghi chú: "Khởi động lại" trên session chưa có prompt mở session mới (đúng thiết kế, `resumeIdOf` bỏ qua untouched). Markdown preview không hiện ảnh là cố ý (`lib/markdown.ts:19`).
 
-## 2. Đã làm (plan = nguồn chi tiết)
-- **v89** `.planning/PLAN-v89-session-tools-context.md`: sheet MCP & plugin theo session (menu ⋯ pane + card Monitor), tắt theo project (`~/.claude.json` `projects[dir].disabledMcpServers`, `<dir>/.claude/settings.local.json` `enabledPlugins`), nút Khởi động lại (`--resume`). Chip context trên pane / SessionCard / BoardCard, toast 1 lần khi vượt `settings.contextWarnTokens` (500000, 0 = tắt). Kênh `ccm:ext-project`, `ccm:ext-project-toggle` (Rust `extensions/project.rs` + Electron `extensions/project.ts`), docs §11aq.
-- **v90** `.planning/PLAN-v90-bug-report.md`: Settings → Giới thiệu → zip báo lỗi max 50 MB (report, page-errors, crash events/WER/.ips, logs, dumps tuỳ chọn), mask secret + home. Toast nhẹ sau crash / lỗi UI (`useBugReportPrompts`). Rust `apps/shell/src/bug_report.rs`, Electron `apps/desktop/src/bugReport.ts`.
-- **v91** `.planning/PLAN-v91-themes-orrery-console.md`: theme Orrery (`orrery-light`/`orrery-dark`, mặc định) + Console; token hình dáng trong `style.css` (bảng ở `.planning/COLOR-SYSTEM.md`); migration 1 lần `ccm.themeMigration='4.0.2'` (index.html pre-paint + `lib/themes.ts` `startTheme`). Đổi hành vi: theme không có cặp → toggle sáng/tối sang Orrery (trước là Apple). Orrery dark accent fill `#6f5ee8`.
-- **qa-fast** `scripts/qa-fast.mjs` (`npm run qa`), map E2E ở `E2E_MAP`; single-instance tắt khi E2E isolated (`apps/shell/src/config.rs` `e2e_isolated`).
+## 2. Đã sửa phiên này
+- **IME tiếng Việt trong terminal (bug chủ nhân báo: gõ rồi Delete ra `/uuuu`, mất chữ)**: Apple Vietnamese Telex trên WKWebView bắn `beforeinput`/`input` `insertReplacementText` (thay cả từ trong textarea ẩn, không composition) → xterm 6 bỏ qua; thêm `insertText` đến trước keydown nên `_keyPressHandled` của xterm bỏ chữ đầu sau dấu cách. Sửa `apps/web/src/lib/termIme.ts` `installReplacementIme` (TermPane + DropTerminal): `\x7f`×phần bị thay + phần mới, textarea khớp dòng lệnh (Backspace bỏ 1 code point, Enter/mũi tên/ctrl/meta xoá), gửi lại `insertText` mà xterm bỏ (không khi đang composition). Test tay: shell `echo tiếng việt ný đây oké xong`, Claude pane `thử gõ tiếng việt ný đây nhé`, ASCII không trùng, dead key Option+e đúng.
+- 6 lỗi nhỏ: mask không che `Session: <1–4 chữ số>` (Rust `mask.rs` `is_count` = TS `claudeHooks/model.ts` `isCount`); `Node )` trống bỏ (`useDiagnosticsReport.ts`); tên zip / log theo giờ máy (`core_desk::util::local_file_stamp`, `bugReport.ts` `localFileStamp`); `errorLog.recordError` bỏ noise ResizeObserver / Script error; toast context nhớ qua lần mở app (`ccm.contextWarned`); What's new không hiện khi cài mới, máy đã qua setup / tour vẫn thấy (`changelog.ts` `isFreshInstall`).
+- Review `typescript-reviewer` (sonnet) đã áp 4 điểm. Bỏ qua có chủ ý: Linux `local_date_time` vẫn UTC (Linux không phải target), mirror textarea lệch khi click chuột / TUI redraw (rủi ro thấp).
 
-## 3. Bước tiếp — trên MacBook (E2E không chạy được: WKWebView không có CDP)
+## 3. Việc tiếp — Windows (chủ nhân chạy)
 ```
 git pull && npm install
-npm run typecheck && npm test
-cd apps/shell && cargo test && cargo tauri dev   # hoặc build như thường lệ
+npm run qa -- --e2e=core-pty,p3,p4,file-editor,v89-pane,v89-session-tools,v90-bug-report,v91-themes
 ```
-Checklist test tay:
-1. Lần đầu mở sau update → Orrery (theo sáng/tối hệ thống); chọn theme khác, mở lại vẫn giữ.
-2. Sheet MCP & plugin: tắt 1 MCP → Khởi động lại → session chạy với `--resume`; `ls -l ~/.claude.json` vẫn `-rw-------`.
-3. Settings → Giới thiệu → tải zip báo lỗi: có `.ips` crash macOS, log; không lộ home path / secret.
-4. Explorer, Git Log, console không lỗi CSP.
-5. Chip token trên pane + card Monitor; toast khi vượt ngưỡng (hạ ngưỡng trong Settings → Nhắc nhở để thử).
-Lỗi gặp trên Mac → sửa, chạy `npm run qa --no-e2e`, báo chủ nhân (commit chỉ khi chủ nhân bảo).
+Mục tiêu: chắc `termIme.ts` không làm gõ bị trùng / mất trên WebView2 (Chromium dùng composition, khác WebKit). Gõ tay thêm Telex (Unikey / EVKey) trong Claude pane, bấm Delete giữa chừng.
+Pass → `/jin-release`: release-check, bump 4.0.2, release note `.planning/RELEASE-4.0.2.md` (đã có dòng IME).
+Chủ nhân confirm IME OK → ghi `bug_pool/` + `signatures.tsv`.
 
-## 4. Còn treo (hỏi chủ nhân)
-- Crash 4.0.1 Windows `0xc000001d` (ud2) tại offset `0xc58e4` Orrery.exe, không phải Rust panic; dump ở `%LOCALAPPDATA%\CrashDumps`. Cần PDB: build release local có PDB hay sửa CI giữ PDB?
-- App tự mở claude.ai trên trình duyệt: chờ chủ nhân gửi URL. Nghi pane Claude chạy với config dir chưa login → OAuth.
-- Chưa làm: Console thanh accent trái cho dòng đang chọn.
-- `desk-agent-data.twin.test.ts` EPERM symlink trên Windows (cần Developer Mode) — có từ trước, không liên quan.
+## 4. Còn treo
+- Crash 4.0.1 Windows `0xc000001d` tại `0xc58e4` Orrery.exe: cần PDB (build local có PDB hay CI giữ PDB?).
+- App tự mở claude.ai trên trình duyệt: chờ URL.
+- Console: thanh accent trái cho dòng đang chọn chưa làm.
+- Chưa có `.ips` crash Orrery thật trên Mac để kiểm zip.
+- `CCM_SHELL_WEBVIEW_DIR` / data dir dev: xoá `$TMPDIR/orrery-shell-dev` mà WKWebView vẫn giữ localStorage (recent, tour) → nghi WebKit lưu chỗ khác trên macOS; chưa điều tra.
 
 ## 5. Ràng buộc chủ nhân đã chốt
-- Không tự commit/push; cho phép lần nào tính lần đó. Không trailer `Co-Authored-By` / "Generated with Claude".
-- Không viết comment trong code. Không đụng `.planning/RELEASE-4.0.0.md`.
-- Subagent luôn đặt `model`; máy ≤80% tài nguyên. Code xong chạy `npm run qa`.
+- Không tự commit/push (lần này chủ nhân cho phép). Không trailer `Co-Authored-By` / "Generated with Claude". Không đụng `.planning/RELEASE-4.0.0.md`.
+- Không viết comment trong code. Subagent luôn đặt `model`; máy ≤80% tài nguyên. Code xong chạy `npm run qa`.
+- Trên Mac bộ gõ Telex đang bật: gõ phím giả lập phải dán qua clipboard (trả clipboard lại), không `keystroke` chữ có thể bị Telex đổi.

@@ -13,6 +13,7 @@ import { shortPath } from '../../lib/format'
 import { isMac } from '../../lib/platform'
 import { PtyConnection } from '../../lib/ptyClient'
 import { TERM_SCROLLBACK } from '../../lib/termBuffer'
+import { installReplacementIme } from '../../lib/termIme'
 import { useSettingsStore } from '../../stores/settings'
 
 /**
@@ -208,6 +209,7 @@ onMounted(() => {
   term.unicode.activeVersion = '15-graphemes'
   term.open(host.value!)
   term.attachCustomKeyEventHandler(onKey)
+  installReplacementIme(term)
   term.textarea?.addEventListener('focus', () => {
     if (term) term.options.cursorBlink = true
   })

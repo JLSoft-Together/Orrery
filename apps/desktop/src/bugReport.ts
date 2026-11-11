@@ -360,3 +360,8 @@ export async function gatherCandidates(roots: Roots, report: string, errors: str
 export const previewItems = (cands: Candidate[]): { name: string; bytes: number; kind: BugKind }[] => cands.map((c) => ({ name: c.name, bytes: bodyLen(c.body), kind: c.kind }))
 
 export const clampErrors = (v: unknown): string => (typeof v === 'string' ? Array.from(v).slice(0, MAX_ERRORS).join('') : '')
+
+export function localFileStamp(d: Date): string {
+  const p2 = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`
+}

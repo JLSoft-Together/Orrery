@@ -44,23 +44,36 @@ pub fn iso_string(ms: f64) -> String {
 }
 
 #[cfg(windows)]
-pub fn local_date() -> (i64, u32, u32) {
+pub fn local_date_time() -> (i64, u32, u32, u32, u32) {
     let mut st: windows_sys::Win32::Foundation::SYSTEMTIME = unsafe { std::mem::zeroed() };
     unsafe { windows_sys::Win32::System::SystemInformation::GetLocalTime(&mut st) };
-    (st.wYear as i64, st.wMonth as u32, st.wDay as u32)
+    (st.wYear as i64, st.wMonth as u32, st.wDay as u32, st.wHour as u32, st.wMinute as u32)
 }
 
 #[cfg(target_os = "macos")]
-pub fn local_date() -> (i64, u32, u32) {
+pub fn local_date_time() -> (i64, u32, u32, u32, u32) {
     let now = unsafe { libc::time(std::ptr::null_mut()) };
     let mut tm: libc::tm = unsafe { std::mem::zeroed() };
     unsafe { libc::localtime_r(&now, &mut tm) };
-    (tm.tm_year as i64 + 1900, tm.tm_mon as u32 + 1, tm.tm_mday as u32)
+    (tm.tm_year as i64 + 1900, tm.tm_mon as u32 + 1, tm.tm_mday as u32, tm.tm_hour as u32, tm.tm_min as u32)
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
+pub fn local_date_time() -> (i64, u32, u32, u32, u32) {
+    let ms = now_ms();
+    let (y, m, d) = civil((ms / 86_400_000.0).floor() as i64);
+    let min_of_day = ((ms % 86_400_000.0) / 60_000.0).floor() as u32;
+    (y, m, d, min_of_day / 60, min_of_day % 60)
+}
+
 pub fn local_date() -> (i64, u32, u32) {
-    civil((now_ms() / 86_400_000.0).floor() as i64)
+    let (y, m, d, _, _) = local_date_time();
+    (y, m, d)
+}
+
+pub fn local_file_stamp() -> String {
+    let (y, m, d, h, min) = local_date_time();
+    format!("{y:04}{m:02}{d:02}-{h:02}{min:02}")
 }
 
 pub fn uuid() -> String {
@@ -170,6 +183,16 @@ pub fn default_data_dir(home: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn local_file_stamp_is_date_dash_hour_minute() {
+        let s = local_file_stamp();
+        assert_eq!(s.len(), 13, "{s}");
+        assert_eq!(&s[8..9], "-");
+        assert!(s.chars().enumerate().all(|(i, c)| i == 8 || c.is_ascii_digit()), "{s}");
+        let (y, _, _) = local_date();
+        assert!(s.starts_with(&format!("{y:04}")), "{s}");
+    }
 
     #[test]
     fn iso_and_uuid() {

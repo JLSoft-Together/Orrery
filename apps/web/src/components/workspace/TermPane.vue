@@ -16,6 +16,7 @@ import { fontEntry, termFontStack } from '../../lib/fonts'
 import { duration, now, shortPath } from '../../lib/format'
 import type { MenuEntry } from '../../lib/menu'
 import { newlineFor } from '../../lib/termKeys'
+import { installReplacementIme } from '../../lib/termIme'
 import { headMode, isHeadBlank, processChip, STATE_BADGE, statusWordShown, suggestCompact, zoomKeys } from '../../lib/paneHead'
 import { contextPctOf } from '../../lib/provider'
 import { retireOverlay } from '../../lib/motion'
@@ -945,6 +946,7 @@ onMounted(() => {
   term.unicode.activeVersion = '15-graphemes'
   term.open(host.value!)
   term.attachCustomKeyEventHandler(onKey)
+  installReplacementIme(term)
   term.onWriteParsed(() => att.schedule())
   term.parser.registerOscHandler(7, (data) => (onShellCwd(parseOsc7(data)), true))
   // Not consumed (false): xterm still turns the sequence into a link.

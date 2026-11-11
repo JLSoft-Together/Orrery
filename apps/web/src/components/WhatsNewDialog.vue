@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight, Sparkles, X } from 'lucide-vue-next'
-import { APP_VERSION, CHANGELOG, markSeen, seenVersion, shouldShowWhatsNew, type Release } from '../lib/changelog'
+import { APP_VERSION, CHANGELOG, isFreshInstall, markSeen, seenVersion, shouldShowWhatsNew, type Release } from '../lib/changelog'
 import { hasTerminals } from '../lib/desktop'
 import { retireOverlay } from '../lib/motion'
 import { canOfferWhatsNew, tourShownThisSession } from '../lib/onboardingGate'
@@ -92,6 +92,7 @@ let offered = false
 let timer = 0
 function offer(): void {
   window.clearTimeout(timer)
+  if (seenVersion() === null && isFreshInstall()) markSeen()
   if (offered || !shouldShowWhatsNew(seenVersion(), APP_VERSION)) return
   timer = window.setTimeout(() => {
     if (offered || !allowed()) return

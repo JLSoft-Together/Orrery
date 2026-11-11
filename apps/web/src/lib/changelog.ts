@@ -348,6 +348,16 @@ export function shouldShowWhatsNew(seen: string | null, current: string): boolea
   return !!current && seen !== current
 }
 
+const PRIOR_INSTALL_KEYS = ['ccm.setupDone', 'ccm.tourDone', 'ccm.tourWorkspaceDone']
+
+export function isFreshInstall(): boolean {
+  try {
+    return PRIOR_INSTALL_KEYS.every((k) => localStorage.getItem(k) === null)
+  } catch {
+    return false
+  }
+}
+
 export function seenVersion(): string | null {
   try {
     return localStorage.getItem(SEEN_KEY)

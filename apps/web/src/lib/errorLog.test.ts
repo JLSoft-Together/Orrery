@@ -13,6 +13,12 @@ describe('errorLog', () => {
     console.error = original
   })
 
+  it('skips benign browser noise', () => {
+    recordError('error', 'ResizeObserver loop completed with undelivered notifications.')
+    recordError('error', 'Script error.')
+    expect(errorLogCount()).toBe(0)
+  })
+
   it('records window errors with stack lines', () => {
     installErrorLog()
     const error = new Error('boom')

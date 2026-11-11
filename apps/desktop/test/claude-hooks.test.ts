@@ -88,6 +88,7 @@ describe('maskHookText', () => {
     expect(out).toContain('~/h.js')
     expect(out).toContain('API_KEY=••••')
     expect(maskHookText('node "${CLAUDE_PLUGIN_ROOT}/hooks/run.js" --verbose', home, 'linux')).toBe('node "${CLAUDE_PLUGIN_ROOT}/hooks/run.js" --verbose')
+    expect(maskHookText('Session: 1 live\nSESSION=abc session_id: 42 session=48213907', home, 'linux')).toBe('Session: 1 live\nSESSION=•••• session_id: •••• session=••••')
   })
 })
 

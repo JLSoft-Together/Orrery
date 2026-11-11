@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { CONTEXT_THRESHOLDS, inQuietHours, remindersDue, type TerminalSession, type TerminalStatus, type ToastKind } from '@ccm/shared'
 import { TriangleAlert } from 'lucide-vue-next'
 import { quietFor } from '../lib/attention'
-import { contextCrossings } from '../lib/contextWarn'
+import { contextCrossings, loadWarned, saveWarned } from '../lib/contextWarn'
 import { compactNumber, duration, now } from '../lib/format'
 import { contextPctOf } from '../lib/provider'
 import { playChime } from '../lib/sound'
@@ -248,14 +248,16 @@ export function useNotifications(): void {
     },
   )
 
-  let contextArmed = new Set<string>()
+  let contextArmed = loadWarned()
   watch(
     () => [terminals.live.map((x) => `${x.id}|${agents.mainOf(x.id)?.contextTokens ?? ''}`).join(','), settings.contextWarnTokens] as const,
     () => {
       if (!connection.hasData) return
       const samples = terminals.live.map((x) => ({ id: x.id, tokens: agents.mainOf(x.id)?.contextTokens }))
       const { fire, armed } = contextCrossings(contextArmed, samples, settings.contextWarnTokens)
+      const changed = armed.size !== contextArmed.size || [...armed].some((id) => !contextArmed.has(id))
       contextArmed = armed
+      if (changed) saveWarned(armed)
       for (const id of fire) {
         const x = terminals.byId[id]
         const tokens = samples.find((s) => s.id === id)?.tokens

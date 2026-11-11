@@ -1,3 +1,5 @@
+import { isNoise } from './bugReport'
+
 export type ErrorKind = 'error' | 'unhandledrejection' | 'console.error'
 
 export interface ErrorEntry {
@@ -46,6 +48,7 @@ function describe(value: unknown): string {
 }
 
 export function recordError(kind: ErrorKind, message: string, stack: string[] = []): void {
+  if (isNoise(message, stack.join('\n'))) return
   entries.push({ at: new Date().toISOString(), kind, message: clip(message), stack: stack.slice(0, MAX_STACK_LINES) })
   if (entries.length > MAX_ENTRIES) entries = entries.slice(entries.length - MAX_ENTRIES)
 }

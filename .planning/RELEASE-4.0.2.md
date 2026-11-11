@@ -6,6 +6,7 @@
 - **Context warning**: token chip on panes and cards, a toast once a session passes 500K (Settings → Reminders, 0 = off) with a Compact… button.
 - **Bug report** in Settings → About: one .zip (max 50 MB) with logs, crash reports and UI errors, secrets and home path masked; a gentle toast points there after a crash or UI error.
 - Windows: dropping files from Explorer into a pane inserts `@path` again; XML Preview "Fit" scales on first render.
+- macOS: typing Vietnamese with the Apple Telex input in a terminal pane no longer drops letters or leaves stray characters after Delete.
 
 ## Tiếng Việt
 - Theme mặc định mới **Orrery** (phẳng, accent tím indigo, sáng + tối) và theme **Console** tương phản cao. Cập nhật xong mọi máy chuyển sang Orrery một lần; muốn đổi lại vào Settings → Giao diện.
@@ -13,3 +14,4 @@
 - **Cảnh báo context**: chip số token trên pane và card, toast 1 lần khi session vượt 500K (Settings → Nhắc nhở, 0 = tắt) kèm nút Compact….
 - **Báo lỗi** trong Settings → Giới thiệu: 1 file .zip (max 50 MB) gồm log, crash, lỗi giao diện, đã che secret và đường dẫn home; app nhắc nhẹ bằng toast sau khi crash hoặc gặp lỗi giao diện.
 - Windows: kéo file từ Explorer vào pane lại ra `@path`; XML Preview "Fit" đúng tỉ lệ ngay lần render đầu.
+- macOS: gõ tiếng Việt bằng bộ gõ Telex của Apple trong terminal không còn mất chữ hay ra ký tự rác khi bấm Delete.

@@ -16,9 +16,11 @@ impl<C: Control> Hub<C> {
             MainToCore::CwdOk { rid, cwd } => {
                 let Some((conn, id)) = self.cwd_waits.remove(&rid) else { return };
                 self.send(Some(conn), text(json!({ "t": "cwd", "cwd": cwd })));
-                if let (Some(cwd), Some(s)) = (cwd, self.ids.get(&id).and_then(|k| self.sessions.get_mut(k))) {
+                let Some(key) = self.ids.get(&id).copied() else { return };
+                if let (Some(cwd), Some(s)) = (cwd, self.sessions.get_mut(&key)) {
                     if Some(&cwd) != s.live_cwd.as_ref().or(Some(&s.cwd)) {
-                        s.live_cwd = Some(cwd);
+                        s.live_cwd = Some(cwd.clone());
+                        self.fanout(key, Some(conn), text(json!({ "t": "cwd", "cwd": cwd })));
                     }
                 }
             }
@@ -28,10 +30,10 @@ impl<C: Control> Hub<C> {
                 }
             }
             MainToCore::Branch { id, branch } => {
-                let Some(s) = self.ids.get(&id).and_then(|k| self.sessions.get_mut(k)) else { return };
+                let Some(key) = self.ids.get(&id).copied() else { return };
+                let Some(s) = self.sessions.get_mut(&key) else { return };
                 s.branch = branch.clone();
-                let conn = s.conn;
-                self.send(conn, text(json!({ "t": "branch", "branch": branch })));
+                self.fanout(key, None, text(json!({ "t": "branch", "branch": branch })));
             }
             MainToCore::Census => {
                 let sessions = self.census();
@@ -95,6 +97,11 @@ impl<C: Control> Hub<C> {
             self.ids.remove(&s.id);
         }
         let id = s.id.clone();
+        for v in &s.viewers {
+            if let Some(c) = self.conns.get_mut(&v.conn).filter(|c| c.session == Some(key)) {
+                c.session = None;
+            }
+        }
         if s.exit_code.is_none() {
             eprintln!("orrery-core: kill id={} pid={}", s.id, s.pid);
             if now {
@@ -114,7 +121,7 @@ impl<C: Control> Hub<C> {
     pub fn reap(&mut self) {
         let now = self.now();
         let expired: Vec<u64> =
-            self.sessions.iter().filter(|(_, s)| s.conn.is_none() && s.exited_at.is_some_and(|t| now.saturating_duration_since(t) > EXITED_TTL)).map(|(k, _)| *k).collect();
+            self.sessions.iter().filter(|(_, s)| s.viewers.is_empty() && s.exited_at.is_some_and(|t| now.saturating_duration_since(t) > EXITED_TTL)).map(|(k, _)| *k).collect();
         for key in expired {
             let Some(s) = self.sessions.remove(&key) else { continue };
             if s.known {
@@ -133,8 +140,7 @@ impl<C: Control> Hub<C> {
                     return;
                 }
                 s.ring.push(&d);
-                let conn = s.conn;
-                self.send(conn, Out::Binary(d));
+                self.fanout(key, None, Out::Binary(d));
             }
             PtyEvent::Draining => s.gate.drain(),
             PtyEvent::Exit { code, signal } => {
@@ -149,8 +155,8 @@ impl<C: Control> Hub<C> {
                     eprintln!("orrery-core: exit id={} code={code}", s.id);
                 }
                 s.exit_code = Some(code);
-                let (conn, known, id) = (s.conn, s.known, s.id.clone());
-                self.send(conn, text(json!({ "t": "exit", "code": code })));
+                let (known, id) = (s.known, s.id.clone());
+                self.fanout(key, None, text(json!({ "t": "exit", "code": code })));
                 if known {
                     self.control.send(CoreToMain::Exited { id, code });
                 } else {

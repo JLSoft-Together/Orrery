@@ -1,3 +1,4 @@
+use super::viewers::attach_mode;
 use super::{text, Control, Event, Frame, Hub};
 use crate::control::CoreToMain;
 use crate::owners::{self, Ask, Lookup};
@@ -14,7 +15,8 @@ impl<C: Control> Hub<C> {
         }
         match frame {
             Frame::Binary(data) => {
-                if let Some(s) = c.session.and_then(|k| self.sessions.get_mut(&k)) {
+                let Some(key) = c.session else { return };
+                if let Some(s) = self.sessions.get_mut(&key) {
                     if s.exit_code.is_none() && !s.proc.write(&data) && !s.input_dropped {
                         s.input_dropped = true;
                         eprintln!("orrery-core: input dropped, write queue full id={}", s.id);
@@ -60,7 +62,8 @@ impl<C: Control> Hub<C> {
                 };
                 match self.ids.get(&id).copied() {
                     Some(k) => {
-                        self.attach(conn, k, true);
+                        let (mode, size) = attach_mode(&msg);
+                        self.attach(conn, k, true, mode, size);
                         if let Some(c) = self.conns.get_mut(&conn) {
                             c.session = Some(k);
                         }
@@ -73,11 +76,8 @@ impl<C: Control> Hub<C> {
         }
         let Some(key) = current else { return };
         match t.as_str() {
-            "resize" => {
-                if let Some(s) = self.sessions.get(&key).filter(|s| s.exit_code.is_none()) {
-                    s.proc.resize(clamp_dim(msg.get("cols"), 80), clamp_dim(msg.get("rows"), 24));
-                }
-            }
+            "resize" => self.resize_from(key, conn, (clamp_dim(msg.get("cols"), 80), clamp_dim(msg.get("rows"), 24))),
+            "claim" => self.claim(key, conn),
             "kill" => {
                 self.kill(key, false);
                 if let Some(c) = self.conns.get_mut(&conn) {

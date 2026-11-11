@@ -18,7 +18,8 @@ export type PtyClientMessage =
   /** `session`: new claude panes only, a page-minted UUID for `--session-id`; ignored with `resume` or `open`. */
   /** `shim`: shell panes only, `claude` / `codex` typed there run through the host's shims (orrery MCP, `--session-id`). */
   | { t: 'spawn'; preset: PtyPreset; cols: number; rows: number; cwd?: string; resume?: string; open?: string; session?: string; integrate?: boolean; shim?: boolean }
-  | { t: 'attach'; id: string }
+  | { t: 'attach'; id: string; mode?: 'own' | 'view'; cols?: number; rows?: number }
+  | { t: 'claim' }
   | { t: 'resize'; cols: number; rows: number }
   /** Folder the attached shell reported (OSC 7 / 9;9) after a `cd`; answered with `cwd` once validated. */
   | { t: 'cwd'; cwd: string }
@@ -41,6 +42,7 @@ export type PtyServerMessage =
   | { t: 'pid'; pid: number }
   | { t: 'exit'; code: number }
   | { t: 'gone' }
+  | { t: 'resized'; cols: number; rows: number }
   | { t: 'error'; message: string }
   /** pid → PTY session id, only for pids that descend from a live session; null when the process scan failed. */
   | { t: 'owners'; owners: Record<string, string> | null }

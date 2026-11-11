@@ -36,3 +36,6 @@
 - Báo cáo: `.planning/wp/v97/WP-3-report.md`
 
 ### Nhật ký
+- 2026-11-12 WP-3: hub nhiều viewer + input owner + `resized` xong (`hub/viewers.rs`), test core-pty 42 pass, core-bin pty 16 / flow 8 / viewers 3 pass, clippy core-pty + core-bin sạch (core-desk lỗi riêng), code_index cập nhật, báo cáo WP-3-report.md.
+- 2026-11-12 WP-3 vòng 2: 6 mục review xong (gate nhiều meter, claim chỉ qua message, overflow rời viewers ngay, resize non-viewer bỏ, kill dọn c.session), core-pty 45 pass, core-bin pty 16 / flow 8 / viewers 4 pass, clippy core-pty sạch.
+- 2026-11-12 WP-3 vòng 3: attach own lấy owner từ owner view (desktop remount), core-pty 46 pass, viewers 4 pass, clippy core-pty sạch.

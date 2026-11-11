@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 #[derive(Clone, Default)]
-struct Log(Arc<Mutex<Vec<CoreToMain>>>);
+pub(super) struct Log(Arc<Mutex<Vec<CoreToMain>>>);
 
 impl Control for Log {
     fn send(&self, msg: CoreToMain) {
@@ -32,7 +32,7 @@ fn long_lived() -> (String, Vec<String>) {
     return ("/bin/sh".into(), vec!["-c".into(), "sleep 30".into()]);
 }
 
-fn spawn_long(hub: &mut Hub<Log>, log: &Log, conn: u64, id: &str) -> u64 {
+pub(super) fn spawn_long(hub: &mut Hub<Log>, log: &Log, conn: u64, id: &str) -> u64 {
     hub.handle(Event::Frame { conn, frame: Frame::Text(json!({ "t": "spawn", "preset": "shell" }).to_string()), permit: None });
     let rid = match log.0.lock().unwrap().last() {
         Some(CoreToMain::Resolve { rid, .. }) => rid.clone(),
@@ -45,7 +45,7 @@ fn spawn_long(hub: &mut Hub<Log>, log: &Log, conn: u64, id: &str) -> u64 {
     *hub.ids.get(id).expect("spawned")
 }
 
-fn drain(rx: &mut UnboundedReceiver<Out>) -> Vec<Out> {
+pub(super) fn drain(rx: &mut UnboundedReceiver<Out>) -> Vec<Out> {
     let mut out = Vec::new();
     while let Ok(o) = rx.try_recv() {
         out.push(o);
@@ -97,7 +97,7 @@ async fn reused_conn_stops_getting_output_and_exit_of_its_previous_session() {
     hub.handle(Event::Frame { conn: 1, frame: Frame::Text(json!({ "t": "kill", "id": "A1" }).to_string()), permit: None });
     assert!(log.removed("A1"));
     let b = spawn_long(&mut hub, &log, 1, "B1");
-    assert_eq!(hub.sessions.get(&a).map(|s| s.conn), Some(None));
+    assert_eq!(hub.sessions.get(&a).map(|s| s.viewers.is_empty()), Some(true));
     drain(&mut orx);
     hub.handle(Event::Pty { key: a, ev: PtyEvent::Data(b"old".to_vec()), credit: None });
     hub.handle(Event::Pty { key: a, ev: PtyEvent::Exit { code: 1, signal: None }, credit: None });

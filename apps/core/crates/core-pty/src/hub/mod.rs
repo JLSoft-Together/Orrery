@@ -3,6 +3,9 @@ mod from_main;
 mod spawn;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_viewers;
+mod viewers;
 
 use crate::control::{CoreToMain, MainToCore};
 use crate::flow::{Credit, Gate, Meter, CONN_MAX};
@@ -10,6 +13,7 @@ use crate::owners::{self, PidTable, TableCache};
 use crate::ring::Ring;
 use crate::session::{Force, PtyEvent, PtyProc};
 use serde_json::{json, Value};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -31,6 +35,7 @@ pub enum Frame {
     Binary(Vec<u8>),
 }
 
+#[derive(Clone)]
 pub enum Out {
     Text(String),
     Binary(Vec<u8>),
@@ -60,7 +65,9 @@ struct Session {
     cwd: String,
     live_cwd: Option<String>,
     pid: u32,
-    conn: Option<u64>,
+    viewers: Vec<Viewer>,
+    input_owner: Option<u64>,
+    size: (u16, u16),
     exit_code: Option<i64>,
     branch: Option<String>,
     si: Option<String>,
@@ -71,6 +78,18 @@ struct Session {
     ring: Ring,
     gate: Arc<Gate>,
     proc: PtyProc,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Mode {
+    Own,
+    View,
+}
+
+struct Viewer {
+    conn: u64,
+    mode: Mode,
+    size: Option<(u16, u16)>,
 }
 
 impl Drop for Session {
@@ -131,6 +150,7 @@ pub struct Hub<C: Control> {
     next_rid: u64,
     clock: Clock,
     tables: TableCache,
+    spilled: RefCell<Vec<u64>>,
 }
 
 fn text(v: Value) -> Out {
@@ -161,6 +181,7 @@ impl<C: Control> Hub<C> {
             next_rid: 1,
             clock: Arc::new(Instant::now),
             tables: TableCache::default(),
+            spilled: RefCell::new(Vec::new()),
         }
     }
 
@@ -207,6 +228,7 @@ impl<C: Control> Hub<C> {
             c.meter.bind(None);
             eprintln!("orrery-core: socket backlog over {CONN_MAX} bytes, closed {OVERFLOW_CLOSE} conn={id}");
             let _ = c.tx.send(Out::Close(OVERFLOW_CLOSE, "overflow"));
+            self.spilled.borrow_mut().push(id);
             return;
         }
         if c.tx.send(out).is_err() {
@@ -230,11 +252,7 @@ impl<C: Control> Hub<C> {
                 if let Some(c) = self.conns.remove(&conn) {
                     c.meter.bind(None);
                 }
-                for s in self.sessions.values_mut() {
-                    if s.conn == Some(conn) {
-                        s.conn = None;
-                    }
-                }
+                self.leave_all(conn, None);
             }
             Event::Pty { key, ev, credit } => {
                 self.on_pty(key, ev);
@@ -255,6 +273,15 @@ impl<C: Control> Hub<C> {
                     self.send(Some(r.conn), text(json!({ "t": "error", "message": "spawn" })));
                     self.settle(r.conn, None);
                 }
+            }
+        }
+        loop {
+            let spilled = std::mem::take(&mut *self.spilled.borrow_mut());
+            if spilled.is_empty() {
+                break;
+            }
+            for conn in spilled {
+                self.leave_all(conn, None);
             }
         }
     }

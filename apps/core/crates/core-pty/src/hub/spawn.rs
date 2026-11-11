@@ -1,4 +1,4 @@
-use super::{text, Control, Event, FrameQueue, Hub, Out, Resolving, Session, MAX_LIVE, QUEUE_MAX};
+use super::{text, Control, Event, FrameQueue, Hub, Mode, Out, Resolving, Session, MAX_LIVE, QUEUE_MAX};
 use crate::control::{CoreToMain, Resolved, RESOLVE_TIMEOUT_MS};
 use crate::flow::Gate;
 use crate::ring::Ring;
@@ -66,7 +66,9 @@ impl<C: Control> Hub<C> {
                 cwd: r.cwd.clone(),
                 live_cwd: None,
                 pid,
-                conn: None,
+                viewers: Vec::new(),
+                input_owner: None,
+                size: (req.cols, req.rows),
                 exit_code: None,
                 branch: None,
                 si: r.si.clone(),
@@ -80,23 +82,18 @@ impl<C: Control> Hub<C> {
             },
         );
         self.ids.insert(r.id.clone(), key);
-        self.attach(conn, key, false);
+        self.attach(conn, key, false, Mode::Own, Some((req.cols, req.rows)));
         self.control.send(CoreToMain::Spawned { id: r.id.clone(), pid });
         self.settle(conn, Some(key));
     }
 
-    pub(super) fn attach(&mut self, conn: u64, key: u64, replay: bool) {
+    pub(super) fn attach(&mut self, conn: u64, key: u64, replay: bool, mode: Mode, size: Option<(u16, u16)>) {
         if !self.sessions.contains_key(&key) {
             return;
         }
-        for (k, other) in self.sessions.iter_mut() {
-            if *k != key && other.conn == Some(conn) {
-                other.conn = None;
-            }
-        }
-        let Some(s) = self.sessions.get_mut(&key) else { return };
-        let old = s.conn.filter(|c| *c != conn);
-        s.conn = Some(conn);
+        self.leave_all(conn, Some(key));
+        let replaced = self.join(key, conn, mode, size);
+        let Some(s) = self.sessions.get(&key) else { return };
         let mut ready = Map::new();
         ready.insert("t".into(), json!("ready"));
         ready.insert("id".into(), json!(s.id));
@@ -108,6 +105,9 @@ impl<C: Control> Hub<C> {
             ready.insert("si".into(), json!(si));
         }
         let mut outs = vec![text(Value::Object(ready))];
+        if mode == Mode::View {
+            outs.extend(self.size_note(key));
+        }
         if let Some(l) = &s.live_cwd {
             outs.push(text(json!({ "t": "cwd", "cwd": l })));
         }
@@ -120,19 +120,13 @@ impl<C: Control> Hub<C> {
         if let Some(code) = s.exit_code {
             outs.push(text(json!({ "t": "exit", "code": code })));
         }
-        let gate = s.gate.clone();
-        if let Some(o) = old.and_then(|o| self.conns.get(&o)) {
-            if o.meter.bound_to(&gate) {
-                o.meter.bind(None);
-            }
+        for old in replaced {
+            self.send(Some(old), Out::Close(4000, "replaced"));
         }
-        self.send(old, Out::Close(4000, "replaced"));
         for o in outs {
             self.send(Some(conn), o);
         }
-        if let Some(c) = self.conns.get(&conn) {
-            c.meter.bind(Some(gate));
-        }
+        self.rebind(key);
     }
 
     pub(super) fn settle(&mut self, conn: u64, key: Option<u64>) {

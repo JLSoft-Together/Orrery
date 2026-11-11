@@ -11,6 +11,7 @@ pub const INBOUND_MAX: usize = 2 * 1024 * 1024;
 struct GateState {
     inflight: usize,
     paused: bool,
+    holds: usize,
     draining: bool,
     closed: bool,
 }
@@ -48,7 +49,7 @@ impl Gate {
     pub fn acquire(self: &Arc<Self>, n: usize) -> Credit {
         let mut s = lock(&self.m);
         loop {
-            let blocked_by_socket = s.paused && !s.draining;
+            let blocked_by_socket = (s.paused || s.holds > 0) && !s.draining;
             let blocked_by_queue = s.inflight > 0 && s.inflight + n > self.max;
             if s.closed || (!blocked_by_socket && !blocked_by_queue) {
                 break;
@@ -75,6 +76,18 @@ impl Gate {
         }
     }
 
+    fn hold(&self) {
+        lock(&self.m).holds += 1;
+    }
+
+    fn unhold(&self) {
+        let mut s = lock(&self.m);
+        s.holds = s.holds.saturating_sub(1);
+        if s.holds == 0 {
+            self.cv.notify_all();
+        }
+    }
+
     pub fn drain(&self) {
         lock(&self.m).draining = true;
         self.cv.notify_all();
@@ -86,7 +99,8 @@ impl Gate {
     }
 
     pub fn paused(&self) -> bool {
-        lock(&self.m).paused
+        let s = lock(&self.m);
+        s.paused || s.holds > 0
     }
 
     pub fn inflight(&self) -> usize {
@@ -98,6 +112,7 @@ impl Gate {
 struct MeterState {
     unsent: usize,
     gate: Option<Arc<Gate>>,
+    holding: bool,
 }
 
 #[derive(Default)]
@@ -116,9 +131,10 @@ impl Meter {
             return false;
         }
         s.unsent += n;
-        if s.unsent > PAUSE_AT {
+        if s.unsent > PAUSE_AT && !s.holding {
             if let Some(g) = &s.gate {
-                g.set_paused(true);
+                g.hold();
+                s.holding = true;
             }
         }
         true
@@ -127,20 +143,27 @@ impl Meter {
     pub fn sent(&self, n: usize) {
         let mut s = lock(&self.m);
         s.unsent = s.unsent.saturating_sub(n);
-        if s.unsent < RESUME_AT {
+        if s.unsent < RESUME_AT && s.holding {
             if let Some(g) = &s.gate {
-                g.set_paused(false);
+                g.unhold();
             }
+            s.holding = false;
         }
     }
 
     pub fn bind(&self, gate: Option<Arc<Gate>>) {
         let mut s = lock(&self.m);
         if let Some(old) = s.gate.take() {
-            old.set_paused(false);
+            if s.holding {
+                old.unhold();
+            }
         }
+        s.holding = false;
         if let Some(g) = &gate {
-            g.set_paused(s.unsent > PAUSE_AT);
+            if s.unsent > PAUSE_AT {
+                g.hold();
+                s.holding = true;
+            }
         }
         s.gate = gate;
     }
@@ -228,6 +251,36 @@ mod tests {
         assert!(g.paused());
         assert!(fresh.bound_to(&g));
         assert!(!old.bound_to(&g));
+    }
+
+    #[test]
+    fn several_meters_pause_one_gate_until_every_one_is_under_128k() {
+        let g = Gate::new();
+        let a = Meter::new();
+        let b = Meter::new();
+        a.bind(Some(g.clone()));
+        b.bind(Some(g.clone()));
+        a.queued(PAUSE_AT + 1, true);
+        b.queued(PAUSE_AT + 1, true);
+        a.queued(10, true);
+        assert!(g.paused());
+        a.sent(PAUSE_AT + 11);
+        assert!(g.paused(), "b is still over");
+        let waiting = blocks(&g, 1);
+        assert!(waiting.recv_timeout(Duration::from_millis(100)).is_err());
+        b.queued(1, true);
+        b.sent(PAUSE_AT - RESUME_AT);
+        assert!(g.paused());
+        b.sent(10);
+        assert!(!g.paused());
+        drop(waiting.recv_timeout(Duration::from_secs(2)).unwrap());
+        b.queued(PAUSE_AT + 1, true);
+        assert!(g.paused());
+        b.bind(None);
+        assert!(!g.paused(), "unbinding drops its hold");
+        a.bind(None);
+        a.bind(Some(g.clone()));
+        assert!(!g.paused());
     }
 
     #[test]

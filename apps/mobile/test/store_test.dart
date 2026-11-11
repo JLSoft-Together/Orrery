@@ -338,6 +338,25 @@ void main() {
     },
   );
 
+  test(
+    'overlapping saves of one machine are queued and the last one wins',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('orrery_cache');
+      addTearDown(() => dir.delete(recursive: true));
+      final cache = MachineCache(dir);
+      CacheEntry entry(int seq) => CacheEntry(
+        savedAt: DateTime(2026, 11, 12),
+        seq: seq,
+        wsRev: 0,
+        tails: const {},
+      );
+      await Future.wait([
+        for (var i = 1; i <= 12; i++) cache.save('m1', entry(i)),
+      ]);
+      expect((await cache.load('m1'))!.seq, 12);
+    },
+  );
+
   test('a corrupt cache file is ignored', () async {
     final dir = await Directory.systemTemp.createTemp('orrery_cache');
     addTearDown(() => dir.delete(recursive: true));

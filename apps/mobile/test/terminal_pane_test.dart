@@ -116,6 +116,25 @@ void main() {
     );
   });
 
+  testWidgets('user keys claim the pty, terminal query replies are not sent', (
+    tester,
+  ) async {
+    final h = await mount(tester);
+    h.api.handles.single.out.add(bytes('[6n'));
+    await tester.pump();
+    expect(h.api.inputs, isEmpty);
+    final replies = h.api.claims.length;
+    await tester.enterText(find.byKey(const ValueKey('input')), 'ls');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('send')));
+    await tester.pump();
+    expect(h.api.claims.length, greaterThan(replies));
+    expect(h.api.claims.skip(replies), everyElement(isTrue));
+    await tester.tap(find.byKey(const ValueKey('key-esc')));
+    await tester.pump();
+    expect(h.api.claims.last, isTrue);
+  });
+
   testWidgets('extra keys send their escape sequences', (tester) async {
     final h = await mount(tester);
     Future<String> press(String id) async {

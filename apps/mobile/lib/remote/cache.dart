@@ -75,12 +75,27 @@ class MachineCache {
     return File('${directory.path}${Platform.pathSeparator}$safe.json');
   }
 
-  Future<void> save(String machineId, CacheEntry entry) async {
-    await directory.create(recursive: true);
-    final file = _file(machineId);
-    final temp = File('${file.path}.tmp');
-    await temp.writeAsString(jsonEncode(entry.toJson()), flush: true);
-    await temp.rename(file.path);
+  final Map<String, Future<void>> _queue = {};
+
+  Future<void> save(String machineId, CacheEntry entry) {
+    final previous = _queue[machineId] ?? Future<void>.value();
+    final next = previous
+        .catchError((Object _) {})
+        .then((_) => _write(machineId, entry));
+    _queue[machineId] = next;
+    return next;
+  }
+
+  Future<void> _write(String machineId, CacheEntry entry) async {
+    try {
+      await directory.create(recursive: true);
+      final file = _file(machineId);
+      final temp = File('${file.path}.tmp');
+      await temp.writeAsString(jsonEncode(entry.toJson()), flush: true);
+      await temp.rename(file.path);
+    } on Object {
+      return;
+    }
   }
 
   Future<CacheEntry?> load(String machineId) async {
@@ -90,10 +105,13 @@ class MachineCache {
       return CacheEntry.fromJson(jsonDecode(await file.readAsString()));
     } on FormatException {
       return null;
+    } on TypeError {
+      return null;
     }
   }
 
   Future<void> delete(String machineId) async {
+    await _queue[machineId]?.catchError((Object _) {});
     final file = _file(machineId);
     if (await file.exists()) await file.delete();
   }

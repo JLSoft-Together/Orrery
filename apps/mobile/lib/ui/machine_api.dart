@@ -19,7 +19,7 @@ abstract class MachineApi {
     required String paneKey,
   });
   Future<void> detach(PtyHandle handle);
-  void input(PtyHandle handle, Uint8List bytes);
+  void input(PtyHandle handle, Uint8List bytes, {bool claim = false});
   Future<void> resize(PtyHandle handle, int cols, int rows);
   Uint8List? cachedTail(String paneKey);
   Future<void> answerConfirm(String cid, bool ok);
@@ -83,8 +83,10 @@ class BundleMachineApi implements MachineApi {
   }
 
   @override
-  void input(PtyHandle handle, Uint8List bytes) {
-    if (handle is _RealHandle) _bundle.pty.input(handle.attachment, bytes);
+  void input(PtyHandle handle, Uint8List bytes, {bool claim = false}) {
+    if (handle is _RealHandle) {
+      _bundle.pty.input(handle.attachment, bytes, claim: claim);
+    }
   }
 
   @override

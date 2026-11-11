@@ -16,32 +16,11 @@ import 'package:orrery_remote/ui/workspace/open_pane_page.dart';
 import 'package:orrery_remote/ui/workspace/tab_page.dart';
 import 'package:orrery_remote/ui/workspace/workspace_page.dart';
 
+import 'support/fonts.dart';
 import 'support/ui_fakes.dart';
 
 final bool enabled = Platform.environment['WP11_SHOTS'] != null;
 final String outDir = Platform.environment['WP11_OUT'] ?? 'shots';
-
-Future<void> loadFonts() async {
-  final root =
-      Platform.environment['FLUTTER_ROOT'] ?? 'D:/Flutter/develop/flutter';
-  final dir = '$root/bin/cache/artifacts/material_fonts';
-  Future<ByteData> bytes(String path) async =>
-      ByteData.sublistView(await File(path).readAsBytes());
-  final roboto = FontLoader('Roboto')
-    ..addFont(bytes('$dir/Roboto-Regular.ttf'))
-    ..addFont(bytes('$dir/Roboto-Medium.ttf'))
-    ..addFont(bytes('$dir/Roboto-Bold.ttf'));
-  await roboto.load();
-  final icons = FontLoader('MaterialIcons')
-    ..addFont(bytes('$dir/MaterialIcons-Regular.otf'));
-  await icons.load();
-  for (final family in ['monospace', 'Consolas']) {
-    final mono = FontLoader(family)
-      ..addFont(bytes('C:/Windows/Fonts/consola.ttf'))
-      ..addFont(bytes('C:/Windows/Fonts/consolab.ttf'));
-    await mono.load();
-  }
-}
 
 Future<void> shot(WidgetTester tester, GlobalKey key, String name) async {
   await tester.pump(const Duration(milliseconds: 700));
@@ -64,7 +43,9 @@ const String demo =
     '\x1b[32m✔\x1b[0m Đọc 12 file trong \x1b[36mapps/mobile/lib\x1b[0m\r\n'
     '\x1b[32m✔\x1b[0m Sửa \x1b[36mterminal_pane.dart\x1b[0m (+48 -12)\r\n'
     '\x1b[33m●\x1b[0m Chạy \x1b[1mflutter test\x1b[0m\r\n'
-    '  00:07 +46: All tests passed!\r\n\r\n'
+    '  00:07 +46: All tests passed!\r\n'
+    '\x1b[35m⏺\x1b[0m Update(lib/main.dart) \x1b[31m✗\x1b[0m 1 failed \x1b[32m✓\x1b[0m 45 passed\r\n'
+    '  ⎿  Waiting… ▸ next step \x1b[2m…\x1b[0m\r\n\r\n'
     '\x1b[1m Do you want to run this command?\x1b[0m\r\n'
     '  \x1b[7m 1. Yes \x1b[0m\r\n  2. Yes, and don\'t ask again\r\n  3. No\r\n';
 

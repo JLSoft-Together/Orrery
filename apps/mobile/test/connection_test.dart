@@ -106,6 +106,26 @@ void main() {
     },
   );
 
+  test('an event that carries re is still an event, not a stray reply', () {
+    fakeAsync((async) {
+      final r = rig(async, serverFactory: plain);
+      final conn = r.connection();
+      final seen = <Map<String, dynamic>>[];
+      conn.events.listen(seen.add);
+      unawaited(conn.connect());
+      r.tick();
+      r.servers.single.pushJson({
+        't': 'confirm.ask',
+        'cid': 'cid1',
+        're': 'c9',
+        'title': 'Close?',
+      });
+      r.tick();
+      expect(seen.where((e) => e['t'] == 'confirm.ask'), hasLength(1));
+      unawaited(conn.dispose());
+    });
+  });
+
   test('LAN unreachable: relay is used after the 1.5 s LAN budget', () {
     fakeAsync((async) {
       final r = rig(async, discovery: FakeDiscovery(), serverFactory: plain);

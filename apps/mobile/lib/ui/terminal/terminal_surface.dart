@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:xterm/xterm.dart';
 
+import 'terminal_fonts.dart';
+
 class TerminalSurface extends StatefulWidget {
   const TerminalSurface({
     super.key,
@@ -60,7 +62,9 @@ class _TerminalSurfaceState extends State<TerminalSurface> {
   @override
   void didUpdateWidget(TerminalSurface old) {
     super.didUpdateWidget(old);
-    _syncDesk();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncDesk();
+    });
     if (widget.direct && !old.direct) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _focus.requestFocus();
@@ -80,11 +84,13 @@ class _TerminalSurfaceState extends State<TerminalSurface> {
     final painter = TextPainter(
       text: TextSpan(
         text: 'M' * 20,
-        style: TerminalStyle(fontSize: _fontSize).toTextStyle(),
+        style: orreryTerminalStyle(_fontSize).toTextStyle(),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    return Size(painter.width / 20, painter.height);
+    final size = Size(painter.width / 20, painter.height);
+    painter.dispose();
+    return size;
   }
 
   void _pointerDown(PointerDownEvent event) {
@@ -131,7 +137,7 @@ class _TerminalSurfaceState extends State<TerminalSurface> {
         }
         final deskWidth = widget.deskCols * cell.width;
         final wide = !widget.typing && deskWidth > constraints.maxWidth;
-        final style = TerminalStyle(fontSize: _fontSize);
+        final style = orreryTerminalStyle(_fontSize);
         final view = TerminalView(
           widget.terminal,
           controller: widget.controller,

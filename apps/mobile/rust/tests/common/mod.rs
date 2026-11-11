@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod commands;
+
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -13,6 +15,8 @@ use serde_json::{json, Value};
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{Message, WebSocket};
+
+use commands::{ok, workspace_snapshot, Session};
 
 pub fn now_seconds() -> u64 {
     SystemTime::now()
@@ -160,16 +164,20 @@ impl Gateway {
 
     fn run_session(&self, mut ws: WebSocket<TcpStream>, mut transport: Transport) {
         let mut reassembler = Reassembler::new();
-        let mut seq = 1u64;
+        let mut session = Session::new();
         loop {
             let cipher = match ws.read() {
                 Ok(Message::Binary(bytes)) => bytes.to_vec(),
                 Ok(Message::Close(_)) | Err(_) => return,
                 Ok(_) => continue,
             };
-            let Ok(plain) = transport.open(&cipher) else {
+            let Ok(mut plain) = transport.open(&cipher) else {
                 return close(&mut ws, 4400);
             };
+            let claim = plain.len() > 1 && plain[0] == Kind::PtyIn as u8 && plain[1] & 0b10 != 0;
+            if claim {
+                plain[1] &= !0b10;
+            }
             let Ok(frame) = Frame::decode(&plain) else {
                 return close(&mut ws, 4400);
             };
@@ -179,7 +187,7 @@ impl Gateway {
             match message.kind {
                 Kind::Ping => send_frame(&mut ws, &mut transport, Kind::Ping, 0, &[]),
                 Kind::PtyIn => {
-                    let mut echoed = b"echo:".to_vec();
+                    let mut echoed = if claim { b"claim+echo:".to_vec() } else { b"echo:".to_vec() };
                     echoed.extend_from_slice(&message.payload);
                     send_frame(&mut ws, &mut transport, Kind::PtyOut, message.stream, &echoed);
                 }
@@ -188,7 +196,7 @@ impl Gateway {
                     let Ok(command) = serde_json::from_slice::<Value>(&message.payload) else {
                         continue;
                     };
-                    self.command(&mut ws, &mut transport, &command, &mut seq);
+                    self.command(&mut ws, &mut transport, &command, &mut session);
                 }
             }
         }
@@ -199,7 +207,7 @@ impl Gateway {
         ws: &mut WebSocket<TcpStream>,
         transport: &mut Transport,
         command: &Value,
-        seq: &mut u64,
+        session: &mut Session,
     ) {
         let id = command["id"].clone();
         let kind = command["t"].as_str().unwrap_or("");
@@ -214,35 +222,20 @@ impl Gateway {
                         "theme": {"mode": "dark", "palette": {}}, "locale": "en",
                     }),
                 );
-                self.snapshot_events(ws, transport, seq);
+                self.snapshot_events(ws, transport, session);
             }
             "resync" => {
-                send_json(ws, transport, &json!({"re": id, "ok": true}));
-                self.snapshot_events(ws, transport, seq);
-            }
-            "ws.get" => {
-                send_json(ws, transport, &json!({"re": id, "ok": true}));
-                send_json(ws, transport, &workspace_snapshot());
-            }
-            "pty.attach" => {
-                let stream = command["stream"].as_u64().unwrap_or(0) as u32;
-                send_json(ws, transport, &json!({"re": id, "ok": true}));
-                send_json(
-                    ws,
-                    transport,
-                    &json!({"t": "pty.ready", "stream": stream, "cols": 80, "rows": 24}),
-                );
-                send_frame(ws, transport, Kind::PtyOut, stream, b"replay\r\n");
-            }
-            "pty.detach" | "pty.resize" | "confirm.answer" => {
-                send_json(ws, transport, &json!({"re": id, "ok": true}));
+                ok(ws, transport, &id);
+                self.snapshot_events(ws, transport, session);
             }
             _ => {
-                send_json(
-                    ws,
-                    transport,
-                    &json!({"re": id, "ok": false, "error": "notFound"}),
-                );
+                if !commands::run(ws, transport, session, command) {
+                    send_json(
+                        ws,
+                        transport,
+                        &json!({"re": id, "ok": false, "error": "notFound"}),
+                    );
+                }
             }
         }
     }
@@ -251,13 +244,13 @@ impl Gateway {
         &self,
         ws: &mut WebSocket<TcpStream>,
         transport: &mut Transport,
-        seq: &mut u64,
+        session: &mut Session,
     ) {
         send_json(
             ws,
             transport,
             &json!({
-                "t": "snapshot", "seq": *seq,
+                "t": "snapshot", "seq": session.seq,
                 "data": {
                     "protocolVersion": 1,
                     "terminals": [{"id": "t1", "title": "main", "status": "idle"}],
@@ -265,15 +258,8 @@ impl Gateway {
                 },
             }),
         );
-        send_json(ws, transport, &workspace_snapshot());
+        send_json(ws, transport, &workspace_snapshot(session.rev));
     }
-}
-
-fn workspace_snapshot() -> Value {
-    json!({
-        "t": "ws.snapshot", "rev": 1, "closedCount": 0,
-        "tabs": [{"key": "tab1", "panes": [{"key": "pane1", "kind": "term", "title": "claude"}]}],
-    })
 }
 
 pub fn close(ws: &mut WebSocket<TcpStream>, code: u16) {

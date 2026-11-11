@@ -105,6 +105,30 @@ void main() {
     });
   });
 
+  test(
+    'claim is set on kind 2 only when the caller asks, also when coalesced',
+    () {
+      fakeAsync((async) {
+        final bed = Bed(async);
+        final a = bed.attach('s1');
+        bed.pty.input(a, Uint8List.fromList(utf8.encode('a')), claim: true);
+        bed.pty.input(a, Uint8List.fromList(utf8.encode('b')));
+        bed.pty.input(a, Uint8List.fromList(utf8.encode('c')), claim: true);
+        async.elapse(const Duration(milliseconds: 35));
+        bed.pty.input(a, Uint8List.fromList(utf8.encode('d')));
+        async.elapse(const Duration(milliseconds: 100));
+        bed.pty.input(a, Uint8List.fromList(utf8.encode('e')));
+        expect(bed.servers.last.ptyInput.map(utf8.decode), [
+          'a',
+          'bc',
+          'd',
+          'e',
+        ]);
+        expect(bed.servers.last.ptyClaims, [true, true, false, false]);
+      });
+    },
+  );
+
   test('resize and detach send commands, detach frees the slot', () {
     fakeAsync((async) {
       final bed = Bed(async);

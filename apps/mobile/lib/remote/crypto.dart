@@ -64,7 +64,12 @@ class InboundFrame {
 }
 
 abstract class SecureLink {
-  List<Uint8List> seal(int kind, int stream, Uint8List payload);
+  List<Uint8List> seal(
+    int kind,
+    int stream,
+    Uint8List payload, {
+    bool claim = false,
+  });
 
   InboundFrame? open(Uint8List ciphertext);
 

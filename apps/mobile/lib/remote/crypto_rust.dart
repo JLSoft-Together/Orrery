@@ -38,8 +38,19 @@ class _RustLink implements SecureLink {
   final rust.SecureChannel _channel;
 
   @override
-  List<Uint8List> seal(int kind, int stream, Uint8List payload) =>
-      _guard(() => _channel.seal(kind: kind, stream: stream, payload: payload));
+  List<Uint8List> seal(
+    int kind,
+    int stream,
+    Uint8List payload, {
+    bool claim = false,
+  }) => _guard(
+    () => _channel.seal(
+      kind: kind,
+      stream: stream,
+      payload: payload,
+      claim: claim,
+    ),
+  );
 
   @override
   InboundFrame? open(Uint8List ciphertext) {

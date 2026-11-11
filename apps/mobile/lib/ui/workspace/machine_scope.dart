@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,17 +29,39 @@ class MachineScope extends ConsumerStatefulWidget {
 final Set<String> _openSheets = {};
 
 class _MachineScopeState extends ConsumerState<MachineScope> {
+  Timer? _retry;
+
+  @override
+  void dispose() {
+    _retry?.cancel();
+    super.dispose();
+  }
+
   void _maybeShow(List<ConfirmAsk> confirms) {
     if (confirms.isEmpty || !mounted) return;
-    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (ModalRoute.of(context)?.isCurrent != true) {
+      _retry?.cancel();
+      _retry = Timer(const Duration(milliseconds: 150), () {
+        if (!mounted) return;
+        _maybeShow(ref.read(machineViewProvider(widget.machineId)).confirms);
+      });
+      return;
+    }
     if (!_openSheets.add(widget.machineId)) return;
     showModalBottomSheet<void>(
       context: context,
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
-      builder: (_) => ConfirmSheet(machineId: widget.machineId),
-    ).whenComplete(() => _openSheets.remove(widget.machineId));
+      builder: (_) => PopScope(
+        canPop: false,
+        child: ConfirmSheet(machineId: widget.machineId),
+      ),
+    ).whenComplete(() {
+      _openSheets.remove(widget.machineId);
+      if (!mounted) return;
+      _maybeShow(ref.read(machineViewProvider(widget.machineId)).confirms);
+    });
   }
 
   @override
@@ -79,13 +103,19 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     });
   }
 
+  bool _answering = false;
+
   Future<void> _answer(ConfirmAsk ask, bool ok) async {
+    if (_answering) return;
+    setState(() => _answering = true);
     try {
       await ref
           .read(machineApiProvider(widget.machineId))
           .answerConfirm(ask.cid, ok);
     } on Object catch (error) {
       if (mounted) toast(context, errorText(context.l10n, error));
+    } finally {
+      if (mounted) setState(() => _answering = false);
     }
   }
 
@@ -99,6 +129,7 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
       return const SizedBox(height: 1);
     }
     final ask = confirms.first;
+    final expired = DateTime.now().difference(ask.receivedAt).inSeconds >= 60;
     final l = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     return SafeArea(
@@ -123,14 +154,16 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _answer(ask, false),
+                    onPressed: _answering ? null : () => _answer(ask, false),
                     child: Text(ask.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => _answer(ask, true),
+                    onPressed: _answering || expired
+                        ? null
+                        : () => _answer(ask, true),
                     child: Text(ask.ok),
                   ),
                 ),

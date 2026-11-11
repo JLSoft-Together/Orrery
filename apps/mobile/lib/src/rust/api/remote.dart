@@ -59,6 +59,7 @@ abstract class SecureChannel implements RustOpaqueInterface {
     required int kind,
     required int stream,
     required List<int> payload,
+    required bool claim,
   });
 }
 

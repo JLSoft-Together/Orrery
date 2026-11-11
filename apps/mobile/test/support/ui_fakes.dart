@@ -33,6 +33,7 @@ class FakeHandle implements PtyHandle {
 class FakeMachineApi implements MachineApi {
   final List<(String, JsonMap?)> commands = [];
   final List<Uint8List> inputs = [];
+  final List<bool> claims = [];
   final List<(int, int)> resizes = [];
   final List<FakeHandle> handles = [];
   final List<String> attached = [];
@@ -75,7 +76,10 @@ class FakeMachineApi implements MachineApi {
   }
 
   @override
-  void input(PtyHandle handle, Uint8List bytes) => inputs.add(bytes);
+  void input(PtyHandle handle, Uint8List bytes, {bool claim = false}) {
+    inputs.add(bytes);
+    claims.add(claim);
+  }
 
   @override
   Future<void> resize(PtyHandle handle, int cols, int rows) async =>

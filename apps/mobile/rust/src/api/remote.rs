@@ -5,6 +5,8 @@ use core_remote_proto::pair::{PairInitiator, QrPayload};
 use core_remote_proto::session::SessionInitiator;
 use core_remote_proto::{Error, StaticKeypair, Transport};
 
+const FLAG_CLAIM: u8 = 0b0000_0010;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RemoteErrorKind {
     Crypto,
@@ -122,12 +124,21 @@ impl SecureChannel {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn seal(&self, kind: u8, stream: u32, payload: Vec<u8>) -> Result<Vec<Vec<u8>>, RemoteError> {
+    pub fn seal(
+        &self,
+        kind: u8,
+        stream: u32,
+        payload: Vec<u8>,
+        claim: bool,
+    ) -> Result<Vec<Vec<u8>>, RemoteError> {
         let kind = Kind::try_from(kind)?;
         let mut state = self.inner.lock().map_err(|_| RemoteError::of(RemoteErrorKind::Closed))?;
         let mut out = Vec::new();
         for frame in Chunker::new(kind, stream, &payload)? {
-            let bytes = frame.encode()?;
+            let mut bytes = frame.encode()?;
+            if claim && kind == Kind::PtyIn {
+                bytes[1] |= FLAG_CLAIM;
+            }
             out.push(state.transport.seal(&bytes)?);
         }
         Ok(out)

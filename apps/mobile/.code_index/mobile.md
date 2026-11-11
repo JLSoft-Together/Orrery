@@ -49,3 +49,12 @@ Hợp đồng: `docs/remote-integration.md`. Crypto + frame nằm ở crate `app
 - app/home_page.dart: danh sách máy (vuốt xoá có hỏi); app/pair_page.dart dùng l10n
 - remote/store.dart: `ws.patch {base, rev}` áp khi base == rev hiện tại, lệch -> `ws.get`
 - Test: workspace_model_test, ui_screens_test, terminal_pane_test (FakeMachineApi, test/support/ui_fakes.dart), screenshots_test (chỉ chạy khi `WP11_SHOTS=1`, ghi PNG vào `WP11_OUT`, font Roboto + MaterialIcons từ Flutter SDK, Consolas)
+
+## WP-11b
+- claim: `SecureChannel.seal(kind, stream, payload, claim)` (Rust, `FLAG_CLAIM` = bit 1, chỉ kind 2) -> `SecureLink.seal({claim})` -> `RemoteSession.sendPtyInput({claim})` -> `PtyStreams.input({claim})` (gộp 30 ms: claim nếu bất kỳ chunk nào claim) -> `MachineApi.input({claim})`; `terminal_pane._onOutput` claim = true trừ khi đang trong `_write` (xterm tự trả lời query -> không claim)
+- protocol.dart: JSON có `re` nhưng cũng có `t` (vd `confirm.ask`) là event, không phải reply
+- machine_scope.dart: sheet `confirm.ask` thử lại mỗi 150 ms khi route chưa `isCurrent` (dialog đóng chưa xong); link_widgets.dart: label LinkChip `Flexible` + ellipsis
+- remote/cache.dart: `save` xếp hàng theo máy, bỏ qua `FileSystemException`; connection.dart tách `connect_attempt.dart` (`ConnectAttempt`), `lan_dialer.dart` (`openRelay` -> `RelayOpen`), `link_rules.dart` (`helloFailure`, `storeRelayToken`)
+- Font terminal: `assets/fonts/NotoSansSymbols{,2}-Terminal.ttf` (subset OFL, `LICENSES.txt`), family `OrreryTerminalSymbols` / `OrreryTerminalSymbols2` (pubspec), `ui/terminal/terminal_fonts.dart` (`orreryTerminalStyle`, đặt đầu `fontFamilyFallback`)
+- rust/tests/common/commands.rs: fake gateway `Session {seq, rev, streams, confirms}`, `ws.rename` -> `ws.patch {base, rev, ops}`, `ws.close` -> `{confirm: cid}` + `confirm.ask {re}` -> `confirm.answer` (patch / `cancelled` / `notFound`), `pty.attach` reply `{stream}` (stream 0 / trùng -> `invalid`, thứ 5 -> `limit`, sessionId `vanishes` -> `pty.exit {code: null}`), gỡ bit claim rồi echo `claim+echo:`; flow.rs thêm 4 test
+- Test: test/ui_integration_test.dart (tag integration: UI thật qua `fake_gateway`: mở máy -> project -> pane, gõ, echo claim, đóng pane + confirm), support/gateway.dart, support/fonts.dart (`loadFonts`), support/ui_samples.dart; ui_screens_test tách `ui_actions_test`

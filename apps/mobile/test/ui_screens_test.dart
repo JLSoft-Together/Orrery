@@ -2,44 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orrery_remote/app/home_page.dart';
 import 'package:orrery_remote/remote/link_state.dart';
-import 'package:orrery_remote/remote/protocol.dart';
 import 'package:orrery_remote/remote/providers.dart';
-import 'package:orrery_remote/remote/store.dart';
 import 'package:orrery_remote/ui/terminal/terminal_pane.dart';
 import 'package:orrery_remote/ui/workspace/inbox_page.dart';
 import 'package:orrery_remote/ui/workspace/mission_page.dart';
-import 'package:orrery_remote/ui/workspace/open_pane_page.dart';
 import 'package:orrery_remote/ui/workspace/tab_page.dart';
 import 'package:orrery_remote/ui/workspace/workspace_page.dart';
 
 import 'support/ui_fakes.dart';
-
-Map<String, dynamic> sample() => workspace([
-  tab('t1', [
-    pane('a', title: 'refactor', rail: 'working'),
-    pane('b', title: 'tests', rail: 'asked', waitText: 'Bash: rm -rf build'),
-  ], project: 'C:\\work\\alpha'),
-  tab('t2', [
-    pane('c', title: 'docs', rail: 'done', attention: 'done'),
-  ], project: 'C:\\work\\beta'),
-], closed: 1);
-
-Harness harness({
-  Map<String, dynamic>? ws,
-  LinkState link = linkReady,
-  Map<String, dynamic>? snapshot,
-  bool stale = false,
-  List<ConfirmAsk> confirms = const [],
-}) => Harness(
-  api: FakeMachineApi(),
-  viewState: view(
-    ws: ws ?? sample(),
-    snapshot: snapshot ?? dashboard(),
-    stale: stale,
-    confirms: confirms,
-  ),
-  linkState: link,
-);
+import 'support/ui_samples.dart';
 
 void main() {
   testWidgets('home lists the machine with link, needs count and pane count', (
@@ -298,155 +269,5 @@ void main() {
     );
     await h.pump(tester, const InboxPage(machineId: 'm1'));
     expect(find.text('Nothing needs you'), findsOneWidget);
-  });
-
-  testWidgets('open pane sends ws.open with agent, prompt and submit', (
-    tester,
-  ) async {
-    final h = harness(
-      snapshot: dashboard(
-        favorites: [
-          {'dir': 'C:\\work\\fav', 'label': 'Fav app', 'addedAt': 'x'},
-        ],
-      ),
-    );
-    await h.pump(tester, const OpenPanePage(machineId: 'm1'));
-    expect(find.text('Fav app'), findsOneWidget);
-    expect(find.text('alpha'), findsOneWidget);
-    await tester.tap(find.text('Fav app'));
-    await tester.tap(find.text('Codex'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('prompt')), 'fix the bug');
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('submit')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('open')));
-    await tester.pumpAndSettle();
-    expect(h.api.commands.single.$1, 'ws.open');
-    expect(h.api.commands.single.$2, {
-      'cwd': 'C:\\work\\fav',
-      'preset': 'codex',
-      'prompt': 'fix the bug',
-      'submit': true,
-    });
-  });
-
-  testWidgets('open pane reports command errors and stays', (tester) async {
-    final h = harness();
-    h.api.commandError = const RemoteCommandException('limit');
-    await h.pump(tester, const OpenPanePage(machineId: 'm1'));
-    await tester.tap(find.text('alpha'));
-    await tester.tap(find.text('Shell'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('open')));
-    await tester.pumpAndSettle();
-    expect(find.text('Limit reached.'), findsOneWidget);
-    expect(find.byType(OpenPanePage), findsOneWidget);
-    expect(h.api.commands.single.$2, {
-      'cwd': 'C:\\work\\alpha',
-      'preset': 'shell',
-    });
-  });
-
-  testWidgets('open pane is disabled while the computer is offline', (
-    tester,
-  ) async {
-    final h = harness(link: linkOffline);
-    await h.pump(tester, const OpenPanePage(machineId: 'm1'));
-    await tester.tap(find.text('alpha'));
-    await tester.pump();
-    final button = tester.widget<ButtonStyleButton>(
-      find.byKey(const ValueKey('open')),
-    );
-    expect(button.onPressed, isNull);
-  });
-
-  testWidgets('confirm.ask opens a sheet, answers, and closes when answered', (
-    tester,
-  ) async {
-    final h = harness();
-    await h.pump(tester, const WorkspacePage(machineId: 'm1'));
-    h.viewNotifier.emit(
-      view(
-        ws: sample(),
-        snapshot: dashboard(),
-        confirms: [
-          ConfirmAsk(
-            cid: 'c1',
-            title: 'Close busy pane?',
-            detail: 'tests is running',
-            ok: 'Close',
-            cancel: 'Keep',
-            receivedAt: DateTime.now(),
-          ),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Close busy pane?'), findsOneWidget);
-    expect(find.text('tests is running'), findsOneWidget);
-    await tester.tap(find.text('Close').last);
-    await tester.pump();
-    expect(h.api.answers, [('c1', true)]);
-    h.viewNotifier.emit(view(ws: sample(), snapshot: dashboard()));
-    await tester.pumpAndSettle();
-    expect(find.text('Close busy pane?'), findsNothing);
-  });
-
-  testWidgets('confirm sheet closes by itself when the ask expires', (
-    tester,
-  ) async {
-    final h = harness();
-    await h.pump(tester, const WorkspacePage(machineId: 'm1'));
-    h.viewNotifier.emit(
-      view(
-        ws: sample(),
-        confirms: [
-          ConfirmAsk(
-            cid: 'c2',
-            title: 'Sure?',
-            ok: 'OK',
-            cancel: 'No',
-            receivedAt: DateTime.now(),
-          ),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Sure?'), findsOneWidget);
-    h.viewNotifier.emit(view(ws: sample()));
-    await tester.pumpAndSettle();
-    expect(find.text('Sure?'), findsNothing);
-  });
-
-  testWidgets('tab actions rename the tab and close a pane after confirming', (
-    tester,
-  ) async {
-    final h = harness();
-    await h.pump(
-      tester,
-      const TabPage(machineId: 'm1', tabKey: 't1', paneKey: 'a'),
-    );
-    await tester.tap(find.byTooltip('Tab actions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('action-rename')));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('rename-field')),
-      'Backend',
-    );
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(h.api.commands.last.$1, 'ws.rename');
-    expect(h.api.commands.last.$2, {'tabKey': 't1', 'name': 'Backend'});
-    await tester.tap(find.byTooltip('Tab actions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('action-close')));
-    await tester.pumpAndSettle();
-    expect(find.text('Close refactor?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Close pane'));
-    await tester.pumpAndSettle();
-    expect(h.api.commands.last.$1, 'ws.close');
-    expect(h.api.commands.last.$2, {'paneKey': 'a'});
   });
 }

@@ -219,6 +219,7 @@ fn wire__crate__api__remote__SecureChannel_seal_impl(
             let api_kind = <u8>::sse_decode(&mut deserializer);
             let api_stream = <u32>::sse_decode(&mut deserializer);
             let api_payload = <Vec<u8>>::sse_decode(&mut deserializer);
+            let api_claim = <bool>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, crate::api::remote::RemoteError>((move || {
                 let mut api_that_guard = None;
@@ -240,6 +241,7 @@ fn wire__crate__api__remote__SecureChannel_seal_impl(
                     api_kind,
                     api_stream,
                     api_payload,
+                    api_claim,
                 )?;
                 std::result::Result::Ok(output_ok)
             })())

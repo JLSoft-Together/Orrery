@@ -139,7 +139,7 @@ class RemoteSession {
     if (decoded is! Map) return;
     final map = decoded.cast<String, dynamic>();
     final re = map['re'];
-    if (re is String) {
+    if (re is String && map['t'] is! String) {
       final pending = _pending.remove(re);
       if (pending == null || pending.isCompleted) return;
       if (map['ok'] == true) {
@@ -158,9 +158,14 @@ class RemoteSession {
     if (!_events.isClosed) _events.add(map);
   }
 
-  void _sendFrame(int kind, int stream, Uint8List payload) {
+  void _sendFrame(
+    int kind,
+    int stream,
+    Uint8List payload, {
+    bool claim = false,
+  }) {
     if (_closed.isCompleted) return;
-    for (final cipher in _link.seal(kind, stream, payload)) {
+    for (final cipher in _link.seal(kind, stream, payload, claim: claim)) {
       _socket.sendBinary(cipher);
     }
   }
@@ -197,9 +202,9 @@ class RemoteSession {
     _sendFrame(FrameKind.json, 0, Uint8List.fromList(body));
   }
 
-  void sendPtyInput(int stream, Uint8List bytes) {
+  void sendPtyInput(int stream, Uint8List bytes, {bool claim = false}) {
     if (bytes.isEmpty) return;
-    _sendFrame(FrameKind.ptyIn, stream, bytes);
+    _sendFrame(FrameKind.ptyIn, stream, bytes, claim: claim);
   }
 
   void sendKeepalive() {

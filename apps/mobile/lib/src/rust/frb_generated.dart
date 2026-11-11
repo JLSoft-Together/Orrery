@@ -99,6 +99,7 @@ abstract class RustLibApi extends BaseApi {
     required int kind,
     required int stream,
     required List<int> payload,
+    required bool claim,
   });
 
   SecureChannel crateApiRemoteSessionHandshakeFinish({
@@ -269,6 +270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required int kind,
     required int stream,
     required List<int> payload,
+    required bool claim,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -281,6 +283,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_u_8(kind, serializer);
           sse_encode_u_32(stream, serializer);
           sse_encode_list_prim_u_8_loose(payload, serializer);
+          sse_encode_bool(claim, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
         },
         codec: SseCodec(
@@ -288,7 +291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_remote_error,
         ),
         constMeta: kCrateApiRemoteSecureChannelSealConstMeta,
-        argValues: [that, kind, stream, payload],
+        argValues: [that, kind, stream, payload, claim],
         apiImpl: this,
       ),
     );
@@ -297,7 +300,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiRemoteSecureChannelSealConstMeta =>
       const TaskConstMeta(
         debugName: "SecureChannel_seal",
-        argNames: ["that", "kind", "stream", "payload"],
+        argNames: ["that", "kind", "stream", "payload", "claim"],
       );
 
   @override
@@ -1553,11 +1556,13 @@ class SecureChannelImpl extends RustOpaque implements SecureChannel {
     required int kind,
     required int stream,
     required List<int> payload,
+    required bool claim,
   }) => RustLib.instance.api.crateApiRemoteSecureChannelSeal(
     that: this,
     kind: kind,
     stream: stream,
     payload: payload,
+    claim: claim,
   );
 }
 

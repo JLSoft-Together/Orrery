@@ -53,6 +53,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   bool _typing = false;
   bool _direct = false;
   bool _claimed = false;
+  bool _writing = false;
   String? _error;
   bool _exited = false;
   int? _exitCode;
@@ -105,10 +106,19 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     });
   }
 
+  void _write(String data) {
+    _writing = true;
+    try {
+      _terminal.write(data);
+    } finally {
+      _writing = false;
+    }
+  }
+
   void _onOutput(String data) {
     final handle = _handle;
-    if (handle == null) return;
-    _api.input(handle, Uint8List.fromList(utf8.encode(data)));
+    if (handle == null || _writing) return;
+    _api.input(handle, Uint8List.fromList(utf8.encode(data)), claim: true);
   }
 
   void _onTerminalResize(int cols, int rows, int pw, int ph) {
@@ -130,18 +140,23 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         _fitRows,
         paneKey: widget.pane.key,
       );
-      if (!mounted) {
+      if (!mounted || widget.pane.sessionId != sessionId) {
         unawaited(api.detach(handle).catchError((Object _) {}));
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _attach();
+          });
+        }
         return;
       }
       final tail = handle.tail;
       _handle = handle;
       _outSub = const Utf8Decoder(allowMalformed: true)
           .bind(handle.output)
-          .listen(_terminal.write);
+          .listen(_write);
       _evSub = handle.events.listen(_onEvent);
       if (tail.isNotEmpty) {
-        _terminal.write(utf8.decode(tail, allowMalformed: true));
+        _write(utf8.decode(tail, allowMalformed: true));
       }
       setState(() => _error = null);
     } on RemoteCommandException catch (error) {

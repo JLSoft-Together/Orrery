@@ -37,7 +37,7 @@ fn read_binary(ws: &mut Ws) -> Result<Vec<u8>, Option<u16>> {
 }
 
 fn send_command(ws: &mut Ws, channel: &SecureChannel, value: Value) {
-    for sealed in channel.seal(0, 0, value.to_string().into_bytes()).unwrap() {
+    for sealed in channel.seal(0, 0, value.to_string().into_bytes(), false).unwrap() {
         ws.send(Message::Binary(sealed.into())).unwrap();
     }
 }
@@ -131,7 +131,7 @@ fn pair_then_ik_session_with_snapshot_and_pty_echo() {
     assert_eq!((replay.kind, replay.stream), (1, 7));
     assert_eq!(replay.payload, b"replay\r\n");
 
-    for sealed in channel.seal(2, 7, b"ls".to_vec()).unwrap() {
+    for sealed in channel.seal(2, 7, b"ls".to_vec(), false).unwrap() {
         ws.send(Message::Binary(sealed.into())).unwrap();
     }
     let echoed = channel.open(read_binary(&mut ws).unwrap()).unwrap().unwrap();
@@ -147,7 +147,7 @@ fn large_json_is_chunked_and_reassembled() {
     let (channel, mut ws) = open_session(&gateway, &key).unwrap();
     let big = "x".repeat(150_000);
     let chunks = channel
-        .seal(0, 0, json!({"id": "c9", "t": "nope", "pad": big}).to_string().into_bytes())
+        .seal(0, 0, json!({"id": "c9", "t": "nope", "pad": big}).to_string().into_bytes(), false)
         .unwrap();
     assert!(chunks.len() >= 3);
     for sealed in chunks {
@@ -203,4 +203,100 @@ fn pairing_code_works_only_once() {
         pair_start(key, qr, "phone-0002".into(), "P".into(), now_seconds()).unwrap();
     ws.send(Message::Binary(started.msg1.into())).unwrap();
     assert_eq!(read_binary(&mut ws).err(), Some(Some(4400)));
+}
+
+fn ready_session(gateway: &Gateway) -> (SecureChannel, Ws) {
+    let key = generate_static_key().unwrap();
+    pair(gateway, &key, &gateway.qr(None));
+    let (channel, mut ws) = open_session(gateway, &key).unwrap();
+    send_command(&mut ws, &channel, json!({"id": "h", "t": "hello", "proto": 1}));
+    for _ in 0..3 {
+        read_json(&mut ws, &channel);
+    }
+    (channel, ws)
+}
+
+fn attach(ws: &mut Ws, channel: &SecureChannel, id: &str, stream: u32) -> Value {
+    send_command(
+        ws,
+        channel,
+        json!({"id": id, "t": "pty.attach", "stream": stream, "sessionId": "s1", "cols": 80, "rows": 24}),
+    );
+    let reply = read_json(ws, channel);
+    if reply["ok"] == true {
+        read_json(ws, channel);
+        channel.open(read_binary(ws).unwrap()).unwrap();
+    }
+    reply
+}
+
+fn type_keys(ws: &mut Ws, channel: &SecureChannel, stream: u32, text: &[u8], claim: bool) -> Vec<u8> {
+    for sealed in channel.seal(2, stream, text.to_vec(), claim).unwrap() {
+        ws.send(Message::Binary(sealed.into())).unwrap();
+    }
+    channel.open(read_binary(ws).unwrap()).unwrap().unwrap().payload
+}
+
+#[test]
+fn claim_bit_is_set_only_when_the_caller_asks_and_only_on_pty_input() {
+    let gateway = start(300);
+    let (channel, mut ws) = ready_session(&gateway);
+    assert_eq!(attach(&mut ws, &channel, "a", 3)["stream"], 3);
+    assert_eq!(type_keys(&mut ws, &channel, 3, b"x", true), b"claim+echo:x");
+    assert_eq!(type_keys(&mut ws, &channel, 3, b"x", false), b"echo:x");
+    send_command(&mut ws, &channel, json!({"id": "g", "t": "ws.get"}));
+    assert_eq!(read_json(&mut ws, &channel)["re"], "g");
+    let flagged = channel.seal(0, 0, b"{}".to_vec(), true).unwrap();
+    assert_eq!(flagged.len(), 1);
+}
+
+#[test]
+fn attach_rules_stream_zero_duplicate_and_fifth_attach() {
+    let gateway = start(300);
+    let (channel, mut ws) = ready_session(&gateway);
+    assert_eq!(attach(&mut ws, &channel, "z", 0)["error"], "invalid");
+    for stream in 1..=4 {
+        assert_eq!(attach(&mut ws, &channel, "ok", stream)["stream"], stream);
+    }
+    assert_eq!(attach(&mut ws, &channel, "dup", 2)["error"], "invalid");
+    assert_eq!(attach(&mut ws, &channel, "five", 5)["error"], "limit");
+}
+
+#[test]
+fn close_needs_confirm_then_patches_the_workspace_on_answer() {
+    let gateway = start(300);
+    let (channel, mut ws) = ready_session(&gateway);
+    send_command(&mut ws, &channel, json!({"id": "x1", "t": "ws.close", "paneKey": "pane1"}));
+    let reply = read_json(&mut ws, &channel);
+    let cid = reply["confirm"].as_str().unwrap().to_owned();
+    let ask = read_json(&mut ws, &channel);
+    assert_eq!((ask["t"].as_str(), ask["re"].as_str()), (Some("confirm.ask"), Some("x1")));
+    send_command(&mut ws, &channel, json!({"id": "x2", "t": "confirm.answer", "cid": cid, "ok": true}));
+    assert_eq!(read_json(&mut ws, &channel)["re"], "x2");
+    let patch = read_json(&mut ws, &channel);
+    assert_eq!((patch["t"].as_str(), patch["base"].as_u64(), patch["rev"].as_u64()), (Some("ws.patch"), Some(1), Some(2)));
+    send_command(&mut ws, &channel, json!({"id": "x3", "t": "confirm.answer", "cid": cid, "ok": true}));
+    assert_eq!(read_json(&mut ws, &channel)["error"], "notFound");
+}
+
+#[test]
+fn declined_confirm_is_cancelled_and_pty_exit_without_code_ends_the_stream() {
+    let gateway = start(300);
+    let (channel, mut ws) = ready_session(&gateway);
+    send_command(&mut ws, &channel, json!({"id": "y1", "t": "ws.close", "paneKey": "pane1"}));
+    let cid = read_json(&mut ws, &channel)["confirm"].as_str().unwrap().to_owned();
+    read_json(&mut ws, &channel);
+    send_command(&mut ws, &channel, json!({"id": "y2", "t": "confirm.answer", "cid": cid, "ok": false}));
+    assert_eq!(read_json(&mut ws, &channel)["cancelled"], true);
+    send_command(
+        &mut ws,
+        &channel,
+        json!({"id": "v", "t": "pty.attach", "stream": 1, "sessionId": "vanishes", "cols": 80, "rows": 24}),
+    );
+    assert_eq!(read_json(&mut ws, &channel)["stream"], 1);
+    assert_eq!(read_json(&mut ws, &channel)["t"], "pty.ready");
+    channel.open(read_binary(&mut ws).unwrap()).unwrap();
+    let exit = read_json(&mut ws, &channel);
+    assert_eq!(exit["t"], "pty.exit");
+    assert!(exit["code"].is_null());
 }

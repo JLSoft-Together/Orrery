@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:clock/clock.dart';
 
+import 'connect_attempt.dart';
 import 'connection_config.dart';
 export 'connection_config.dart';
 import 'crypto.dart';
@@ -13,15 +14,6 @@ import 'machines.dart';
 import 'protocol.dart';
 import 'session_handshake.dart';
 import 'wire.dart';
-
-class _Attempt {
-  const _Attempt.ready(this.session) : state = null;
-
-  const _Attempt.failed(this.state) : session = null;
-
-  final RemoteSession? session;
-  final LinkState? state;
-}
 
 class MachineConnection {
   MachineConnection({required this.machineId, required this.deps});
@@ -273,65 +265,45 @@ class MachineConnection {
     );
   }
 
-  Future<_Attempt> _attempt(int generation) async {
+  Future<ConnectAttempt> _attempt(int generation) async {
     final machine = deps.machines.get(machineId);
     if (machine == null) {
-      return const _Attempt.failed(
+      return const ConnectAttempt.failed(
         LinkState(status: LinkStatus.offline, reason: LinkReason.noRoute),
       );
     }
     if (machine.revoked) {
-      return const _Attempt.failed(LinkState(status: LinkStatus.revoked));
+      return const ConnectAttempt.failed(LinkState(status: LinkStatus.revoked));
     }
     final identity = await deps.keys.load();
-    if (generation != _generation) return const _Attempt.failed(LinkState());
+    if (generation != _generation) {
+      return const ConnectAttempt.failed(LinkState());
+    }
     _emit(_state.copyWith(status: LinkStatus.discovering, clearRoute: true));
     final lan = await openLan(deps, machine);
     if (generation != _generation) {
       await lan?.socket.close();
-      return const _Attempt.failed(LinkState());
+      return const ConnectAttempt.failed(LinkState());
     }
     var opened = lan;
     if (opened == null) {
-      final url = machine.relayUrl;
-      final token = machine.relayToken;
-      if (url == null || token == null) {
-        return const _Attempt.failed(
-          LinkState(status: LinkStatus.offline, reason: LinkReason.noRoute),
-        );
-      }
-      if (token.expired(clock.now().millisecondsSinceEpoch ~/ 1000)) {
-        return const _Attempt.failed(
-          LinkState(
-            status: LinkStatus.offline,
-            reason: LinkReason.tokenExpired,
-          ),
-        );
-      }
-      try {
-        final socket = await deps.connector(
-          Uri.parse(relayPhoneUrl(url, machine.id, token.token)),
-          deps.config.relayConnectTimeout,
-        );
-        opened = Opened(socket, LinkRoute.relay, null);
-      } catch (_) {
-        return const _Attempt.failed(
-          LinkState(
-            status: LinkStatus.reconnecting,
-            route: LinkRoute.relay,
-            reason: LinkReason.networkLost,
-          ),
-        );
-      }
+      final relay = await openRelay(
+        deps,
+        machine,
+        clock.now().millisecondsSinceEpoch ~/ 1000,
+      );
+      final failure = relay.failure;
+      if (failure != null) return ConnectAttempt.failed(failure);
+      opened = relay.opened;
       if (generation != _generation) {
-        await opened.socket.close();
-        return const _Attempt.failed(LinkState());
+        await opened!.socket.close();
+        return const ConnectAttempt.failed(LinkState());
       }
     }
-    return _handshake(generation, machine, identity, opened);
+    return _handshake(generation, machine, identity, opened!);
   }
 
-  Future<_Attempt> _handshake(
+  Future<ConnectAttempt> _handshake(
     int generation,
     Machine machine,
     PhoneIdentity identity,
@@ -346,15 +318,15 @@ class MachineConnection {
       classify: _classify,
     );
     final failure = outcome.failure;
-    if (failure != null) return _Attempt.failed(failure);
+    if (failure != null) return ConnectAttempt.failed(failure);
     if (generation != _generation) {
       await opened.socket.close();
-      return const _Attempt.failed(LinkState());
+      return const ConnectAttempt.failed(LinkState());
     }
     return _bringUp(generation, machine, opened, outcome.inbox!, outcome.link!);
   }
 
-  Future<_Attempt> _bringUp(
+  Future<ConnectAttempt> _bringUp(
     int generation,
     Machine machine,
     Opened opened,
@@ -381,34 +353,31 @@ class MachineConnection {
         'caps': <String>[],
       });
     } on RemoteCommandException catch (error) {
-      await _dropSession();
-      if (error.code == 'proto') {
-        return _Attempt.failed(
-          LinkState(
-            status: LinkStatus.protoTooOld,
-            route: opened.route,
-            minProto: deps.config.proto,
-          ),
+      if (error.code == 'offline') {
+        final code = await session.closed.timeout(
+          const Duration(milliseconds: 500),
+          onTimeout: () => null,
+        );
+        await _dropSession();
+        return ConnectAttempt.failed(
+          _classify(code, opened.route == LinkRoute.relay),
         );
       }
-      return _Attempt.failed(
-        LinkState(
-          status: LinkStatus.reconnecting,
-          route: opened.route,
-          reason: LinkReason.handshakeFailed,
-        ),
+      await _dropSession();
+      return ConnectAttempt.failed(
+        helloFailure(error.code, opened.route, deps.config.proto),
       );
     }
     if (generation != _generation) {
       await session.close();
-      return const _Attempt.failed(LinkState());
+      return const ConnectAttempt.failed(LinkState());
     }
     await rememberRoute(deps.machines, machine, opened, reply);
     _events.add({...reply, 't': 'hello'});
     _emit(LinkState(status: LinkStatus.ready, route: opened.route));
     _startKeepalive(session);
     if (!_sessions.isClosed) _sessions.add(session);
-    return _Attempt.ready(session);
+    return ConnectAttempt.ready(session);
   }
 
   void _startKeepalive(RemoteSession session) {
@@ -435,16 +404,11 @@ class MachineConnection {
         _hint = LinkReason.restarting;
       case 'relay.token':
         final token = event['token'];
-        if (token is String) unawaited(_updateToken(token));
+        if (token is String) {
+          unawaited(storeRelayToken(deps.machines, machineId, token));
+        }
     }
     if (!_events.isClosed) _events.add(event);
-  }
-
-  Future<void> _updateToken(String token) async {
-    final parsed = RelayToken.parse(token);
-    final machine = deps.machines.get(machineId);
-    if (parsed == null || machine == null) return;
-    await deps.machines.save(machine.copyWith(relayToken: parsed));
   }
 
   Future<void> _onRevoked() async {

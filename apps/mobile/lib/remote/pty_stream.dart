@@ -25,6 +25,7 @@ class PtyAttachment {
   final StreamController<Uint8List> _output = StreamController.broadcast();
   final StreamController<JsonMap> _events = StreamController.broadcast();
   final List<Uint8List> _pendingInput = [];
+  bool _pendingClaim = false;
   Timer? _throttle;
   bool _suspended = false;
   Uint8List _tail = Uint8List(0);
@@ -163,6 +164,7 @@ class PtyStreams {
     for (final entry in _entries.values) {
       entry._suspended = true;
       entry._pendingInput.clear();
+      entry._pendingClaim = false;
       entry._throttle?.cancel();
       entry._throttle = null;
       if (session != null && connection.isReady) {
@@ -182,16 +184,17 @@ class PtyStreams {
     if (connection.isReady) await _attachAll();
   }
 
-  void input(PtyAttachment entry, Uint8List bytes) {
+  void input(PtyAttachment entry, Uint8List bytes, {bool claim = false}) {
     if (bytes.isEmpty || entry._suspended) return;
     final session = connection.session;
     if (session == null || !connection.isReady) return;
     if (entry._throttle == null) {
-      session.sendPtyInput(entry.stream, bytes);
+      session.sendPtyInput(entry.stream, bytes, claim: claim);
       entry._throttle = Timer(coalesce, () => _flushInput(entry));
       return;
     }
     entry._pendingInput.add(bytes);
+    entry._pendingClaim = entry._pendingClaim || claim;
   }
 
   void _flushInput(PtyAttachment entry) {
@@ -202,9 +205,11 @@ class PtyStreams {
       builder.add(chunk);
     }
     entry._pendingInput.clear();
+    final claim = entry._pendingClaim;
+    entry._pendingClaim = false;
     final session = connection.session;
     if (session == null || !connection.isReady) return;
-    session.sendPtyInput(entry.stream, builder.takeBytes());
+    session.sendPtyInput(entry.stream, builder.takeBytes(), claim: claim);
     entry._throttle = Timer(coalesce, () => _flushInput(entry));
   }
 

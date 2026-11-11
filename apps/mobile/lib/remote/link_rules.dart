@@ -67,3 +67,29 @@ Future<void> rememberRoute(
   }
   if (!identical(updated, machine)) await machines.save(updated);
 }
+
+LinkState helloFailure(String code, LinkRoute route, int proto) {
+  if (code == 'proto') {
+    return LinkState(
+      status: LinkStatus.protoTooOld,
+      route: route,
+      minProto: proto,
+    );
+  }
+  return LinkState(
+    status: LinkStatus.reconnecting,
+    route: route,
+    reason: LinkReason.handshakeFailed,
+  );
+}
+
+Future<void> storeRelayToken(
+  MachineRepository machines,
+  String machineId,
+  String token,
+) async {
+  final parsed = RelayToken.parse(token);
+  final machine = machines.get(machineId);
+  if (parsed == null || machine == null) return;
+  await machines.save(machine.copyWith(relayToken: parsed));
+}

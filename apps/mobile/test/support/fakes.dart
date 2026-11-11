@@ -10,10 +10,17 @@ import 'package:orrery_remote/remote/machines.dart';
 import 'package:orrery_remote/remote/secure_kv.dart';
 import 'package:orrery_remote/remote/wire.dart';
 
-Uint8List fakeFrame(int kind, int stream, List<int> payload) {
+const int fakeClaimBit = 0x80;
+
+Uint8List fakeFrame(
+  int kind,
+  int stream,
+  List<int> payload, {
+  bool claim = false,
+}) {
   final out = BytesBuilder();
   final header = ByteData(5)
-    ..setUint8(0, kind)
+    ..setUint8(0, claim ? kind | fakeClaimBit : kind)
     ..setUint32(1, stream);
   out.add(header.buffer.asUint8List());
   out.add(payload);
@@ -25,15 +32,18 @@ class FakeLink implements SecureLink {
   bool closed = false;
 
   @override
-  List<Uint8List> seal(int kind, int stream, Uint8List payload) => [
-    fakeFrame(kind, stream, payload),
-  ];
+  List<Uint8List> seal(
+    int kind,
+    int stream,
+    Uint8List payload, {
+    bool claim = false,
+  }) => [fakeFrame(kind, stream, payload, claim: claim)];
 
   @override
   InboundFrame? open(Uint8List ciphertext) {
     final view = ByteData.sublistView(ciphertext);
     return InboundFrame(
-      view.getUint8(0),
+      view.getUint8(0) & ~fakeClaimBit,
       view.getUint32(1),
       Uint8List.sublistView(ciphertext, 5),
     );
@@ -162,6 +172,7 @@ class FakeServer implements WireSocket {
   final StreamController<Object?> _in = StreamController<Object?>();
   final List<Map<String, dynamic>> commands = [];
   final List<Uint8List> ptyInput = [];
+  final List<bool> ptyClaims = [];
   final List<String> texts = [];
   int pingFrames = 0;
   bool _handshook = false;
@@ -203,6 +214,7 @@ class FakeServer implements WireSocket {
         if (!silent) _answer(command);
       case FrameKind.ptyIn:
         ptyInput.add(frame.payload);
+        ptyClaims.add(data[0] & fakeClaimBit != 0);
         pushPty(
           frame.stream,
           utf8.encode('echo:${utf8.decode(frame.payload)}'),

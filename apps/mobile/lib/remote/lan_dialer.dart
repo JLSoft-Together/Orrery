@@ -70,3 +70,46 @@ Future<Opened?> openLan(ConnectionDeps deps, Machine machine) {
   );
   return result.future;
 }
+
+class RelayOpen {
+  const RelayOpen.opened(this.opened) : failure = null;
+
+  const RelayOpen.failed(this.failure) : opened = null;
+
+  final Opened? opened;
+  final LinkState? failure;
+}
+
+Future<RelayOpen> openRelay(
+  ConnectionDeps deps,
+  Machine machine,
+  int nowSeconds,
+) async {
+  final url = machine.relayUrl;
+  final token = machine.relayToken;
+  if (url == null || token == null) {
+    return const RelayOpen.failed(
+      LinkState(status: LinkStatus.offline, reason: LinkReason.noRoute),
+    );
+  }
+  if (token.expired(nowSeconds)) {
+    return const RelayOpen.failed(
+      LinkState(status: LinkStatus.offline, reason: LinkReason.tokenExpired),
+    );
+  }
+  try {
+    final socket = await deps.connector(
+      Uri.parse(relayPhoneUrl(url, machine.id, token.token)),
+      deps.config.relayConnectTimeout,
+    );
+    return RelayOpen.opened(Opened(socket, LinkRoute.relay, null));
+  } catch (_) {
+    return const RelayOpen.failed(
+      LinkState(
+        status: LinkStatus.reconnecting,
+        route: LinkRoute.relay,
+        reason: LinkReason.networkLost,
+      ),
+    );
+  }
+}

@@ -72,7 +72,7 @@ Event `ws.snapshot {rev, tabs[]}` / `ws.patch {rev, ops[]}` (`ops` = JSON Patch 
 | `pty.attach {stream, sessionId, cols, rows}` | xem pane (viewer); output về kind 1 cùng `stream`; event `pty.ready {stream, cols, rows}` rồi replay |
 | `pty.detach {stream}` | thôi xem |
 | `pty.resize {stream, cols, rows}` | lưu cỡ của điện thoại; chỉ áp khi điện thoại đang gõ |
-| kind 2 trên `stream` | gõ; điện thoại thành người gõ, cỡ của nó áp vào PTY |
+| kind 2 trên `stream` | gõ (ghi vào PTY); gateway gửi `claim` cho hub khi đó là phím người dùng thật, điện thoại thành người gõ, cỡ của nó áp vào PTY |
 
 Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}`, `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị.
 
@@ -91,4 +91,10 @@ Event `confirm.ask {cid, title, detail, ok, cancel}` chỉ tới thiết bị g�
 `ws.*` 30 / phút · `fs.write` 20 / phút · JSON 1 MiB · text prompt 2000 · max 8 kết nối chưa xác thực / IP trên LAN · thiết bị không dùng 30 ngày tự hết hạn.
 
 ## 6. Mã đóng WS
-`4400` handshake lỗi · `4401` thiết bị không hợp lệ / bị thu hồi · `4426` proto cũ · `4429` rate · `4503` gateway tắt.
+`4400` handshake lỗi · `4401` thiết bị không hợp lệ / bị thu hồi · `4426` proto cũ · `4429` rate · `4503` gateway tắt / desktop vắng trên relay · `4409` desktop bị thay bởi kết nối desktop mới (relay).
+
+## 7. Relay (bản deploy)
+
+- URL: `https://orrery-relay.jinvu.workers.dev` (route, giới hạn, lệnh test / deploy: `apps/relay/README.md`).
+- `POST /register` / `/revoke`: body có `ts` (giây), chữ ký Ed25519 trên `"orrery-register/1" ‖ machineId ‖ ts`. Desktop WS `/m/<id>?ts&sig` ký `"orrery-machine/1" ‖ machineId ‖ ts`; `ts` mỗi lần nối lại phải lớn hơn lần trước (không thì 409).
+- Desktop mất kết nối → mọi điện thoại của máy đó bị đóng `4503`.

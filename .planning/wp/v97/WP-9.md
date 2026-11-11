@@ -30,3 +30,7 @@
 - Báo cáo: `.planning/wp/v97/WP-9-report.md`
 
 ### Nhật ký
+- 01:51 WP-9: viết xong src/ (Worker + Room DO + token/sign/envelope/bounce); chuẩn bị config + test
+- 01:54 WP-9: viết config + test (token/auth/forward/bounce), chạy test
+- 01:58 WP-9: tsc sạch, npm test 33/33 pass (evictDurableObject treo → bỏ test hibernation, sẽ smoke test trên bản deploy)
+- 02:01 WP-9: DONE. Deploy https://orrery-relay.jinvu.workers.dev, smoke test live OK, báo cáo WP-9-report.md

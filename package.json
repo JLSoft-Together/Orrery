@@ -4,7 +4,8 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "!apps/relay"
   ],
   "scripts": {
     "dev": "concurrently -n collector,web -c blue,green \"npm:dev -w @ccm/collector\" \"npm:dev -w @ccm/web\"",

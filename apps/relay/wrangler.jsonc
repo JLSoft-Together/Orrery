@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "orrery-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "ratelimits": [
+    { "name": "LIMITER", "namespace_id": "9701", "simple": { "limit": 30, "period": 60 } }
+  ],
+  "vars": {
+    "ANDROID_CERT_SHA256": "",
+    "APPLE_APP_ID": ""
+  }
+}

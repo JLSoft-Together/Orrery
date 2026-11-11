@@ -27,3 +27,4 @@
 - Báo cáo: `.planning/wp/v97/WP-4-report.md`
 
 ### Nhật ký
+- 2026-11-12: core-http `tap.rs` (StoreTap/TapGuard/TapError) + `Clients` tap registry + `ClientContext` sink callback; core-serve `run_with_tap`; shell `Serve::tap()`. Test `tests/tap.rs` 5 pass, core-http 80 pass, core-bin serve 5 pass, clippy sạch. Shell cargo check chạy tiếp.

@@ -21,6 +21,7 @@ use crate::cookie::{authorized, authorized_ws, login};
 use crate::origin::is_local_request;
 use crate::query::{js_number, Params};
 use crate::static_files::{serve as serve_static, url_pathname};
+use crate::tap::StoreTap;
 use crate::ws::{self, ClientContext, Clients, Session};
 
 pub const PORT_IN_USE_EXIT: i32 = 3;
@@ -135,11 +136,16 @@ pub struct RunningServer {
     store: StoreHandle,
     listener_id: u64,
     tasks: Vec<JoinHandle<()>>,
+    tap: StoreTap,
 }
 
 impl RunningServer {
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    pub fn tap(&self) -> StoreTap {
+        self.tap.clone()
     }
 
     pub async fn shutdown(self) {
@@ -168,6 +174,7 @@ pub async fn start(config: Config, store: StoreHandle, hooks: Hooks) -> Result<R
     let clients = Arc::new(Clients::default());
     let sink = clients.clone();
     let listener_id = store.with(|s| s.subscribe(Box::new(move |m| sink.broadcast(m))));
+    let tap = StoreTap::new(store.clone(), clients.clone(), hooks.on_client_message.clone());
     let mut ports = vec![port];
     ports.extend(config.dev_origin_ports.iter().copied());
     let shared = Arc::new(Shared {
@@ -182,7 +189,7 @@ pub async fn start(config: Config, store: StoreHandle, hooks: Hooks) -> Result<R
     });
     let accept = tokio::spawn(accept_loop(listener, shared, shutdown_rx.clone()));
     let flush = tokio::spawn(flush_loop(store.clone(), shutdown_rx));
-    Ok(RunningServer { port, shutdown: shutdown_tx, store, listener_id, tasks: vec![accept, flush] })
+    Ok(RunningServer { port, shutdown: shutdown_tx, store, listener_id, tasks: vec![accept, flush], tap })
 }
 
 async fn flush_loop(store: StoreHandle, mut shutdown: watch::Receiver<bool>) {

@@ -1,9 +1,11 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
+use std::sync::{Arc, OnceLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use core_serve::config::ServeConfig;
+use core_serve::StoreTap;
 
 use crate::stdio::{take_stdin, ControlPipe};
 
@@ -23,6 +25,7 @@ pub enum ServeError {
 pub struct Serve {
     control: ControlPipe,
     thread: Option<JoinHandle<i32>>,
+    tap: Arc<OnceLock<StoreTap>>,
 }
 
 pub struct Reply {
@@ -63,8 +66,10 @@ impl Serve {
             return Err(ServeError::PortInUse);
         }
         let control = take_stdin().map_err(|e| ServeError::Io(e.to_string()))?;
-        let thread = std::thread::Builder::new().name("core-serve".into()).spawn(move || core_serve::run_with(cfg, crate::episodes::sink())).map_err(|e| ServeError::Io(e.to_string()))?;
-        let mut serve = Serve { control, thread: Some(thread) };
+        let tap = Arc::new(OnceLock::new());
+        let slot = tap.clone();
+        let thread = std::thread::Builder::new().name("core-serve".into()).spawn(move || core_serve::run_with_tap(cfg, crate::episodes::sink(), Box::new(move |t| drop(slot.set(t))))).map_err(|e| ServeError::Io(e.to_string()))?;
+        let mut serve = Serve { control, thread: Some(thread), tap };
         let deadline = Instant::now() + BOOT_TIMEOUT;
         while Instant::now() < deadline {
             if serve.thread.as_ref().is_some_and(JoinHandle::is_finished) {
@@ -78,6 +83,10 @@ impl Serve {
         }
         serve.stop();
         Err(ServeError::Timeout)
+    }
+
+    pub fn tap(&self) -> Option<StoreTap> {
+        self.tap.get().cloned()
     }
 
     pub fn post(&mut self, msg: &serde_json::Value) {

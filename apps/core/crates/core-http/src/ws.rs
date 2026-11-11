@@ -24,17 +24,39 @@ pub const MAX_PAYLOAD: usize = 128 * 1024;
 
 pub type Outbox = UnboundedSender<Arc<str>>;
 
+pub type TapFn = Arc<dyn Fn(Arc<str>) + Send + Sync>;
+
+#[derive(Clone)]
+enum Sink {
+    Channel(Outbox),
+    Callback(TapFn),
+}
+
 #[derive(Clone)]
 pub struct ClientContext {
-    tx: Outbox,
+    sink: Sink,
     pub clients: usize,
     pub client_id: u64,
 }
 
 impl ClientContext {
+    pub(crate) fn channel(tx: Outbox, clients: usize, client_id: u64) -> ClientContext {
+        ClientContext { sink: Sink::Channel(tx), clients, client_id }
+    }
+
+    pub(crate) fn callback(reply: TapFn, clients: usize, client_id: u64) -> ClientContext {
+        ClientContext { sink: Sink::Callback(reply), clients, client_id }
+    }
+
     pub fn reply(&self, event: MonitorEvent) {
         if let Ok(json) = serde_json::to_string(&ServerMessage::direct(event)) {
-            let _ = self.tx.send(json.into());
+            let json: Arc<str> = json.into();
+            match &self.sink {
+                Sink::Channel(tx) => {
+                    let _ = tx.send(json);
+                }
+                Sink::Callback(f) => f(json),
+            }
         }
     }
 }
@@ -42,7 +64,9 @@ impl ClientContext {
 #[derive(Default)]
 pub struct Clients {
     map: Mutex<HashMap<u64, Outbox>>,
+    taps: Mutex<HashMap<u64, TapFn>>,
     next: AtomicU64,
+    next_tap: AtomicU64,
 }
 
 impl Clients {
@@ -70,14 +94,34 @@ impl Clients {
         map.len()
     }
 
+    fn lock_taps(&self) -> std::sync::MutexGuard<'_, HashMap<u64, TapFn>> {
+        self.taps.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub(crate) fn add_tap(&self, f: TapFn) -> u64 {
+        let id = self.next_tap.fetch_add(1, Ordering::SeqCst) + 1;
+        self.lock_taps().insert(id, f);
+        id
+    }
+
+    pub(crate) fn remove_tap(&self, id: u64) {
+        self.lock_taps().remove(&id);
+    }
+
     pub fn broadcast(&self, message: &ServerMessage) -> Result<(), String> {
+        let taps: Vec<TapFn> = self.lock_taps().values().cloned().collect();
         let map = self.lock();
-        if map.is_empty() {
+        if map.is_empty() && taps.is_empty() {
             return Ok(());
         }
         let data: Arc<str> = serde_json::to_string(message).map_err(|e| e.to_string())?.into();
         for tx in map.values() {
             let _ = tx.send(data.clone());
+        }
+        drop(map);
+        for f in taps {
+            let data = data.clone();
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || f(data)));
         }
         Ok(())
     }
@@ -112,7 +156,7 @@ fn handle(session: &Session, tx: &Outbox, client_id: u64, text: &str) {
         }
         Some(message) => {
             if let Some(hook) = &session.hooks.on_client_message {
-                hook(message, &ClientContext { tx: tx.clone(), clients: session.clients.len(), client_id });
+                hook(message, &ClientContext::channel(tx.clone(), session.clients.len(), client_id));
             }
         }
         None => {}

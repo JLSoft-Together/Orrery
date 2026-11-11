@@ -29,6 +29,10 @@ use crate::procs::ProcCache;
 use crate::runtime::{listening, sensitive_listener, Cmd, Setup};
 use crate::sampler::Sampling;
 
+pub use core_http::{StoreTap, TapError, TapGuard};
+
+pub type TapSink = Box<dyn FnOnce(StoreTap) + Send>;
+
 pub const CONFIG_EXIT: i32 = 2;
 
 pub fn main(args: &[String]) -> i32 {
@@ -51,14 +55,18 @@ fn sender(tx: &std::sync::mpsc::Sender<Cmd>) -> Mutex<std::sync::mpsc::Sender<Cm
 }
 
 pub fn run(cfg: ServeConfig) -> i32 {
-    serve(cfg, Arc::new(write_line), false)
+    serve(cfg, Arc::new(write_line), false, None)
 }
 
 pub fn run_with(cfg: ServeConfig, emit: Emit) -> i32 {
-    serve(cfg, emit, true)
+    serve(cfg, emit, true, None)
 }
 
-fn serve(cfg: ServeConfig, emit: Emit, embedded: bool) -> i32 {
+pub fn run_with_tap(cfg: ServeConfig, emit: Emit, on_tap: TapSink) -> i32 {
+    serve(cfg, emit, true, Some(on_tap))
+}
+
+fn serve(cfg: ServeConfig, emit: Emit, embedded: bool, on_tap: Option<TapSink>) -> i32 {
     if cfg.app_key.is_none() && !cfg.dev {
         eprintln!("[collector] {}", ConfigError::NoAppKey);
         return 1;
@@ -127,6 +135,9 @@ fn serve(cfg: ServeConfig, emit: Emit, embedded: bool) -> i32 {
                 return 1;
             }
         };
+        if let Some(sink) = on_tap {
+            sink(server.tap());
+        }
         emit(&listening(server.port()));
         eprintln!("[collector] watching {}", cfg.monitor.claude_root.display());
         eprintln!("[collector] data dir {}", data.display());

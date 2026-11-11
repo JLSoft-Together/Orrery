@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod parse;
+pub mod project;
 pub mod status;
 
 use crate::claude::{self, check_dir, proc, DirArg, Sys};
@@ -17,6 +18,7 @@ const MCP_LIST_TIMEOUT: u64 = 120_000;
 const MUTATE_TIMEOUT: u64 = 180_000;
 const LOGIN_TIMEOUT: u64 = 300_000;
 const MCP_TTL: f64 = 30_000.0;
+const SETTLE_MS: u64 = 1_500;
 const OUT_CAP: usize = 48 * 1024 * 1024;
 
 pub struct CliRun {
@@ -35,6 +37,7 @@ pub struct ExtService {
     pub run: Runner,
     mcp: Mutex<HashMap<String, Value>>,
     busy: AtomicBool,
+    pub settle: Box<dyn Fn(u32) + Send + Sync>,
 }
 
 pub fn default_runner(child: BTreeMap<String, String>) -> Runner {
@@ -81,7 +84,7 @@ impl ExtService {
     pub fn new(sys: Sys, env: Vec<(String, String)>, run: Option<Runner>) -> Self {
         let child = status::child_env(&env);
         let run = run.unwrap_or_else(|| default_runner(child.clone()));
-        ExtService { sys, env: env.into_iter().collect(), child, run, mcp: Mutex::new(HashMap::new()), busy: AtomicBool::new(false) }
+        ExtService { sys, env: env.into_iter().collect(), child, run, mcp: Mutex::new(HashMap::new()), busy: AtomicBool::new(false), settle: Box::new(|_| std::thread::sleep(Duration::from_millis(SETTLE_MS))) }
     }
 
     fn take(&self) -> Option<Busy<'_>> {
@@ -308,6 +311,10 @@ pub fn register_with(desk: &mut Desk, svc: ExtService) {
     desk.on(MODULE, "ccm:ext-remove", move |ctx, args| s.remove(ctx, arg(args, 0)));
     let s = svc.clone();
     desk.on(MODULE, "ccm:ext-source", move |ctx, args| s.source(ctx, arg(args, 0)));
+    let s = svc.clone();
+    desk.on(MODULE, "ccm:ext-project", move |_, args| Ok(s.project(arg(args, 0), arg(args, 1) == &Value::Bool(true))));
+    let s = svc.clone();
+    desk.on(MODULE, "ccm:ext-project-toggle", move |_, args| Ok(s.project_toggle(arg(args, 0))));
     let s = svc;
     desk.on(MODULE, "ccm:ext-login", move |_, args| Ok(s.login(arg(args, 0), arg(args, 1))));
 }

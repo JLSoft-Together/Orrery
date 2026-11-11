@@ -1,8 +1,10 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CONTEXT_THRESHOLDS, inQuietHours, remindersDue, type TerminalSession, type TerminalStatus, type ToastKind } from '@ccm/shared'
+import { TriangleAlert } from 'lucide-vue-next'
 import { quietFor } from '../lib/attention'
-import { duration, now } from '../lib/format'
+import { contextCrossings } from '../lib/contextWarn'
+import { compactNumber, duration, now } from '../lib/format'
 import { contextPctOf } from '../lib/provider'
 import { playChime } from '../lib/sound'
 import { displayTitle } from '../lib/title'
@@ -16,6 +18,9 @@ import { useSnoozeStore } from '../stores/snooze'
 import { useTerminalsStore } from '../stores/terminals'
 import { useUsageStore } from '../stores/usage'
 import { useUiStore } from '../stores/ui'
+import { useToastsStore } from '../stores/toasts'
+import { useWorkspaceStore } from '../stores/workspace'
+import { useCompact } from './useCompact'
 import { useRevealInWorkspace } from './useRevealInWorkspace'
 
 export type NotifyKind = 'waiting' | 'done' | 'reminder' | 'context' | 'stuck' | 'job' | 'limit' | 'loop'
@@ -44,6 +49,9 @@ export function useNotifications(): void {
   const attention = useAttentionStore()
   const usage = useUsageStore()
   const snooze = useSnoozeStore()
+  const toasts = useToastsStore()
+  const workspace = useWorkspaceStore()
+  const compactFlow = useCompact()
   const baseTitle = document.title
 
   const waiting = computed(
@@ -238,6 +246,46 @@ export function useNotifications(): void {
       budgetSent.add(key)
       notify(null, 'limit', t('notify.budgetTitle', { pct: level }), t('notify.budgetBody', { cost: cost.toFixed(2), budget: budget.toFixed(2) }), 'budget')
     },
+  )
+
+  let contextArmed = new Set<string>()
+  watch(
+    () => [terminals.live.map((x) => `${x.id}|${agents.mainOf(x.id)?.contextTokens ?? ''}`).join(','), settings.contextWarnTokens] as const,
+    () => {
+      if (!connection.hasData) return
+      const samples = terminals.live.map((x) => ({ id: x.id, tokens: agents.mainOf(x.id)?.contextTokens }))
+      const { fire, armed } = contextCrossings(contextArmed, samples, settings.contextWarnTokens)
+      contextArmed = armed
+      for (const id of fire) {
+        const x = terminals.byId[id]
+        const tokens = samples.find((s) => s.id === id)?.tokens
+        if (!x || tokens === undefined) continue
+        const pane = workspace.panes.find((p) => p.terminalId === id)
+        const toastId = `context-warn-${id}`
+        toasts.push({
+          id: toastId,
+          kind: 'warning',
+          text: t('notify.contextTokensTitle', { title: nameOf(x), tokens: compactNumber(tokens) }),
+          detail: t('notify.contextTokensBody', { limit: compactNumber(settings.contextWarnTokens) }),
+          timeoutMs: 20_000,
+          icon: TriangleAlert,
+          attrs: { 'data-context-warn-toast': id },
+          actions: pane
+            ? [
+                {
+                  label: t('notify.contextTokensCompact'),
+                  primary: true,
+                  run: () => {
+                    toasts.remove(toastId)
+                    if (!compactFlow.start(pane.key)) useRevealInWorkspace().show(id)
+                  },
+                },
+              ]
+            : undefined,
+        })
+      }
+    },
+    { immediate: true },
   )
 
   const critical = new Set<string>()

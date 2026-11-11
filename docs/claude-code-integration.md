@@ -1035,3 +1035,22 @@ A generic convention: any agent workflow (a skill, a script, a hook) can tell Or
 | Foreground `Agent` call | Not reproducible here: every observed call (main and nested) is `requestShape: background`. Handled by fallback: non-async `tool_result` for `toolUseId` → completed / error (test `completes foreground subagent`); last fallback `end_turn` |
 | Crash case | Not reproduced on purpose (would kill a user session). Covered by test: registry file left behind + dead PID → `stale`, running subagents → `unknown`, removed after TTL |
 | `kind = bg` / daemon | Decision: show every `kind` with a visible kind label |
+
+## 11aq. Per-project MCP and plugin switches (v89, 2026-11-11, `.planning/PLAN-v89-session-tools-context.md`)
+
+Channels `ccm:ext-project(dir, refresh?)` (read) and `ccm:ext-project-toggle({dir, kind, name, enabled})` (write); Rust `core-desk/src/extensions/project.rs`, Electron `apps/desktop/src/extensions/project.ts`, same JSON (twin test `desk-extensions.twin.test.ts`). `dir` must pass `checkDir` (absolute, existing folder). Names only are returned: never command, env, url or args.
+
+| What | File | Key | Notes |
+|---|---|---|---|
+| MCP off for a project | `~/.claude.json` (`$CLAUDE_CONFIG_DIR/.claude.json`) | `projects["<dir>"].disabledMcpServers: string[]` | Seen on this machine on Claude Code 2.1.289 with values `plugin:github:github`, `claude.ai Google Drive`, `grapuco`. Same list `/mcp disable` fills. Name not in the list = enabled. Key removed when the list becomes empty; the project entry itself is kept |
+| Plugin off for a project | `<dir>/.claude/settings.local.json` | `enabledPlugins["name@marketplace"] = false` | Disable writes `false`; enable deletes the key (and `enabledPlugins` when empty), never writes `true`, so the user value in `~/.claude/settings.json` applies again |
+
+Read: MCP names = configured servers (`read_configured`: user, local, project `.mcp.json`) + names from the cached `claude mcp list` (no spawn unless `refresh`) + names already in `disabledMcpServers` (so a disabled one can be turned back on). Scope: configured scope (`local` > `project` > `user`), else `plugin` for `plugin:*`, `connector` for `claude.ai *`, else `user`. `orrery` is `locked`. Plugins: user `enabledPlugins` keys that are true, plus any key of the project override; `enabled` = override if present else the user value.
+
+Write of `~/.claude.json` (Claude Code rewrites it all the time, tmp + rename, and re-reads before writing):
+- read fresh right before writing; unparsable or missing file → `io`, nothing written;
+- only `projects[key].disabledMcpServers` changes; the project key is matched like `sameDir` (slashes normalised, case-insensitive on Windows); a new key uses forward slashes; everything else is re-serialised from the parsed JSON with 2-space indent and the same trailing-newline state (numbers above 2^53 and float spelling follow JS `JSON.stringify`);
+- `write_atomic(.., backup)` keeps `.claude.json.ccm-backup`;
+- after 1.5 s the file is read again; if the change is gone (Claude wrote its own copy between our read and write) it is re-applied once from a fresh read; still gone → `conflict`. A foreign key we wrote survived Claude's next write when checked by hand.
+
+Error codes: `busy` (shares the Extensions mutation lock), `badArg` (dir, kind, enabled, name empty / over 200 characters / control character / starts with `-`), `locked` (`orrery`, mcp only), `io`, `conflict`. No native confirm: the change is reversible. A running Claude session reads both files at start, so the change applies after a restart (`--resume`).

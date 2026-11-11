@@ -80,6 +80,8 @@ import releaseV75 from './release-v75'
 import devicesV75 from './devices-v75'
 import devtoolsV75 from './devtools-v75'
 import promptSearchV75 from './promptsearch-v75'
+import sessionToolsV89 from './session-tools-v89'
+import bugReportV90 from './bug-report-v90'
 
 export default {
   ...v25.en,
@@ -123,6 +125,8 @@ export default {
   ...devicesV75.en,
   ...devtoolsV75.en,
   ...promptSearchV75.en,
+  ...sessionToolsV89.en,
+  ...bugReportV90.en,
   ...resourcesV76.en,
   ...uiV79Rail.en,
   ...uiV79Settings.en,
@@ -750,6 +754,10 @@ export default {
     reminderTitle: '{title} still waiting ({waited})',
     contextTitle: '{title}: context {pct}',
     contextBody: 'Close to the window limit — consider /compact or a new session.',
+    contextTokensTitle: '{title}: context {tokens}',
+    contextTokensBody: 'Passed the {limit} warning. Compact it before it gets slower and costlier.',
+    contextTokensCompact: 'Compact…',
+    contextTokensOpen: 'Open pane',
     waitingTitle: '{title} needs you',
     tabWaiting: '{n} waiting for you',
     waitingBody: 'Waiting for {reason}',
@@ -761,6 +769,8 @@ export default {
     label: 'Context {pct}',
     tooltip: '{pct} of the room before auto-compact, like the status line. ≈ {used} / {window} tokens ({raw} of the full window), from the latest API call.',
     meter: 'Context used before auto-compact',
+    tokens: '{n} tokens in context',
+    tokensWarn: '{n} tokens in context, over your {limit} warning',
     level: { ok: 'normal', notice: 'over 60%', warning: 'over 80%', critical: 'over 95%' },
   },
   mode: {
@@ -882,6 +892,7 @@ export default {
     launchTerminalApp: { terminal: 'Terminal', iterm: 'iTerm2' },
     themeLight: 'Light',
     themeDark: 'Dark',
+    themeDefault: 'Default',
     notifyEvents: 'Notify me when',
     bridgeOn: 'Receiving data',
     bridgeOff: 'Not set up',
@@ -897,6 +908,9 @@ export default {
     budget: 'Daily budget',
     budgetHint: 'Estimated spend at API list prices. The cost tile and a notification warn at 80% and 100%.',
     perDay: 'per day',
+    contextWarn: 'Context warning',
+    contextWarnHint: 'Warn when a session holds this many context tokens (in thousands). Shown on the pane and card, with one toast and a Compact… button. 0 turns it off.',
+    contextWarnUnit: 'k tokens',
     notifyStuck: 'Session looks stuck',
     sound: 'Play a sound',
     soundHint: 'Short chime when a session starts waiting, even while this tab is open.',

@@ -740,7 +740,7 @@ function pickNew(choice: SplitChoice): void {
   <nav
     ref="navEl"
     class="flex h-full w-full flex-col gap-1.5 p-1.5"
-    :class="flat ? '' : 'ccm-material rounded-card'"
+    :class="flat ? '' : 'ccm-panel rounded-card'"
     :aria-label="t('workspace.rail.title')"
     data-rail
     @keydown="onKey"

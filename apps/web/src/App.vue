@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppToasts } from './composables/useAppToasts'
+import { useBugReportPrompts } from './composables/useBugReportPrompts'
 import { useBreakReminder } from './composables/useBreakReminder'
 import { useNotifications } from './composables/useNotifications'
 import { startClock } from './lib/format'
@@ -40,6 +41,7 @@ const WorkspaceView = defineAsyncComponent(() => import('./components/workspace/
 const ExtensionsView = defineAsyncComponent(() => import('./components/extensions/ExtensionsView.vue'))
 const DevicesView = defineAsyncComponent(() => import('./components/devices/DevicesView.vue'))
 const DevToolsDialog = defineAsyncComponent(() => import('./components/DevToolsDialog.vue'))
+const SessionToolsSheet = defineAsyncComponent(() => import('./components/workspace/SessionToolsSheet.vue'))
 const BuildCleanDialog = defineAsyncComponent(() => import('./components/BuildCleanDialog.vue'))
 
 const { t } = useI18n()
@@ -50,6 +52,7 @@ useTurnCheckpoints()
 useNotifications()
 useBreakReminder()
 useAppToasts()
+useBugReportPrompts()
 useWheelZoom()
 useAwayStore().install()
 const update = useUpdateStore()
@@ -166,6 +169,7 @@ onBeforeUnmount(() => {
     <component :is="diagnostics.Comp" v-if="diagnostics.mounted.value" />
     <component :is="resourcesDialog.Comp" v-if="resourcesDialog.mounted.value" />
     <BuildCleanDialog v-if="ui.buildClean && hasBuildClean" :dir="ui.buildClean.dir" @close="ui.buildClean = null" />
+    <SessionToolsSheet v-if="ui.sessionTools" :key="`${ui.sessionTools.dir}|${ui.sessionTools.paneKey ?? ''}`" :dir="ui.sessionTools.dir" :pane-key="ui.sessionTools.paneKey" @close="ui.sessionTools = null" />
     <QuickSetup />
     <OnboardingTour />
     <WhatsNewDialog />

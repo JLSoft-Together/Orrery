@@ -74,7 +74,7 @@ function label(c: RailCluster): string {
 </script>
 
 <template>
-  <nav class="ccm-material flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 rounded-card py-2" :aria-label="t('workspace.rail.column')" data-rail-column>
+  <nav class="ccm-panel flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 rounded-card py-2" :aria-label="t('workspace.rail.column')" data-rail-column>
     <button
       v-if="openable"
       type="button"

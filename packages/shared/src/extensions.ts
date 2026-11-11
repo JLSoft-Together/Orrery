@@ -290,6 +290,34 @@ export interface ExtStatus {
   skillDirs: { user: string; project: string | null }
 }
 
+export type ProjectMcpScope = 'user' | 'local' | 'project' | 'plugin' | 'connector'
+
+export interface ProjectMcpRow {
+  name: string
+  scope: ProjectMcpScope
+  enabled: boolean
+  locked?: true
+}
+
+export interface ProjectPluginRow {
+  name: string
+  enabled: boolean
+  scope: 'user' | 'project'
+}
+
+export type ExtProjectErrorCode = 'busy' | 'badArg' | 'locked' | 'io' | 'conflict'
+
+export type ExtProject = { ok: true; dir: string; mcp: ProjectMcpRow[]; plugins: ProjectPluginRow[] } | { ok: false; code: ExtProjectErrorCode }
+
+export interface ExtProjectToggleRequest {
+  dir: string
+  kind: 'mcp' | 'plugin'
+  name: string
+  enabled: boolean
+}
+
+export type ExtProjectToggle = { ok: true } | { ok: false; code: ExtProjectErrorCode }
+
 export interface AvailablePlugin {
   id: string
   name: string

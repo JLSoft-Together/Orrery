@@ -32,7 +32,7 @@ function onKey(e: KeyboardEvent, index: number): void {
 <template>
   <div ref="root" role="radiogroup" :aria-label="t('settings.theme')" class="flex flex-col gap-2.5">
     <div v-for="g in groups" :key="g.mode" role="presentation">
-      <p class="mb-1 text-2xs font-semibold text-ink-faint" aria-hidden="true">{{ g.label }}</p>
+      <p class="ccm-label mb-1 text-2xs font-semibold text-ink-faint" aria-hidden="true">{{ g.label }}</p>
       <div class="grid grid-cols-2 gap-1.5" role="presentation">
         <button
           v-for="th in g.themes"
@@ -40,7 +40,7 @@ function onKey(e: KeyboardEvent, index: number): void {
           type="button"
           role="radio"
           :aria-checked="settings.theme === th.id"
-          :aria-label="`${th.name} · ${g.label}`"
+          :aria-label="th.isDefault ? `${th.name} · ${g.label} · ${t('settings.themeDefault')}` : `${th.name} · ${g.label}`"
           :tabindex="settings.theme === th.id ? 0 : -1"
           :data-theme-option="th.id"
           class="group flex min-w-0 cursor-pointer items-center gap-2 rounded-inner p-1.5 text-left text-xs transition-colors duration-(--ccm-dur-fast) hover:bg-fill aria-checked:bg-accent-soft aria-checked:text-accent-ink"
@@ -58,6 +58,7 @@ function onKey(e: KeyboardEvent, index: number): void {
             <span class="absolute inset-x-1 bottom-1 h-2 rounded-[2px]" :style="{ background: th.swatch[3] }" />
           </span>
           <span class="min-w-0 flex-1 truncate font-medium">{{ th.name }}</span>
+          <span v-if="th.isDefault" class="shrink-0 text-2xs text-ink-faint group-aria-checked:text-accent-ink" data-theme-default>{{ t('settings.themeDefault') }}</span>
           <Check v-if="settings.theme === th.id" :size="14" class="shrink-0" aria-hidden="true" />
         </button>
       </div>

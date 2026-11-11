@@ -29,6 +29,7 @@ const all: SettingsEnv = {
   notifyData: true,
   deepseek: true,
   xmlPreview: true,
+  bugReport: true,
 }
 
 function translator(locale: 'en' | 'vi') {

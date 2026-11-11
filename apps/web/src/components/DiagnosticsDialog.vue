@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, CircleAlert, CircleCheck, CircleMinus, ClipboardCopy, Download, RefreshCw, X } from 'lucide-vue-next'
 import { retireOverlay } from '../lib/motion'
+import { useDiagnosticsReport } from '../composables/useDiagnosticsReport'
 import { desktop } from '../lib/desktop'
-import { now, relativeTime } from '../lib/format'
 import { useConnectionStore } from '../stores/connection'
-import { useExtrasStore } from '../stores/extras'
-import { useTerminalsStore } from '../stores/terminals'
 import { useUiStore } from '../stores/ui'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const ui = useUiStore()
-const extras = useExtrasStore()
-const terminals = useTerminalsStore()
 const connection = useConnectionStore()
 
 const dialog = ref<HTMLElement | null>(null)
@@ -21,69 +17,10 @@ const copied = ref(false)
 let restoreFocus: HTMLElement | null = null
 let poll: number | undefined
 
-type Level = 'ok' | 'warn' | 'off'
 const ICON = { ok: CircleCheck, warn: CircleAlert, off: CircleMinus } as const
 const TONE = { ok: 'text-success', warn: 'text-warning', off: 'text-ink-faint' } as const
 
-const ago = (iso: string | undefined) => relativeTime(iso, locale.value, now.value) ?? '—'
-
-const rows = computed(() => {
-  const d = extras.diagnostics
-  if (!d) return []
-  const versions = [...new Set(terminals.live.map((x) => x.claudeVersion).filter((v): v is string => !!v))]
-  const supported = connection.supportedClaudeVersion
-  const mismatch = supported ? versions.filter((v) => v !== supported) : []
-  const usage = d.usage
-  const codex = d.codex
-  return [
-    { key: 'collector', level: 'ok' as Level, value: t('diag.collectorValue', { ago: ago(d.startedAt), clients: d.clients }), detail: `${d.platform}, Node ${d.node}` },
-    {
-      key: 'claudeRoot',
-      level: (d.claudeRootFound && d.watchers.sessions && d.watchers.projects ? 'ok' : 'warn') as Level,
-      value: d.claudeRootFound ? t('diag.watching', { list: [d.watchers.sessions && 'sessions', d.watchers.projects && 'projects'].filter(Boolean).join(', ') || '—' }) : t('diag.notFound'),
-      detail: d.claudeRoot,
-    },
-    {
-      key: 'sessions',
-      level: 'ok' as Level,
-      value: t('diag.sessionsValue', { live: d.sessions.live, ended: d.sessions.ended }),
-      detail: d.verifyProcesses ? t('diag.verifyOn') : t('diag.verifyOff'),
-    },
-    {
-      key: 'version',
-      level: (mismatch.length ? 'warn' : versions.length ? 'ok' : 'off') as Level,
-      value: versions.length ? versions.join(', ') : t('diag.noSession'),
-      detail: supported ? t('diag.supported', { v: supported }) : '',
-    },
-    {
-      key: 'statusLine',
-      level: (d.statusLine.lastAt ? 'ok' : extras.statusLineCommand ? 'warn' : 'off') as Level,
-      value: d.statusLine.lastAt ? t('diag.statusLineValue', { ago: ago(d.statusLine.lastAt), n: d.statusLine.reports }) : t('diag.statusLineNone'),
-      detail: d.statusLine.lastAt ? '' : t('diag.statusLineHint'),
-    },
-    {
-      key: 'usage',
-      level: (usage?.state === 'ready' ? 'ok' : usage?.state === 'scanning' ? 'warn' : 'off') as Level,
-      value: usage ? t(`diag.usage.${usage.state}`, { done: usage.filesDone, total: usage.filesTotal }) : '—',
-      detail: '',
-    },
-    ...(codex
-      ? [
-          {
-            key: 'codex',
-            level: (codex.watching ? 'ok' : 'off') as Level,
-            value: codex.watching ? t('diag.codexValue', { threads: codex.threads, processes: codex.processes }) : t('diag.notFound'),
-            detail: t('diag.codexDetail', { home: codex.home }),
-          },
-        ]
-      : []),
-    { key: 'dataDir', level: 'ok' as Level, value: d.dataDir, detail: t('diag.dataDirHint') },
-  ]
-})
-
-function report(): string {
-  return rows.value.map((r) => `${t(`diag.row.${r.key}`)}: ${r.value}${r.detail ? ` (${r.detail})` : ''}`).join('\n')
-}
+const { rows, report } = useDiagnosticsReport()
 
 async function copy(): Promise<void> {
   try {

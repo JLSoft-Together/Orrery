@@ -146,6 +146,7 @@ const env = computed<SettingsEnv>(() => ({
   notifyData: Boolean(extras.notify),
   deepseek: hasDeepSeek,
   xmlPreview: hasXmlInstall,
+  bugReport: Boolean(desktop?.bugReportSave),
 }))
 const pages = computed(() => SETTINGS_PAGES.filter((p) => pageVisible(p, env.value)))
 const allEntries = computed(() => entries(isMac))

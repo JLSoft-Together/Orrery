@@ -240,6 +240,7 @@ export const useUiStore = defineStore('ui', () => {
   const projectSwitcher = ref(false)
   /** Project build output cleanup (BuildCleanDialog.vue, v77 R8): a project to pick first, or null = all known. */
   const buildClean = ref<{ dir: string | null } | null>(null)
+  const sessionTools = ref<{ dir: string; paneKey?: string } | null>(null)
   /** APK / AAB size dialog (ApkSizeDialog.vue): a file + its project, or path null = pick one. */
   const apkSize = ref<{ path: string | null; root: string | null } | null>(null)
   /** Strings table (StringsDialog.vue): a folder (null = the focused pane's project) + the Explorer path it was opened on. */
@@ -535,6 +536,7 @@ export const useUiStore = defineStore('ui', () => {
     permAdvisor,
     projectSwitcher,
     buildClean,
+    sessionTools,
     apkSize,
     stringsTable,
     libUpdates,

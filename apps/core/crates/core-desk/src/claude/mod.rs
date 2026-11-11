@@ -195,6 +195,10 @@ pub fn write_atomic(file: &Path, text: &str, backup: bool) -> bool {
             std::fs::copy(file, PathBuf::from(b))?;
         }
         std::fs::write(&tmp, text)?;
+        #[cfg(unix)]
+        if let Ok(meta) = std::fs::metadata(file) {
+            std::fs::set_permissions(&tmp, meta.permissions())?;
+        }
         std::fs::rename(&tmp, file)
     })();
     if res.is_err() {

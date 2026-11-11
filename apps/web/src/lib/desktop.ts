@@ -9,6 +9,9 @@ import type {
   FwpScanResult,
   FwpSnapshot,
   McpServerRow,
+  ExtProject,
+  ExtProjectToggle,
+  ExtProjectToggleRequest,
   PtyEndpoint,
   RunCommandPreview,
   RunConfig,
@@ -28,6 +31,22 @@ import type { FileView, PreviewChange, PreviewTarget } from './preview'
 import type { BundleStatus, LayoutEvent, LayoutInstallStatus, LayoutModelInfo, LayoutRenderRequest, LayoutRenderResult, LayoutStatus, LayoutUninstallResult } from './layoutPreview'
 
 /** Chord pressed inside a browser pane's <webview>, forwarded by the main process (fields of KeyboardEventInit). */
+export interface BugReportItem {
+  name: string
+  bytes: number
+  kind: 'log' | 'crash' | 'dump' | 'report'
+}
+
+export interface BugReportPreview {
+  ok: true
+  items: BugReportItem[]
+  limit: number
+}
+
+export type BugReportSaveResult =
+  | { ok: true; path: string; bytes: number; files: number; cut: string[]; skipped: string[] }
+  | { ok: false; code: 'cancel' | 'io' }
+
 export interface ForwardedKey {
   key: string
   code: string
@@ -130,6 +149,8 @@ interface DesktopBridge {
   /** Native folder picker; the folder becomes readable by browser / file tabs. */
   grantFolder?: () => Promise<string | null>
   logs?: (action: 'copy' | 'save', report: string) => Promise<{ ok: boolean; path?: string } | null>
+  bugReportPreview?: () => Promise<BugReportPreview | null>
+  bugReportSave?: (req: { page: string; errors: string; dumps: boolean }) => Promise<BugReportSaveResult | null>
   onFocus?: (handler: (terminalId: string) => boolean) => void
   onSelect?: (handler: (terminalId: string) => void) => void
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */
@@ -150,6 +171,8 @@ interface DesktopBridge {
   /** Extensions tab (v28): read-only status; every change asks a native confirm showing the claude command. */
   extStatus?: (dir?: string) => Promise<ExtStatus | null>
   extMcp?: (dir?: string, fresh?: boolean) => Promise<{ servers: McpServerRow[]; at: number } | null>
+  extProject?: (dir: string, refresh?: boolean) => Promise<ExtProject>
+  extProjectToggle?: (req: ExtProjectToggleRequest) => Promise<ExtProjectToggle>
   extInstall?: (req: ExtInstallRequest) => Promise<ExtResult>
   extRemove?: (req: ExtRemoveRequest) => Promise<ExtResult>
   extSource?: (req: ExtSourceRequest) => Promise<(ExtResult & { marketplace?: string; plugins?: AvailablePlugin[] }) | null>

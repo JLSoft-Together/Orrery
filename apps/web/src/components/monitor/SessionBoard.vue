@@ -45,7 +45,7 @@ const empty = computed(() => connection.hasData && terminals.list.length === 0)
         class="flex min-w-0 flex-col gap-2 rounded-card p-2"
         :class="c.key === 'needs' ? 'bg-warning-soft' : 'bg-raised'"
       >
-        <h3 :id="`board-col-${c.key}`" class="flex items-center gap-1.5 px-0.5 text-xs font-semibold" :class="c.key === 'needs' ? 'text-warning' : 'text-ink-muted'">
+        <h3 :id="`board-col-${c.key}`" class="ccm-label flex items-center gap-1.5 px-0.5 text-xs font-semibold" :class="c.key === 'needs' ? 'text-warning' : 'text-ink-muted'">
           <Hand v-if="c.key === 'needs'" :size="14" aria-hidden="true" />{{ labelOf(c.key) }}
           <span class="font-normal tabular-nums" data-group-count>{{ c.ids.length }}</span>
         </h3>

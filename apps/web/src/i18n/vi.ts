@@ -81,6 +81,8 @@ import releaseV75 from './release-v75'
 import devicesV75 from './devices-v75'
 import devtoolsV75 from './devtools-v75'
 import promptSearchV75 from './promptsearch-v75'
+import sessionToolsV89 from './session-tools-v89'
+import bugReportV90 from './bug-report-v90'
 
 const vi: typeof en = {
   ...v25.vi,
@@ -124,6 +126,8 @@ const vi: typeof en = {
   ...devicesV75.vi,
   ...devtoolsV75.vi,
   ...promptSearchV75.vi,
+  ...sessionToolsV89.vi,
+  ...bugReportV90.vi,
   ...resourcesV76.vi,
   ...uiV79Rail.vi,
   ...uiV79Settings.vi,
@@ -751,6 +755,10 @@ const vi: typeof en = {
     reminderTitle: '{title} vẫn đang chờ ({waited})',
     contextTitle: '{title}: context {pct}',
     contextBody: 'Sắp đầy cửa sổ context — nên /compact hoặc mở session mới.',
+    contextTokensTitle: '{title}: context {tokens}',
+    contextTokensBody: 'Đã vượt mức cảnh báo {limit}. Nên compact trước khi chậm và tốn hơn.',
+    contextTokensCompact: 'Compact…',
+    contextTokensOpen: 'Mở pane',
     waitingTitle: '{title} đang chờ chủ nhân',
     tabWaiting: '{n} session đang chờ',
     waitingBody: 'Đang chờ {reason}',
@@ -762,6 +770,8 @@ const vi: typeof en = {
     label: 'Context {pct}',
     tooltip: 'Đã dùng {pct} phần trước auto-compact, giống status line. ≈ {used} / {window} token ({raw} của cả cửa sổ), theo lần gọi API gần nhất.',
     meter: 'Context đã dùng trước auto-compact',
+    tokens: '{n} token trong context',
+    tokensWarn: '{n} token trong context, vượt mức cảnh báo {limit}',
     level: { ok: 'bình thường', notice: 'trên 60%', warning: 'trên 80%', critical: 'trên 95%' },
   },
   mode: {
@@ -883,6 +893,7 @@ const vi: typeof en = {
     launchTerminalApp: { terminal: 'Terminal', iterm: 'iTerm2' },
     themeLight: 'Sáng',
     themeDark: 'Tối',
+    themeDefault: 'Mặc định',
     notifyEvents: 'Báo khi',
     bridgeOn: 'Đang nhận số liệu',
     bridgeOff: 'Chưa cài',
@@ -898,6 +909,9 @@ const vi: typeof en = {
     budget: 'Ngân sách ngày',
     budgetHint: 'Chi phí ước tính theo giá API. Ô chi phí và thông báo cảnh báo ở mức 80% và 100%.',
     perDay: 'mỗi ngày',
+    contextWarn: 'Cảnh báo context',
+    contextWarnHint: 'Cảnh báo khi session giữ ngần này token context (đơn vị nghìn). Hiện trên pane và card, kèm 1 toast và nút Compact…. 0 là tắt.',
+    contextWarnUnit: 'k token',
     notifyStuck: 'Session có vẻ bị kẹt',
     sound: 'Phát âm báo',
     soundHint: 'Âm ngắn khi session chuyển sang chờ, kể cả lúc đang mở tab này.',

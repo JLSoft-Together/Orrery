@@ -9,15 +9,19 @@ export interface ThemeMeta {
   pair?: string
   /** Preview swatch: canvas, surface, accent, well — mirrors themes.css / style.css. */
   swatch: [string, string, string, string]
+  isDefault?: boolean
 }
 
 /** `light` / `dark` are the Apple palette in style.css; the rest live in themes.css as `:root[data-theme=<id>]`. */
 export const THEMES: readonly ThemeMeta[] = [
+  { id: 'orrery-light', mode: 'light', name: 'Orrery', pair: 'orrery-dark', isDefault: true, swatch: ['#f3f3f6', '#ffffff', '#5b4bd6', '#18181c'] },
   { id: 'light', mode: 'light', name: 'Apple', pair: 'dark', swatch: ['#ececee', '#ffffff', '#0071e3', '#111113'] },
   { id: 'xcode-light', mode: 'light', name: 'Xcode', pair: 'xcode-dark', swatch: ['#ececec', '#ffffff', '#0a63d8', '#ffffff'] },
   { id: 'github-light', mode: 'light', name: 'GitHub', pair: 'github-dark', swatch: ['#f6f8fa', '#ffffff', '#0969da', '#ffffff'] },
   { id: 'solarized-light', mode: 'light', name: 'Solarized', pair: 'solarized-dark', swatch: ['#eee8d5', '#fdf6e3', '#1f6fa8', '#fdf6e3'] },
   { id: 'islands-light', mode: 'light', name: 'Islands', pair: 'islands-dark', swatch: ['#e9eaee', '#ffffff', '#3871e1', '#ffffff'] },
+  { id: 'orrery-dark', mode: 'dark', name: 'Orrery', pair: 'orrery-light', isDefault: true, swatch: ['#131315', '#1b1b1f', '#6f5ee8', '#17171a'] },
+  { id: 'console', mode: 'dark', name: 'Console', swatch: ['#0c0d10', '#111318', '#3dd6f5', '#08090b'] },
   { id: 'dark', mode: 'dark', name: 'Apple', pair: 'light', swatch: ['#1e1e1e', '#262628', '#0a6cdf', '#0b0b0c'] },
   { id: 'xcode-dark', mode: 'dark', name: 'Xcode', pair: 'xcode-light', swatch: ['#18181c', '#232328', '#0a6cdf', '#1f1f24'] },
   { id: 'github-dark', mode: 'dark', name: 'GitHub', pair: 'github-light', swatch: ['#010409', '#0d1117', '#1f6feb', '#0d1117'] },
@@ -45,10 +49,22 @@ export function modeOf(id: ThemeId): ThemeMode {
   return themeMeta(id).mode
 }
 
-/** Light/dark toggle: the family's other mode, else Apple in the other mode. */
+export const THEME_MIGRATION = '4.0.2'
+
+export function defaultTheme(prefersLight: boolean): ThemeId {
+  return prefersLight ? 'orrery-light' : 'orrery-dark'
+}
+
+export function startTheme(stored: string | null, migration: string | null, prefersLight: boolean): { theme: ThemeId; migrate: boolean } {
+  const known = isThemeId(stored)
+  if (migration !== THEME_MIGRATION) return { theme: defaultTheme(known ? modeOf(stored) === 'light' : prefersLight), migrate: true }
+  return { theme: known ? stored : defaultTheme(prefersLight), migrate: false }
+}
+
+/** Light/dark toggle: the family's other mode, else Orrery in the other mode. */
 export function toggleTarget(id: ThemeId): ThemeId {
   const th = themeMeta(id)
-  return th.pair ?? (th.mode === 'dark' ? 'light' : 'dark')
+  return th.pair ?? defaultTheme(th.mode === 'dark')
 }
 
 /** Apple themes carry no `data-theme`, so style.css alone styles them. */

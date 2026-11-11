@@ -51,7 +51,7 @@ function onKey(e: KeyboardEvent): void {
 <template>
   <div
     ref="root"
-    class="relative rounded-control bg-fill p-0.5 transition-opacity duration-(--ccm-dur-fast) ease-out-quint"
+    class="ccm-seg relative rounded-control p-0.5 transition-opacity duration-(--ccm-dur-fast) ease-out-quint"
     :class="[fill ? 'grid auto-cols-fr grid-flow-col' : 'inline-flex', disabled ? 'opacity-50' : '']"
     role="radiogroup"
     :aria-label="label"
@@ -61,7 +61,7 @@ function onKey(e: KeyboardEvent): void {
     <span
       v-if="thumb"
       aria-hidden="true"
-      class="pointer-events-none absolute top-0 left-0 rounded-inner bg-control shadow-control"
+      class="ccm-seg-thumb pointer-events-none absolute top-0 left-0 rounded-inner"
       :class="thumbReady ? 'transition-[transform,width] duration-(--ccm-dur-slow) ease-spring' : ''"
       :style="{ width: `${thumb.w}px`, height: `${thumb.h}px`, transform: `translate(${thumb.x}px, ${thumb.y}px)` }"
     />
@@ -77,7 +77,7 @@ function onKey(e: KeyboardEvent): void {
       :lang="o.lang"
       :disabled="disabled"
       class="relative inline-flex h-6 min-w-0 cursor-pointer disabled:cursor-default items-center justify-center gap-1.5 rounded-inner px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-(--ccm-dur-fast) ease-out-quint"
-      :class="model === o.value ? (thumb ? 'text-ink' : 'bg-control text-ink shadow-control') : disabled ? 'text-ink-muted' : 'text-ink-muted hover:text-ink'"
+      :class="model === o.value ? (thumb ? 'ccm-seg-on' : 'ccm-seg-thumb ccm-seg-on') : disabled ? 'text-ink-muted' : 'text-ink-muted hover:text-ink'"
       @click="model = o.value"
     >
       <component :is="o.icon" v-if="o.icon" :size="14" :class="o.iconClass" aria-hidden="true" />

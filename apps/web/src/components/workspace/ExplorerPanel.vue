@@ -316,7 +316,7 @@ const statusText = computed(() => {
     <p v-if="!hasExplorer" class="px-2 py-3 text-xs text-ink-muted">{{ t('workspace.explorer.unavailable') }}</p>
     <p v-else-if="!explorer.root" class="px-2 py-3 text-xs text-ink-muted">{{ t('workspace.explorer.noRoot') }}</p>
     <template v-else>
-      <div ref="tabs" class="@container flex shrink-0 rounded-inner bg-fill p-0.5" role="tablist" :aria-label="t('workspace.explorer.views')" data-explorer-tabs @keydown="onTabKey">
+      <div ref="tabs" class="ccm-seg @container flex shrink-0 rounded-inner p-0.5" role="tablist" :aria-label="t('workspace.explorer.views')" data-explorer-tabs @keydown="onTabKey">
         <button
           v-for="v in VIEWS"
           :key="v"
@@ -329,7 +329,7 @@ const statusText = computed(() => {
           :title="tabName(v)"
           :aria-label="tabName(v)"
           class="relative flex h-6 min-w-0 flex-auto cursor-pointer items-center justify-center gap-1 rounded-[5px] px-2 text-2xs font-medium transition-colors duration-(--ccm-dur-fast) disabled:cursor-default disabled:opacity-50 @max-[360px]:flex-1 @max-[360px]:px-1"
-          :class="explorer.view === v ? 'bg-control text-ink shadow-control' : 'text-ink-muted hover:text-ink'"
+          :class="explorer.view === v ? 'ccm-seg-thumb ccm-seg-on' : 'text-ink-muted hover:text-ink'"
           @click="explorer.setView(v)"
         >
           <component :is="VIEW_ICONS[v]" :size="12" class="shrink-0" aria-hidden="true" />

@@ -38,6 +38,7 @@ cbc = { version = "0.1", features = ["alloc"] }
 pbkdf2 = "0.12"
 sha1 = "0.10"
 rusty-leveldb = "3"
+zip = { version = "=7.2.0", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography"] }

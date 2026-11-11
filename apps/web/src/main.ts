@@ -2,9 +2,12 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { i18n } from './i18n'
+import { installErrorLog } from './lib/errorLog'
 import './style.css'
 import './themes.css'
 import './fonts.css'
+
+installErrorLog()
 
 createApp(App).use(createPinia()).use(i18n).mount('#app')
 

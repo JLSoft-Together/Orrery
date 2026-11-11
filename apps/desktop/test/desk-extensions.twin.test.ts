@@ -73,8 +73,8 @@ describe.skipIf(!HAVE_DESK)('extensions: TS handler and orrery-core desk give th
       plans.push({ side, plan })
       return answer
     }
-    registerExtensionsIpc({ ipcMain: node.ipcMain, isAppFrame: gate, confirm: confirm('node'), env, home })
-    registerExtensionsIpc({ ipcMain: rust.ipcMain, isAppFrame: gate, confirm: confirm('rust'), env, home, desk: twin.router })
+    registerExtensionsIpc({ ipcMain: node.ipcMain, isAppFrame: gate, confirm: confirm('node'), env, home, settleMs: 10 })
+    registerExtensionsIpc({ ipcMain: rust.ipcMain, isAppFrame: gate, confirm: confirm('rust'), env, home, desk: twin.router, settleMs: 10 })
   }, 30_000)
 
   afterAll(async () => {
@@ -139,6 +139,25 @@ describe.skipIf(!HAVE_DESK)('extensions: TS handler and orrery-core desk give th
     expect(JSON.stringify(a)).not.toContain('ghp_')
     expect(JSON.stringify(a[19])).toContain('needsTerminal')
   }, 120_000)
+
+  it('project tools: read and toggle give the same answers and the same files', async () => {
+    const claudeJson = path.join(home, '.claude.json')
+    const local = path.join(project, '.claude', 'settings.local.json')
+    const t = (call: (ch: string, ...args: unknown[]) => Promise<unknown>, kind: string, name: string, enabled: boolean) => call('ccm:ext-project-toggle', { dir: project, kind, name, enabled })
+    const a = (await both(async (call) => {
+      writeFileSync(path.join(home, '.claude', 'settings.json'), JSON.stringify({ enabledPlugins: { 'a@m': true, 'b@m': false } }))
+      const out: unknown[] = [await call('ccm:ext-project', project), await call('ccm:ext-project', 'rel'), await call('ccm:ext-project', null)]
+      out.push(await t(call, 'mcp', 'figma', false), await t(call, 'mcp', 'claude.ai Google Drive', false), await t(call, 'mcp', 'figma', false))
+      out.push(await t(call, 'mcp', 'orrery', false), await t(call, 'mcp', '-x', false), await t(call, 'mcp', '', false), await t(call, 'x', 'a', false))
+      out.push(await t(call, 'plugin', 'a@m', false), await t(call, 'plugin', 'a@m', false))
+      out.push(await call('ccm:ext-project', project), await call('ccm:ext-project', project, true))
+      out.push(readFileSync(claudeJson, 'utf8'), readFileSync(local, 'utf8'))
+      out.push(await t(call, 'mcp', 'figma', true), await t(call, 'plugin', 'a@m', true))
+      out.push(readFileSync(claudeJson, 'utf8'), readFileSync(local, 'utf8'))
+      return out
+    })) as unknown[]
+    expect(JSON.stringify(a[13])).toContain('claude.ai Google Drive')
+  }, 60_000)
 
   it('cancel stops before any change', async () => {
     answer = false

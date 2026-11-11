@@ -10,6 +10,7 @@ import { displayTitle } from '../../lib/title'
 import { waitDisplay } from '../../lib/wait'
 import { useAgentsStore } from '../../stores/agents'
 import { useUiStore } from '../../stores/ui'
+import ContextTokens from '../ContextTokens.vue'
 import StatusIcon from '../StatusIcon.vue'
 import PresetIcon from '../workspace/PresetIcon.vue'
 import OpenPaneButton from './OpenPaneButton.vue'
@@ -33,6 +34,7 @@ const project = computed(() => {
 const needs = computed(() => props.terminal.status === 'waiting')
 const ended = computed(() => props.terminal.status === 'stale')
 const subs = computed(() => (agents.byTerminal[props.terminal.id] ?? []).filter((a) => a.role === 'subagent' && (a.status === 'working' || a.status === 'waiting')).length)
+const tokens = computed(() => (ended.value ? undefined : main.value?.contextTokens || undefined))
 const focused = computed(() => ui.focusedTerminalId === props.terminal.id)
 
 function onKey(e: KeyboardEvent): void {
@@ -80,13 +82,14 @@ const line = computed(() => {
     <p class="truncate text-xs text-ink-muted" :title="title" data-board-title>{{ title }}</p>
     <p
       class="flex min-w-0 items-center gap-1.5 truncate rounded-inner px-1.5 py-0.5 text-xs tabular-nums"
-      :class="needs ? 'bg-warning-soft font-medium text-warning' : meta.text"
+      :class="needs ? 'ccm-chip ccm-chip-warning font-medium text-warning' : meta.text"
       :title="line"
       data-board-line
     >
       <span class="truncate">{{ line }}</span>
     </p>
-    <div v-if="subs > 0 || needs" class="flex min-w-0 items-center gap-2">
+    <div v-if="subs > 0 || needs || tokens" class="flex min-w-0 items-center gap-2">
+      <ContextTokens v-if="tokens" :tokens="tokens" data-board-context />
       <span v-if="subs > 0" class="inline-flex min-w-0 items-center gap-1 text-xs text-ink-muted" :title="t('monitorV88.subagents', { n: subs })" data-board-subs>
         <Network :size="13" aria-hidden="true" /><span class="tabular-nums">{{ subs }}</span
         ><span class="sr-only">{{ t('monitorV88.subagents', { n: subs }) }}</span>

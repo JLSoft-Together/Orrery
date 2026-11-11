@@ -38,5 +38,6 @@ export function useSettingsEnv() {
     notifyData: Boolean(extras.notify),
     deepseek: hasDeepSeek,
     xmlPreview: hasXmlInstall,
+    bugReport: Boolean(desktop?.bugReportSave),
   }))
 }

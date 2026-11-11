@@ -50,7 +50,16 @@ describe('cardMenu', () => {
     expect(row && !isSeparator(row) && row.disabled).toBe(true)
   })
 
+  it('adds MCP & plugins only when asked, for a live Claude session with a folder', () => {
+    expect(ids(cardMenu(base, t, []).head)).not.toContain('card:tools')
+    expect(ids(cardMenu({ ...base, tools: true }, t, []).head)).toContain('card:tools')
+    expect(ids(cardMenu({ ...base, tools: true, codex: true }, t, []).head)).not.toContain('card:tools')
+    expect(ids(cardMenu({ ...base, tools: true, ended: true }, t, []).head)).not.toContain('card:tools')
+    expect(ids(cardMenu({ ...base, tools: true, hasCwd: false }, t, []).head)).not.toContain('card:tools')
+  })
+
   it('parses card action ids', () => {
+    expect(cardActionOf('card:tools')).toBe('tools')
     expect(cardActionOf('card:open:vscode')).toBe('open:vscode')
     expect(cardActionOf('copy-name')).toBeNull()
   })

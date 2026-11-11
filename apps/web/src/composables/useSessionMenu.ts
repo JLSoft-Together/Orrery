@@ -15,6 +15,7 @@ import { SNOOZE_CHOICES, useSnoozeStore } from '../stores/snooze'
 import { useTerminalsStore } from '../stores/terminals'
 import { useUiStore } from '../stores/ui'
 import { useAgentActions } from './useAgentActions'
+import { useSessionTools } from './useSessionTools'
 
 const OPEN_APPS: OpenApp[] = ['explorer', 'vscode']
 const INLINE_ONLY = new Set(['rename', 'reset-name', 'note'])
@@ -29,6 +30,7 @@ export function useSessionMenu() {
   const snooze = useSnoozeStore()
   const ui = useUiStore()
   const actions = useAgentActions((id) => agents.byTerminal[id] ?? [])
+  const tools = useSessionTools()
 
   const state = ref<{ id: string; at: DOMRect; trigger: HTMLElement | null } | null>(null)
   const term = computed(() => (state.value ? terminals.byId[state.value.id] : undefined))
@@ -46,6 +48,7 @@ export function useSessionMenu() {
         pinned: settings.pinned.has(s.id),
         starred: favorites.has(s.cwd),
         hasCwd: !!s.cwd,
+        tools: tools.available(s),
         hasNote: !!s.note,
         hasAlias: !!s.alias,
         waiting: s.status === 'waiting',
@@ -95,6 +98,7 @@ export function useSessionMenu() {
       else if (own === 'star') connection.toggleFavorite(s.id)
       else if (own === 'dismiss') connection.dismissEnded(s.id)
       else if (own === 'unsnooze') snooze.clear(s.id)
+      else if (own === 'tools') tools.open(s)
       else if (own.startsWith('open:')) {
         const app = own.slice(5) as OpenApp
         if (!connection.openFolder(s.id, app)) ui.reportOpenResult(s.id, app, 'offline')

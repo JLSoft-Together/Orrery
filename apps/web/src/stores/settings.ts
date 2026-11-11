@@ -6,17 +6,21 @@ import { readLook } from '../lib/appearance'
 import { AUTO_SAVE_DELAY_DEFAULT, AUTO_SAVE_DELAYS, isAutoSaveMode, type AutoSaveMode } from '../lib/autoSave'
 import { desktop } from '../lib/desktop'
 import { setDustEnabled } from '../lib/dust'
-import { clampCodeSize, CODE_SIZE_DEFAULT, fontEntry, fontStack, isFontId } from '../lib/fonts'
-import { applyTheme, isThemeId, themeMeta, toggleTarget, type ThemeId } from '../lib/themes'
+import { clampContextWarn, CONTEXT_WARN_DEFAULT } from '../lib/contextWarn'
+import { clampCodeSize,CODE_SIZE_DEFAULT, fontEntry, fontStack, isFontId } from '../lib/fonts'
+import { applyTheme, isThemeId, startTheme, THEME_MIGRATION, themeMeta, toggleTarget, type ThemeId } from '../lib/themes'
 
 export type Theme = ThemeId
 export type NotifyPermission = NotificationPermission | 'unsupported'
 
-// index.html already applied the stored theme before paint; read it back from the root.
+// index.html already applied the start theme before paint (and ran the 4.0.2 migration); read it back from the root.
 function initialTheme(): Theme {
-  const root = document.documentElement
-  const id = root.dataset.theme
-  return isThemeId(id) ? id : root.classList.contains('dark') ? 'dark' : 'light'
+  const id = document.documentElement.dataset.theme
+  if (isThemeId(id)) return id
+  const light = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches
+  const start = startTheme(read('ccm.theme'), read('ccm.themeMigration'), light)
+  if (start.migrate) persist('ccm.themeMigration', THEME_MIGRATION)
+  return start.theme
 }
 
 function read(key: string): string | null {
@@ -83,6 +87,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const hideTools = ref(read('ccm.hideTools') === '1')
   const keyHints = ref(read('ccm.keyHints') !== '0')
   const breakReminder = ref(read('ccm.breakReminder') !== '0')
+  const bugReportNudge = ref(read('ccm.bugReport.nudge') !== '0')
   const minimap = ref(read('ccm.minimap') !== '0')
   const autoSave = ref<AutoSaveMode>(isAutoSaveMode(read('ccm.autoSave')) ? (read('ccm.autoSave') as AutoSaveMode) : 'off')
   const autoSaveDelay = ref(AUTO_SAVE_DELAYS.includes(Number(read('ccm.autoSaveDelay'))) ? Number(read('ccm.autoSaveDelay')) : AUTO_SAVE_DELAY_DEFAULT)
@@ -100,6 +105,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const budgetRaw = Number(read('ccm.budget'))
   /** Daily spend budget in USD at API list prices; 0 = off. */
   const dailyBudget = ref(Number.isFinite(budgetRaw) && budgetRaw > 0 ? budgetRaw : 0)
+  const contextWarnTokens = ref(read('ccm.contextWarn') === null ? CONTEXT_WARN_DEFAULT : clampContextWarn(Number(read('ccm.contextWarn'))))
   const codeFont = ref(isFontId('code', read('ccm.font.code')) ? read('ccm.font.code')! : 'system')
   const uiFont = ref(isFontId('ui', read('ccm.font.ui')) ? read('ccm.font.ui')! : 'system')
   const codeFontSize = ref(read('ccm.font.codeSize') === null ? CODE_SIZE_DEFAULT : clampCodeSize(Number(read('ccm.font.codeSize'))))
@@ -115,9 +121,11 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(notifyLoop, (value) => persist('ccm.notify.loop', value ? '1' : '0'))
   watch(sound, (value) => persist('ccm.sound', value ? '1' : '0'))
   watch(stuckMinutes, (value) => persist('ccm.stuckMin', String(value)))
-  watch(hideTools, (value) => persist('ccm.hideTools', value ? '1' : '0'))
+  watch(contextWarnTokens, (value) => persist('ccm.contextWarn', String(clampContextWarn(value))))
+  watch(hideTools,(value) => persist('ccm.hideTools', value ? '1' : '0'))
   watch(keyHints, (value) => persist('ccm.keyHints', value ? '1' : '0'))
   watch(breakReminder, (value) => persist('ccm.breakReminder', value ? '1' : '0'))
+  watch(bugReportNudge, (value) => persist('ccm.bugReport.nudge', value ? '1' : '0'))
   watch(minimap, (value) => persist('ccm.minimap', value ? '1' : '0'))
   watch(autoSave, (value) => persist('ccm.autoSave', value))
   watch(autoSaveDelay, (value) => persist('ccm.autoSaveDelay', String(value)))
@@ -245,7 +253,9 @@ export const useSettingsStore = defineStore('settings', () => {
     notifyPermission,
     sound,
     stuckMinutes,
+    contextWarnTokens,
     breakReminder,
+    bugReportNudge,
     hideTools,
     keyHints,
     minimap,

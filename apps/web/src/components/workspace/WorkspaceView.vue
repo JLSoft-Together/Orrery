@@ -1358,7 +1358,7 @@ onBeforeUnmount(() => {
       />
     </aside>
     <div
-      class="relative flex min-h-0 min-w-0 flex-1 flex-col gap-2"
+      class="relative flex min-h-0 min-w-0 flex-1 flex-col gap-(--ccm-gap-shell)"
       :class="[sideDragging || explorerDragging ? 'pointer-events-none' : '', dragSource ? 'cursor-grabbing select-none' : '']"
       @pointerdown="onDragDown"
     >
@@ -1398,7 +1398,7 @@ onBeforeUnmount(() => {
       </button>
       <div
         ref="tabRow"
-        class="flex min-w-0 flex-1 items-center gap-1 rounded-inner outline-2 -outline-offset-2 transition-[background-color,outline-color] duration-(--ccm-dur-fast)"
+        class="ccm-tab-rail flex min-w-0 flex-1 items-center gap-1 rounded-inner outline-2 -outline-offset-2 transition-[background-color,outline-color] duration-(--ccm-dur-fast)"
         :class="dropToStrip ? 'bg-accent-soft outline-accent' : 'outline-transparent'"
         data-tab-row
         @dblclick="onStripDblClick"
@@ -1416,7 +1416,7 @@ onBeforeUnmount(() => {
         <span
           v-if="tabPill"
           aria-hidden="true"
-          class="pointer-events-none absolute top-0 left-0 h-7 rounded-inner bg-control shadow-control"
+          class="ccm-tab-on pointer-events-none absolute top-0 left-0 h-7 rounded-inner"
           :class="pillReady ? 'transition-[transform,width] duration-(--ccm-dur-slow) ease-out-quint' : ''"
           :style="{ width: `${tabPill.w}px`, transform: `translateX(${tabPill.x}px)` }"
         />
@@ -1649,8 +1649,8 @@ onBeforeUnmount(() => {
         <div
           v-else
           v-show="tabBoxes.has(pane.key)"
-          class="absolute flex min-h-0 min-w-0 flex-col rounded-card outline-2 -outline-offset-2 transition-[outline-color] duration-(--ccm-dur-base) ease-out-quint"
-          :class="multiPane && pane.key === workspace.activeKey ? 'outline-focus' : 'outline-transparent'"
+          class="ccm-pane-ring absolute flex min-h-0 min-w-0 flex-col rounded-card transition-[outline-color,opacity] duration-(--ccm-dur-base) ease-out-quint"
+          :class="multiPane ? (pane.key === workspace.activeKey ? 'ccm-pane-active' : 'ccm-pane-idle') : ''"
           :style="[tabBoxes.has(pane.key) ? boxStyle(tabBoxes.get(pane.key)!) : {}, visible && tabBoxes.has(pane.key) ? { viewTransitionName: `ccm-pane-${pane.key}`, viewTransitionClass: 'ccm-pane' } : {}]"
           :data-pane="pane.key"
           :data-kind="pane.kind"
@@ -1823,7 +1823,7 @@ onBeforeUnmount(() => {
       :style="{ width: `${explorerWidth}px` }"
       data-explorer-panel
     >
-      <div class="ccm-material flex min-h-0 flex-1 flex-col rounded-card p-1.5">
+      <div class="ccm-panel flex min-h-0 flex-1 flex-col rounded-card p-1.5">
         <ExplorerPanel ref="explorerPanel" :root="activeProject" :active-path="activeFile" :visible="visible" @open="openFromExplorer" @open-diff="(root, path) => withViewTransition(() => workspace.openChanges(root, { select: path }))" @open-log="(root) => withViewTransition(() => workspace.openLog(root))" @open-split="openSplitFromExplorer" @terminal="(dir) => withViewTransition(() => workspace.open('shell', dir))" @run="(dir) => withViewTransition(() => workspace.openRun(dir))" @renamed="onExplorerRenamed" @trashed="onExplorerTrashed" />
       </div>
       <SideResizer

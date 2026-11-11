@@ -1,0 +1,63 @@
+const en = {
+  sessionTools: {
+    menu: 'MCP & plugins…',
+    title: 'MCP servers & plugins',
+    subtitle: 'For {project} only. Other projects keep their own settings.',
+    refresh: 'Refresh',
+    close: 'Close',
+    retry: 'Try again',
+    loading: 'Reading the project setup…',
+    empty: 'No MCP servers or plugins are set up for this project.',
+    noMcp: 'No MCP servers.',
+    noPlugins: 'No plugins.',
+    noMatch: 'Nothing matches.',
+    filter: 'Filter by name',
+    mcp: 'MCP servers',
+    plugins: 'Plugins',
+    locked: 'Orrery needs this server to open and manage sessions, so it stays on.',
+    scope: { user: 'user', local: 'local', project: 'project', plugin: 'plugin', connector: 'connector' },
+    applyNote: 'Changes apply when the session restarts.',
+    restart: 'Restart (--resume)',
+    restartBusy: 'Available once the session is idle.',
+    error: {
+      busy: 'Another change is still running. Try again in a moment.',
+      badArg: 'This server or plugin is not part of the project any more. Refresh the list.',
+      locked: 'This server cannot be turned off.',
+      io: 'Could not read or write the Claude Code settings.',
+      conflict: 'Claude Code wrote its settings at the same time. Try again.',
+    },
+  },
+}
+
+const vi: typeof en = {
+  sessionTools: {
+    menu: 'MCP & plugin…',
+    title: 'MCP server & plugin',
+    subtitle: 'Chỉ áp dụng cho {project}. Project khác giữ cấu hình riêng.',
+    refresh: 'Làm mới',
+    close: 'Đóng',
+    retry: 'Thử lại',
+    loading: 'Đang đọc cấu hình project…',
+    empty: 'Project này chưa có MCP server hay plugin nào.',
+    noMcp: 'Không có MCP server.',
+    noPlugins: 'Không có plugin.',
+    noMatch: 'Không có kết quả khớp.',
+    filter: 'Lọc theo tên',
+    mcp: 'MCP server',
+    plugins: 'Plugin',
+    locked: 'Orrery cần server này để mở và quản lý session, nên luôn bật.',
+    scope: { user: 'user', local: 'local', project: 'project', plugin: 'plugin', connector: 'connector' },
+    applyNote: 'Áp dụng khi khởi động lại session.',
+    restart: 'Khởi động lại (--resume)',
+    restartBusy: 'Chỉ bật khi session đang idle.',
+    error: {
+      busy: 'Một thay đổi khác đang chạy, thử lại sau giây lát.',
+      badArg: 'Server hoặc plugin này không còn trong project. Làm mới danh sách.',
+      locked: 'Server này không tắt được.',
+      io: 'Không đọc hoặc ghi được cấu hình Claude Code.',
+      conflict: 'Claude Code ghi file cùng lúc, thử lại.',
+    },
+  },
+}
+
+export default { en, vi }

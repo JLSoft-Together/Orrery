@@ -738,6 +738,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     insertRequest.value = { id: ++insertSeq, paneKey, text }
     activate(paneKey)
   }
+  const restartRequest = shallowRef<{ id: number; paneKey: string } | null>(null)
+  function requestRestart(paneKey: string): void {
+    restartRequest.value = { id: ++insertSeq, paneKey }
+  }
   function insertImage(paneKey: string): void {
     insertRequest.value = { id: ++insertSeq, paneKey, image: true }
     activate(paneKey)
@@ -1582,6 +1586,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     insertRequest,
     insertInto,
     insertImage,
+    restartRequest,
+    requestRestart,
     searchRequest,
     requestSearch,
     resolveAgentPane,

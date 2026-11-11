@@ -1,4 +1,4 @@
-import { BellOff, BellRing, Code, Cpu, FolderOpen, Pencil, Pin, PinOff, RotateCcw, Snowflake, StickyNote, Star, Trash2 } from 'lucide-vue-next'
+import { BellOff, BellRing, Blocks, Code, Cpu, FolderOpen, Pencil, Pin, PinOff, RotateCcw, Snowflake, StickyNote, Star, Trash2 } from 'lucide-vue-next'
 import type { OpenApp } from '@ccm/shared'
 import { openAppKey } from './platform'
 import type { MenuEntry } from './menu'
@@ -13,6 +13,7 @@ export type CardAction =
   | 'star'
   | 'dismiss'
   | 'unsnooze'
+  | 'tools'
   | `open:${OpenApp}`
   | `snooze:${number}`
 
@@ -22,6 +23,7 @@ export interface CardMenuState {
   pinned: boolean
   starred: boolean
   hasCwd: boolean
+  tools?: boolean
   hasNote: boolean
   hasAlias: boolean
   /** Waiting sessions can be snoozed; `snoozed` swaps the choices for "Remind now". */
@@ -53,6 +55,7 @@ export function cardMenu(s: CardMenuState, t: T, openApps: readonly OpenApp[]): 
   if (!s.ended) head.push({ id: act('pin'), label: t(s.pinned ? 'terminal.unpin' : 'terminal.pin'), icon: s.pinned ? PinOff : Pin })
   if (s.hasCwd && !s.codex) head.push({ id: act('star'), label: t(s.starred ? 'favorites.unstar' : 'favorites.star'), icon: Star })
   if (s.hasCwd) for (const app of openApps) head.push({ id: act(`open:${app}`), label: t('open.title', { app: t(`open.app.${openAppKey(app)}`) }), icon: app === 'vscode' ? Code : FolderOpen })
+  if (s.tools && s.hasCwd && !s.codex && !s.ended) head.push({ id: act('tools'), label: t('sessionTools.menu'), icon: Blocks })
   if (s.waiting && !s.ended) {
     if (s.snoozed) head.push({ id: act('unsnooze'), label: t('snooze.undo'), icon: BellRing })
     else

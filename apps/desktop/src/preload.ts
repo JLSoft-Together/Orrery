@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   setHooks: (on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:hooks-set', on),
   grantFolder: (): Promise<unknown> => ipcRenderer.invoke('ccm:grant-folder'),
   logs: (action: 'copy' | 'save', report: string): Promise<unknown> => ipcRenderer.invoke('ccm:logs', action, report),
+  bugReportPreview: (): Promise<unknown> => ipcRenderer.invoke('ccm:bug-report-preview'),
+  bugReportSave: (req: { page: string; errors: string; dumps: boolean }): Promise<unknown> => ipcRenderer.invoke('ccm:bug-report-save', req),
   update: {
     state: (): Promise<unknown> => ipcRenderer.invoke('ccm:update-state'),
     check: (): Promise<unknown> => ipcRenderer.invoke('ccm:update-check'),
@@ -234,6 +236,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   layoutsStart: (project: string, id: string | null): Promise<unknown> => ipcRenderer.invoke('ccm:layouts-start', project, id),
   extStatus: (dir?: string): Promise<unknown> => ipcRenderer.invoke('ccm:ext-status', dir),
   extMcp: (dir?: string, fresh?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:ext-mcp', dir, fresh),
+  extProject: (dir: string, refresh?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:ext-project', dir, refresh),
+  extProjectToggle: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-project-toggle', req),
   extInstall: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-install', req),
   extRemove: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-remove', req),
   extSource: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-source', req),

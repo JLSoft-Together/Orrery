@@ -87,3 +87,23 @@ file types' own brand colours, shown as in IntelliJ with that plugin (owner, 202
 map to tokens. Parts the plugin marks `data-themed` (plain folder, `*ignore` files) are drawn in the row's text colour
 (CSS mask + `bg-current`), as IntelliJ paints them with `Tree.foreground`. Git status colour and the git letter stay on
 the file name. The Simple setting keeps the token-coloured lucide glyphs.
+
+## v91 shape tokens (themes Orrery + Console)
+A theme may also change shape, never by component code: tokens with Apple defaults in `style.css` `:root`, overridden per theme in `themes.css`, read through utility classes.
+
+| Token | Apple (default) | Orrery | Console | Read by |
+|---|---|---|---|---|
+| `--radius-card` / `-control` / `-inner` | 12 / 8 / 6 | 10 / 6 / 4 | 6 / 4 / 3 | `rounded-card` / `rounded-control` / `rounded-inner` |
+| `--ccm-card-shadow` | `--ccm-shadow` | none | `--ccm-shadow` (= 1px line) | `shadow-card` |
+| `--ccm-panel-bg` / `--ccm-panel-edge` | material / none | surface / none | surface / inset 1px line | `.ccm-panel` (rail, sidebar, explorer) |
+| `--ccm-chrome-line` | line | transparent | line | `.ccm-chrome-edge` (app header) |
+| `--ccm-tab-on-bg` / `-shadow` / `--ccm-tab-rail` | control / shadow-control / transparent | none / inset 0 -2px accent / line | surface / inset 0 2px accent / transparent | `.ccm-tab-on` (Workspace tab pill), `.ccm-tab-rail` |
+| `--ccm-chip-fill` | 1 | 0 (glyph + text only) | 0.75 (≈12 %) | `.ccm-chip` + `.ccm-chip-<working/waiting/error/warning/quiet>` via `statusMeta().chip` |
+| `--ccm-pane-ring-w` / `--ccm-pane-ring` / `--ccm-pane-bar` / `--ccm-pane-head-tint` | 2px / focus / none / transparent | 2px / transparent / inset 2px left accent / transparent | 1px / accent / none / #0f1a1e | `.ccm-pane-ring` + `.ccm-pane-active`, `.ccm-pane-head-on` |
+| `--ccm-dim-inactive` | 1 | 0.78 | 0.8 | `.ccm-pane-idle` (multi-pane, not focused) |
+| `--ccm-seg-track` / `-thumb` / `-thumb-shadow` / `-on-ink` | fill / control / shadow-control / ink | transparent / control / none / ink | transparent / transparent / inset 0 -2px accent / accent-ink | `.ccm-seg`, `.ccm-seg-thumb`, `.ccm-seg-on` |
+| `--ccm-label-font` / `-case` / `-tracking` | sans / none / normal | mono / uppercase / .04em | mono / uppercase / .08em | `.ccm-label` (section headings) |
+| `--ccm-gap-shell` | 8px | 6px | 6px | split pane gaps (`view/geometry.ts`), Workspace column gap |
+
+`--ccm-dim-inactive` below 1 is the one owner-approved exception to rule 6 (whole-element opacity ≥ 0.85): the whole inactive pane fades, text inside keeps its ink. `lib/themes.test.ts` checks every v91 block names all shape tokens and that the `:root` defaults stay Apple.
+

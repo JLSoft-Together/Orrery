@@ -50,6 +50,10 @@ pub fn devtools_gate(debug: bool, get: &dyn Fn(&str) -> Option<String>) -> bool 
         && get("CCM_KEYRING_SERVICE").is_some_and(|v| v != "Orrery")
 }
 
+pub fn e2e_isolated() -> bool {
+    devtools_gate(false, &|k| std::env::var(k).ok())
+}
+
 pub fn devtools_allowed() -> bool {
     devtools_gate(cfg!(debug_assertions), &|k| std::env::var(k).ok())
 }

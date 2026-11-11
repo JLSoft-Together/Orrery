@@ -10,7 +10,7 @@ use crate::config::APP_VERSION;
 use crate::preview_host::{pane_roots, Gate};
 use crate::state::{Shell, MAIN};
 
-pub const CHANNELS: [&str; 6] = ["ccm:preview-url", "ccm:open-path", "ccm:reveal", "ccm:pick-file", "ccm:pick-files", "ccm:logs"];
+pub const CHANNELS: [&str; 8] = ["ccm:preview-url", "ccm:open-path", "ccm:reveal", "ccm:pick-file", "ccm:pick-files", "ccm:logs", "ccm:bug-report-preview", "ccm:bug-report-save"];
 
 const MAX_PICKED: usize = 50;
 const MAX_PAGE_REPORT: usize = 20_000;
@@ -136,7 +136,15 @@ pub fn file_stamp(iso: &str) -> String {
     iso.chars().take(16).filter(|c| *c != '-' && *c != ':').collect::<String>().replace('T', "-")
 }
 
-fn report(app: &AppHandle, page: &str) -> String {
+pub fn save_dialog(app: &AppHandle, name: &str, filter: &str, exts: &[&str]) -> Option<PathBuf> {
+    let mut d = dialog(app).set_file_name(name).add_filter(filter, exts);
+    if let Ok(dir) = app.path().download_dir() {
+        d = d.set_directory(dir);
+    }
+    d.blocking_save_file().and_then(|p| p.into_path().ok())
+}
+
+pub fn report(app: &AppHandle, page: &str) -> String {
     let shell = app.state::<Shell>();
     let generated = core_desk::util::iso_string(core_desk::util::now_ms());
     let head = vec![
@@ -180,6 +188,8 @@ pub fn dispatch(app: &AppHandle, channel: &str, args: &[Value]) -> Result<Value,
         "ccm:pick-file" => pick_file(app, a0, arg(args, 1)),
         "ccm:pick-files" => pick_files(app),
         "ccm:logs" => logs(app, a0, arg(args, 1)),
+        "ccm:bug-report-preview" => crate::bug_report::preview(app),
+        "ccm:bug-report-save" => crate::bug_report::save(app, a0),
         _ => return Err(format!("not ported: {channel}")),
     })
 }

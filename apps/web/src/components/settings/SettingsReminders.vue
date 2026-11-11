@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { BREAK_MINUTES, breakAnchor, nextBreakAt } from '../../lib/breaks'
+import { clampContextWarn } from '../../lib/contextWarn'
 import { now } from '../../lib/format'
 import { useConnectionStore } from '../../stores/connection'
 import { useExtrasStore } from '../../stores/extras'
@@ -37,6 +38,25 @@ const breakHint = computed(() => {
       <ToggleSwitch v-model="settings.breakReminder" :label="t('settings.breakReminder')" :hint="breakHint" class="px-3" data-setting-row="break" />
       <SettingRow :label="t('settings.stuck')" :info="t('settings.stuckHint')" stacked data-setting-row="stuck">
         <SegmentedControl :model-value="settings.stuckMinutes" :options="stuckOptions" :label="t('settings.stuck')" fill class="w-full" @update:model-value="setStuck" />
+      </SettingRow>
+      <SettingRow :label="t('settings.contextWarn')" label-for="set-context-warn" :info="t('settings.contextWarnHint')" data-setting-row="contextWarn">
+        <div class="flex shrink-0 items-center gap-1.5">
+          <div class="ccm-field flex w-24 items-center gap-1">
+            <input
+              id="set-context-warn"
+              :value="settings.contextWarnTokens ? Math.round(settings.contextWarnTokens / 1000) : ''"
+              type="number"
+              min="0"
+              max="2000"
+              step="50"
+              inputmode="numeric"
+              :placeholder="t('settings.off')"
+              class="ccm-bare-input h-full min-w-0 flex-1 bg-transparent tabular outline-none placeholder:text-ink-faint"
+              @change="settings.contextWarnTokens = clampContextWarn((Number(($event.target as HTMLInputElement).value) || 0) * 1000)"
+            />
+          </div>
+          <span class="text-2xs text-ink-faint">{{ t('settings.contextWarnUnit') }}</span>
+        </div>
       </SettingRow>
       <SettingRow :label="t('settings.budget')" label-for="set-budget" :info="t('settings.budgetHint')" data-setting-row="budget">
         <div class="flex shrink-0 items-center gap-1.5">

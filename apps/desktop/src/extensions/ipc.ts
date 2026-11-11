@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { AvailablePlugin, ExtInstallRequest, ExtRemoveRequest, ExtResult, ExtScope, ExtSourceRequest, ExtStatus, McpServerRow } from '@ccm/shared'
+import type { AvailablePlugin, ExtInstallRequest, ExtProject, ExtProjectToggle, ExtRemoveRequest, ExtResult, ExtScope, ExtSourceRequest, ExtStatus, McpServerRow } from '@ccm/shared'
 import { findClaudeCli, type CliRun } from '../../../collector/src/job-stop'
 import { maskSecrets } from '@ccm/shared'
 import { deskHandle, type DeskRouter } from '../desk/forward'
@@ -21,6 +21,7 @@ import {
   showCommand,
   type CliStep,
 } from './commands'
+import { readProject, toggleMcp, togglePlugin, validName } from './project'
 import { claudeJsonFile, claudeRoot, listSkills, probePrereqs, readConfigured, sameDir } from './status'
 
 export type ExtRunner = (file: string, args: string[], opts: { cwd: string; timeout: number }) => Promise<CliRun & { timedOut?: boolean }>
@@ -43,6 +44,8 @@ export interface ExtensionsDeps {
   home?: string
   platform?: NodeJS.Platform
   desk?: DeskRouter
+  settleMs?: number
+  settle?: (attempt: number) => Promise<void>
 }
 
 const LIST_TIMEOUT = 60_000
@@ -82,7 +85,7 @@ export async function checkDir(dir: unknown): Promise<string | null | 'bad'> {
   }
 }
 
-const CHANNELS = ['ccm:ext-status', 'ccm:ext-mcp', 'ccm:ext-install', 'ccm:ext-remove', 'ccm:ext-source', 'ccm:ext-login']
+const CHANNELS = ['ccm:ext-status', 'ccm:ext-mcp', 'ccm:ext-install', 'ccm:ext-remove', 'ccm:ext-source', 'ccm:ext-login', 'ccm:ext-project', 'ccm:ext-project-toggle']
 
 const isScope = (v: unknown): v is ExtScope => v === 'user' || v === 'project' || v === 'local'
 
@@ -247,6 +250,43 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
       const res = await runSteps(cli, [{ args: ['mcp', 'login', name], secrets: [] }], dir ?? home, LOGIN_TIMEOUT)
       mcpCache.clear()
       return strip(res)
+    } finally {
+      busy = false
+    }
+  })
+
+  const projectPaths = { claudeJson: claudeJsonFile(env, home), settingsFile: path.join(claudeRoot(env, home), 'settings.json'), platform }
+
+  handle('ccm:ext-project', async (event, rawDir: unknown, refresh: unknown): Promise<ExtProject> => {
+    if (!isAppFrame(event)) return { ok: false, code: 'badArg' }
+    const dir = await checkDir(rawDir)
+    if (dir === 'bad' || dir === null) return { ok: false, code: 'badArg' }
+    if (refresh === true) {
+      const cli = await findCli()
+      if (cli) {
+        const res = await run(cli, ['mcp', 'list'], { cwd: dir, timeout: MCP_LIST_TIMEOUT })
+        if (res.code === 0 || res.stdout.trim()) {
+          const configured = new Map(readConfigured(projectPaths.claudeJson, dir, platform).map((c) => [c.name, c.scopes]))
+          mcpCache.set(dir, { at: Date.now(), servers: parseMcpList(res.stdout).map((row) => ({ ...row, scopes: configured.get(row.name) ?? [] })) })
+        }
+      }
+    }
+    return readProject(projectPaths, dir, (mcpCache.get(dir)?.servers ?? []).map((s) => s.name))
+  })
+
+  handle('ccm:ext-project-toggle', async (event, raw: unknown): Promise<ExtProjectToggle> => {
+    if (!isAppFrame(event)) return { ok: false, code: 'badArg' }
+    if (busy) return { ok: false, code: 'busy' }
+    busy = true
+    try {
+      const o = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null) as Record<string, unknown> | null
+      if (!o) return { ok: false, code: 'badArg' }
+      const dir = await checkDir(o.dir)
+      if (dir === 'bad' || dir === null) return { ok: false, code: 'badArg' }
+      if (!validName(o.name) || typeof o.enabled !== 'boolean' || (o.kind !== 'mcp' && o.kind !== 'plugin')) return { ok: false, code: 'badArg' }
+      if (o.kind === 'plugin') return togglePlugin(dir, o.name, o.enabled)
+      if (o.name === 'orrery') return { ok: false, code: 'locked' }
+      return await toggleMcp(projectPaths, dir, o.name, o.enabled, deps.settle ?? (() => new Promise<void>((resolve) => setTimeout(resolve, deps.settleMs ?? 1500))))
     } finally {
       busy = false
     }

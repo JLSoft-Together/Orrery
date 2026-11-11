@@ -104,7 +104,7 @@ function onTabKey(e: KeyboardEvent): void {
 </script>
 
 <template>
-  <header class="ccm-material ccm-titlebar sticky top-0 z-30 border-b border-line" :data-title-bar="titleBar ?? undefined">
+  <header class="ccm-material ccm-titlebar sticky top-0 z-30 border-b ccm-chrome-edge" :data-title-bar="titleBar ?? undefined">
     <div class="flex h-10 min-w-0 items-center gap-2" :class="barClass" :style="barStyle">
       <ArtImage name="logo" class="size-5 shrink-0" :aria-label="t('app.title')" role="img" />
 
@@ -113,11 +113,11 @@ function onTabKey(e: KeyboardEvent): void {
         data-tour="tabs"
         role="tablist"
         :aria-label="t('nav.label')"
-        class="relative grid shrink-0 auto-cols-fr grid-flow-col rounded-control bg-fill p-0.5"
+        class="ccm-seg relative grid shrink-0 auto-cols-fr grid-flow-col rounded-control p-0.5"
       >
         <span
           v-if="activeIndex >= 0"
-          class="absolute inset-y-0.5 left-0.5 rounded-inner bg-control shadow-control transition-transform duration-(--ccm-dur-slow) ease-spring"
+          class="ccm-seg-thumb absolute inset-y-0.5 left-0.5 rounded-inner transition-transform duration-(--ccm-dur-slow) ease-spring"
           :style="{ width: `calc((100% - 4px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }"
           aria-hidden="true"
         />
@@ -129,7 +129,7 @@ function onTabKey(e: KeyboardEvent): void {
           :aria-selected="ui.view === tab.id"
           :tabindex="ui.view === tab.id ? 0 : -1"
           class="relative inline-flex h-6 cursor-pointer items-center justify-center gap-1.5 rounded-inner px-2.5 text-xs font-medium transition-colors sm:min-w-[92px]"
-          :class="ui.view === tab.id ? 'text-ink' : 'text-ink-muted hover:text-ink'"
+          :class="ui.view === tab.id ? 'ccm-seg-on' : 'text-ink-muted hover:text-ink'"
           @click="ui.setView(tab.id)"
           @keydown="onTabKey"
         >

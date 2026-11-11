@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod appearance;
+mod bug_report;
 mod capture;
 mod ccm;
 mod collector;
@@ -131,8 +132,11 @@ fn main() {
     };
     let hidden = cfg.hidden;
     let first_link = links::link_in(&args);
-    let app = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| links::second_instance(app, argv)))
+    let mut builder = tauri::Builder::default();
+    if !config::e2e_isolated() {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| links::second_instance(app, argv)));
+    }
+    let app = builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .plugin(tauri_plugin_notification::init())

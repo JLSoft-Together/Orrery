@@ -1,11 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { THEMES, isThemeId, modeOf, toggleTarget } from './themes'
+import { THEMES, THEME_MIGRATION, defaultTheme, isThemeId, modeOf, startTheme, toggleTarget } from './themes'
 
 // Read from disk: vitest turns CSS imports (even ?raw) into empty modules.
 const themesCss = readFileSync(new URL('../themes.css', import.meta.url), 'utf8')
 const indexHtml = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
+const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 
 /** Every colour a theme block must name; the rest is derived in themes.css or comes from the mode block. */
 const REQUIRED = [
@@ -35,6 +36,17 @@ const ratio = (a: number[], b: number[]) => {
   return (x! + 0.05) / (y! + 0.05)
 }
 const over = (fg: number[], bg: number[], p: number) => fg.map((v, i) => v * p + bg[i]! * (1 - p))
+
+const SHAPE = [
+  'card-shadow', 'panel-bg', 'panel-edge', 'chrome-line', 'tab-on-bg', 'tab-on-shadow', 'tab-rail', 'chip-fill', 'pane-ring', 'pane-bar',
+  'pane-head-tint', 'dim-inactive', 'seg-track', 'seg-thumb', 'seg-thumb-shadow', 'seg-on-ink', 'label-font', 'label-case', 'label-tracking', 'gap-shell',
+]
+const SHAPED = ['orrery-dark', 'orrery-light', 'console']
+
+function rootBlock(): Record<string, string> {
+  const m = /\n:root \{([^}]*)\}/.exec(styleCss)
+  return Object.fromEntries([...m![1]!.matchAll(/--ccm-([\w-]+):\s*([^;]+);/g)].map((x) => [x[1]!, x[2]!.trim()]))
+}
 
 const extra = THEMES.filter((th) => th.id !== 'light' && th.id !== 'dark')
 
@@ -89,5 +101,53 @@ describe('themes', () => {
       need(`${th.id} syn-comment`, ratio(c('syn-comment'), c('well')), 3)
     }
     expect(fails).toEqual([])
+  })
+
+  it('shape tokens: Apple defaults in style.css, every v91 theme sets them all', () => {
+    const root = rootBlock()
+    expect(SHAPE.filter((k) => !root[k])).toEqual([])
+    expect(root['dim-inactive']).toBe('1')
+    expect(root['chip-fill']).toBe('1')
+    expect(root['gap-shell']).toBe('8px')
+    for (const id of SHAPED) {
+      expect(SHAPE.filter((k) => !block(id)[k]), id).toEqual([])
+      const raw = new RegExp(`:root\\[data-theme='${id}'\\] \\{([^}]*)\\}`).exec(themesCss)![1]!
+      for (const r of ['card', 'control', 'inner']) expect(raw, `${id} radius-${r}`).toMatch(new RegExp(`--radius-${r}: \\d+px;`))
+    }
+  })
+
+  it('Orrery is the default pair, listed first in each mode', () => {
+    expect(defaultTheme(true)).toBe('orrery-light')
+    expect(defaultTheme(false)).toBe('orrery-dark')
+    expect(toggleTarget('orrery-light')).toBe('orrery-dark')
+    expect(toggleTarget('orrery-dark')).toBe('orrery-light')
+    for (const mode of ['light', 'dark'] as const) expect(THEMES.find((th) => th.mode === mode)!.id).toBe(defaultTheme(mode === 'light'))
+    expect(THEMES.filter((th) => th.isDefault).map((th) => th.id).sort()).toEqual(['orrery-dark', 'orrery-light'])
+    expect(THEMES.filter((th) => th.mode === 'dark').map((th) => th.id).slice(0, 2)).toEqual(['orrery-dark', 'console'])
+  })
+
+  it('start theme: 4.0.2 moves everyone to Orrery once, then choices stick', () => {
+    expect(startTheme(null, null, true)).toEqual({ theme: 'orrery-light', migrate: true })
+    expect(startTheme(null, null, false)).toEqual({ theme: 'orrery-dark', migrate: true })
+    expect(startTheme('dark', null, true)).toEqual({ theme: 'orrery-dark', migrate: true })
+    expect(startTheme('solarized-light', null, false)).toEqual({ theme: 'orrery-light', migrate: true })
+    expect(startTheme('monokai', '4.0.1', true)).toEqual({ theme: 'orrery-dark', migrate: true })
+    expect(startTheme('dark', THEME_MIGRATION, true)).toEqual({ theme: 'dark', migrate: false })
+    expect(startTheme('console', THEME_MIGRATION, true)).toEqual({ theme: 'console', migrate: false })
+    expect(startTheme('nope', THEME_MIGRATION, true)).toEqual({ theme: 'orrery-light', migrate: false })
+    expect(startTheme(null, THEME_MIGRATION, false)).toEqual({ theme: 'orrery-dark', migrate: false })
+  })
+
+  it('pre-paint pick mirrors startTheme', () => {
+    const src = /var L = [^\n]*\n\s*var D = [^\n]*\n\s*function pick\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
+    const pick = new Function(`${src}; return pick`)() as (t: string | null, m: string | null, light: boolean) => { t: string; w: boolean }
+    expect(indexHtml).toContain(`localStorage.setItem('ccm.themeMigration', '${THEME_MIGRATION}')`)
+    const stored = [null, 'nope', ...THEMES.map((th) => th.id)]
+    for (const t of stored)
+      for (const m of [null, '4.0.1', THEME_MIGRATION])
+        for (const light of [true, false]) {
+          const want = startTheme(t, m, light)
+          expect(pick(t, m, light), `${t} ${m} ${light}`).toEqual({ t: want.theme, w: want.migrate })
+        }
   })
 })

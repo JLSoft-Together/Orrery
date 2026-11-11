@@ -94,7 +94,7 @@
   --radius-control: 8px;
   --radius-inner: 6px;
 
-  --shadow-card: var(--ccm-shadow);
+  --shadow-card: var(--ccm-card-shadow);
   --shadow-control: var(--ccm-shadow-control);
   --shadow-pop: var(--ccm-shadow-pop);
 
@@ -238,6 +238,28 @@
   --ccm-grid: #e3e3e6;
   --ccm-flow-dot: #d1d1d6;
   --ccm-edge: #aeaeb2;
+
+  --ccm-card-shadow: var(--ccm-shadow);
+  --ccm-panel-bg: var(--ccm-material);
+  --ccm-panel-edge: none;
+  --ccm-chrome-line: var(--ccm-line);
+  --ccm-tab-on-bg: var(--ccm-control);
+  --ccm-tab-on-shadow: var(--ccm-shadow-control);
+  --ccm-tab-rail: transparent;
+  --ccm-chip-fill: 1;
+  --ccm-pane-ring-w: 2px;
+  --ccm-pane-ring: var(--ccm-focus);
+  --ccm-pane-bar: none;
+  --ccm-pane-head-tint: transparent;
+  --ccm-dim-inactive: 1;
+  --ccm-seg-track: var(--ccm-fill);
+  --ccm-seg-thumb: var(--ccm-control);
+  --ccm-seg-thumb-shadow: var(--ccm-shadow-control);
+  --ccm-seg-on-ink: var(--ccm-ink);
+  --ccm-label-font: var(--font-sans);
+  --ccm-label-case: none;
+  --ccm-label-tracking: normal;
+  --ccm-gap-shell: 8px;
 }
 
 .dark {
@@ -548,6 +570,84 @@ body {
         0 0 0 2px var(--ccm-focus),
         0 0 0 4.5px color-mix(in srgb, var(--ccm-focus) 30%, transparent);
     }
+  }
+
+  .ccm-panel {
+    background: var(--ccm-panel-bg);
+    box-shadow: var(--ccm-panel-edge);
+  }
+
+  .ccm-chrome-edge {
+    border-color: var(--ccm-chrome-line);
+  }
+
+  .ccm-tab-on {
+    background: var(--ccm-tab-on-bg);
+    box-shadow: var(--ccm-tab-on-shadow);
+  }
+
+  .ccm-tab-rail {
+    box-shadow: inset 0 -1px 0 var(--ccm-tab-rail);
+  }
+
+  .ccm-chip {
+    background-color: color-mix(in srgb, var(--ccm-chip-tint, transparent) calc(var(--ccm-chip-fill) * 100%), transparent);
+  }
+  .ccm-chip-working {
+    --ccm-chip-tint: var(--ccm-working-soft);
+  }
+  .ccm-chip-waiting {
+    --ccm-chip-tint: var(--ccm-waiting-soft);
+  }
+  .ccm-chip-error {
+    --ccm-chip-tint: var(--ccm-error-soft);
+  }
+  .ccm-chip-warning {
+    --ccm-chip-tint: var(--ccm-warning-soft);
+  }
+  .ccm-chip-quiet {
+    --ccm-chip-tint: var(--ccm-raised);
+  }
+
+  .ccm-pane-ring {
+    outline: var(--ccm-pane-ring-w) solid transparent;
+    outline-offset: calc(var(--ccm-pane-ring-w) * -1);
+  }
+  .ccm-pane-ring.ccm-pane-active {
+    outline-color: var(--ccm-pane-ring);
+  }
+  .ccm-pane-ring.ccm-pane-active::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    border-radius: inherit;
+    box-shadow: var(--ccm-pane-bar);
+    pointer-events: none;
+  }
+  .ccm-pane-head-on {
+    border-radius: var(--radius-inner);
+    background: var(--ccm-pane-head-tint);
+  }
+  .ccm-pane-idle {
+    opacity: var(--ccm-dim-inactive);
+  }
+
+  .ccm-seg {
+    background: var(--ccm-seg-track);
+  }
+  .ccm-seg-thumb {
+    background: var(--ccm-seg-thumb);
+    box-shadow: var(--ccm-seg-thumb-shadow);
+  }
+  .ccm-seg-on {
+    color: var(--ccm-seg-on-ink);
+  }
+
+  .ccm-label {
+    font-family: var(--ccm-label-font);
+    text-transform: var(--ccm-label-case);
+    letter-spacing: var(--ccm-label-tracking);
   }
 
   /* Grouped settings rows (System Settings style): rounded inset list with hairline separators. */

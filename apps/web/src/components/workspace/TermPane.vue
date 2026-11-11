@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Columns2, FileText, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, FileText, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -36,12 +36,14 @@ import { fromPath, useAttachmentsStore, type NewAttachment } from '../../stores/
 import { useSettingsStore } from '../../stores/settings'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useTipsStore } from '../../stores/tips'
+import { useUiStore } from '../../stores/ui'
 import { parseOsc7, parseOsc9 } from '../../lib/shellCwd'
 import { hasScripts } from '../../lib/projects'
 import { bufferLines, parseTerminalProblems } from '../../lib/terminalProblems'
 import { useChecksStore } from '../../stores/checks'
-import { presetOf, useWorkspaceStore, reopenAs, workCwd, type Pane, type SplitChoice } from '../../stores/workspace'
+import { presetOf, useWorkspaceStore, reopenAs, resumeIdOf, workCwd, type Pane, type SplitChoice } from '../../stores/workspace'
 import ContextGauge from '../ContextGauge.vue'
+import ContextTokens from '../ContextTokens.vue'
 import AttachmentsPanel from './AttachmentsPanel.vue'
 import TermFind from './TermFind.vue'
 import StatusIcon from '../StatusIcon.vue'
@@ -74,6 +76,7 @@ const settings = useSettingsStore()
 const terminals = useTerminalsStore()
 const agents = useAgentsStore()
 const tips = useTipsStore()
+const ui = useUiStore()
 
 const host = ref<HTMLElement | null>(null)
 let term: Terminal | null = null
@@ -213,12 +216,12 @@ const procChip = computed(() => {
   if (kind === 'starting') return { kind, label: t('workspace.rail.state.starting'), title: undefined, status: null, cls: 'bg-fill text-ink-muted' }
   if (kind === 'exited') {
     const meta = statusMeta('completed')
-    return { kind, label: t('workspace.rail.state.ended'), title: t('workspace.state.exited', { code: props.pane.exitCode ?? 0 }), status: 'completed', cls: `${meta.text} ${meta.soft}` }
+    return { kind, label: t('workspace.rail.state.ended'), title: t('workspace.state.exited', { code: props.pane.exitCode ?? 0 }), status: 'completed', cls: `${meta.text} ${meta.chip}` }
   }
   if (kind === 'error') {
     const text = props.pane.error ?? t('workspace.state.error')
     const meta = statusMeta('error')
-    return { kind, label: text, title: text, status: 'error', cls: `${meta.text} ${meta.soft}` }
+    return { kind, label: text, title: text, status: 'error', cls: `${meta.text} ${meta.chip}` }
   }
   return null
 })
@@ -339,6 +342,7 @@ const moreEntries = computed<MenuEntry[]>(() => {
     const n = queueCount.value
     out.push({ id: 'queue', label: n ? t('workspace.promptQueue.count', { n }, n) : t('workspace.promptQueue.title'), icon: ListOrdered })
   }
+  if (preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value) out.push({ id: 'tools', label: t('sessionTools.menu'), icon: Blocks })
   out.push({ id: 'restart', label: t(reconnectable.value ? 'workspace.reconnect' : 'workspace.restart'), icon: RotateCw })
   return out
 })
@@ -352,7 +356,10 @@ function pickMore(id: string): void {
   else if (id === 'scripts') emit('scripts')
   else if (id === 'scan') scanErrors()
   else if (id === 'queue') queueButton.value?.open(more.value?.button?.getBoundingClientRect())
-  else if (id === 'restart') {
+  else if (id === 'tools') {
+    const dir = session.value?.cwd || cwd.value
+    if (dir) ui.sessionTools = { dir, paneKey: props.pane.key }
+  } else if (id === 'restart') {
     if (reconnectable.value) reconnect()
     else restart()
   }
@@ -845,7 +852,8 @@ function killSession(): void {
   else if (id) void PtyConnection.killById(id)
 }
 
-function restart(): void {
+function restart(keepSession = false): void {
+  const kept = keepSession && props.pane.preset === 'claude' ? resumeIdOf(props.pane) : undefined
   killSession()
   restoredOnMount = false
   marks.reset()
@@ -858,9 +866,10 @@ function restart(): void {
   // A shell running claude / codex by hand restarts as that agent (resumed once it took a turn), else stays a shell.
   const again = props.pane.preset === 'shell' ? reopenAs(props.pane) : null
   const asAgent = again && again.preset !== 'shell' ? { preset: again.preset, cwd: again.cwd, resume: again.resume, agentSessionId: again.resume } : null
-  const next = asAgent ?? props.pane
+  const next = kept ? { ...props.pane, resume: kept } : (asAgent ?? props.pane)
   const minted = next.preset === 'claude' && !next.resume && !props.pane.openTicket ? crypto.randomUUID() : undefined
-  workspace.update(props.pane.key, { ...asAgent, state: 'starting', sessionId: undefined, pid: undefined, terminalId: undefined, agent: undefined, branch: undefined, liveCwd: undefined, exitCode: undefined, error: undefined, ranCommand: undefined, untouchedSession: undefined, ...(minted ? { agentSessionId: minted, mintedSession: minted } : {}) })
+  const keep = kept ? { resume: kept, agentSessionId: kept, mintedSession: undefined } : {}
+  workspace.update(props.pane.key, { ...asAgent, ...keep, state: 'starting', sessionId: undefined, pid: undefined, terminalId: undefined, agent: undefined, branch: undefined, liveCwd: undefined, exitCode: undefined, error: undefined, ranCommand: undefined, untouchedSession: undefined, ...(minted ? { agentSessionId: minted, mintedSession: minted } : {}) })
   void spawn()
 }
 
@@ -1021,6 +1030,14 @@ watch(
   },
 )
 
+watch(
+  () => workspace.restartRequest,
+  (req) => {
+    if (!req || req.paneKey !== props.pane.key || props.pane.state !== 'running') return
+    restart(true)
+  },
+)
+
 // Browser → agent: lands in the input line only; the user presses Enter.
 watch(
   () => workspace.insertRequest,
@@ -1104,7 +1121,8 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-    class="@container flex min-h-0 min-w-0 flex-col gap-1.5"
+    class="@container flex min-h-0 min-w-0 flex-col gap-1.5 transition-opacity duration-(--ccm-dur-base) ease-out-quint"
+    :class="multi && !focused ? 'ccm-pane-idle' : ''"
     :data-pane="pane.key"
     :style="visible ? `view-transition-name: ccm-pane-${pane.key}; view-transition-class: ccm-pane` : undefined"
     :aria-label="t(`workspace.preset.${preset}`)"
@@ -1113,7 +1131,7 @@ onBeforeUnmount(() => {
     <Teleport :to="barSlot ?? 'body'" :disabled="!inBar">
     <header
       class="relative flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs select-none @max-[420px]:gap-1"
-      :class="[multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '']"
+      :class="[multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', multi && focused ? 'ccm-pane-head-on' : '']"
       :title="multi ? t('workspace.drag.paneHint', { key: isMac ? '⌘' : 'Ctrl' }) : inBar ? headTip : undefined"
       :data-pane-grip="multi || undefined"
       :data-pane-of="pane.key"
@@ -1166,6 +1184,7 @@ onBeforeUnmount(() => {
       </Teleport>
       <div class="ml-auto flex min-w-0 items-center gap-1">
         <ContextGauge v-if="context" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
+        <ContextTokens class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />
         <span class="grid min-w-6 justify-items-end empty:hidden *:[grid-area:1/1] @max-[300px]:hidden" data-more="compact" data-pane-chip>
           <Transition name="ccm-fade">
             <button
@@ -1205,7 +1224,7 @@ onBeforeUnmount(() => {
               v-if="sessionChip"
               :key="chipKey"
               class="inline-flex h-5 max-w-full min-w-6 items-center gap-1 rounded-inner px-1.5 text-2xs font-medium whitespace-nowrap"
-              :class="[sessionChip.meta.text, sessionChip.meta.soft]"
+              :class="[sessionChip.meta.text, sessionChip.meta.chip]"
               :title="peerBadge && peer ? `${sessionChip.label}\n${peerTip}` : sessionChip.label"
               :data-pane-status="sessionChip.status"
               :data-subagents="sessionChip.subagents || undefined"
@@ -1338,8 +1357,8 @@ onBeforeUnmount(() => {
     </Teleport>
     <div class="flex min-h-0 flex-1 gap-1.5" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
-      class="relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card outline-2 -outline-offset-2 transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
-      :class="multi && focused ? 'outline-focus' : 'outline-transparent'"
+      class="ccm-pane-ring relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
+      :class="multi && focused ? 'ccm-pane-active' : ''"
     >
       <!-- Dimmed when the process has ended; the well fades, the terminal text itself never animates. -->
       <!-- Shell command marks sit in the left padding, outside the cell grid. -->

@@ -29,6 +29,7 @@ const env: SettingsEnv = {
   notifyData: true,
   deepseek: true,
   xmlPreview: true,
+  bugReport: true,
 }
 
 describe('parsePrefix', () => {

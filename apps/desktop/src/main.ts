@@ -10,6 +10,7 @@ import { createEditorTracker, type EditorTracker } from './editors'
 import { installBridge, type BridgeInstall } from './bridge'
 import { BRIDGE_EXE, installRustBridge, migrateBridges, rustBridgeCommand, rustBridgeSource, type MigrateResult } from './bridgeRust'
 import { maskSecrets } from '@ccm/shared'
+import { BUG_REPORT_LIMIT, clampErrors, gatherCandidates, previewItems, selectEntries, writeZipFile, zipItems, type Roots as BugRoots } from './bugReport'
 import { FatalError, type FatalReason } from './collector-host'
 import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-serve-host'
 import { createServeToasts, type ServeToasts } from './serve-toast'
@@ -2367,6 +2368,33 @@ async function ready(): Promise<void> {
     }
     shell.showItemInFolder(res.filePath)
     return { ok: true, path: res.filePath }
+  })
+  const bugRoots = (): BugRoots => ({ logs: app.getPath('logs'), home: os.homedir(), localAppData: process.env.LOCALAPPDATA, platform: process.platform })
+  ipcMain.handle('ccm:bug-report-preview', async (event) => {
+    if (!isAppFrame(event)) return null
+    const cands = await gatherCandidates(bugRoots(), logReport(''), '', true)
+    return { ok: true, items: previewItems(cands), limit: BUG_REPORT_LIMIT }
+  })
+  ipcMain.handle('ccm:bug-report-save', async (event, req: unknown) => {
+    if (!isAppFrame(event) || !req || typeof req !== 'object') return null
+    const r = req as { page?: unknown; errors?: unknown; dumps?: unknown }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')
+    const opts: Electron.SaveDialogOptions = {
+      defaultPath: path.join(app.getPath('downloads'), `orrery-bugreport-${stamp}.zip`),
+      filters: [{ name: 'Zip', extensions: ['zip'] }],
+    }
+    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    if (res.canceled || !res.filePath) return { ok: false, code: 'cancel' }
+    try {
+      const page = typeof r.page === 'string' ? r.page.slice(0, 20_000) : ''
+      const sel = selectEntries(await gatherCandidates(bugRoots(), logReport(page), clampErrors(r.errors), r.dumps === true), BUG_REPORT_LIMIT)
+      const bytes = await writeZipFile(res.filePath, zipItems(sel))
+      shell.showItemInFolder(res.filePath)
+      return { ok: true, path: res.filePath, bytes, files: sel.entries.length + 1, cut: sel.cut, skipped: sel.skipped }
+    } catch {
+      return { ok: false, code: 'io' }
+    }
   })
   updates = createUpdates()
   disposeUpdate = registerUpdateIpc({ ipcMain, isAppFrame, manager: updates, desk: deskRouter ?? undefined })

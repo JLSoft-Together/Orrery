@@ -18,6 +18,7 @@ import { isMac } from '../lib/platform'
 import { isTyping } from '../lib/shortcuts'
 import { useAgentActions } from '../composables/useAgentActions'
 import { useBump } from '../composables/useBump'
+import { useSessionTools } from '../composables/useSessionTools'
 import { useInlineEdit } from '../composables/useInlineEdit'
 import { displayTitle } from '../lib/title'
 import { waitDisplay } from '../lib/wait'
@@ -30,6 +31,7 @@ import { useSettingsStore } from '../stores/settings'
 import { SNOOZE_CHOICES, useSnoozeStore } from '../stores/snooze'
 import { useUiStore } from '../stores/ui'
 import ContextRing from './ContextRing.vue'
+import ContextTokens from './ContextTokens.vue'
 import SessionCardHeader from './SessionCardHeader.vue'
 import SessionCardSignals from './SessionCardSignals.vue'
 import RunBadge from './workspace/RunBadge.vue'
@@ -51,6 +53,7 @@ const settings = useSettingsStore()
 const favorites = useFavoritesStore()
 const actions = useAgentActions((id) => agents.byTerminal[id] ?? [])
 const notice = actions.notice
+const sessionTools = useSessionTools()
 
 // The map node menu in its card scope, with the card's own actions on top; the cursor or the ⋯ button anchors it, the menu key anchors it on the card.
 const menu = ref<{ at: DOMRect; trigger: HTMLElement | null } | null>(null)
@@ -74,6 +77,7 @@ const menuEntries = computed(() => {
       pinned: settings.pinned.has(term.id),
       starred: favorites.has(term.cwd),
       hasCwd: !!term.cwd,
+      tools: sessionTools.available(term),
       hasNote: !!term.note,
       hasAlias: !!term.alias,
       waiting: term.status === 'waiting',
@@ -158,6 +162,7 @@ function onPick(id: string): void {
     else if (own === 'star') connection.toggleFavorite(term.id)
     else if (own === 'dismiss') connection.dismissEnded(term.id)
     else if (own === 'unsnooze') snooze.clear(term.id)
+    else if (own === 'tools') sessionTools.open(term)
     else if (own.startsWith('open:')) open(own.slice(5) as OpenApp)
     else if (own.startsWith('snooze:')) snooze.snooze(term, Number(own.slice(7)))
     return
@@ -457,6 +462,7 @@ function commitNote(): void {
         <Transition name="ccm-fade">
           <ContextRing v-if="context" data-card-context :tokens="context.tokens" :window="context.window" :pct="context.pct" :model="modelLine" />
         </Transition>
+        <ContextTokens v-if="!ended" :tokens="main?.contextTokens" />
         <TokenCount v-if="tokens" class="font-medium text-ink" :title="tokens.title" :value="tokens.total" />
       </span>
     </div>

@@ -47,6 +47,7 @@ export interface SettingsEnv {
   notifyData: boolean
   deepseek: boolean
   xmlPreview: boolean
+  bugReport: boolean
 }
 
 export interface SettingsEntry {
@@ -122,6 +123,8 @@ export const entries = (mac: boolean): SettingsEntry[] => [
 
   { page: 'reminders', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
   { page: 'reminders', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },
+  { page: 'reminders', id: 'contextWarn', labelKey: 'settings.contextWarn', hintKey: 'settings.contextWarnHint' },
+  { page: 'about', id: 'bugReportNudge', labelKey: 'bugReport.nudge', hintKey: 'bugReport.nudgeHint', needs: 'bugReport' },
   { page: 'reminders', id: 'budget', labelKey: 'settings.budget', hintKey: 'settings.budgetHint' },
 
   { page: 'github', id: 'github', labelKey: 'github.section', needs: 'github' },
@@ -149,6 +152,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'about', id: 'help-whatsNew', labelKey: 'whatsNew.open' },
   { page: 'about', id: 'help-tour', labelKey: 'tour.open', hintKey: 'settings.tourHint' },
   { page: 'about', id: 'help-wsTour', labelKey: 'wsHelp.tour', needs: 'terminals' },
+  { page: 'about', id: 'bugReport', labelKey: 'bugReport.section', hintKey: 'bugReport.hint', needs: 'bugReport' },
   { page: 'about', id: 'help-diag', labelKey: 'diag.open', hintKey: 'settings.diagHint' },
   { page: 'about', id: 'help-setup', labelKey: 'setup.open', hintKey: 'setup.openHint' },
   { page: 'about', id: 'help-fonts', labelKey: 'fonts.licenses', hintKey: 'fonts.licensesHint' },

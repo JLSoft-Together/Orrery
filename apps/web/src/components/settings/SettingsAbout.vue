@@ -7,6 +7,7 @@ import { desktop, hasTerminals } from '../../lib/desktop'
 import { hasUpdater } from '../../lib/update'
 import { useUiStore } from '../../stores/ui'
 import UpdateSettings from '../UpdateSettings.vue'
+import BugReportSettings from './BugReportSettings.vue'
 import SettingEmbed from './SettingEmbed.vue'
 import SettingSection from './SettingSection.vue'
 
@@ -56,5 +57,7 @@ function openFrom(action: () => void): void {
         <ChevronRight :size="14" class="shrink-0 text-ink-faint" aria-hidden="true" />
       </button>
     </SettingSection>
+
+    <BugReportSettings v-if="desktop?.bugReportSave" />
   </div>
 </template>

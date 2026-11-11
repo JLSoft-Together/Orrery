@@ -6,13 +6,17 @@ Từ **4.0** app chạy hoàn toàn bằng Rust: vỏ Tauri + `orrery-core`, kh�
 
 Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguyên (`dev.ccm.monitor`, data `ccm`, biến `CCM_*`) nên bản cũ cập nhật thẳng, không mất cài đặt.
 
-![Monitor: danh sách session và Agent Map](docs/screenshots/monitor.png)
+Từ **4.0.2** theme mặc định là **Ngân hà**: nền đen sâu, sao mờ tĩnh, panel đặc; màu pane theo agent (Claude cam, Codex tím, shell xanh ngọc).
 
-| Workspace: terminal, editor, Explorer | Changes: diff, stage từng đoạn |
+![Giám sát › Bảng: session theo Cần chủ nhân / Đang chạy / Rảnh](docs/screenshots/monitor.png)
+
+| Quỹ đạo: mỗi project một hệ, subagent là hành tinh | Workspace: terminal, editor, Explorer |
 |---|---|
-| ![Workspace](docs/screenshots/workspace.png) | ![Changes](docs/screenshots/changes.png) |
-| **Run pane: bắt crash, điền vào agent** | **Có gì mới** |
-| ![Run pane](docs/screenshots/run-pane.png) | ![What's new](docs/screenshots/whats-new.png) |
+| ![Quỹ đạo](docs/screenshots/orbit.png) | ![Workspace](docs/screenshots/workspace.png) |
+| **Changes: diff, stage từng đoạn** | **Run pane: bắt crash, điền vào agent** |
+| ![Changes](docs/screenshots/changes.png) | ![Run pane](docs/screenshots/run-pane.png) |
+| **Có gì mới** | |
+| ![What's new](docs/screenshots/whats-new.png) | |
 
 ## Hiệu năng: 4.0 (Tauri + Rust) so với Electron + Node
 
@@ -42,8 +46,9 @@ Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguy�
 ## Tính năng
 
 **Giám sát**
-- Danh sách session theo nhóm Cần chủ nhân / Đang chạy / Rảnh: nhánh, % context, thay đổi chưa commit, nhảy tới đúng terminal.
-- Agent Map main → sub-agent; Codex CLI do Claude gọi hiện thành node con.
+- **Bảng**: thẻ session theo Cần chủ nhân / Đang chạy / Rảnh (hoặc nhóm theo project / agent): tool đang chạy, nhánh, thước context, Mở trong Workspace / Xem diff, dòng thời gian Xong hôm nay.
+- **Quỹ đạo**: bản đồ sao, mỗi project một hệ, session là mặt trời, subagent là hành tinh; Codex CLI do Claude gọi hiện thành node con.
+- Thanh đáy: agent đang chạy / chờ, cổng dev, token hôm nay.
 - Usage (token, chi phí ước tính, giới hạn gói) và History (heatmap, recap, tìm session cũ rồi Resume).
 - Thông báo khi session chờ bạn; báo ra điện thoại qua ntfy / Discord khi bạn rời máy.
 - Office pixel-art: mỗi dự án một phòng, mỗi agent một nhân vật.
@@ -58,6 +63,7 @@ Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguy�
 
 **Workspace**
 - Terminal trong app (Claude Code / Codex / shell): tab, chia ô, nhóm tab, phóng ô, hoàn tác đóng, Mission Control, worktree.
+- Header pane: subagent đang chạy, thước context; thẻ file của lượt vừa rồi; tab nhóm theo project, chế độ tập trung `Ctrl+.`, launcher khi mở tab mới; Explorer đánh dấu file agent đang sửa / đọc.
 - Khôi phục workspace sau khi khởi động lại hoặc app tắt bất thường (`--resume`).
 - Chuyển dự án nhanh `Ctrl+Alt+P` (macOS `⌃⌥P`); `Ctrl K` tìm session, dự án, file, cài đặt và lệnh.
 - Changes đưa file chưa xem lên đầu; History có nút Tiếp tục session đã kết thúc.

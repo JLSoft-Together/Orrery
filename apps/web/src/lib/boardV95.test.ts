@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ToolSpan } from '@ccm/shared'
-import { clockLabel, columnTemplate, doneRow, fileAction, isStrip, sortDone, splitDone } from './boardV95'
+import { clockLabel, columnTemplate, doneRow, fileAction, isStrip, laneSessions, parseGroupBy, sortDone, splitDone } from './boardV95'
 
 const span = (o: Partial<ToolSpan>): ToolSpan => ({ id: 's', terminalId: 't', agentId: 'a', tool: 'Edit', start: '2026-11-11T10:00:00Z', ...o })
 
@@ -55,5 +55,48 @@ describe('done timeline', () => {
     expect(splitDone(sorted, false).shown).toHaveLength(3)
     expect(splitDone(sorted, true)).toMatchObject({ more: 0 })
     expect(splitDone(sorted.slice(0, 3), false).more).toBe(0)
+  })
+})
+
+describe('parseGroupBy', () => {
+  it('falls back to status', () => {
+    expect(parseGroupBy('project')).toBe('project')
+    expect(parseGroupBy('agent')).toBe('agent')
+    expect(parseGroupBy('nope')).toBe('status')
+    expect(parseGroupBy(null)).toBe('status')
+  })
+})
+
+describe('laneSessions', () => {
+  const rows = [
+    { id: 'a', status: 'idle', cwd: '/w/app', lastActivityAt: '2026-11-11T10:00:00Z' },
+    { id: 'b', status: 'working', cwd: '/w/api', provider: 'codex', lastActivityAt: '2026-11-11T11:00:00Z' },
+    { id: 'c', status: 'waiting', cwd: '/w/app', lastActivityAt: '2026-11-11T09:00:00Z' },
+    { id: 'd', status: 'stale', cwd: '/w/app', lastActivityAt: '2026-11-11T08:00:00Z' },
+    { id: 'e', status: 'working', cwd: '/w/app', lastActivityAt: '2026-11-11T12:00:00Z' },
+  ] as const
+
+  it('groups by project: needs-owner first, cards sorted needs then running then idle, ended apart', () => {
+    const lanes = laneSessions(rows, 'project')
+    expect(lanes.map((l) => l.name)).toEqual(['app', 'api'])
+    expect(lanes[0]!.active).toEqual(['c', 'e', 'a'])
+    expect(lanes[0]!.ended).toEqual(['d'])
+    expect(lanes[0]!.needs).toBe(1)
+  })
+  it('orders projects without needs by latest activity', () => {
+    const lanes = laneSessions(rows.filter((r) => r.id !== 'c'), 'project')
+    expect(lanes.map((l) => l.name)).toEqual(['app', 'api'])
+    expect(laneSessions(rows.filter((r) => r.id === 'b' || r.id === 'a'), 'project').map((l) => l.name)).toEqual(['api', 'app'])
+  })
+  it('groups by agent in provider order and defaults to claude', () => {
+    const lanes = laneSessions(rows, 'agent')
+    expect(lanes.map((l) => l.provider)).toEqual(['claude', 'codex'])
+    expect(lanes[1]!.active).toEqual(['b'])
+    expect(lanes[0]!.active).toEqual(['c', 'e', 'a'])
+  })
+  it('keeps sessions without cwd in a nameless project lane', () => {
+    const lanes = laneSessions([{ id: 'x', status: 'idle' }], 'project')
+    expect(lanes).toHaveLength(1)
+    expect(lanes[0]!.name).toBe('')
   })
 })

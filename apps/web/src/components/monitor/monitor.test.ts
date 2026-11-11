@@ -8,6 +8,7 @@ import { now } from '../../lib/format'
 import { useAgentsStore } from '../../stores/agents'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useUiStore } from '../../stores/ui'
+import type { SessionGroup } from '../../lib/sessionGroups'
 import CommandPanel from './CommandPanel.vue'
 import ModeBar from './ModeBar.vue'
 import SessionBoard from './SessionBoard.vue'
@@ -50,6 +51,50 @@ describe('ModeBar', () => {
     await tabs[1]!.trigger('click')
     expect(useUiStore().monitorMode).toBe('sky')
     expect(w.find('[data-monitor-summary]').text()).toBe('0 agents running, 2 waiting for you')
+  })
+})
+
+describe('SessionBoard grouping', () => {
+  const groups: SessionGroup[] = [
+    { key: 'needs', ids: ['t1'] },
+    { key: 'running', ids: ['t2'] },
+    { key: 'idle', ids: ['t3'] },
+  ]
+
+  it('renders one column per project and persists the choice', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    seed()
+    const ui = useUiStore()
+    ui.monitorGroupBy = 'project'
+    w = mount(SessionBoard, { props: { groups, freezeBind: {} }, global: { plugins: [i18n, pinia] } })
+    await flushPromises()
+    expect(w.findAll('[data-board-lane]').map((c) => c.attributes('data-board-lane'))).toHaveLength(2)
+    expect(w.find('[data-board-lane] h3').text()).toContain('app')
+    expect(localStorage.getItem('ccm.monitor.groupBy')).toBe('project')
+  })
+
+  it('renders one column per agent', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    seed()
+    useUiStore().monitorGroupBy = 'agent'
+    w = mount(SessionBoard, { props: { groups, freezeBind: {} }, global: { plugins: [i18n, pinia] } })
+    await flushPromises()
+    expect(w.findAll('[data-board-lane]').map((c) => c.attributes('data-board-lane'))).toEqual(['claude', 'codex'])
+  })
+
+  it('shows the group by control in ModeBar only on the board and hides the project filter', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const ui = useUiStore()
+    w = mount(ModeBar, { props: { projects: [], groups: [] }, global: { plugins: [i18n, pinia] } })
+    expect(w.findAll('[data-group-by] [role=radio]').map((r) => r.text())).toEqual(['Status', 'Project', 'Agent'])
+    await w.findAll('[data-group-by] [role=radio]')[1]!.trigger('click')
+    expect(ui.monitorGroupBy).toBe('project')
+    ui.monitorMode = 'sky'
+    await nextTick()
+    expect(w.find('[data-group-by]').exists()).toBe(false)
   })
 })
 

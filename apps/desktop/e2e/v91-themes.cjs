@@ -27,22 +27,22 @@ async function main() {
   try {
     await waitFor(`!!window.ccmDesktop && !!${S}.get('ui')`, 30000, 'app ready')
     const fresh = await evaluate(rootTheme)
-    check('fresh profile lands on Orrery', /^orrery-(light|dark)$/.test(fresh), fresh)
-    check('fresh profile stored the migration', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.0.2')
+    check('fresh profile lands on Ngân hà or Orrery light', /^(galaxy|orrery-light)$/.test(fresh), fresh)
+    check('fresh profile stored the migration', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.0.2-galaxy')
     check('settings store agrees', (await evaluate(`${S}.get('settings').theme`)) === fresh)
 
     await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.whatsNew.seen','${require('../package.json').version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.tips', JSON.stringify({ off: true, learned: [], shown: {} }))`)
     await evaluate(`localStorage.setItem('ccm.theme','dark'); localStorage.removeItem('ccm.themeMigration')`)
     await reload()
-    check('4.0.2 migration moves Apple dark to orrery-dark', (await evaluate(rootTheme)) === 'orrery-dark', await evaluate(rootTheme))
-    check('migration key written', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.0.2')
+    check('migration moves Apple dark to galaxy', (await evaluate(rootTheme)) === 'galaxy', await evaluate(rootTheme))
+    check('migration key written', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.0.2-galaxy')
 
-    await evaluate(`localStorage.setItem('ccm.theme','dark'); localStorage.setItem('ccm.themeMigration','4.0.2')`)
+    await evaluate(`localStorage.setItem('ccm.theme','dark'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy')`)
     await reload()
     check('after migration a chosen theme sticks', (await evaluate(rootTheme)) === 'dark' && (await evaluate(`${S}.get('settings').theme`)) === 'dark')
 
     for (const id of THEMES) {
-      await evaluate(`localStorage.setItem('ccm.theme','${id}'); localStorage.setItem('ccm.themeMigration','4.0.2')`)
+      await evaluate(`localStorage.setItem('ccm.theme','${id}'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy')`)
       await reload()
       check(`${id}: applied`, (await evaluate(rootTheme)) === id, await evaluate(rootTheme))
       await evaluate(`${S}.get('ui').view = 'workspace'`)
@@ -70,7 +70,7 @@ async function main() {
       await evaluate(`document.querySelector('[data-settings-page="appearance"]').click()`)
       await waitFor(`!!document.querySelector('[data-theme-option="orrery-dark"]')`, 10000, 'theme picker')
       await sleep(400)
-      check(`${id}: picker lists Orrery first with default label`, await evaluate(`(() => { const o = [...document.querySelectorAll('[data-theme-option]')].map((b) => b.dataset.themeOption); return o[0] === 'orrery-light' && o.indexOf('orrery-dark') < o.indexOf('console') && o.indexOf('console') < o.indexOf('dark') && document.querySelectorAll('[data-theme-default]').length === 2 })()`))
+      check(`${id}: picker lists Orrery first with default label`, await evaluate(`(() => { const o = [...document.querySelectorAll('[data-theme-option]')].map((b) => b.dataset.themeOption); return o[0] === 'orrery-light' && o.indexOf('galaxy') < o.indexOf('orrery-dark') && o.indexOf('orrery-dark') < o.indexOf('console') && o.indexOf('console') < o.indexOf('dark') && document.querySelectorAll('[data-theme-default]').length === 2 })()`))
       check(`${id}: picker marks the active theme`, await evaluate(`document.querySelector('[data-theme-option="${id}"]')?.getAttribute('aria-checked') === 'true'`))
       check(`${id}: settings no horizontal scroll`, await evaluate(noHScroll))
       await shot(`v91-${id}-settings`)

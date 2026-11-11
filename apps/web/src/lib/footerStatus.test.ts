@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changedCount, contextPair, devPorts, footerCounts, portsLabel } from './footerStatus'
+import { changedCount, contextPair, devPorts, footerCounts, portsLabel, sessionCounts } from './footerStatus'
 
 const srv = (over: Record<string, unknown>) => ({ kind: 'dev-server' as const, cwd: undefined, sessionId: null, ports: [{ port: 5173, address: '', established: 0 }], ...over })
 
@@ -65,5 +65,16 @@ describe('contextPair', () => {
   it('pairs tokens with a limit only when there is one', () => {
     expect(contextPair(412_000, 500_000, fmt)).toEqual({ used: '412K', limit: '500K' })
     expect(contextPair(412_000, 0, fmt)).toEqual({ used: '412K', limit: null })
+  })
+
+  it('counts monitor sessions by group, first of each', () => {
+    const c = sessionCounts([
+      { id: 'a', status: 'idle' },
+      { id: 'b', status: 'working' },
+      { id: 'c', status: 'waiting' },
+      { id: 'd', status: 'working' },
+      { id: 'e', status: 'stale' },
+    ])
+    expect(c).toEqual({ running: 2, waiting: 1, firstRunning: 'b', firstWaiting: 'c' })
   })
 })

@@ -8,7 +8,7 @@ import { navigate, ringOf, type NavKey } from '../../lib/orbitRings'
 import { isTyping } from '../../lib/shortcuts'
 import { groupOf, type SessionGroup, type SessionGroupKey } from '../../lib/sessionGroups'
 import { folderName, projectOf } from '../../lib/sidebarRows'
-import { agentVar, fitView, idleMinutes, layoutSlots, peerPath, planetLayout, slotColumns, statusRank, sunRadius, toolFile, zoomAt, type Fit, type PlanetLayout } from '../../lib/starMap'
+import { agentVar, cellSize, fitView, groupSystems, idleMinutes, layoutSlots, peerPath, planetCap, planetLayout, slotColumns, statusRank, sunOffsets, sunRadius, sunScale, toolFile, zoomAt, type Fit, type PlanetLayout } from '../../lib/starMap'
 import { statusMeta } from '../../lib/status'
 import { waitDisplay } from '../../lib/wait'
 import { useAgentsStore } from '../../stores/agents'
@@ -65,8 +65,18 @@ interface Sun {
   planets: PlanetLayout
   subCount: number
   subStats: { working: number; waiting: number; completed: number }
+  multi: boolean
   x: number
   y: number
+}
+
+interface SystemLabel {
+  project: string
+  x: number
+  y: number
+  multi: boolean
+  hidden: number
+  total: number
 }
 
 const projectOfTerminal = (cwd: string | undefined): string => {
@@ -80,48 +90,72 @@ const base = computed(() =>
     if (!term) return []
     const subs = (agents.byTerminal[id] ?? []).filter((a) => a.role === 'subagent').map((a) => ({ id: a.id, status: a.status as AgentStatus }))
     const group = groupOf(term.status)
-    const running = subs.filter((s) => s.status === 'working').length
-    const radius = sunRadius(group, running, term.status === 'working')
-    return [{ id, project: projectOfTerminal(term.cwd), group, provider: (term.provider ?? 'claude') as Provider, status: term.status as string, radius, subs }]
+    return [{ id, project: projectOfTerminal(term.cwd), key: projectOf(term.cwd) ?? '', group, rank: statusRank(group), provider: (term.provider ?? 'claude') as Provider, status: term.status as string, busy: term.status === 'working', subs }]
   }),
 )
 
-const slotMemory = new Map<number, ReadonlyMap<string, number>>()
-const arranged = computed(() => layoutSlots(base.value.map((s) => ({ id: s.id, project: s.project })), size.value.w, slotMemory.get(slotColumns(size.value.w))))
+const systems = computed(() => groupSystems(base.value))
+
+const slotMemory = new Map<string, ReadonlyMap<string, number>>()
+const memoryKey = (w: number, cellW: number): string => `${slotColumns(w, cellW)}:${cellW}`
+const arranged = computed(() => {
+  const keys = systems.value.map((g) => ({ id: g.key, project: g.project, suns: g.items.length }))
+  const maxSuns = keys.reduce((m, k) => Math.max(m, k.suns), 1)
+  return layoutSlots(keys, size.value.w, slotMemory.get(memoryKey(size.value.w, cellSize(maxSuns).w)))
+})
 watch(
   arranged,
   (r) => {
-    slotMemory.set(r.cols, r.slots)
+    slotMemory.set(`${r.cols}:${r.cellW}`, r.slots)
   },
   { immediate: true },
 )
 
-const suns = computed<Sun[]>(() => {
+const layoutOfSystems = computed(() => {
   const at = new Map(arranged.value.placements.map((p) => [p.id, p]))
-  return base.value
-    .map((s): Sun => {
-      const p = at.get(s.id)
-      return {
+  const suns: Sun[] = []
+  const labels: SystemLabel[] = []
+  for (const g of systems.value) {
+    const p = at.get(g.key)
+    const count = g.items.length
+    const offs = sunOffsets(count)
+    const scale = sunScale(count)
+    let top = 0
+    g.items.forEach((s, i) => {
+      const off = offs[i] ?? { x: 0, y: 0 }
+      const running = s.subs.filter((x) => x.status === 'working').length
+      const radius = Math.round(sunRadius(s.group, running, s.busy) * scale)
+      const planets = planetLayout(s.subs, radius, planetCap(count), count > 1 ? 14 : 18)
+      const reach = planets.rings.at(-1)?.radius ?? radius + 8
+      top = Math.min(top, off.y - reach)
+      suns.push({
         id: s.id,
         project: s.project,
         group: s.group,
-        rank: statusRank(s.group),
+        rank: s.rank,
         provider: s.provider,
         status: s.status,
-        radius: s.radius,
-        planets: planetLayout(s.subs, s.radius),
+        radius,
+        planets,
         subCount: s.subs.length,
         subStats: {
-          working: s.subs.filter((x) => x.status === 'working').length,
+          working: running,
           waiting: s.subs.filter((x) => x.status === 'waiting').length,
           completed: s.subs.filter((x) => x.status === 'completed').length,
         },
-        x: p?.x ?? 0,
-        y: p?.y ?? 0,
-      }
+        multi: count > 1,
+        x: (p?.x ?? 0) + off.x,
+        y: (p?.y ?? 0) + off.y,
+      })
     })
-    .sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id))
+    labels.push({ project: g.project, x: p?.x ?? 0, y: (p?.y ?? 0) + top - 26, multi: count > 1 || g.hidden > 0, hidden: g.hidden, total: g.total })
+  }
+  suns.sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id))
+  return { suns, labels }
 })
+
+const suns = computed(() => layoutOfSystems.value.suns)
+const systemLabels = computed(() => layoutOfSystems.value.labels.filter((l) => l.multi))
 
 const byId = computed(() => new Map(suns.value.map((s) => [s.id, s])))
 
@@ -358,6 +392,17 @@ const legendTop = computed(() => (settings.officeEnabled ? 'top-12' : 'top-3'))
         </span>
       </template>
 
+      <div
+        v-for="l in systemLabels"
+        :key="`sys-${l.project}`"
+        class="pointer-events-none absolute flex w-52 -translate-x-1/2 flex-col items-center gap-0.5 text-center"
+        :style="{ left: `${l.x}px`, top: `${l.y}px` }"
+        :title="t('orbitV95.systemLabel', { project: l.project, n: l.total })"
+      >
+        <span class="max-w-full truncate text-xs font-semibold text-ink" data-orbit-sector>{{ l.project }}</span>
+        <span v-if="l.hidden" class="text-2xs text-ink-muted tabular-nums" data-star-more-sessions>{{ t('orbitV95.moreSessions', { n: l.hidden }) }}</span>
+      </div>
+
       <div v-for="s in suns" :key="s.id" class="absolute size-0 transition-[left,top] duration-(--ccm-dur-base) motion-reduce:transition-none" :class="dim(s)" :style="{ left: `${s.x}px`, top: `${s.y}px` }" :data-star-system="s.id">
         <div
           v-for="r in s.planets.rings"
@@ -405,8 +450,8 @@ const legendTop = computed(() => (settings.officeEnabled ? 'top-12' : 'top-3'))
           <span class="flex size-4.5 items-center justify-center rounded-full bg-surface"><StatusIcon :status="terminals.byId[s.id]?.status ?? 'unknown'" :size="12" /></span>
         </button>
 
-        <div class="absolute left-1/2 flex w-44 -translate-x-1/2 flex-col items-center gap-0.5 text-center" :style="{ top: `${s.radius + (s.planets.rings.length ? s.planets.rings.length * 16 + 12 : 12)}px` }">
-          <span class="max-w-full truncate text-xs font-semibold text-ink" data-orbit-sector>{{ s.project }}</span>
+        <div class="absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5 text-center" :class="s.multi ? 'w-24' : 'w-44'" :style="{ top: `${s.radius + (s.planets.rings.length ? s.planets.rings.length * 16 + 12 : 12)}px` }">
+          <span v-if="!s.multi" class="max-w-full truncate text-xs font-semibold text-ink" data-orbit-sector>{{ s.project }}</span>
           <span v-if="s.group === 'needs'" class="max-w-full text-2xs font-semibold text-st-waiting">{{ statusText(s) }}</span>
           <span class="max-w-full truncate text-2xs text-ink-muted" data-star-activity>{{ activity(s) }}</span>
           <span v-if="s.subCount" class="text-2xs text-ink-faint tabular-nums">{{ subsText(s.subCount) }}</span>
@@ -430,6 +475,7 @@ const legendTop = computed(() => (settings.officeEnabled ? 'top-12' : 'top-3'))
         <component :is="legendOpen ? ChevronUp : ChevronDown" :size="14" aria-hidden="true" />
       </button>
       <ul v-if="legendOpen" class="mt-2 flex flex-col gap-1.5 text-ink-muted">
+        <li class="flex items-center gap-2"><span class="size-3.5 shrink-0 rounded-full border border-dashed border-line-strong" aria-hidden="true" />{{ t('orbitV95.legendSystem') }}</li>
         <li class="flex items-center gap-2"><span class="size-3.5 shrink-0 rounded-full bg-agent-claude" aria-hidden="true" />{{ t('orbitV95.legendSun') }}</li>
         <li class="flex items-center gap-2"><span class="size-2.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />{{ t('orbitV95.legendPlanet') }}</li>
         <li class="flex items-center gap-2"><svg class="h-3 w-3.5 shrink-0" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 10 Q7 -2 13 10" fill="none" stroke="var(--color-accent)" stroke-width="1.5" stroke-dasharray="3 3" /></svg>{{ t('orbitV95.legendLink') }}</li>

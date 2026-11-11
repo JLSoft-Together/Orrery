@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CELL_H, CELL_W, fitView, idleMinutes, layoutSlots, MAX_PLANETS, peerPath, planetLayout, statusRank, sunRadius, toolFile, zoomAt } from './starMap'
+import { CELL_H, CELL_W, cellSize, fitView, groupSystems, MAX_SUNS, planetCap, sunOffsets, sunScale, idleMinutes, layoutSlots, MAX_PLANETS, peerPath, planetLayout, statusRank, sunRadius, toolFile, zoomAt } from './starMap'
 
 const keys = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `t${i}`, project: `p${i % 4}` }))
 
@@ -87,5 +87,56 @@ describe('helpers', () => {
   it('counts idle minutes', () => {
     expect(idleMinutes(new Date(0).toISOString(), 5 * 60_000 + 1)).toBe(5)
     expect(idleMinutes(undefined, 0)).toBeNull()
+  })
+})
+
+describe('project systems', () => {
+  const item = (id: string, project: string, rank: number) => ({ id, project, rank })
+  it('groups sessions by project, most urgent first, capped at three suns', () => {
+    const g = groupSystems([item('a', 'p', 2), item('b', 'p', 0), item('c', 'q', 1), item('d', 'p', 1), item('e', 'p', 3)])
+    expect(g.map((x) => x.project)).toEqual(['p', 'q'])
+    expect(g[0]!.items.map((x) => x.id)).toEqual(['b', 'd', 'a'])
+    expect(g[0]!.hidden).toBe(1)
+    expect(g[0]!.total).toBe(4)
+    expect(g[0]!.items).toHaveLength(MAX_SUNS)
+    expect(g[1]!.hidden).toBe(0)
+  })
+  it('spreads suns without overlap and shrinks them with the count', () => {
+    for (const n of [1, 2, 3]) {
+      const o = sunOffsets(n)
+      expect(o).toHaveLength(n)
+      for (const a of o) for (const b of o) if (a !== b) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(100)
+    }
+    expect(sunScale(3)).toBeLessThan(sunScale(2))
+    expect(sunScale(2)).toBeLessThan(sunScale(1))
+    expect(planetCap(3)).toBeLessThan(planetCap(1))
+  })
+  it('grows the cell only when a system has several suns', () => {
+    expect(cellSize(1).w).toBe(CELL_W)
+    expect(cellSize(2).w).toBeGreaterThan(CELL_W)
+    const r = layoutSlots([{ id: 'p', project: 'p', suns: 3 }, { id: 'q', project: 'q', suns: 1 }], 900)
+    expect(r.cellW).toBe(cellSize(3).w)
+    expect(r.width).toBe(r.cols * r.cellW)
+    expect(r.height).toBe(r.rows * r.cellH)
+  })
+  it('keeps slots keyed by project across updates', () => {
+    const a = layoutSlots([{ id: 'p', project: 'p', suns: 2 }, { id: 'q', project: 'q', suns: 1 }], 900)
+    const b = layoutSlots([{ id: 'p', project: 'p', suns: 3 }, { id: 'q', project: 'q', suns: 1 }, { id: 'r', project: 'r', suns: 1 }], 900, a.slots)
+    expect(b.slots.get('p')).toBe(a.slots.get('p'))
+    expect(b.slots.get('q')).toBe(a.slots.get('q'))
+  })
+})
+
+describe('groupSystems keys', () => {
+  it('keeps two folders with the same name apart', () => {
+    const g = groupSystems([
+      { id: 'a', project: 'app', key: '/w/one/app', rank: 1 },
+      { id: 'b', project: 'app', key: '/w/two/app', rank: 1 },
+      { id: 'c', project: 'app', key: '/w/one/app', rank: 0 },
+    ])
+    expect(g.map((x) => [x.key, x.items.map((i) => i.id)])).toEqual([
+      ['/w/one/app', ['c', 'a']],
+      ['/w/two/app', ['b']],
+    ])
   })
 })

@@ -5,12 +5,16 @@ import type { SessionGroupKey } from './sessionGroups'
 export const CELL_W = 230
 export const CELL_H = 210
 export const MAX_PLANETS = 6
+export const MAX_SUNS = 3
+export const MULTI_CELL_W = 330
+export const MULTI_CELL_H = 340
 export const MIN_SCALE = 0.4
 export const MAX_SCALE = 2.4
 
 export interface SystemKey {
   id: string
   project: string
+  suns?: number
 }
 
 export interface Placement {
@@ -25,6 +29,8 @@ export interface SlotResult {
   slots: Map<string, number>
   cols: number
   rows: number
+  cellW: number
+  cellH: number
   width: number
   height: number
 }
@@ -64,8 +70,50 @@ export function statusRank(group: SessionGroupKey): number {
   return group === 'needs' ? 0 : group === 'running' ? 1 : group === 'idle' ? 2 : 3
 }
 
-export function slotColumns(width: number): number {
-  return Math.max(1, Math.floor((width > 0 ? width : 800) / CELL_W))
+export function cellSize(maxSuns: number): { w: number; h: number } {
+  return maxSuns > 1 ? { w: MULTI_CELL_W, h: MULTI_CELL_H } : { w: CELL_W, h: CELL_H }
+}
+
+export function slotColumns(width: number, cellW = CELL_W): number {
+  return Math.max(1, Math.floor((width > 0 ? width : 800) / cellW))
+}
+
+export function sunOffsets(count: number): { x: number; y: number }[] {
+  if (count <= 1) return [{ x: 0, y: 0 }]
+  if (count === 2) return [{ x: -66, y: 0 }, { x: 66, y: 0 }]
+  return [{ x: 0, y: -74 }, { x: -64, y: 37 }, { x: 64, y: 37 }]
+}
+
+export function sunScale(count: number): number {
+  return count <= 1 ? 1 : count === 2 ? 0.8 : 0.72
+}
+
+export function planetCap(count: number): number {
+  return count <= 1 ? MAX_PLANETS : count === 2 ? 4 : 3
+}
+
+export interface SystemGroup<T> {
+  key: string
+  project: string
+  items: T[]
+  hidden: number
+  total: number
+}
+
+export function groupSystems<T extends { id: string; project: string; key?: string; rank: number }>(items: readonly T[]): SystemGroup<T>[] {
+  const by = new Map<string, T[]>()
+  for (const it of items) {
+    const k = it.key ?? it.project
+    const list = by.get(k)
+    if (list) list.push(it)
+    else by.set(k, [it])
+  }
+  return [...by.entries()]
+    .map(([key, list]): SystemGroup<T> => {
+      const sorted = [...list].sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id))
+      return { key, project: list[0]!.project, items: sorted.slice(0, MAX_SUNS), hidden: Math.max(0, sorted.length - MAX_SUNS), total: sorted.length }
+    })
+    .sort((a, b) => a.project.localeCompare(b.project) || a.key.localeCompare(b.key))
 }
 
 export function slotRows(count: number, cols: number): number {
@@ -73,7 +121,8 @@ export function slotRows(count: number, cols: number): number {
 }
 
 export function layoutSlots(keys: readonly SystemKey[], width: number, prev: ReadonlyMap<string, number> = new Map()): SlotResult {
-  const cols = slotColumns(width)
+  const cell = cellSize(keys.reduce((m, k) => Math.max(m, k.suns ?? 1), 1))
+  const cols = slotColumns(width, cell.w)
   const rows = slotRows(keys.length, cols)
   const cells = cols * rows
   const taken = new Set<number>()
@@ -98,9 +147,9 @@ export function layoutSlots(keys: readonly SystemKey[], width: number, prev: Rea
     const h = hashName(k.id)
     const jx = ((h % 31) - 15) * 0.8
     const jy = (((h >>> 5) % 31) - 15) * 0.6
-    return { id: k.id, slot, x: (slot % cols) * CELL_W + CELL_W / 2 + jx, y: Math.floor(slot / cols) * CELL_H + CELL_H / 2 + jy }
+    return { id: k.id, slot, x: (slot % cols) * cell.w + cell.w / 2 + jx, y: Math.floor(slot / cols) * cell.h + cell.h / 2 + jy }
   })
-  return { placements, slots, cols, rows, width: cols * CELL_W, height: rows * CELL_H }
+  return { placements, slots, cols, rows, cellW: cell.w, cellH: cell.h, width: cols * cell.w, height: rows * cell.h }
 }
 
 export function fitView(world: { width: number; height: number }, view: { width: number; height: number }): Fit {
@@ -126,19 +175,19 @@ export function sunRadius(group: SessionGroupKey, running: number, busy: boolean
   return base + Math.min(running, 4) * 1.5 + (busy ? 2 : 0)
 }
 
-export function planetLayout(subs: readonly { id: string; status: AgentStatus }[], sun: number): PlanetLayout {
-  const shown = subs.slice(0, MAX_PLANETS)
+export function planetLayout(subs: readonly { id: string; status: AgentStatus }[], sun: number, cap = MAX_PLANETS, gap = 18): PlanetLayout {
+  const shown = subs.slice(0, cap)
   const inner = shown.length > 3 ? Math.ceil(shown.length / 2) : shown.length
   const rings: PlanetRing[] = []
-  if (shown.length) rings.push({ ring: 0, radius: sun + 18, seconds: 18 })
-  if (shown.length > inner) rings.push({ ring: 1, radius: sun + 34, seconds: 30 })
+  if (shown.length) rings.push({ ring: 0, radius: sun + gap, seconds: 18 })
+  if (shown.length > inner) rings.push({ ring: 1, radius: sun + gap * 1.9, seconds: 30 })
   const spots = shown.map((s, i): PlanetSpot => {
     const ring: 0 | 1 = i < inner ? 0 : 1
     const count = ring === 0 ? inner : shown.length - inner
     const index = ring === 0 ? i : i - inner
     return { id: s.id, status: s.status, ring, angle: (360 / count) * index + (ring === 1 ? 40 : 0) - 90 }
   })
-  return { rings, spots, more: Math.max(0, subs.length - MAX_PLANETS) }
+  return { rings, spots, more: Math.max(0, subs.length - cap) }
 }
 
 export function peerPath(a: { x: number; y: number }, b: { x: number; y: number }, bend = 0.22): LinkPath {

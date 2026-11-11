@@ -26,6 +26,11 @@ const en = {
       dismiss: 'Dismiss',
       undone: 'Turn undone',
     },
+    boot: {
+      starting: 'Starting {agent}…',
+      slow: 'Starting {agent}… {s}s',
+      hint: 'The first start can take a few seconds',
+    },
   },
 }
 
@@ -56,6 +61,11 @@ const vi: typeof en = {
       undoTitle: 'Trả các file về như trước lượt (có hỏi xác nhận)',
       dismiss: 'Ẩn',
       undone: 'Đã hoàn tác lượt',
+    },
+    boot: {
+      starting: 'Đang khởi động {agent}…',
+      slow: 'Đang khởi động {agent}… {s}s',
+      hint: 'Lần đầu mở có thể mất vài giây',
     },
   },
 }

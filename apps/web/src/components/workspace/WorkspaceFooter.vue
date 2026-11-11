@@ -5,12 +5,15 @@ import { CircleDot, Focus, GitBranch, Hand, Network } from 'lucide-vue-next'
 import { useFocusMode } from '../../composables/useFocusMode'
 import { isMac } from '../../lib/platform'
 import { usePaneInfo } from '../../composables/usePaneInfo'
-import { changedCount, contextPair, devPorts, footerCounts, portsLabel } from '../../lib/footerStatus'
+import { changedCount, contextPair, devPorts, footerCounts, portsLabel, sessionCounts } from '../../lib/footerStatus'
 import { compactNumber } from '../../lib/format'
 import { isTerm, workCwd, useWorkspaceStore } from '../../stores/workspace'
 import { useAgentsStore } from '../../stores/agents'
 import { useResourcesStore } from '../../stores/resources'
 import { useSettingsStore } from '../../stores/settings'
+import { useTerminalsStore } from '../../stores/terminals'
+import { useUiStore } from '../../stores/ui'
+import { useUsageStore } from '../../stores/usage'
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
@@ -20,15 +23,29 @@ const resources = useResourcesStore()
 const settings = useSettingsStore()
 const focusMode = useFocusMode()
 const focusKeys = isMac ? '⌘.' : 'Ctrl+.'
+const terminals = useTerminalsStore()
+const ui = useUiStore()
+const onBoard = computed(() => ui.view === 'monitor')
+const usage = useUsageStore()
+const tokensToday = computed(() => (onBoard.value && usage.received && usage.todayTokens > 0 ? compactNumber(usage.todayTokens) : null))
 
 const termPanes = computed(() => workspace.panes.filter(isTerm))
-const counts = computed(() => footerCounts(termPanes.value.map((p) => ({ key: p.key, state: info.railStateOf(p) }))))
+const counts = computed(() =>
+  onBoard.value ? sessionCounts(terminals.list) : footerCounts(termPanes.value.map((p) => ({ key: p.key, state: info.railStateOf(p) }))),
+)
 
 const ports = computed(() => {
   const servers = resources.report?.servers
   if (!servers?.length) return []
   const ids = new Set<string>()
   const dirs: string[] = []
+  if (onBoard.value) {
+    for (const s of terminals.list) {
+      ids.add(s.id)
+      if (s.cwd) dirs.push(s.cwd)
+    }
+    return devPorts(servers, ids, dirs)
+  }
   for (const p of termPanes.value) {
     if (p.terminalId) ids.add(p.terminalId)
     const dir = workCwd(p)
@@ -37,7 +54,7 @@ const ports = computed(() => {
   return devPorts(servers, ids, dirs)
 })
 
-const focused = computed(() => workspace.active)
+const focused = computed(() => (onBoard.value ? null : workspace.active))
 const session = computed(() => info.sessionOf(focused.value ?? undefined))
 const branch = computed(() => (focused.value && isTerm(focused.value) ? (focused.value.branch ?? '') : ''))
 const changed = computed(() => (branch.value ? changedCount(session.value?.diff) : null))
@@ -66,7 +83,13 @@ const contextAria = computed(() => {
 })
 
 function focusPane(key: string | null): void {
-  if (key) workspace.activate(key)
+  if (!key) return
+  if (!onBoard.value) {
+    workspace.activate(key)
+    return
+  }
+  ui.monitorMode = 'board'
+  requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-board-card="${CSS.escape(key)}"]`)?.focus())
 }
 
 function openChanges(): void {
@@ -86,7 +109,7 @@ const btn =
         type="button"
         :class="btn"
         class="text-st-working"
-        :aria-label="t('wsFooter.runningAria', { n: counts.running })"
+        :aria-label="t(onBoard ? 'wsFooter.runningAriaBoard' : 'wsFooter.runningAria', { n: counts.running })"
         data-ws-footer-running
         @click="focusPane(counts.firstRunning)"
       >
@@ -98,7 +121,7 @@ const btn =
         type="button"
         :class="btn"
         class="text-st-waiting"
-        :aria-label="t('wsFooter.waitingAria', { n: counts.waiting })"
+        :aria-label="t(onBoard ? 'wsFooter.waitingAriaBoard' : 'wsFooter.waitingAria', { n: counts.waiting })"
         data-ws-footer-waiting
         @click="focusPane(counts.firstWaiting)"
       >
@@ -126,6 +149,17 @@ const btn =
         <span class="truncate tabular-nums">{{ contextText }}</span>
       </button>
       <button
+        v-if="tokensToday"
+        type="button"
+        :class="btn"
+        :aria-label="t('wsFooter.tokensTodayAria', { n: tokensToday })"
+        data-ws-footer-tokens
+        @click="ui.setView('usage')"
+      >
+        <span class="truncate tabular-nums">{{ t('wsFooter.tokensToday', { n: tokensToday }) }}</span>
+      </button>
+      <button
+        v-if="!onBoard"
         type="button"
         :class="[btn, focusMode.on.value ? 'text-accent-ink' : '']"
         :aria-pressed="focusMode.on.value"

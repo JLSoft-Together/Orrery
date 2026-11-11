@@ -13,11 +13,11 @@
         try {
           // Mirrors lib/themes.ts THEMES (checked by lib/themes.test.ts).
           var L = ['orrery-light', 'light', 'xcode-light', 'github-light', 'solarized-light', 'islands-light']
-          var D = ['orrery-dark', 'console', 'galaxy', 'dark', 'xcode-dark', 'github-dark', 'solarized-dark', 'monokai', 'dracula', 'material', 'one-dark', 'islands-dark']
+          var D = ['galaxy', 'orrery-dark', 'console', 'dark', 'xcode-dark', 'github-dark', 'solarized-dark', 'monokai', 'dracula', 'material', 'one-dark', 'islands-dark']
           function pick(t, m, light) {
             var known = L.indexOf(t) >= 0 || D.indexOf(t) >= 0
-            if (m !== '4.0.2') return { t: (known ? L.indexOf(t) >= 0 : light) ? 'orrery-light' : 'orrery-dark', w: true }
-            return { t: known ? t : light ? 'orrery-light' : 'orrery-dark', w: false }
+            if (m !== '4.0.2-galaxy') return { t: (known ? L.indexOf(t) >= 0 : light) ? 'orrery-light' : 'galaxy', w: true }
+            return { t: known ? t : light ? 'orrery-light' : 'galaxy', w: false }
           }
           var r = document.documentElement
           var s = null
@@ -31,7 +31,7 @@
           if (p.w) {
             try {
               localStorage.setItem('ccm.theme', t)
-              localStorage.setItem('ccm.themeMigration', '4.0.2')
+              localStorage.setItem('ccm.themeMigration', '4.0.2-galaxy')
             } catch (e) {}
           }
           r.classList.toggle('dark', D.indexOf(t) >= 0)
@@ -45,7 +45,7 @@
           } catch (e) {}
         } catch (e) {
           document.documentElement.classList.add('dark')
-          document.documentElement.setAttribute('data-theme', 'orrery-dark')
+          document.documentElement.setAttribute('data-theme', 'galaxy')
         }
       })()
     </script>

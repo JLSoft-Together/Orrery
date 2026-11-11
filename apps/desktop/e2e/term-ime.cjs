@@ -20,7 +20,7 @@ fs.writeFileSync(REC, `const fs = require('fs')
 let line = []
 process.stdin.setRawMode(true)
 process.stdin.setEncoding('utf8')
-process.stdout.write('> ')
+setTimeout(() => process.stdout.write('> '), 2500)
 process.stdin.on('data', (d) => {
   fs.appendFileSync(${JSON.stringify(RAW)}, JSON.stringify(d) + '\\n')
   for (const ch of Array.from(d)) {
@@ -82,7 +82,13 @@ async function main() {
     const pane = await evaluate(`${W}.open('claude', ${JSON.stringify(PROJ)}, undefined, { tab: true }).key`)
     await waitFor(`${W}.panes.find((p) => p.key === '${pane}')?.state === 'running'`, 20000, 'claude pane running')
     await waitFor(`!!document.querySelector(':is([data-pane="${pane}"], [data-pane-of="${pane}"]) .xterm-helper-textarea')`, 15000, 'xterm')
-    await sleep(2500)
+    const bootSel = `:is([data-pane="${pane}"], [data-pane-of="${pane}"]) [data-pane-boot]`
+    check('agent pane shows the starting overlay before first output', await evaluate(`!!document.querySelector('${bootSel}')`))
+    await shot('term-ime-boot')
+    let bootGone = false
+    for (let i = 0; i < 80 && !bootGone; i++) { await sleep(100); bootGone = await evaluate(`!document.querySelector('${bootSel}')`) }
+    check('starting overlay leaves once the agent prints', bootGone)
+    await sleep(500)
     await evaluate(`document.querySelector(':is([data-pane="${pane}"], [data-pane-of="${pane}"]) .xterm-helper-textarea').focus()`)
     await sleep(200)
 

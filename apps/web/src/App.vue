@@ -81,6 +81,7 @@ desktop?.onSelect?.((terminalId) => {
 })
 
 const showWorkspace = computed(() => hasTerminals && !ui.compact && ui.view === 'workspace')
+const showFooter = computed(() => showWorkspace.value || (!ui.compact && ui.view === 'monitor'))
 const workspaceOpened = ref(false)
 watch(showWorkspace, (shown) => shown && (workspaceOpened.value = true), { immediate: true })
 
@@ -127,8 +128,8 @@ const footerObserver = new ResizeObserver(([entry]) => {
   if (entry) footerH.value = heightOf(entry.target)
 })
 watch(
-  [headerH, footerH, showWorkspace],
-  () => document.documentElement.style.setProperty('--ccm-header-h', `${headerH.value + (showWorkspace.value ? footerH.value : 0)}px`),
+  [headerH, footerH, showFooter],
+  () => document.documentElement.style.setProperty('--ccm-header-h', `${headerH.value + (showFooter.value ? footerH.value : 0)}px`),
   { flush: 'post' },
 )
 watch(footer, (cur, prev) => {
@@ -184,7 +185,7 @@ onBeforeUnmount(() => {
         <WorkspaceView v-if="workspaceOpened" v-show="showWorkspace" :id="showWorkspace ? 'main' : undefined" :visible="showWorkspace" />
       </Transition>
     </div>
-    <WorkspaceFooter v-if="showWorkspace" ref="footer" />
+    <WorkspaceFooter v-if="showFooter" ref="footer" />
     <CommandPalette />
     <component :is="recap.Comp" v-if="recap.mounted.value" />
     <DevToolsDialog v-if="ui.devTools" :tool="ui.devTools" @close="ui.devTools = null" />

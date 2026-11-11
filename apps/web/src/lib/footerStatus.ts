@@ -1,5 +1,6 @@
-import type { GitDiffStat, ServerRes } from '@ccm/shared'
+import type { GitDiffStat, ServerRes, TerminalStatus } from '@ccm/shared'
 import type { RailState } from './rail/railModel'
+import { groupOf } from './sessionGroups'
 
 export interface FooterPane {
   key: string
@@ -58,4 +59,19 @@ export function contextPair(tokens: number | undefined, limit: number | undefine
   if (tokens === undefined || !Number.isFinite(tokens) || tokens <= 0) return null
   const hasLimit = limit !== undefined && Number.isFinite(limit) && limit > 0
   return { used: fmt(tokens), limit: hasLimit ? fmt(limit) : null }
+}
+
+export function sessionCounts(sessions: readonly { id: string; status: TerminalStatus }[]): FooterCounts {
+  const out: FooterCounts = { running: 0, waiting: 0, firstRunning: null, firstWaiting: null }
+  for (const s of sessions) {
+    const g = groupOf(s.status)
+    if (g === 'running') {
+      out.running++
+      out.firstRunning ??= s.id
+    } else if (g === 'needs') {
+      out.waiting++
+      out.firstWaiting ??= s.id
+    }
+  }
+  return out
 }

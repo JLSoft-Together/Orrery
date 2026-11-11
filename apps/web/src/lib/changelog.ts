@@ -18,6 +18,26 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.2',
+    date: '2026-11-11',
+    items: [
+      { en: 'New default theme Ngân hà (Galaxy): deep black with faint static stars; Orrery stays for light', vi: 'Theme mặc định mới Ngân hà: đen sâu, sao mờ tĩnh; Orrery cho nền sáng' },
+      { en: 'Pane colours by agent: Claude orange, Codex purple, shell teal; status bar at the bottom', vi: 'Màu pane theo agent: Claude cam, Codex tím, shell xanh ngọc; thanh trạng thái ở đáy' },
+      { en: 'Monitor Board: richer cards, empty columns fold, group by status, project or agent', vi: 'Giám sát › Bảng: thẻ đủ thông tin, cột rỗng thu gọn, nhóm theo trạng thái / project / agent' },
+      { en: 'Monitor Orbit is a star map: one system per project, sessions are suns, subagents planets', vi: 'Quỹ đạo thành bản đồ sao: mỗi project một hệ, session là mặt trời, subagent là hành tinh' },
+      { en: 'Pane header shows running subagents and a context meter; a card lists files of the last turn', vi: 'Header pane hiện subagent đang chạy và thước context; thẻ liệt kê file của lượt vừa rồi' },
+      { en: 'Tabs group by project with +N overflow; focus mode (Ctrl+.) hides rail and Explorer', vi: 'Tab nhóm theo project, tràn thành +N; chế độ tập trung (Ctrl+.) ẩn rail và Explorer' },
+      { en: 'New tab opens a launcher to pick agent and project; Explorer marks files agents touch', vi: 'Tab mới mở launcher chọn agent và project; Explorer đánh dấu file agent đang sửa / đọc' },
+      { en: 'A starting animation shows while a Claude or Codex pane boots', vi: 'Pane Claude / Codex có hiệu ứng đang khởi động trong lúc agent mở lên' },
+      { en: 'Monitor status bar shows tokens used today; Settings theme cards preview each theme', vi: 'Thanh đáy Giám sát hiện token hôm nay; Settings có thẻ theme kèm preview' },
+      { en: 'Per-session MCP & plugins sheet: turn servers or plugins off for one project', vi: 'Bảng MCP & plugin theo session: tắt server hay plugin cho riêng một project' },
+      { en: 'Context warning chip and toast past 500K tokens, with a Compact… button', vi: 'Chip và toast cảnh báo context khi vượt 500K token, kèm nút Compact…' },
+      { en: 'Bug report in Settings → About: one .zip with logs, secrets masked', vi: 'Báo lỗi trong Settings → Giới thiệu: 1 file .zip gồm log, đã che secret' },
+      { en: 'Vietnamese typing in terminal panes fixed on Windows and macOS', vi: 'Sửa gõ tiếng Việt trong terminal trên Windows và macOS' },
+      { en: 'Windows: dropping files from Explorer into a pane inserts @path again', vi: 'Windows: kéo file từ Explorer vào pane lại ra @path' },
+    ],
+  },
+  {
     version: '4.0.1',
     date: '2026-11-11',
     items: [

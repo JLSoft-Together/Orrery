@@ -8,6 +8,7 @@ import type { NodeSize, Point } from '../lib/layout'
 import { hasExtensions, hasTerminals } from '../lib/desktop'
 import { hasDevices } from '../lib/devices'
 import { WINDOWS, type WindowMin } from '../lib/toolTimeline'
+import { parseGroupBy, type BoardGroupBy } from '../lib/boardV95'
 
 export type View = 'monitor' | 'workspace' | 'usage' | 'history' | 'extensions' | 'devices'
 export type Panel = 'sessions' | 'activity'
@@ -34,6 +35,14 @@ function initialMonitorMode(): MonitorMode {
     return localStorage.getItem('ccm.monitorMode') === 'sky' ? 'sky' : 'board'
   } catch {
     return 'board'
+  }
+}
+
+function initialMonitorGroupBy(): BoardGroupBy {
+  try {
+    return parseGroupBy(localStorage.getItem('ccm.monitor.groupBy'))
+  } catch {
+    return 'status'
   }
 }
 
@@ -298,6 +307,15 @@ export const useUiStore = defineStore('ui', () => {
     }
   })
 
+  const monitorGroupBy = ref<BoardGroupBy>(initialMonitorGroupBy())
+  watch(monitorGroupBy, (value) => {
+    try {
+      localStorage.setItem('ccm.monitor.groupBy', value)
+    } catch {
+      return
+    }
+  })
+
   const cmdPanelOpen = ref(initialCmdPanelOpen())
   watch(cmdPanelOpen, (value) => {
     try {
@@ -491,6 +509,7 @@ export const useUiStore = defineStore('ui', () => {
     view,
     mapView,
     monitorMode,
+    monitorGroupBy,
     cmdPanelOpen,
     monitorProject,
     launchTerminal,

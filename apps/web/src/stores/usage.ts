@@ -346,6 +346,11 @@ export const useUsageStore = defineStore('usage', () => {
     return sum
   }
   const todayCost = computed(() => dayCost(today.value))
+  const todayTokens = computed(() => {
+    let sum = 0
+    for (const b of all.value) if (b.day === today.value) sum += b.input + b.output + b.cacheWrite5m + b.cacheWrite1h
+    return sum
+  })
 
   return {
     buckets,
@@ -357,6 +362,7 @@ export const useUsageStore = defineStore('usage', () => {
     project,
     model,
     today,
+    todayTokens,
     selectedDay,
     models,
     projects,

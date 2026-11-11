@@ -382,3 +382,17 @@ describe('model label', () => {
     expect(modelLabel(undefined)).toBeNull()
   })
 })
+
+describe('todayTokens', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('sums today without cache reads, ignores other days and filters', () => {
+    const usage = useUsageStore()
+    usage.model = 'other'
+    usage.reset({ buckets: [bucket(today, 'm1', 'p'), bucket(today, 'm2', 'q', { key: 't2' }), bucket(yesterday, 'm1', 'p', { key: 'y1' })], scan: { state: 'ready', filesDone: 0, filesTotal: 0 } })
+    expect(usage.todayTokens).toBe(2 * (10 + 100 + 1000))
+  })
+})

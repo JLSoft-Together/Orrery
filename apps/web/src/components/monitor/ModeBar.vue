@@ -6,6 +6,8 @@ import type { ProjectGroup } from '../../lib/projectGroups'
 import { countOf } from '../../lib/monitorRows'
 import type { SessionGroup } from '../../lib/sessionGroups'
 import { useUiStore, type MonitorMode } from '../../stores/ui'
+import SegmentedControl, { type Segment } from '../ui/SegmentedControl.vue'
+import { BOARD_GROUP_BY, type BoardGroupBy } from '../../lib/boardV95'
 import ProjectStrip from '../ProjectStrip.vue'
 import StatusIcon from '../StatusIcon.vue'
 
@@ -17,6 +19,7 @@ const MODES: { id: MonitorMode; icon: typeof LayoutGrid; n: number }[] = [
   { id: 'board', icon: LayoutGrid, n: 1 },
   { id: 'sky', icon: Orbit, n: 2 },
 ]
+const groupOptions = computed<Segment<BoardGroupBy>[]>(() => BOARD_GROUP_BY.map((value) => ({ value, label: t(`boardV95.groupBy.${value}`) })))
 const needs = computed(() => countOf(props.groups, 'needs'))
 const running = computed(() => countOf(props.groups, 'running'))
 const tabs = ref<HTMLElement | null>(null)
@@ -56,6 +59,7 @@ function onKey(e: KeyboardEvent): void {
         <component :is="m.icon" :size="14" aria-hidden="true" />{{ t(`monitorV88.${m.id}`) }}
       </button>
     </div>
-    <ProjectStrip v-if="ui.monitorMode === 'board'" v-model="ui.monitorProject" :groups="projects" class="ms-auto" />
+    <SegmentedControl v-if="ui.monitorMode === 'board'" v-model="ui.monitorGroupBy" :options="groupOptions" :label="t('boardV95.groupBy.label')" class="ms-auto" data-group-by />
+    <ProjectStrip v-if="ui.monitorMode === 'board' && ui.monitorGroupBy === 'status'" v-model="ui.monitorProject" :groups="projects" />
   </div>
 </template>

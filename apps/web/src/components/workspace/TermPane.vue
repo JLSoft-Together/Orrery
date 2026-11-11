@@ -41,6 +41,7 @@ import { useUiStore } from '../../stores/ui'
 import { parseOsc7, parseOsc9 } from '../../lib/shellCwd'
 import { hasScripts } from '../../lib/projects'
 import { bufferLines, parseTerminalProblems } from '../../lib/terminalProblems'
+import { BOOT_MAX_MS, BOOT_SLOW_MS, bootDone, shouldBoot } from '../../lib/paneBoot'
 import { useChecksStore } from '../../stores/checks'
 import { presetOf, useWorkspaceStore, reopenAs, resumeIdOf, workCwd, type Pane, type SplitChoice } from '../../stores/workspace'
 import ContextGauge from '../ContextGauge.vue'
@@ -126,6 +127,37 @@ function showBacklog(): Promise<void> {
 // The sidebar age needs 'recently active', not every chunk: one store write per pane every few seconds at most.
 const TOUCH_MS = 5000
 let touchedAt = 0
+const booting = ref(false)
+const bootMs = ref(0)
+let bootTimer: ReturnType<typeof setInterval> | null = null
+let bootFrame = 0
+function stopBoot(): void {
+  booting.value = false
+  if (bootTimer) clearInterval(bootTimer)
+  bootTimer = null
+  if (bootFrame) cancelAnimationFrame(bootFrame)
+  bootFrame = 0
+}
+function checkBoot(): void {
+  if (!booting.value || bootFrame) return
+  bootFrame = requestAnimationFrame(() => {
+    bootFrame = 0
+    if (term && bootDone(bufferLines(term.buffer.active, 200))) stopBoot()
+  })
+}
+function startBoot(): void {
+  stopBoot()
+  booting.value = true
+  bootMs.value = 0
+  const at = Date.now()
+  bootTimer = setInterval(() => {
+    bootMs.value = Date.now() - at
+    if (bootMs.value >= BOOT_MAX_MS) stopBoot()
+    else checkBoot()
+  }, 500)
+}
+onBeforeUnmount(stopBoot)
+
 function touch(): void {
   const at = Date.now()
   if (at - touchedAt < TOUCH_MS) return
@@ -812,16 +844,19 @@ function onMessage(msg: PtyServerMessage): void {
       if (msg.cwd) workspace.update(key, { liveCwd: msg.cwd })
       break
     case 'exit':
+      stopBoot()
       resetDev()
       ticket?.release(false)
       workspace.update(key, { state: 'exited', exitCode: msg.code })
       break
     case 'gone':
+      stopBoot()
       // A new app run has a new PTY host: a pane restored from a previous run has nothing to attach to.
       if (restoredOnMount) workspace.remove(key)
       else workspace.update(key, { state: 'gone', error: t('workspace.state.gone') })
       break
     case 'error':
+      stopBoot()
       ticket?.release(false)
       if (msg.message === 'cwd' && props.pane.cwd) workspace.forget(props.pane.cwd)
       workspace.update(key, { state: 'error', error: t(`workspace.error.${msg.message}`) })
@@ -833,14 +868,18 @@ async function connect(start: PtyStart): Promise<void> {
   const own = ticket
   conn?.close()
   output.clear()
+  if (shouldBoot(start)) startBoot()
+  else stopBoot()
   conn = new PtyConnection({
     onOutput: (bytes) => {
       output.push(bytes)
       touch()
       feedDev(bytes)
+      checkBoot()
     },
     onMessage,
     onClose: () => {
+      stopBoot()
       own?.release(false)
       if (props.pane.state === 'running' || props.pane.state === 'starting')
         workspace.update(props.pane.key, { state: 'error', error: t('workspace.state.disconnected') })
@@ -1379,6 +1418,17 @@ onBeforeUnmount(() => {
       <div class="size-full overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
         <div ref="host" class="size-full" data-code-zoom :title="linkHint" />
       </div>
+      <Transition name="ccm-fade">
+        <div v-if="booting" class="absolute inset-0 z-11 flex items-center justify-center rounded-card bg-well p-4" data-pane-boot>
+          <div class="flex max-w-80 flex-col items-center gap-3 text-center" role="status" aria-live="polite">
+            <span class="ccm-boot-orbit" aria-hidden="true"><span class="ccm-boot-sun" /><span class="ccm-boot-arm"><span class="ccm-boot-planet" /></span></span>
+            <p class="text-sm font-medium text-ink tabular-nums">
+              {{ bootMs >= BOOT_SLOW_MS ? t('paneV93.boot.slow', { agent: t(`workspace.preset.${preset}`), s: Math.floor(bootMs / 1000) }) : t('paneV93.boot.starting', { agent: t(`workspace.preset.${preset}`) }) }}
+            </p>
+            <p v-if="bootMs >= BOOT_SLOW_MS" class="text-xs text-ink-muted">{{ t('paneV93.boot.hint') }}</p>
+          </div>
+        </div>
+      </Transition>
       <Transition name="ccm-fade">
         <div v-if="parked" class="absolute inset-0 z-11 flex items-center justify-center rounded-card bg-well p-4" data-pane-parked>
           <div class="flex max-w-80 flex-col items-center gap-2 text-center">

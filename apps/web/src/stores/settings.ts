@@ -8,7 +8,7 @@ import { desktop } from '../lib/desktop'
 import { setDustEnabled } from '../lib/dust'
 import { clampContextWarn, CONTEXT_WARN_DEFAULT } from '../lib/contextWarn'
 import { clampCodeSize,CODE_SIZE_DEFAULT, fontEntry, fontStack, isFontId } from '../lib/fonts'
-import { applyTheme, isThemeId, startTheme, THEME_MIGRATION, themeMeta, toggleTarget, type ThemeId } from '../lib/themes'
+import { applyTheme, isThemeId, startTheme, THEME_MIGRATION, themeMeta, toggleTarget, variantFor, type ThemeId } from '../lib/themes'
 
 export type Theme = ThemeId
 export type NotifyPermission = NotificationPermission | 'unsupported'
@@ -72,6 +72,10 @@ function permissionNow(): NotifyPermission {
 
 export const useSettingsStore = defineStore('settings', () => {
   const theme = ref<Theme>(initialTheme())
+  const themeFollow = ref(read('ccm.themeFollow') === '1')
+  const themeBase = ref<Theme>(isThemeId(read('ccm.themeBase')) ? (read('ccm.themeBase') as Theme) : theme.value)
+  const systemMedia = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: light)') : null
+  const systemMode = (): 'light' | 'dark' => (systemMedia?.matches ? 'light' : 'dark')
   const locale = ref<Locale>(initialLocale())
   const hideFinished = ref(read('ccm.hideFinished') === '1')
   const notifyEnabled = ref(read('ccm.notify') === '1' && permissionNow() === 'granted')
@@ -195,12 +199,37 @@ export const useSettingsStore = defineStore('settings', () => {
     { immediate: true },
   )
 
+  watch(themeFollow, (value) => persist('ccm.themeFollow', value ? '1' : '0'))
+  watch(themeBase, (value) => persist('ccm.themeBase', value))
+
+  function syncFollow(): void {
+    if (themeFollow.value) theme.value = variantFor(themeBase.value, systemMode())
+  }
+
+  systemMedia?.addEventListener?.('change', syncFollow)
+  if (themeFollow.value) syncFollow()
+
   function toggleTheme(): void {
+    themeFollow.value = false
     theme.value = toggleTarget(theme.value)
+    themeBase.value = theme.value
   }
 
   function setTheme(id: ThemeId): void {
-    if (isThemeId(id)) theme.value = id
+    if (!isThemeId(id)) return
+    themeBase.value = id
+    theme.value = themeFollow.value ? variantFor(id, systemMode()) : id
+  }
+
+  function setThemeMode(mode: 'light' | 'dark' | 'system'): void {
+    if (mode === 'system') {
+      themeFollow.value = true
+      themeBase.value = theme.value
+      syncFollow()
+      return
+    }
+    themeFollow.value = false
+    theme.value = variantFor(themeBase.value, mode)
   }
 
   function toggleLocale(): void {
@@ -286,6 +315,9 @@ export const useSettingsStore = defineStore('settings', () => {
     prunePins,
     toggleTheme,
     setTheme,
+    setThemeMode,
+    themeFollow,
+    themeBase,
     toggleLocale,
     toggleHideFinished,
     toggleNotifications,

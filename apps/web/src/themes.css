@@ -1145,13 +1145,13 @@
 }
 
 :root[data-theme='galaxy'] {
-  --ccm-canvas: #040405;
-  --ccm-surface: #0e0e11;
-  --ccm-raised: #18181c;
-  --ccm-control: #1f1f24;
-  --ccm-line: #1d1d21;
-  --ccm-line-strong: #232328;
-  --ccm-material: #040405;
+  --ccm-canvas: #000000;
+  --ccm-surface: #08080a;
+  --ccm-raised: #0d0d10;
+  --ccm-control: #16161a;
+  --ccm-line: #141417;
+  --ccm-line-strong: #1c1c20;
+  --ccm-material: #000000;
   --ccm-ink: #ececf1;
   --ccm-ink-muted: #a6a6b0;
   --ccm-ink-faint: #85858f;
@@ -1160,7 +1160,7 @@
   --ccm-on-accent: #1a110d;
   --ccm-focus: #f0946f;
   --ccm-selection: #35261f;
-  --ccm-well: #060607;
+  --ccm-well: #030304;
   --ccm-well-ink: #e5e5ea;
   --ccm-well-selection: #36325a;
   --ccm-working: #f5a524;
@@ -1216,7 +1216,7 @@
   --radius-control: 6px;
   --radius-inner: 4px;
   --ccm-card-shadow: 0 0 #0000;
-  --ccm-panel-bg: #0b0b0d;
+  --ccm-panel-bg: #050506;
   --ccm-panel-edge: none;
   --ccm-chrome-line: transparent;
   --ccm-tab-on-bg: transparent;

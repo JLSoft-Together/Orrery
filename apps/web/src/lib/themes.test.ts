@@ -66,6 +66,22 @@ describe('themes', () => {
     }
   })
 
+  it('agent colour chips of the full themes mirror the CSS', () => {
+    const apple = (k: string) => [...styleCss.matchAll(new RegExp(`--ccm-agent-${k}:\\s*(#[0-9a-f]{6});`, 'gi'))].map((x) => x[1]!)
+    const appleIdx: Record<string, number> = { light: 0, dark: 1 }
+    const full = THEMES.filter((th) => th.agents)
+    expect(full.map((th) => th.id).sort()).toEqual(['console', 'dark', 'galaxy', 'light', 'orrery-dark', 'orrery-light'])
+    for (const th of full) {
+      if (th.id in appleIdx) {
+        const i = appleIdx[th.id]!
+        expect(th.agents, th.id).toEqual([apple('claude')[i], apple('codex')[i], apple('shell-mark')[i]])
+      } else {
+        const b = block(th.id)
+        expect(th.agents, th.id).toEqual([b['agent-claude'], b['agent-codex'], b['agent-shell-mark']])
+      }
+    }
+  })
+
   it('pre-paint script lists the same light / dark ids', () => {
     const list = (name: string) => JSON.parse(new RegExp(`var ${name} = (\\[[^\\]]*\\])`).exec(indexHtml)![1]!.replace(/'/g, '"')) as string[]
     expect(list('L').sort()).toEqual(THEMES.filter((th) => th.mode === 'light').map((th) => th.id).sort())
@@ -123,24 +139,25 @@ describe('themes', () => {
 
   it('Orrery is the default pair, listed first in each mode', () => {
     expect(defaultTheme(true)).toBe('orrery-light')
-    expect(defaultTheme(false)).toBe('orrery-dark')
-    expect(toggleTarget('orrery-light')).toBe('orrery-dark')
+    expect(defaultTheme(false)).toBe('galaxy')
+    expect(toggleTarget('orrery-light')).toBe('galaxy')
     expect(toggleTarget('orrery-dark')).toBe('orrery-light')
+    expect(toggleTarget('galaxy')).toBe('orrery-light')
     for (const mode of ['light', 'dark'] as const) expect(THEMES.find((th) => th.mode === mode)!.id).toBe(defaultTheme(mode === 'light'))
-    expect(THEMES.filter((th) => th.isDefault).map((th) => th.id).sort()).toEqual(['orrery-dark', 'orrery-light'])
-    expect(THEMES.filter((th) => th.mode === 'dark').map((th) => th.id).slice(0, 2)).toEqual(['orrery-dark', 'console'])
+    expect(THEMES.filter((th) => th.isDefault).map((th) => th.id).sort()).toEqual(['galaxy', 'orrery-light'])
+    expect(THEMES.filter((th) => th.mode === 'dark').map((th) => th.id).slice(0, 3)).toEqual(['galaxy', 'orrery-dark', 'console'])
   })
 
   it('start theme: 4.0.2 moves everyone to Orrery once, then choices stick', () => {
     expect(startTheme(null, null, true)).toEqual({ theme: 'orrery-light', migrate: true })
-    expect(startTheme(null, null, false)).toEqual({ theme: 'orrery-dark', migrate: true })
-    expect(startTheme('dark', null, true)).toEqual({ theme: 'orrery-dark', migrate: true })
+    expect(startTheme(null, null, false)).toEqual({ theme: 'galaxy', migrate: true })
+    expect(startTheme('dark', null, true)).toEqual({ theme: 'galaxy', migrate: true })
     expect(startTheme('solarized-light', null, false)).toEqual({ theme: 'orrery-light', migrate: true })
-    expect(startTheme('monokai', '4.0.1', true)).toEqual({ theme: 'orrery-dark', migrate: true })
+    expect(startTheme('monokai', '4.0.2', true)).toEqual({ theme: 'galaxy', migrate: true })
     expect(startTheme('dark', THEME_MIGRATION, true)).toEqual({ theme: 'dark', migrate: false })
     expect(startTheme('console', THEME_MIGRATION, true)).toEqual({ theme: 'console', migrate: false })
     expect(startTheme('nope', THEME_MIGRATION, true)).toEqual({ theme: 'orrery-light', migrate: false })
-    expect(startTheme(null, THEME_MIGRATION, false)).toEqual({ theme: 'orrery-dark', migrate: false })
+    expect(startTheme(null, THEME_MIGRATION, false)).toEqual({ theme: 'galaxy', migrate: false })
   })
 
   it('pre-paint pick mirrors startTheme', () => {
@@ -149,7 +166,7 @@ describe('themes', () => {
     expect(indexHtml).toContain(`localStorage.setItem('ccm.themeMigration', '${THEME_MIGRATION}')`)
     const stored = [null, 'nope', ...THEMES.map((th) => th.id)]
     for (const t of stored)
-      for (const m of [null, '4.0.1', THEME_MIGRATION])
+      for (const m of [null, '4.0.1', '4.0.2', THEME_MIGRATION])
         for (const light of [true, false]) {
           const want = startTheme(t, m, light)
           expect(pick(t, m, light), `${t} ${m} ${light}`).toEqual({ t: want.theme, w: want.migrate })
@@ -161,13 +178,13 @@ describe('galaxy', () => {
   it('is dark only, has stars and a sky token; others have none', () => {
     const g = THEMES.find((th) => th.id === 'galaxy')!
     expect(g.mode).toBe('dark')
-    expect(g.pair).toBeUndefined()
+    expect(g.pair).toBe('orrery-light')
     expect(hasStars('galaxy')).toBe(true)
     expect(hasStars('orrery-dark')).toBe(false)
     const b = block('galaxy')
     expect(b.sky).toContain('radial-gradient')
-    expect(b.canvas).toBe('#040405')
-    expect(b.material).toBe('#040405')
+    expect(b.canvas).toBe('#000000')
+    expect(b.material).toBe('#000000')
     expect(rootBlock().sky).toBe('none')
     expect(themesCss).toMatch(/:root\[data-stars='off'\] \{\s*--ccm-sky: none;/)
     expect(styleCss).toContain('.ccm-sky {')

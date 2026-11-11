@@ -3,8 +3,9 @@ import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronsLeft, Hand } from 'lucide-vue-next'
 import { useSessionMenu } from '../../composables/useSessionMenu'
-import { columnTemplate, isStrip } from '../../lib/boardV95'
+import { columnTemplate, isStrip, laneSessions } from '../../lib/boardV95'
 import { MONITOR_COLUMNS } from '../../lib/monitorRows'
+import type { Provider } from '@ccm/shared'
 import type { SessionGroup, SessionGroupKey } from '../../lib/sessionGroups'
 import { useConnectionStore } from '../../stores/connection'
 import { useTerminalsStore } from '../../stores/terminals'
@@ -29,6 +30,15 @@ const columns = computed(() =>
   }),
 )
 const template = computed(() => columnTemplate(columns.value.map((c) => c.strip)))
+const DOT: Record<Provider, string> = { claude: 'bg-agent-claude', codex: 'bg-agent-codex', deepseek: 'bg-agent-deepseek' }
+const lanes = computed(() => {
+  const by = ui.monitorGroupBy
+  if (by === 'status') return []
+  const rows = props.groups.flatMap((g) => g.ids).flatMap((id) => (terminals.byId[id] ? [terminals.byId[id]!] : []))
+  return laneSessions(rows, by)
+})
+const laneLabel = (lane: { name: string; provider: Provider | null }): string =>
+  lane.provider ? t(`monitorV88.agentLabel.${lane.provider}`) : lane.name || t('monitorV88.noProject')
 const labelOf = (key: SessionGroupKey): string => t(key === 'ended' ? 'monitorV88.group.ended' : `monitorV79.group.${key}`)
 const empty = computed(() => connection.hasData && terminals.list.length === 0)
 </script>
@@ -43,6 +53,34 @@ const empty = computed(() => connection.hasData && terminals.list.length === 0)
     v-bind="freezeBind"
   >
     <p v-if="empty" class="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-muted">{{ t('sessions.empty') }}</p>
+    <div
+      v-else-if="ui.monitorGroupBy !== 'status'"
+      class="grid min-h-full content-start gap-3"
+      :class="ui.narrow ? 'grid-cols-1' : '[grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]'"
+      :data-board-group-by="ui.monitorGroupBy"
+    >
+      <section
+        v-for="lane in lanes"
+        :key="lane.key"
+        :aria-labelledby="`board-lane-${lane.key}`"
+        :data-board-lane="lane.key"
+        class="flex min-w-0 flex-col gap-2 self-start rounded-card p-2"
+        :class="lane.needs > 0 ? 'ccm-board-needs' : 'bg-raised'"
+      >
+        <h3 :id="`board-lane-${lane.key}`" class="ccm-label flex items-center gap-1.5 px-0.5 text-xs font-semibold" :class="lane.needs > 0 ? 'text-warning' : 'text-ink-muted'">
+          <span v-if="lane.provider" class="size-2 shrink-0 rounded-full" :class="DOT[lane.provider]" aria-hidden="true" data-lane-dot />
+          <Hand v-if="lane.needs > 0" :size="14" aria-hidden="true" />
+          <span class="truncate">{{ laneLabel(lane) }}</span>
+          <span class="font-normal tabular-nums" data-group-count>{{ lane.active.length + lane.ended.length }}</span>
+        </h3>
+        <ul v-if="lane.active.length" class="grid content-start gap-2">
+          <li v-for="id in lane.active" :key="id" class="ccm-board-item">
+            <BoardCard v-if="terminals.byId[id]" :terminal="terminals.byId[id]!" @menu="menu.onContextMenu($event, id)" @key="menu.onKeyMenu($event, id)" />
+          </li>
+        </ul>
+        <BoardDone v-if="lane.ended.length" :ids="lane.ended" />
+      </section>
+    </div>
     <div v-else class="grid min-h-full gap-3" :class="ui.narrow ? 'grid-cols-1 content-start' : ''" :style="ui.narrow ? undefined : { gridTemplateColumns: template }">
       <template v-for="c in columns" :key="c.key">
         <button

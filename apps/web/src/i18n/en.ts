@@ -23,6 +23,7 @@ import v51 from './workspace-v51'
 import v52 from './workspace-v52'
 import footerV92 from './footer-v92'
 import themeV95 from './theme-v95'
+import themeV96 from './theme-v96'
 import tabsV93 from './tabs-v93'
 import launcherV93 from './launcher-v93'
 import v52Pane from './workspace-v52-pane'
@@ -96,6 +97,7 @@ import bugReportV90 from './bug-report-v90'
 export default {
   ...v25.en,
   ...themeV95.en,
+  ...themeV96.en,
   ...footerV92.en,
   ...tabsV93.en,
   ...launcherV93.en,

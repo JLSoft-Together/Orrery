@@ -1,4 +1,4 @@
-// README screenshots (docs/screenshots/*.png): monitor, workspace, changes, run-pane, whats-new. Not part of run.cjs.
+// README screenshots (docs/screenshots/*.png): monitor, orbit, workspace, changes, run-pane, whats-new. Not part of run.cjs.
 // Everything lives under DEMO (default F:\orrery-demo) so no user name shows; fixture sessions + git demo repos + run-fakes, vi / dark / 1440x900.
 const { execFileSync, spawn } = require('node:child_process')
 const fs = require('node:fs')
@@ -240,7 +240,7 @@ async function main() {
   }
   try {
     await waitFor(`!!window.ccmDesktop && !!${UI}`, 30000, 'app ready')
-    await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.whatsNew.seen','${version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.theme','dark'); localStorage.setItem('ccm.mapView','map'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.workspace.sidebar','1')`)
+    await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.whatsNew.seen','${version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.theme','galaxy'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy'); localStorage.setItem('ccm.mapView','map'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.workspace.sidebar','1')`)
     await cmd('Page.reload')
     await sleep(1500)
     await waitFor(`!!${UI}`, 30000, 'reloaded')
@@ -248,10 +248,16 @@ async function main() {
     await evaluate(`${S}.get('settings').hideFinished = false`)
 
     // Monitor
-    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor'); ${UI}.openSessionTab(null); ${UI}.panels.sessions.open = true`)
+    await evaluate(`${UI}.monitorMode = 'board'; ${UI}.monitorGroupBy = 'status'; ${UI}.setView('monitor'); ${UI}.openSessionTab(null); ${UI}.panels.sessions.open = true`)
     await waitFor(`${TM}.list.length >= 5`, 30000, 'fixture sessions').catch(() => {})
     await sleep(2000)
     await shoot('monitor')
+    await evaluate(`${UI}.monitorMode = 'sky'`)
+    await sleep(2500)
+    await evaluate(`document.querySelector('[data-orbit-legend] button[aria-expanded="true"]')?.click()`)
+    await sleep(400)
+    await shoot('orbit')
+    await evaluate(`${UI}.monitorMode = 'board'`)
 
     // What's new (3.0.0 is the current release)
     await evaluate(`${UI}.whatsNewOpen = true`)

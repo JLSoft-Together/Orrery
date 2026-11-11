@@ -60,6 +60,8 @@
   --color-agent-claude-ink: var(--ccm-agent-claude-ink);
   --color-agent-codex: var(--ccm-agent-codex);
   --color-agent-shell: var(--ccm-agent-shell);
+  --color-agent-shell-mark: var(--ccm-agent-shell-mark);
+  --color-agent-deepseek: var(--ccm-agent-deepseek);
   --color-agent-browser: var(--ccm-agent-browser);
   --color-agent-file: var(--ccm-agent-file);
   --color-peer: var(--ccm-peer);
@@ -121,6 +123,8 @@
   /* .10 keeps accent-ink ≥4.5:1 on the soft row over raised as well as surface. */
   --ccm-accent-soft: rgb(0 122 255 / 0.1);
   --ccm-on-accent: #ffffff;
+  --ccm-mono-ink: #17171a;
+  --ccm-mono-mix: #ffffff;
   --ccm-focus: #0071e3;
   --ccm-selection: #b3d7ff;
   --ccm-fill: rgb(116 116 128 / 0.12);
@@ -178,6 +182,8 @@
   --ccm-agent-claude-ink: #ae4a26;
   --ccm-agent-codex: #5e4fc0;
   --ccm-agent-shell: var(--ccm-ink-muted);
+  --ccm-agent-shell-mark: #0f7f78;
+  --ccm-agent-deepseek: #1f6fd0;
   --ccm-agent-browser: #0071a4;
   --ccm-agent-file: #7f6545;
   --ccm-peer: #a83279;
@@ -245,11 +251,22 @@
   --ccm-chrome-line: var(--ccm-line);
   --ccm-tab-on-bg: var(--ccm-control);
   --ccm-tab-on-shadow: var(--ccm-shadow-control);
+  --ccm-tab-on-bar: inset 0 0 0;
+  --ccm-pane-accent: var(--ccm-accent);
+  --ccm-footer-h: 26px;
+  --ccm-sky: none;
+  --ccm-sky-size: auto;
+  --ccm-sky-display: none;
+  --ccm-chrome-fill: var(--ccm-material);
+  --ccm-sky-fill: var(--ccm-canvas);
+  --ccm-wordmark-font: var(--font-sans);
+  --ccm-wordmark-display: none;
   --ccm-tab-rail: transparent;
   --ccm-chip-fill: 1;
   --ccm-pane-ring-w: 2px;
   --ccm-pane-ring: var(--ccm-focus);
-  --ccm-pane-bar: none;
+  --ccm-pane-ring-mix: 0%;
+  --ccm-pane-bar: inset 0 0 0;
   --ccm-pane-head-tint: transparent;
   --ccm-dim-inactive: 1;
   --ccm-seg-track: var(--ccm-fill);
@@ -320,6 +337,8 @@
   --ccm-agent-claude: #d97757;
   --ccm-agent-claude-ink: #d97757;
   --ccm-agent-codex: #a49cf0;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #64d2ff;
   --ccm-agent-file: #b59469;
   --ccm-peer: #ff7ac6;
@@ -342,16 +361,27 @@
 
 html {
   font-family: var(--font-sans);
-  background: var(--ccm-canvas);
+  background-color: var(--ccm-canvas);
   color: var(--ccm-ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  display: var(--ccm-sky-display);
+  background-image: var(--ccm-sky);
+  background-size: var(--ccm-sky-size);
+}
+
 body {
   margin: 0;
   overflow-x: hidden;
-  background: var(--ccm-canvas);
+  background: transparent;
 }
 
 .tabular {
@@ -361,6 +391,14 @@ body {
 /* Chrome layers only (toolbar, sidebar, popovers); content surfaces stay opaque. */
 .ccm-material {
   background: var(--ccm-material);
+}
+
+.ccm-titlebar {
+  background-color: var(--ccm-chrome-fill);
+}
+
+.ccm-sky {
+  background-color: var(--ccm-sky-fill);
 }
 
 .ccm-titlebar[data-title-bar] {
@@ -583,7 +621,9 @@ body {
 
   .ccm-tab-on {
     background: var(--ccm-tab-on-bg);
-    box-shadow: var(--ccm-tab-on-shadow);
+    box-shadow:
+      var(--ccm-tab-on-shadow),
+      var(--ccm-tab-on-bar) 0 var(--ccm-pane-accent);
   }
 
   .ccm-tab-rail {
@@ -614,7 +654,7 @@ body {
     outline-offset: calc(var(--ccm-pane-ring-w) * -1);
   }
   .ccm-pane-ring.ccm-pane-active {
-    outline-color: var(--ccm-pane-ring);
+    outline-color: color-mix(in srgb, var(--ccm-pane-accent) var(--ccm-pane-ring-mix), var(--ccm-pane-ring));
   }
   .ccm-pane-ring.ccm-pane-active::after {
     content: '';
@@ -622,7 +662,7 @@ body {
     inset: 0;
     z-index: 15;
     border-radius: inherit;
-    box-shadow: var(--ccm-pane-bar);
+    box-shadow: var(--ccm-pane-bar) 0 var(--ccm-pane-accent);
     pointer-events: none;
   }
   .ccm-pane-head-on {
@@ -642,6 +682,37 @@ body {
   }
   .ccm-seg-on {
     color: var(--ccm-seg-on-ink);
+  }
+
+  .ccm-agent-claude {
+    --ccm-pane-accent: var(--ccm-agent-claude);
+  }
+  .ccm-agent-codex {
+    --ccm-pane-accent: var(--ccm-agent-codex);
+  }
+  .ccm-agent-shell {
+    --ccm-pane-accent: var(--ccm-agent-shell-mark);
+  }
+  .ccm-agent-deepseek {
+    --ccm-pane-accent: var(--ccm-agent-deepseek);
+  }
+
+  .ccm-wordmark {
+    display: var(--ccm-wordmark-display);
+    font-family: var(--ccm-wordmark-font);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--ccm-ink);
+  }
+
+  .ccm-footer {
+    background-color: var(--ccm-chrome-fill);
+    border-top: 1px solid var(--ccm-chrome-line);
+    font-family: var(--ccm-label-font);
+    font-size: 11.5px;
+    color: var(--ccm-ink-muted);
+    height: var(--ccm-footer-h);
   }
 
   .ccm-label {

@@ -1,9 +1,19 @@
 import type { Checkpoint } from './preview'
 
-const splitLabel = (label: string): { kind: string; title: string } => {
-  const i = label.indexOf(':')
-  return i < 0 ? { kind: label, title: '' } : { kind: label.slice(0, i), title: label.slice(i + 1) }
+const LABEL_RE = /^(before|after)(?:@([^:]*))?:([\s\S]*)$/
+
+export function cpLabel(kind: 'before' | 'after', terminalId: string, title: string): string {
+  return `${kind}@${encodeURIComponent(terminalId)}:${title}`
 }
+
+export function parseCpLabel(label: string): { kind: string; title: string; terminalId: string | null } {
+  const m = LABEL_RE.exec(label)
+  if (m) return { kind: m[1]!, title: m[3]!, terminalId: m[2] ? decodeURIComponent(m[2]) : null }
+  const i = label.indexOf(':')
+  return i < 0 ? { kind: label, title: '', terminalId: null } : { kind: label.slice(0, i), title: label.slice(i + 1), terminalId: null }
+}
+
+const splitLabel = (label: string): { kind: string; title: string } => parseCpLabel(label)
 
 /**
  * The `before:` / `after:` checkpoints of the turn `id` belongs to (list newest first). An `after:` pairs with the

@@ -5,6 +5,7 @@ import { Minus, Plus } from 'lucide-vue-next'
 import { CODE_SIZE_MAX, CODE_SIZE_MIN } from '../../lib/fonts'
 import { desktop, hasTerminals } from '../../lib/desktop'
 import { isMac } from '../../lib/platform'
+import { hasStars } from '../../lib/themes'
 import { stepCodeSize, zoomApp, zoomHud } from '../../composables/useWheelZoom'
 import { useSettingsStore } from '../../stores/settings'
 import ToggleSwitch from '../ToggleSwitch.vue'
@@ -16,6 +17,7 @@ import SettingSection from './SettingSection.vue'
 
 const { t } = useI18n()
 const settings = useSettingsStore()
+const starsAvailable = computed(() => hasStars(settings.theme))
 
 // App zoom lives in the main process (Chromium level); read once per visit, then follow the HUD.
 const appZoom = ref<number | null>(null)
@@ -60,6 +62,14 @@ const fileIconStyles = computed(() => [
   <div>
     <SettingSection id="theme" :title="t('settings.theme')">
       <div class="px-3 py-2" data-setting-row="theme"><ThemePicker /></div>
+      <ToggleSwitch
+        v-model="settings.stars"
+        :label="t('themeV95.stars')"
+        :hint="starsAvailable ? t('themeV95.starsHint') : t('themeV95.starsOff')"
+        :disabled="!starsAvailable"
+        class="px-3"
+        data-setting-row="stars"
+      />
     </SettingSection>
 
     <SettingSection id="text" :title="t('fonts.section')">

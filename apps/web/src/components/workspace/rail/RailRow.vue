@@ -6,10 +6,8 @@ import { usePaneInfo, usePeerSweep } from '../../../composables/usePaneInfo'
 import { openTelegramGlyph, useTelegramLinks, useTelegramTopicUrl } from '../../../composables/useTelegramLinks'
 import { useRailTabStop } from '../../../composables/useRail'
 import { duration, now as clock } from '../../../lib/format'
-import { isBusyState, needsUser, peerSlot, RAIL_BADGE, rowId, rowLines, stateWord, type RailRow, type RailState } from '../../../lib/rail/railModel'
+import { isBusyState, needsUser, peerSlot, rowId, rowLines, stateWord, type RailRow, type RailState } from '../../../lib/rail/railModel'
 import { waitDisplay } from '../../../lib/wait'
-import StatusIcon from '../../StatusIcon.vue'
-import PaneIcon from '../PaneIcon.vue'
 import TabRenameInput from '../TabRenameInput.vue'
 
 const props = defineProps<{ row: RailRow; member?: boolean; renaming?: boolean }>()
@@ -71,15 +69,28 @@ const tone = computed(() =>
     : props.row.state === 'asked'
       ? 'text-st-waiting'
       : props.row.focused
-        ? 'text-accent-ink'
+        ? 'text-ink'
         : peerLine.value
           ? 'text-ink'
           : 'text-ink-muted',
 )
 const sweep = usePeerSweep(() => props.row.peer)
 const busy = computed(() => isBusyState(props.row.state))
+const AGENT_CLASS: Partial<Record<string, string>> = { claude: 'ccm-agent-claude', codex: 'ccm-agent-codex', shell: 'ccm-agent-shell', deepseek: 'ccm-agent-deepseek' }
+const agentClass = computed(() => AGENT_CLASS[props.row.preset] ?? '')
+const DOT: Partial<Record<RailState, string>> = {
+  working: 'bg-st-working',
+  subagents: 'bg-st-working',
+  asked: 'bg-st-waiting',
+  failed: 'bg-st-error',
+  done: 'bg-st-done',
+  ended: 'bg-st-idle',
+  parked: 'bg-st-stale',
+  idle: 'bg-st-idle',
+}
+const dot = computed(() => DOT[props.row.state] ?? 'bg-st-idle')
+const showSecond = computed(() => attention.value || !!tool.value)
 
-const BADGE = RAIL_BADGE
 const FLASH: Partial<Record<RailState, string>> = { asked: 'text-st-waiting', done: 'text-st-done', failed: 'text-st-error' }
 
 const flashKey = ref(0)
@@ -102,8 +113,8 @@ const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
 
 <template>
   <div
-    class="group/row relative grid min-h-7 grid-cols-[16px_minmax(0,1fr)_auto_24px] items-center gap-x-2 rounded-inner py-0.5 pr-0.5 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-fast) data-dragging:bg-fill data-drop-on:bg-accent-soft"
-    :class="[member ? 'pl-9' : 'pl-5 data-drop-on:outline-accent', row.focused ? 'bg-accent-soft text-accent-ink' : 'text-ink hover:bg-fill']"
+    class="group/row relative grid min-h-6 grid-cols-[10px_minmax(0,1fr)_auto_24px] items-center gap-x-2 rounded-inner py-px pr-0.5 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-fast) data-dragging:bg-fill data-drop-on:bg-accent-soft"
+    :class="[agentClass, member ? 'pl-12' : 'pl-9 data-drop-on:outline-accent', row.focused ? 'bg-selection text-ink' : 'text-ink-muted hover:bg-fill hover:text-ink']"
     data-rail-row
     :data-rail-member="member ? row.tabKey : undefined"
     :data-state="row.state"
@@ -116,8 +127,9 @@ const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
     :data-drop-tab="row.tabKey"
     @contextmenu.prevent.stop="emit('menu', row, $event)"
   >
-    <span v-if="member" class="pointer-events-none absolute inset-y-0 left-[27px] w-px bg-line" aria-hidden="true" />
+    <span v-if="member" class="pointer-events-none absolute inset-y-0 left-[39px] w-px bg-line" aria-hidden="true" />
     <span v-if="busy" class="ccm-rail-bar" aria-hidden="true" />
+    <span v-if="row.focused" class="pointer-events-none absolute inset-y-1 left-0 w-0.5 rounded-full bg-(--ccm-pane-accent,var(--ccm-accent))" aria-hidden="true" data-rail-row-mark />
     <span v-if="sweep" :key="sweep" class="ccm-peer-sweep absolute top-1.5 bottom-1.5 left-[3px] w-0.5" aria-hidden="true" data-rail-peer-sweep />
     <span v-if="flashKey" :key="flashKey" class="ccm-flash pointer-events-none absolute inset-0 rounded-inner" :class="FLASH[row.state]" aria-hidden="true" />
     <button
@@ -139,16 +151,11 @@ const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
       :title="tip"
       @click="emit('focus', row.paneKey)"
     />
-    <span class="pointer-events-none relative inline-flex size-4 items-center justify-center">
-      <PaneIcon :pane="row.pane" :size="15" />
-      <span v-if="row.state === 'starting'" class="absolute -bottom-1 -left-1 inline-flex rounded-full bg-surface">
-        <LoaderCircle :size="9" class="ccm-spin text-ink-faint" aria-hidden="true" />
-      </span>
-      <span v-else-if="BADGE[row.state]" class="absolute -bottom-1 -left-1 inline-flex rounded-full bg-surface">
-        <StatusIcon :status="BADGE[row.state]!" :size="9" />
-      </span>
+    <span class="pointer-events-none relative inline-flex size-2.5 items-center justify-center">
+      <LoaderCircle v-if="row.state === 'starting'" :size="10" class="ccm-spin text-ink-faint" aria-hidden="true" />
+      <span v-else class="size-1.5 rounded-full" :class="dot" aria-hidden="true" data-rail-dot />
       <Transition name="ccm-fade">
-        <span v-if="slot === 'badge' && peer" class="absolute -top-1 -right-1 inline-flex rounded-full bg-surface p-px" aria-hidden="true" data-rail-peer-badge>
+        <span v-if="slot === 'badge' && peer" class="absolute -top-1.5 -right-1.5 inline-flex rounded-full bg-surface p-px" aria-hidden="true" data-rail-peer-badge>
           <component :is="peer.glyph" :size="8" :class="peer.tone" />
         </span>
       </Transition>
@@ -159,20 +166,20 @@ const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
         v-else
         :key="renameKey"
         class="block truncate rounded-[4px] text-xs"
-        :class="[row.focused ? 'font-medium' : '', renameKey ? 'ccm-highlight' : '']"
+        :class="[row.focused ? 'font-semibold' : '', renameKey ? 'ccm-highlight' : '']"
         data-rail-first
         >{{ lines.first }}</span
       >
-      <span v-if="attention" class="relative flex h-4 min-w-0 items-center overflow-hidden text-2xs" :class="tone">
+    </span>
+    <span class="pointer-events-none flex min-w-0 shrink-0 items-center gap-1.5 text-[11px] tabular-nums" :class="tone">
+      <span v-if="showSecond" class="relative flex h-4 max-w-[9rem] min-w-0 items-center overflow-hidden" :class="attention ? 'font-medium' : ''">
         <Transition name="ccm-rail-word" @before-leave="unstamp">
-          <span :key="lines.second" class="block min-w-0 truncate" data-rail-second>{{ lines.second }}</span>
+          <span :key="lines.second" class="block min-w-0 truncate" data-rail-second>{{ attention ? word : lines.second }}</span>
         </Transition>
       </span>
       <span v-else class="sr-only" aria-hidden="true" data-rail-second :data-rail-peer="peerLine ? row.peer?.dir : undefined"
-        >{{ peerLine ? peerPrefix + peerLine.text : lines.second }}<template v-if="tool"> ({{ word }})</template></span
+        >{{ peerLine ? peerPrefix + peerLine.text : lines.second }}</span
       >
-    </span>
-    <span class="pointer-events-none flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums" :class="tone">
       <Transition name="ccm-fade">
         <component :is="peerLine.glyph" v-if="peerLine && !attention" :size="12" :class="peerLine.tone" aria-hidden="true" data-rail-peer-glyph />
       </Transition>

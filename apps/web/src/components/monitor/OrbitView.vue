@@ -12,7 +12,7 @@ import ContextMenu from '../ui/ContextMenu.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import OrbitDetail from './OrbitDetail.vue'
 import OrbitFocus from './OrbitFocus.vue'
-import OrbitRings from './OrbitRings.vue'
+import OrbitStarMap from './OrbitStarMap.vue'
 
 const props = defineProps<{ groups: readonly SessionGroup[] }>()
 
@@ -74,7 +74,7 @@ const sheet = computed(() => ui.narrow && !!selectedId.value)
   <div ref="root" class="relative flex min-h-0 min-w-0 flex-1" data-orbit-view @keydown="onKeydown">
     <OrbitFocus v-if="focusId" :key="focusId" :terminal-id="focusId" :ids="ids" @select="openFocus" @back="back" />
     <template v-else>
-      <OrbitRings
+      <OrbitStarMap
         :groups="groups"
         :selected-id="selectedId"
         @select="select"

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check } from 'lucide-vue-next'
 import { withViewTransition } from '../../lib/motion'
-import { THEMES, type ThemeId } from '../../lib/themes'
+import { THEMES, type ThemeId, type ThemeMeta } from '../../lib/themes'
 import { useSettingsStore } from '../../stores/settings'
 
 const { t } = useI18n()
@@ -13,6 +13,8 @@ const root = ref<HTMLElement | null>(null)
 const groups = computed(() =>
   (['light', 'dark'] as const).map((mode) => ({ mode, label: t(mode === 'light' ? 'settings.themeLight' : 'settings.themeDark'), themes: THEMES.filter((th) => th.mode === mode) })),
 )
+
+const name = (th: ThemeMeta): string => (th.nameKey ? t(th.nameKey) : th.name)
 
 function pick(id: ThemeId): void {
   if (id !== settings.theme) withViewTransition(() => settings.setTheme(id))
@@ -40,7 +42,7 @@ function onKey(e: KeyboardEvent, index: number): void {
           type="button"
           role="radio"
           :aria-checked="settings.theme === th.id"
-          :aria-label="th.isDefault ? `${th.name} · ${g.label} · ${t('settings.themeDefault')}` : `${th.name} · ${g.label}`"
+          :aria-label="th.isDefault ? `${name(th)} · ${g.label} · ${t('settings.themeDefault')}` : `${name(th)} · ${g.label}`"
           :tabindex="settings.theme === th.id ? 0 : -1"
           :data-theme-option="th.id"
           class="group flex min-w-0 cursor-pointer items-center gap-2 rounded-inner p-1.5 text-left text-xs transition-colors duration-(--ccm-dur-fast) hover:bg-fill aria-checked:bg-accent-soft aria-checked:text-accent-ink"
@@ -57,7 +59,7 @@ function onKey(e: KeyboardEvent, index: number): void {
             <span class="absolute top-1 right-1 size-2 rounded-full" :style="{ background: th.swatch[2] }" />
             <span class="absolute inset-x-1 bottom-1 h-2 rounded-[2px]" :style="{ background: th.swatch[3] }" />
           </span>
-          <span class="min-w-0 flex-1 truncate font-medium">{{ th.name }}</span>
+          <span class="min-w-0 flex-1 truncate font-medium">{{ name(th) }}</span>
           <span v-if="th.isDefault" class="shrink-0 text-2xs text-ink-faint group-aria-checked:text-accent-ink" data-theme-default>{{ t('settings.themeDefault') }}</span>
           <Check v-if="settings.theme === th.id" :size="14" class="shrink-0" aria-hidden="true" />
         </button>

@@ -146,7 +146,7 @@ record! {
 record! {
     pub struct ToolSpan {
         req { id: String, terminal_id: String, agent_id: String, tool: String, start: String }
-        opt { end: String, outcome: ToolOutcome }
+        opt { end: String, outcome: ToolOutcome, path: String, access: String }
     }
 }
 

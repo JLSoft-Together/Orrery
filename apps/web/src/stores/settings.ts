@@ -99,6 +99,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const agentShim = ref(read('ccm.agentShim') !== '0')
   const dustEffect = ref(read('ccm.dust') === '1')
   const officeEnabled = ref(read('ccm.office') === '1')
+  const stars = ref(read('ccm.stars') !== '0')
   const fileIcons = ref<FileIconStyle>(isFileIconStyle(read('ccm.fileIcons')) ? (read('ccm.fileIcons') as FileIconStyle) : 'atom')
   const worktreeCopy = ref<string[]>(readWorktreeCopy())
   const pinned = ref<Set<string>>(readPinned())
@@ -136,6 +137,8 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(dustEffect, (value) => persist('ccm.dust', value ? '1' : '0'))
   watch(dustEffect, setDustEnabled, { flush: 'sync', immediate: true })
   watch(officeEnabled, (value) => persist('ccm.office', value ? '1' : '0'))
+  watch(stars, (value) => persist('ccm.stars', value ? '1' : '0'))
+  watch(stars, (value) => document.documentElement.setAttribute('data-stars', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
   watch(fileIcons, (value) => persist('ccm.fileIcons', value))
   watch(worktreeCopy, (value) => persist('ccm.worktreeCopy', JSON.stringify(value)))
   watch(pinned, (value) => persist('ccm.pinned', JSON.stringify([...value])))
@@ -268,6 +271,7 @@ export const useSettingsStore = defineStore('settings', () => {
     compactAuto,
     dustEffect,
     officeEnabled,
+    stars,
     fileIcons,
     pinned,
     activityPageSize,

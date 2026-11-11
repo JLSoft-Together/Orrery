@@ -45,6 +45,15 @@ describe('workspaceAction', () => {
     expect(workspaceAction(key('KeyO', { ctrlKey: true }), false, false)).toBeNull()
   })
 
+  it('maps Ctrl+. / Cmd+. to focus mode and nothing else with a period', () => {
+    expect(workspaceAction(key('Period', { ctrlKey: true }), false, false)).toEqual({ t: 'focusMode' })
+    expect(workspaceAction(key('Period', { metaKey: true }), true, false)).toEqual({ t: 'focusMode' })
+    expect(workspaceAction(key('Period', { ctrlKey: true }), true, false)).toBeNull()
+    expect(workspaceAction(key('Period', { ctrlKey: true, shiftKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('Period', { ctrlKey: true, altKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('Period', {}), false, false)).toBeNull()
+  })
+
   it('Ctrl+Shift+PageUp/PageDown (⇧⌘ on macOS) moves the tab left / right', () => {
     expect(workspaceAction(key('PageUp', { ctrlKey: true, shiftKey: true }), false, false)).toEqual({ t: 'moveTab', step: -1 })
     expect(workspaceAction(key('PageDown', { ctrlKey: true, shiftKey: true }), false, false)).toEqual({ t: 'moveTab', step: 1 })

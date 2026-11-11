@@ -332,7 +332,7 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                   v-for="p in pages"
                   :key="p"
                   type="button"
-                  class="flex cursor-pointer items-center gap-2 rounded-control px-2.5 py-1.5 text-left text-sm transition-colors @[720px]:w-full"
+                  class="flex cursor-pointer items-center gap-2 rounded-control px-2.5 py-1.5 text-left text-sm transition-colors focus-visible:-outline-offset-2 @[720px]:w-full"
                   :class="p === page && !searching ? 'bg-accent-soft font-medium text-accent-ink' : 'text-ink-muted hover:bg-fill-strong hover:text-ink'"
                   :aria-current="p === page && !searching ? 'page' : undefined"
                   :data-settings-page="p"

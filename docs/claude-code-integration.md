@@ -1054,3 +1054,15 @@ Write of `~/.claude.json` (Claude Code rewrites it all the time, tmp + rename, a
 - after 1.5 s the file is read again; if the change is gone (Claude wrote its own copy between our read and write) it is re-applied once from a fresh read; still gone → `conflict`. A foreign key we wrote survived Claude's next write when checked by hand.
 
 Error codes: `busy` (shares the Extensions mutation lock), `badArg` (dir, kind, enabled, name empty / over 200 characters / control character / starts with `-`), `locked` (`orrery`, mcp only), `io`, `conflict`. No native confirm: the change is reversible. A running Claude session reads both files at start, so the change applies after a restart (`--resume`).
+
+## 11ar. File paths on tool spans (v93, 2026-11-11, `.planning/PLAN-v93-workspace-ideas.md` #6)
+
+Documented exception to "never expose raw tool arguments to the frontend": the Explorer marks the files an agent is touching right now (filled dot = edited, ring = read, two agents editing one file = warning row). Owner decision 2026-11-11.
+
+What is sent: `tool.span` / `toolSpans.data` carry two extra optional fields, `path` (absolute, `\` turned into `/`, under 1024 chars) and `access` (`edit` | `read`). Only for the tools `Edit`, `Write`, `MultiEdit`, `NotebookEdit` (`edit`) and `Read` (`read`), and only when the tool input has an absolute `file_path` / `notebook_path`. Relative paths are dropped.
+
+What is never sent: file content, `old_string` / `new_string`, edits, Bash / PowerShell commands, grep patterns or any other tool argument. Tests: `apps/collector/test/sensitive.test.ts` (`fileAccessOf`), `apps/core/crates/core-transcript/src/sigtests.rs`.
+
+Emitted by both trackers: Node `transcript.ts` `extractSignals` → `file` on the `tool_use` signal → `tool-spans.ts`; Rust `core-transcript` `file_access_of` → `Signal::ToolUse.access` → `ToolSpan.file` → JSON `path` / `access` → `core-store` `ToolSpan`. Codex rollouts and DeepSeek are not covered (no file tool paths read there); Codex panes show no marks.
+
+Page: `lib/agentTouches.ts` keeps only the current turn plus 2 minutes after the turn ends, capped at 2000 files and 6 agents per file; spans already live 2 h in `stores/toolSpans.ts`, the marks only read them. Old clients ignore the new fields.

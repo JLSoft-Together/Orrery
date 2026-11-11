@@ -13,7 +13,7 @@
         try {
           // Mirrors lib/themes.ts THEMES (checked by lib/themes.test.ts).
           var L = ['orrery-light', 'light', 'xcode-light', 'github-light', 'solarized-light', 'islands-light']
-          var D = ['orrery-dark', 'console', 'dark', 'xcode-dark', 'github-dark', 'solarized-dark', 'monokai', 'dracula', 'material', 'one-dark', 'islands-dark']
+          var D = ['orrery-dark', 'console', 'galaxy', 'dark', 'xcode-dark', 'github-dark', 'solarized-dark', 'monokai', 'dracula', 'material', 'one-dark', 'islands-dark']
           function pick(t, m, light) {
             var known = L.indexOf(t) >= 0 || D.indexOf(t) >= 0
             if (m !== '4.0.2') return { t: (known ? L.indexOf(t) >= 0 : light) ? 'orrery-light' : 'orrery-dark', w: true }
@@ -36,6 +36,9 @@
           }
           r.classList.toggle('dark', D.indexOf(t) >= 0)
           if (t !== 'light' && t !== 'dark') r.setAttribute('data-theme', t)
+          try {
+            if (localStorage.getItem('ccm.stars') === '0') r.setAttribute('data-stars', 'off')
+          } catch (e) {}
           try {
             var l = localStorage.getItem('ccm.locale')
             if (l === 'vi' || l === 'en') document.documentElement.lang = l

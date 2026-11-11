@@ -28,6 +28,7 @@ import {
   SquareSplitHorizontal,
   SquareTerminal,
   Trash2,
+  TriangleAlert,
 } from 'lucide-vue-next'
 import ContextMenu from '../ui/ContextMenu.vue'
 import { isShowDiffKey, KIND_CLASS, KIND_LETTER, pathKey, samePath, type GitMarks } from '../../lib/changesView'
@@ -44,6 +45,8 @@ import { nextRevealStep } from '../../lib/explorer/reveal'
 import { fileGlyph, parentDirectory, resolveFocusIndex, type FileGlyph, type TreeRow } from '../../lib/explorer/tree'
 import { fileIcon, folderIcon, openDirectories, type AtomIcon } from '../../lib/explorer/fileIcons'
 import { modeOf } from '../../lib/themes'
+import { useAgentTouchesStore } from '../../stores/agentTouches'
+import type { AgentTouch, FileTouchInfo, TouchState } from '../../lib/agentTouches'
 import { useChecksStore } from '../../stores/checks'
 import { useExplorerStore } from '../../stores/explorer'
 import { useSettingsStore } from '../../stores/settings'
@@ -96,6 +99,18 @@ const openDirs = computed(() =>
 )
 const atomIcon = (row: TreeRow): AtomIcon => (row.directory ? folderIcon(row.name, openDirs.value.has(pathKey(row.path))) : fileIcon(row.name, row.path, dark.value))
 const maskStyle = (src: string) => ({ maskImage: `url(${src})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' })
+
+const agentTouches = useAgentTouchesStore()
+const touchInfo = (row: TreeRow): FileTouchInfo | undefined => (row.depth > 0 && !row.outOfRoot && !row.directory ? agentTouches.index.files.get(pathKey(row.path)) : undefined)
+const touchDir = (row: TreeRow): TouchState | undefined => (row.depth > 0 && !row.outOfRoot && row.directory ? agentTouches.index.dirs.get(pathKey(row.path))?.state : undefined)
+const touchState = (row: TreeRow): TouchState | undefined => touchInfo(row)?.state ?? touchDir(row)
+const providerName = (a: AgentTouch): string => (a.provider === 'claude' ? 'Claude' : a.provider === 'codex' ? 'Codex' : a.provider === 'deepseek' ? 'DeepSeek' : t('explorerV93.agentFallback'))
+const NL = String.fromCharCode(10)
+const touchTip = (info: FileTouchInfo): string =>
+  info.touches.map((a) => t(a.kind === 'edit' ? 'explorerV93.tipEdit' : 'explorerV93.tipRead', { agent: providerName(a), name: a.name, time: new Date(a.at).toLocaleTimeString() })).join(NL)
+const touchLabel = (info: FileTouchInfo): string => (info.state === 'conflict' ? t('explorerV93.conflict', { n: info.editors }) : t(info.state === 'edit' ? 'explorerV93.edit' : 'explorerV93.read'))
+const touchAgentClass = (info: FileTouchInfo): string => `ccm-agent-${info.touches[0]?.provider ?? 'shell'}`
+const touchDirText = (state: TouchState): string => t(state === 'conflict' ? 'explorerV93.folderConflict' : state === 'edit' ? 'explorerV93.folderEdit' : 'explorerV93.folderRead')
 
 const scroller = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
@@ -340,9 +355,10 @@ const ACTION = 'inline-flex size-[18px] shrink-0 cursor-pointer items-center jus
           :tabindex="index === focusIndex ? 0 : -1"
           :data-row-index="index"
           :data-path="row.path"
+          :data-tree-touch="touchState(row)"
           class="group/row absolute right-0 left-0 flex cursor-pointer items-center gap-1 rounded-inner pr-1 text-xs outline-none select-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
           :class="[
-            isActive(row) ? 'bg-accent-soft text-accent-ink' : 'text-ink hover:bg-fill',
+            touchState(row) === 'conflict' && !row.directory ? 'bg-warning-soft text-ink' : isActive(row) ? 'bg-accent-soft text-accent-ink' : 'text-ink hover:bg-fill',
             row.depth === 0 ? 'font-semibold' : '',
             row.outOfRoot ? 'text-ink-faint' : '',
           ]"
@@ -388,6 +404,25 @@ const ACTION = 'inline-flex size-[18px] shrink-0 cursor-pointer items-center jus
           <span v-if="gitKind(row)" class="w-3 shrink-0 text-center font-mono text-2xs font-semibold" :class="isActive(row) ? 'text-accent-ink' : KIND_CLASS[gitKind(row)!]" aria-hidden="true">{{
             KIND_LETTER[gitKind(row)!]
           }}</span>
+          <span v-if="touchInfo(row)" class="flex max-w-[55%] shrink-0 items-center gap-1 text-2xs" :title="touchTip(touchInfo(row)!)" data-tree-touch-badge>
+            <TriangleAlert v-if="touchInfo(row)!.state === 'conflict'" :size="12" class="shrink-0 text-warning" aria-hidden="true" />
+            <span
+              v-else
+              class="size-2 shrink-0 rounded-full box-border"
+              :class="[touchAgentClass(touchInfo(row)!), touchInfo(row)!.state === 'edit' ? 'bg-(--ccm-pane-accent)' : 'border-[1.5px] border-(--ccm-pane-accent)']"
+              aria-hidden="true"
+            />
+            <span class="truncate" :class="touchInfo(row)!.state === 'conflict' ? 'font-medium text-ink' : 'text-ink-muted'">{{ touchLabel(touchInfo(row)!) }}</span>
+          </span>
+          <span
+            v-else-if="touchDir(row)"
+            class="mr-1 size-1.5 shrink-0 rounded-full box-border"
+            :class="touchDir(row) === 'conflict' ? 'bg-warning' : touchDir(row) === 'edit' ? 'bg-accent' : 'border border-ink-faint'"
+            :title="touchDirText(touchDir(row)!)"
+            data-tree-touch-dir
+            aria-hidden="true"
+          />
+          <span v-if="touchDir(row)" class="sr-only">, {{ touchDirText(touchDir(row)!) }}</span>
           <span v-if="problemOf(row)" class="sr-only">, {{ t(`workspace.problems.has.${problemOf(row)}`) }}</span>
           <span v-if="gitKind(row)" class="sr-only">, {{ t(`workspace.changes.kind.${gitKind(row)}`) }}</span>
           <span v-else-if="gitDir(row)" class="mr-1 size-1.5 shrink-0 rounded-full bg-diff-mod" :title="t('workspace.gitStatus.contains')" aria-hidden="true" />

@@ -50,6 +50,25 @@ fn file_key(name: &str) -> Option<&'static str> {
     }
 }
 
+pub type FileAccess = (&'static str, String);
+
+fn is_absolute(p: &str) -> bool {
+    let b = p.as_bytes();
+    p.starts_with('/') || p.starts_with("\\\\") || (b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'/' || b[2] == b'\\'))
+}
+
+pub fn file_access_of(name: &str, input: &Value) -> Option<FileAccess> {
+    let (kind, key) = match name {
+        "Edit" | "Write" | "MultiEdit" => ("edit", "file_path"),
+        "NotebookEdit" => ("edit", "notebook_path"),
+        "Read" => ("read", "file_path"),
+        _ => return None,
+    };
+    let path = input.as_object()?.get(key)?.as_str()?;
+    let n = units(path);
+    (n > 0 && n < 1024 && is_absolute(path)).then(|| (kind, path.replace('\\', "/")))
+}
+
 pub fn touch_of(name: &str, input: &Value) -> Option<Touch> {
     let input = input.as_object()?;
     if let Some(key) = file_key(name) {

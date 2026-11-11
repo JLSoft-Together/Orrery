@@ -97,7 +97,11 @@ async function launch(opts = {}) {
     if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) }
     if (m.method === 'Page.loadEventFired') loads.splice(0).forEach((r) => r())
   })
-  const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
+  ws.on('close', () => {
+    for (const r of pending.values()) r({ error: { message: 'cdp closed' }, result: { exceptionDetails: { text: 'cdp closed' } } })
+    pending.clear()
+  })
+  const send = (method, params = {}) => new Promise((r) => { if (ws.readyState > 1) return r({ error: { message: 'cdp closed' }, result: { exceptionDetails: { text: 'cdp closed' } } }); const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
   await send('Page.enable')
   const appUp = async () => {
     const end = Date.now() + 15000

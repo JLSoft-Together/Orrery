@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { THEMES, THEME_MIGRATION, defaultTheme, isThemeId, modeOf, startTheme, toggleTarget } from './themes'
+import { THEMES, THEME_MIGRATION, defaultTheme, hasStars, isThemeId, modeOf, startTheme, toggleTarget } from './themes'
 
 // Read from disk: vitest turns CSS imports (even ?raw) into empty modules.
 const themesCss = readFileSync(new URL('../themes.css', import.meta.url), 'utf8')
@@ -12,7 +12,7 @@ const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const REQUIRED = [
   'canvas', 'surface', 'raised', 'control', 'ink', 'ink-muted', 'ink-faint', 'accent', 'accent-ink', 'on-accent', 'focus', 'selection',
   'well', 'well-ink', 'well-selection', 'working', 'waiting', 'idle', 'done', 'error', 'stale', 'warning', 'favorite', 'diff-add', 'diff-del', 'diff-mod',
-  'agent-claude', 'agent-claude-ink', 'agent-codex', 'agent-browser', 'agent-file', 'peer',
+  'agent-claude', 'agent-claude-ink', 'agent-codex', 'agent-shell-mark', 'agent-deepseek', 'agent-browser', 'agent-file', 'peer',
   ...Array.from({ length: 16 }, (_, i) => `ansi-${i}`),
   'syn-keyword', 'syn-string', 'syn-number', 'syn-comment', 'syn-type', 'syn-func',
   ...Array.from({ length: 8 }, (_, i) => `cat-${i + 1}`),
@@ -39,9 +39,9 @@ const over = (fg: number[], bg: number[], p: number) => fg.map((v, i) => v * p +
 
 const SHAPE = [
   'card-shadow', 'panel-bg', 'panel-edge', 'chrome-line', 'tab-on-bg', 'tab-on-shadow', 'tab-rail', 'chip-fill', 'pane-ring', 'pane-bar',
-  'pane-head-tint', 'dim-inactive', 'seg-track', 'seg-thumb', 'seg-thumb-shadow', 'seg-on-ink', 'label-font', 'label-case', 'label-tracking', 'gap-shell',
+  'pane-head-tint', 'dim-inactive', 'tab-on-bar', 'wordmark-font', 'wordmark-display', 'seg-track', 'seg-thumb', 'seg-thumb-shadow', 'seg-on-ink', 'label-font', 'label-case', 'label-tracking', 'gap-shell',
 ]
-const SHAPED = ['orrery-dark', 'orrery-light', 'console']
+const SHAPED = ['orrery-dark', 'orrery-light', 'console', 'galaxy']
 
 function rootBlock(): Record<string, string> {
   const m = /\n:root \{([^}]*)\}/.exec(styleCss)
@@ -90,7 +90,7 @@ describe('themes', () => {
       for (const bg of ['surface', 'raised']) {
         for (const k of ['ink', 'ink-muted', 'ink-faint', 'accent-ink', 'working', 'waiting', 'idle', 'done', 'error', 'stale', 'warning', 'diff-add', 'diff-del', 'diff-mod', 'agent-claude-ink', 'peer'])
           need(`${th.id} ${k}/${bg}`, ratio(c(k), c(bg)), 4.5)
-        for (const k of ['favorite', 'agent-claude', 'agent-codex', 'agent-browser', 'agent-file', 'focus']) need(`${th.id} ${k}/${bg}`, ratio(c(k), c(bg)), 3)
+        for (const k of ['favorite', 'agent-claude', 'agent-codex', 'agent-shell-mark', 'agent-deepseek', 'agent-browser', 'agent-file', 'focus']) need(`${th.id} ${k}/${bg}`, ratio(c(k), c(bg)), 3)
       }
       need(`${th.id} on-accent`, ratio(c('on-accent'), c('accent')), 4.5)
       // Soft tints as themes.css derives them (10 % light, 14–16 % dark).
@@ -109,6 +109,11 @@ describe('themes', () => {
     expect(root['dim-inactive']).toBe('1')
     expect(root['chip-fill']).toBe('1')
     expect(root['gap-shell']).toBe('8px')
+    expect(root['pane-accent']).toBe('var(--ccm-accent)')
+    expect(root['footer-h']).toBe('26px')
+    expect(root['wordmark-display']).toBe('none')
+    for (const k of ['claude', 'codex', 'shell', 'deepseek']) expect(styleCss).toContain(`.ccm-agent-${k} {`)
+    expect(styleCss).toContain('.ccm-footer {')
     for (const id of SHAPED) {
       expect(SHAPE.filter((k) => !block(id)[k]), id).toEqual([])
       const raw = new RegExp(`:root\\[data-theme='${id}'\\] \\{([^}]*)\\}`).exec(themesCss)![1]!
@@ -149,5 +154,33 @@ describe('themes', () => {
           const want = startTheme(t, m, light)
           expect(pick(t, m, light), `${t} ${m} ${light}`).toEqual({ t: want.theme, w: want.migrate })
         }
+  })
+})
+
+describe('galaxy', () => {
+  it('is dark only, has stars and a sky token; others have none', () => {
+    const g = THEMES.find((th) => th.id === 'galaxy')!
+    expect(g.mode).toBe('dark')
+    expect(g.pair).toBeUndefined()
+    expect(hasStars('galaxy')).toBe(true)
+    expect(hasStars('orrery-dark')).toBe(false)
+    const b = block('galaxy')
+    expect(b.sky).toContain('radial-gradient')
+    expect(b.canvas).toBe('#040405')
+    expect(b.material).toBe('#040405')
+    expect(rootBlock().sky).toBe('none')
+    expect(themesCss).toMatch(/:root\[data-stars='off'\] \{\s*--ccm-sky: none;/)
+    expect(styleCss).toContain('.ccm-sky {')
+  })
+
+  it('stars draw as many sizes as images', () => {
+    const b = block('galaxy')
+    const images = (b.sky!.match(/radial-gradient/g) ?? []).length
+    const sizes = (b['sky-size']!.match(/\d+px \d+px/g) ?? []).length
+    expect(sizes).toBe(images)
+  })
+
+  it('pre-paint script restores the stars switch', () => {
+    expect(indexHtml).toContain("localStorage.getItem('ccm.stars') === '0'")
   })
 })

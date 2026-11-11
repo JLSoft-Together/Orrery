@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import { hasCheckpoints } from '../lib/preview'
 import { displayTitle } from '../lib/title'
+import { cpLabel } from '../lib/turnReview'
 import { useCheckpointsStore } from '../stores/checkpoints'
 import { useTerminalsStore } from '../stores/terminals'
 
@@ -20,8 +21,8 @@ export function useTurnCheckpoints(): void {
         const prev = last.get(t.id)
         last.set(t.id, t.status)
         if (!t.cwd || prev === undefined || prev === t.status) continue
-        if (t.status === 'working') void checkpoints.take(t.cwd, `before:${displayTitle(t)}`)
-        else if (prev === 'working' && (t.status === 'idle' || t.status === 'waiting')) void checkpoints.take(t.cwd, `after:${displayTitle(t)}`)
+        if (t.status === 'working') void checkpoints.take(t.cwd, cpLabel('before', t.id, displayTitle(t)))
+        else if (prev === 'working' && (t.status === 'idle' || t.status === 'waiting')) void checkpoints.take(t.cwd, cpLabel('after', t.id, displayTitle(t)))
       }
     },
   )

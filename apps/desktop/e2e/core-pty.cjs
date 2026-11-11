@@ -2,7 +2,7 @@ const { execFileSync, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, REPO, OUT } = require('./cdp.cjs')
+const { launch, REPO, OUT, SHELL } = require('./cdp.cjs')
 
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -118,12 +118,14 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
 
     const ep = await evaluate(`window.ccmDesktop.ptyEndpoint().then((e) => !!e && e.url.startsWith('ws://127.0.0.1:'))`)
     check('pty endpoint handed out', ep)
-    const ptyLog = path.join(OUT, 'run', 'ud', 'logs', 'pty.log')
+    const ptyLog = SHELL ? path.join(OUT, 'run', 'data', 'pty.log') : path.join(OUT, 'run', 'ud', 'logs', 'pty.log')
     const hostLine = await (async () => {
       const end = Date.now() + 10000
       while (Date.now() < end) {
         try {
-          const all = [...fs.readFileSync(ptyLog, 'utf8').matchAll(/^pty host: (node|rust) \(/gm)]
+          const text = fs.readFileSync(ptyLog, 'utf8')
+          if (SHELL && /^orrery-core: listening on /m.test(text)) return 'rust'
+          const all = [...text.matchAll(/^pty host: (node|rust) \(/gm)]
           const m = all.at(-1)
           if (m) return m[1]
         } catch {}
@@ -250,7 +252,7 @@ const ps = (script, timeout = 40000) => execFileSync('powershell.exe', ['-NoProf
     keep(live.map((p) => p.pid))
     await sleep(1500)
     let dialog = ''
-    if (WIN) {
+    if (WIN && !SHELL) {
       app.cmd('Browser.close').catch(() => undefined)
       for (let i = 0; i < 20 && !/Quit and close/.test(dialog); i++) {
         await sleep(500)

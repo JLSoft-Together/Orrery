@@ -22,6 +22,10 @@ import v50Tabs from './workspace-v50-tabs'
 import v50Mission from './workspace-v50-mission'
 import v51 from './workspace-v51'
 import v52 from './workspace-v52'
+import footerV92 from './footer-v92'
+import themeV95 from './theme-v95'
+import tabsV93 from './tabs-v93'
+import launcherV93 from './launcher-v93'
 import v52Pane from './workspace-v52-pane'
 import v52Tabs from './workspace-v52-tabs'
 import v52Rail from './workspace-v52-rail'
@@ -29,6 +33,10 @@ import v64Restore from './workspace-v64-restore'
 import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
+import paneV92 from './pane-v92'
+import explorerV93 from './explorer-v93'
+import paneV93 from './pane-v93'
+import boardV95 from './board-v95'
 import usageV53 from './usage-v53'
 import peerV54 from './peer-v54'
 import peerMapV54 from './peer-map-v54'
@@ -56,9 +64,11 @@ import libsV74 from './libs-v74'
 import hooksV74 from './hooks-v74'
 import resourcesV76 from './resources-v76'
 import uiV79Rail from './ui-v79-rail'
+import railV92 from './rail-v92'
 import uiV79Settings from './ui-v79-settings'
 import uiV79Monitor from './ui-v79-monitor'
 import uiV88Monitor from './ui-v88-monitor'
+import orbitV95 from './orbit-v95'
 import * as uiV79Header from './ui-v79-header'
 import uiV79Pages from './ui-v79-pages'
 import uiV80Limits from './ui-v80-limits'
@@ -86,6 +96,10 @@ import bugReportV90 from './bug-report-v90'
 
 const vi: typeof en = {
   ...v25.vi,
+  ...themeV95.vi,
+  ...footerV92.vi,
+  ...tabsV93.vi,
+  ...launcherV93.vi,
   ...v27.vi,
   ...v28.vi,
   ...run.vi,
@@ -95,6 +109,10 @@ const vi: typeof en = {
   ...fileEditor.vi,
   ...monitorV53.vi,
   ...sessionV53.vi,
+  ...paneV92.vi,
+  ...explorerV93.vi,
+  ...paneV93.vi,
+  ...boardV95.vi,
   ...usageV53.vi,
   ...peerV54.vi,
   ...peerMapV54.vi,
@@ -130,9 +148,11 @@ const vi: typeof en = {
   ...bugReportV90.vi,
   ...resourcesV76.vi,
   ...uiV79Rail.vi,
+  ...railV92.vi,
   ...uiV79Settings.vi,
   ...uiV79Monitor.vi,
   ...uiV88Monitor.vi,
+  ...orbitV95.vi,
   ...uiV79Header.vi,
   ...uiV79Pages.vi,
   ...uiV80Limits.vi,
@@ -707,6 +727,7 @@ const vi: typeof en = {
       wsMoveTab: 'Chuyển tab sang trái / phải',
       wsTab: 'Tab 1–9 của dự án này',
       wsMission: 'Mission Control: mọi tab của mọi dự án',
+      wsFocusMode: 'Chế độ tập trung: ẩn rail và Explorer của tab này',
       wsFocus: 'Chuyển sang pane bên cạnh',
       wsQuickOpen: 'Mở nhanh tệp trong dự án',
       wsPrompts: 'Thư viện prompt',

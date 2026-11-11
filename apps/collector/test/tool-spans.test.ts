@@ -112,3 +112,13 @@ describe('ToolSpanLog', () => {
     expect(JSON.stringify(log.list())).not.toContain('secret')
   })
 })
+
+describe('ToolSpanLog file access', () => {
+  it('carries path and access from the tool_use onto the span', () => {
+    const log = new ToolSpanLog('t')
+    const [span] = log.apply([{ k: 'tool_use', id: 'a', name: 'Edit', at: iso(0), file: { kind: 'edit', path: '/x/y.ts' } }], 'main')
+    expect(span).toMatchObject({ path: '/x/y.ts', access: 'edit' })
+    const [closed] = log.apply([result('a', 5)], 'main')
+    expect(closed).toMatchObject({ path: '/x/y.ts', access: 'edit', outcome: 'ok' })
+  })
+})

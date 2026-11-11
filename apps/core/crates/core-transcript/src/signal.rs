@@ -1,11 +1,11 @@
 use crate::jsstr::{put, put_num, put_opt};
 use crate::origin::Ask;
-use crate::rules::Touch;
+use crate::rules::{FileAccess, Touch};
 use serde_json::{Map, Value};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Signal {
-    ToolUse { id: String, name: String, summary: Option<String>, at: Option<String>, codex: bool, device: bool, touch: Option<Touch>, ask: Option<Ask> },
+    ToolUse { id: String, name: String, summary: Option<String>, at: Option<String>, codex: bool, device: bool, touch: Option<Touch>, ask: Option<Ask>, access: Option<FileAccess> },
     ToolResult { tool_use_id: String, is_error: bool, async_launched: bool, at: Option<String>, port_conflict: Option<u32> },
     TurnEnd { at: Option<String> },
     AssistantEnd { message_id: Option<String>, at: Option<String> },
@@ -57,7 +57,7 @@ impl Signal {
         let mut m = Map::new();
         put(&mut m, "k", self.kind());
         match self {
-            Signal::ToolUse { id, name, summary, at, codex, device, touch, ask } => {
+            Signal::ToolUse { id, name, summary, at, codex, device, touch, ask, access } => {
                 put(&mut m, "id", id.as_str());
                 put(&mut m, "name", name.as_str());
                 put_opt(&mut m, "summary", summary);
@@ -73,6 +73,12 @@ impl Signal {
                 }
                 if let Some(a) = ask {
                     put(&mut m, "ask", a.to_json());
+                }
+                if let Some((kind, path)) = access {
+                    let mut f = Map::new();
+                    put(&mut f, "kind", *kind);
+                    put(&mut f, "path", path.as_str());
+                    put(&mut m, "file", Value::Object(f));
                 }
             }
             Signal::ToolResult { tool_use_id, is_error, async_launched, at, port_conflict } => {

@@ -24,6 +24,7 @@ import { useResourcesStore } from './stores/resources'
 import { useUpdateStore } from './stores/update'
 import ZoomHud from './components/ZoomHud.vue'
 import { useWheelZoom } from './composables/useWheelZoom'
+import WorkspaceFooter from './components/workspace/WorkspaceFooter.vue'
 import CompactView from './components/CompactView.vue'
 import UsageView from './components/usage/UsageView.vue'
 import HistoryView from './components/history/HistoryView.vue'
@@ -115,8 +116,27 @@ function retireView(el: Element): void {
 }
 
 const header = ref<ComponentPublicInstance | null>(null)
+const footer = ref<ComponentPublicInstance | null>(null)
+const headerH = ref(0)
+const footerH = ref(0)
+const heightOf = (el: Element): number => Math.ceil(el.getBoundingClientRect().height)
 const headerObserver = new ResizeObserver(([entry]) => {
-  if (entry) document.documentElement.style.setProperty('--ccm-header-h', `${Math.ceil(entry.target.getBoundingClientRect().height)}px`)
+  if (entry) headerH.value = heightOf(entry.target)
+})
+const footerObserver = new ResizeObserver(([entry]) => {
+  if (entry) footerH.value = heightOf(entry.target)
+})
+watch(
+  [headerH, footerH, showWorkspace],
+  () => document.documentElement.style.setProperty('--ccm-header-h', `${headerH.value + (showWorkspace.value ? footerH.value : 0)}px`),
+  { flush: 'post' },
+)
+watch(footer, (cur, prev) => {
+  const old = prev?.$el as Element | undefined
+  const el = cur?.$el as Element | undefined
+  if (old) footerObserver.unobserve(old)
+  if (el) footerObserver.observe(el)
+  else footerH.value = 0
 })
 
 // The mac menu leaves Cmd+W to the page; the workspace closes a pane with it, every other view closes the window.
@@ -135,6 +155,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   headerObserver.disconnect()
+  footerObserver.disconnect()
   window.removeEventListener('keydown', onCloseKey)
 })
 </script>
@@ -163,6 +184,7 @@ onBeforeUnmount(() => {
         <WorkspaceView v-if="workspaceOpened" v-show="showWorkspace" :id="showWorkspace ? 'main' : undefined" :visible="showWorkspace" />
       </Transition>
     </div>
+    <WorkspaceFooter v-if="showWorkspace" ref="footer" />
     <CommandPalette />
     <component :is="recap.Comp" v-if="recap.mounted.value" />
     <DevToolsDialog v-if="ui.devTools" :tool="ui.devTools" @close="ui.devTools = null" />

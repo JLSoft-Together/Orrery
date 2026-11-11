@@ -107,6 +107,7 @@ function onTabKey(e: KeyboardEvent): void {
   <header class="ccm-material ccm-titlebar sticky top-0 z-30 border-b ccm-chrome-edge" :data-title-bar="titleBar ?? undefined">
     <div class="flex h-10 min-w-0 items-center gap-2" :class="barClass" :style="barStyle">
       <ArtImage name="logo" class="size-5 shrink-0" :aria-label="t('app.title')" role="img" />
+      <span class="ccm-wordmark shrink-0 select-none" aria-hidden="true" data-wordmark>orrery</span>
 
       <div
         v-if="!ui.compact"

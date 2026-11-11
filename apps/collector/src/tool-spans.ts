@@ -28,7 +28,7 @@ export class ToolSpanLog {
         if (!s.at || this.spans.has(s.id)) continue
         const startMs = Date.parse(s.at)
         if (Number.isNaN(startMs)) continue
-        const span: ToolSpan = { id: s.id, terminalId: this.terminalId, agentId, tool: s.name.slice(0, MAX_TOOL_NAME), start: s.at }
+        const span: ToolSpan = { id: s.id, terminalId: this.terminalId, agentId, tool: s.name.slice(0, MAX_TOOL_NAME), start: s.at, ...(s.file ? { path: s.file.path, access: s.file.kind } : {}) }
         this.spans.set(s.id, { span, startMs })
         changed.push({ ...span })
       } else if (s.k === 'tool_result') {

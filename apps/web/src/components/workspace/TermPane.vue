@@ -59,6 +59,9 @@ import SplitMenu from './SplitMenu.vue'
 import WorktreeMenu from './WorktreeMenu.vue'
 import OverlapChip from './OverlapChip.vue'
 import AgentStatusChip from './AgentStatusChip.vue'
+import SubagentOrbit from './SubagentOrbit.vue'
+import ContextMeter from './ContextMeter.vue'
+import TurnCard from './TurnCard.vue'
 import { useAgentStatusStore } from '../../stores/agentStatus'
 import PromptQueueButton from './PromptQueueButton.vue'
 import LimitResumeChip from './LimitResumeChip.vue'
@@ -314,6 +317,10 @@ const diff = computed(() => {
 const compactFlow = useCompact()
 const compactSuggested = computed(() => props.pane.state === 'running' && !!context.value && suggestCompact(context.value.pct, compactFlow.stateOf(props.pane)))
 const compactPct = computed(() => Math.round(context.value?.pct ?? 0))
+const isClaude = computed(() => preset.value === 'claude')
+const orbitAgents = computed(() => (isClaude.value && props.pane.terminalId && session.value ? agents.byTerminal[props.pane.terminalId] : undefined))
+const meterOn = computed(() => !isShell.value && props.pane.state === 'running')
+const canMeterCompact = computed(() => compactFlow.stateOf(props.pane) === 'ready')
 
 const barSlot = inject<Ref<HTMLElement | null>>('ccm-pane-bar', ref(null))
 const inBar = computed(() => headMode(props.multi, props.zoomed) === 'bar' && props.visible && !!barSlot.value)
@@ -1124,7 +1131,7 @@ onBeforeUnmount(() => {
 <template>
   <section
     class="@container flex min-h-0 min-w-0 flex-col gap-1.5 transition-opacity duration-(--ccm-dur-base) ease-out-quint"
-    :class="multi && !focused ? 'ccm-pane-idle' : ''"
+    :class="[`ccm-agent-${preset}`, multi && !focused ? 'ccm-pane-idle' : '']"
     :data-pane="pane.key"
     :style="visible ? `view-transition-name: ccm-pane-${pane.key}; view-transition-class: ccm-pane` : undefined"
     :aria-label="t(`workspace.preset.${preset}`)"
@@ -1143,7 +1150,9 @@ onBeforeUnmount(() => {
     >
       <span v-if="peerSweep" :key="peerSweep" class="ccm-peer-sweep-x absolute inset-x-1 top-0 h-0.5" aria-hidden="true" data-pane-peer-sweep />
       <template v-if="!inBar">
-        <PresetIcon :preset="preset" :size="15" class="shrink-0" />
+        <span class="grid size-[18px] shrink-0 place-items-center rounded-inner bg-[color-mix(in_srgb,var(--ccm-pane-accent)_16%,transparent)]" data-pane-mark aria-hidden="true">
+          <PresetIcon :preset="preset" :size="12" class="shrink-0" />
+        </span>
         <span
           class="min-w-0 shrink-0 truncate font-semibold transition-colors duration-(--ccm-dur-fast) ease-out-quint @max-[420px]:sr-only"
           :class="multi && !focused ? 'text-ink-muted' : 'text-ink'"
@@ -1152,21 +1161,6 @@ onBeforeUnmount(() => {
           >{{ t(`workspace.preset.${preset}`) }}</span
         >
       </template>
-      <button
-        v-if="cwd && pane.state === 'running'"
-        ref="wtButton"
-        type="button"
-        class="inline-flex h-6 shrink-[10] cursor-pointer items-center gap-1 rounded-[5px] px-1.5 text-ink-faint transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-expanded:bg-fill aria-expanded:text-ink"
-        :title="[branch ? t('workspace.paneHead.branch', { branch }) : t('workspace.wt.title'), cwd].join('\n')"
-        aria-haspopup="dialog"
-        :aria-expanded="!!wtAnchor"
-        data-pane-worktrees
-        @click="toggleWorktrees"
-      >
-        <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
-        <span v-if="branch" class="max-w-[16ch] min-w-[4ch] truncate @max-[440px]:sr-only @max-[440px]:min-w-0">{{ branch }}</span>
-        <span v-else class="sr-only">{{ t('workspace.wt.title') }}</span>
-      </button>
       <Transition name="ccm-fade">
         <span
           v-if="diff"
@@ -1185,8 +1179,24 @@ onBeforeUnmount(() => {
         </Transition>
       </Teleport>
       <div class="ml-auto flex min-w-0 items-center gap-1">
+        <SubagentOrbit v-if="isClaude" :agents="orbitAgents" data-pane-chip />
         <ContextGauge v-if="context" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
         <ContextTokens class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />
+        <button
+          v-if="cwd && pane.state === 'running'"
+          ref="wtButton"
+          type="button"
+          class="inline-flex h-5 shrink-[10] cursor-pointer items-center gap-1 rounded-inner bg-[var(--ccm-control)] px-1.5 font-mono text-2xs text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-expanded:bg-fill aria-expanded:text-ink"
+          :title="[branch ? t('workspace.paneHead.branch', { branch }) : t('workspace.wt.title'), cwd].join('\n')"
+          aria-haspopup="dialog"
+          :aria-expanded="!!wtAnchor"
+          data-pane-worktrees
+          @click="toggleWorktrees"
+        >
+          <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
+          <span v-if="branch" class="max-w-[16ch] min-w-[4ch] truncate @max-[440px]:sr-only @max-[440px]:min-w-0">{{ branch }}</span>
+          <span v-else class="sr-only">{{ t('workspace.wt.title') }}</span>
+        </button>
         <span class="grid min-w-6 justify-items-end empty:hidden *:[grid-area:1/1] @max-[300px]:hidden" data-more="compact" data-pane-chip>
           <Transition name="ccm-fade">
             <button
@@ -1241,6 +1251,7 @@ onBeforeUnmount(() => {
               </span>
               <span class="min-w-0 truncate" :class="statusWordShown(sessionChip.state) ? '@max-[460px]:sr-only' : 'sr-only'">{{ sessionChip.label }}</span>
               <span v-if="peerBadge && peer" class="sr-only">, {{ peer.label }}</span>
+              <span v-if="activityText" class="max-w-[22ch] min-w-0 truncate font-normal text-ink-muted tabular-nums @max-[620px]:hidden" data-pane-activity>· {{ activityText }}</span>
             </span>
             <span
               v-else-if="procChip"
@@ -1357,6 +1368,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
     </Teleport>
+    <ContextMeter v-if="meterOn" :tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
     <div class="flex min-h-0 flex-1 gap-1.5" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
       class="ccm-pane-ring relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
@@ -1420,5 +1432,6 @@ onBeforeUnmount(() => {
       @open="(path) => emit('openLink', { kind: 'file', path }, {})"
     />
     </div>
+    <TurnCard v-if="meterOn" :cwd="session?.cwd" :status="session?.status" @open="(path) => emit('openLink', { kind: 'file', path }, {})" />
   </section>
 </template>

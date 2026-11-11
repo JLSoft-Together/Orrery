@@ -90,6 +90,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'general', id: 'launch', labelKey: 'settings.launchTerminal', hintKey: 'settings.launchTerminalHint', needs: 'mac' },
 
   { page: 'appearance', id: 'theme', labelKey: 'settings.theme' },
+  { page: 'appearance', id: 'stars', labelKey: 'themeV95.stars', hintKey: 'themeV95.starsHint' },
   { page: 'appearance', id: 'uiFont', labelKey: 'fonts.ui', hintKey: 'fonts.uiHint' },
   { page: 'appearance', id: 'codeFont', labelKey: 'fonts.code', hintKey: 'fonts.codeHint' },
   { page: 'appearance', id: 'codesize', labelKey: 'fonts.size', hintKey: mac ? 'fonts.sizeHintMac' : 'fonts.sizeHint' },

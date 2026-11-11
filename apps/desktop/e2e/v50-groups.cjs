@@ -53,7 +53,7 @@ async function run(app) {
   check('group lists its two panes as members', (await evaluate(`${NAV}.querySelectorAll('[data-rail-member="${groupTab}"]').length`)) === 2)
   check('group icon draws the split layout (one divider)', (await evaluate(`${G}.querySelectorAll('[data-rail-group-glyph] line').length`)) === 1)
   check('group head sits at row indent, not at the project header', await evaluate(`${G}.querySelector('[data-rail-group-glyph]').getBoundingClientRect().left - ${NAV}.querySelector('[data-rail-name]').closest('button').getBoundingClientRect().left >= 12`))
-  check('project folder icon is tinted', await evaluate(`${NAV}.querySelector('[data-rail-folder]')?.classList.contains('text-accent')`))
+  check('project shows its monogram', await evaluate(`!!${NAV}.querySelector('[data-rail-folder]')?.textContent.trim()`))
   check('group disclosure button shows the pane count', (await evaluate(`${G}.querySelector('[data-rail-group-chevron] [data-rail-group-count]')?.textContent.trim()`)) === '2')
   await shot('v50-01-rail-group')
 

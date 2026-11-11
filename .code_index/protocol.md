@@ -28,7 +28,7 @@ Emitter = collector `MonitorStore` method (`store.ts`) unless noted; consumer = 
 | `usage.roots {roots}` | `setProjectRoots` (additions only) | `usage.setRoots` |
 | `favorites.updated` | `setFavorites` | `favorites.replaceAll` |
 | `favorite.rejected {dir, reason}` | `rejectFavorite` (broadcast; tab matches its pending add) | `favorites.reject` |
-| `tool.span` | `toolSpan` (on open + close) | `toolSpans.upsert` |
+| `tool.span` | `toolSpan` (on open + close; v93 optional `path` abs + `access` edit\|read for Edit/Write/MultiEdit/NotebookEdit/Read only, documented exception docs §11ar) | `toolSpans.upsert`, `agentTouches` store → ExplorerTree |
 | `jobs.updated` / `limits.updated` / `codexLimits.updated` / `response.updated` / `models.updated` | `setJobs` / `setLimits` / `setCodexLimits` / `setResponse` / `setModelNames` | `extras.*` |
 | `notify.settings` / `snooze.updated` | `setNotify` / `setSnoozes` | `extras.setNotify` / `snooze.replaceAll` |
 | `history.added` | `historyAdded` | `history.add` |

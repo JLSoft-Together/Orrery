@@ -1,5 +1,5 @@
 use crate::extract::{extract_signals, mentions_codex, mentions_device};
-use crate::rules::{command_hits, touch_of};
+use crate::rules::{command_hits, file_access_of, touch_of};
 use crate::sigserve::Transcript;
 use crate::tail::{lite_filter, signal_line_filter, tool_use_ids_of, Item, JsonlTailer, TailOptions, Verdict};
 use serde_json::{json, Value};
@@ -203,4 +203,14 @@ fn budgeted_reads_add_up_to_one_full_read() {
     assert_eq!(got_spans, spans);
     assert_eq!(part.state.to_json(), full.state.to_json());
     let _ = std::fs::remove_dir_all(file.parent().unwrap());
+}
+
+#[test]
+fn file_access_only_for_absolute_file_tools() {
+    assert_eq!(file_access_of("Edit", &json!({ "file_path": r"C:\a\b.ts", "old_string": "x" })), Some(("edit", "C:/a/b.ts".to_owned())));
+    assert_eq!(file_access_of("Read", &json!({ "file_path": "/home/a.ts" })), Some(("read", "/home/a.ts".to_owned())));
+    assert_eq!(file_access_of("NotebookEdit", &json!({ "notebook_path": "/n.ipynb" })), Some(("edit", "/n.ipynb".to_owned())));
+    assert!(file_access_of("Read", &json!({ "file_path": "rel.ts" })).is_none());
+    assert!(file_access_of("Bash", &json!({ "command": "cat /etc/x" })).is_none());
+    assert!(file_access_of("Edit", &json!({ "file_path": format!("/{}", "a".repeat(1100)) })).is_none());
 }

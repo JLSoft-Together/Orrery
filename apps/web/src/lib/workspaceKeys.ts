@@ -19,6 +19,7 @@ export type WorkspaceAction =
   | { t: 'search' }
   /** Mission Control: every tab of every project (⇧⌘O / Ctrl+Shift+O). */
   | { t: 'mission' }
+  | { t: 'focusMode' }
   | { t: 'moveTab'; step: 1 | -1 }
   | { t: 'zoom' }
   | { t: 'reopen' }
@@ -54,6 +55,7 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
   const digit = /^Digit([1-9])$/.exec(code)
   if (code === 'F11' && shift && !ctrl && !alt && !meta) return { t: 'bookmarks' }
   if (code === 'Backquote' && ctrl && !shift && !alt && !meta) return { t: 'dropTerm' }
+  if (code === 'Period' && !shift && !alt && (mac ? meta && !ctrl : ctrl && !meta)) return { t: 'focusMode' }
   if (mac) {
     if (ctrl && !meta && !alt && code === 'Minus') return { t: shift ? 'navForward' : 'navBack' }
     if (ctrl && alt && !meta && !shift && code === 'KeyN') return { t: 'notes' }

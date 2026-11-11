@@ -99,7 +99,7 @@ mod tests {
     use super::*;
 
     fn span(id: &str, start: &str, end: Option<&str>) -> SpanEvent {
-        SpanEvent::Span(ToolSpan { id: id.into(), terminal_id: "t".into(), agent_id: "t:main".into(), tool: "Bash".into(), start: start.into(), end: end.map(Into::into), outcome: end.map(|_| ToolOutcome::Ok) })
+        SpanEvent::Span(ToolSpan { id: id.into(), terminal_id: "t".into(), agent_id: "t:main".into(), tool: "Bash".into(), start: start.into(), end: end.map(Into::into), outcome: end.map(|_| ToolOutcome::Ok), path: None, access: None })
     }
 
     #[test]

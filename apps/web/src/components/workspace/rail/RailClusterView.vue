@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { BellRing, ChevronRight, Ellipsis, Folder, FolderOpen, GitBranch, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
+import { BellRing, ChevronRight, Ellipsis, Folder, GitBranch, Hand, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
 import { usePaneInfo } from '../../../composables/usePaneInfo'
 import { useRailTabStop } from '../../../composables/useRail'
 import { onDustLeave } from '../../../lib/dust'
@@ -21,13 +21,11 @@ import {
   type RailItem,
   type RailRow as Row,
 } from '../../../lib/rail/railModel'
+import { agoOf, lastActive, monogram, projectTone, runCounts } from '../../../lib/rail/projectRow'
 import { folderName } from '../../../lib/sidebarRows'
 import { isMac } from '../../../lib/platform'
 import { keyCombo } from '../../../lib/shortcuts'
-import { folderIcon } from '../../../lib/explorer/fileIcons'
-import { useSettingsStore } from '../../../stores/settings'
 import { useWorkspaceStore } from '../../../stores/workspace'
-import FileTypeIcon from '../FileTypeIcon.vue'
 import StatusIcon from '../../StatusIcon.vue'
 import RunBadge from '../RunBadge.vue'
 import RailGroupHead from './RailGroupHead.vue'
@@ -65,8 +63,16 @@ const { t } = useI18n()
 const MOVE_KEYS = { up: keyCombo(['Alt', '↑'], isMac), down: keyCombo(['Alt', '↓'], isMac) }
 const name = computed(() => (props.cluster.key === 'home' ? t('workspace.side.home') : props.cluster.name))
 /** Folder the header acts on: the active checkout, else the main one. Never assumed allowed beyond what is open. */
-const settings = useSettingsStore()
-const atomFolder = computed(() => (settings.fileIcons === 'atom' ? folderIcon(name.value, props.cluster.active) : null))
+const letter = computed(() => (props.cluster.key === 'home' ? '~' : monogram(name.value)))
+const tone = computed(() => projectTone(props.cluster.key))
+const counts = computed(() => (solo.value ? { running: 0, waiting: 0 } : runCounts(props.cluster)))
+const ago = computed(() => {
+  const at = props.cluster.live ? lastActive(props.cluster) : null
+  if (!at) return null
+  const a = agoOf(at, clock.value)
+  return a.n === undefined ? t(`railV92.ago.${a.key}`) : t(`railV92.ago.${a.key}`, { n: a.n })
+})
+const hasSecond = computed(() => !!headBranch.value || counts.value.running > 0 || counts.value.waiting > 0)
 const headDir = computed(() => (props.cluster.checkouts.find((k) => k.active) ?? props.cluster.checkouts[0])?.path ?? props.cluster.root)
 // A lone checkout has no line: its branch sits on the header, and a remembered project opens from the header.
 const showCheckouts = computed(() => showsCheckouts(props.cluster))
@@ -134,12 +140,12 @@ const HEAD_BTN =
 </script>
 
 <template>
-  <section
-    class="flex flex-col rounded-control p-0.5 outline-1 -outline-offset-1 transition-[outline-color] duration-(--ccm-dur-fast)"
-    :class="cluster.active ? 'outline-line-strong' : 'outline-transparent'"
-    :data-group="cluster.key"
-  >
-    <div class="group/head flex h-7 min-w-0 items-center gap-0.5 pr-0.5" @contextmenu.prevent.stop="emit('contextHead', $event)">
+  <section class="flex flex-col" :data-group="cluster.key">
+    <div
+      class="group/head flex min-h-9 min-w-0 items-center gap-0.5 rounded-control pr-1 transition-colors duration-(--ccm-dur-fast)"
+      :class="cluster.active ? 'bg-selection' : 'hover:bg-fill'"
+      @contextmenu.prevent.stop="emit('contextHead', $event)"
+    >
       <h3 :id="`ws-rail-${index}`" class="min-w-0 flex-1" role="none">
         <button
           type="button"
@@ -147,8 +153,8 @@ const HEAD_BTN =
           data-side-head
           :data-side-id="headId(cluster.key)"
           :data-order-key="cluster.key"
-          class="flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-inner pl-1 text-left text-xs font-semibold hover:text-ink"
-          :class="cluster.live ? 'text-ink-muted' : 'text-ink-faint'"
+          class="flex min-h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control py-1 pl-1 text-left text-xs hover:text-ink"
+          :class="[cluster.live ? 'text-ink' : 'text-ink-muted', cluster.active ? 'font-semibold' : 'font-medium']"
           role="treeitem"
           aria-level="1"
           :aria-expanded="opener || solo ? undefined : !collapsed"
@@ -164,33 +170,30 @@ const HEAD_BTN =
             aria-hidden="true"
           />
           <span v-else class="w-3 shrink-0" aria-hidden="true" />
-          <FileTypeIcon
-            v-if="atomFolder"
-            :icon="atomFolder"
-            :size="14"
-            class="transition-colors duration-(--ccm-dur-base)"
-            :class="cluster.live ? 'text-accent' : 'text-ink-faint'"
-            data-rail-folder
-          />
-          <component
-            :is="cluster.active ? FolderOpen : Folder"
-            v-else
-            :size="14"
-            class="shrink-0 transition-colors duration-(--ccm-dur-base)"
-            :class="cluster.live ? 'fill-accent-soft text-accent' : 'fill-fill text-ink-faint'"
-            aria-hidden="true"
-            data-rail-folder
-          />
-          <span class="min-w-0 flex-1 truncate" :class="cluster.active ? 'text-ink' : ''" data-rail-name>{{ name }}</span>
-          <span v-if="headBranch" class="inline-flex max-w-[45%] min-w-0 items-center gap-0.5 font-normal text-ink-faint" data-rail-branch>
-            <GitBranch :size="11" class="shrink-0" aria-hidden="true" />
-            <span class="min-w-0 truncate text-[11px]">{{ headBranch }}</span>
-          </span>
-          <span v-if="soloRow" class="inline-flex shrink-0 items-center gap-1 text-[11px] font-normal tabular-nums" :class="soloTone" data-rail-solo-state :data-state="soloRow.state">
-            <LoaderCircle v-if="soloRow.state === 'starting'" :size="11" class="ccm-spin" aria-hidden="true" />
-            <StatusIcon v-else-if="RAIL_BADGE[soloRow.state]" :status="RAIL_BADGE[soloRow.state]!" :size="11" />
-            <span v-if="soloTime">{{ soloTime }}</span>
-            <span class="sr-only">{{ soloWord }}</span>
+          <span class="ccm-mono" :class="cluster.live ? '' : 'ccm-mono-off'" :data-tone="tone" aria-hidden="true" data-rail-folder>{{ letter }}</span>
+          <span class="flex min-w-0 flex-1 flex-col gap-px">
+            <span class="flex min-w-0 items-center gap-1.5">
+              <span class="min-w-0 flex-1 truncate" data-rail-name>{{ name }}</span>
+              <span v-if="soloRow" class="inline-flex shrink-0 items-center gap-1 text-[11px] font-normal tabular-nums" :class="soloTone" data-rail-solo-state :data-state="soloRow.state">
+                <LoaderCircle v-if="soloRow.state === 'starting'" :size="11" class="ccm-spin" aria-hidden="true" />
+                <StatusIcon v-else-if="RAIL_BADGE[soloRow.state]" :status="RAIL_BADGE[soloRow.state]!" :size="11" />
+                <span v-if="soloTime">{{ soloTime }}</span>
+                <span class="sr-only">{{ soloWord }}</span>
+              </span>
+              <span v-else-if="ago" class="shrink-0 text-[11px] font-normal text-ink-faint tabular-nums" :title="t('railV92.agoTitle', { when: ago })" data-rail-ago>{{ ago }}</span>
+            </span>
+            <span v-if="hasSecond" class="flex min-w-0 items-center gap-2 text-[11px] font-normal text-ink-muted">
+              <span v-if="counts.running" class="inline-flex shrink-0 items-center gap-1 text-st-working tabular-nums" data-rail-running>
+                <span class="size-1.5 shrink-0 rounded-full bg-st-working" aria-hidden="true" />{{ t('railV92.running', { n: counts.running }) }}
+              </span>
+              <span v-if="counts.waiting" class="inline-flex shrink-0 items-center gap-1 text-st-waiting tabular-nums" data-rail-waiting>
+                <Hand :size="10" aria-hidden="true" />{{ t('railV92.waiting', { n: counts.waiting }) }}
+              </span>
+              <span v-if="headBranch" class="inline-flex min-w-0 items-center gap-0.5 text-ink-faint" data-rail-branch>
+                <GitBranch :size="11" class="shrink-0" aria-hidden="true" />
+                <span class="min-w-0 truncate">{{ headBranch }}</span>
+              </span>
+            </span>
           </span>
         </button>
       </h3>
@@ -296,7 +299,7 @@ const HEAD_BTN =
             role="treeitem"
             aria-level="2"
             :tabindex="isStop(checkoutId(cluster.key, item.checkout.key)) ? 0 : -1"
-            class="flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-inner pr-1.5 pl-5 text-left text-2xs text-ink-muted hover:bg-fill hover:text-ink"
+            class="flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-inner pr-1.5 pl-9 text-left text-2xs text-ink-muted hover:bg-fill hover:text-ink"
             :title="item.checkout.path ?? undefined"
             @click="emit('checkout', item.checkout)"
             @contextmenu.prevent.stop="emit('contextCheckout', item.checkout, $event)"
@@ -333,3 +336,33 @@ const HEAD_BTN =
     </div>
   </section>
 </template>
+
+<style scoped>
+.ccm-mono {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-inner);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ccm-mono-ink);
+  background: color-mix(in srgb, var(--mono) 62%, var(--ccm-mono-mix));
+}
+.ccm-mono[data-tone='0'] { --mono: var(--ccm-agent-claude); }
+.ccm-mono[data-tone='1'] { --mono: var(--ccm-agent-codex); }
+.ccm-mono[data-tone='2'] { --mono: var(--ccm-agent-browser); }
+.ccm-mono[data-tone='3'] { --mono: var(--ccm-agent-file); }
+.ccm-mono[data-tone='4'] { --mono: var(--ccm-success); }
+.ccm-mono[data-tone='5'] { --mono: var(--ccm-peer); }
+.ccm-mono[data-tone='6'] { --mono: var(--ccm-warning); }
+.ccm-mono[data-tone='7'] { --mono: var(--ccm-accent); }
+.ccm-mono-off {
+  background: transparent;
+  color: var(--ccm-ink-muted);
+  box-shadow: inset 0 0 0 1px var(--ccm-line-strong);
+}
+</style>

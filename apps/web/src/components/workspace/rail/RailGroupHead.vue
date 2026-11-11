@@ -70,8 +70,8 @@ watch(
 
 <template>
   <div
-    class="group/ghead relative grid min-h-7 min-w-0 grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-inner py-0.5 pr-1 pl-5 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-base) ease-(--ease-out-quint) data-dragging:bg-fill data-drop-on:bg-accent-soft data-drop-on:outline-accent"
-    :class="lit ? 'bg-accent-soft text-accent-ink' : group.tabActive ? 'text-ink hover:bg-fill' : 'text-ink-muted hover:bg-fill'"
+    class="group/ghead relative grid min-h-7 min-w-0 grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2 rounded-inner py-0.5 pr-1 pl-9 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-base) ease-(--ease-out-quint) data-dragging:bg-fill data-drop-on:bg-accent-soft data-drop-on:outline-accent"
+    :class="lit ? 'bg-selection text-ink' : group.tabActive ? 'text-ink hover:bg-fill' : 'text-ink-muted hover:bg-fill'"
     data-rail-group
     :data-tab-key="group.tabKey"
     :data-state="group.state"
@@ -86,7 +86,7 @@ watch(
   >
     <span v-if="flashKey" :key="flashKey" class="ccm-flash pointer-events-none absolute inset-0 rounded-inner" :class="FLASH[group.state]" aria-hidden="true" />
     <span v-if="sweep" :key="sweep" class="ccm-peer-sweep absolute top-1.5 bottom-1.5 left-[3px] w-0.5" aria-hidden="true" data-rail-peer-sweep />
-    <span class="ccm-rail-stem pointer-events-none absolute bottom-0 left-[27px] top-[calc(50%+7px)] w-px bg-line" :data-folded="group.folded ? '' : undefined" aria-hidden="true" />
+    <span class="ccm-rail-stem pointer-events-none absolute bottom-0 left-[39px] top-[calc(50%+7px)] w-px bg-line" :data-folded="group.folded ? '' : undefined" aria-hidden="true" />
     <button
       v-if="!renaming"
       type="button"
@@ -111,7 +111,7 @@ watch(
       :tab-key="group.tabKey"
       :active-pane="activePane"
       class="pointer-events-none relative"
-      :class="lit ? 'text-accent-ink' : group.tabActive ? 'text-ink-muted' : 'text-ink-faint'"
+      :class="lit ? 'text-ink' : group.tabActive ? 'text-ink-muted' : 'text-ink-faint'"
       data-rail-group-glyph
     />
     <span v-if="renaming" class="relative z-10 min-w-0">
@@ -130,7 +130,7 @@ watch(
       <span
         v-if="!attention && (peer || tail) && group.folded"
         class="pointer-events-none flex items-center gap-1.5 text-[11px] tabular-nums"
-        :class="lit ? 'text-accent-ink' : 'text-ink-muted'"
+        :class="lit ? 'text-ink' : 'text-ink-muted'"
         aria-hidden="true"
       >
         <component :is="peer.glyph" v-if="peer" :size="12" :class="peer.tone" />

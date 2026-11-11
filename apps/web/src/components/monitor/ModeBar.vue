@@ -32,6 +32,10 @@ function onKey(e: KeyboardEvent): void {
 
 <template>
   <div class="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 pt-2" data-monitor-bar>
+    <h2 class="inline-flex min-h-7 items-center gap-1.5 text-sm font-semibold text-ink" data-monitor-summary :data-needs="needs" :data-running="running">
+      <StatusIcon status="working" :size="14" />
+      <span class="tabular-nums">{{ t('boardV95.summary.running', { n: running }, running) }},{{ ' ' }}<span :class="needs ? 'text-warning' : 'text-ink-muted'"><Hand v-if="needs" :size="14" aria-hidden="true" class="mr-1 inline align-[-2px]" />{{ needs ? t('boardV95.summary.waiting', { n: needs }) : t('boardV95.summary.noneWaiting') }}</span></span>
+    </h2>
     <div ref="tabs" role="tablist" :aria-label="t('monitorV88.modes')" class="inline-flex items-center gap-0.5 rounded-control bg-raised p-0.5" @keydown="onKey">
       <button
         v-for="m in MODES"
@@ -52,12 +56,6 @@ function onKey(e: KeyboardEvent): void {
         <component :is="m.icon" :size="14" aria-hidden="true" />{{ t(`monitorV88.${m.id}`) }}
       </button>
     </div>
-    <span class="inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-xs" :class="needs ? 'bg-warning-soft font-medium text-warning' : 'text-ink-muted'" data-chip="needs">
-      <Hand :size="14" aria-hidden="true" />{{ t('monitorV88.chipNeeds') }}<span class="tabular-nums">{{ needs }}</span>
-    </span>
-    <span class="inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-xs text-ink-muted" data-chip="running">
-      <StatusIcon status="working" :size="14" />{{ t('monitorV88.chipRunning') }}<span class="tabular-nums">{{ running }}</span>
-    </span>
     <ProjectStrip v-if="ui.monitorMode === 'board'" v-model="ui.monitorProject" :groups="projects" class="ms-auto" />
   </div>
 </template>

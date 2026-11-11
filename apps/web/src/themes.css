@@ -78,6 +78,8 @@
   --ccm-agent-claude: #c15f3c;
   --ccm-agent-claude-ink: #ae4a26;
   --ccm-agent-codex: #5e4fc0;
+  --ccm-agent-shell-mark: #0f7f78;
+  --ccm-agent-deepseek: #1f6fd0;
   --ccm-agent-browser: #0071a4;
   --ccm-agent-file: #7f6545;
   --ccm-peer: #a83279;
@@ -143,6 +145,8 @@
   --ccm-agent-claude: #d97757;
   --ccm-agent-claude-ink: #e08463;
   --ccm-agent-codex: #a49cf0;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #64d2ff;
   --ccm-agent-file: #b59469;
   --ccm-peer: #ff7ac6;
@@ -208,6 +212,8 @@
   --ccm-agent-claude: #e8835d;
   --ccm-agent-claude-ink: #ef8f6a;
   --ccm-agent-codex: #ae81ff;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #66d9ef;
   --ccm-agent-file: #c9a46b;
   --ccm-peer: #ff8ce6;
@@ -273,6 +279,8 @@
   --ccm-agent-claude: #f4a07a;
   --ccm-agent-claude-ink: #f4a07a;
   --ccm-agent-codex: #ff79c6;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #8be9fd;
   --ccm-agent-file: #d6b88a;
   --ccm-peer: #ffb3f0;
@@ -338,6 +346,8 @@
   --ccm-agent-claude: #b9532e;
   --ccm-agent-claude-ink: #9f431c;
   --ccm-agent-codex: #5b5fb5;
+  --ccm-agent-shell-mark: #0f7f78;
+  --ccm-agent-deepseek: #1f6fd0;
   --ccm-agent-browser: #1d7c75;
   --ccm-agent-file: #85683e;
   --ccm-peer: #b02a6d;
@@ -403,6 +413,8 @@
   --ccm-agent-claude: #e48b62;
   --ccm-agent-claude-ink: #e8946d;
   --ccm-agent-codex: #9599e6;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #39b7ad;
   --ccm-agent-file: #c4a171;
   --ccm-peer: #f07ab8;
@@ -468,6 +480,8 @@
   --ccm-agent-claude: #bc5a35;
   --ccm-agent-claude-ink: #a8461f;
   --ccm-agent-codex: #8250df;
+  --ccm-agent-shell-mark: #0f7f78;
+  --ccm-agent-deepseek: #1f6fd0;
   --ccm-agent-browser: #0550ae;
   --ccm-agent-file: #845e30;
   --ccm-peer: #bf3989;
@@ -533,6 +547,8 @@
   --ccm-agent-claude: #e08a62;
   --ccm-agent-claude-ink: #e08a62;
   --ccm-agent-codex: #a371f7;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #58a6ff;
   --ccm-agent-file: #c69a66;
   --ccm-peer: #f778ba;
@@ -598,6 +614,8 @@
   --ccm-agent-claude: #f0956f;
   --ccm-agent-claude-ink: #f0956f;
   --ccm-agent-codex: #c792ea;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #89ddff;
   --ccm-agent-file: #d1ad7c;
   --ccm-peer: #ff7fd0;
@@ -663,6 +681,8 @@
   --ccm-agent-claude: #e0906b;
   --ccm-agent-claude-ink: #e0906b;
   --ccm-agent-codex: #c678dd;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #56b6c2;
   --ccm-agent-file: #c9a272;
   --ccm-peer: #ff7fc8;
@@ -728,6 +748,8 @@
   --ccm-agent-claude: #b45e43;
   --ccm-agent-claude-ink: #964e37;
   --ccm-agent-codex: #8060db;
+  --ccm-agent-shell-mark: #0f7f78;
+  --ccm-agent-deepseek: #1f6fd0;
   --ccm-agent-browser: #31827b;
   --ccm-agent-file: #85683e;
   --ccm-peer: #a8327c;
@@ -793,6 +815,8 @@
   --ccm-agent-claude: #cf7659;
   --ccm-agent-claude-ink: #e18c71;
   --ccm-agent-codex: #a894f6;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #6aaea6;
   --ccm-agent-file: #c29a6b;
   --ccm-peer: #f07cc6;
@@ -839,11 +863,11 @@
   --ccm-ink: #ececf1;
   --ccm-ink-muted: #9b9ba7;
   --ccm-ink-faint: #8e8e9a;
-  --ccm-accent: #6f5ee8;
-  --ccm-accent-ink: #a99ff7;
-  --ccm-on-accent: #ffffff;
-  --ccm-focus: #a99ff7;
-  --ccm-selection: #322f4f;
+  --ccm-accent: #e8835d;
+  --ccm-accent-ink: #f0946f;
+  --ccm-on-accent: #1a110d;
+  --ccm-focus: #f0946f;
+  --ccm-selection: #3d2c24;
   --ccm-well: #17171a;
   --ccm-well-ink: #e5e5ea;
   --ccm-well-selection: #36325a;
@@ -858,9 +882,11 @@
   --ccm-diff-add: #4cc38a;
   --ccm-diff-del: #ff6b6b;
   --ccm-diff-mod: #6ea8fe;
-  --ccm-agent-claude: #e08a63;
+  --ccm-agent-claude: #d97757;
   --ccm-agent-claude-ink: #e08a63;
-  --ccm-agent-codex: #c08cf5;
+  --ccm-agent-codex: #9d8cf8;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #5ccfe6;
   --ccm-agent-file: #c29a6b;
   --ccm-peer: #ff7ac6;
@@ -902,11 +928,12 @@
   --ccm-panel-edge: none;
   --ccm-chrome-line: transparent;
   --ccm-tab-on-bg: transparent;
-  --ccm-tab-on-shadow: inset 0 -2px 0 var(--ccm-accent);
+  --ccm-tab-on-shadow: 0 0 #0000;
+  --ccm-tab-on-bar: inset 0 -2px 0;
   --ccm-tab-rail: var(--ccm-line);
   --ccm-chip-fill: 0;
   --ccm-pane-ring: transparent;
-  --ccm-pane-bar: inset 2px 0 0 var(--ccm-accent);
+  --ccm-pane-bar: inset 2px 0 0;
   --ccm-pane-head-tint: transparent;
   --ccm-dim-inactive: 0.78;
   --ccm-seg-track: transparent;
@@ -914,6 +941,8 @@
   --ccm-seg-thumb-shadow: none;
   --ccm-seg-on-ink: var(--ccm-ink);
   --ccm-label-font: var(--font-mono);
+  --ccm-wordmark-font: var(--font-mono);
+  --ccm-wordmark-display: inline;
   --ccm-label-case: uppercase;
   --ccm-label-tracking: 0.04em;
   --ccm-gap-shell: 6px;
@@ -930,11 +959,11 @@
   --ccm-ink: #17171c;
   --ccm-ink-muted: #55555f;
   --ccm-ink-faint: #61616c;
-  --ccm-accent: #5b4bd6;
-  --ccm-accent-ink: #4c3dc4;
+  --ccm-accent: #bd5128;
+  --ccm-accent-ink: #b04a24;
   --ccm-on-accent: #ffffff;
-  --ccm-focus: #5b4bd6;
-  --ccm-selection: #d9d4fa;
+  --ccm-focus: #bd5128;
+  --ccm-selection: #f6dccf;
   --ccm-well: #18181c;
   --ccm-well-ink: #e5e5ea;
   --ccm-well-selection: #3a3660;
@@ -951,7 +980,9 @@
   --ccm-diff-mod: #0b5cad;
   --ccm-agent-claude: #c15f3c;
   --ccm-agent-claude-ink: #9f431c;
-  --ccm-agent-codex: #8a3fb8;
+  --ccm-agent-codex: #6a4fc9;
+  --ccm-agent-shell-mark: #0f7f78;
+  --ccm-agent-deepseek: #1f6fd0;
   --ccm-agent-browser: #00719e;
   --ccm-agent-file: #7f6545;
   --ccm-peer: #a3266f;
@@ -993,11 +1024,12 @@
   --ccm-panel-edge: none;
   --ccm-chrome-line: transparent;
   --ccm-tab-on-bg: transparent;
-  --ccm-tab-on-shadow: inset 0 -2px 0 var(--ccm-accent);
+  --ccm-tab-on-shadow: 0 0 #0000;
+  --ccm-tab-on-bar: inset 0 -2px 0;
   --ccm-tab-rail: var(--ccm-line);
   --ccm-chip-fill: 0;
   --ccm-pane-ring: transparent;
-  --ccm-pane-bar: inset 2px 0 0 var(--ccm-accent);
+  --ccm-pane-bar: inset 2px 0 0;
   --ccm-pane-head-tint: transparent;
   --ccm-dim-inactive: 1;
   --ccm-seg-track: transparent;
@@ -1005,6 +1037,8 @@
   --ccm-seg-thumb-shadow: 0 0 0 1px var(--ccm-line);
   --ccm-seg-on-ink: var(--ccm-ink);
   --ccm-label-font: var(--font-mono);
+  --ccm-wordmark-font: var(--font-mono);
+  --ccm-wordmark-display: inline;
   --ccm-label-case: uppercase;
   --ccm-label-tracking: 0.04em;
   --ccm-gap-shell: 6px;
@@ -1045,6 +1079,8 @@
   --ccm-agent-claude: #ff8a5c;
   --ccm-agent-claude-ink: #ff8a5c;
   --ccm-agent-codex: #b69cff;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
   --ccm-agent-browser: #8fc9ff;
   --ccm-agent-file: #c9a46b;
   --ccm-peer: #ff7ac6;
@@ -1086,12 +1122,14 @@
   --ccm-panel-edge: inset 0 0 0 1px var(--ccm-line);
   --ccm-chrome-line: var(--ccm-line);
   --ccm-tab-on-bg: var(--ccm-surface);
-  --ccm-tab-on-shadow: inset 0 2px 0 var(--ccm-accent);
+  --ccm-tab-on-shadow: 0 0 #0000;
+  --ccm-tab-on-bar: inset 0 2px 0;
   --ccm-tab-rail: transparent;
   --ccm-chip-fill: 0.75;
   --ccm-pane-ring-w: 1px;
   --ccm-pane-ring: var(--ccm-accent);
-  --ccm-pane-bar: none;
+  --ccm-pane-ring-mix: 100%;
+  --ccm-pane-bar: inset 0 0 0;
   --ccm-pane-head-tint: #0f1a1e;
   --ccm-dim-inactive: 0.8;
   --ccm-seg-track: transparent;
@@ -1099,7 +1137,132 @@
   --ccm-seg-thumb-shadow: inset 0 -2px 0 var(--ccm-accent);
   --ccm-seg-on-ink: var(--ccm-accent-ink);
   --ccm-label-font: var(--font-mono);
+  --ccm-wordmark-font: var(--font-mono);
+  --ccm-wordmark-display: inline;
   --ccm-label-case: uppercase;
   --ccm-label-tracking: 0.08em;
   --ccm-gap-shell: 6px;
+}
+
+:root[data-theme='galaxy'] {
+  --ccm-canvas: #040405;
+  --ccm-surface: #0e0e11;
+  --ccm-raised: #18181c;
+  --ccm-control: #1f1f24;
+  --ccm-line: #1d1d21;
+  --ccm-line-strong: #232328;
+  --ccm-material: #040405;
+  --ccm-ink: #ececf1;
+  --ccm-ink-muted: #a6a6b0;
+  --ccm-ink-faint: #85858f;
+  --ccm-accent: #e8835d;
+  --ccm-accent-ink: #f0946f;
+  --ccm-on-accent: #1a110d;
+  --ccm-focus: #f0946f;
+  --ccm-selection: #35261f;
+  --ccm-well: #060607;
+  --ccm-well-ink: #e5e5ea;
+  --ccm-well-selection: #36325a;
+  --ccm-working: #f5a524;
+  --ccm-waiting: #f7d046;
+  --ccm-idle: #8e8e9a;
+  --ccm-done: #4cc38a;
+  --ccm-error: #ff6b6b;
+  --ccm-stale: #8e8e9a;
+  --ccm-warning: #f5a524;
+  --ccm-favorite: #f7d046;
+  --ccm-diff-add: #4cc38a;
+  --ccm-diff-del: #ff6b6b;
+  --ccm-diff-mod: #6ea8fe;
+  --ccm-agent-claude: #d97757;
+  --ccm-agent-claude-ink: #e08a63;
+  --ccm-agent-codex: #9d8cf8;
+  --ccm-agent-shell-mark: #4cc2b8;
+  --ccm-agent-deepseek: #4c9bf5;
+  --ccm-agent-browser: #5ccfe6;
+  --ccm-agent-file: #c29a6b;
+  --ccm-peer: #ff7ac6;
+  --ccm-ansi-0: #1c1c1e;
+  --ccm-ansi-1: #ff453a;
+  --ccm-ansi-2: #30d158;
+  --ccm-ansi-3: #ffd60a;
+  --ccm-ansi-4: #0a84ff;
+  --ccm-ansi-5: #bf5af2;
+  --ccm-ansi-6: #64d2ff;
+  --ccm-ansi-7: #d1d1d6;
+  --ccm-ansi-8: #8e8e93;
+  --ccm-ansi-9: #ff6961;
+  --ccm-ansi-10: #4ae36d;
+  --ccm-ansi-11: #ffe55c;
+  --ccm-ansi-12: #409cff;
+  --ccm-ansi-13: #da8fff;
+  --ccm-ansi-14: #8be3ff;
+  --ccm-ansi-15: #f5f5f7;
+  --ccm-syn-keyword: #ff7ab2;
+  --ccm-syn-string: #ff8170;
+  --ccm-syn-number: #d9c97c;
+  --ccm-syn-comment: #7f8c98;
+  --ccm-syn-type: #6bdfff;
+  --ccm-syn-func: #67b7a4;
+  --ccm-cat-1: #3987e5;
+  --ccm-cat-2: #d95926;
+  --ccm-cat-3: #199e70;
+  --ccm-cat-4: #c98500;
+  --ccm-cat-5: #d55181;
+  --ccm-cat-6: #3a9a3a;
+  --ccm-cat-7: #9085e9;
+  --ccm-cat-8: #e66767;
+  --radius-card: 10px;
+  --radius-control: 6px;
+  --radius-inner: 4px;
+  --ccm-card-shadow: 0 0 #0000;
+  --ccm-panel-bg: #0b0b0d;
+  --ccm-panel-edge: none;
+  --ccm-chrome-line: transparent;
+  --ccm-tab-on-bg: transparent;
+  --ccm-tab-on-shadow: 0 0 #0000;
+  --ccm-tab-on-bar: inset 0 -2px 0;
+  --ccm-tab-rail: var(--ccm-line);
+  --ccm-chip-fill: 0;
+  --ccm-pane-ring: transparent;
+  --ccm-pane-bar: inset 2px 0 0;
+  --ccm-pane-head-tint: transparent;
+  --ccm-dim-inactive: 0.78;
+  --ccm-seg-track: transparent;
+  --ccm-seg-thumb: var(--ccm-control);
+  --ccm-seg-thumb-shadow: none;
+  --ccm-seg-on-ink: var(--ccm-ink);
+  --ccm-label-font: var(--font-mono);
+  --ccm-wordmark-font: var(--font-mono);
+  --ccm-wordmark-display: inline;
+  --ccm-label-case: uppercase;
+  --ccm-label-tracking: 0.04em;
+  --ccm-gap-shell: 6px;
+  --ccm-sky:
+    radial-gradient(circle at 23px 41px, rgb(255 255 255 / 0.55) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 97px 188px, rgb(190 210 255 / 0.4) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 151px 63px, rgb(255 255 255 / 0.3) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 214px 132px, rgb(255 238 200 / 0.45) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 260px 22px, rgb(255 255 255 / 0.35) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 58px 236px, rgb(190 210 255 / 0.3) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 188px 244px, rgb(255 255 255 / 0.5) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 17px 23px, rgb(255 255 255 / 0.3) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 81px 67px, rgb(255 238 200 / 0.28) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 49px 96px, rgb(255 255 255 / 0.22) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 108px 12px, rgb(190 210 255 / 0.25) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 66px 41px, rgb(255 255 255 / 0.2) 0 0.5px, transparent 1.2px);
+  --ccm-sky-size:
+    280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px,
+    120px 110px, 120px 110px, 120px 110px, 120px 110px, 120px 110px;
+  --ccm-sky-display: block;
+  --ccm-chrome-fill: transparent;
+  --ccm-sky-fill: transparent;
+}
+
+:root[data-stars='off'] {
+  --ccm-sky: none;
+  --ccm-sky-size: auto;
+  --ccm-sky-display: none;
+  --ccm-chrome-fill: var(--ccm-material);
+  --ccm-sky-fill: var(--ccm-canvas);
 }

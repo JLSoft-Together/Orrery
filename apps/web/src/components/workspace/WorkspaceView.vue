@@ -28,6 +28,9 @@ import { DROP_TERM_KEYS, workspaceAction } from '../../lib/workspaceKeys'
 import { editorKeepsKey, inEditor, onSaveAllRequest, reportDirty } from '../../lib/fileEditor'
 import { isTyping, keyCombo, shortcutText } from '../../lib/shortcuts'
 import { moveTargetOf, tabMenu } from '../../lib/tabMenu'
+import { fitTabs, groupKeys, groupStarts, withinGroup } from '../../lib/tabGroups'
+import { projectTone } from '../../lib/rail/projectRow'
+import { useFocusMode } from '../../composables/useFocusMode'
 import { stepSlot, tabMoveIndex } from '../../lib/tabStrip'
 import { isMenuKey } from '../../lib/rail/railMenu'
 import type { TipAction } from '../../lib/tips'
@@ -41,6 +44,7 @@ import { useUiStore } from '../../stores/ui'
 import { useSettingsStore } from '../../stores/settings'
 import { isTerm, presetOf, primaryPaneKey, tabProject, useWorkspaceStore, workCwd, type Pane, type PaneSpec, type SplitChoice, type Tab } from '../../stores/workspace'
 import StatusIcon from '../StatusIcon.vue'
+import { statusMeta } from '../../lib/status'
 import LaunchPicker from './LaunchPicker.vue'
 import BrowserPane from './BrowserPane.vue'
 import ChangesPane from './ChangesPane.vue'
@@ -135,10 +139,13 @@ const {
   commitExplorer,
 } = useSidePanels()
 const explorer = useExplorerStore()
+const focusMode = useFocusMode()
+const focusOn = focusMode.on
 
 // Opened without a view transition: the tree must exist on the next tick to take focus.
 const explorerPanel = ref<{ showSearch: (query?: SearchQuery) => Promise<void> } | null>(null)
 async function showSearch(query?: SearchQuery): Promise<void> {
+  focusMode.set(false)
   explorerOpen.value = true
   await nextTick()
   await explorerPanel.value?.showSearch(query)
@@ -153,6 +160,7 @@ watch(
 )
 
 async function showExplorer(): Promise<void> {
+  focusMode.set(false)
   explorerOpen.value = true
   await nextTick()
   ;(document.querySelector<HTMLElement>('[data-explorer-tree] [tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-explorer] [role="tab"][tabindex="0"]'))?.focus()
@@ -179,7 +187,17 @@ const sideEvents = {
 
 const rail = useRail()
 /** Spaces: the strip, Ctrl+Alt+1–9 and Ctrl+Tab cover only the active tab's project (Mission Control shows all). */
-const visibleTabKeys = computed(() => projectTabKeys(rail.clusters.value, workspace.tabs, workspace.activeTab?.key ?? null))
+const tabGroupOf = computed(
+  () =>
+    new Map(
+      workspace.tabs.map((tab) => {
+        const project = tabProject(tab, (k) => workspace.panes.find((p) => p.key === k))
+        return [tab.key, project ? dirKey(project) : '~'] as const
+      }),
+    ),
+)
+const groupOf = (key: string): string => tabGroupOf.value.get(key) ?? '~'
+const visibleTabKeys = computed(() => groupKeys(projectTabKeys(rail.clusters.value, workspace.tabs, workspace.activeTab?.key ?? null), groupOf))
 const visibleTabs = computed(() => visibleTabKeys.value.map((k) => workspace.tabs.find((t) => t.key === k)).filter((t): t is Tab => !!t))
 const tabSpaces = computed(() => spaceIndexes(workspace.tabs, (t) => tabProject(t, paneOf)))
 const activeCluster = computed(() => rail.clusters.value.find((c) => c.active) ?? null)
@@ -932,6 +950,10 @@ function onGlobalKey(e: KeyboardEvent): void {
     case 'mission':
       toggleMission()
       break
+    case 'focusMode':
+      announce(t(focusOn.value ? 'tabsV93.focusOff' : 'tabsV93.focusOn'))
+      focusMode.toggle()
+      break
     case 'moveTab':
       moveActiveTab(action.step)
       break
@@ -979,8 +1001,8 @@ function onTabKey(e: KeyboardEvent, tab: Tab, index: number): void {
   }
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
   e.preventDefault()
-  const n = visibleTabs.value.length
-  const next = visibleTabs.value[(index + (e.key === 'ArrowRight' ? 1 : -1) + n) % n]
+  const n = shownTabs.value.length
+  const next = shownTabs.value[(index + (e.key === 'ArrowRight' ? 1 : -1) + n) % n]
   if (!next) return
   workspace.activateTab(next.key)
   ;(e.currentTarget as HTMLElement).parentElement?.parentElement?.querySelector<HTMLElement>(`[data-tab="${next.key}"]`)?.focus()
@@ -997,7 +1019,38 @@ const lastSummary = computed(() => {
 })
 
 const tabStrip = ref<HTMLElement | null>(null)
-const { tabPill, pillReady, stripFade, onStripWheel, measureFade } = useTabStripVisuals(tabStrip, () => [workspace.activeTab?.key, visibleTabKeys.value.join(), props.visible])
+const tabWidths = ref(new Map<string, number>())
+const stripAvail = ref(0)
+const plusWrap = ref<HTMLElement | null>(null)
+const tabFit = computed(() => fitTabs({ keys: visibleTabKeys.value, widths: tabWidths.value, active: workspace.activeTab?.key ?? null, avail: stripAvail.value }))
+const shownTabKeys = computed(() => tabFit.value.shown)
+const shownTabs = computed(() => shownTabKeys.value.map((k) => visibleTabs.value.find((t) => t.key === k)).filter((t): t is Tab => !!t))
+const hiddenTabs = computed(() => tabFit.value.hidden.map((k) => visibleTabs.value.find((t) => t.key === k)).filter((t): t is Tab => !!t))
+const groupStartKeys = computed(() => groupStarts(shownTabKeys.value, groupOf))
+const hiddenNeeds = computed(() => hiddenTabs.value.some((tab) => tabAttention(tab) === 'waiting' || tabState(tab)?.status === 'waiting'))
+const tabTone = (tab: Tab): number => projectTone(rail.clusterOfTab(tab.key) ?? groupOf(tab.key))
+
+function measureStrip(): void {
+  const row = tabRow.value
+  if (!row) return
+  const next = new Map(tabWidths.value)
+  let changed = false
+  tabStrip.value?.querySelectorAll<HTMLElement>('[data-tab-item]').forEach((el) => {
+    const w = el.offsetWidth
+    const key = el.dataset.tabItem
+    if (w && key && next.get(key) !== w) {
+      next.set(key, w)
+      changed = true
+    }
+  })
+  if (changed) tabWidths.value = next
+  const avail = row.clientWidth - (plusWrap.value?.offsetWidth ?? 32) - 8
+  if (avail !== stripAvail.value) stripAvail.value = avail
+}
+const rowObserver = new ResizeObserver(measureStrip)
+onBeforeUnmount(() => rowObserver.disconnect())
+
+const { tabPill, pillReady, stripFade, onStripWheel, measureFade } = useTabStripVisuals(tabStrip, () => [workspace.activeTab?.key, shownTabKeys.value.join(), props.visible])
 
 const tabPrimary = (tab: Tab): Pane | undefined => paneOf(primaryPaneKey(tab.root, paneOf))
 
@@ -1034,6 +1087,16 @@ function tabStatusText(tab: Tab): string {
 }
 
 const tabRow = ref<HTMLElement | null>(null)
+watch(
+  tabRow,
+  (el, old) => {
+    if (old) rowObserver.unobserve(old)
+    if (el) rowObserver.observe(el)
+    measureStrip()
+  },
+  { flush: 'post' },
+)
+watch([shownTabKeys, tabNames, () => props.visible], measureStrip, { flush: 'post' })
 const dragAnnounce = ref('')
 const swapKeyName = isMac ? '⌘' : 'Ctrl'
 const tabDraggable = (): boolean => visibleTabs.value.length > 1
@@ -1072,6 +1135,12 @@ function agentPaneOf(tab: Tab): Pane | undefined {
     .map((k) => paneOf(k))
     .filter((p): p is Pane => !!p && isTerm(p) && presetOf(p) !== 'shell')
   return agents.find((p) => p.key === tab.focus) ?? agents[0]
+}
+
+function tabAgentClass(tab: Tab | undefined | null): string {
+  if (!tab) return 'ccm-agent-shell'
+  const lead = agentPaneOf(tab) ?? paneOf(tab.focus) ?? paneOf(primaryPaneKey(tab.root, paneOf))
+  return lead && isTerm(lead) ? `ccm-agent-${presetOf(lead)}` : 'ccm-agent-shell'
 }
 
 function parkedIn(tab: Tab): string[] {
@@ -1129,6 +1198,17 @@ function openTabMenuFromKey(tab: Tab): void {
   openTabMenu(tab, new DOMRect(r.left + 12, r.bottom, 0, 0))
 }
 
+function openOverflow(e: MouseEvent): void {
+  const trigger = e.currentTarget as HTMLElement
+  tabCtx.value = {
+    at: trigger.getBoundingClientRect(),
+    trigger,
+    label: t('tabsV93.moreMenu'),
+    entries: hiddenTabs.value.map((tab) => ({ id: tab.key, label: tabName(tab), hint: tabStatusText(tab) || undefined })),
+    pick: (id) => workspace.activateTab(id),
+  }
+}
+
 function pickTabAction(id: string, key: string): void {
   const tab = workspace.tabs.find((x) => x.key === key)
   if (!tab) return
@@ -1184,11 +1264,12 @@ function mergeTabInto(tab: Tab, targetKey: string): void {
 }
 
 function reorderTab(key: string, slot: number): void {
+  const own = withinGroup(shownTabKeys.value, groupOf, key, slot)
   const to = tabMoveIndex(
     workspace.tabs.map((x) => x.key),
-    visibleTabKeys.value,
+    own.list,
     key,
-    slot,
+    own.slot,
   )
   const tab = workspace.tabs.find((x) => x.key === key)
   if (to === null || !tab) return
@@ -1205,7 +1286,7 @@ function reorderTab(key: string, slot: number): void {
 
 function moveActiveTab(step: 1 | -1): void {
   const tab = workspace.activeTab
-  const slot = tab ? stepSlot(visibleTabKeys.value, tab.key, step) : null
+  const slot = tab ? stepSlot(shownTabKeys.value, tab.key, step) : null
   if (tab && slot !== null) reorderTab(tab.key, slot)
 }
 
@@ -1335,9 +1416,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="flex h-[calc(100dvh-var(--ccm-header-h,52px))] min-h-0 w-full gap-3 px-3 pt-2 pb-3 sm:px-4">
+  <main class="flex h-[calc(100dvh-var(--ccm-header-h,52px))] min-h-0 w-full gap-3 px-3 pt-2 pb-3 sm:px-4" :data-ws-focus="focusOn || undefined">
     <aside
-      v-if="workspace.tabs.length"
+      v-if="workspace.tabs.length && !focusOn"
       class="relative hidden shrink-0 flex-col gap-1.5 md:flex"
       :class="sideDragging ? 'select-none' : ''"
       :style="{ width: `${sidebarOpen ? sideWidth : RAIL_COLUMN_W}px` }"
@@ -1364,6 +1445,7 @@ onBeforeUnmount(() => {
     >
     <div v-if="workspace.tabs.length" class="flex min-w-0 items-center gap-2">
       <button
+        v-if="!focusOn"
         type="button"
         class="ccm-btn-plain hidden shrink-0 md:inline-flex"
         :aria-pressed="sidebarOpen"
@@ -1417,7 +1499,7 @@ onBeforeUnmount(() => {
           v-if="tabPill"
           aria-hidden="true"
           class="ccm-tab-on pointer-events-none absolute top-0 left-0 h-7 rounded-inner"
-          :class="pillReady ? 'transition-[transform,width] duration-(--ccm-dur-slow) ease-out-quint' : ''"
+          :class="[tabAgentClass(workspace.activeTab), pillReady ? 'transition-[transform,width] duration-(--ccm-dur-slow) ease-out-quint' : '']"
           :style="{ width: `${tabPill.w}px`, transform: `translateX(${tabPill.x}px)` }"
         />
         <span
@@ -1429,15 +1511,22 @@ onBeforeUnmount(() => {
         />
         <TransitionGroup name="ccm-tab" tag="div" role="presentation" class="flex items-center gap-1" @before-leave="pinLeaving" @leave="onTabLeave">
         <div
-          v-for="(tab, i) in visibleTabs"
+          v-for="(tab, i) in shownTabs"
           :key="tab.key"
           role="presentation"
           :data-selected="tab === workspace.activeTab || undefined"
           :data-tab-item="tab.key"
+          :data-tab-group-start="groupStartKeys.has(tab.key) || undefined"
           class="group relative inline-flex h-7 shrink-0 items-center rounded-inner text-xs transition-colors duration-(--ccm-dur-fast)"
-          :class="[tab === workspace.activeTab ? 'text-ink' : 'text-ink-muted hover:bg-fill', dragSource?.kind === 'tab' && dragSource.key === tab.key ? 'text-ink-faint!' : '']"
+          :class="[groupStartKeys.has(tab.key) ? 'ml-2 before:pointer-events-none before:absolute before:top-1.5 before:bottom-1.5 before:-left-[7px] before:w-px before:bg-line-strong' : '', tabAgentClass(tab), tab === workspace.activeTab ? 'text-ink' : 'text-ink-muted hover:bg-fill', dragSource?.kind === 'tab' && dragSource.key === tab.key ? 'text-ink-faint!' : '']"
           @contextmenu="onTabContext(tab, $event)"
         >
+          <span
+            class="ccm-tab-edge pointer-events-none absolute top-1.5 bottom-1.5 left-0.5 w-[3px] rounded-full"
+            :data-tone="tabTone(tab)"
+            aria-hidden="true"
+            data-tab-project-edge
+          />
           <span
             v-if="tabFlash[tab.key]"
             :key="tabFlash[tab.key]!.n"
@@ -1465,7 +1554,7 @@ onBeforeUnmount(() => {
             <span class="grid size-[13px] shrink-0 place-items-center *:[grid-area:1/1]">
               <Transition name="ccm-fade">
                 <span :key="tabState(tab)?.status ?? 'pane'" class="inline-flex" :data-tab-status="tabState(tab)?.status">
-                  <StatusIcon v-if="tabState(tab)" :status="tabState(tab)!.status" :size="13" />
+                  <span v-if="tabState(tab)" class="size-[7px] rounded-full bg-current" :class="statusMeta(tabState(tab)!.status).text" aria-hidden="true" />
                   <PaneIcon v-else-if="tabPrimary(tab)" :pane="tabPrimary(tab)!" :size="13" class="shrink-0" />
                 </span>
               </Transition>
@@ -1499,8 +1588,8 @@ onBeforeUnmount(() => {
             <span v-if="leaves(tab.root).some((k) => paneOf(k)?.dirty)" class="shrink-0 text-warning" :title="t('editor.unsaved')" data-tab-dirty>
               <span aria-hidden="true">●</span><span class="sr-only">{{ t('editor.unsaved') }}</span>
             </span>
-            <span v-if="leaves(tab.root).length > 1" class="shrink-0 rounded-[4px] bg-fill px-1 text-2xs text-ink-muted tabular" data-pane-count>
-              {{ leaves(tab.root).length }}<span class="sr-only"> {{ t('workspace.panes') }}</span>
+            <span v-if="leaves(tab.root).length > 1" class="shrink-0 text-[11px] text-ink-faint tabular-nums" data-pane-count>
+              {{ leaves(tab.root).length }} {{ t('paneV92.paneWord') }}
             </span>
             <Transition name="ccm-fade">
               <span
@@ -1513,8 +1602,11 @@ onBeforeUnmount(() => {
                 <span class="sr-only">{{ t('workspace.zoom.tabGlyph', { n: leaves(tab.root).length - 1 }, leaves(tab.root).length - 1) }}</span>
               </span>
             </Transition>
-            <span v-if="tabAttention(tab)" class="inline-flex shrink-0" aria-hidden="true" :data-tab-attention="tabAttention(tab)">
-              <StatusIcon :status="tabAttention(tab) === 'waiting' ? 'waiting' : 'completed'" :size="12" :animate="false" />
+            <span v-if="tabAttention(tab) === 'waiting'" class="inline-flex h-4 shrink-0 items-center gap-0.5 rounded-inner px-1 text-2xs font-medium" :class="statusMeta('waiting').chip" :data-tab-attention="'waiting'">
+              <StatusIcon status="waiting" :size="10" :animate="false" />{{ t('paneV92.wait') }}
+            </span>
+            <span v-else-if="tabAttention(tab)" class="inline-flex shrink-0" aria-hidden="true" :data-tab-attention="tabAttention(tab)">
+              <StatusIcon status="completed" :size="12" :animate="false" />
             </span>
             <span v-if="tabStatusText(tab)" class="sr-only">{{ tabStatusText(tab) }}</span>
           </button>
@@ -1531,7 +1623,22 @@ onBeforeUnmount(() => {
         </div>
         </TransitionGroup>
       </div>
-      <div class="relative shrink-0" @keydown.esc.stop="closeMenu()" @focusout="onFocusOut">
+      <button
+        v-if="hiddenTabs.length"
+        type="button"
+        class="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-inner px-2 text-xs font-medium tabular-nums transition-colors duration-(--ccm-dur-fast) hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+        :class="hiddenNeeds ? 'text-st-waiting' : 'text-ink-muted hover:text-ink'"
+        aria-haspopup="menu"
+        :aria-label="t('tabsV93.moreAria', { n: hiddenTabs.length })"
+        :title="t('tabsV93.moreTitle')"
+        data-tab-overflow
+        :data-tab-overflow-count="hiddenTabs.length"
+        @click="openOverflow"
+      >
+        <BellRing v-if="hiddenNeeds" :size="11" aria-hidden="true" />
+        {{ t('tabsV93.more', { n: hiddenTabs.length }) }}
+      </button>
+      <div ref="plusWrap" class="relative shrink-0" @keydown.esc.stop="closeMenu()" @focusout="onFocusOut">
         <button
           ref="menuTrigger"
           type="button"
@@ -1554,7 +1661,7 @@ onBeforeUnmount(() => {
             role="dialog"
             :aria-label="t('workspace.launch.title')"
           >
-            <LaunchPicker ref="menuPicker" :cwd="contextCwd" @launch="launch" @browser="openBrowserTab" @open-file="openFileTab" @changes="openChangesTab" @log="openLogTab" />
+            <LaunchPicker ref="menuPicker" :cwd="contextCwd" @resumed="closeMenu()" @launch="launch" @browser="openBrowserTab" @open-file="openFileTab" @changes="openChangesTab" @log="openLogTab" />
             <div v-if="activeProject && (hasScripts || hasLayouts)" class="mt-1.5 flex flex-col border-t border-line pt-1.5">
               <button v-if="hasScripts" type="button" :class="MENU_ROW" data-menu="scripts" @click="openScriptsForActive()">
                 <Play :size="14" class="shrink-0 text-ink-muted group-focus-visible/row:text-on-accent" aria-hidden="true" />{{ t('workspace.scripts.open') }}
@@ -1588,8 +1695,9 @@ onBeforeUnmount(() => {
           <AttentionPopover v-if="needsAnchor" :anchor="needsAnchor" :list="needs" :trigger="attentionChip" @close="closeNeeds" />
         </Transition>
       </Teleport>
-      <span class="mx-0.5 hidden h-4 w-px shrink-0 bg-line md:block" aria-hidden="true" data-explorer-divider />
+      <span v-if="!focusOn" class="mx-0.5 hidden h-4 w-px shrink-0 bg-line md:block" aria-hidden="true" data-explorer-divider />
       <button
+        v-if="!focusOn"
         type="button"
         class="ccm-btn-plain hidden shrink-0 md:inline-flex"
         :aria-pressed="explorerOpen"
@@ -1817,7 +1925,7 @@ onBeforeUnmount(() => {
     <DropTerminal v-if="dropMounted" :open="dropOpen && visible" :cwd="dropCwd" @hide="dropOpen = false" />
     </div>
     <aside
-      v-if="workspace.tabs.length && explorerOpen"
+      v-if="workspace.tabs.length && explorerOpen && !focusOn"
       class="relative hidden shrink-0 flex-col md:flex"
       :class="explorerDragging ? 'select-none' : ''"
       :style="{ width: `${explorerWidth}px` }"
@@ -1908,3 +2016,15 @@ onBeforeUnmount(() => {
     <ShortcutTip :visible="visible" />
   </main>
 </template>
+
+<style>
+.ccm-tab-edge { background: var(--mono, var(--ccm-agent-claude)); }
+.ccm-tab-edge[data-tone='0'] { --mono: var(--ccm-agent-claude); }
+.ccm-tab-edge[data-tone='1'] { --mono: var(--ccm-agent-codex); }
+.ccm-tab-edge[data-tone='2'] { --mono: var(--ccm-agent-browser); }
+.ccm-tab-edge[data-tone='3'] { --mono: var(--ccm-agent-file); }
+.ccm-tab-edge[data-tone='4'] { --mono: var(--ccm-success); }
+.ccm-tab-edge[data-tone='5'] { --mono: var(--ccm-peer); }
+.ccm-tab-edge[data-tone='6'] { --mono: var(--ccm-warning); }
+.ccm-tab-edge[data-tone='7'] { --mono: var(--ccm-accent); }
+</style>

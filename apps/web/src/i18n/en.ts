@@ -21,6 +21,10 @@ import v50Tabs from './workspace-v50-tabs'
 import v50Mission from './workspace-v50-mission'
 import v51 from './workspace-v51'
 import v52 from './workspace-v52'
+import footerV92 from './footer-v92'
+import themeV95 from './theme-v95'
+import tabsV93 from './tabs-v93'
+import launcherV93 from './launcher-v93'
 import v52Pane from './workspace-v52-pane'
 import v52Tabs from './workspace-v52-tabs'
 import v52Rail from './workspace-v52-rail'
@@ -28,6 +32,10 @@ import v64Restore from './workspace-v64-restore'
 import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
+import paneV92 from './pane-v92'
+import explorerV93 from './explorer-v93'
+import paneV93 from './pane-v93'
+import boardV95 from './board-v95'
 import usageV53 from './usage-v53'
 import peerV54 from './peer-v54'
 import peerMapV54 from './peer-map-v54'
@@ -55,9 +63,11 @@ import libsV74 from './libs-v74'
 import hooksV74 from './hooks-v74'
 import resourcesV76 from './resources-v76'
 import uiV79Rail from './ui-v79-rail'
+import railV92 from './rail-v92'
 import uiV79Settings from './ui-v79-settings'
 import uiV79Monitor from './ui-v79-monitor'
 import uiV88Monitor from './ui-v88-monitor'
+import orbitV95 from './orbit-v95'
 import * as uiV79Header from './ui-v79-header'
 import uiV79Pages from './ui-v79-pages'
 import uiV80Limits from './ui-v80-limits'
@@ -85,6 +95,10 @@ import bugReportV90 from './bug-report-v90'
 
 export default {
   ...v25.en,
+  ...themeV95.en,
+  ...footerV92.en,
+  ...tabsV93.en,
+  ...launcherV93.en,
   ...v27.en,
   ...v28.en,
   ...run.en,
@@ -94,6 +108,10 @@ export default {
   ...fileEditor.en,
   ...monitorV53.en,
   ...sessionV53.en,
+  ...paneV92.en,
+  ...explorerV93.en,
+  ...paneV93.en,
+  ...boardV95.en,
   ...usageV53.en,
   ...peerV54.en,
   ...peerMapV54.en,
@@ -129,9 +147,11 @@ export default {
   ...bugReportV90.en,
   ...resourcesV76.en,
   ...uiV79Rail.en,
+  ...railV92.en,
   ...uiV79Settings.en,
   ...uiV79Monitor.en,
   ...uiV88Monitor.en,
+  ...orbitV95.en,
   ...uiV79Header.en,
   ...uiV79Pages.en,
   ...uiV80Limits.en,
@@ -706,6 +726,7 @@ export default {
       wsMoveTab: 'Move the tab left / right',
       wsTab: 'Tab 1–9 of this project',
       wsMission: 'Mission Control: every tab of every project',
+      wsFocusMode: 'Focus mode: hide the rail and the Explorer for this tab',
       wsFocus: 'Move focus to the pane beside it',
       wsQuickOpen: 'Go to file in the project',
       wsPrompts: 'Prompt library',

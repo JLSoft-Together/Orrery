@@ -1,7 +1,7 @@
 use crate::conflict::port_conflict_in;
 use crate::jsstr::{iso_of_ms, js_slice, js_trim, word};
 use crate::origin::{ask_of, effort_ok, origin_signals, peer_sent, record_id, task_notifications, window_ok};
-use crate::rules::{touch_of, SHELL_TOOLS};
+use crate::rules::{file_access_of, touch_of, SHELL_TOOLS};
 use crate::signal::Signal;
 use crate::toolsum::{host_home, host_platform, tool_summary_of};
 use serde_json::{Map, Value};
@@ -140,6 +140,7 @@ fn assistant(rec: &Obj, msg: &Obj, at: &Option<String>, out: &mut Vec<Signal>) {
                 device: cmd.is_some_and(mentions_device),
                 touch: touch_of(name, input),
                 ask: ask_of(name, input),
+                access: file_access_of(name, input),
             });
             if name == "SendMessage" && input.as_object().and_then(|i| s(i.get("to"))) == Some("main") {
                 out.push(Signal::SendMain { key: bid.to_owned(), at: at.clone() });

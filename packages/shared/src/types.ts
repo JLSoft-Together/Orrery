@@ -469,6 +469,8 @@ export type FolderPickResult = 'ok' | 'cancelled' | 'busy' | 'failed' | 'unsuppo
 
 export type ToolOutcome = 'ok' | 'error' | 'interrupted'
 
+export type ToolAccess = 'edit' | 'read'
+
 export interface ToolSpan {
   id: string
   terminalId: string
@@ -477,6 +479,8 @@ export interface ToolSpan {
   start: string
   end?: string
   outcome?: ToolOutcome
+  path?: string
+  access?: ToolAccess
 }
 
 export interface ToolSpansData {

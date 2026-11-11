@@ -1,5 +1,6 @@
 use crate::jsstr::{js_slice, put, put_opt};
 use crate::omap::OMap;
+use crate::rules::FileAccess;
 use crate::signal::Signal;
 use crate::time::parse_iso;
 use serde_json::{Map, Value};
@@ -18,6 +19,7 @@ pub struct ToolSpan {
     pub start: String,
     pub end: Option<String>,
     pub outcome: Option<&'static str>,
+    pub file: Option<FileAccess>,
 }
 
 impl ToolSpan {
@@ -31,6 +33,10 @@ impl ToolSpan {
         put_opt(&mut m, "end", &self.end);
         if let Some(o) = self.outcome {
             put(&mut m, "outcome", o);
+        }
+        if let Some((kind, path)) = &self.file {
+            put(&mut m, "access", *kind);
+            put(&mut m, "path", path.as_str());
         }
         Value::Object(m)
     }
@@ -94,12 +100,12 @@ impl ToolSpanLog {
         let mut changed = Vec::new();
         for s in signals {
             match s {
-                Signal::ToolUse { id, name, at: Some(at), .. } if !at.is_empty() => {
+                Signal::ToolUse { id, name, at: Some(at), access, .. } if !at.is_empty() => {
                     if self.spans.contains(id) {
                         continue;
                     }
                     let Some(start_ms) = parse_iso(at) else { continue };
-                    let span = ToolSpan { id: id.clone(), terminal_id: self.terminal_id.clone(), agent_id: agent_id.to_owned(), tool: js_slice(name, MAX_TOOL_NAME).to_owned(), start: at.clone(), end: None, outcome: None };
+                    let span = ToolSpan { id: id.clone(), terminal_id: self.terminal_id.clone(), agent_id: agent_id.to_owned(), tool: js_slice(name, MAX_TOOL_NAME).to_owned(), start: at.clone(), end: None, outcome: None, file: access.clone() };
                     changed.push(span.clone());
                     self.spans.insert(id, Entry { span, start_ms, end_ms: None });
                 }
@@ -171,7 +177,7 @@ mod tests {
     const T0: i64 = 1_791_400_000_000;
 
     fn use_(id: &str, at: &str) -> Signal {
-        Signal::ToolUse { id: id.into(), name: "Bash".into(), summary: None, at: Some(at.into()), codex: false, device: false, touch: None, ask: None }
+        Signal::ToolUse { id: id.into(), name: "Bash".into(), summary: None, at: Some(at.into()), codex: false, device: false, touch: None, ask: None, access: None }
     }
 
     fn result(id: &str, at: &str, err: bool) -> Signal {

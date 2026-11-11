@@ -54,7 +54,9 @@ describe('OrbitView', () => {
     expect(node('t2').find('[role=img]').exists()).toBe(false)
     expect(node('t2').attributes('aria-label')).toContain('Codex')
     expect(w!.findAll('[data-orbit-sub]')).toHaveLength(1)
-    expect(w!.findAll('[data-orbit-sector]').map((s) => s.text()).sort()).toEqual(['api', 'app'])
+    expect(w!.findAll('[data-orbit-sector]').map((s) => s.text()).sort()).toEqual(['api', 'app', 'app'])
+    expect(w!.find('[data-star-map]').exists()).toBe(true)
+    expect(w!.find('[data-orbit-legend]').text()).toContain('How to read the map')
   })
 
   it('selects the neediest session first and shows its detail panel', () => {

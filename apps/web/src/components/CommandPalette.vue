@@ -47,6 +47,7 @@ import {
   Folder,
   SlidersHorizontal,
   Star,
+  Focus,
 } from 'lucide-vue-next'
 import { DEV_TOOLS } from '../lib/devTools'
 import { retireOverlay, withViewTransition } from '../lib/motion'
@@ -59,6 +60,7 @@ import { hasReleaseCheck } from '../lib/releaseCheck'
 import { hasCtxSources } from '../lib/ctxSources'
 import { visibleFonts } from '../lib/fonts'
 import { stepCodeSize } from '../composables/useWheelZoom'
+import { useFocusMode } from '../composables/useFocusMode'
 import { useTipsStore } from '../stores/tips'
 import { shortPath } from '../lib/format'
 import { highlightRuns } from '../lib/fuzzy'
@@ -122,6 +124,7 @@ const favorites = useFavoritesStore()
 const settings = useSettingsStore()
 const connection = useConnectionStore()
 const prompts = usePromptsStore()
+const focusMode = useFocusMode()
 const inbox = useInboxStore()
 const rail = useRail()
 const projectMru = useProjectMru()
@@ -283,6 +286,17 @@ const items = computed<Item[]>(() => {
             run: () => {
               ui.setView('workspace')
               ui.projectSwitcher = true
+            },
+          },
+          {
+            id: 'c:focusMode',
+            group: 'actions' as const,
+            label: t('tabsV93.palette'),
+            sub: isMac ? '⌘.' : 'Ctrl+.',
+            icon: Focus,
+            run: () => {
+              ui.setView('workspace')
+              focusMode.toggle()
             },
           },
           {

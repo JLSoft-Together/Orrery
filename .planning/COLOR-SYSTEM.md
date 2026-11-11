@@ -107,3 +107,8 @@ A theme may also change shape, never by component code: tokens with Apple defaul
 
 `--ccm-dim-inactive` below 1 is the one owner-approved exception to rule 6 (whole-element opacity ≥ 0.85): the whole inactive pane fades, text inside keeps its ink. `lib/themes.test.ts` checks every v91 block names all shape tokens and that the `:root` defaults stay Apple.
 
+
+## v95 theme Ngân hà (`galaxy`, dark only)
+Neutral black, no blue tint: canvas `#040405`, panel `#0b0b0d` (`--ccm-panel-bg`), surface/card `#0e0e11`, raised `#18181c`, control `#1f1f24`, lines `#1d1d21` / `#232328`, terminal well `#060607`, ink `#ececf1`, muted `#a6a6b0`, faint `#85858f`. Accent and agent colours equal Orrery dark; shape tokens equal Orrery dark.
+
+Stars are the one exception to "no decoration" (owner, 2026-11-11): token `--ccm-sky` (layered radial-gradients, two tiles 280x260 and 120x110, alpha 0.2-0.55, white / pale blue / pale yellow) with `--ccm-sky-size`; default `none` in `style.css` `:root`. Painted only by `html`, `.ccm-titlebar`, `.ccm-footer` and the utility `.ccm-sky` (canvas colour + sky, fixed attachment so every layer lines up); never behind text-bearing surfaces. `:root[data-stars="off"]` forces `none`. Static, no blur, no animation. Rule 9 contrast is checked on surface / raised, never on the stars.

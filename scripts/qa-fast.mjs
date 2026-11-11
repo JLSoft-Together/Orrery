@@ -35,6 +35,7 @@ const E2E_MAP = [
   [/csp/, ['csp']],
   [/useCompact|compact/i, ['v51-compact']],
   [/themes|style\.css|ThemePicker|Appearance/, ['v91-themes']],
+  [/termIme|TermPane\.vue|DropTerminal\.vue/, ['term-ime']],
 ]
 if (flag('all-e2e-map')) {
   for (const [re, list] of E2E_MAP) console.log(`${re.source}  →  ${list.join(', ')}`)

@@ -5,7 +5,7 @@ import { GitCompareArrows, History, LoaderCircle, RotateCcw } from 'lucide-vue-n
 import { absoluteIn, dirOfRel } from '../../lib/changesView'
 import { now, relativeTime } from '../../lib/format'
 import { baseName, cpDiff, cpRestore, type Checkpoint, type CheckpointFile } from '../../lib/preview'
-import { turnPair } from '../../lib/turnReview'
+import { parseCpLabel, turnPair } from '../../lib/turnReview'
 import { useCheckpointsStore } from '../../stores/checkpoints'
 import { dirKey } from '../../stores/favorites'
 
@@ -72,8 +72,7 @@ function toggle(path: string): void {
 }
 
 const labelOf = (label: string): string => {
-  const [kind, ...rest] = label.split(':')
-  const title = rest.join(':')
+  const { kind, title } = parseCpLabel(label)
   return kind === 'before' || kind === 'after' ? t(`workspace.checkpoints.${kind}`, { title }) : label
 }
 const STATUS_CLASS = { A: 'text-diff-add', D: 'text-diff-del', M: 'text-diff-mod' } as const

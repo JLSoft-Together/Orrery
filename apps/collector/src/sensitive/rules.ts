@@ -37,6 +37,29 @@ const FILE_TOOLS: Record<string, string> = { Edit: 'file_path', Write: 'file_pat
 const SHELL_TOOLS = new Set(['Bash', 'PowerShell'])
 const MAX_COMMAND = 20_000
 
+export interface FileAccess {
+  kind: 'edit' | 'read'
+  path: string
+}
+
+const ACCESS_TOOLS: Record<string, { kind: FileAccess['kind']; key: string }> = {
+  Edit: { kind: 'edit', key: 'file_path' },
+  Write: { kind: 'edit', key: 'file_path' },
+  MultiEdit: { kind: 'edit', key: 'file_path' },
+  NotebookEdit: { kind: 'edit', key: 'notebook_path' },
+  Read: { kind: 'read', key: 'file_path' },
+}
+
+const ABSOLUTE = /^(\/|\\\\|[A-Za-z]:[\\/])/
+
+export function fileAccessOf(name: string, input: unknown): FileAccess | null {
+  const spec = Object.hasOwn(ACCESS_TOOLS, name) ? ACCESS_TOOLS[name] : undefined
+  if (!spec || !isObj(input)) return null
+  const file = input[spec.key]
+  if (typeof file !== 'string' || file.length === 0 || file.length >= 1024 || !ABSOLUTE.test(file)) return null
+  return { kind: spec.kind, path: file.replace(/\\/g, '/') }
+}
+
 export function touchOf(name: string, input: unknown): ToolTouch | null {
   if (!isObj(input)) return null
   const key = FILE_TOOLS[name]

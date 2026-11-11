@@ -2,10 +2,10 @@ import os from 'node:os'
 import { parseTelegramAsk, toolSummaryOf, type CacheTtl, type LimitHit, type TelegramAsk } from '@ccm/shared'
 import { socketKey } from './registry'
 import { portConflictIn } from './resources/ports'
-import { touchOf, type ToolTouch } from './sensitive/rules'
+import { fileAccessOf, touchOf, type FileAccess, type ToolTouch } from './sensitive/rules'
 
 export type Signal =
-  | { k: 'tool_use'; id: string; name: string; summary?: string; at?: string; codex?: true; device?: true; touch?: ToolTouch; ask?: TelegramAsk }
+  | { k: 'tool_use'; id: string; name: string; summary?: string; at?: string; codex?: true; device?: true; touch?: ToolTouch; ask?: TelegramAsk; file?: FileAccess }
   | { k: 'tool_result'; toolUseId: string; isError: boolean; asyncLaunched: boolean; at?: string; portConflict?: number }
   | { k: 'turn_end'; at?: string }
   | { k: 'assistant_end'; messageId?: string; at?: string }
@@ -181,6 +181,7 @@ export function extractSignals(rec: unknown): Signal[] {
         if (isObj(b) && b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
           const touch = touchOf(b.name, b.input)
           const ask = askOf(b.name, b.input)
+          const file = fileAccessOf(b.name, b.input)
           const summary = toolSummaryOf(b.name, b.input, HOME, process.platform)
           out.push({
             k: 'tool_use',
@@ -192,6 +193,7 @@ export function extractSignals(rec: unknown): Signal[] {
             ...(mentionsDevice(b.name, b.input) ? { device: true as const } : {}),
             ...(touch ? { touch } : {}),
             ...(ask ? { ask } : {}),
+            ...(file ? { file } : {}),
           })
           if (b.name === 'SendMessage' && isObj(b.input) && b.input.to === 'main') out.push({ k: 'send_main', key: b.id, at })
         }

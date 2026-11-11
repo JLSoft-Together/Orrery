@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSensitiveSettings, type TerminalSession } from '@ccm/shared'
-import { classifyTouch, commandHits, normPath, resolveTarget, shortPath, touchOf, type ClassifyContext } from '../src/sensitive/rules'
+import { classifyTouch, commandHits, fileAccessOf, normPath, resolveTarget, shortPath, touchOf, type ClassifyContext } from '../src/sensitive/rules'
 import { SensitiveWatch } from '../src/sensitive/watch'
 import { extractSignals } from '../src/transcript'
 import { Toaster, phoneName } from '../src/toast'
@@ -85,6 +85,21 @@ describe('paths', () => {
     expect(resolveTarget('..\\x', 'F:/work/app', 'C:/Users/me', true)).toBe('f:/work/x')
     expect(resolveTarget('$TMP', 'F:/work/app', 'C:/Users/me', true)).toBeNull()
     expect(shortPath('/var/lib/a/b/c/d', undefined, '/home/me', false)).toBe('…/b/c/d')
+  })
+})
+
+describe('file access', () => {
+  it('Edit / Write / MultiEdit / NotebookEdit / Read with absolute short paths only, slashes normalised', () => {
+    expect(fileAccessOf('Edit', { file_path: 'C:\\a\\b.ts', old_string: 'secret' })).toEqual({ kind: 'edit', path: 'C:/a/b.ts' })
+    expect(fileAccessOf('Read', { file_path: '/home/a.ts' })).toEqual({ kind: 'read', path: '/home/a.ts' })
+    expect(fileAccessOf('NotebookEdit', { notebook_path: '/n.ipynb' })).toEqual({ kind: 'edit', path: '/n.ipynb' })
+    expect(fileAccessOf('Read', { file_path: 'rel.ts' })).toBeNull()
+    expect(fileAccessOf('Bash', { command: 'cat /etc/x' })).toBeNull()
+    expect(fileAccessOf('toString', { file_path: '/a' })).toBeNull()
+    expect(fileAccessOf('Edit', { file_path: `/${'a'.repeat(1100)}` })).toBeNull()
+    const sig = extractSignals({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Edit', input: { file_path: '/a/b.ts', old_string: 'OLD', new_string: 'NEW' } }] } })
+    expect(sig.find((s) => s.k === 'tool_use')).toMatchObject({ file: { kind: 'edit', path: '/a/b.ts' } })
+    expect(JSON.stringify(sig)).not.toContain('OLD')
   })
 })
 

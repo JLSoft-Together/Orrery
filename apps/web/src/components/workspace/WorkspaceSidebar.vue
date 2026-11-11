@@ -169,10 +169,11 @@ const listItems = computed<ListItem[]>(() => {
     return out
   }
   const labels = s.agents.length > 0 && s.opened.length > 0
-  if (labels) out.push({ kind: 'label', key: 'label:agents', text: t('railV79.agents') })
+  if (labels) out.push({ kind: 'label', key: 'label:agents', text: t('railV92.agents') })
   add(s.agents)
-  if (labels) out.push({ kind: 'label', key: 'label:opened', text: t('railV79.opened') })
+  if (labels) out.push({ kind: 'label', key: 'label:opened', text: t('railV92.opened') })
   add(s.opened)
+  if (s.others.length) out.push({ kind: 'label', key: 'label:recent', text: t('railV92.recent') })
   if (s.others.length && !filtering.value) out.push({ kind: 'more', key: 'more:others', n: s.others.length })
   if (othersShown.value) add(s.others)
   return out
@@ -805,7 +806,7 @@ function pickNew(choice: SplitChoice): void {
     <TransitionGroup
       tag="div"
       name="ccm-list"
-      class="relative flex flex-col gap-1.5"
+      class="relative flex flex-col gap-0.5"
       :role="clusters.length ? 'tree' : undefined"
       :aria-label="clusters.length ? t('workspace.railTree.label') : undefined"
       @before-leave="pinLeaving"
@@ -839,7 +840,7 @@ function pickNew(choice: SplitChoice): void {
           @context-checkout="(k, e) => onCheckoutMenu(item.cluster, k, e)"
           @context-row="onRowMenu"
         />
-        <p v-else-if="item.kind === 'label'" :key="item.key" class="px-1.5 pt-1 text-2xs font-medium text-ink-faint" role="presentation" data-rail-label>{{ item.text }}</p>
+        <p v-else-if="item.kind === 'label'" :key="item.key" class="ccm-label px-2 pt-2.5 pb-1 text-2xs font-medium text-ink-faint first:pt-1" role="presentation" data-rail-label>{{ item.text }}</p>
         <button
           v-else
           :key="item.key"

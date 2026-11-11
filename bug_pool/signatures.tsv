@@ -1,0 +1,2 @@
+# regex chữ ký lỗi (grep -iE)	tags	file bug	fix 1 dòng
+insertReplacementText|/uuuu|IME tiếng Việt.*(mất|trùng) chữ|Telex.*terminal	ime,telex,xterm,webkit,webview2,terminal	ui/terminal-vietnamese-ime	lib/termIme.ts installReplacementIme: insertReplacementText → DEL×phần thay + chữ mới, gửi lại insertText xterm bỏ

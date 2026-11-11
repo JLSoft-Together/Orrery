@@ -86,7 +86,7 @@ fn native_groovy_app() {
 fn kts_catalog_multi_module_and_kmp() {
     let root = fixture("android", &[("settings.gradle.kts", "include(\":app\")"), ("gradle/libs.versions.toml", "[plugins]\nandroid-application = { id = \"com.android.application\", version = \"8.5.0\" }"), ("app/build.gradle.kts", "plugins {\n    alias(libs.plugins.android.application)\n}"), ("app/src/main/AndroidManifest.xml", LAUNCHER_MANIFEST)]);
     let p = first(&root);
-    assert_eq!(p["name"].as_str().unwrap(), pathx::basename(&root, false));
+    assert_eq!(p["name"].as_str().unwrap(), pathx::basename(&root, pathx::host_win()));
     assert_eq!(p["modules"][0]["type"], "application");
 
     let root = fixture("android", &[("settings.gradle", "include ':app', ':core:ui', ':lib'\nproject(':lib').projectDir = file('libs/mylib')"), ("app/build.gradle", "apply plugin: 'com.android.application'"), ("app/src/main/AndroidManifest.xml", LAUNCHER_MANIFEST), ("core/ui/build.gradle", "plugins { id 'com.android.library' }"), ("core/ui/src/main/AndroidManifest.xml", PLAIN_MANIFEST), ("libs/mylib/build.gradle", "plugins { id 'java-library' }")]);
@@ -110,7 +110,7 @@ fn frameworks() {
 
     let cap = fixture("android", &[("capacitor.config.ts", "export default {}"), ("android/settings.gradle", "include ':app'"), ("android/app/build.gradle", "apply plugin: 'com.android.application'")]);
     let p = first(&cap);
-    assert_eq!((p["framework"].as_str().unwrap(), p["name"].as_str().unwrap()), ("capacitor", pathx::basename(&cap, false).as_str()));
+    assert_eq!((p["framework"].as_str().unwrap(), p["name"].as_str().unwrap()), ("capacitor", pathx::basename(&cap, pathx::host_win()).as_str()));
 
     let fl = fixture("android", &[("pubspec.yaml", "name: demo\ndependencies:\n  flutter:\n    sdk: flutter\n"), ("android/settings.gradle.kts", "include(\":app\")"), ("android/app/build.gradle.kts", "plugins { id(\"com.android.application\") }"), ("android/app/src/main/AndroidManifest.xml", LAUNCHER_MANIFEST)]);
     assert!(detect_android(&fl).is_empty());

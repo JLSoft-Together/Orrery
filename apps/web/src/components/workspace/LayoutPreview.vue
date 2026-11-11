@@ -406,6 +406,10 @@ async function render(): Promise<void> {
   daemonStarting.value = status.value?.daemon !== 'ready'
   const theme = opts.value.theme || null
   const locale = opts.value.locale || null
+  if (box.value.width <= 0 && canvas.value) {
+    const { clientWidth, clientHeight } = canvas.value
+    if (clientWidth > 0) box.value = { width: clientWidth, height: clientHeight }
+  }
   let res: LayoutRenderResult
   let usedScale = 1
   if (opts.value.compare) {

@@ -25,7 +25,7 @@ fn repo(tag: &str) -> PathBuf {
     std::fs::write(dir.join(".env"), "SECRET=1").unwrap();
     sh(&dir, &["add", "a.txt"]);
     sh(&dir, &["commit", "-q", "-m", "init"]);
-    std::fs::canonicalize(&dir).unwrap()
+    resolve_cwd(Some(&dir.to_string_lossy()), &std::env::temp_dir()).unwrap()
 }
 
 fn ask(dir: &Path, msg: Value, panes: &[PaneDir]) -> Value {
@@ -65,7 +65,7 @@ fn inside_checks_whole_path_components() {
 fn a_folder_outside_git_lists_nothing_and_refuses_changes() {
     let plain = std::env::temp_dir().join(format!("orrery-wt-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
-    let plain = std::fs::canonicalize(&plain).unwrap();
+    let plain = resolve_cwd(Some(&plain.to_string_lossy()), &std::env::temp_dir()).unwrap();
     let list = ask(&plain, json!({ "t": "wt.list" }), &[]);
     assert_eq!(list["repo"], Value::Null);
     assert_eq!(ask(&plain, json!({ "t": "wt.add", "branch": "x" }), &[])["code"], "notRepo");

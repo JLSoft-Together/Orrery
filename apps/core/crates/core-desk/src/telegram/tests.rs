@@ -60,6 +60,14 @@ const TOKEN: &str = "12345:ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const OWNER: i64 = 7;
 const CHAT: &str = "-1001234567";
 
+fn proj(p: &str) -> String {
+    if cfg!(windows) {
+        format!("C:{}", p.replace('/', "\\"))
+    } else {
+        p.to_string()
+    }
+}
+
 fn ok(result: Value) -> (u16, Value) {
     (200, json!({"ok": true, "result": result}))
 }
@@ -134,7 +142,7 @@ fn setup(w: &World, receiving: bool) {
     w.tg.who_am_i();
     w.tg.lock().data.owner = Some((OWNER, "Jin".into()));
     let mut input = serde_json::Map::new();
-    input.insert("project".into(), json!("/p/app"));
+    input.insert("project".into(), json!(proj("/p/app")));
     input.insert("chatId".into(), json!(CHAT));
     input.insert("threadId".into(), json!(5));
     assert_eq!(w.tg.set_route(&input)["ok"], true);
@@ -223,7 +231,7 @@ fn read_members_only_view_and_close_is_owner_only() {
 fn reply_buttons_answer_once_and_only_for_the_owner() {
     let w = world();
     setup(&w, false);
-    let res = w.tg.report("/p/app", "Pick one", None, Some("pane-1"), Some(vec![("Yes".into(), "yes please".into())]));
+    let res = w.tg.report(&proj("/p/app"), "Pick one", None, Some("pane-1"), Some(vec![("Yes".into(), "yes please".into())]));
     assert_eq!(res["buttons"], 1);
     let keys = w.http.calls.lock().unwrap().iter().rev().find(|(m, _)| m == "sendMessage").unwrap().1["reply_markup"].clone();
     let data = keys["inline_keyboard"][0][0]["callback_data"].as_str().unwrap().to_string();
@@ -241,7 +249,7 @@ fn reply_buttons_answer_once_and_only_for_the_owner() {
     let answers: Vec<String> = w.http.calls.lock().unwrap().iter().filter(|(m, _)| m == "answerCallbackQuery").filter_map(|(_, b)| b["text"].as_str().map(str::to_string)).collect();
     assert_eq!(answers, vec!["Only the paired account can use these buttons.", "✓ Yes — sent to the session.", "Already answered: Yes"]);
     w.tg.lock().data.owner = None;
-    let none = w.tg.report("/p/app", "x", None, Some("pane-1"), Some(vec![("A".into(), "a".into())]));
+    let none = w.tg.report(&proj("/p/app"), "x", None, Some("pane-1"), Some(vec![("A".into(), "a".into())]));
     assert_eq!(none, json!({"ok": false, "error": "not-paired"}));
     w.tg.stop();
 }
@@ -270,14 +278,14 @@ fn a_429_holds_the_chat_and_queues_the_message() {
 fn episodes_go_to_the_topic_with_buttons_only_when_receiving() {
     let w = world();
     setup(&w, false);
-    let e = json!({"type": "telegram", "episode": "e1", "reason": "permission", "terminalId": "t1", "name": "app", "cwd": "/p/app/src", "since": 5, "tool": "Bash"});
+    let e = json!({"type": "telegram", "episode": "e1", "reason": "permission", "terminalId": "t1", "name": "app", "cwd": proj("/p/app/src"), "since": 5, "tool": "Bash"});
     assert!(w.tg.handle(&e));
     assert!(!w.tg.handle(&e));
     let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
     assert_eq!(last["text"], "🔐 <b>app</b> needs approval: Bash");
     assert!(last.get("reply_markup").is_none());
     w.tg.lock().receiving = true;
-    assert!(w.tg.handle(&json!({"type": "telegram", "episode": "e2", "reason": "permission", "terminalId": "t1", "name": "app", "cwd": "/p/app", "since": 5, "tool": "ExitPlanMode"})));
+    assert!(w.tg.handle(&json!({"type": "telegram", "episode": "e2", "reason": "permission", "terminalId": "t1", "name": "app", "cwd": proj("/p/app"), "since": 5, "tool": "ExitPlanMode"})));
     let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
     assert_eq!(last["reply_markup"]["inline_keyboard"][0][0]["text"], "✅ Approve plan");
     assert_eq!(last["message_thread_id"], 5);

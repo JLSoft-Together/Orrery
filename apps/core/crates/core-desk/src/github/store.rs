@@ -181,7 +181,8 @@ mod tests {
         st.remove("a");
         st.save();
         let text = std::fs::read_to_string(&file).unwrap();
-        assert_eq!(text, "{\n  \"accounts\": [],\n  \"defaultId\": null,\n  \"repos\": {\n    \"/x\": \"system\"\n  }\n}");
+        let key = serde_json::to_string(&root_key("/x")).unwrap();
+        assert_eq!(text, format!("{{\n  \"accounts\": [],\n  \"defaultId\": null,\n  \"repos\": {{\n    {key}: \"system\"\n  }}\n}}"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

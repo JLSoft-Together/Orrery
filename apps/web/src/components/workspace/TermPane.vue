@@ -30,7 +30,7 @@ import { SCAN_ROWS } from '../../lib/promptAttachments'
 import { desktop, hasDeepSeek, presetEnabled } from '../../lib/desktop'
 import { clipboardImageBlob, imageData } from '../../lib/imageData'
 import { dragPaths, hasDragPath } from '../../lib/explorer/dragPath'
-import { hasAttachments, pathForFile } from '../../lib/preview'
+import { hasAttachments, pathsForFiles } from '../../lib/preview'
 import { useAgentsStore } from '../../stores/agents'
 import { fromPath, useAttachmentsStore, type NewAttachment } from '../../stores/attachments'
 import { useSettingsStore } from '../../stores/settings'
@@ -690,8 +690,10 @@ async function onDrop(e: DragEvent): Promise<void> {
     const it = fromPath(path, 'drop')
     if (keep(it)) items.push(it)
   }
-  for (const file of paths.length ? [] : Array.from(e.dataTransfer?.files ?? [])) {
-    const path = pathForFile(file)
+  const files = paths.length ? [] : Array.from(e.dataTransfer?.files ?? [])
+  const filePaths = await pathsForFiles(files)
+  for (const [i, file] of files.entries()) {
+    const path = filePaths[i]
     if (path) {
       const it = fromPath(path, 'drop')
       if (keep(it)) items.push(it)

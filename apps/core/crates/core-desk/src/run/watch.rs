@@ -145,7 +145,8 @@ mod tests {
         let r = json!({"root": "/r", "projects": [{"kind": "flutter", "dir": "/r/app"}, {"kind": "android", "dir": "/r/and", "modules": [{"dir": "/r/and/app", "manifest": "/r/and/app/src/main/AndroidManifest.xml"}]}]});
         let d = watch_dirs(&r);
         assert_eq!(d[0], "/r");
-        assert!(d.contains(&"/r/app/android/app".to_string()) && d.contains(&"/r/and/gradle".to_string()) && d.contains(&"/r/and/app/src/main".to_string()));
+        let r = crate::preview::paths::resolve_str;
+        assert!(d.contains(&r("/r/app/android/app")) && d.contains(&r("/r/and/gradle")) && d.contains(&"/r/and/app/src/main".to_string()));
     }
 
     #[test]

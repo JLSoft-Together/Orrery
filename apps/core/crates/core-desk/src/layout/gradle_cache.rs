@@ -394,7 +394,7 @@ mod tests {
         let dest = d.join("out/g/a-1.0");
         let (res, jars) = extract_aar(&aar.to_string_lossy(), &dest.to_string_lossy()).unwrap();
         assert_eq!(res, Some(dest.join("res").to_string_lossy().to_string()));
-        assert_eq!(jars, vec![dest.join("classes.jar").to_string_lossy().to_string(), dest.join("libs/x.jar").to_string_lossy().to_string()]);
+        assert_eq!(jars, vec![dest.join("classes.jar").to_string_lossy().to_string(), dest.join("libs").join("x.jar").to_string_lossy().to_string()]);
         assert!(!dest.join("assets").exists() && !dest.join("libs/sub").exists());
         assert_eq!(std::fs::read_to_string(dest.join(READY)).unwrap(), READY_VERSION);
         std::fs::remove_file(&aar).unwrap();

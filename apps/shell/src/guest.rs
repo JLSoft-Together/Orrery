@@ -127,6 +127,7 @@ fn builder(app: &AppHandle, id: u64, url: Url) -> WebviewBuilder<tauri::Wry> {
     let origin = shell.origin.clone();
     let (nav_origin, pop_app, load_app, title_app) = (origin.clone(), app.clone(), app.clone(), app.clone());
     WebviewBuilder::new(label(id), WebviewUrl::External(url))
+        .disable_drag_drop_handler()
         .data_directory(shell.webview_dir.clone())
         .initialization_script(SCRIPT)
         .zoom_hotkeys_enabled(false)

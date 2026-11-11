@@ -284,9 +284,10 @@ mod tests {
     #[test]
     fn build_errors() {
         let e = parse_build_error("e: file:///tmp/a%20b/Main.kt:12:5 Unresolved reference: x", "/p").unwrap();
-        assert_eq!((e.file.as_str(), e.line, e.col, e.severity.as_str()), ("/tmp/a b/Main.kt", 12, 5, "error"));
+        let r = |p: &str| crate::util::path_str(&crate::util::resolve(p));
+        assert_eq!((e.file.as_str(), e.line, e.col, e.severity.as_str()), (r("/tmp/a b/Main.kt").as_str(), 12, 5, "error"));
         let d = parse_build_error("lib/main.dart:3:4: Error: bad", "/p").unwrap();
-        assert_eq!(d.file, "/p/lib/main.dart");
+        assert_eq!(d.file, r("/p/lib/main.dart"));
         let w = parse_build_error("WARNING: res/a.xml:2: AAPT: warning: odd", "/p").unwrap();
         assert_eq!(w.severity, "warning");
         assert!(parse_build_error("nothing", "/p").is_none());

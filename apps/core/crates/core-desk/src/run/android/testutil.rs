@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static N: AtomicUsize = AtomicUsize::new(0);
 
 pub fn tmp_dir(tag: &str) -> String {
-    let base = std::fs::canonicalize(std::env::temp_dir()).unwrap_or_else(|_| std::env::temp_dir());
+    let base = std::fs::canonicalize(std::env::temp_dir()).map(crate::mcp::paths::strip_verbatim).unwrap_or_else(|_| std::env::temp_dir());
     let dir = base.join(format!("ccm-{tag}-{}-{}", std::process::id(), N.fetch_add(1, Ordering::SeqCst)));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();

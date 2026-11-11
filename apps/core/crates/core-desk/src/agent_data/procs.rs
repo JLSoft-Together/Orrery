@@ -75,6 +75,9 @@ pub fn alive(pid: f64) -> bool {
 
 #[cfg(not(target_os = "macos"))]
 pub fn alive(pid: f64) -> bool {
+    if !(pid.is_finite() && pid >= 1.0 && pid <= u32::MAX as f64 && pid.fract() == 0.0) {
+        return false;
+    }
     core_procs::table().is_some_and(|t| t.iter().any(|p| p.pid as f64 == pid))
 }
 

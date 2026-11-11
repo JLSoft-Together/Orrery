@@ -532,7 +532,7 @@ mod tests {
         let read = |r: &str| (r == "a.md").then(|| "A body\n".to_string());
         assert_eq!(inline_imports("x\n@a.md\n```\n@a.md\n```\n@missing.md\ny", &read), "x\nA body\n```\n@a.md\n```\ny");
         assert!(import_path("../x.md", "/root/c", "/h").is_none());
-        assert_eq!(import_path("a.md", "/root/c", "/h").as_deref(), Some("/root/c/a.md"));
+        assert_eq!(import_path("a.md", "/root/c", "/h"), Some(crate::claude::resolve("/root/c/a.md")));
         assert!(import_path("~/x.md", "/root/c", "/h").is_none());
     }
 

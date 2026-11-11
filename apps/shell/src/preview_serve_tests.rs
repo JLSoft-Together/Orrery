@@ -116,7 +116,7 @@ fn requests_are_checked_for_method_host_token_and_escape() {
     let tok = s.register(&join(&dir, "sub")).unwrap();
     let ok = get(&s, "GET", &format!("/{tok}/a.png?r=1#x"), &[]);
     assert_eq!(ok.status, 200);
-    assert_eq!(ok.body, Body::File { path: join(&dir, "sub/a.png"), start: 0, len: 3 });
+    assert_eq!(ok.body, Body::File { path: join(&join(&dir, "sub"), "a.png"), start: 0, len: 3 });
     assert_eq!(ok.header("Content-Type"), Some("image/png"));
     assert_eq!(ok.header("Cross-Origin-Resource-Policy"), Some("cross-origin"));
     assert_eq!(ok.header("Cache-Control"), Some("no-store"));

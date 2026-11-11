@@ -211,6 +211,19 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
       return ''
     }
   },
+  pathsForFiles: (files: File[]): Promise<string[]> => {
+    const many = (webUtils as { getPathsForFiles?: (files: File[]) => Promise<string[]> }).getPathsForFiles
+    if (many) return many(files)
+    return Promise.resolve(
+      files.map((file) => {
+        try {
+          return webUtils.getPathForFile(file)
+        } catch {
+          return ''
+        }
+      }),
+    )
+  },
   captureGuest: (webContentsId: number): Promise<unknown> => ipcRenderer.invoke('ccm:capture-guest', webContentsId),
   captureRect: (rect: { x: number; y: number; width: number; height: number }): Promise<unknown> => ipcRenderer.invoke('ccm:capture-rect', rect),
   projectRoot: (dir: string, remembered?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:project-root', dir, remembered === true),

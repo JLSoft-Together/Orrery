@@ -45,7 +45,7 @@ Flow: `main.ts` `ready()` → `backups.applyPending()` → `createMainWindow()` 
 
 ## Preload
 
-- `src/preload.ts` → `stage/preload.cjs` (sandboxed): `window.ccmDesktop` = every bridge method (pty, pickers, logs, preview, changes, log / git, explorer, layouts, scripts, run, layout preview, Flutter preview, extensions, file write / editors, appearance, open-pane, capture…); `on*` subscribers return an unsubscribe; `pathForFile` = `webUtils.getPathForFile`. Web types: `apps/web/src/lib/desktop.ts` `DesktopBridge`.
+- `src/preload.ts` → `stage/preload.cjs` (sandboxed): `window.ccmDesktop` = every bridge method (pty, pickers, logs, preview, changes, log / git, explorer, layouts, scripts, run, layout preview, Flutter preview, extensions, file write / editors, appearance, open-pane, capture…); `on*` subscribers return an unsubscribe; `pathForFile` = `webUtils.getPathForFile`; `pathsForFiles` (async) = shim `webUtils.getPathsForFiles` when present (Tauri WebView2, `apps/shell/src/drop_paths.rs`), else `getPathForFile` per file. Web types: `apps/web/src/lib/desktop.ts` `DesktopBridge`.
 
 ## PTY host & MCP (v18, v49; v87 bước 2: control contract + PtyBroker + MCP ở main)
 

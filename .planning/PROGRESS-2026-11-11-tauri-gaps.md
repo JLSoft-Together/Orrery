@@ -21,3 +21,16 @@ Chủ nhân chốt: làm hết, test trên mac, xong chủ nhân test máy Windo
 
 ## UI
 - Nút `ccm-btn-primary` / `ccm-btn-danger` thiếu class gốc `ccm-btn` (không padding / height / radius / cỡ chữ): sửa 8 file (`XmlPreviewSettings`, `DrawablePreview`, `FlutterPreviewPanel`, `LayoutPreview`, `PermAdvisorDialog`, `StringsDialog`, `AgentDataSettings`, `ResourcesDialog`).
+
+## QA Windows (2026-11-11)
+- Sửa trong lúc QA (chưa commit): nhánh git cho pane (`pty_branch.rs`), CSP `connect-src` thêm `ipc:` / `http://ipc.localhost`, `disable_drag_drop_handler` (`window.rs` / `guest.rs`), `procs.rs` `alive` bỏ pid < 1, `apps/core/.gitattributes` `*.dart eol=lf`, test chạy được trên Windows.
+- E2E `run.cjs --shell=tauri` lượt 2: 1064 PASS / 27 FAIL, `electron.err` không còn `no host for` / `not ported`.
+- Phân loại 27 fail:
+  - Script chỉ chạy được trên Electron (không sửa app): `v74`, `v75`, `v76b`, `v77a`, `v76` "block next time" (patch `dialog.showMessageBox` qua Node inspector của main), `v49-open` (spawn Electron làm second instance).
+  - Electron cũng fail (script cũ): `p5`, `v67-ide`, `agent-map`, `v25` main agent node (Orbit thay Sky từ v88), `v76` resources / sensitive / keep awake, `v79-shots`.
+  - Chập chờn: `v70-tools` (chạy riêng 43/43), `tabs-cwd` (17/17).
+  - Lỗi Tauri thật, chưa sửa:
+    1. `v25` drop file từ OS: shim `webUtils.getPathForFile` trả `""` → không ra `@path`. Web gọi đồng bộ (`TermPane.vue`, `DeviceFilesDialog.vue`). Hướng sửa: API bất đồng bộ, Windows dùng `chrome.webview.postMessageWithAdditionalObjects` → host đọc `CoreWebView2File.Path`; macOS chưa có cách.
+    2. `layout-speed` fit mode: frame đầu render 1080 px thay vì đúng cỡ đang hiện. Rust giữ nguyên `scale`; nghi `box.width` = 0 lúc render đầu trên WebView2 (`LayoutPreview.vue` `wantScale`), watch chỉ render lại khi cần nét hơn. Chưa probe.
+    3. `v73` pane PowerShell exit 3 không có dấu ✗: gap OSC 633 trên Tauri (đã biết từ 4.0.0).
+- 2026-11-11 ~04:20 app Orrery 4.0.1 tự tắt (pty.log `shutdown`, mở lại 04:21:09) trong lúc chạy E2E Electron so sánh `agent-map` → phiên Claude chết theo. Chạy lại 5 script Electron sau đó không bị tắt; chưa rõ nguyên nhân.

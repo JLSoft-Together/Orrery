@@ -172,7 +172,7 @@ export function contentSecurityPolicy(html: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: http://127.0.0.1:* http://localhost:*",
     "font-src 'self' data:",
-    "connect-src 'self' ws://127.0.0.1:*",
+    "connect-src 'self' ws://127.0.0.1:* ipc: http://ipc.localhost",
     "worker-src 'self'",
     'frame-src http://127.0.0.1:* http://localhost:* https: http:',
     "object-src 'none'",

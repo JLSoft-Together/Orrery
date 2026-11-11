@@ -337,6 +337,7 @@ interface PreviewBridge {
   clipboardImageFile?: (file: string) => Promise<boolean>
   pickFiles?: () => Promise<string[]>
   pathForFile?: (file: File) => string
+  pathsForFiles?: (files: File[]) => Promise<string[]>
   captureGuest?: (webContentsId: number) => Promise<boolean>
 }
 
@@ -495,6 +496,12 @@ export const pickFiles = (): Promise<string[]> => bridge?.pickFiles?.() ?? Promi
 export const hasAttachments = typeof bridge?.pathForFile === 'function'
 /** Absolute path of a dropped file, '' when it has none (dragged out of a web page). */
 export const pathForFile = (file: File): string => bridge?.pathForFile?.(file) ?? ''
+export const pathsForFiles = async (files: File[]): Promise<string[]> => {
+  if (!files.length) return []
+  const many = bridge?.pathsForFiles
+  const paths = many ? await many(files).catch(() => [] as string[]) : []
+  return files.map((file, i) => (typeof paths[i] === 'string' && paths[i] ? paths[i] : pathForFile(file)))
+}
 export const captureGuest = (webContentsId: number): Promise<boolean> => bridge?.captureGuest?.(webContentsId) ?? Promise.resolve(false)
 export const hasCaptureGuest = typeof bridge?.captureGuest === 'function'
 

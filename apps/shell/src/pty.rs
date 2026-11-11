@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 
 use crate::config::{random_hex, uuid};
 use crate::mcp::McpLink;
+use crate::pty_branch::Branches;
 use crate::presets::{child_env, is_session_id, preset_command_with, resolve_cwd, AgentOpts, PRESETS};
 use crate::shim::{apply_shim_env, init_dir_for, shim_dir_for, write_shims, write_zsh_init};
 use crate::worktree::{self, PaneDir};
@@ -197,6 +198,16 @@ fn answer(msg: &Value, panes: &mut Panes, home: &Path, mcp: Option<&McpLink>) ->
     }
 }
 
+fn branch_target(msg: &Value, reply: Option<&Value>, panes: &Panes) -> Option<(String, String)> {
+    let id = msg.get("id").and_then(Value::as_str)?;
+    let dir = match msg.get("t").and_then(Value::as_str)? {
+        "spawned" => panes.dirs.get(id).filter(|d| !d.exited).map(|d| d.cwd.clone())?,
+        "cwd" => reply?.get("cwd").and_then(Value::as_str)?.to_owned(),
+        _ => return None,
+    };
+    (!dir.is_empty()).then(|| (id.to_owned(), dir))
+}
+
 impl PtyHost {
     pub fn new(bin: PathBuf, origin: String, version: String, log: PathBuf) -> PtyHost {
         PtyHost { bin, origin, version, log, host: Mutex::new(None), stopped: Mutex::new(false), panes: Arc::new(Mutex::new(Panes::default())) }
@@ -251,6 +262,8 @@ impl PtyHost {
         let shared = self.panes.clone();
         let _ = std::thread::Builder::new().name("pty-control".into()).spawn(move || {
             let home = home();
+            let out = writer.clone();
+            let branches = Branches::new(Arc::new(move |id: &str, branch: Option<&str>| send(&out, &json!({ "t": "branch", "id": id, "branch": branch }))));
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
                 let Ok(msg) = serde_json::from_str::<Value>(&line) else { continue };
@@ -269,8 +282,13 @@ impl PtyHost {
                     continue;
                 }
                 let reply = answer(&msg, &mut lock(&shared), &home, crate::mcp::link());
-                if let Some(reply) = reply {
-                    send(&writer, &reply);
+                if let Some(reply) = &reply {
+                    send(&writer, reply);
+                }
+                if let Some((id, dir)) = branch_target(&msg, reply.as_ref(), &lock(&shared)) {
+                    branches.track(&id, &dir);
+                } else if let (Some("removed"), Some(id)) = (msg.get("t").and_then(Value::as_str), msg.get("id").and_then(Value::as_str)) {
+                    branches.remove(id);
                 }
             }
         });

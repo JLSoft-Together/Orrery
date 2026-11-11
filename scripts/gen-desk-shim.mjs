@@ -34,7 +34,44 @@ export const ipcRenderer = {
 export const contextBridge = {
   exposeInMainWorld: (name, api) => Object.defineProperty(window, name, { value: Object.freeze(api), writable: false, configurable: false }),
 }
-export const webUtils = { getPathForFile: () => '' }
+const pathWaits = new Map()
+let pathListening = false
+export const webUtils = {
+  getPathForFile: () => '',
+  getPathsForFiles: (files) => {
+    const wv = window.chrome?.webview
+    const none = files.map(() => '')
+    if (!files.length || typeof wv?.postMessageWithAdditionalObjects !== 'function') return Promise.resolve(none)
+    if (!pathListening) {
+      pathListening = true
+      wv.addEventListener('message', (e) => {
+        const d = e.data
+        if (!d || d.ccm !== 'file-paths' || !pathWaits.has(d.id)) return
+        const done = pathWaits.get(d.id)
+        pathWaits.delete(d.id)
+        done(Array.isArray(d.paths) ? d.paths : [])
+      })
+    }
+    const id = crypto.randomUUID()
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        pathWaits.delete(id)
+        resolve(none)
+      }, 3000)
+      pathWaits.set(id, (paths) => {
+        clearTimeout(timer)
+        resolve(files.map((_, i) => (typeof paths[i] === 'string' ? paths[i] : '')))
+      })
+      try {
+        wv.postMessageWithAdditionalObjects(JSON.stringify({ ccm: 'file-paths', id }), files)
+      } catch {
+        clearTimeout(timer)
+        pathWaits.delete(id)
+        resolve(none)
+      }
+    })
+  },
+}
 `
 
 const electronShim = {

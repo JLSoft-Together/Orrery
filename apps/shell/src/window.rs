@@ -93,7 +93,7 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
     }
     #[cfg(windows)]
     {
-        b = b.decorations(false).shadow(true);
+        b = b.decorations(false).shadow(true).disable_drag_drop_handler();
     }
     Ok(b)
 }
@@ -107,6 +107,7 @@ pub fn create_main(app: &AppHandle, hidden: bool) -> Result<WebviewWindow, Strin
         b = b.inner_size(f64::from(s.width), f64::from(s.height));
     }
     let win = b.build().map_err(|e| e.to_string())?;
+    crate::drop_paths::attach(&win);
     if let Some(s) = saved.filter(|s| s.width >= 420 && s.height >= 480) {
         if on_screen(&win, &s) {
             let _ = win.set_position(PhysicalPosition::new(s.x, s.y));
@@ -154,7 +155,9 @@ pub fn open_compact(app: &AppHandle) {
     let shell = app.state::<Shell>();
     let url = format!("{}/?mode=compact", shell.origin);
     if let Ok(b) = builder(app, COMPACT, &url, &shell) {
-        let _ = b.inner_size(440.0, 720.0).min_inner_size(320.0, 360.0).build();
+        if let Ok(win) = b.inner_size(440.0, 720.0).min_inner_size(320.0, 360.0).build() {
+            crate::drop_paths::attach(&win);
+        }
     }
 }
 

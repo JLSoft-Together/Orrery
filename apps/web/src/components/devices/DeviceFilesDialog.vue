@@ -6,7 +6,7 @@ import type { DevFsEntry, DevFsErrorCode, DevFsProgress, DevFsScope, DevFsSource
 import { crumbs, devFsCancel, devFsDelete, devFsList, devFsMkdir, devFsOpen, devFsPull, devFsPush, fmtBytes, joinPath, onDevFsProgress, opensAsDir, parentOf, progressPct, SDCARD_ROOTS, transferId, validName } from '../../lib/devFiles'
 import { isPackageName } from '../../lib/deviceUiTest'
 import { dragPaths, hasDragPath } from '../../lib/explorer/dragPath'
-import { pathForFile } from '../../lib/preview'
+import { pathsForFiles } from '../../lib/preview'
 import { retireOverlay } from '../../lib/motion'
 import { useDeviceHandoff } from '../../composables/useDeviceHandoff'
 
@@ -206,12 +206,14 @@ function onDragOver(e: DragEvent): void {
   dropping.value = true
 }
 
-function onDrop(e: DragEvent): void {
+async function onDrop(e: DragEvent): Promise<void> {
   dropping.value = false
   if (!accepts(e) || busy.value) return
   e.preventDefault()
-  const fromOs = Array.from(e.dataTransfer?.files ?? []).map(pathForFile).filter(Boolean)
-  const paths = [...new Set([...dragPaths(e.dataTransfer), ...fromOs])]
+  const dragged = dragPaths(e.dataTransfer)
+  const fromOs = (await pathsForFiles(Array.from(e.dataTransfer?.files ?? []))).filter(Boolean)
+  if (busy.value) return
+  const paths = [...new Set([...dragged, ...fromOs])]
   if (!paths.length) {
     error.value = null
     note.value = t('devFiles.noDropPaths')

@@ -28,7 +28,7 @@ describe('contentSecurityPolicy', () => {
     const hash = createHash('sha256').update(inline).digest('base64')
     expect(csp).toContain(`script-src 'self' 'sha256-${hash}'`)
     expect(csp).not.toContain('unsafe-eval')
-    expect(csp).toContain("connect-src 'self' ws://127.0.0.1:*")
+    expect(csp).toContain("connect-src 'self' ws://127.0.0.1:* ipc: http://ipc.localhost")
     expect(csp).toContain("object-src 'none'")
   })
 

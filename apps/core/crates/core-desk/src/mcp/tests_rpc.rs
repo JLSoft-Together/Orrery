@@ -174,8 +174,9 @@ fn a_pane_token_reaches_its_tools_over_http_and_open_session_waits_for_the_spawn
 #[test]
 fn opens_stop_at_sixteen_panes() {
     let bridge = Arc::new(Pages { asked: Mutex::new(vec![]), reg: Mutex::new(None) });
-    let reg = Registry::new(bridge, false, std::env::temp_dir().to_string_lossy().into_owned(), Arc::new(crate::util::now_ms));
-    reg.add("p1", "claude", "/", None, None);
+    let tmp = std::env::temp_dir().to_string_lossy().into_owned();
+    let reg = Registry::new(bridge, false, tmp.clone(), Arc::new(crate::util::now_ms));
+    reg.add("p1", "claude", &tmp, None, None);
     reg.spawned("p1", 1);
     for i in 0..15 {
         reg.add(&format!("x{i}"), "shell", "/", None, None);

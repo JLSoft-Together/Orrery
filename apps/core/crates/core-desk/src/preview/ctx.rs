@@ -292,7 +292,8 @@ mod tests {
         assert_eq!(cwd_slug("/x😀"), "-x--");
         let text = "see @docs/a.md and @~/n.md.\n```\n@skip.md\n```\n`@in.md` @plain @x/y\n";
         let got = imports_of(text, "/proj", "/home/u");
-        assert_eq!(got, vec!["/proj/docs/a.md", "/home/u/n.md", "/proj/x/y"]);
+        let r = |p: &str| crate::util::path_str(&crate::util::resolve(p));
+        assert_eq!(got, vec![r("/proj/docs/a.md"), r("/home/u/n.md"), r("/proj/x/y")]);
         assert_eq!(line_count("a\nb\n"), 2);
         assert_eq!(line_count("a\nb"), 2);
         assert_eq!(line_count(""), 0);

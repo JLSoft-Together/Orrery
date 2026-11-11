@@ -281,8 +281,9 @@ mod tests {
         assert_eq!(formatter_for("/a/b.kts"), Some(Kind::Ktlint));
         assert_eq!(formatter_for("/a/.json"), None);
         assert_eq!(formatter_for("/a/Makefile"), None);
-        assert_eq!(dirs_up("/p/a/b/c.ts", "/p", false), vec!["/p/a/b", "/p/a", "/p"]);
-        assert_eq!(dirs_up("/q/c.ts", "/p", false), vec!["/q"]);
+        let r = |p: &str| crate::util::path_str(&crate::util::resolve(p));
+        assert_eq!(dirs_up("/p/a/b/c.ts", "/p", false), vec![r("/p/a/b"), r("/p/a"), r("/p")]);
+        assert_eq!(dirs_up("/q/c.ts", "/p", false), vec![r("/q")]);
     }
 
     #[test]

@@ -137,12 +137,16 @@ mod tests {
 
     #[test]
     fn the_scoped_allow_answers_only_preview_allowed_for_that_project() {
-        let p = serde_json::json!({ "path": "/work/app", "fresh": false });
-        assert_eq!(allow_answer(Some("/work/app"), "preview.allowed", &p), Some(serde_json::json!({ "real": "/work/app", "roots": [] })));
+        let root = if cfg!(windows) { r"C:\work" } else { "/work" };
+        let app = format!("{root}/app");
+        let other = format!("{root}/other");
+        let sub = format!("{root}/app/sub");
+        let p = serde_json::json!({ "path": app, "fresh": false });
+        assert_eq!(allow_answer(Some(&app), "preview.allowed", &p), Some(serde_json::json!({ "real": app, "roots": [] })));
         assert_eq!(allow_answer(None, "preview.allowed", &p), None);
-        assert_eq!(allow_answer(Some("/work/other"), "preview.allowed", &p), None);
-        assert_eq!(allow_answer(Some("/work/app"), "preview.checkDir", &serde_json::json!({ "dir": "/work/app" })), None);
-        assert_eq!(allow_answer(Some("/work/app"), "preview.allowed", &serde_json::json!({ "path": "/work/app/sub" })), None);
+        assert_eq!(allow_answer(Some(&other), "preview.allowed", &p), None);
+        assert_eq!(allow_answer(Some(&app), "preview.checkDir", &serde_json::json!({ "dir": app })), None);
+        assert_eq!(allow_answer(Some(&app), "preview.allowed", &serde_json::json!({ "path": sub })), None);
         assert_eq!(allow_answer(Some("work/app"), "preview.allowed", &serde_json::json!({ "path": "work/app" })), None);
         assert_eq!(allow_answer(Some(""), "preview.allowed", &serde_json::json!({ "path": "" })), None);
     }

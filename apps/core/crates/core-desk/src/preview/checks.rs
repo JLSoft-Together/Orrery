@@ -219,10 +219,11 @@ mod tests {
         let (errors, truncated) = parse_check_output(text, "/proj", false);
         assert!(!truncated);
         let got: Vec<(String, u64, String, String)> = errors.iter().map(|e| (e["file"].as_str().unwrap().into(), e["line"].as_u64().unwrap(), e["message"].as_str().unwrap().into(), e["severity"].as_str().unwrap().into())).collect();
-        assert_eq!(got[0], ("/proj/src/a.ts".into(), 3, "TS2322: bad".into(), "error".into()));
+        let r = |p: &str| crate::util::path_str(&crate::util::resolve(p));
+        assert_eq!(got[0], (r("/proj/src/a.ts"), 3, "TS2322: bad".into(), "error".into()));
         assert_eq!(got[2].2, "Unused (unused_x)");
-        assert_eq!(got[3].0, "/proj/k/y.kt");
-        assert_eq!(got[4], ("/abs/e.js".into(), 12, "no-var".into(), "warning".into()));
+        assert_eq!(got[3].0, r("/proj/k/y.kt"));
+        assert_eq!(got[4], (r("/abs/e.js"), 12, "no-var".into(), "warning".into()));
         assert_eq!(got[5].2, "Test failed");
         assert_eq!(got.len(), 6);
     }

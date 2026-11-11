@@ -91,7 +91,7 @@ pub fn content_security_policy(html: &str) -> String {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: http://127.0.0.1:* http://localhost:*",
         "font-src 'self' data:",
-        "connect-src 'self' ws://127.0.0.1:*",
+        "connect-src 'self' ws://127.0.0.1:* ipc: http://ipc.localhost",
         "worker-src 'self'",
         "frame-src http://127.0.0.1:* http://localhost:* https: http:",
         "object-src 'none'",
@@ -168,7 +168,7 @@ mod tests {
         let csp = content_security_policy(&format!("<head><script>{inline}</script><script type=\"module\" src=\"/assets/i.js\"></script></head>"));
         assert!(csp.contains(&format!("script-src 'self' 'sha256-{}'", hash(inline))), "{csp}");
         assert!(!csp.contains("unsafe-eval"));
-        assert!(csp.contains("connect-src 'self' ws://127.0.0.1:*"));
+        assert!(csp.contains("connect-src 'self' ws://127.0.0.1:* ipc: http://ipc.localhost"));
         assert!(csp.contains("object-src 'none'"));
     }
 

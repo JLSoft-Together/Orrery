@@ -222,6 +222,7 @@ mod tests {
         assert!(!is_pane_name(" a") && !is_pane_name("-a") && is_pane_name("Đức 1"));
     }
 
+    #[cfg(unix)]
     #[test]
     fn shell_panes_with_shims_get_the_path_hook_and_the_zsh_wrappers() {
         let on = AgentOpts { shim: true, zsh_init: Some("/data/shell-init-tauri".into()), ..Default::default() };

@@ -81,7 +81,7 @@ async function remove(): Promise<void> {
             <template v-else>{{ t('xmlPreview.notInstalled') }}</template>
           </p>
         </div>
-        <button v-if="canInstall || downloading" type="button" class="ccm-btn-primary shrink-0" :disabled="downloading" data-xml-install @click="install">
+        <button v-if="canInstall || downloading" type="button" class="ccm-btn ccm-btn-primary shrink-0" :disabled="downloading" data-xml-install @click="install">
           {{ kind === 'error' ? t('xmlPreview.retry') : kind === 'update' ? t('xmlPreview.update') : t('xmlPreview.install') }}
         </button>
         <button type="button" class="ccm-btn shrink-0" :disabled="!canRemove" data-xml-remove @click="remove">

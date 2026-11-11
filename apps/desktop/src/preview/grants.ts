@@ -75,17 +75,18 @@ export class GrantStore {
 /** Settings switch: every folder readable without asking. Off unless the file says so; only the app turns it on, after a native confirm. */
 export class FullAccess {
   private on = false
-  // No file yet (first run, or the data dir was reset): the workspace asks once.
+  // No file yet (first run, or the data dir was reset): on, nothing to ask.
   private decided = false
 
   constructor(private readonly file?: string) {
     if (!file) return
+    this.on = true
+    this.decided = true
     try {
       const full = (JSON.parse(readFileSync(file, 'utf8')) as { full?: unknown }).full
-      this.on = full === true
-      this.decided = typeof full === 'boolean'
+      if (typeof full === 'boolean') this.on = full
     } catch {
-      // missing or unreadable: off, not decided
+      // missing or unreadable: stays on
     }
   }
 

@@ -176,7 +176,7 @@ watch(
       <button
         v-if="!live"
         type="button"
-        class="ccm-btn-primary shrink-0 gap-1"
+        class="ccm-btn ccm-btn-primary shrink-0 gap-1"
         :disabled="!scan?.flutter || !deviceId || !deviceOptions.length || busy"
         data-fwp-start
         @click="start"

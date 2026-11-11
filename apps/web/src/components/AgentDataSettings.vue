@@ -254,7 +254,7 @@ const backupName = (p: AgentDataPlace): string => p.move?.backup.split(/[\\/]/).
               <button type="button" class="ccm-btn" :disabled="!!running" data-agentdata-undo @click="act('undo', p.agent)">
                 <Undo2 :size="13" aria-hidden="true" />{{ t('agentData.undo') }}
               </button>
-              <button v-if="!p.move.originalDeleted" type="button" class="ccm-btn-danger" :disabled="!!running" data-agentdata-delete @click="act('delete', p.agent)">
+              <button v-if="!p.move.originalDeleted" type="button" class="ccm-btn ccm-btn-danger" :disabled="!!running" data-agentdata-delete @click="act('delete', p.agent)">
                 {{ t('agentData.deleteOriginal') }}
               </button>
             </div>

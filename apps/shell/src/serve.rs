@@ -63,7 +63,7 @@ impl Serve {
             return Err(ServeError::PortInUse);
         }
         let control = take_stdin().map_err(|e| ServeError::Io(e.to_string()))?;
-        let thread = std::thread::Builder::new().name("core-serve".into()).spawn(move || core_serve::run(cfg)).map_err(|e| ServeError::Io(e.to_string()))?;
+        let thread = std::thread::Builder::new().name("core-serve".into()).spawn(move || core_serve::run_with(cfg, crate::episodes::sink())).map_err(|e| ServeError::Io(e.to_string()))?;
         let mut serve = Serve { control, thread: Some(thread) };
         let deadline = Instant::now() + BOOT_TIMEOUT;
         while Instant::now() < deadline {

@@ -95,7 +95,11 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
                 d.blocking_pick_folder()
             })
             .await?;
-            Ok(picked.and_then(|p| p.into_path().ok()).map_or(Value::Null, |p| json!(p.to_string_lossy())))
+            let folder = picked.and_then(|p| p.into_path().ok()).map(|p| p.to_string_lossy().into_owned());
+            if let (Some(f), Some(gate)) = (folder.as_deref(), app.try_state::<crate::preview_host::Gate>()) {
+                gate.grants.add(f);
+            }
+            Ok(folder.map_or(Value::Null, |f| json!(f)))
         }
         "ccm:open-external" => {
             if let Some(url) = arg(&args, 0).as_str() {
@@ -169,6 +173,14 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         "ccm:clipboard-image-file" => {
             let raw = arg(&args, 0).clone();
             Ok(json!(blocking(move || shot::clipboard_file(&raw)).await?))
+        }
+        c if crate::files_ipc::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::files_ipc::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::preview_ipc::handles(c) => {
+            let (handle, owner, channel) = (app.clone(), webview.label().to_owned(), c.to_owned());
+            blocking(move || crate::preview_ipc::dispatch(&handle, &owner, &channel, &args)).await?
         }
         _ => desk::dispatch(app, webview, channel.to_owned(), args).await,
     }

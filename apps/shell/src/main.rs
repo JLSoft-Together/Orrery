@@ -7,16 +7,30 @@ mod collector;
 mod config;
 mod desk;
 mod desk_text;
+mod episodes;
+mod files_ipc;
 mod guest;
 mod guest_ipc;
+mod host_devices;
+mod host_extra;
+mod host_run;
 mod hosts;
 mod legacy;
+mod lifecycle;
 mod links;
 mod log;
 mod mcp;
 mod native;
 mod notice;
 mod presets;
+mod preview_access;
+mod preview_files;
+mod preview_grants;
+mod preview_host;
+mod preview_ipc;
+mod preview_serve;
+mod preview_text;
+mod preview_watch;
 mod pty;
 mod resources;
 mod serve;
@@ -111,6 +125,7 @@ fn main() {
         link_times: Mutex::new(Vec::new()),
         quitting: AtomicBool::new(false),
         stopped: AtomicBool::new(false),
+        before_stop: Mutex::new(None),
     };
     let hidden = cfg.hidden;
     let first_link = links::link_in(&args);
@@ -130,6 +145,8 @@ fn main() {
             let handle = app.handle().clone();
             capability(&handle, &origin)?;
             desk::wire(&handle);
+            let stopping = handle.clone();
+            *state::lock(&handle.state::<Shell>().before_stop) = Some(Box::new(move || lifecycle::clean(&stopping)));
             window::create_main(&handle, hidden).map_err(std::io::Error::other)?;
             tray::create(&handle)?;
             let links_app = handle.clone();

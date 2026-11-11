@@ -200,7 +200,7 @@ function onKey(e: KeyboardEvent): void {
         <footer v-if="ok" class="flex min-h-10 shrink-0 items-center gap-2 border-t border-line px-3 py-1.5 text-2xs">
           <span v-if="notice" class="min-w-0 flex-1 text-ink-muted" :class="notice.bad ? 'text-warning' : 'text-ink-muted'" role="status" data-perm-notice>{{ notice.text }}</span>
           <span v-else class="min-w-0 flex-1 text-ink-faint">{{ t('permAdvisor.addHint') }}</span>
-          <button type="button" class="ccm-btn-primary shrink-0" :disabled="!pickedRules?.length || writing" data-perm-add @click="add">
+          <button type="button" class="ccm-btn ccm-btn-primary shrink-0" :disabled="!pickedRules?.length || writing" data-perm-add @click="add">
             {{ t('permAdvisor.add', { n: pickedRules?.length ?? 0 }, pickedRules?.length ?? 0) }}
           </button>
         </footer>

@@ -758,7 +758,7 @@ onBeforeUnmount(() => {
             <p v-if="status.bundle.state === 'error'" class="flex items-center gap-1.5 text-xs" role="alert">
               <CircleAlert :size="14" class="shrink-0 text-st-error" aria-hidden="true" />{{ t('layout.setup.bundleError', { code: status.bundle.code }) }}
             </p>
-            <button type="button" class="ccm-btn-primary mt-1" data-layout-download @click="download">
+            <button type="button" class="ccm-btn ccm-btn-primary mt-1" data-layout-download @click="download">
               {{ status.bundle.state === 'error' ? t('layout.setup.retry') : t('layout.setup.download') }}
             </button>
           </template>

@@ -76,6 +76,8 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
         .on_page_load(|webview, payload| {
             if payload.event() == PageLoadEvent::Started {
                 guest::close_owned(webview.app_handle(), webview.label());
+                crate::preview_ipc::release(webview.app_handle(), webview.label());
+                release_owners(webview.app_handle(), webview.label());
             }
             if payload.event() == PageLoadEvent::Finished {
                 if webview.label() == MAIN {
@@ -156,6 +158,16 @@ pub fn open_compact(app: &AppHandle) {
     }
 }
 
+fn release_owners(app: &AppHandle, label: &str) {
+    let app = app.clone();
+    let prefix = format!("{label}:");
+    std::thread::spawn(move || {
+        for channel in ["desk:dev-release-owner", "desk:run-release-owner"] {
+            let _ = crate::desk::call_inside(&app, channel, serde_json::json!([prefix]));
+        }
+    });
+}
+
 pub fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(MAIN) {
         let _ = w.unminimize();
@@ -165,6 +177,10 @@ pub fn show_main(app: &AppHandle) {
 }
 
 pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
+    if matches!(event, WindowEvent::Destroyed) {
+        crate::preview_ipc::release(window.app_handle(), window.label());
+        release_owners(window.app_handle(), window.label());
+    }
     if window.label() != MAIN {
         return;
     }

@@ -216,7 +216,7 @@ describe('ccm:full-access', () => {
 })
 
 describe('ccm:full-access first visit', () => {
-  it('asks once while undecided, remembers a no, and asks again after the data is reset', async () => {
+  it('is on without asking when nothing is saved, and keeps a saved no', async () => {
     const store = path.join(tmp, 'data-first', 'preview-full-access.json')
     let asked = 0
     const make = (answer: boolean) => {
@@ -240,12 +240,13 @@ describe('ccm:full-access first visit', () => {
       return (...args: unknown[]) => Promise.resolve(handlers.get('ccm:full-access')!({ sender: { id: 1 } }, ...args))
     }
     const first = make(false)
-    expect(await Promise.all([first('first'), first('first')])).toEqual([false, false])
-    expect(asked).toBe(1)
+    expect(await Promise.all([first('first'), first('first')])).toEqual([true, true])
+    expect(asked).toBe(0)
+    new FullAccess(store).set(false)
     expect(await make(true)('first')).toBe(false)
-    expect(asked).toBe(1)
+    expect(asked).toBe(0)
     rmSync(path.dirname(store), { recursive: true, force: true })
-    expect(await make(true)('first')).toBe(true)
-    expect(asked).toBe(2)
+    expect(await make(false)('first')).toBe(true)
+    expect(asked).toBe(0)
   })
 })

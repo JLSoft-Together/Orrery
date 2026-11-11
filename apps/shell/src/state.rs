@@ -30,6 +30,7 @@ pub struct Shell {
     pub link_times: Mutex<Vec<Instant>>,
     pub quitting: AtomicBool,
     pub stopped: AtomicBool,
+    pub before_stop: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 pub fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -72,6 +73,9 @@ impl Shell {
     pub fn shutdown(&self) {
         if self.stopped.swap(true, Ordering::SeqCst) {
             return;
+        }
+        if let Some(f) = lock(&self.before_stop).take() {
+            f();
         }
         self.pty.stop();
         if let Some(mut serve) = lock(&self.serve).take() {

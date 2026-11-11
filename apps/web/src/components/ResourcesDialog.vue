@@ -254,7 +254,7 @@ watch(
               <button
                 v-if="hasResKill"
                 type="button"
-                class="ccm-btn-danger ml-auto"
+                class="ccm-btn ccm-btn-danger ml-auto"
                 :disabled="busy || !forgottenTargets.targets.length"
                 :title="t('resources.stopAllHint')"
                 data-res-stop-all

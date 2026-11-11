@@ -33,12 +33,16 @@ pub fn boot(env: &DeskEnv) -> DeskState {
 pub fn wire(app: &AppHandle) {
     let secrets = crate::vault::Keyring { service: crate::legacy::keyring_service() };
     app.manage(crate::vault::Vault::new(Box::new(secrets), crate::legacy::source()));
+    crate::preview_ipc::manage(app);
     let state = app.state::<DeskState>();
     let sink = app.clone();
     state.desk.set_sink(Arc::new(move |event, payload| emit_app(&sink, event, payload)));
     let host = app.clone();
     state.desk.set_host(Arc::new(move |method, params| hosts::call(&host, None, method, &params).map_err(DeskError::Host)));
     crate::mcp::start(app);
+    crate::lifecycle::boot(app);
+    crate::episodes::start(app);
+    crate::lifecycle::migrate_bridges(app);
     let boot = app.clone();
     std::thread::spawn(move || {
         if let Err(e) = boot.state::<DeskState>().desk.dispatch("desk:update-start", Value::Null) {
@@ -58,6 +62,15 @@ pub fn emit_app(app: &AppHandle, event: &str, payload: Value) {
 struct Io {
     app: AppHandle,
     caller: Option<Webview>,
+    allow: Option<String>,
+}
+
+pub fn allow_answer(allow: Option<&str>, method: &str, params: &Value) -> Option<Value> {
+    let project = allow.filter(|p| std::path::Path::new(p).is_absolute())?;
+    if method != "preview.allowed" || params.get("path").and_then(Value::as_str) != Some(project) {
+        return None;
+    }
+    Some(serde_json::json!({ "real": project, "roots": [] }))
 }
 
 impl DeskIo for Io {
@@ -66,6 +79,9 @@ impl DeskIo for Io {
     }
 
     fn host(&self, _req: u64, method: &str, params: Value) -> Result<Value, DeskError> {
+        if let Some(v) = allow_answer(self.allow.as_deref(), method, &params) {
+            return Ok(v);
+        }
         hosts::call(&self.app, self.caller.as_ref(), method, &params).map_err(DeskError::Host)
     }
 }
@@ -82,7 +98,15 @@ pub fn error_text(e: DeskError) -> String {
 }
 
 pub fn call_inside(app: &AppHandle, channel: &str, args: Value) -> Result<Value, String> {
-    let io = Io { app: app.clone(), caller: None };
+    inside(app, channel, args, None)
+}
+
+pub fn call_inside_allowing(app: &AppHandle, channel: &str, args: Value, project: &str) -> Result<Value, String> {
+    inside(app, channel, args, Some(project.to_owned()))
+}
+
+fn inside(app: &AppHandle, channel: &str, args: Value, allow: Option<String>) -> Result<Value, String> {
+    let io = Io { app: app.clone(), caller: None, allow };
     let state = app.state::<DeskState>();
     state.desk.dispatch_with(&Ctx::new(&io, 0), channel, args).map_err(error_text)
 }
@@ -92,7 +116,7 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: String, args: V
         return Err(format!("not ported: {channel}"));
     }
     tauri::async_runtime::spawn_blocking(move || {
-        let io = Io { app: app.clone(), caller: Some(webview) };
+        let io = Io { app: app.clone(), caller: Some(webview), allow: None };
         let state = app.state::<DeskState>();
         state.desk.dispatch_with(&Ctx::new(&io, 0), &channel, Value::Array(args)).map_err(error_text)
     })
@@ -109,6 +133,18 @@ mod tests {
         assert!(is_page_channel("ccm:backup-export"));
         assert!(!is_page_channel("desk:backup-apply-pending"));
         assert!(!is_page_channel("shell:window"));
+    }
+
+    #[test]
+    fn the_scoped_allow_answers_only_preview_allowed_for_that_project() {
+        let p = serde_json::json!({ "path": "/work/app", "fresh": false });
+        assert_eq!(allow_answer(Some("/work/app"), "preview.allowed", &p), Some(serde_json::json!({ "real": "/work/app", "roots": [] })));
+        assert_eq!(allow_answer(None, "preview.allowed", &p), None);
+        assert_eq!(allow_answer(Some("/work/other"), "preview.allowed", &p), None);
+        assert_eq!(allow_answer(Some("/work/app"), "preview.checkDir", &serde_json::json!({ "dir": "/work/app" })), None);
+        assert_eq!(allow_answer(Some("/work/app"), "preview.allowed", &serde_json::json!({ "path": "/work/app/sub" })), None);
+        assert_eq!(allow_answer(Some("work/app"), "preview.allowed", &serde_json::json!({ "path": "work/app" })), None);
+        assert_eq!(allow_answer(Some(""), "preview.allowed", &serde_json::json!({ "path": "" })), None);
     }
 
     #[test]

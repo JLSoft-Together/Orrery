@@ -50,6 +50,7 @@ pub struct PtyHost {
     log: PathBuf,
     host: Mutex<Option<Host>>,
     stopped: Mutex<bool>,
+    panes: Arc<Mutex<Panes>>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -119,6 +120,18 @@ pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path, mcp: Option<&Mc
     (reply, Some(id))
 }
 
+pub fn live_roots(dirs: &[PaneDir]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for d in dirs.iter().filter(|d| !d.exited) {
+        for dir in std::iter::once(&d.cwd).chain(d.live_cwd.as_ref()) {
+            if !dir.is_empty() && !out.contains(dir) {
+                out.push(dir.clone());
+            }
+        }
+    }
+    out
+}
+
 fn answer(msg: &Value, panes: &mut Panes, home: &Path, mcp: Option<&McpLink>) -> Option<Value> {
     let pane_id = msg.get("id").and_then(Value::as_str);
     let t = msg.get("t").and_then(Value::as_str)?;
@@ -186,7 +199,11 @@ fn answer(msg: &Value, panes: &mut Panes, home: &Path, mcp: Option<&McpLink>) ->
 
 impl PtyHost {
     pub fn new(bin: PathBuf, origin: String, version: String, log: PathBuf) -> PtyHost {
-        PtyHost { bin, origin, version, log, host: Mutex::new(None), stopped: Mutex::new(false) }
+        PtyHost { bin, origin, version, log, host: Mutex::new(None), stopped: Mutex::new(false), panes: Arc::new(Mutex::new(Panes::default())) }
+    }
+
+    pub fn pane_roots(&self) -> Vec<String> {
+        live_roots(&lock(&self.panes).dirs())
     }
 
     pub fn endpoint(&self) -> Result<Endpoint, String> {
@@ -230,9 +247,10 @@ impl PtyHost {
         send(&stdin, &json!({ "t": "init", "token": token, "origins": [self.origin], "appVersion": self.version }));
         let (tx, rx) = mpsc::channel::<u16>();
         let writer = stdin.clone();
+        *lock(&self.panes) = Panes::default();
+        let shared = self.panes.clone();
         let _ = std::thread::Builder::new().name("pty-control".into()).spawn(move || {
             let home = home();
-            let mut panes = Panes::default();
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
                 let Ok(msg) = serde_json::from_str::<Value>(&line) else { continue };
@@ -243,14 +261,15 @@ impl PtyHost {
                     continue;
                 }
                 if msg.get("t").and_then(Value::as_str) == Some("wt") {
-                    let (rid, req, dirs, out, home) = (msg.get("rid").and_then(Value::as_str).unwrap_or("").to_owned(), msg.get("msg").cloned().unwrap_or(Value::Null), panes.dirs(), writer.clone(), home.clone());
+                    let (rid, req, dirs, out, home) = (msg.get("rid").and_then(Value::as_str).unwrap_or("").to_owned(), msg.get("msg").cloned().unwrap_or(Value::Null), lock(&shared).dirs(), writer.clone(), home.clone());
                     let _ = std::thread::Builder::new().name("pty-worktree".into()).spawn(move || {
                         let reply = worktree::answer(&req, &dirs, &home);
                         send(&out, &json!({ "t": "wt-reply", "rid": rid, "reply": reply }));
                     });
                     continue;
                 }
-                if let Some(reply) = answer(&msg, &mut panes, &home, crate::mcp::link()) {
+                let reply = answer(&msg, &mut lock(&shared), &home, crate::mcp::link());
+                if let Some(reply) = reply {
                     send(&writer, &reply);
                 }
             }
@@ -331,5 +350,15 @@ mod tests {
         let bad = answer(&json!({ "t": "cwd", "rid": "c", "id": "x", "cwd": "nope" }), &mut panes, &home, None).unwrap();
         assert!(bad["cwd"].is_null());
         assert!(answer(&json!({ "t": "wt", "rid": "w", "msg": { "t": "wt.list" } }), &mut panes, &home, None).is_none());
+    }
+
+    #[test]
+    fn live_roots_keep_start_and_current_folders_of_running_panes() {
+        let dirs = vec![
+            PaneDir { cwd: "/a".into(), live_cwd: Some("/a/b".into()), exited: false },
+            PaneDir { cwd: "/a".into(), live_cwd: None, exited: false },
+            PaneDir { cwd: "/gone".into(), live_cwd: Some("/gone/x".into()), exited: true },
+        ];
+        assert_eq!(live_roots(&dirs), vec!["/a".to_owned(), "/a/b".to_owned()]);
     }
 }

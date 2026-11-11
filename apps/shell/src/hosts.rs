@@ -116,7 +116,7 @@ pub fn confirm(app: &AppHandle, message: &str, detail: &str, ok: &str, cancel: &
     d.blocking_show()
 }
 
-fn locale(app: &AppHandle) -> String {
+pub fn locale(app: &AppHandle) -> String {
     lock(&app.state::<Shell>().look).locale().to_owned()
 }
 
@@ -244,6 +244,11 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
     if let Some(v) = crate::update_host::call(app, method, p) {
         return Ok(v);
     }
+    for module in [crate::host_run::call, crate::host_devices::call, crate::host_extra::call] {
+        if let Some(r) = module(app, caller, method, p) {
+            return r;
+        }
+    }
     match method {
         "keychain.available" | "keychain.seal" | "keychain.unseal" => keychain(app, method, p),
         "backup.readLocal" => Ok(read_local(app, caller)),
@@ -269,6 +274,7 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
         "agentData.startCollector" => Ok(crate::collector::start(app)),
         "telegram.notice" => Ok(json!(crate::notice::telegram_notice(app, &locale(app), p))),
         "resources.report" => Ok(core_serve::sampler::latest_resources().unwrap_or(Value::Null)),
+        m if m.starts_with("preview.") => crate::preview_host::call(app, m, p),
         _ => Err(format!("no host for {method}")),
     }
 }

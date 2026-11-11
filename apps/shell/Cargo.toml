@@ -28,6 +28,7 @@ getrandom = "0.3"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 trash = "5"
+notify = { version = "8.2", default-features = false, features = ["macos_fsevent"] }
 core-serve = { path = "../core/crates/core-serve" }
 core-desk = { path = "../core/crates/core-desk" }
 keyring = { version = "3", features = ["apple-native", "windows-native"] }

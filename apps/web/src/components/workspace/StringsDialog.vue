@@ -332,7 +332,7 @@ function onKey(e: KeyboardEvent): void {
                     <textarea v-model="editing.value" rows="3" class="ccm-field w-full resize-y text-xs" :title="t('stringsTable.editHint')" data-strings-editor @keydown="onEditorKey" />
                     <div class="flex justify-end gap-1">
                       <button type="button" class="ccm-btn-plain text-2xs" @click="editing = null">{{ t('stringsTable.cancel') }}</button>
-                      <button type="button" class="ccm-btn-primary text-2xs" data-strings-save @click="review">{{ t('stringsTable.save') }}</button>
+                      <button type="button" class="ccm-btn ccm-btn-primary text-2xs" data-strings-save @click="review">{{ t('stringsTable.save') }}</button>
                     </div>
                   </div>
                   <template v-else>

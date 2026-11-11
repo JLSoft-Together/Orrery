@@ -51,11 +51,18 @@ fn sender(tx: &std::sync::mpsc::Sender<Cmd>) -> Mutex<std::sync::mpsc::Sender<Cm
 }
 
 pub fn run(cfg: ServeConfig) -> i32 {
+    serve(cfg, Arc::new(write_line), false)
+}
+
+pub fn run_with(cfg: ServeConfig, emit: Emit) -> i32 {
+    serve(cfg, emit, true)
+}
+
+fn serve(cfg: ServeConfig, emit: Emit, embedded: bool) -> i32 {
     if cfg.app_key.is_none() && !cfg.dev {
         eprintln!("[collector] {}", ConfigError::NoAppKey);
         return 1;
     }
-    let emit: Emit = Arc::new(write_line);
     let data = cfg.monitor.data_dir.clone();
     let (tx, rx) = channel::<Cmd>();
     let mut store = Store::new(StoreOptions { activity_limit: cfg.activity_limit, batch_ms: cfg.batch_ms });
@@ -70,7 +77,11 @@ pub fn run(cfg: ServeConfig) -> i32 {
     })));
     let alerts = Arc::new(Mutex::new(Alerts::open(&cfg, cfg.port, emit.clone())));
     {
-        let a = lock(&alerts);
+        let mut a = lock(&alerts);
+        if embedded {
+            a.toaster.phone_on = true;
+            a.toaster.telegram_on = true;
+        }
         store.set_snoozes(a.snoozes.all());
         store.set_notify(a.toaster.settings());
     }

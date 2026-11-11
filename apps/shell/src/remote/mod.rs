@@ -306,6 +306,11 @@ impl Remote {
         }
     }
 
+    pub fn ask_device(&self, owner: &str, needs: &Value) -> bool {
+        let ctx = lock(&self.ctx).clone();
+        ctx.is_some_and(|c| c.viewer.ask(owner, needs, confirm::CONFIRM_TTL))
+    }
+
     pub fn run_event(&self, payload: &Value) {
         if let Some(c) = lock(&self.ctx).clone() {
             c.viewer.push_run(payload);

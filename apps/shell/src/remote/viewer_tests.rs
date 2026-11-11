@@ -56,7 +56,7 @@ pub(super) struct Engine {
 
 impl Engine {
     fn viewer(&self, owner: &str, channel: &str, args: Value, accept: &[String]) -> Value {
-        let guard = scope::enter(accept);
+        let guard = scope::enter(owner, accept);
         let a0 = args.get(0).cloned().unwrap_or(Value::Null);
         let raw = match channel {
             "ccm:watch" => {
@@ -366,5 +366,67 @@ fn a_reply_too_big_for_one_message_becomes_a_limit_error_and_the_session_survive
         assert_eq!(ask(&mut ws, &mut t, "b", json!({ "t": "fs.read", "path": "C:/x" })).await["error"], "limit");
         assert_eq!(ask(&mut ws, &mut t, "z", json!({ "t": "nope" })).await["error"], "denied");
     });
+    rig.remote.enable(false);
+}
+
+#[test]
+fn one_merged_event_stays_under_64_kb_and_says_more() {
+    let long = "x".repeat(2000);
+    let paths: Vec<String> = (0..150).map(|i| format!("/a/{i}/{long}")).collect();
+    let out = merge(vec![VEvent::Fs { root: "/a".into(), paths }]);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0]["more"], true);
+    assert!(serde_json::to_vec(&out[0]).unwrap().len() <= 64 * 1024);
+    assert!(!out[0]["paths"].as_array().unwrap().is_empty());
+    let small = merge(vec![VEvent::Fs { root: "/a".into(), paths: vec!["/a/1".into()] }]);
+    assert!(small[0].get("more").is_none());
+}
+
+#[test]
+fn a_run_confirm_from_a_phone_command_goes_to_that_phone_and_the_answer_wakes_the_runner() {
+    let rig = rig("viewer-ask", "", false);
+    rig.remote.enable(true);
+    let work = temp_dir("ask");
+    let root = real(&work);
+    let ctx = rig.remote.ctx().unwrap();
+    let hub = ctx.clone();
+    *lock(&rig.host.viewer) = Some(Box::new(move |owner, _, _, _| {
+        let runner = {
+            let (hub, owner) = (hub.clone(), owner.to_owned());
+            std::thread::spawn(move || hub.viewer.ask(&owner, &json!({ "title": "Reinstall?", "detail": "com.app", "ok": "Yes", "cancel": "No" }), Duration::from_secs(10)))
+        };
+        json!({ "raw": runner.join().unwrap() })
+    }));
+    runtime().block_on(async {
+        let (mut ws, mut t) = open(&rig, "ask-phone").await;
+        send_json(&mut ws, &mut t, json!({ "id": "r", "t": "run.start", "root": root, "configId": "c" })).await;
+        let q = until_json(&mut ws, &mut t, |v| v["t"] == "confirm.ask").await;
+        assert_eq!((q["title"].clone(), q["ok"].clone()), (json!("Reinstall?"), json!("Yes")));
+        let cid = q["cid"].as_str().unwrap().to_owned();
+        let done = ask(&mut ws, &mut t, "y", json!({ "t": "confirm.answer", "cid": cid, "ok": true })).await;
+        assert_eq!(done["ok"], true, "{done}");
+        let r = until_json(&mut ws, &mut t, |v| v["re"] == "r").await;
+        assert_eq!((r["ok"].clone(), r["data"].clone()), (json!(true), json!(true)), "{r}");
+
+        send_json(&mut ws, &mut t, json!({ "id": "r2", "t": "run.start", "root": root, "configId": "c" })).await;
+        let q = until_json(&mut ws, &mut t, |v| v["t"] == "confirm.ask").await;
+        let cid = q["cid"].as_str().unwrap().to_owned();
+        let done = ask(&mut ws, &mut t, "n", json!({ "t": "confirm.answer", "cid": cid, "ok": false })).await;
+        assert_eq!(done["cancelled"], true, "{done}");
+        let r = until_json(&mut ws, &mut t, |v| v["re"] == "r2").await;
+        assert_eq!(r["error"], "denied", "{r}");
+    });
+    rig.remote.enable(false);
+}
+
+#[test]
+fn a_run_confirm_with_no_open_phone_session_is_refused_at_once() {
+    let rig = rig("viewer-ask-none", "", false);
+    rig.remote.enable(true);
+    let ctx = rig.remote.ctx().unwrap();
+    let started = Instant::now();
+    assert!(!ctx.viewer.ask("remote:gone:x", &json!({}), Duration::from_secs(10)));
+    assert!(started.elapsed() < Duration::from_secs(2));
+    assert!(!ctx.viewer.answer("nope", true));
     rig.remote.enable(false);
 }

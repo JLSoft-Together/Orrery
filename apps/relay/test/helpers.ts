@@ -136,3 +136,7 @@ export function bytesOf(data: unknown): Uint8Array {
 export function controlFrame(kind: "open" | "close", conn: number): Uint8Array {
   return concat(new Uint8Array([0, 0]), utf8(JSON.stringify({ t: kind, conn })));
 }
+
+export function closeFrame(conn: number, code: number): Uint8Array {
+  return concat(new Uint8Array([0, 0]), utf8(JSON.stringify({ t: "close", conn, code })));
+}

@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use serde_json::{json, Value};
 
 struct Scope {
+    owner: String,
     accept: Vec<String>,
     need: Option<Value>,
 }
@@ -15,8 +16,8 @@ thread_local! {
 
 pub struct Guard;
 
-pub fn enter(accept: &[String]) -> Guard {
-    SCOPE.with(|s| *s.borrow_mut() = Some(Scope { accept: accept.to_vec(), need: None }));
+pub fn enter(owner: &str, accept: &[String]) -> Guard {
+    SCOPE.with(|s| *s.borrow_mut() = Some(Scope { owner: owner.to_owned(), accept: accept.to_vec(), need: None }));
     Guard
 }
 
@@ -30,6 +31,10 @@ impl Drop for Guard {
     fn drop(&mut self) {
         SCOPE.with(|s| *s.borrow_mut() = None);
     }
+}
+
+pub fn owner() -> Option<String> {
+    SCOPE.with(|s| s.borrow().as_ref().map(|s| s.owner.clone()))
 }
 
 pub fn active() -> bool {

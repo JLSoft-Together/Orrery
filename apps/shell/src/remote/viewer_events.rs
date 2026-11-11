@@ -12,14 +12,17 @@ pub const WRITE_PER_MINUTE: usize = 20;
 pub const COALESCE: Duration = Duration::from_millis(100);
 pub const QUEUE: usize = 64;
 pub const MAX_PATHS: usize = 200;
+pub const MAX_EVENT_BYTES: usize = 64 * 1024;
 pub const MAX_RUN_EVENT: usize = 256 * 1024;
 const MINUTE: Duration = Duration::from_secs(60);
+const ASK_SLICE: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VEvent {
     Fs { root: String, paths: Vec<String> },
     Git { root: String },
     Run(Arc<Value>),
+    Ask { aid: String, needs: Value },
 }
 
 struct Sub {
@@ -33,6 +36,7 @@ pub struct Hub {
     rates: Mutex<HashMap<String, Vec<Instant>>>,
     writes: Mutex<HashMap<String, Vec<Instant>>>,
     busy: Mutex<std::collections::HashSet<String>>,
+    asks: Mutex<HashMap<String, std::sync::mpsc::Sender<bool>>>,
 }
 
 fn take(map: &Mutex<HashMap<String, Vec<Instant>>>, device: &str, now: Instant, max: usize) -> bool {
@@ -71,6 +75,32 @@ impl Hub {
         }
     }
 
+    pub fn ask(&self, owner: &str, needs: &Value, wait: Duration) -> bool {
+        let Ok(aid) = crate::config::try_random_hex(12) else { return false };
+        let (tx, rx) = std::sync::mpsc::channel();
+        lock(&self.asks).insert(aid.clone(), tx);
+        let mut yes = false;
+        if self.push(owner, VEvent::Ask { aid: aid.clone(), needs: needs.clone() }) {
+            let end = Instant::now() + wait;
+            while self.is_open(owner) && Instant::now() < end {
+                match rx.recv_timeout(ASK_SLICE) {
+                    Ok(answer) => {
+                        yes = answer;
+                        break;
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                }
+            }
+        }
+        lock(&self.asks).remove(&aid);
+        yes
+    }
+
+    pub fn answer(&self, aid: &str, yes: bool) -> bool {
+        lock(&self.asks).get(aid).is_some_and(|tx| tx.send(yes).is_ok())
+    }
+
     pub fn is_open(&self, owner: &str) -> bool {
         lock(&self.subs).contains_key(owner)
     }
@@ -96,6 +126,7 @@ pub fn merge(batch: Vec<VEvent>) -> Vec<Value> {
     let mut out: Vec<Value> = Vec::new();
     let mut fs: HashMap<String, usize> = HashMap::new();
     let mut git: HashMap<String, usize> = HashMap::new();
+    let mut sizes: HashMap<usize, usize> = HashMap::new();
     for ev in batch {
         match ev {
             VEvent::Fs { root, paths } => {
@@ -103,11 +134,23 @@ pub fn merge(batch: Vec<VEvent>) -> Vec<Value> {
                     out.push(json!({ "t": "fs.changed", "root": root, "paths": [] }));
                     out.len() - 1
                 });
+                let size = sizes.entry(at).or_insert(0);
+                let mut more = false;
                 let list = out[at]["paths"].as_array_mut().expect("paths");
                 for p in paths {
-                    if list.len() < MAX_PATHS && !list.iter().any(|x| x.as_str() == Some(p.as_str())) {
-                        list.push(Value::from(p));
+                    if list.iter().any(|x| x.as_str() == Some(p.as_str())) {
+                        continue;
                     }
+                    let cost = p.len() * 6 + 3;
+                    if list.len() >= MAX_PATHS || *size + cost > MAX_EVENT_BYTES {
+                        more = true;
+                        continue;
+                    }
+                    *size += cost;
+                    list.push(Value::from(p));
+                }
+                if more {
+                    out[at]["more"] = Value::Bool(true);
                 }
             }
             VEvent::Git { root } => {
@@ -117,6 +160,7 @@ pub fn merge(batch: Vec<VEvent>) -> Vec<Value> {
                 });
             }
             VEvent::Run(payload) => out.push(json!({ "t": "run.event", "event": payload.as_ref() })),
+            VEvent::Ask { .. } => {}
         }
     }
     out

@@ -35,6 +35,7 @@ fn factory(kind: &str) -> RunnerFactory {
 struct SessionHooks {
     m: Arc<Inner>,
     id: String,
+    origin: Option<String>,
 }
 
 impl Hooks for SessionHooks {
@@ -86,13 +87,25 @@ impl Hooks for SessionHooks {
     }
 
     fn confirm(&self, code: &str, detail: Option<&str>) -> bool {
-        self.m.confirm(code, detail)
+        self.m.confirm_from(self.origin.as_deref(), code, detail)
     }
 }
 
 impl Inner {
     pub fn confirm(&self, code: &str, detail: Option<&str>) -> bool {
         matches!(self.host.call("run.confirm", json!({"code": code, "detail": detail})), Ok(Value::Bool(true)))
+    }
+
+    pub fn origin(&self) -> Option<String> {
+        match self.host.call("run.origin", json!({})) {
+            Ok(Value::String(s)) if !s.is_empty() => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn confirm_from(&self, origin: Option<&str>, code: &str, detail: Option<&str>) -> bool {
+        let Some(origin) = origin else { return self.confirm(code, detail) };
+        matches!(self.host.call("run.confirm", json!({"code": code, "detail": detail, "origin": origin})), Ok(Value::Bool(true)))
     }
 
     pub fn list(&self) -> Vec<Value> {
@@ -220,7 +233,7 @@ impl Inner {
             "state": "starting", "startedAt": now(), "endedAt": null, "appId": null, "vmServiceUri": null, "devtoolsUri": null, "failure": null, "progress": null,
         });
         let device_value = device.as_ref().map(RunDevice::to_value).unwrap_or(Value::Null);
-        let hooks = Arc::new(SessionHooks { m: self.clone(), id: id.clone() });
+        let hooks = Arc::new(SessionHooks { m: self.clone(), id: id.clone(), origin: self.origin() });
         let host = self.host.clone();
         let ctx = RunContext {
             root: root.to_string(),

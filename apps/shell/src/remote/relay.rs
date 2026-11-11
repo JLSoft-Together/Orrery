@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use core_remote_proto::relay::{decode, encode_data, Control as RelayControl, ControlKind, Envelope};
+use core_remote_proto::relay::{decode, encode_close, encode_data, Control as RelayControl, ControlKind, Envelope};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio::net::TcpStream;
@@ -16,7 +16,7 @@ use ureq::tls::{RootCerts, TlsConfig};
 use super::config::now_secs;
 use super::ctx::Ctx;
 use super::limits::HANDSHAKE;
-use super::link::{Budget, Link, Out, Outbox, Peer, DRAIN_MAX, INBOX, OUTBOX};
+use super::link::{Budget, Link, Out, Outbox, Peer, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_PROTO, DRAIN_MAX, INBOX, OUTBOX};
 use super::session;
 use crate::state::lock;
 
@@ -274,7 +274,16 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
                                 }
                             }
                         }
-                        Out::Close(..) => conns.close(conn, Some(gen)),
+                        Out::Close(code, _) => {
+                            if matches!(code, CLOSE_HANDSHAKE | CLOSE_DEVICE | CLOSE_PROTO) {
+                                if let Ok(env) = encode_close(conn, code) {
+                                    if sink.feed(Message::Binary(env.into())).await.is_err() {
+                                        return None;
+                                    }
+                                }
+                            }
+                            conns.close(conn, Some(gen));
+                        }
                     }
                     if drained < DRAIN_MAX {
                         next = out_rx.try_recv().ok();

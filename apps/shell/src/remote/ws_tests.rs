@@ -268,3 +268,26 @@ fn workspace_commands_are_rate_limited_per_device() {
     });
     rig.remote.enable(false);
 }
+
+#[test]
+fn a_fresh_summary_is_awaited_after_a_connect_then_the_pane_is_refused() {
+    let board = Arc::new(Board::default());
+    board.publish(summary(1, vec![pane("p1", "s1", "running")]));
+    runtime().block_on(async {
+        let quick = Instant::now();
+        assert!(!board.has_session_fresh("s2", Duration::from_secs(2)).await);
+        assert!(quick.elapsed() < Duration::from_millis(500));
+
+        board.mark_connect();
+        let b = board.clone();
+        let late = tokio::spawn(async move { b.has_session_fresh("s2", Duration::from_secs(2)).await });
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        board.publish(summary(2, vec![pane("p1", "s1", "running"), pane("p2", "s2", "running")]));
+        assert!(late.await.unwrap());
+
+        board.mark_connect();
+        let started = Instant::now();
+        assert!(!board.has_session_fresh("s9", Duration::from_millis(300)).await);
+        assert!(started.elapsed() >= Duration::from_millis(250));
+    });
+}

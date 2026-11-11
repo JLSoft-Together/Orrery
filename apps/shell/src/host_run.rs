@@ -125,7 +125,11 @@ fn ask(app: &AppHandle, d: &Dialog) -> bool {
 
 fn run_confirm(app: &AppHandle, p: &Value) -> bool {
     let Some(code) = field(p, "code").as_str() else { return false };
-    run_confirm_spec(is_vi(app), code, field(p, "detail").as_str()).is_some_and(|d| ask(app, &d))
+    let Some(d) = run_confirm_spec(is_vi(app), code, field(p, "detail").as_str()) else { return false };
+    match field(p, "origin").as_str().filter(|o| !o.is_empty()) {
+        Some(owner) => crate::remote::host::ask_device(app, owner, &json!({ "title": d.message, "detail": d.detail, "ok": d.ok, "cancel": d.cancel })),
+        None => ask(app, &d),
+    }
 }
 
 fn layout_confirm(app: &AppHandle, p: &Value) -> bool {
@@ -149,6 +153,7 @@ fn gate_file(app: &AppHandle, p: &Value) -> Result<Value, String> {
 pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) -> Option<Result<Value, String>> {
     Some(Ok(match method {
         "run.owner" => json!(owner_key(caller.map_or(MAIN, |w| w.label()), &text(p, "key"))),
+        "run.origin" => json!(crate::remote::scope::owner()),
         "run.confirm" => json!(run_confirm(app, p)),
         "run.adbUse" => {
             if let Some(serial) = field(p, "serial").as_str().filter(|s| !s.is_empty()) {

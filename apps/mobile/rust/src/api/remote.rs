@@ -5,7 +5,6 @@ use core_remote_proto::pair::{PairInitiator, QrPayload};
 use core_remote_proto::session::SessionInitiator;
 use core_remote_proto::{Error, StaticKeypair, Transport};
 
-const FLAG_CLAIM: u8 = 0b0000_0010;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RemoteErrorKind {
@@ -134,12 +133,8 @@ impl SecureChannel {
         let kind = Kind::try_from(kind)?;
         let mut state = self.inner.lock().map_err(|_| RemoteError::of(RemoteErrorKind::Closed))?;
         let mut out = Vec::new();
-        for frame in Chunker::new(kind, stream, &payload)? {
-            let mut bytes = frame.encode()?;
-            if claim && kind == Kind::PtyIn {
-                bytes[1] |= FLAG_CLAIM;
-            }
-            out.push(state.transport.seal(&bytes)?);
+        for frame in Chunker::new(kind, stream, &payload)?.claiming(claim && kind == Kind::PtyIn)? {
+            out.push(state.transport.seal(&frame.encode()?)?);
         }
         Ok(out)
     }

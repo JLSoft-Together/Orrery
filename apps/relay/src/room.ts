@@ -1,8 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { b64urlDecode } from "./bytes";
-import { CLOSE_BAD_FRAME, CLOSE_DEVICE, CLOSE_GATEWAY_OFF, CLOSE_RATE, CLOSE_REPLACED } from "./close";
+import { CLOSE_BAD_FRAME, CLOSE_DEVICE, CLOSE_GATEWAY_OFF, CLOSE_PROTO, CLOSE_RATE, CLOSE_REPLACED } from "./close";
 import type { Env } from "./env";
-import { encodeControl, encodeData, MAX_CONN, MAX_ENVELOPE, NOISE_MAX, readConn } from "./envelope";
+import { CONTROL_MAX, encodeControl, encodeData, MAX_CONN, MAX_ENVELOPE, NOISE_MAX, readConn } from "./envelope";
 import { validDeviceId, validMachineId } from "./ids";
 import { MACHINE_DOMAIN, REGISTER_DOMAIN, signedMessage, tsFresh, verifyEd25519 } from "./sign";
 import { verifyToken } from "./token";
@@ -10,6 +10,12 @@ import { verifyToken } from "./token";
 const MAX_PHONES = 64;
 const MAX_REVOKE_BATCH = 64;
 const MAX_BODY = 8192;
+const DESKTOP_CLOSE: ReadonlyMap<number, string> = new Map([
+  [CLOSE_BAD_FRAME, "bad frame"],
+  [CLOSE_DEVICE, "device"],
+  [CLOSE_PROTO, "proto"],
+  [CLOSE_GATEWAY_OFF, "gateway off"],
+]);
 
 interface Attachment {
   role: "m" | "p";
@@ -274,10 +280,34 @@ export class Room extends DurableObject<Env> {
     }
     const bytes = new Uint8Array(message);
     const conn = readConn(bytes);
-    if (conn === 0) return;
+    if (conn === 0) {
+      this.desktopControl(bytes);
+      return;
+    }
     const target = this.ctx.getWebSockets(`p:${conn}`)[0];
     if (!target) return;
     target.send(bytes.slice(2));
+  }
+
+  private desktopControl(bytes: Uint8Array): void {
+    if (bytes.length > CONTROL_MAX) return;
+    let value: unknown;
+    try {
+      value = JSON.parse(new TextDecoder().decode(bytes.subarray(2)));
+    } catch {
+      return;
+    }
+    if (typeof value !== "object" || value === null) return;
+    const { t, conn, code } = value as Record<string, unknown>;
+    if (t !== "close" || typeof conn !== "number" || typeof code !== "number") return;
+    if (!Number.isInteger(conn) || conn < 1 || conn > MAX_CONN) return;
+    const reason = DESKTOP_CLOSE.get(code);
+    if (reason === undefined) return;
+    const target = this.ctx.getWebSockets(`p:${conn}`)[0];
+    const att = target ? this.attachment(target) : null;
+    if (!target || !att || att.closing) return;
+    this.markClosing(target, att);
+    target.close(code, reason);
   }
 
   private fromPhone(ws: WebSocket, att: Attachment, message: ArrayBuffer): void {

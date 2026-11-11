@@ -26,7 +26,7 @@ relay (`apps/relay`) và app `apps/mobile`. Thiết kế + lý do: `.planning/PL
 
 ## 3. Frame trong Noise
 
-`[u8 kind][u8 flags][u32 stream BE][payload]`, flags bit 0 = `more`, bit 1 = `claim` (chỉ kind 2: phím người dùng thật gõ / dán → gateway gửi `claim` cho hub; phím tự trả lời query của terminal không bật bit này). Payload mỗi khúc ≤ 60 KiB, ghép lại max 1 MiB.
+`[u8 kind][u8 flags][u32 stream BE][payload]`, flags bit 0 = `more` (`FLAG_MORE`), bit 1 = `claim` (`FLAG_CLAIM`, `Frame.claim` trong crate `core-remote-proto`; chỉ kind 2, kind khác mang bit này → `BadFrame`; `Message.claim` = có ít nhất 1 khúc mang bit; phím người dùng thật gõ / dán → gateway gửi `claim` cho hub; phím tự trả lời query của terminal không bật bit này). Payload mỗi khúc ≤ 60 KiB, ghép lại max 1 MiB.
 
 | kind | Tên | stream | payload |
 |---|---|---|---|
@@ -79,7 +79,7 @@ Event `ws.snapshot {rev, tabs[]}` / `ws.patch {base, rev, ops[]}` (`ops` = JSON 
 | `pty.resize {stream, cols, rows}` | lưu cỡ của điện thoại; chỉ áp khi điện thoại đang gõ |
 | kind 2 trên `stream` | gõ (ghi vào PTY); gateway gửi `claim` cho hub khi đó là phím người dùng thật, điện thoại thành người gõ, cỡ của nó áp vào PTY |
 
-Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Workspace summary (không thì `notFound`). Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}` (`code:null` = mất hub), `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị (thứ 5 → `limit`).
+Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Workspace summary (không thì `notFound`). Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}` (`code:null` = mất hub), `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị (thứ 5 → `limit`). Ngay sau khi điện thoại nối (hello), summary được coi là cũ tới lần `publish` kế (max 10 s): `pty.attach` với pane chưa có trong summary chờ summary mới tối đa 2 s rồi mới trả `notFound`.
 
 ### 4.5 Viewer
 Bảng cố định (lệnh ngoài bảng → `denied`); path luôn tuyệt đối, phải nằm trong root pane đang sống hoặc grant của desktop (full-access của desktop KHÔNG áp cho điện thoại); không có `grant-folder`, chọn thư mục / file, mở path, reveal.
@@ -104,8 +104,8 @@ Bảng cố định (lệnh ngoài bảng → `denied`); path luôn tuyệt đ�
 | `run.stop` · `run.reload` | `{sessionId}` · `{sessionId, hot?}` | `ccm:run-stop` / `run-reload` | |
 
 Reply thành công `{re, ok:true, data}` (`data` là kết quả nguyên của desk; lỗi nghiệp vụ nằm trong `data.ok === false` + `data.error`: `conflict`, `not-merged`, `failed`…); từ chối / ngoài root → `{ok:false, error:"denied"}`; thiếu / sai field → `invalid`; reply quá ~900 000 byte → `limit` (proto 1 MiB / message); desktop không phản hồi → `timeout` (15 s, 60 s với fetch / push / run.start) hoặc `offline`. Max 120 lệnh viewer / phút / thiết bị, `fs.write` 20 / phút, 8 watch / phiên (thứ 9 → `limit`), 4 lệnh chờ / phiên (`busy`).
-Event (chỉ tới phiên đã đăng ký, gom 100 ms): `fs.changed {root, paths[]}` (sau `fs.watch`), `git.changed {root}` (sau `git.watch`), `run.event {event}` (`event` = payload `ccm:run-event`; tự đăng ký khi phiên gọi `run.sessions` / `run.start`). Phiên đóng → mọi watch nhả.
-Xác nhận (4.6) dùng cho `branch.delete`, `git.discard`, `branch.push`, `git.commit` amend, `run.start` config lạ: không hộp native nào hiện trên desktop; có thể có 2 lượt `confirm.ask` liên tiếp (vd xoá nhánh chưa merge → xoá cưỡng bức).
+Event (chỉ tới phiên đã đăng ký, gom 100 ms): `fs.changed {root, paths[], more?}` (sau `fs.watch`; mỗi event max 64 KB hoặc 200 path, bị cắt thì `more: true`, điện thoại tự `fs.list` lại), `git.changed {root}` (sau `git.watch`), `run.event {event}` (`event` = payload `ccm:run-event`; tự đăng ký khi phiên gọi `run.sessions` / `run.start`). Phiên đóng → mọi watch nhả.
+Xác nhận (4.6) dùng cho `branch.delete`, `git.discard`, `branch.push`, `git.commit` amend, `run.start` config lạ: không hộp native nào hiện trên desktop; có thể có 2 lượt `confirm.ask` liên tiếp (vd xoá nhánh chưa merge → xoá cưỡng bức). `run.start` mà build Android cần gỡ bản cũ khác key (`reinstall`) chạy ở thread runner: host nhận `origin` = owner của phiên điện thoại (`run.origin`) nên gửi event `confirm.ask {re:"run.reinstall"}` tới đúng điện thoại đó, không hộp native; `confirm.answer` đánh thức runner, không trả lời trong 60 s / phiên đóng → coi như huỷ. Từ desktop vẫn hộp native.
 
 ### 4.6 Xác nhận
 Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confirm.ask {cid, re, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}` (`cid` dùng 1 lần); từ chối / quá 60 s / phiên đóng → lệnh gốc kết thúc `{cancelled:true}`. `confirmed` chỉ gateway đặt.
@@ -121,6 +121,7 @@ Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confir
 - URL: `https://orrery-relay.jinvu.workers.dev` (route, giới hạn, lệnh test / deploy: `apps/relay/README.md`).
 - `POST /register` / `/revoke`: body có `ts` (giây), chữ ký Ed25519 trên `"orrery-register/1" ‖ machineId ‖ ts`. Desktop WS `/m/<id>?ts&sig` ký `"orrery-machine/1" ‖ machineId ‖ ts`; `ts` mỗi lần nối lại phải lớn hơn lần trước (không thì 409).
 - Desktop mất kết nối → mọi điện thoại của máy đó bị đóng `4503`.
+- Desktop đóng đúng 1 điện thoại: gửi envelope `connId = 0` với `{"t":"close","conn":n,"code":c}`, `c` ∈ `4400` / `4401` / `4426` / `4503` (mã khác, `conn` sai, JSON sai → bỏ qua); relay đóng phone `p:<n>` với mã đó và không báo ngược `close` cho desktop. Gateway dùng cho `4400` / `4401` / `4426` trên relay (trước đây chỉ ngừng trả lời).
 
 ### 7.1 Link mở pane từ Telegram / ntfy
 - Tin `waiting` / `question` / `permission` / `done` của 1 pane có nút URL Telegram "Mở trên điện thoại" (hàng riêng dưới các nút trả lời) / ntfy `click` + action `view` → `https://orrery-relay.jinvu.workers.dev/o/<machineId>/<paneKey>` (trang bounce của relay, mục trên). Tin `job` / `limit` / `disk` / `note` không có link.

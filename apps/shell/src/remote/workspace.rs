@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Notify};
 
 use super::patch;
 use crate::state::{lock, take_slot};
@@ -12,6 +12,8 @@ pub const WS_EVENTS: usize = 16;
 pub const WS_PER_MINUTE: usize = 30;
 pub const MAX_ATTACH: usize = 4;
 pub const WS_COMMANDS: [&str; 8] = ["ws.open", "ws.close", "ws.rename", "ws.move", "ws.reopen", "ws.compact", "ws.send", "ws.keys"];
+pub const SUMMARY_WAIT: Duration = Duration::from_secs(2);
+const STALE_FOR: Duration = Duration::from_secs(10);
 const MINUTE: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Debug)]
@@ -26,11 +28,13 @@ pub struct Board {
     tx: broadcast::Sender<WsEvent>,
     rates: Mutex<HashMap<String, Vec<Instant>>>,
     attached: Mutex<HashMap<String, usize>>,
+    stale_until: Mutex<Option<Instant>>,
+    fresh: Notify,
 }
 
 impl Default for Board {
     fn default() -> Board {
-        Board { state: Mutex::new(None), tx: broadcast::channel(WS_EVENTS).0, rates: Mutex::new(HashMap::new()), attached: Mutex::new(HashMap::new()) }
+        Board { state: Mutex::new(None), tx: broadcast::channel(WS_EVENTS).0, rates: Mutex::new(HashMap::new()), attached: Mutex::new(HashMap::new()), stale_until: Mutex::new(None), fresh: Notify::new() }
     }
 }
 
@@ -54,6 +58,29 @@ fn has_pane(summary: &Value, id: &str) -> bool {
 }
 
 impl Board {
+    pub fn mark_connect(&self) {
+        *lock(&self.stale_until) = Some(Instant::now() + STALE_FOR);
+    }
+
+    fn is_stale(&self) -> bool {
+        lock(&self.stale_until).is_some_and(|t| Instant::now() < t)
+    }
+
+    pub async fn has_session_fresh(&self, id: &str, wait: Duration) -> bool {
+        let deadline = tokio::time::Instant::now() + wait;
+        loop {
+            let published = self.fresh.notified();
+            tokio::pin!(published);
+            published.as_mut().enable();
+            if self.has_session(id) {
+                return true;
+            }
+            if !self.is_stale() || tokio::time::timeout_at(deadline, published).await.is_err() {
+                return self.has_session(id);
+            }
+        }
+    }
+
     pub fn publish(&self, summary: Value) {
         let event = {
             let mut cur = lock(&self.state);
@@ -73,6 +100,8 @@ impl Board {
         if let Some(e) = event {
             let _ = self.tx.send(e);
         }
+        *lock(&self.stale_until) = None;
+        self.fresh.notify_waiters();
     }
 
     pub fn summary(&self) -> Option<Value> {

@@ -1,12 +1,11 @@
 use serde_json::Value;
 
 use super::dashboard::{error, Phone};
+use super::workspace::SUMMARY_WAIT;
 use super::pty_bridge::{spawn, Attach, FromHub, Slot, Spec, ToHub};
 
 pub const MAX_SESSION_ID: usize = 64;
 pub const MAX_DIM: u64 = 1000;
-pub const CLAIM_FLAG: u8 = 0b0000_0010;
-const PTY_IN: u8 = 2;
 
 fn dim(v: &Value, key: &str, fallback: u16) -> u16 {
     v.get(key).and_then(Value::as_u64).filter(|n| (1..=MAX_DIM).contains(n)).map_or(fallback, |n| n as u16)
@@ -14,14 +13,6 @@ fn dim(v: &Value, key: &str, fallback: u16) -> u16 {
 
 pub fn stream_of(v: &Value) -> Option<u32> {
     v.get("stream").and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).filter(|n| *n > 0)
-}
-
-pub fn strip_claim(plain: &mut [u8]) -> bool {
-    if plain.len() >= 2 && plain[0] == PTY_IN && plain[1] & CLAIM_FLAG != 0 {
-        plain[1] &= !CLAIM_FLAG;
-        return true;
-    }
-    false
 }
 
 impl Phone {
@@ -33,7 +24,7 @@ impl Phone {
         if self.x.attaches.contains_key(&stream) {
             return self.sec.json(&error(Value::from(id), "invalid")).await;
         }
-        if !self.ctx.board.has_session(session) {
+        if !self.ctx.board.has_session_fresh(session, SUMMARY_WAIT).await {
             return self.sec.json(&error(Value::from(id), "notFound")).await;
         }
         let Some(slot) = Slot::take(&self.ctx, &self.device) else { return self.sec.json(&error(Value::from(id), "limit")).await };

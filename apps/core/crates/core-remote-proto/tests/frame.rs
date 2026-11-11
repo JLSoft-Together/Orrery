@@ -8,6 +8,7 @@ fn frame_round_trip() {
     let frame = Frame {
         kind: Kind::PtyOut,
         more: true,
+        claim: false,
         stream: 0xdead_beef,
         payload: b"abc".to_vec(),
     };
@@ -70,6 +71,7 @@ fn over_one_mib_fails() {
         let frame = Frame {
             kind: Kind::Json,
             more: true,
+            claim: false,
             stream: 1,
             payload: chunk.clone(),
         };
@@ -92,6 +94,7 @@ fn streams_and_kinds_are_kept_apart() {
     let part = |kind, stream, more, data: &[u8]| Frame {
         kind,
         more,
+        claim: false,
         stream,
         payload: data.to_vec(),
     };
@@ -102,6 +105,7 @@ fn streams_and_kinds_are_kept_apart() {
         re.push(part(Kind::PtyOut, 1, false, b"A")).unwrap(),
         Some(Message {
             kind: Kind::PtyOut,
+            claim: false,
             stream: 1,
             payload: b"aA".to_vec()
         })
@@ -117,6 +121,7 @@ fn too_many_open_streams_fail() {
         let f = Frame {
             kind: Kind::PtyOut,
             more: true,
+            claim: false,
             stream: s,
             payload: vec![0],
         };
@@ -125,6 +130,7 @@ fn too_many_open_streams_fail() {
     let f = Frame {
         kind: Kind::PtyOut,
         more: true,
+        claim: false,
         stream: 999,
         payload: vec![0],
     };
@@ -143,4 +149,41 @@ fn empty_and_exact_chunk_sizes() {
     let frames: Vec<Frame> = Chunker::new(Kind::PtyIn, 3, &plus).unwrap().collect();
     assert_eq!(frames.len(), 2);
     assert!(frames[0].more && !frames[1].more);
+}
+
+#[test]
+fn claim_bit_rides_the_frame_and_only_on_pty_input() {
+    let mut frame = Frame::new(Kind::PtyIn, 4, b"k".to_vec());
+    frame.claim = true;
+    let bytes = frame.encode().unwrap();
+    assert_eq!(&bytes[..6], &[2, 2, 0, 0, 0, 4]);
+    assert_eq!(Frame::decode(&bytes).unwrap(), frame);
+    frame.more = true;
+    assert_eq!(frame.encode().unwrap()[1], 3);
+
+    let mut json = Frame::new(Kind::Json, 0, vec![]);
+    json.claim = true;
+    assert_eq!(json.encode().unwrap_err(), Error::BadFrame);
+    assert_eq!(Frame::decode(&[0, 2, 0, 0, 0, 0]).unwrap_err(), Error::BadFrame);
+    assert_eq!(Frame::decode(&[1, 2, 0, 0, 0, 0]).unwrap_err(), Error::BadFrame);
+    assert_eq!(Frame::decode(&[2, 4, 0, 0, 0, 0]).unwrap_err(), Error::BadFrame);
+}
+
+#[test]
+fn chunker_claim_reaches_the_reassembled_message() {
+    let data = vec![7u8; MAX_CHUNK + 10];
+    let frames: Vec<Frame> = Chunker::new(Kind::PtyIn, 3, &data).unwrap().claiming(true).unwrap().collect();
+    assert_eq!(frames.len(), 2);
+    assert!(frames.iter().all(|f| f.claim));
+    let mut re = Reassembler::new();
+    let mut last = None;
+    for f in frames {
+        last = re.push(Frame::decode(&f.encode().unwrap()).unwrap()).unwrap();
+    }
+    let m = last.unwrap();
+    assert!(m.claim);
+    assert_eq!(m.payload, data);
+    let plain: Vec<Frame> = Chunker::new(Kind::PtyIn, 3, b"x").unwrap().collect();
+    assert!(!re.push(plain[0].clone()).unwrap().unwrap().claim);
+    assert!(Chunker::new(Kind::Json, 0, b"{}").unwrap().claiming(true).is_err());
 }

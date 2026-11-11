@@ -5,6 +5,7 @@ export const ENVELOPE_HEADER = 2;
 export const NOISE_MAX = 65_535;
 export const MAX_ENVELOPE = ENVELOPE_HEADER + NOISE_MAX;
 export const MAX_CONN = 65_535;
+export const CONTROL_MAX = 256;
 
 export type ControlKind = "open" | "close";
 

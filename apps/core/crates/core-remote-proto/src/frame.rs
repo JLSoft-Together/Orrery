@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{Error, Result};
 
 pub const HEADER_LEN: usize = 6;
 pub const FLAG_MORE: u8 = 0b0000_0001;
+pub const FLAG_CLAIM: u8 = 0b0000_0010;
 pub const MAX_CHUNK: usize = 60 * 1024;
 pub const MAX_MESSAGE: usize = 1 << 20;
 pub const MAX_PENDING_STREAMS: usize = 32;
@@ -36,6 +37,7 @@ impl TryFrom<u8> for Kind {
 pub struct Frame {
     pub kind: Kind,
     pub more: bool,
+    pub claim: bool,
     pub stream: u32,
     pub payload: Vec<u8>,
 }
@@ -45,6 +47,7 @@ impl Frame {
         Self {
             kind,
             more: false,
+            claim: false,
             stream,
             payload,
         }
@@ -54,9 +57,12 @@ impl Frame {
         if self.payload.len() > MAX_CHUNK {
             return Err(Error::TooLarge);
         }
+        if self.claim && self.kind != Kind::PtyIn {
+            return Err(Error::BadFrame);
+        }
         let mut out = Vec::with_capacity(HEADER_LEN + self.payload.len());
         out.push(self.kind as u8);
-        out.push(if self.more { FLAG_MORE } else { 0 });
+        out.push(if self.more { FLAG_MORE } else { 0 } | if self.claim { FLAG_CLAIM } else { 0 });
         out.extend_from_slice(&self.stream.to_be_bytes());
         out.extend_from_slice(&self.payload);
         Ok(out)
@@ -68,7 +74,7 @@ impl Frame {
         }
         let kind = Kind::try_from(bytes[0])?;
         let flags = bytes[1];
-        if flags & !FLAG_MORE != 0 {
+        if flags & !(FLAG_MORE | FLAG_CLAIM) != 0 || (flags & FLAG_CLAIM != 0 && kind != Kind::PtyIn) {
             return Err(Error::BadFrame);
         }
         let payload = &bytes[HEADER_LEN..];
@@ -78,6 +84,7 @@ impl Frame {
         Ok(Self {
             kind,
             more: flags & FLAG_MORE != 0,
+            claim: flags & FLAG_CLAIM != 0,
             stream: u32::from_be_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]),
             payload: payload.to_vec(),
         })
@@ -88,6 +95,7 @@ impl Frame {
 pub struct Chunker<'a> {
     kind: Kind,
     stream: u32,
+    claim: bool,
     rest: &'a [u8],
     done: bool,
 }
@@ -100,9 +108,18 @@ impl<'a> Chunker<'a> {
         Ok(Self {
             kind,
             stream,
+            claim: false,
             rest: payload,
             done: false,
         })
+    }
+
+    pub fn claiming(mut self, claim: bool) -> Result<Self> {
+        if claim && self.kind != Kind::PtyIn {
+            return Err(Error::BadFrame);
+        }
+        self.claim = claim;
+        Ok(self)
     }
 }
 
@@ -121,6 +138,7 @@ impl Iterator for Chunker<'_> {
         Some(Frame {
             kind: self.kind,
             more,
+            claim: self.claim,
             stream: self.stream,
             payload: head.to_vec(),
         })
@@ -130,6 +148,7 @@ impl Iterator for Chunker<'_> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message {
     pub kind: Kind,
+    pub claim: bool,
     pub stream: u32,
     pub payload: Vec<u8>,
 }
@@ -137,6 +156,7 @@ pub struct Message {
 #[derive(Debug, Default)]
 pub struct Reassembler {
     pending: HashMap<(Kind, u32), Vec<u8>>,
+    claimed: HashSet<(Kind, u32)>,
     pending_bytes: usize,
 }
 
@@ -151,10 +171,12 @@ impl Reassembler {
 
     pub fn clear(&mut self) {
         self.pending.clear();
+        self.claimed.clear();
         self.pending_bytes = 0;
     }
 
     fn drop_stream(&mut self, key: &(Kind, u32)) {
+        self.claimed.remove(key);
         if let Some(buf) = self.pending.remove(key) {
             self.pending_bytes -= buf.len();
         }
@@ -169,6 +191,7 @@ impl Reassembler {
             if !frame.more {
                 return Ok(Some(Message {
                     kind: frame.kind,
+                    claim: frame.claim,
                     stream: frame.stream,
                     payload: frame.payload,
                 }));
@@ -179,6 +202,9 @@ impl Reassembler {
                 return Err(Error::TooLarge);
             }
             self.pending_bytes += frame.payload.len();
+            if frame.claim {
+                self.claimed.insert(key);
+            }
             self.pending.insert(key, frame.payload);
             return Ok(None);
         };
@@ -191,6 +217,9 @@ impl Reassembler {
         self.pending_bytes += frame.payload.len();
         let buf = self.pending.entry(key).or_default();
         buf.extend_from_slice(&frame.payload);
+        if frame.claim {
+            self.claimed.insert(key);
+        }
         if frame.more {
             return Ok(None);
         }
@@ -198,6 +227,7 @@ impl Reassembler {
         self.pending_bytes -= payload.len();
         Ok(Some(Message {
             kind: frame.kind,
+            claim: self.claimed.remove(&key),
             stream: frame.stream,
             payload,
         }))

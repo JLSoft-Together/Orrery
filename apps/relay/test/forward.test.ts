@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { concat } from "../src/bytes";
 import { issueToken } from "../src/token";
-import { bytesOf, controlFrame, machineUrl, makeKeys, newMachine, nowSec, openSocket, randomKey, register, revoke, type Socket } from "./helpers";
+import { bytesOf, closeFrame, controlFrame, machineUrl, makeKeys, newMachine, nowSec, openSocket, randomKey, register, revoke, type Socket } from "./helpers";
 
 interface Rig {
   machine: string;
@@ -87,6 +87,29 @@ describe("forwarding", () => {
     r.desktop.sendBinary(concat(new Uint8Array([0, 1]), pattern(10, 5)));
     expect(Array.from(bytesOf(await p.next()))).toEqual(Array.from(pattern(10, 5)));
     expect(await p.idle()).toBe(true);
+  });
+
+  it("lets the desktop close exactly one phone with a chosen code and nobody else", async () => {
+    const r = await rig();
+    const p1 = await r.phone("dev-1");
+    await r.desktop.next();
+    const p2 = await r.phone("dev-2");
+    await r.desktop.next();
+    r.desktop.sendBinary(closeFrame(9, 4401));
+    r.desktop.sendBinary(closeFrame(1, 1006));
+    r.desktop.sendBinary(closeFrame(0, 4401));
+    r.desktop.sendBinary(closeFrame(1.5, 4401));
+    r.desktop.sendBinary(concat(new Uint8Array([0, 0]), new TextEncoder().encode("not json")));
+    r.desktop.sendBinary(concat(new Uint8Array([0, 0]), new TextEncoder().encode(JSON.stringify({ t: "open", conn: 1, code: 4401 }))));
+    p1.sendBinary(pattern(8, 1));
+    expect(Array.from(bytesOf(await r.desktop.next()))).toEqual(Array.from(concat(new Uint8Array([0, 1]), pattern(8, 1))));
+    r.desktop.sendBinary(closeFrame(1, 4401));
+    expect(await p1.closed()).toEqual({ code: 4401, reason: "device" });
+    r.desktop.sendBinary(concat(new Uint8Array([0, 2]), pattern(10, 6)));
+    expect(Array.from(bytesOf(await p2.next()))).toEqual(Array.from(pattern(10, 6)));
+    expect(await r.desktop.idle()).toBe(true);
+    r.desktop.sendBinary(closeFrame(2, 4426));
+    expect(await p2.closed()).toEqual({ code: 4426, reason: "proto" });
   });
 
   it("tells the desktop when a phone closes and does not reuse its connId right away", async () => {

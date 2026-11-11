@@ -76,6 +76,7 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         Err(Admit::Full) => return link.out.close(CLOSE_RATE, "sessions").await,
     };
     link.budget.open();
+    ctx.board.mark_connect();
     drop(pending);
     let touched = lock(&ctx.devices).touch(&device, now_secs());
     if let Some((name, true)) = touched {

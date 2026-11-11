@@ -5,6 +5,7 @@ use serde_json::{json, Map, Value};
 
 pub const CONFIRM_TTL: Duration = Duration::from_secs(60);
 pub const MAX_CONFIRMS: usize = 4;
+pub const ASK_COMMAND: &str = "run.reinstall";
 const TEXT_MAX: usize = 400;
 
 struct Ask {

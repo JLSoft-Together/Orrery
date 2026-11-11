@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::{broadcast, mpsc};
 
-use super::confirm::{ask_event, command_of, Confirms};
+use super::confirm::{ask_event, command_of, Confirms, ASK_COMMAND};
 use super::ctx::Asked;
 use super::dashboard::{error, Phone};
 use super::pty_bridge::{Attach, FromHub};
@@ -39,7 +39,6 @@ pub struct Extra {
     pub(super) next_gen: u64,
     pub(super) hub_tx: mpsc::Sender<FromHub>,
     pub(super) hub_rx: mpsc::Receiver<FromHub>,
-    pub(super) claims: HashSet<u32>,
     pub(super) backlog: Arc<AtomicUsize>,
     pub(super) nonce: String,
     pub(super) v: ViewerState,
@@ -67,7 +66,6 @@ impl Extra {
             next_gen: 0,
             hub_tx,
             hub_rx,
-            claims: HashSet::new(),
             backlog: Arc::new(AtomicUsize::new(0)),
             v: ViewerState::new(device, &nonce),
             nonce,
@@ -236,6 +234,12 @@ impl Phone {
     async fn confirm_answer(&mut self, id: &str, v: &Value) -> bool {
         let Some(cid) = v.get("cid").and_then(Value::as_str) else { return self.sec.json(&error(Value::from(id), "invalid")).await };
         let Some(cmd) = self.x.confirms.take(cid, Instant::now()) else { return self.sec.json(&error(Value::from(id), "notFound")).await };
+        if cmd.get("t").and_then(Value::as_str) == Some(ASK_COMMAND) {
+            let yes = v.get("ok") == Some(&Value::Bool(true));
+            let answered = cmd.get("aid").and_then(Value::as_str).is_some_and(|aid| self.ctx.viewer.answer(aid, yes));
+            let reply = if !answered { error(Value::from(id), "notFound") } else if yes { json!({ "re": id, "ok": true }) } else { json!({ "re": id, "ok": true, "cancelled": true }) };
+            return self.sec.json(&reply).await;
+        }
         if v.get("ok") != Some(&Value::Bool(true)) {
             return self.sec.json(&json!({ "re": id, "ok": true, "cancelled": true })).await;
         }

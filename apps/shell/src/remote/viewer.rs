@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
-use super::confirm::command_of;
+use super::confirm::{ask_event, command_of, ASK_COMMAND};
 use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
 use super::phone_ws::{Done, MAX_IN_FLIGHT};
@@ -14,6 +14,13 @@ use super::viewer_map::{build_args, lookup, outcome, pre_needs, pre_of, watch_ke
 
 pub const MAX_WATCHES: usize = 8;
 pub const MAX_REPLY: usize = 900_000;
+
+pub async fn flush_due(at: Option<tokio::time::Instant>) {
+    match at {
+        Some(t) => tokio::time::sleep_until(t).await,
+        None => std::future::pending().await,
+    }
+}
 
 struct Busy {
     ctx: Arc<Ctx>,
@@ -51,12 +58,14 @@ pub struct ViewerState {
     watched: HashSet<String>,
     pending: HashSet<String>,
     guard: Option<Guard>,
+    batch: Vec<VEvent>,
+    pub(super) flush_at: Option<tokio::time::Instant>,
 }
 
 impl ViewerState {
     pub fn new(device: &str, nonce: &str) -> ViewerState {
         let (tx, rx) = mpsc::channel(QUEUE);
-        ViewerState { owner: format!("remote:{device}:{nonce}"), tx, rx, watched: HashSet::new(), pending: HashSet::new(), guard: None }
+        ViewerState { owner: format!("remote:{device}:{nonce}"), tx, rx, watched: HashSet::new(), pending: HashSet::new(), guard: None, batch: Vec::new(), flush_at: None }
     }
 }
 
@@ -185,11 +194,36 @@ impl Phone {
         }
     }
 
-    pub(super) async fn on_vevent(&mut self, first: VEvent) -> bool {
-        tokio::time::sleep(COALESCE).await;
-        let mut batch = vec![first];
-        while let Ok(e) = self.x.v.rx.try_recv() {
-            batch.push(e);
+    pub(super) fn on_vevent(&mut self, event: VEvent) {
+        let v = &mut self.x.v;
+        v.batch.push(event);
+        let now = tokio::time::Instant::now();
+        if v.batch.len() >= QUEUE {
+            v.flush_at = Some(now);
+        } else if matches!(v.batch.last(), Some(VEvent::Ask { .. })) {
+            v.flush_at = Some(now);
+        } else {
+            v.flush_at.get_or_insert(now + COALESCE);
+        }
+    }
+
+    async fn on_ask(&mut self, aid: &str, needs: &Value) -> bool {
+        let cmd = json!({ "t": ASK_COMMAND, "aid": aid });
+        let Some(cid) = self.x.confirms.add(cmd, Instant::now()) else {
+            self.ctx.viewer.answer(aid, false);
+            return true;
+        };
+        self.sec.json(&ask_event(&cid, ASK_COMMAND, needs)).await
+    }
+
+    pub(super) async fn flush_vevents(&mut self) -> bool {
+        self.x.v.flush_at = None;
+        let (asks, batch): (Vec<VEvent>, Vec<VEvent>) = std::mem::take(&mut self.x.v.batch).into_iter().partition(|e| matches!(e, VEvent::Ask { .. }));
+        for ask in asks {
+            let VEvent::Ask { aid, needs } = ask else { continue };
+            if !self.on_ask(&aid, &needs).await {
+                return false;
+            }
         }
         for msg in merge(batch) {
             if !self.sec.json(&msg).await {

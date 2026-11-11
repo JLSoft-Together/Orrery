@@ -12,8 +12,8 @@ use super::config::now_secs;
 use super::ctx::{Control, Ctx};
 use super::limits::{Rate, MAX_COMMANDS_PER_MINUTE};
 use super::link::{Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_OFF, CLOSE_PROTO};
-use super::phone_pty::strip_claim;
 use super::phone_ws::{next_ws, Extra};
+use super::viewer::flush_due;
 use crate::state::lock;
 
 pub const BATCH: Duration = Duration::from_millis(30);
@@ -163,8 +163,9 @@ impl Phone {
                         break;
                     }
                 }
-                Some(ev) = self.x.v.rx.recv() => {
-                    if !self.on_vevent(ev).await {
+                Some(ev) = self.x.v.rx.recv() => self.on_vevent(ev),
+                _ = flush_due(self.x.v.flush_at) => {
+                    if !self.flush_vevents().await {
                         break;
                     }
                 }
@@ -194,20 +195,13 @@ impl Phone {
     }
 
     async fn inbound(&mut self, msg: &[u8]) -> bool {
-        let mut claim = false;
-        let frame = match self.sec.transport.open(msg).map(|mut plain| {
-            claim = strip_claim(&mut plain);
-            Frame::decode(&plain)
-        }) {
+        let frame = match self.sec.transport.open(msg).map(|plain| Frame::decode(&plain)) {
             Ok(Ok(f)) => f,
             _ => {
                 self.sec.close(CLOSE_HANDSHAKE, "frame").await;
                 return false;
             }
         };
-        if claim {
-            self.x.claims.insert(frame.stream);
-        }
         let message = match self.reasm.push(frame) {
             Ok(Some(m)) => m,
             Ok(None) => return true,
@@ -219,10 +213,7 @@ impl Phone {
         match message.kind {
             Kind::Json => self.command(&message.payload).await,
             Kind::Ping => self.sec.frame(Kind::Ping, 0, &[]).await,
-            Kind::PtyIn => {
-                let claim = self.x.claims.remove(&message.stream);
-                self.pty_input(message.stream, message.payload, claim).await
-            }
+            Kind::PtyIn => self.pty_input(message.stream, message.payload, message.claim).await,
             Kind::PtyOut => true,
         }
     }

@@ -77,7 +77,7 @@ impl Host for AppHost {
     }
 
     fn viewer(&self, owner: &str, channel: &str, args: Value, accept: &[String]) -> Value {
-        let guard = super::scope::enter(accept);
+        let guard = super::scope::enter(owner, accept);
         let list = args.as_array().map_or(&[][..], Vec::as_slice);
         let raw = if crate::preview_ipc::handles(channel) {
             crate::preview_ipc::dispatch(&self.app, owner, channel, list)
@@ -125,6 +125,10 @@ pub fn shutdown(app: &AppHandle) {
 
 pub fn is_viewer_owner(owner: &str) -> bool {
     owner.starts_with("remote:")
+}
+
+pub fn ask_device(app: &AppHandle, owner: &str, needs: &Value) -> bool {
+    app.try_state::<Remote>().is_some_and(|r| r.ask_device(owner, needs))
 }
 
 pub fn viewer_event(app: &AppHandle, owner: &str, event: super::VEvent) {

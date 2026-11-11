@@ -63,6 +63,17 @@ pub fn encode_control(control: &Control) -> Result<Vec<u8>> {
     Ok(out)
 }
 
+pub fn encode_close(conn: u16, code: u16) -> Result<Vec<u8>> {
+    if conn == CONTROL_CONN {
+        return Err(Error::BadMessage);
+    }
+    let json = serde_json::to_vec(&serde_json::json!({ "t": "close", "conn": conn, "code": code })).map_err(|_| Error::BadMessage)?;
+    let mut out = Vec::with_capacity(ENVELOPE_HEADER + json.len());
+    out.extend_from_slice(&CONTROL_CONN.to_be_bytes());
+    out.extend_from_slice(&json);
+    Ok(out)
+}
+
 pub fn decode(bytes: &[u8]) -> Result<Envelope<'_>> {
     if bytes.len() < ENVELOPE_HEADER {
         return Err(Error::BadMessage);

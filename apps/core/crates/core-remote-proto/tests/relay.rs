@@ -97,3 +97,13 @@ fn bad_envelopes_fail() {
     };
     assert_eq!(encode_control(&control).unwrap_err(), Error::BadMessage);
 }
+
+#[test]
+fn close_control_carries_the_code_and_still_parses_as_a_close() {
+    let bytes = core_remote_proto::relay::encode_close(7, 4401).unwrap();
+    assert_eq!(&bytes[..2], &[0, 0]);
+    let value: serde_json::Value = serde_json::from_slice(&bytes[2..]).unwrap();
+    assert_eq!(value, serde_json::json!({ "t": "close", "conn": 7, "code": 4401 }));
+    assert_eq!(decode(&bytes).unwrap(), Envelope::Control(Control { t: ControlKind::Close, conn: 7 }));
+    assert_eq!(core_remote_proto::relay::encode_close(0, 4401).unwrap_err(), Error::BadMessage);
+}

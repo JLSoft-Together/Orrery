@@ -171,13 +171,9 @@ impl Gateway {
                 Ok(Message::Close(_)) | Err(_) => return,
                 Ok(_) => continue,
             };
-            let Ok(mut plain) = transport.open(&cipher) else {
+            let Ok(plain) = transport.open(&cipher) else {
                 return close(&mut ws, 4400);
             };
-            let claim = plain.len() > 1 && plain[0] == Kind::PtyIn as u8 && plain[1] & 0b10 != 0;
-            if claim {
-                plain[1] &= !0b10;
-            }
             let Ok(frame) = Frame::decode(&plain) else {
                 return close(&mut ws, 4400);
             };
@@ -187,7 +183,7 @@ impl Gateway {
             match message.kind {
                 Kind::Ping => send_frame(&mut ws, &mut transport, Kind::Ping, 0, &[]),
                 Kind::PtyIn => {
-                    let mut echoed = if claim { b"claim+echo:".to_vec() } else { b"echo:".to_vec() };
+                    let mut echoed = if message.claim { b"claim+echo:".to_vec() } else { b"echo:".to_vec() };
                     echoed.extend_from_slice(&message.payload);
                     send_frame(&mut ws, &mut transport, Kind::PtyOut, message.stream, &echoed);
                 }

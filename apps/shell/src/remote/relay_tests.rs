@@ -177,3 +177,30 @@ fn the_relay_socket_url_follows_the_base_scheme() {
     assert_eq!(ws_url("http://127.0.0.1:9", "m1", 5, "s").as_deref(), Some("ws://127.0.0.1:9/m/m1?ts=5&sig=s"));
     assert_eq!(ws_url("ftp://x", "m1", 5, "s"), None);
 }
+
+#[test]
+fn a_failed_handshake_over_the_relay_tells_the_relay_to_close_that_phone_with_the_code() {
+    let rt = runtime();
+    let listener = rt.block_on(TcpListener::bind("127.0.0.1:0")).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let rig = rig("relay-close", &format!("http://127.0.0.1:{port}"), true);
+    rig.remote.enable(true);
+    rt.block_on(async {
+        let (stream, _) = tokio::time::timeout(Duration::from_secs(10), listener.accept()).await.unwrap().unwrap();
+        let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+        ws.send(Message::Binary(encode_control(&Control { t: ControlKind::Open, conn: 3 }).unwrap().into())).await.unwrap();
+        ws.send(Message::Binary(encode_data(3, &[7u8; 80]).unwrap().into())).await.unwrap();
+        let close = loop {
+            let msg = tokio::time::timeout(Duration::from_secs(10), ws.next()).await.unwrap().unwrap().unwrap();
+            if let Message::Binary(b) = msg {
+                if b.len() > 2 && b[0] == 0 && b[1] == 0 {
+                    break serde_json::from_slice::<Value>(&b[2..]).unwrap();
+                }
+            }
+        };
+        assert_eq!(close["t"], "close");
+        assert_eq!(close["conn"], 3);
+        assert!(matches!(close["code"].as_u64(), Some(4400 | 4401 | 4426)), "{close}");
+    });
+    rig.remote.enable(false);
+}

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use core_remote_proto::frame::Kind;
+use core_remote_proto::frame::{Kind, FLAG_CLAIM};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio::net::TcpStream;
@@ -11,7 +11,6 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use super::devices::Device;
-use super::phone_pty::{strip_claim, CLAIM_FLAG};
 use super::test_util::*;
 use super::pty_bridge::{spawn, FromHub, Slot, Spec, ToHub};
 use super::workspace::MAX_ATTACH;
@@ -66,16 +65,6 @@ async fn phone_output(ws: &mut Ws, t: &mut core_remote_proto::Transport, stream:
 }
 
 #[test]
-fn the_claim_bit_is_taken_off_kind_two_only() {
-    let mut a = [2u8, CLAIM_FLAG, 0, 0, 0, 1, b'x'];
-    assert!(strip_claim(&mut a));
-    assert_eq!(a[1], 0);
-    let mut b = [0u8, CLAIM_FLAG, 0, 0, 0, 0];
-    assert!(!strip_claim(&mut b));
-    assert_eq!(b[1], CLAIM_FLAG);
-}
-
-#[test]
 fn a_phone_views_and_types_into_a_desktop_pane_through_the_real_hub() {
     let Some(bin) = core_bin() else {
         eprintln!("skip: orrery-core debug build not found");
@@ -119,7 +108,7 @@ fn a_phone_views_and_types_into_a_desktop_pane_through_the_real_hub() {
         let ready = until_json(&mut ws, &mut t, |v| v["t"] == "pty.ready").await;
         assert_eq!((ready["stream"].as_u64(), ready["cols"].as_u64(), ready["rows"].as_u64()), (Some(7), Some(80), Some(24)));
         phone_output(&mut ws, &mut t, 7, "desk-first").await;
-        send_raw(&mut ws, &mut t, 2, CLAIM_FLAG, 7, b"echo phone-mark\r").await;
+        send_raw(&mut ws, &mut t, 2, FLAG_CLAIM, 7, b"echo phone-mark\r").await;
         desk_until(&mut d, |m| matches!(m, Message::Text(t) if t.as_str().contains("\"resized\"") && t.as_str().contains("50"))).await;
         desk_until(&mut d, |m| matches!(m, Message::Binary(b) if String::from_utf8_lossy(b).contains("phone-mark"))).await;
         phone_output(&mut ws, &mut t, 7, "phone-mark").await;

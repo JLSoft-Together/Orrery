@@ -1,0 +1,36 @@
+## WP-2 — DONE
+
+- Đã đổi:
+  - `apps/core/Cargo.toml` — thêm member `crates/core-remote-proto` (không thêm dep workspace; dep khai ở crate).
+  - `apps/core/Cargo.lock` — chỉ thêm package mới (snow + RustCrypto bản 0.10/0.4 cho snow, hkdf 0.13); không đổi version package cũ (các dòng `-` chỉ là thêm hậu tố version cho tên trùng).
+  - `apps/core/crates/core-remote-proto/` mới: `Cargo.toml`, `src/{lib,error,keys,transport,wire,frame,relay,session,vectors}.rs`, `src/pair/{mod,qr}.rs`, `tests/{pair,session,transport,frame,relay,fuzz}.rs`, `tests/vectors.json`.
+  - `.code_index/core.md` — thêm 1 mục cuối `core-remote-proto (v97 WP-2)` (12 dòng).
+  - `.planning/wp/v97/WP-2.md` — 1 dòng Nhật ký.
+- API công khai:
+  - `PROTO`, `MIN_PROTO`, `PROLOGUE_PREFIX`, `prologue(proto)`; `Error` (Noise, KeyMismatch, Unauthorized, ProtoTooOld{min}, ProtoTooNew{max}, BadMessage, BadPayload, BadKey, BadQr, BadToken, Expired, UnknownKind(u8), BadFrame, TooLarge, Closed, Rng), `Result`.
+  - `StaticKeypair::{generate, from_private, public, export_private}` (Zeroizing, Debug ẩn), `KEY_LEN`.
+  - `Transport::{seal, open, is_closed, remote_static}`, `MAX_PLAINTEXT` = 65 519.
+  - `pair::{PairCode::{generate, from_bytes, as_bytes, derive_psk}, QrPayload::{encode, decode, is_expired}, PairInitiator::{start, finish}, PairResponder::{start, finish}, PairedDesktop, PairedDevice}`.
+  - `session::{SessionInitiator::{start, finish}, accept(local, msg1, authorize), SessionAccepted}`.
+  - `frame::{Kind, Frame::{new, encode, decode}, Chunker (Iterator), Reassembler::{push, clear, pending_streams}, Message}` + hằng MAX_CHUNK 60 KiB / MAX_MESSAGE 1 MiB.
+  - `relay::{encode_data, encode_control, decode -> Envelope, Control, ControlKind, RelayKey, issue_token, verify_token}`.
+- Crate mới thêm + lý do:
+  - `snow` 0.10 (features `use-chacha20poly1305, use-blake2, use-curve25519, use-getrandom`, KHÔNG `std`: feature `std` của snow kéo `ring` = C; đã kiểm `cargo tree -i ring` không còn).
+  - `hkdf` 0.13 (PSK = HKDF-SHA256 theo thiết kế; cùng thế hệ digest 0.11 với `hmac` 0.13 / `sha2` 0.11 đã có trong lock).
+  - `hmac` 0.13, `sha2` 0.11, `getrandom` 0.4, `zeroize` 1, `base64` 0.23, `serde`/`serde_json` — đều đã có trong lock.
+- Tiêu chí: 10/10 đạt.
+  - Lệch thiết kế có chủ đích (cần main / WP-9 / WP-10 biết): msg1 của cả 2 bắt tay có tiền tố proto u16 BE rõ (`proto ‖ noise msg1`); responder dựng prologue theo proto đó. Lý do: prologue chứa PROTO, không có tiền tố thì client cũ chỉ ra lỗi giải mã, không bao giờ ra `ProtoTooOld`. Payload IK vẫn có `{deviceId, proto}` và phải khớp tiền tố. Thêm `ProtoTooNew{max}` cho proto > PROTO.
+  - msg2 IK payload = `{proto}`; msg1/msg2 ghép payload rỗng.
+- Audit: diff chỉ trong phạm vi; không comment (rg chỉ khớp chuỗi URL trong test), không println/log; Debug của key / code / RelayKey / Transport / handshake đều ẩn.
+- Review (rủi ro còn lại):
+  - Sai mã ghép chỉ bị phát hiện ở desktop (`PairResponder::finish` → `Noise`) vì psk3 nằm ở msg3 — đúng Noise; giới hạn số lần thử + hết hạn mã phía desktop là việc của gateway (WP sau).
+  - `Transport::open` lỗi 1 lần → đóng hẳn (`Closed`), tránh làm oracle; gateway phải đóng kết nối khi gặp lỗi.
+  - Token MAC input ghép không độ dài đúng như brief; an toàn vì verifier cố định machineId, exp + MAC độ dài cố định; MAC so constant-time (`verify_slice`) trước khi xét hạn.
+  - snow chưa được audit chính thức (ghi trong khảo sát lib); pattern XXpsk3 / IK đã xác nhận bằng test đủ vòng.
+  - Reassembler giới hạn thêm 32 stream dở + 4 MiB tổng (chặn DoS bộ nhớ).
+- Test: `cargo test --locked -j 3 -p core-remote-proto` → 37 pass / 0 fail (8 suite, fuzz 10 000 vòng + 2 000 msg2 ngẫu nhiên); `cargo clippy --locked -j 3 -p core-remote-proto --all-targets -- -D warnings` → sạch. Vector: `tests/vectors.json` (key / ephemeral / mã cố định → pair msg1–3, IK msg1–2, 1 frame transport mỗi loại, QR, token); sinh lại bằng `CRP_WRITE_VECTORS=1 cargo test -p core-remote-proto --lib`.
+- Hot file cần thêm / Ngoài phạm vi cần main xử lý:
+  - WP-9 (DO relay, TS) và WP-10 (Dart) phải theo tiền tố proto ở msg1 và format token trong `tests/vectors.json`.
+  - `docs/` chưa có mục giao thức remote (ngoài phạm vi WP-2).
+- Commit message đề xuất:
+  `feat(core): add core-remote-proto crate (Noise XXpsk3 pairing, IK sessions, frames, relay tokens)`

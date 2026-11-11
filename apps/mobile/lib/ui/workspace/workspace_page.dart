@@ -9,6 +9,7 @@ import '../theme/orrery_theme.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
 import '../widgets/link_widgets.dart';
+import '../monitor/monitor_page.dart';
 import 'inbox_page.dart';
 import 'machine_scope.dart';
 import 'mission_page.dart';
@@ -22,7 +23,77 @@ class WorkspacePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      MachineScope(machineId: machineId, child: _WorkspaceBody(machineId));
+      MachineScope(machineId: machineId, child: _Shell(machineId));
+}
+
+class _Shell extends ConsumerStatefulWidget {
+  const _Shell(this.machineId);
+
+  final String machineId;
+
+  @override
+  ConsumerState<_Shell> createState() => _ShellState();
+}
+
+class _ShellState extends ConsumerState<_Shell> {
+  int _index = 0;
+
+  void _openTerminal(String terminalId) {
+    final id = widget.machineId;
+    final model = ref.read(workspaceModelProvider(id));
+    final pane = model.panes.where((p) => p.terminalId == terminalId).firstOrNull;
+    final tab = pane == null ? null : model.tabOfPane(pane.key);
+    if (pane == null || tab == null) {
+      toast(context, context.l10n.vNotInWorkspace);
+      return;
+    }
+    openPane(context, id, tab, pane.key);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final id = widget.machineId;
+    final inbox = ref.watch(workspaceModelProvider(id)).inbox.length;
+    return Scaffold(
+      body: IndexedStack(
+        index: _index,
+        children: [
+          _WorkspaceBody(id),
+          MonitorPage(machineId: id, onOpen: _openTerminal),
+          InboxPage(machineId: id),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: [
+          NavigationDestination(
+            key: const ValueKey('nav-workspace'),
+            icon: const Icon(Icons.space_dashboard_outlined),
+            selectedIcon: const Icon(Icons.space_dashboard_rounded),
+            label: l.navWorkspace,
+          ),
+          NavigationDestination(
+            key: const ValueKey('nav-monitor'),
+            icon: const Icon(Icons.public_outlined),
+            selectedIcon: const Icon(Icons.public_rounded),
+            label: l.vMonitor,
+          ),
+          NavigationDestination(
+            key: const ValueKey('nav-inbox'),
+            icon: Badge(
+              isLabelVisible: inbox > 0,
+              label: Text('$inbox'),
+              child: const Icon(Icons.inbox_outlined),
+            ),
+            selectedIcon: const Icon(Icons.inbox_rounded),
+            label: l.inbox,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 void openPane(
@@ -51,7 +122,6 @@ class _WorkspaceBody extends ConsumerWidget {
     final view = ref.watch(machineViewProvider(machineId));
     final model = ref.watch(workspaceModelProvider(machineId));
     final projects = model.projects;
-    final inbox = model.inbox.length;
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -80,20 +150,6 @@ class _WorkspaceBody extends ConsumerWidget {
               machineRoute<void>(
                 machineId,
                 (_) => MissionPage(machineId: machineId),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: l.inbox,
-            icon: Badge(
-              isLabelVisible: inbox > 0,
-              label: Text('$inbox'),
-              child: const Icon(Icons.inbox_rounded),
-            ),
-            onPressed: () => Navigator.of(context).push(
-              machineRoute<void>(
-                machineId,
-                (_) => InboxPage(machineId: machineId),
               ),
             ),
           ),

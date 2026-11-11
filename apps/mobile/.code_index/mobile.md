@@ -63,3 +63,12 @@ Hợp đồng: `docs/remote-integration.md`. Crypto + frame nằm ở crate `app
 - app/pane_link.dart: `PaneLink`, `parsePaneLink(Uri)` (`orrery-remote://m/<m>/p/<p>` và `https://orrery-relay.jinvu.workers.dev/o/<m>/<p>`, kiểm ký tự); app/link_source.dart: `LinkSource`, `AppLinksSource` (package `app_links`); app/deep_link_host.dart: `DeepLinkHost` (trong `MaterialApp.builder`; máy lạ -> `linkUnknownMachine`; chọn máy -> `WorkspacePage` -> chờ summary max 20 s -> `TabPage`; không có pane -> `linkPaneGone`; bỏ link trùng trong 2 s)
 - Android: 2 intent-filter (scheme `orrery-remote` host `m`; https relay `/o/` autoVerify) + `flutter_deeplinking_enabled=false`; iOS: `CFBundleURLTypes`, `FlutterDeepLinkingEnabled=false`, `Runner/Runner.entitlements` (`applinks:`) + `CODE_SIGN_ENTITLEMENTS`
 - Test: pane_link_test, deep_link_test
+
+## WP-12 viewer + Monitor
+- ui/workspace/workspace_page.dart: `_Shell` NavigationBar 3 tab (Workspace · Monitor "Quỹ đạo" · Inbox); tab_page AppBar nút `viewer-menu` -> `viewers/viewer_menu.dart` (Explorer · Changes · Git Log · Run, root = pane cwd hoặc project)
+- ui/machine_api.dart: `events` (stream sự kiện connection), `command(type, fields, timeout)`
+- ui/viewers: `viewer_api.dart` (`ViewerApi.call` -> `ViewerReply{data,pending,cancelled}`, `ViewerFailure` từ `data.ok==false`; watch ref-count `fs`/`git` + gửi lại sau `hello`), `viewer_actions.dart` (`viewerAction`: confirm pending -> toast + reload khi `confirms` về 0), `async_panel.dart` (`AsyncPanel` load/reload theo event, `viewerErrorText`), models `viewer_models`/`log_models`/`run_models`
+- Explorer (`explorer_page`, `fuzzy`): cây lazy `fs.list`, git mark từ `git.status`, tìm `fs.files` fuzzy; File (`file_page`, `code_view`, `highlight_lines` dùng package `highlight` MIT): số dòng, tìm trong file, sửa + `fs.write` kèm `base`, conflict -> banner không ghi đè; Changes (`changes_page`) stage/unstage/discard/commit; Diff (`diff_page`, `diff_view`: parse unified, gộp context > 12 dòng); Git Log (`log_page` graph 1 cột, phân trang 500, `commit_page`, `branches_page`: tạo/fetch/update/push (preview đích)/xoá); Run (`run_page`: configs/devices/start/stop/reload, log 200 dòng từ `run.event`)
+- ui/monitor: `monitor_model.dart` (snapshot -> project -> session -> subagent tree), `monitor_page.dart` (context %, token chỉ khi có `totalTokens`)
+- l10n: `tool/arb_viewers.mjs` (khoá `v*`) gộp vào `gen_arb.mjs`
+- Test: viewers_test, ui_viewer_integration_test (tag integration, fake_gateway `tests/common/viewer.rs`), viewers_shots_test (`WP12_SHOTS=1 WP12_OUT=...`)

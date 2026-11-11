@@ -11,7 +11,8 @@ abstract class PtyHandle {
 }
 
 abstract class MachineApi {
-  Future<JsonMap> command(String type, [JsonMap? fields]);
+  Stream<JsonMap> get events;
+  Future<JsonMap> command(String type, [JsonMap? fields, Duration? timeout]);
   Future<PtyHandle> attach(
     String sessionId,
     int cols,
@@ -51,12 +52,19 @@ class BundleMachineApi implements MachineApi {
   MachineBundle get _bundle => host.bundle(machineId);
 
   @override
-  Future<JsonMap> command(String type, [JsonMap? fields]) {
+  Stream<JsonMap> get events => _bundle.connection.events;
+
+  @override
+  Future<JsonMap> command(
+    String type, [
+    JsonMap? fields,
+    Duration? timeout,
+  ]) {
     final session = _bundle.connection.session;
     if (session == null) {
       return Future.error(const RemoteCommandException('offline'));
     }
-    return session.request(type, fields);
+    return session.request(type, fields, timeout);
   }
 
   @override

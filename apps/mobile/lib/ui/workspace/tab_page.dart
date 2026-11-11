@@ -9,6 +9,7 @@ import '../theme/orrery_theme.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
 import '../widgets/link_widgets.dart';
+import '../viewers/viewer_menu.dart';
 import 'pane_actions.dart';
 import 'split_view.dart';
 
@@ -146,6 +147,14 @@ class _TabPageState extends ConsumerState<TabPage> {
           ],
         ),
         actions: [
+          if ((current.cwd ?? tab.project) != null)
+            IconButton(
+              key: const ValueKey('viewer-menu'),
+              tooltip: l.vViewerMenu,
+              icon: const Icon(Icons.folder_open_rounded),
+              onPressed: () =>
+                  showViewerMenu(context, id, (current.cwd ?? tab.project)!),
+            ),
           IconButton(
             tooltip: l.tabActions,
             icon: const Icon(Icons.tune_rounded),

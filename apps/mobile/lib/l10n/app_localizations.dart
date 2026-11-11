@@ -883,6 +883,612 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scan the QR code in Orrery Settings'**
   String get pairScanHint;
+
+  /// No description provided for @navWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get navWorkspace;
+
+  /// No description provided for @vMonitor.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitor'**
+  String get vMonitor;
+
+  /// No description provided for @vMonitorEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions on the computer right now.'**
+  String get vMonitorEmpty;
+
+  /// No description provided for @vTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens'**
+  String vTokens(String count);
+
+  /// No description provided for @vContextPct.
+  ///
+  /// In en, this message translates to:
+  /// **'context {percent}%'**
+  String vContextPct(int percent);
+
+  /// No description provided for @vNotInWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is not open in the Workspace.'**
+  String get vNotInWorkspace;
+
+  /// No description provided for @vViewerMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer, Changes, Git Log, Run'**
+  String get vViewerMenu;
+
+  /// No description provided for @vExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer'**
+  String get vExplorer;
+
+  /// No description provided for @vChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get vChanges;
+
+  /// No description provided for @vGitLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Log'**
+  String get vGitLog;
+
+  /// No description provided for @vRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get vRun;
+
+  /// No description provided for @vRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get vRetry;
+
+  /// No description provided for @vErrNotRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is not a git repository.'**
+  String get vErrNotRepo;
+
+  /// No description provided for @vErrConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The file changed on the computer.'**
+  String get vErrConflict;
+
+  /// No description provided for @vErrMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The file no longer exists.'**
+  String get vErrMissing;
+
+  /// No description provided for @vErrTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Too large to handle on the phone.'**
+  String get vErrTooLarge;
+
+  /// No description provided for @vErrExists.
+  ///
+  /// In en, this message translates to:
+  /// **'That name already exists.'**
+  String get vErrExists;
+
+  /// No description provided for @vErrNotMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'The branch is not merged yet.'**
+  String get vErrNotMerged;
+
+  /// No description provided for @vErrCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the current branch.'**
+  String get vErrCurrent;
+
+  /// No description provided for @vErrNoUpstream.
+  ///
+  /// In en, this message translates to:
+  /// **'The branch has no upstream.'**
+  String get vErrNoUpstream;
+
+  /// No description provided for @vErrNonFf.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot fast-forward. Update from the computer.'**
+  String get vErrNonFf;
+
+  /// No description provided for @vErrAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'The remote refused the credentials.'**
+  String get vErrAuth;
+
+  /// No description provided for @vErrNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to commit.'**
+  String get vErrNothing;
+
+  /// No description provided for @vErrEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a commit message first.'**
+  String get vErrEmptyMessage;
+
+  /// No description provided for @vErrPushed.
+  ///
+  /// In en, this message translates to:
+  /// **'That commit is already pushed.'**
+  String get vErrPushed;
+
+  /// No description provided for @vErrHook.
+  ///
+  /// In en, this message translates to:
+  /// **'A git hook rejected the commit.'**
+  String get vErrHook;
+
+  /// No description provided for @vErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The command failed.'**
+  String get vErrFailed;
+
+  /// No description provided for @vCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled.'**
+  String get vCancelled;
+
+  /// No description provided for @vWaitConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm on this phone to continue.'**
+  String get vWaitConfirm;
+
+  /// No description provided for @vFindFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Find file'**
+  String get vFindFile;
+
+  /// No description provided for @vFindFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type part of a file name or path.'**
+  String get vFindFileHint;
+
+  /// No description provided for @vFindInFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in file'**
+  String get vFindInFile;
+
+  /// No description provided for @vNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get vNoMatches;
+
+  /// No description provided for @vPrevMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get vPrevMatch;
+
+  /// No description provided for @vNextMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get vNextMatch;
+
+  /// No description provided for @vListTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The list is cut at the computer limit.'**
+  String get vListTruncated;
+
+  /// No description provided for @vFolderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is empty.'**
+  String get vFolderEmpty;
+
+  /// No description provided for @vEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get vEdit;
+
+  /// No description provided for @vSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get vSaved;
+
+  /// No description provided for @vDiscardEditsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard your edits?'**
+  String get vDiscardEditsTitle;
+
+  /// No description provided for @vDiscardEditsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The changes you typed are not saved.'**
+  String get vDiscardEditsBody;
+
+  /// No description provided for @vKeepEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get vKeepEditing;
+
+  /// No description provided for @vDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get vDiscard;
+
+  /// No description provided for @vFileTooBigPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is too large for the phone.'**
+  String get vFileTooBigPhone;
+
+  /// No description provided for @vFileBinary.
+  ///
+  /// In en, this message translates to:
+  /// **'Binary file, cannot show it.'**
+  String get vFileBinary;
+
+  /// No description provided for @vFileImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image file, open it on the computer.'**
+  String get vFileImage;
+
+  /// No description provided for @vFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File is {size}, too large to open here.'**
+  String vFileTooLarge(String size);
+
+  /// No description provided for @vFileNotUtf8.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is not UTF-8 text, so it is read-only on the computer.'**
+  String get vFileNotUtf8;
+
+  /// No description provided for @vFileChangedOnDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'This file changed on the computer. Your edits were not saved.'**
+  String get vFileChangedOnDisk;
+
+  /// No description provided for @vCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get vCopied;
+
+  /// No description provided for @vCopyMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy my text'**
+  String get vCopyMine;
+
+  /// No description provided for @vReloadDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload, drop my edits'**
+  String get vReloadDiscard;
+
+  /// No description provided for @vDiffBinary.
+  ///
+  /// In en, this message translates to:
+  /// **'Binary file, no text diff.'**
+  String get vDiffBinary;
+
+  /// No description provided for @vDiffTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The diff is too large to show.'**
+  String get vDiffTooLarge;
+
+  /// No description provided for @vDiffEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No differences.'**
+  String get vDiffEmpty;
+
+  /// No description provided for @vUnchangedLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unchanged lines'**
+  String vUnchangedLines(int count);
+
+  /// No description provided for @vChangesClean.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes. The working tree is clean.'**
+  String get vChangesClean;
+
+  /// No description provided for @vStaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Staged ({count})'**
+  String vStaged(int count);
+
+  /// No description provided for @vUnstaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes ({count})'**
+  String vUnstaged(int count);
+
+  /// No description provided for @vStageAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage all'**
+  String get vStageAll;
+
+  /// No description provided for @vUnstageAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstage all'**
+  String get vUnstageAll;
+
+  /// No description provided for @vStage.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage'**
+  String get vStage;
+
+  /// No description provided for @vUnstage.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstage'**
+  String get vUnstage;
+
+  /// No description provided for @vDiscardChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get vDiscardChanges;
+
+  /// No description provided for @vDetachedHead.
+  ///
+  /// In en, this message translates to:
+  /// **'Detached HEAD'**
+  String get vDetachedHead;
+
+  /// No description provided for @vCommitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit message'**
+  String get vCommitMessage;
+
+  /// No description provided for @vCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get vCommit;
+
+  /// No description provided for @vCommitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Committed'**
+  String get vCommitted;
+
+  /// No description provided for @vNoCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'No commits yet.'**
+  String get vNoCommits;
+
+  /// No description provided for @vBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches'**
+  String get vBranches;
+
+  /// No description provided for @vCommitDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get vCommitDetail;
+
+  /// No description provided for @vFilesChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file changed} other{{count} files changed}}'**
+  String vFilesChanged(int count);
+
+  /// No description provided for @vLocalBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get vLocalBranches;
+
+  /// No description provided for @vRemoteBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get vRemoteBranches;
+
+  /// No description provided for @vTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get vTags;
+
+  /// No description provided for @vFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch'**
+  String get vFetch;
+
+  /// No description provided for @vFetched.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetched'**
+  String get vFetched;
+
+  /// No description provided for @vNewBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'New branch'**
+  String get vNewBranch;
+
+  /// No description provided for @vBranchName.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch name'**
+  String get vBranchName;
+
+  /// No description provided for @vBranchFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Created from {base}'**
+  String vBranchFrom(String base);
+
+  /// No description provided for @vCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get vCreate;
+
+  /// No description provided for @vBranchCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {name}'**
+  String vBranchCreated(String name);
+
+  /// No description provided for @vUpdateBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Update (fast-forward)'**
+  String get vUpdateBranch;
+
+  /// No description provided for @vUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get vUpdated;
+
+  /// No description provided for @vDeleteBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get vDeleteBranch;
+
+  /// No description provided for @vUpstreamGone.
+  ///
+  /// In en, this message translates to:
+  /// **'upstream gone'**
+  String get vUpstreamGone;
+
+  /// No description provided for @vPushAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Push...'**
+  String get vPushAction;
+
+  /// No description provided for @vPushTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push {branch}'**
+  String vPushTitle(String branch);
+
+  /// No description provided for @vPushTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'To {target}'**
+  String vPushTarget(String target);
+
+  /// No description provided for @vPushOutgoing.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing new to send} =1{1 commit to send} other{{count} commits to send}}'**
+  String vPushOutgoing(int count);
+
+  /// No description provided for @vPushNewBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a new branch on the remote.'**
+  String get vPushNewBranch;
+
+  /// No description provided for @vAndMore.
+  ///
+  /// In en, this message translates to:
+  /// **'and more...'**
+  String get vAndMore;
+
+  /// No description provided for @vPushed.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushed'**
+  String get vPushed;
+
+  /// No description provided for @vRunNoConfigs.
+  ///
+  /// In en, this message translates to:
+  /// **'No run configuration for this project. Create one on the computer.'**
+  String get vRunNoConfigs;
+
+  /// No description provided for @vRunConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration'**
+  String get vRunConfig;
+
+  /// No description provided for @vRunDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get vRunDevice;
+
+  /// No description provided for @vRunStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get vRunStart;
+
+  /// No description provided for @vRunHotReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot reload'**
+  String get vRunHotReload;
+
+  /// No description provided for @vRunRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get vRunRestart;
+
+  /// No description provided for @vRunStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get vRunStop;
+
+  /// No description provided for @vRunNoLog.
+  ///
+  /// In en, this message translates to:
+  /// **'No log yet'**
+  String get vRunNoLog;
 }
 
 class _AppLocalizationsDelegate

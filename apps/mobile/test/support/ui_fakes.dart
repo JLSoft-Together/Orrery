@@ -46,11 +46,23 @@ class FakeMachineApi implements MachineApi {
   bool cleared = false;
   Uint8List? tail;
 
+  final StreamController<JsonMap> eventBus = StreamController.broadcast();
+  FutureOr<JsonMap> Function(String type, JsonMap? fields)? responder;
+
   @override
-  Future<JsonMap> command(String type, [JsonMap? fields]) async {
+  Stream<JsonMap> get events => eventBus.stream;
+
+  @override
+  Future<JsonMap> command(
+    String type, [
+    JsonMap? fields,
+    Duration? timeout,
+  ]) async {
     commands.add((type, fields));
     final error = commandError;
     if (error != null) throw error;
+    final custom = responder;
+    if (custom != null) return custom(type, fields);
     return commandReply;
   }
 

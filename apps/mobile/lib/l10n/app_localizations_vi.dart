@@ -439,4 +439,334 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pairScanHint => 'Quét mã QR trong Settings của Orrery';
+
+  @override
+  String get navWorkspace => 'Workspace';
+
+  @override
+  String get vMonitor => 'Quỹ đạo';
+
+  @override
+  String get vMonitorEmpty => 'Máy tính chưa có session nào.';
+
+  @override
+  String vTokens(String count) {
+    return '$count token';
+  }
+
+  @override
+  String vContextPct(int percent) {
+    return 'context $percent%';
+  }
+
+  @override
+  String get vNotInWorkspace => 'Session này chưa mở trong Workspace.';
+
+  @override
+  String get vViewerMenu => 'Explorer, Changes, Git Log, Run';
+
+  @override
+  String get vExplorer => 'Explorer';
+
+  @override
+  String get vChanges => 'Changes';
+
+  @override
+  String get vGitLog => 'Git Log';
+
+  @override
+  String get vRun => 'Run';
+
+  @override
+  String get vRetry => 'Thử lại';
+
+  @override
+  String get vErrNotRepo => 'Thư mục này không phải git repo.';
+
+  @override
+  String get vErrConflict => 'File đã đổi trên máy tính.';
+
+  @override
+  String get vErrMissing => 'File không còn tồn tại.';
+
+  @override
+  String get vErrTooLarge => 'Quá lớn để xử lý trên điện thoại.';
+
+  @override
+  String get vErrExists => 'Tên này đã tồn tại.';
+
+  @override
+  String get vErrNotMerged => 'Branch chưa được merge.';
+
+  @override
+  String get vErrCurrent => 'Đây là branch hiện tại.';
+
+  @override
+  String get vErrNoUpstream => 'Branch chưa có upstream.';
+
+  @override
+  String get vErrNonFf => 'Không fast-forward được. Xử lý trên máy tính.';
+
+  @override
+  String get vErrAuth => 'Remote từ chối thông tin đăng nhập.';
+
+  @override
+  String get vErrNothing => 'Không có gì để commit.';
+
+  @override
+  String get vErrEmptyMessage => 'Nhập commit message trước.';
+
+  @override
+  String get vErrPushed => 'Commit này đã được push.';
+
+  @override
+  String get vErrHook => 'Git hook từ chối commit.';
+
+  @override
+  String get vErrFailed => 'Lệnh thất bại.';
+
+  @override
+  String get vCancelled => 'Đã huỷ.';
+
+  @override
+  String get vWaitConfirm => 'Xác nhận trên điện thoại để tiếp tục.';
+
+  @override
+  String get vFindFile => 'Tìm file';
+
+  @override
+  String get vFindFileHint => 'Gõ một phần tên hoặc đường dẫn file.';
+
+  @override
+  String get vFindInFile => 'Tìm trong file';
+
+  @override
+  String get vNoMatches => 'Không có kết quả';
+
+  @override
+  String get vPrevMatch => 'Kết quả trước';
+
+  @override
+  String get vNextMatch => 'Kết quả sau';
+
+  @override
+  String get vListTruncated => 'Danh sách bị cắt ở giới hạn của máy tính.';
+
+  @override
+  String get vFolderEmpty => 'Thư mục trống.';
+
+  @override
+  String get vEdit => 'Sửa';
+
+  @override
+  String get vSaved => 'Đã lưu';
+
+  @override
+  String get vDiscardEditsTitle => 'Bỏ phần đã sửa?';
+
+  @override
+  String get vDiscardEditsBody => 'Phần bạn đã gõ chưa được lưu.';
+
+  @override
+  String get vKeepEditing => 'Sửa tiếp';
+
+  @override
+  String get vDiscard => 'Bỏ';
+
+  @override
+  String get vFileTooBigPhone => 'File quá lớn cho điện thoại.';
+
+  @override
+  String get vFileBinary => 'File nhị phân, không hiện được.';
+
+  @override
+  String get vFileImage => 'File ảnh, mở trên máy tính.';
+
+  @override
+  String vFileTooLarge(String size) {
+    return 'File $size, quá lớn để mở ở đây.';
+  }
+
+  @override
+  String get vFileNotUtf8 =>
+      'File không phải text UTF-8, chỉ mở trên máy tính.';
+
+  @override
+  String get vFileChangedOnDisk =>
+      'File đã đổi trên máy tính. Phần sửa của bạn chưa được lưu.';
+
+  @override
+  String get vCopied => 'Đã chép';
+
+  @override
+  String get vCopyMine => 'Chép bản của tôi';
+
+  @override
+  String get vReloadDiscard => 'Tải lại, bỏ phần sửa';
+
+  @override
+  String get vDiffBinary => 'File nhị phân, không có diff text.';
+
+  @override
+  String get vDiffTooLarge => 'Diff quá lớn để hiện.';
+
+  @override
+  String get vDiffEmpty => 'Không có khác biệt.';
+
+  @override
+  String vUnchangedLines(int count) {
+    return '$count dòng không đổi';
+  }
+
+  @override
+  String get vChangesClean => 'Không có thay đổi nào.';
+
+  @override
+  String vStaged(int count) {
+    return 'Đã stage ($count)';
+  }
+
+  @override
+  String vUnstaged(int count) {
+    return 'Thay đổi ($count)';
+  }
+
+  @override
+  String get vStageAll => 'Stage hết';
+
+  @override
+  String get vUnstageAll => 'Unstage hết';
+
+  @override
+  String get vStage => 'Stage';
+
+  @override
+  String get vUnstage => 'Unstage';
+
+  @override
+  String get vDiscardChanges => 'Bỏ thay đổi';
+
+  @override
+  String get vDetachedHead => 'Detached HEAD';
+
+  @override
+  String get vCommitMessage => 'Commit message';
+
+  @override
+  String get vCommit => 'Commit';
+
+  @override
+  String get vCommitted => 'Đã commit';
+
+  @override
+  String get vNoCommits => 'Chưa có commit nào.';
+
+  @override
+  String get vBranches => 'Branches';
+
+  @override
+  String get vCommitDetail => 'Commit';
+
+  @override
+  String vFilesChanged(int count) {
+    return '$count file đổi';
+  }
+
+  @override
+  String get vLocalBranches => 'Local';
+
+  @override
+  String get vRemoteBranches => 'Remote';
+
+  @override
+  String get vTags => 'Tags';
+
+  @override
+  String get vFetch => 'Fetch';
+
+  @override
+  String get vFetched => 'Đã fetch';
+
+  @override
+  String get vNewBranch => 'Branch mới';
+
+  @override
+  String get vBranchName => 'Tên branch';
+
+  @override
+  String vBranchFrom(String base) {
+    return 'Tạo từ $base';
+  }
+
+  @override
+  String get vCreate => 'Tạo';
+
+  @override
+  String vBranchCreated(String name) {
+    return 'Đã tạo $name';
+  }
+
+  @override
+  String get vUpdateBranch => 'Cập nhật (fast-forward)';
+
+  @override
+  String get vUpdated => 'Đã cập nhật';
+
+  @override
+  String get vDeleteBranch => 'Xoá';
+
+  @override
+  String get vUpstreamGone => 'upstream đã mất';
+
+  @override
+  String get vPushAction => 'Push...';
+
+  @override
+  String vPushTitle(String branch) {
+    return 'Push $branch';
+  }
+
+  @override
+  String vPushTarget(String target) {
+    return 'Tới $target';
+  }
+
+  @override
+  String vPushOutgoing(int count) {
+    return '$count commit sẽ gửi';
+  }
+
+  @override
+  String get vPushNewBranch => 'Tạo branch mới trên remote.';
+
+  @override
+  String get vAndMore => 'và nữa...';
+
+  @override
+  String get vPushed => 'Đã push';
+
+  @override
+  String get vRunNoConfigs =>
+      'Project chưa có run configuration. Tạo trên máy tính.';
+
+  @override
+  String get vRunConfig => 'Configuration';
+
+  @override
+  String get vRunDevice => 'Thiết bị';
+
+  @override
+  String get vRunStart => 'Chạy';
+
+  @override
+  String get vRunHotReload => 'Hot reload';
+
+  @override
+  String get vRunRestart => 'Chạy lại';
+
+  @override
+  String get vRunStop => 'Dừng';
+
+  @override
+  String get vRunNoLog => 'Chưa có log';
 }

@@ -228,5 +228,190 @@
   "pairDenied": "The computer refused the pairing.",
   "pairProtocol": "Protocol error while pairing.",
   "pairing": "Pairing...",
-  "pairScanHint": "Scan the QR code in Orrery Settings"
+  "pairScanHint": "Scan the QR code in Orrery Settings",
+  "navWorkspace": "Workspace",
+  "vMonitor": "Monitor",
+  "vMonitorEmpty": "No sessions on the computer right now.",
+  "vTokens": "{count} tokens",
+  "@vTokens": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "vContextPct": "context {percent}%",
+  "@vContextPct": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "vNotInWorkspace": "This session is not open in the Workspace.",
+  "vViewerMenu": "Explorer, Changes, Git Log, Run",
+  "vExplorer": "Explorer",
+  "vChanges": "Changes",
+  "vGitLog": "Git Log",
+  "vRun": "Run",
+  "vRetry": "Retry",
+  "vErrNotRepo": "This folder is not a git repository.",
+  "vErrConflict": "The file changed on the computer.",
+  "vErrMissing": "The file no longer exists.",
+  "vErrTooLarge": "Too large to handle on the phone.",
+  "vErrExists": "That name already exists.",
+  "vErrNotMerged": "The branch is not merged yet.",
+  "vErrCurrent": "This is the current branch.",
+  "vErrNoUpstream": "The branch has no upstream.",
+  "vErrNonFf": "Cannot fast-forward. Update from the computer.",
+  "vErrAuth": "The remote refused the credentials.",
+  "vErrNothing": "Nothing to commit.",
+  "vErrEmptyMessage": "Write a commit message first.",
+  "vErrPushed": "That commit is already pushed.",
+  "vErrHook": "A git hook rejected the commit.",
+  "vErrFailed": "The command failed.",
+  "vCancelled": "Cancelled.",
+  "vWaitConfirm": "Confirm on this phone to continue.",
+  "vFindFile": "Find file",
+  "vFindFileHint": "Type part of a file name or path.",
+  "vFindInFile": "Find in file",
+  "vNoMatches": "No matches",
+  "vPrevMatch": "Previous match",
+  "vNextMatch": "Next match",
+  "vListTruncated": "The list is cut at the computer limit.",
+  "vFolderEmpty": "This folder is empty.",
+  "vEdit": "Edit",
+  "vSaved": "Saved",
+  "vDiscardEditsTitle": "Discard your edits?",
+  "vDiscardEditsBody": "The changes you typed are not saved.",
+  "vKeepEditing": "Keep editing",
+  "vDiscard": "Discard",
+  "vFileTooBigPhone": "This file is too large for the phone.",
+  "vFileBinary": "Binary file, cannot show it.",
+  "vFileImage": "Image file, open it on the computer.",
+  "vFileTooLarge": "File is {size}, too large to open here.",
+  "@vFileTooLarge": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "vFileNotUtf8": "This file is not UTF-8 text, so it is read-only on the computer.",
+  "vFileChangedOnDisk": "This file changed on the computer. Your edits were not saved.",
+  "vCopied": "Copied",
+  "vCopyMine": "Copy my text",
+  "vReloadDiscard": "Reload, drop my edits",
+  "vDiffBinary": "Binary file, no text diff.",
+  "vDiffTooLarge": "The diff is too large to show.",
+  "vDiffEmpty": "No differences.",
+  "vUnchangedLines": "{count} unchanged lines",
+  "@vUnchangedLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vChangesClean": "No changes. The working tree is clean.",
+  "vStaged": "Staged ({count})",
+  "@vStaged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vUnstaged": "Changes ({count})",
+  "@vUnstaged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vStageAll": "Stage all",
+  "vUnstageAll": "Unstage all",
+  "vStage": "Stage",
+  "vUnstage": "Unstage",
+  "vDiscardChanges": "Discard changes",
+  "vDetachedHead": "Detached HEAD",
+  "vCommitMessage": "Commit message",
+  "vCommit": "Commit",
+  "vCommitted": "Committed",
+  "vNoCommits": "No commits yet.",
+  "vBranches": "Branches",
+  "vCommitDetail": "Commit",
+  "vFilesChanged": "{count, plural, =1{1 file changed} other{{count} files changed}}",
+  "@vFilesChanged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vLocalBranches": "Local",
+  "vRemoteBranches": "Remote",
+  "vTags": "Tags",
+  "vFetch": "Fetch",
+  "vFetched": "Fetched",
+  "vNewBranch": "New branch",
+  "vBranchName": "Branch name",
+  "vBranchFrom": "Created from {base}",
+  "@vBranchFrom": {
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "vCreate": "Create",
+  "vBranchCreated": "Created {name}",
+  "@vBranchCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "vUpdateBranch": "Update (fast-forward)",
+  "vUpdated": "Updated",
+  "vDeleteBranch": "Delete",
+  "vUpstreamGone": "upstream gone",
+  "vPushAction": "Push...",
+  "vPushTitle": "Push {branch}",
+  "@vPushTitle": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "vPushTarget": "To {target}",
+  "@vPushTarget": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "vPushOutgoing": "{count, plural, =0{Nothing new to send} =1{1 commit to send} other{{count} commits to send}}",
+  "@vPushOutgoing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vPushNewBranch": "Creates a new branch on the remote.",
+  "vAndMore": "and more...",
+  "vPushed": "Pushed",
+  "vRunNoConfigs": "No run configuration for this project. Create one on the computer.",
+  "vRunConfig": "Configuration",
+  "vRunDevice": "Device",
+  "vRunStart": "Run",
+  "vRunHotReload": "Hot reload",
+  "vRunRestart": "Restart",
+  "vRunStop": "Stop",
+  "vRunNoLog": "No log yet"
 }

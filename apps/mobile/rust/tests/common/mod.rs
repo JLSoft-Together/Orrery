@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod commands;
+mod viewer;
 
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};

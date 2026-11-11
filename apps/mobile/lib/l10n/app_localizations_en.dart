@@ -458,4 +458,347 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pairScanHint => 'Scan the QR code in Orrery Settings';
+
+  @override
+  String get navWorkspace => 'Workspace';
+
+  @override
+  String get vMonitor => 'Monitor';
+
+  @override
+  String get vMonitorEmpty => 'No sessions on the computer right now.';
+
+  @override
+  String vTokens(String count) {
+    return '$count tokens';
+  }
+
+  @override
+  String vContextPct(int percent) {
+    return 'context $percent%';
+  }
+
+  @override
+  String get vNotInWorkspace => 'This session is not open in the Workspace.';
+
+  @override
+  String get vViewerMenu => 'Explorer, Changes, Git Log, Run';
+
+  @override
+  String get vExplorer => 'Explorer';
+
+  @override
+  String get vChanges => 'Changes';
+
+  @override
+  String get vGitLog => 'Git Log';
+
+  @override
+  String get vRun => 'Run';
+
+  @override
+  String get vRetry => 'Retry';
+
+  @override
+  String get vErrNotRepo => 'This folder is not a git repository.';
+
+  @override
+  String get vErrConflict => 'The file changed on the computer.';
+
+  @override
+  String get vErrMissing => 'The file no longer exists.';
+
+  @override
+  String get vErrTooLarge => 'Too large to handle on the phone.';
+
+  @override
+  String get vErrExists => 'That name already exists.';
+
+  @override
+  String get vErrNotMerged => 'The branch is not merged yet.';
+
+  @override
+  String get vErrCurrent => 'This is the current branch.';
+
+  @override
+  String get vErrNoUpstream => 'The branch has no upstream.';
+
+  @override
+  String get vErrNonFf => 'Cannot fast-forward. Update from the computer.';
+
+  @override
+  String get vErrAuth => 'The remote refused the credentials.';
+
+  @override
+  String get vErrNothing => 'Nothing to commit.';
+
+  @override
+  String get vErrEmptyMessage => 'Write a commit message first.';
+
+  @override
+  String get vErrPushed => 'That commit is already pushed.';
+
+  @override
+  String get vErrHook => 'A git hook rejected the commit.';
+
+  @override
+  String get vErrFailed => 'The command failed.';
+
+  @override
+  String get vCancelled => 'Cancelled.';
+
+  @override
+  String get vWaitConfirm => 'Confirm on this phone to continue.';
+
+  @override
+  String get vFindFile => 'Find file';
+
+  @override
+  String get vFindFileHint => 'Type part of a file name or path.';
+
+  @override
+  String get vFindInFile => 'Find in file';
+
+  @override
+  String get vNoMatches => 'No matches';
+
+  @override
+  String get vPrevMatch => 'Previous match';
+
+  @override
+  String get vNextMatch => 'Next match';
+
+  @override
+  String get vListTruncated => 'The list is cut at the computer limit.';
+
+  @override
+  String get vFolderEmpty => 'This folder is empty.';
+
+  @override
+  String get vEdit => 'Edit';
+
+  @override
+  String get vSaved => 'Saved';
+
+  @override
+  String get vDiscardEditsTitle => 'Discard your edits?';
+
+  @override
+  String get vDiscardEditsBody => 'The changes you typed are not saved.';
+
+  @override
+  String get vKeepEditing => 'Keep editing';
+
+  @override
+  String get vDiscard => 'Discard';
+
+  @override
+  String get vFileTooBigPhone => 'This file is too large for the phone.';
+
+  @override
+  String get vFileBinary => 'Binary file, cannot show it.';
+
+  @override
+  String get vFileImage => 'Image file, open it on the computer.';
+
+  @override
+  String vFileTooLarge(String size) {
+    return 'File is $size, too large to open here.';
+  }
+
+  @override
+  String get vFileNotUtf8 =>
+      'This file is not UTF-8 text, so it is read-only on the computer.';
+
+  @override
+  String get vFileChangedOnDisk =>
+      'This file changed on the computer. Your edits were not saved.';
+
+  @override
+  String get vCopied => 'Copied';
+
+  @override
+  String get vCopyMine => 'Copy my text';
+
+  @override
+  String get vReloadDiscard => 'Reload, drop my edits';
+
+  @override
+  String get vDiffBinary => 'Binary file, no text diff.';
+
+  @override
+  String get vDiffTooLarge => 'The diff is too large to show.';
+
+  @override
+  String get vDiffEmpty => 'No differences.';
+
+  @override
+  String vUnchangedLines(int count) {
+    return '$count unchanged lines';
+  }
+
+  @override
+  String get vChangesClean => 'No changes. The working tree is clean.';
+
+  @override
+  String vStaged(int count) {
+    return 'Staged ($count)';
+  }
+
+  @override
+  String vUnstaged(int count) {
+    return 'Changes ($count)';
+  }
+
+  @override
+  String get vStageAll => 'Stage all';
+
+  @override
+  String get vUnstageAll => 'Unstage all';
+
+  @override
+  String get vStage => 'Stage';
+
+  @override
+  String get vUnstage => 'Unstage';
+
+  @override
+  String get vDiscardChanges => 'Discard changes';
+
+  @override
+  String get vDetachedHead => 'Detached HEAD';
+
+  @override
+  String get vCommitMessage => 'Commit message';
+
+  @override
+  String get vCommit => 'Commit';
+
+  @override
+  String get vCommitted => 'Committed';
+
+  @override
+  String get vNoCommits => 'No commits yet.';
+
+  @override
+  String get vBranches => 'Branches';
+
+  @override
+  String get vCommitDetail => 'Commit';
+
+  @override
+  String vFilesChanged(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files changed',
+      one: '1 file changed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get vLocalBranches => 'Local';
+
+  @override
+  String get vRemoteBranches => 'Remote';
+
+  @override
+  String get vTags => 'Tags';
+
+  @override
+  String get vFetch => 'Fetch';
+
+  @override
+  String get vFetched => 'Fetched';
+
+  @override
+  String get vNewBranch => 'New branch';
+
+  @override
+  String get vBranchName => 'Branch name';
+
+  @override
+  String vBranchFrom(String base) {
+    return 'Created from $base';
+  }
+
+  @override
+  String get vCreate => 'Create';
+
+  @override
+  String vBranchCreated(String name) {
+    return 'Created $name';
+  }
+
+  @override
+  String get vUpdateBranch => 'Update (fast-forward)';
+
+  @override
+  String get vUpdated => 'Updated';
+
+  @override
+  String get vDeleteBranch => 'Delete';
+
+  @override
+  String get vUpstreamGone => 'upstream gone';
+
+  @override
+  String get vPushAction => 'Push...';
+
+  @override
+  String vPushTitle(String branch) {
+    return 'Push $branch';
+  }
+
+  @override
+  String vPushTarget(String target) {
+    return 'To $target';
+  }
+
+  @override
+  String vPushOutgoing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count commits to send',
+      one: '1 commit to send',
+      zero: 'Nothing new to send',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get vPushNewBranch => 'Creates a new branch on the remote.';
+
+  @override
+  String get vAndMore => 'and more...';
+
+  @override
+  String get vPushed => 'Pushed';
+
+  @override
+  String get vRunNoConfigs =>
+      'No run configuration for this project. Create one on the computer.';
+
+  @override
+  String get vRunConfig => 'Configuration';
+
+  @override
+  String get vRunDevice => 'Device';
+
+  @override
+  String get vRunStart => 'Run';
+
+  @override
+  String get vRunHotReload => 'Hot reload';
+
+  @override
+  String get vRunRestart => 'Restart';
+
+  @override
+  String get vRunStop => 'Stop';
+
+  @override
+  String get vRunNoLog => 'No log yet';
 }

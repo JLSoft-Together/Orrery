@@ -16,6 +16,9 @@ pub struct Session {
     pub streams: HashSet<u32>,
     pub confirms: HashMap<String, String>,
     pub next_cid: u32,
+    pub fs_text: String,
+    pub fs_mtime: u64,
+    pub fs_watching: bool,
 }
 
 impl Session {
@@ -26,6 +29,10 @@ impl Session {
             streams: HashSet::new(),
             confirms: HashMap::new(),
             next_cid: 1,
+            fs_text: "void main() {}
+".into(),
+            fs_mtime: 1000,
+            fs_watching: false,
         }
     }
 }
@@ -138,7 +145,7 @@ pub fn run(ws: &mut Ws, tr: &mut Transport, session: &mut Session, command: &Val
                 send_json(ws, tr, &json!({"re": id, "ok": true, "cancelled": true}));
             }
         }
-        _ => return false,
+        _ => return super::viewer::run(ws, tr, session, command),
     }
     true
 }

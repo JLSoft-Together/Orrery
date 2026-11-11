@@ -1,0 +1,44 @@
+{
+  "desktopStaticPrivate": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+  "desktopStaticPublic": "07a37cbc142093c8b755dc1b10e86cb426374ad16aa853ed0bdfc0b2b86d1c7c",
+  "deviceId": "device-0001",
+  "deviceName": "Pixel 9",
+  "exp": 1900000000,
+  "machineId": "machine-0001",
+  "note": "hex unless noted; msg1 of both handshakes = proto u16 BE prefix + noise message; prologue = 'orrery-remote/' + proto u16 BE",
+  "now": 1800000000,
+  "pair": {
+    "code": "c1c2c3c4c5c6c7c8c9cacbcccdcecfd0",
+    "desktopEphemeralPrivate": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+    "msg1": "0001244fe3b963e899dd295baffce248d3530f3a9a7479ba063002680ebfe7adad49b4f0ab79c953d3b002fb52011a745eda",
+    "msg2": "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d4846678cc7df0cecb93800d1e5450555333fcda3b212b3e9136f323eef2d3f167465d9cd3babe82143a0bcda64a97005eb2d76a06fbf914d65337f9399888a63c5e8d",
+    "msg3": "7b3d550cee8cc5ec7d9e9785e0fe74337f90ef39f9320d1842738cc51022433c2c5c1ac67c3e5fea5ca0d4f45dd1016bd184912e5c32fc79d6733b58a42a372c45889cb7ddf71bc53cb0351282e568285d1d0ca34c9385c1c92205a093d55cfe25526bedfadeb59e8fa7fd",
+    "msg3Payload": "{\"deviceId\":\"device-0001\",\"name\":\"Pixel 9\"}",
+    "pattern": "Noise_XXpsk3_25519_ChaChaPoly_BLAKE2s",
+    "phoneEphemeralPrivate": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+    "psk": "69506148c2b7d837c93d04eacdb64cd342049e2ea5f22b2b7e8abdb4cae2b779",
+    "qr": "eyJ2IjoxLCJtYWNoaW5lIjoibWFjaGluZS0wMDAxIiwibmFtZSI6IlN0dWRpbyIsImhvc3QiOiIxOTIuMTY4LjEuMjAiLCJwb3J0Ijo0MzE4LCJta2V5IjoiQjZOOHZCUWdrOGkzVmR3YkVPaHN0Q1kzU3RGcXFGUHRDOV9Bc3JodEhIdyIsImNvZGUiOiJ3Y0xEeE1YR3g4akp5c3ZNemM3UDBBIiwiZXhwIjoxOTAwMDAwMDAwfQ",
+    "transportPhoneToDesktop": "6e900d112fcf1ab2f50640c918a9d0f7f9f5044e87",
+    "transportPlaintext": "hello"
+  },
+  "phoneStaticPrivate": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+  "phoneStaticPublic": "5869aff450549732cbaaed5e5df9b30a6da31cb0e5742bad5ad4a1a768f1a67b",
+  "prologue": "6f72726572792d72656d6f74652f0001",
+  "proto": 1,
+  "relayToken": {
+    "macInput": "'orrery-relay/1' || machineId || deviceId || exp u64 BE",
+    "relayKey": "e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff00",
+    "token": "ZGV2aWNlLTAwMDEAAAAAcT-zAJAF3HK6z31smiJrxNUsIXQg4alJQJmHjUl7-cFTX59v"
+  },
+  "session": {
+    "desktopEphemeralPrivate": "8182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0",
+    "msg1": "0001ad438bfae31f6c093d61d4339255ea798092c9fadd07b97827f4b0ae9dee7c1ceaa935fcd66eb1b11592920f1b722728780a8d91cf3d64186fa297929c70cbb4487eeefa7b77f0342ac5793387d98de40f8b6274fbb95f7fe29e809c517c771e7e69dca297e7fb9f8f968e21d66b64d3ee8d441bdc9b1e0fc4610716563f5a76c9a5adc7",
+    "msg1Payload": "{\"deviceId\":\"device-0001\",\"proto\":1}",
+    "msg2": "883186b800b41d5cf0429695da9b3cc4f328ebcd184a6e482fa578c103f06c773dfc3623624b2ed448fad4360398d9f2aec460d41202383505fa64",
+    "msg2Payload": "{\"proto\":1}",
+    "pattern": "Noise_IK_25519_ChaChaPoly_BLAKE2s",
+    "phoneEphemeralPrivate": "a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0",
+    "transportPhoneToDesktop": "60e730e6b1b1ed9c2e69ebdc5f8b4486aa0caf06",
+    "transportPlaintext": "ping"
+  }
+}

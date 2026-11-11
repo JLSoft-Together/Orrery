@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/remote.dart';
 import 'api/simple.dart';
 
 import 'dart:async';
@@ -69,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -711050322;
+  int get rustContentHash => -412895526;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -81,11 +82,82 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  PairingDone crateApiRemotePairingHandshakeFinish({
+    required PairingHandshake that,
+    required List<int> msg2,
+  });
+
+  bool crateApiRemoteSecureChannelIsClosed({required SecureChannel that});
+
+  InboundMessage? crateApiRemoteSecureChannelOpen({
+    required SecureChannel that,
+    required List<int> ciphertext,
+  });
+
+  List<Uint8List> crateApiRemoteSecureChannelSeal({
+    required SecureChannel that,
+    required int kind,
+    required int stream,
+    required List<int> payload,
+  });
+
+  SecureChannel crateApiRemoteSessionHandshakeFinish({
+    required SessionHandshake that,
+    required List<int> msg2,
+  });
+
+  QrInfo crateApiRemoteDecodeQr({required String text});
+
   Uint8List crateApiSimpleEcho({required List<int> bytes});
+
+  Uint8List crateApiRemoteGenerateStaticKey();
 
   Future<void> crateApiSimpleInitApp();
 
+  PairingStart crateApiRemotePairStart({
+    required List<int> private,
+    required String qrText,
+    required String deviceId,
+    required String deviceName,
+    required BigInt now,
+  });
+
   int crateApiSimpleProtoVersion();
+
+  SessionStart crateApiRemoteSessionStart({
+    required List<int> private,
+    required List<int> desktopKey,
+    required String deviceId,
+  });
+
+  Uint8List crateApiRemoteStaticPublicKey({required List<int> private});
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_PairingHandshake;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_PairingHandshake;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_PairingHandshakePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_SecureChannel;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_SecureChannel;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SecureChannelPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_SessionHandshake;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_SessionHandshake;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SessionHandshakePtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -97,13 +169,202 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  PairingDone crateApiRemotePairingHandshakeFinish({
+    required PairingHandshake that,
+    required List<int> msg2,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(msg2, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_pairing_done,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemotePairingHandshakeFinishConstMeta,
+        argValues: [that, msg2],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemotePairingHandshakeFinishConstMeta =>
+      const TaskConstMeta(
+        debugName: "PairingHandshake_finish",
+        argNames: ["that", "msg2"],
+      );
+
+  @override
+  bool crateApiRemoteSecureChannelIsClosed({required SecureChannel that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiRemoteSecureChannelIsClosedConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteSecureChannelIsClosedConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecureChannel_is_closed",
+        argNames: ["that"],
+      );
+
+  @override
+  InboundMessage? crateApiRemoteSecureChannelOpen({
+    required SecureChannel that,
+    required List<int> ciphertext,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_inbound_message,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteSecureChannelOpenConstMeta,
+        argValues: [that, ciphertext],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteSecureChannelOpenConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecureChannel_open",
+        argNames: ["that", "ciphertext"],
+      );
+
+  @override
+  List<Uint8List> crateApiRemoteSecureChannelSeal({
+    required SecureChannel that,
+    required int kind,
+    required int stream,
+    required List<int> payload,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+            that,
+            serializer,
+          );
+          sse_encode_u_8(kind, serializer);
+          sse_encode_u_32(stream, serializer);
+          sse_encode_list_prim_u_8_loose(payload, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteSecureChannelSealConstMeta,
+        argValues: [that, kind, stream, payload],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteSecureChannelSealConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecureChannel_seal",
+        argNames: ["that", "kind", "stream", "payload"],
+      );
+
+  @override
+  SecureChannel crateApiRemoteSessionHandshakeFinish({
+    required SessionHandshake that,
+    required List<int> msg2,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(msg2, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteSessionHandshakeFinishConstMeta,
+        argValues: [that, msg2],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteSessionHandshakeFinishConstMeta =>
+      const TaskConstMeta(
+        debugName: "SessionHandshake_finish",
+        argNames: ["that", "msg2"],
+      );
+
+  @override
+  QrInfo crateApiRemoteDecodeQr({required String text}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_qr_info,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteDecodeQrConstMeta,
+        argValues: [text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteDecodeQrConstMeta =>
+      const TaskConstMeta(debugName: "decode_qr", argNames: ["text"]);
+
+  @override
   Uint8List crateApiSimpleEcho({required List<int> bytes}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(bytes, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -120,6 +381,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "echo", argNames: ["bytes"]);
 
   @override
+  Uint8List crateApiRemoteGenerateStaticKey() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteGenerateStaticKeyConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteGenerateStaticKeyConstMeta =>
+      const TaskConstMeta(debugName: "generate_static_key", argNames: []);
+
+  @override
   Future<void> crateApiSimpleInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -128,7 +411,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 9,
             port: port_,
           );
         },
@@ -147,12 +430,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
+  PairingStart crateApiRemotePairStart({
+    required List<int> private,
+    required String qrText,
+    required String deviceId,
+    required String deviceName,
+    required BigInt now,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(private, serializer);
+          sse_encode_String(qrText, serializer);
+          sse_encode_String(deviceId, serializer);
+          sse_encode_String(deviceName, serializer);
+          sse_encode_u_64(now, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_pairing_start,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemotePairStartConstMeta,
+        argValues: [private, qrText, deviceId, deviceName, now],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemotePairStartConstMeta => const TaskConstMeta(
+    debugName: "pair_start",
+    argNames: ["private", "qrText", "deviceId", "deviceName", "now"],
+  );
+
+  @override
   int crateApiSimpleProtoVersion() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_32,
@@ -168,6 +486,217 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiSimpleProtoVersionConstMeta =>
       const TaskConstMeta(debugName: "proto_version", argNames: []);
 
+  @override
+  SessionStart crateApiRemoteSessionStart({
+    required List<int> private,
+    required List<int> desktopKey,
+    required String deviceId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(private, serializer);
+          sse_encode_list_prim_u_8_loose(desktopKey, serializer);
+          sse_encode_String(deviceId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_session_start,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteSessionStartConstMeta,
+        argValues: [private, desktopKey, deviceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteSessionStartConstMeta => const TaskConstMeta(
+    debugName: "session_start",
+    argNames: ["private", "desktopKey", "deviceId"],
+  );
+
+  @override
+  Uint8List crateApiRemoteStaticPublicKey({required List<int> private}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(private, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_remote_error,
+        ),
+        constMeta: kCrateApiRemoteStaticPublicKeyConstMeta,
+        argValues: [private],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoteStaticPublicKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "static_public_key",
+        argNames: ["private"],
+      );
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_PairingHandshake => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_PairingHandshake => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_SecureChannel => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_SecureChannel => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_SessionHandshake => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_SessionHandshake => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake;
+
+  @protected
+  PairingHandshake
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PairingHandshakeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SecureChannel
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecureChannelImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SessionHandshake
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SessionHandshakeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  PairingHandshake
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PairingHandshakeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SecureChannel
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecureChannelImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SessionHandshake
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SessionHandshakeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  PairingHandshake
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PairingHandshakeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SecureChannel
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecureChannelImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SessionHandshake
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SessionHandshakeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  String dco_decode_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as String;
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  InboundMessage dco_decode_box_autoadd_inbound_message(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_inbound_message(raw);
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  InboundMessage dco_decode_inbound_message(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return InboundMessage(
+      kind: dco_decode_u_8(arr[0]),
+      stream: dco_decode_u_32(arr[1]),
+      payload: dco_decode_list_prim_u_8_strict(arr[2]),
+    );
+  }
+
+  @protected
+  List<Uint8List> dco_decode_list_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_list_prim_u_8_strict).toList();
+  }
+
   @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -181,9 +710,121 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  InboundMessage? dco_decode_opt_box_autoadd_inbound_message(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_inbound_message(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_16(raw);
+  }
+
+  @protected
+  PairingDone dco_decode_pairing_done(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return PairingDone(
+      machineId: dco_decode_String(arr[0]),
+      desktopKey: dco_decode_list_prim_u_8_strict(arr[1]),
+      msg3: dco_decode_list_prim_u_8_strict(arr[2]),
+      channel:
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+            arr[3],
+          ),
+    );
+  }
+
+  @protected
+  PairingStart dco_decode_pairing_start(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return PairingStart(
+      handshake:
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+            arr[0],
+          ),
+      msg1: dco_decode_list_prim_u_8_strict(arr[1]),
+    );
+  }
+
+  @protected
+  QrInfo dco_decode_qr_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return QrInfo(
+      machine: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      host: dco_decode_opt_String(arr[2]),
+      port: dco_decode_opt_box_autoadd_u_16(arr[3]),
+      relay: dco_decode_opt_String(arr[4]),
+      mkey: dco_decode_list_prim_u_8_strict(arr[5]),
+      exp: dco_decode_u_64(arr[6]),
+    );
+  }
+
+  @protected
+  RemoteError dco_decode_remote_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return RemoteError(
+      kind: dco_decode_remote_error_kind(arr[0]),
+      value: dco_decode_u_32(arr[1]),
+    );
+  }
+
+  @protected
+  RemoteErrorKind dco_decode_remote_error_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return RemoteErrorKind.values[raw as int];
+  }
+
+  @protected
+  SessionStart dco_decode_session_start(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return SessionStart(
+      handshake:
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+            arr[0],
+          ),
+      msg1: dco_decode_list_prim_u_8_strict(arr[1]),
+    );
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   int dco_decode_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
   }
 
   @protected
@@ -196,6 +837,180 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
+  PairingHandshake
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return PairingHandshakeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SecureChannel
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecureChannelImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SessionHandshake
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SessionHandshakeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  PairingHandshake
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return PairingHandshakeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SecureChannel
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecureChannelImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SessionHandshake
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SessionHandshakeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  PairingHandshake
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return PairingHandshakeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SecureChannel
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecureChannelImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SessionHandshake
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SessionHandshakeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  String sse_decode_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
+    return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  InboundMessage sse_decode_box_autoadd_inbound_message(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_inbound_message(deserializer));
+  }
+
+  @protected
+  int sse_decode_box_autoadd_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_16(deserializer));
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  InboundMessage sse_decode_inbound_message(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_u_8(deserializer);
+    var var_stream = sse_decode_u_32(deserializer);
+    var var_payload = sse_decode_list_prim_u_8_strict(deserializer);
+    return InboundMessage(
+      kind: var_kind,
+      stream: var_stream,
+      payload: var_payload,
+    );
+  }
+
+  @protected
+  List<Uint8List> sse_decode_list_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <Uint8List>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_list_prim_u_8_strict(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -213,9 +1028,132 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  InboundMessage? sse_decode_opt_box_autoadd_inbound_message(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_inbound_message(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_16(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  PairingDone sse_decode_pairing_done(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_machineId = sse_decode_String(deserializer);
+    var var_desktopKey = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_msg3 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_channel =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+          deserializer,
+        );
+    return PairingDone(
+      machineId: var_machineId,
+      desktopKey: var_desktopKey,
+      msg3: var_msg3,
+      channel: var_channel,
+    );
+  }
+
+  @protected
+  PairingStart sse_decode_pairing_start(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_handshake =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+          deserializer,
+        );
+    var var_msg1 = sse_decode_list_prim_u_8_strict(deserializer);
+    return PairingStart(handshake: var_handshake, msg1: var_msg1);
+  }
+
+  @protected
+  QrInfo sse_decode_qr_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_machine = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_host = sse_decode_opt_String(deserializer);
+    var var_port = sse_decode_opt_box_autoadd_u_16(deserializer);
+    var var_relay = sse_decode_opt_String(deserializer);
+    var var_mkey = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_exp = sse_decode_u_64(deserializer);
+    return QrInfo(
+      machine: var_machine,
+      name: var_name,
+      host: var_host,
+      port: var_port,
+      relay: var_relay,
+      mkey: var_mkey,
+      exp: var_exp,
+    );
+  }
+
+  @protected
+  RemoteError sse_decode_remote_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_remote_error_kind(deserializer);
+    var var_value = sse_decode_u_32(deserializer);
+    return RemoteError(kind: var_kind, value: var_value);
+  }
+
+  @protected
+  RemoteErrorKind sse_decode_remote_error_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return RemoteErrorKind.values[inner];
+  }
+
+  @protected
+  SessionStart sse_decode_session_start(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_handshake =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+          deserializer,
+        );
+    var var_msg1 = sse_decode_list_prim_u_8_strict(deserializer);
+    return SessionStart(handshake: var_handshake, msg1: var_msg1);
+  }
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
+  }
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -230,15 +1168,182 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    PairingHandshake self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
+    sse_encode_usize(
+      (self as PairingHandshakeImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SecureChannel self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SecureChannelImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SessionHandshake self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SessionHandshakeImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    PairingHandshake self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as PairingHandshakeImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SecureChannel self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SecureChannelImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SessionHandshake self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SessionHandshakeImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    PairingHandshake self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as PairingHandshakeImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SecureChannel self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SecureChannelImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SessionHandshake self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SessionHandshakeImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_inbound_message(
+    InboundMessage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_inbound_message(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_16(self, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_inbound_message(
+    InboundMessage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_8(self.kind, serializer);
+    sse_encode_u_32(self.stream, serializer);
+    sse_encode_list_prim_u_8_strict(self.payload, serializer);
+  }
+
+  @protected
+  void sse_encode_list_list_prim_u_8_strict(
+    List<Uint8List> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_list_prim_u_8_strict(item, serializer);
+    }
   }
 
   @protected
@@ -264,9 +1369,114 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_inbound_message(
+    InboundMessage? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_inbound_message(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_16(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_pairing_done(PairingDone self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.machineId, serializer);
+    sse_encode_list_prim_u_8_strict(self.desktopKey, serializer);
+    sse_encode_list_prim_u_8_strict(self.msg3, serializer);
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+      self.channel,
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_pairing_start(PairingStart self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+      self.handshake,
+      serializer,
+    );
+    sse_encode_list_prim_u_8_strict(self.msg1, serializer);
+  }
+
+  @protected
+  void sse_encode_qr_info(QrInfo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.machine, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_opt_String(self.host, serializer);
+    sse_encode_opt_box_autoadd_u_16(self.port, serializer);
+    sse_encode_opt_String(self.relay, serializer);
+    sse_encode_list_prim_u_8_strict(self.mkey, serializer);
+    sse_encode_u_64(self.exp, serializer);
+  }
+
+  @protected
+  void sse_encode_remote_error(RemoteError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_remote_error_kind(self.kind, serializer);
+    sse_encode_u_32(self.value, serializer);
+  }
+
+  @protected
+  void sse_encode_remote_error_kind(
+    RemoteErrorKind self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_session_start(SessionStart self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+      self.handshake,
+      serializer,
+    );
+    sse_encode_list_prim_u_8_strict(self.msg1, serializer);
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
+  }
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint32(self);
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
   }
 
   @protected
@@ -281,14 +1491,99 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
+    serializer.buffer.putBigUint64(self);
   }
+}
 
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
-  }
+@sealed
+class PairingHandshakeImpl extends RustOpaque implements PairingHandshake {
+  // Not to be used by end users
+  PairingHandshakeImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  PairingHandshakeImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_PairingHandshake,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_PairingHandshake,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_PairingHandshakePtr,
+  );
+
+  PairingDone finish({required List<int> msg2}) => RustLib.instance.api
+      .crateApiRemotePairingHandshakeFinish(that: this, msg2: msg2);
+}
+
+@sealed
+class SecureChannelImpl extends RustOpaque implements SecureChannel {
+  // Not to be used by end users
+  SecureChannelImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  SecureChannelImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_SecureChannel,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SecureChannel,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SecureChannelPtr,
+  );
+
+  bool isClosed() =>
+      RustLib.instance.api.crateApiRemoteSecureChannelIsClosed(that: this);
+
+  InboundMessage? open({required List<int> ciphertext}) => RustLib.instance.api
+      .crateApiRemoteSecureChannelOpen(that: this, ciphertext: ciphertext);
+
+  List<Uint8List> seal({
+    required int kind,
+    required int stream,
+    required List<int> payload,
+  }) => RustLib.instance.api.crateApiRemoteSecureChannelSeal(
+    that: this,
+    kind: kind,
+    stream: stream,
+    payload: payload,
+  );
+}
+
+@sealed
+class SessionHandshakeImpl extends RustOpaque implements SessionHandshake {
+  // Not to be used by end users
+  SessionHandshakeImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  SessionHandshakeImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_SessionHandshake,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SessionHandshake,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_SessionHandshakePtr,
+  );
+
+  SecureChannel finish({required List<int> msg2}) => RustLib.instance.api
+      .crateApiRemoteSessionHandshakeFinish(that: this, msg2: msg2);
 }

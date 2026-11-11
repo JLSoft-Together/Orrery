@@ -4,10 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.13.0"
+core-remote-proto = { path = "../../core/crates/core-remote-proto" }
+zeroize = "1.8"
+
+[dev-dependencies]
+serde_json = "1"
+tungstenite = "0.30"
+
+[[example]]
+name = "fake_gateway"
+path = "examples/fake_gateway.rs"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

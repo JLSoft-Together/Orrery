@@ -31,7 +31,8 @@ class _SpikePageState extends State<SpikePage> {
   @override
   void initState() {
     super.initState();
-    _terminal.onOutput = (data) => debugPrint('SPIKE onOutput ${jsonEncode(data)}');
+    _terminal.onOutput = (data) =>
+        debugPrint('SPIKE onOutput ${jsonEncode(data)}');
   }
 
   @override
@@ -74,8 +75,16 @@ class _SpikePageState extends State<SpikePage> {
     _stats.start();
     for (var i = 0; i < 4; i++) {
       final max = _scroll.position.maxScrollExtent;
-      await _scroll.animateTo(0, duration: const Duration(milliseconds: 1500), curve: Curves.linear);
-      await _scroll.animateTo(max, duration: const Duration(milliseconds: 1500), curve: Curves.linear);
+      await _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 1500),
+        curve: Curves.linear,
+      );
+      await _scroll.animateTo(
+        max,
+        duration: const Duration(milliseconds: 1500),
+        curve: Curves.linear,
+      );
     }
     await Future<void>.delayed(const Duration(milliseconds: 300));
     final report = _stats.stop();
@@ -92,7 +101,10 @@ class _SpikePageState extends State<SpikePage> {
     final text = _input.text;
     if (text.isEmpty) return;
     _terminal.write('$text\r\n');
-    final hex = utf8.encode(text).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+    final hex = utf8
+        .encode(text)
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join(' ');
     debugPrint('SPIKE send utf8=$hex');
     setState(() => _sent = 'UTF-8: $hex');
     _input.clear();
@@ -114,7 +126,10 @@ class _SpikePageState extends State<SpikePage> {
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(widget.rustStatus, key: const ValueKey('rust-status')),
+                child: Text(
+                  widget.rustStatus,
+                  key: const ValueKey('rust-status'),
+                ),
               ),
             ),
             Padding(
@@ -144,7 +159,11 @@ class _SpikePageState extends State<SpikePage> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(_metrics, key: const ValueKey('metrics'), style: const TextStyle(fontSize: 11)),
+                child: Text(
+                  _metrics,
+                  key: const ValueKey('metrics'),
+                  style: const TextStyle(fontSize: 11),
+                ),
               ),
             ),
             Expanded(
@@ -162,7 +181,11 @@ class _SpikePageState extends State<SpikePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(_sent, key: const ValueKey('sent'), style: const TextStyle(fontSize: 11)),
+                  child: Text(
+                    _sent,
+                    key: const ValueKey('sent'),
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ),
               ),
             Padding(

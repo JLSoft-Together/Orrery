@@ -6,6 +6,7 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
+import 'api/remote.dart';
 import 'api/simple.dart';
 
 import 'dart:async';
@@ -23,6 +24,93 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_PairingHandshakePtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SecureChannelPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SessionHandshakePtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake;
+
+  @protected
+  PairingHandshake
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    dynamic raw,
+  );
+
+  @protected
+  SecureChannel
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    dynamic raw,
+  );
+
+  @protected
+  SessionHandshake
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    dynamic raw,
+  );
+
+  @protected
+  PairingHandshake
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    dynamic raw,
+  );
+
+  @protected
+  SecureChannel
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    dynamic raw,
+  );
+
+  @protected
+  SessionHandshake
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    dynamic raw,
+  );
+
+  @protected
+  PairingHandshake
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    dynamic raw,
+  );
+
+  @protected
+  SecureChannel
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    dynamic raw,
+  );
+
+  @protected
+  SessionHandshake
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    dynamic raw,
+  );
+
+  @protected
+  String dco_decode_String(dynamic raw);
+
+  @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  InboundMessage dco_decode_box_autoadd_inbound_message(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_16(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
+  InboundMessage dco_decode_inbound_message(dynamic raw);
+
+  @protected
+  List<Uint8List> dco_decode_list_list_prim_u_8_strict(dynamic raw);
+
   @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
@@ -30,7 +118,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  InboundMessage? dco_decode_opt_box_autoadd_inbound_message(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
+
+  @protected
+  PairingDone dco_decode_pairing_done(dynamic raw);
+
+  @protected
+  PairingStart dco_decode_pairing_start(dynamic raw);
+
+  @protected
+  QrInfo dco_decode_qr_info(dynamic raw);
+
+  @protected
+  RemoteError dco_decode_remote_error(dynamic raw);
+
+  @protected
+  RemoteErrorKind dco_decode_remote_error_kind(dynamic raw);
+
+  @protected
+  SessionStart dco_decode_session_start(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -39,13 +160,130 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  PairingHandshake
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SecureChannel
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SessionHandshake
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PairingHandshake
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SecureChannel
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SessionHandshake
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PairingHandshake
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SecureChannel
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SessionHandshake
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  InboundMessage sse_decode_box_autoadd_inbound_message(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  InboundMessage sse_decode_inbound_message(SseDeserializer deserializer);
+
+  @protected
+  List<Uint8List> sse_decode_list_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  InboundMessage? sse_decode_opt_box_autoadd_inbound_message(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer);
+
+  @protected
+  PairingDone sse_decode_pairing_done(SseDeserializer deserializer);
+
+  @protected
+  PairingStart sse_decode_pairing_start(SseDeserializer deserializer);
+
+  @protected
+  QrInfo sse_decode_qr_info(SseDeserializer deserializer);
+
+  @protected
+  RemoteError sse_decode_remote_error(SseDeserializer deserializer);
+
+  @protected
+  RemoteErrorKind sse_decode_remote_error_kind(SseDeserializer deserializer);
+
+  @protected
+  SessionStart sse_decode_session_start(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -54,10 +292,100 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+  BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    PairingHandshake self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SecureChannel self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SessionHandshake self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    PairingHandshake self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SecureChannel self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SessionHandshake self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    PairingHandshake self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    SecureChannel self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    SessionHandshake self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_inbound_message(
+    InboundMessage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_inbound_message(
+    InboundMessage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_list_prim_u_8_strict(
+    List<Uint8List> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
@@ -69,7 +397,46 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_inbound_message(
+    InboundMessage? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_pairing_done(PairingDone self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_pairing_start(PairingStart self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_qr_info(QrInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_remote_error(RemoteError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_remote_error_kind(
+    RemoteErrorKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_session_start(SessionStart self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
@@ -78,16 +445,61 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_unit(void self, SseSerializer serializer);
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 }
 
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+        ptr,
+      );
 }
 
 @JS('wasm_bindgen')
@@ -95,4 +507,34 @@ external RustLibWasmModule get wasmModule;
 
 @JS()
 @anonymous
-extension type RustLibWasmModule._(JSObject _) implements JSObject {}
+extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPairingHandshake(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecureChannel(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSessionHandshake(
+    int ptr,
+  );
+}

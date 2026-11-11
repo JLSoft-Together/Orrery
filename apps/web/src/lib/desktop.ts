@@ -13,6 +13,9 @@ import type {
   ExtProjectToggle,
   ExtProjectToggleRequest,
   PtyEndpoint,
+  RemotePairStart,
+  RemoteStatus,
+  RemoteWorkspaceSnapshot,
   RunCommandPreview,
   RunConfig,
   RunDetectResult,
@@ -153,6 +156,15 @@ interface DesktopBridge {
   bugReportSave?: (req: { page: string; errors: string; dumps: boolean }) => Promise<BugReportSaveResult | null>
   onFocus?: (handler: (terminalId: string) => boolean) => void
   onSelect?: (handler: (terminalId: string) => void) => void
+  remoteStatus?: () => Promise<RemoteStatus | null>
+  onRemoteChanged?: (handler: (status: RemoteStatus) => void) => () => void
+  remoteEnable?: (on: boolean) => Promise<RemoteStatus | null>
+  remoteKeepAwake?: (on: boolean) => Promise<RemoteStatus | null>
+  remotePairStart?: () => Promise<RemotePairStart | null>
+  remotePairCancel?: () => Promise<boolean>
+  remoteRevoke?: (deviceId: string) => Promise<boolean>
+  remoteRevokeAll?: () => Promise<boolean>
+  remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */
   onOrrery?: (handler: (action: unknown, args: unknown, caller: unknown) => unknown) => void
   captureRect?: (rect: { x: number; y: number; width: number; height: number }) => Promise<Uint8Array | null>
@@ -264,5 +276,7 @@ export const hasDeepSeek = typeof desktop?.deepseekStatus === 'function'
 
 /** Whether a pane of this preset may be offered or started; callers pass `hasDeepSeek` (tests mock it). */
 export const presetEnabled = (preset: string, deepseek: boolean): boolean => preset !== 'deepseek' || deepseek
+
+export const hasRemote = typeof desktop?.remoteStatus === 'function'
 
 export const hasRun = typeof desktop?.runDetect === 'function'

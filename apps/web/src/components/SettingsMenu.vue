@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, Info, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, SquareTerminal, Timer, X } from 'lucide-vue-next'
+import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, Info, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, SquareTerminal, Timer, X } from 'lucide-vue-next'
 import { clampDialogSize, readDialogSize, saveDialogSize, type DialogSize } from '../lib/dialogSize'
 import { retireOverlay } from '../lib/motion'
 import { isMac } from '../lib/platform'
@@ -10,7 +10,7 @@ import { hasBackup } from '../lib/backup'
 import { hasAwake, hasCapture } from '../lib/capture'
 import { hasXmlInstall } from '../lib/layoutPreview'
 import { hasDisk } from '../lib/buildClean'
-import { desktop, hasDeepSeek, hasRun, hasTerminals } from '../lib/desktop'
+import { desktop, hasDeepSeek, hasRemote, hasRun, hasTerminals } from '../lib/desktop'
 import { hasGitHub } from '../lib/github'
 import { hasPhone } from '../lib/phone'
 import { hasTelegram } from '../lib/telegram'
@@ -33,6 +33,7 @@ import SettingsGeneral from './settings/SettingsGeneral.vue'
 import SettingsIntegrations from './settings/SettingsIntegrations.vue'
 import SettingsNotify from './settings/SettingsNotify.vue'
 import SettingsReminders from './settings/SettingsReminders.vue'
+import SettingsRemote from './settings/SettingsRemote.vue'
 import SettingEmbed from './settings/SettingEmbed.vue'
 import { SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv, type SettingsPage } from './settings'
 
@@ -116,6 +117,7 @@ const pageIcons: Record<SettingsPage, Component> = {
   editor: SquareTerminal,
   notify: Bell,
   telegram: Send,
+  remote: Smartphone,
   reminders: Timer,
   github: GitBranch,
   integrations: Plug,
@@ -137,6 +139,7 @@ const env = computed<SettingsEnv>(() => ({
   agentData: hasAgentData,
   phone: hasPhone,
   telegram: hasTelegram,
+  remote: hasRemote,
   disk: hasDisk,
   updater: hasUpdater,
   backup: hasBackup,
@@ -377,6 +380,7 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                   <SettingsEditor v-else-if="page === 'editor'" />
                   <SettingsNotify v-else-if="page === 'notify'" />
                   <SettingEmbed v-else-if="page === 'telegram'" id="telegram"><TelegramSettings :open="ui.settingsOpen" /></SettingEmbed>
+                  <SettingsRemote v-else-if="page === 'remote'" />
                   <SettingsReminders v-else-if="page === 'reminders'" />
                   <SettingEmbed v-else-if="page === 'github'" id="github"><GitHubAccountsSettings :open="ui.settingsOpen" /></SettingEmbed>
                   <SettingsIntegrations v-else-if="page === 'integrations'" />

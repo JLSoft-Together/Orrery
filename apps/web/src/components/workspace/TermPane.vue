@@ -38,6 +38,8 @@ import { useSettingsStore } from '../../stores/settings'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useTipsStore } from '../../stores/tips'
 import { useUiStore } from '../../stores/ui'
+import { useRemoteStore } from '../../stores/remote'
+import RemotePhoneChip from './RemotePhoneChip.vue'
 import { parseOsc7, parseOsc9 } from '../../lib/shellCwd'
 import { hasScripts } from '../../lib/projects'
 import { bufferLines, parseTerminalProblems } from '../../lib/terminalProblems'
@@ -77,6 +79,7 @@ const emit = defineEmits<{ split: [choice: SplitChoice]; close: []; openLink: [t
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
+const remote = useRemoteStore()
 const settings = useSettingsStore()
 const terminals = useTerminalsStore()
 const agents = useAgentsStore()
@@ -756,6 +759,7 @@ async function onDrop(e: DragEvent): Promise<void> {
 }
 
 async function paste(textOnly: boolean): Promise<void> {
+  claimInput()
   // Agents read clipboard images themselves on their paste key (Alt+V on Windows for Claude Code, §11p).
   const key = textOnly ? null : imagePasteKey(preset.value, isWin)
   const blob = key ? await clipboardImageBlob() : null
@@ -773,12 +777,21 @@ async function paste(textOnly: boolean): Promise<void> {
   }
 }
 
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph', 'Dead'])
+
+function claimInput(): void {
+  if (conn?.claimIfNeeded()) remote.setSized(props.pane.key, false)
+}
+
+onBeforeUnmount(() => remote.setSized(props.pane.key, false))
+
 function onKey(e: KeyboardEvent): boolean {
   if (e.type !== 'keydown') return true
   if (parked.value) {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) wake()
     return false
   }
+  if (!MODIFIER_KEYS.has(e.key)) claimInput()
   const newline = newlineFor(e, preset.value)
   if (newline) {
     e.preventDefault()
@@ -836,6 +849,9 @@ function onMessage(msg: PtyServerMessage): void {
       break
     case 'pid':
       workspace.update(key, { pid: msg.pid })
+      break
+    case 'resized':
+      remote.setSized(key, true)
       break
     case 'branch':
       workspace.update(key, { branch: msg.branch ?? undefined })
@@ -1218,6 +1234,7 @@ onBeforeUnmount(() => {
         </Transition>
       </Teleport>
       <div class="ml-auto flex min-w-0 items-center gap-1">
+        <RemotePhoneChip :pane-key="pane.key" />
         <SubagentOrbit v-if="isClaude" :agents="orbitAgents" data-pane-chip />
         <ContextGauge v-if="context" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
         <ContextTokens class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />

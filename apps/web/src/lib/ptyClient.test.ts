@@ -104,3 +104,46 @@ describe('PtyConnection close 4001 (overflow)', () => {
     expect(h.onClose).not.toHaveBeenCalled()
   })
 })
+
+describe('PtyConnection claim (a phone may be viewing)', () => {
+  beforeEach(() => {
+    FakeSocket.all = []
+    vi.stubGlobal('WebSocket', FakeSocket)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  async function open() {
+    const h = setup()
+    await h.conn.open({ attach: 'sess-1' }, 100, 30)
+    const ws = FakeSocket.all[0]!
+    ws.onopen?.()
+    ws.onmessage?.({ data: JSON.stringify(ready) })
+    return { ...h, ws, frames: () => ws.sent.map((s) => JSON.parse(s) as { t: string }).filter((m) => m.t === 'claim') }
+  }
+
+  it('claim sends the claim message', async () => {
+    const h = await open()
+    h.conn.claim()
+    expect(h.frames()).toEqual([{ t: 'claim' }])
+  })
+
+  it('a lone desktop socket never claims: nothing was resized by another viewer', async () => {
+    const h = await open()
+    expect(h.conn.claimIfNeeded()).toBe(false)
+    expect(h.frames()).toEqual([])
+  })
+
+  it('claims once after a resized notice, then stays quiet until the next one', async () => {
+    const h = await open()
+    h.ws.onmessage?.({ data: JSON.stringify({ t: 'resized', cols: 45, rows: 30 }) })
+    expect(h.onMessage).toHaveBeenLastCalledWith({ t: 'resized', cols: 45, rows: 30 })
+    expect(h.conn.claimIfNeeded()).toBe(true)
+    expect(h.conn.claimIfNeeded()).toBe(false)
+    expect(h.frames()).toHaveLength(1)
+    h.ws.onmessage?.({ data: JSON.stringify({ t: 'resized', cols: 50, rows: 30 }) })
+    expect(h.conn.claimIfNeeded()).toBe(true)
+    expect(h.frames()).toHaveLength(2)
+  })
+})

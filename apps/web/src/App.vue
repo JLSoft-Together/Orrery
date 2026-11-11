@@ -32,6 +32,9 @@ import { desktop, hasDeepSeek, hasExtensions, hasTerminals } from './lib/desktop
 import { hasDevices } from './lib/devices'
 import { useRevealInWorkspace } from './composables/useRevealInWorkspace'
 import { handleOrrery, installOrreryApi } from './composables/useOrreryApi'
+import { installRemotePhone } from './composables/useRemotePhone'
+import { installRemoteSummary } from './composables/useRemoteSummary'
+import { useRemoteStore } from './stores/remote'
 import { useTurnCheckpoints } from './composables/useTurnCheckpoints'
 import { isMac } from './lib/platform'
 import { restoreMode, restoreWith, startupRun, uncleanExit } from './lib/workspaceRestore'
@@ -84,6 +87,13 @@ const showWorkspace = computed(() => hasTerminals && !ui.compact && ui.view === 
 const showFooter = computed(() => showWorkspace.value || (!ui.compact && ui.view === 'monitor'))
 const workspaceOpened = ref(false)
 watch(showWorkspace, (shown) => shown && (workspaceOpened.value = true), { immediate: true })
+const remote = useRemoteStore()
+if (hasTerminals && !ui.compact) {
+  void remote.start()
+  installRemotePhone()
+  installRemoteSummary()
+  watch(() => remote.connected > 0, (phone) => phone && (workspaceOpened.value = true), { immediate: true })
+}
 
 const workspace = useWorkspaceStore()
 const deepseek = useDeepSeekStore()

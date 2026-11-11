@@ -32,6 +32,7 @@ export class PtyConnection {
   private rows = 24
   private reattaches = 0
   private reattachedAt = 0
+  private resizedByOther = false
 
   constructor(private readonly handlers: PtyHandlers) {}
 
@@ -106,6 +107,7 @@ export class PtyConnection {
       try {
         const msg = JSON.parse(ev.data) as PtyServerMessage
         if (msg.t === 'ready') this.sessionId = msg.id
+        if (msg.t === 'resized') this.resizedByOther = true
         this.handlers.onMessage(msg)
       } catch {
         // malformed control frame: ignore, like unknown protocol events elsewhere
@@ -145,6 +147,17 @@ export class PtyConnection {
     this.cols = cols
     this.rows = rows
     this.control({ t: 'resize', cols, rows })
+  }
+
+  claim(): void {
+    this.resizedByOther = false
+    this.control({ t: 'claim' })
+  }
+
+  claimIfNeeded(): boolean {
+    if (!this.resizedByOther) return false
+    this.claim()
+    return true
   }
 
   reportCwd(cwd: string): void {

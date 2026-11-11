@@ -1,6 +1,6 @@
 import type { ToastKind } from '@ccm/shared'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'remote', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
 
 export const isSettingsPage = (v: unknown): v is SettingsPage => typeof v === 'string' && (SETTINGS_PAGES as readonly string[]).includes(v)
@@ -38,6 +38,7 @@ export interface SettingsEnv {
   agentData: boolean
   phone: boolean
   telegram: boolean
+  remote: boolean
   disk: boolean
   updater: boolean
   backup: boolean
@@ -58,7 +59,7 @@ export interface SettingsEntry {
   needs?: keyof SettingsEnv
 }
 
-const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { editor: 'terminals', github: 'github', deepseek: 'deepseek', telegram: 'telegram' }
+const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { editor: 'terminals', github: 'github', deepseek: 'deepseek', telegram: 'telegram', remote: 'remote' }
 
 export const pageVisible = (page: SettingsPage, env: SettingsEnv): boolean => {
   const need = PAGE_NEEDS[page]
@@ -121,6 +122,12 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'notify', id: 'disk', labelKey: 'disk.setting', hintKey: 'disk.settingHint', needs: 'disk' },
   { page: 'notify', id: 'phone', labelKey: 'phone.section', needs: 'phone' },
   { page: 'telegram', id: 'telegram', labelKey: 'telegram.section', hintKey: 'telegram.enable', needs: 'telegram' },
+
+  { page: 'remote', id: 'remote', labelKey: 'remoteV97.enable', hintKey: 'remoteV97.enableHint', needs: 'remote' },
+  { page: 'remote', id: 'remoteAdd', labelKey: 'remoteV97.add.title', hintKey: 'remoteV97.add.hint', needs: 'remote' },
+  { page: 'remote', id: 'remoteDevices', labelKey: 'remoteV97.devices.title', needs: 'remote' },
+  { page: 'remote', id: 'remoteAwake', labelKey: 'remoteV97.awake', hintKey: 'remoteV97.awakeHint', needs: 'remote' },
+  { page: 'remote', id: 'remoteLog', labelKey: 'remoteV97.log.title', needs: 'remote' },
 
   { page: 'reminders', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
   { page: 'reminders', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },

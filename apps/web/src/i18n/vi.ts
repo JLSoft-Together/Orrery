@@ -78,6 +78,7 @@ import uiV80Palette from './ui-v80-palette'
 import uiV80Wp1 from './ui-v80-wp1'
 import uiV80Toast from './ui-v80-toast'
 import deepseekV81 from './deepseek-v81'
+import remoteV97 from './remote-v97'
 import captureV76 from './capture-v76'
 import sensitiveV76 from './sensitive-v76'
 import agentDataV76 from './agentdata-v76'
@@ -163,6 +164,7 @@ const vi: typeof en = {
   ...uiV80Wp1.vi,
   ...uiV80Toast.vi,
   ...deepseekV81.vi,
+  ...remoteV97.vi,
   ...captureV76.vi,
   ...sensitiveV76.vi,
   ...agentDataV76.vi,

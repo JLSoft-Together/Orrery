@@ -20,6 +20,7 @@ const env: SettingsEnv = {
   agentData: true,
   phone: true,
   telegram: true,
+  remote: false,
   disk: true,
   updater: true,
   backup: true,

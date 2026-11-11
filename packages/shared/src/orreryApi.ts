@@ -2,10 +2,11 @@ import { cleanNoteText, isAgentNoteLevel, type McpPageCall, type McpPageTool } f
 import { LAYOUT_DEVICES, type AgentLayoutDevice, type McpDeskCall, type McpDeskTool } from './mcpDesk'
 import { compileLogMatch, isMcpLogCursor, isMcpRunAction, isMcpRunId, MCP_LOG_LINES_DEFAULT, MCP_LOG_LINES_MAX } from './mcpRun'
 import { cleanPanePrompt, isAgentSessionId, isPtyPreset, PANE_OPEN_PROMPT_MAX, type PaneOpenError, type PaneOpenRequest, type PtyPreset } from './pty'
+import { parseRemotePhoneCall, type RemoteCommandName } from './remote'
 import { parseInbound, parseTelegramButtons, type TelegramInbound } from './telegram'
 
 /** Who asked for a session to be opened; decides prompt submit, the live-pane limit and docking (OPEN_POLICY). */
-export type OrrerySource = 'menu' | 'palette' | 'mcp' | 'url' | 'telegram' | 'restore'
+export type OrrerySource = 'menu' | 'palette' | 'mcp' | 'url' | 'telegram' | 'restore' | 'phone'
 
 export interface SessionOpenInput {
   preset: PtyPreset
@@ -45,6 +46,7 @@ export const OPEN_POLICY: Readonly<Record<OrrerySource, OpenPolicy>> = {
   mcp: { submit: false, limit: true, dock: true, askSubmit: true },
   url: { submit: false, limit: true, dock: false, askSubmit: false },
   telegram: { submit: true, limit: true, dock: false, askSubmit: false },
+  phone: { submit: false, limit: true, dock: false, askSubmit: true },
 }
 
 /** Same as the PTY host's live-session cap. */
@@ -233,6 +235,7 @@ const inbound =
 const spec = <R extends OrreryRuns, T>(runs: R, sources: readonly OrrerySource[], parse: (args: unknown) => T | null): OrrerySpec<T> & { runs: R } => ({ runs, sources, parse })
 const onPage = <T extends McpPageTool>(tool: T) => spec('page', ['mcp'], (a) => parseMcpPageCall(a, tool))
 const onDesk = <T extends McpDeskTool>(tool: T) => spec('desk', ['mcp'], (a) => parseMcpDeskCall(a, tool))
+const fromPhone = <T extends RemoteCommandName>(name: T) => spec('page', ['phone'], (a) => parseRemotePhoneCall(a, name))
 const fromBot = <A extends TelegramInbound['action']>(action: A) => spec('page', ['telegram'], inbound(action))
 
 /**
@@ -241,6 +244,15 @@ const fromBot = <A extends TelegramInbound['action']>(action: A) => spec('page',
  * another agent opened; free_port and turning telegram_receive on still ask the owner in main's desk.
  */
 export const ORRERY_ACTIONS = {
+  'remote.summary.get': spec('page', ['phone'], (a) => (a === undefined || a === null || (typeof a === 'object' && !Array.isArray(a)) ? {} : null)),
+  'ws.open': fromPhone('ws.open'),
+  'ws.close': fromPhone('ws.close'),
+  'ws.rename': fromPhone('ws.rename'),
+  'ws.move': fromPhone('ws.move'),
+  'ws.reopen': fromPhone('ws.reopen'),
+  'ws.compact': fromPhone('ws.compact'),
+  'ws.send': fromPhone('ws.send'),
+  'ws.keys': fromPhone('ws.keys'),
   'session.open': spec('page', ['mcp', 'url'], parsePaneOpen),
   'session.status': fromBot('status'),
   'session.send': fromBot('send'),

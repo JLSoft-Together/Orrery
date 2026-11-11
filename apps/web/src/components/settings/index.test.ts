@@ -5,6 +5,7 @@ import { TOAST_KINDS } from '@ccm/shared'
 import en from '../../i18n/en'
 import vi from '../../i18n/vi'
 import v79 from '../../i18n/ui-v79-settings'
+import remoteV97 from '../../i18n/remote-v97'
 import { useSettingsStore } from '../../stores/settings'
 import { NOTIFY_ROWS, SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv } from './index'
 
@@ -20,6 +21,7 @@ const all: SettingsEnv = {
   agentData: true,
   phone: true,
   telegram: true,
+  remote: true,
   disk: true,
   updater: true,
   backup: true,
@@ -34,7 +36,7 @@ const all: SettingsEnv = {
 
 function translator(locale: 'en' | 'vi') {
   const base = locale === 'en' ? en : vi
-  const i18n = createI18n({ legacy: false, locale, messages: { [locale]: { ...base, ...v79[locale] } }, missingWarn: false, fallbackWarn: false })
+  const i18n = createI18n({ legacy: false, locale, messages: { [locale]: { ...base, ...v79[locale], ...remoteV97[locale] } }, missingWarn: false, fallbackWarn: false })
   return { t: (k: string) => i18n.global.t(k), te: (k: string) => i18n.global.te(k) }
 }
 

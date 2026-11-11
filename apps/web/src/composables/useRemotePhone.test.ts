@@ -97,6 +97,34 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(ws.pendingClose).toBeNull()
   })
 
+  it('a repeated gateway rid runs once and returns the first result', async () => {
+    const { useTerminalsStore } = await import('../stores/terminals')
+    const a = pane('claude', 'C:\\work\\A', 'a')
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'idle' } as never
+    const first = await call('ws.send', { paneKey: a.key, text: 'go' }, { rid: 'n1.61' })
+    expect(first).toEqual({ ok: true, submitted: true })
+    ws.update(a.key, { prefill: undefined, prefillSubmit: undefined })
+    expect(await call('ws.send', { paneKey: a.key, text: 'go' }, { rid: 'n1.61' })).toEqual(first)
+    expect(a.prefill).toBeUndefined()
+    expect(await call('ws.send', { paneKey: a.key, text: 'go' }, { rid: 'n1.62' })).toEqual({ ok: true, submitted: true })
+  })
+
+  it('keeps at most the newest rids and forgets them after a minute', async () => {
+    const { onceByRid } = await import('./useRemotePhone')
+    const { REMOTE_RID_KEEP, REMOTE_RID_TTL_MS } = await import('@ccm/shared')
+    const recent = new Map()
+    let runs = 0
+    const run = () => ({ ok: true as const, n: ++runs })
+    for (let i = 0; i <= REMOTE_RID_KEEP; i++) await onceByRid(recent, `r${i}`, run, 1000)
+    expect(recent.size).toBe(REMOTE_RID_KEEP)
+    await onceByRid(recent, 'r0', run, 1000)
+    expect(runs).toBe(REMOTE_RID_KEEP + 2)
+    await onceByRid(recent, 'r5', run, 1000)
+    expect(runs).toBe(REMOTE_RID_KEEP + 2)
+    await onceByRid(recent, 'r5', run, 1000 + REMOTE_RID_TTL_MS)
+    expect(runs).toBe(REMOTE_RID_KEEP + 3)
+  })
+
   it('rename and move change state only', async () => {
     const a = pane('claude', 'C:\\work\\A', 'a')
     const b = pane('claude', 'C:\\work\\B', 'b')

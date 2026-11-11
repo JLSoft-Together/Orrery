@@ -95,6 +95,9 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
     {
         b = b.decorations(false).shadow(true).disable_drag_drop_handler();
     }
+    if let Some(args) = crate::remote::awake::browser_args(app) {
+        b = b.additional_browser_args(args);
+    }
     Ok(b)
 }
 

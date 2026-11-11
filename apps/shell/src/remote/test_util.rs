@@ -17,7 +17,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use super::config::{new_machine_id, now_secs, Config};
-use super::ctx::{Host, Welcome};
+use super::ctx::{Asked, Host, PtyEndpoint, Welcome};
 use super::{Options, Remote};
 use crate::state::lock;
 use super::keys::{KeyStore, Read};
@@ -34,7 +34,12 @@ pub struct TestHost {
     pub notes: Mutex<Vec<String>>,
     pub awake: Mutex<Vec<bool>>,
     pub changes: AtomicUsize,
+    pub asks: Mutex<Vec<(String, Value)>>,
+    pub answer_with: Mutex<Option<Answer>>,
+    pub pty: Mutex<Option<(String, String)>>,
 }
+
+pub type Answer = Box<dyn Fn(&str, &Value) -> Option<Value> + Send + Sync>;
 
 impl Host for TestHost {
     fn confirm_pair(&self, name: &str) -> bool {
@@ -58,6 +63,17 @@ impl Host for TestHost {
     }
     fn awake(&self, on: bool) {
         lock(&self.awake).push(on);
+    }
+    fn ask(&self, action: &str, args: Value) -> Asked {
+        lock(&self.asks).push((action.to_owned(), args.clone()));
+        let answer = lock(&self.answer_with).as_ref().map(|f| f(action, &args));
+        match answer {
+            Some(Some(v)) => Asked::Reply(v),
+            _ => Asked::Offline,
+        }
+    }
+    fn pty(&self) -> Option<PtyEndpoint> {
+        lock(&self.pty).clone().map(|(url, protocol)| PtyEndpoint { url, protocol })
     }
 }
 
@@ -211,4 +227,33 @@ pub fn decode_qr(v: &Value) -> QrPayload {
 
 pub fn runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap()
+}
+
+pub async fn recv_frame(ws: &mut Ws, t: &mut Transport) -> Result<Frame, Option<u16>> {
+    loop {
+        let bytes = next_binary(ws).await?;
+        if let Some(f) = t.open(&bytes).ok().and_then(|p| Frame::decode(&p).ok()) {
+            return Ok(f);
+        }
+    }
+}
+
+pub async fn send_raw(ws: &mut Ws, t: &mut Transport, kind: u8, flags: u8, stream: u32, payload: &[u8]) {
+    let mut plain = vec![kind, flags];
+    plain.extend_from_slice(&stream.to_be_bytes());
+    plain.extend_from_slice(payload);
+    ws.send(Message::Binary(t.seal(&plain).unwrap().into())).await.unwrap();
+}
+
+pub async fn until_json(ws: &mut Ws, t: &mut Transport, want: impl Fn(&Value) -> bool) -> Value {
+    loop {
+        let f = recv_frame(ws, t).await.expect("socket closed");
+        if f.kind != Kind::Json {
+            continue;
+        }
+        let v: Value = serde_json::from_slice(&f.payload).unwrap();
+        if want(&v) {
+            return v;
+        }
+    }
 }

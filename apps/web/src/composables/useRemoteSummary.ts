@@ -5,6 +5,7 @@ import { buildSummary, summaryHash, type RemotePaneFacts } from '../lib/remoteSu
 import { useRemoteStore } from '../stores/remote'
 import { isTerm, useWorkspaceStore, type Pane } from '../stores/workspace'
 import { handleOrrery, hasOrrery } from './useOrreryApi'
+import { installRemoteAwake } from './useRemoteAwake'
 import { usePaneInfo } from './usePaneInfo'
 
 let installed = false
@@ -12,6 +13,7 @@ let installed = false
 export function installRemoteSummary(): void {
   if (installed) return
   installed = true
+  installRemoteAwake()
   const workspace = useWorkspaceStore()
   const remote = useRemoteStore()
   const info = usePaneInfo()

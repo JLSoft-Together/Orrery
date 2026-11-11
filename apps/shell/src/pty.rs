@@ -255,7 +255,7 @@ impl PtyHost {
         let stdin = Arc::new(Mutex::new(child.stdin.take().ok_or("no stdin")?));
         let stdout = child.stdout.take().ok_or("no stdout")?;
         let token = random_hex(32);
-        send(&stdin, &json!({ "t": "init", "token": token, "origins": [self.origin], "appVersion": self.version }));
+        send(&stdin, &json!({ "t": "init", "token": token, "origins": [self.origin, crate::remote::pty_bridge::ORIGIN], "appVersion": self.version }));
         let (tx, rx) = mpsc::channel::<u16>();
         let writer = stdin.clone();
         *lock(&self.panes) = Panes::default();

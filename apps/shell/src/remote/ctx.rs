@@ -17,10 +17,12 @@ use super::keys::Keys;
 use super::limits::{Gate, MAX_SESSIONS};
 use super::pair::Pairing;
 use super::status::Shape;
+use super::workspace::Board;
 use crate::state::lock;
 
 const UNKNOWN_NOTICE_GAP: Duration = Duration::from_secs(600);
 pub const MAX_PAIR_TRIES: usize = 5;
+pub const MAX_RELAY_PAIR_TRIES: usize = 20;
 pub const RENEW_BEFORE: u64 = 7 * 86_400;
 const PAIR_WINDOW: Duration = Duration::from_secs(60);
 
@@ -36,6 +38,16 @@ pub struct Welcome {
     pub locale: String,
 }
 
+pub enum Asked {
+    Reply(Value),
+    Offline,
+}
+
+pub struct PtyEndpoint {
+    pub url: String,
+    pub protocol: String,
+}
+
 pub trait Host: Send + Sync + 'static {
     fn confirm_pair(&self, name: &str) -> bool;
     fn notify(&self, title: &str, body: &str);
@@ -43,6 +55,8 @@ pub trait Host: Send + Sync + 'static {
     fn welcome(&self) -> Welcome;
     fn changed(&self, status: Value);
     fn awake(&self, on: bool);
+    fn ask(&self, action: &str, args: Value) -> Asked;
+    fn pty(&self) -> Option<PtyEndpoint>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,7 +89,7 @@ pub struct Ctx {
     lan: Mutex<Vec<SocketAddr>>,
     unknown_at: Mutex<Option<Instant>>,
     pair_tries: Mutex<HashMap<String, Vec<Instant>>>,
-    summary: Mutex<Option<Value>>,
+    pub board: Board,
 }
 
 impl Ctx {
@@ -99,7 +113,7 @@ impl Ctx {
             lan: Mutex::new(Vec::new()),
             unknown_at: Mutex::new(None),
             pair_tries: Mutex::new(HashMap::new()),
-            summary: Mutex::new(None),
+            board: Board::default(),
         }
     }
 
@@ -121,11 +135,11 @@ impl Ctx {
         Ok(id)
     }
 
-    pub fn take_pair_try(&self, key: String, now: Instant) -> bool {
+    pub fn take_pair_try(&self, key: String, max: usize, now: Instant) -> bool {
         let mut map = lock(&self.pair_tries);
         map.retain(|_, times| times.iter().any(|t| now.duration_since(*t) < PAIR_WINDOW));
         let times = map.entry(key).or_default();
-        crate::state::take_slot(times, now, MAX_PAIR_TRIES, PAIR_WINDOW)
+        crate::state::take_slot(times, now, max, PAIR_WINDOW)
     }
 
     pub fn drop_live(&self, id: u64) {
@@ -189,15 +203,17 @@ impl Ctx {
             pairing: self.pairing.active(super::config::now_secs()),
             name: &self.name,
         };
-        shape.json(&cfg, lock(&self.devices).list(), &online)
+        let mut out = shape.json(&cfg, lock(&self.devices).list(), &online);
+        out["error"] = if running && lan.is_empty() { Value::from("lan") } else { Value::Null };
+        out
     }
 
     pub fn publish(&self, summary: Value) {
-        *lock(&self.summary) = Some(summary);
+        self.board.publish(summary);
     }
 
     pub fn summary(&self) -> Option<Value> {
-        lock(&self.summary).clone()
+        self.board.summary()
     }
 
     pub fn notify_unknown(&self, now: Instant) {

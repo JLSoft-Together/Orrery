@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use tokio::time::{timeout_at, Instant};
 
 use super::config::now_secs;
-use super::ctx::{Admit, Ctx};
+use super::ctx::{Admit, Ctx, MAX_PAIR_TRIES, MAX_RELAY_PAIR_TRIES};
 use super::dashboard::Phone;
 use super::limits::Pending;
 use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_PROTO, CLOSE_RATE};
@@ -17,10 +17,10 @@ use crate::state::lock;
 
 pub const HELLO_WAIT: Duration = Duration::from_secs(5);
 
-fn try_key(peer: Peer) -> String {
+pub fn try_key(peer: Peer) -> (String, usize) {
     match peer {
-        Peer::Lan(ip) => format!("ip:{ip}"),
-        Peer::Relay(conn) => format!("relay:{conn}"),
+        Peer::Lan(ip) => (format!("ip:{ip}"), MAX_PAIR_TRIES),
+        Peer::Relay(_) => ("relay".to_owned(), MAX_RELAY_PAIR_TRIES),
     }
 }
 
@@ -29,7 +29,8 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         return link.out.close(CLOSE_HANDSHAKE, "timeout").await;
     };
     if pair::is_pair_msg1(&msg1) {
-        if !ctx.take_pair_try(try_key(link.peer), std::time::Instant::now()) {
+        let (key, max) = try_key(link.peer);
+        if !ctx.take_pair_try(key, max, std::time::Instant::now()) {
             return link.out.close(CLOSE_RATE, "pairing").await;
         }
         pair::run(ctx, link, msg1, deadline).await;

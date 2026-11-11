@@ -8,6 +8,9 @@ export const REMOTE_TEXT_MAX = 2000
 export const REMOTE_JSON_MAX = 1024 * 1024
 export const REMOTE_ATTACH_MAX = 4
 export const REMOTE_CONFIRM_MS = 60_000
+export const REMOTE_RID_MAX = 128
+export const REMOTE_RID_KEEP = 50
+export const REMOTE_RID_TTL_MS = 60_000
 export const REMOTE_SUMMARY_DEBOUNCE_MS = 200
 
 export type RemoteErrorCode =
@@ -97,6 +100,7 @@ export interface RemotePhoneCall<T extends RemoteCommandName = RemoteCommandName
   device: string
   cmd: Extract<RemoteCommand, { t: T }>
   confirmed?: boolean
+  rid?: string
 }
 
 export interface RemoteNeedsConfirm {
@@ -175,7 +179,8 @@ export function parseRemotePhoneCall<T extends RemoteCommandName>(raw: unknown, 
   const cmd = parseRemoteCommand(raw.cmd, name)
   if (!cmd) return null
   const confirmed = raw.confirmed === true
-  return { device: raw.device, cmd: cmd as Extract<RemoteCommand, { t: T }>, ...(confirmed ? { confirmed: true as const } : {}) }
+  const rid = ident(raw.rid, REMOTE_RID_MAX) ? raw.rid : undefined
+  return { device: raw.device, cmd: cmd as Extract<RemoteCommand, { t: T }>, ...(confirmed ? { confirmed: true as const } : {}), ...(rid ? { rid } : {}) }
 }
 
 export type RemoteDeviceState = 'connected' | 'idle' | 'revoked'

@@ -20,6 +20,7 @@ use super::session;
 
 pub const PATH: &str = "/remote";
 pub const MAX_WS_MESSAGE: usize = 65_535;
+pub const IDLE: std::time::Duration = std::time::Duration::from_secs(45);
 
 pub fn is_private_v4(ip: Ipv4Addr) -> bool {
     let [a, b, ..] = ip.octets();
@@ -70,8 +71,8 @@ fn exclusive(s: &Socket) -> bool {
 }
 
 #[cfg(not(windows))]
-fn exclusive(_: &Socket) -> bool {
-    true
+fn exclusive(s: &Socket) -> bool {
+    s.set_reuse_address(true).is_ok()
 }
 
 fn ws_config() -> WebSocketConfig {
@@ -132,7 +133,7 @@ fn close_message(code: u16, reason: &'static str) -> Message {
 pub async fn pump(ws: WebSocketStream<TcpStream>, in_tx: mpsc::Sender<Vec<u8>>, mut out_rx: mpsc::Receiver<Out>, budget: Arc<Budget>) {
     let (mut sink, mut stream) = ws.split();
     let reader = async move {
-        while let Some(Ok(msg)) = stream.next().await {
+        while let Ok(Some(Ok(msg))) = tokio::time::timeout(IDLE, stream.next()).await {
             match msg {
                 Message::Binary(b) => {
                     if !budget.take(b.len()) || in_tx.send(b.to_vec()).await.is_err() {

@@ -1,4 +1,6 @@
+pub mod awake;
 mod config;
+mod confirm;
 mod ctx;
 mod dashboard;
 mod devices;
@@ -9,11 +11,16 @@ mod limits;
 mod link;
 mod mdns;
 mod pair;
+mod patch;
+mod phone_pty;
+mod phone_ws;
+pub mod pty_bridge;
 mod rebind;
 mod relay;
 mod session;
 mod status;
 mod text;
+mod workspace;
 
 #[cfg(test)]
 mod test_util;
@@ -25,6 +32,10 @@ mod session_tests;
 mod relay_tests;
 #[cfg(test)]
 mod unit_tests;
+#[cfg(test)]
+mod ws_tests;
+#[cfg(test)]
+mod pty_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -36,7 +47,7 @@ use serde_json::{json, Value};
 use tokio::runtime::Runtime;
 use tokio::sync::watch;
 
-pub use ctx::{Control, Host, Welcome};
+pub use ctx::{Asked, Control, Host, PtyEndpoint, Welcome};
 
 use config::{now_secs, port_override, Config};
 use ctx::Ctx;
@@ -124,7 +135,11 @@ impl Remote {
                 shape.json(&cfg, Devices::load(&self.dir).list(), &[])
             }
         };
-        out["error"] = lock(&self.error).map_or(Value::Null, Value::from);
+        if let Some(e) = *lock(&self.error) {
+            out["error"] = Value::from(e);
+        } else if out.get("error").is_none() {
+            out["error"] = Value::Null;
+        }
         out
     }
 
@@ -169,10 +184,6 @@ impl Remote {
             Ok(c) => c,
             Err(e) => return self.set_error(Some(e)),
         };
-        let first = lock(&ctx.config).clone();
-        if !first.relay.url.is_empty() && !first.relay.registered {
-            let _ = relay::register(&ctx);
-        }
         let Ok(rt) = tokio::runtime::Builder::new_multi_thread().worker_threads(2).thread_name("remote").enable_all().build() else {
             return self.set_error(Some("runtime"));
         };
@@ -181,8 +192,8 @@ impl Remote {
         let addrs = self.opts.addrs.clone().unwrap_or_else(lan::lan_addrs);
         let listeners = lan::bind(&addrs, port);
         let bound: Vec<SocketAddr> = listeners.iter().filter_map(|l| l.local_addr().ok()).collect();
-        self.set_error(if bound.is_empty() { Some("lan") } else { None });
-        ctx.set_lan(bound.clone());
+        self.set_error(None);
+        ctx.set_lan(bound);
         let (stop, stop_rx) = watch::channel(false);
         let plan = rebind::Plan { port, dynamic: self.opts.addrs.is_none(), mdns: self.opts.mdns };
         rt.spawn(rebind::supervise(ctx.clone(), listeners, plan, stop_rx.clone()));

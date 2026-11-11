@@ -7,8 +7,10 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use super::text::remote_text;
-use super::{Host, Options, Remote, Welcome, CHANGED};
-use crate::state::{lock, Shell};
+use super::{Asked, Host, Options, PtyEndpoint, Remote, Welcome, CHANGED};
+use crate::state::{lock, Shell, MAIN};
+
+const ASK_WAIT: std::time::Duration = std::time::Duration::from_secs(4);
 
 pub struct AppHost {
     app: AppHandle,
@@ -55,6 +57,23 @@ impl Host for AppHost {
         } else {
             self.power.stop();
         }
+    }
+
+    fn ask(&self, action: &str, args: Value) -> Asked {
+        if self.app.get_webview_window(MAIN).is_none() {
+            return Asked::Offline;
+        }
+        let id = crate::config::uuid();
+        let req = json!({ "id": id, "action": action, "args": args, "caller": { "source": "phone" } });
+        match self.app.state::<Shell>().ask(&self.app, &id, "ccm:orrery", req, ASK_WAIT) {
+            Some(v) => Asked::Reply(v),
+            None => Asked::Offline,
+        }
+    }
+
+    fn pty(&self) -> Option<PtyEndpoint> {
+        let ep = self.app.state::<Shell>().pty.endpoint().ok()?;
+        Some(PtyEndpoint { url: ep.url, protocol: ep.protocol })
     }
 }
 

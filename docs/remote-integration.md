@@ -11,6 +11,7 @@ relay (`apps/relay`) và app `apps/mobile`. Thiết kế + lý do: `.planning/PL
 | LAN | `ws://<ip LAN>:4320/remote` (mặc định port 4320, `CCM_REMOTE_PORT`) | mỗi WS binary message = 1 Noise message |
 | Relay | desktop `wss://<relay>/m/<machineId>`, điện thoại `wss://<relay>/p/<machineId>?t=<token>` | desktop: `[u16 connId BE][noise msg]`; `connId = 0` = control JSON của DO `{t:"open"\|"close", conn}`; điện thoại: không có envelope (DO thêm / bỏ) |
 
+- LAN: không nhận frame nào trong 45 s (kể cả ping WS / kind 3) → gateway đóng phiên; điện thoại gửi ping ≤ 30 s / lần.
 - Keepalive relay: text frame `"ping"` → DO tự trả `"pong"` (`setWebSocketAutoResponse`), ngoài Noise, mỗi 30 s.
 - Trước khi vào Noise không có dữ liệu ứng dụng nào. Handshake chưa xong trong 5 s → đóng. Frame đầu sau bắt tay IK phải là `hello` giải mã được trong 5 s, chỉ từ đó phiên mới được tính (`lastSeen`, thông báo, max 16 phiên); trước đó inbox max 4 frame / 64 KB.
 - mDNS `_orrery._tcp`, TXT `{v, k, n}`: `k` = base64url 8 byte đầu SHA-256(key tĩnh Noise của máy), `n` = tên máy; không có machineId.
@@ -64,7 +65,9 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 | `ws.send {paneKey, text}` | ≤ 2000 ký tự; pane idle → gửi luôn, không idle → chỉ gõ sẵn → `{submitted}` |
 | `ws.keys {paneKey, keys, since}` | nút trả lời xin quyền; `since` lệch `statusSince` → `busy` |
 
-Event `ws.snapshot {rev, tabs[]}` / `ws.patch {rev, ops[]}` (`ops` = JSON Patch RFC 6902 trên snapshot; lệch `rev` → `ws.get`).
+`timeout` của lệnh `ws.*` = kết quả chưa rõ (renderer có thể vẫn đã làm): client KHÔNG tự retry lệnh có tác dụng phụ. Gateway gửi kèm `rid` (theo phiên + `id` lệnh) cho renderer; renderer bỏ lệnh trùng `rid` (50 gần nhất, 60 s) và trả lại kết quả lần đầu.
+
+Event `ws.snapshot {rev, tabs[]}` / `ws.patch {base, rev, ops[]}` (`ops` = JSON Patch RFC 6902 trên snapshot; chỉ áp khi `base` = rev đang có, lệch → `ws.get`).
 `tabs[i] = {key, name, project, tree, zoom, folded, panes[]}`; `tree` = `{pane} | {dir, ratio, a, b}`;
 `panes[j] = {key, kind, preset, agent, title, cwd, branch, state, rail, waitText, attention, subagents, sessionId, terminalId, dirty, busy}`.
 
@@ -76,7 +79,7 @@ Event `ws.snapshot {rev, tabs[]}` / `ws.patch {rev, ops[]}` (`ops` = JSON Patch 
 | `pty.resize {stream, cols, rows}` | lưu cỡ của điện thoại; chỉ áp khi điện thoại đang gõ |
 | kind 2 trên `stream` | gõ (ghi vào PTY); gateway gửi `claim` cho hub khi đó là phím người dùng thật, điện thoại thành người gõ, cỡ của nó áp vào PTY |
 
-Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}`, `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị.
+Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Workspace summary (không thì `notFound`). Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}` (`code:null` = mất hub), `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị (thứ 5 → `limit`).
 
 ### 4.5 Viewer
 `fs.list {root, dir}` · `fs.files {root}` · `fs.read {path}` · `fs.write {path, text, base?}` · `fs.watch {root}` / `fs.unwatch` ·
@@ -87,7 +90,7 @@ Map 1–1 sang kênh `ccm:*` của core-desk (`.planning/research/v97-rust-side.
 Event: `fs.changed {root, paths[]}`, `git.changed {root}`, `run.event {...}`.
 
 ### 4.6 Xác nhận
-Event `confirm.ask {cid, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}`; quá 60 s → coi như huỷ.
+Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confirm.ask {cid, re, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}` (`cid` dùng 1 lần); từ chối / quá 60 s / phiên đóng → lệnh gốc kết thúc `{cancelled:true}`. `confirmed` chỉ gateway đặt.
 
 ## 5. Giới hạn
 `ws.*` 30 / phút · `fs.write` 20 / phút · JSON 1 MiB · text prompt 2000 · max 8 kết nối chưa xác thực / IP trên LAN · thiết bị không dùng 30 ngày tự hết hạn.

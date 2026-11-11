@@ -12,6 +12,8 @@ use super::config::now_secs;
 use super::ctx::{Control, Ctx};
 use super::limits::{Rate, MAX_COMMANDS_PER_MINUTE};
 use super::link::{Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_OFF, CLOSE_PROTO};
+use super::phone_pty::strip_claim;
+use super::phone_ws::{next_ws, Extra};
 use crate::state::lock;
 
 pub const BATCH: Duration = Duration::from_millis(30);
@@ -60,12 +62,6 @@ pub fn events_event(text: &str) -> Option<(u64, Value)> {
     Some((seq, json!({ "t": "events", "seq": seq, "events": phone_events(events) })))
 }
 
-pub fn ws_snapshot(summary: &Value) -> Option<Value> {
-    let mut obj = summary.as_object()?.clone();
-    obj.insert("t".into(), Value::from("ws.snapshot"));
-    Some(Value::Object(obj))
-}
-
 pub fn command(raw: &[u8]) -> Result<(String, String, Value), Value> {
     let v: Value = serde_json::from_slice(raw).map_err(|_| error(Value::Null, "invalid"))?;
     let id = v.get("id").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= MAX_ID_LEN).map(str::to_owned);
@@ -95,9 +91,9 @@ struct Feed {
 }
 
 pub struct Phone {
-    ctx: Arc<Ctx>,
-    sec: Secure,
-    device: String,
+    pub(super) ctx: Arc<Ctx>,
+    pub(super) sec: Secure,
+    pub(super) device: String,
     reasm: Reassembler,
     hello: bool,
     feed: Option<Feed>,
@@ -105,6 +101,7 @@ pub struct Phone {
     rate: Rate,
     direct_tx: mpsc::Sender<(String, Arc<str>)>,
     direct_rx: mpsc::Receiver<(String, Arc<str>)>,
+    pub(super) x: Extra,
 }
 
 async fn next_event(feed: &mut Option<Feed>) -> Option<Arc<str>> {
@@ -117,7 +114,8 @@ async fn next_event(feed: &mut Option<Feed>) -> Option<Arc<str>> {
 impl Phone {
     pub fn new(ctx: Arc<Ctx>, sec: Secure, device: String) -> Phone {
         let (direct_tx, direct_rx) = mpsc::channel(32);
-        Phone { ctx, sec, device, reasm: Reassembler::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx }
+        let x = Extra::new(ctx.board.subscribe());
+        Phone { ctx, sec, device, reasm: Reassembler::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, x }
     }
 
     pub fn first_hello(&mut self, msg: &[u8]) -> Option<(String, Value)> {
@@ -155,6 +153,21 @@ impl Phone {
                         break;
                     }
                 }
+                Some(done) = self.x.done_rx.recv() => {
+                    if !self.on_done(done).await {
+                        break;
+                    }
+                }
+                Some(msg) = self.x.hub_rx.recv() => {
+                    if !self.on_hub(msg).await {
+                        break;
+                    }
+                }
+                event = next_ws(&mut self.x.ws_rx, self.hello) => {
+                    if !self.on_ws(event).await {
+                        break;
+                    }
+                }
                 Some((id, text)) = self.direct_rx.recv() => {
                     let events = parse(&text).map(|(_, e)| phone_events(e)).unwrap_or_default();
                     if !self.sec.json(&json!({ "re": id, "ok": true, "events": events })).await {
@@ -176,13 +189,20 @@ impl Phone {
     }
 
     async fn inbound(&mut self, msg: &[u8]) -> bool {
-        let frame = match self.sec.transport.open(msg).map(|plain| Frame::decode(&plain)) {
+        let mut claim = false;
+        let frame = match self.sec.transport.open(msg).map(|mut plain| {
+            claim = strip_claim(&mut plain);
+            Frame::decode(&plain)
+        }) {
             Ok(Ok(f)) => f,
             _ => {
                 self.sec.close(CLOSE_HANDSHAKE, "frame").await;
                 return false;
             }
         };
+        if claim {
+            self.x.claims.insert(frame.stream);
+        }
         let message = match self.reasm.push(frame) {
             Ok(Some(m)) => m,
             Ok(None) => return true,
@@ -194,7 +214,11 @@ impl Phone {
         match message.kind {
             Kind::Json => self.command(&message.payload).await,
             Kind::Ping => self.sec.frame(Kind::Ping, 0, &[]).await,
-            Kind::PtyIn | Kind::PtyOut => true,
+            Kind::PtyIn => {
+                let claim = self.x.claims.remove(&message.stream);
+                self.pty_input(message.stream, message.payload, claim).await
+            }
+            Kind::PtyOut => true,
         }
     }
 
@@ -211,7 +235,7 @@ impl Phone {
             _ if !self.hello => self.sec.json(&error(Value::from(id), "invalid")).await,
             "resync" => self.resync(&id).await,
             k if DASHBOARD.contains(&k) => self.tap(&id, k, &v).await,
-            _ => self.sec.json(&error(Value::from(id), "denied")).await,
+            k => self.extra(&id, k, &v).await,
         }
     }
 
@@ -254,10 +278,7 @@ impl Phone {
     }
 
     async fn workspace(&mut self) -> bool {
-        match self.ctx.summary().as_ref().and_then(ws_snapshot) {
-            Some(event) => self.sec.json(&event).await,
-            None => true,
-        }
+        self.send_ws_snapshot().await
     }
 
     async fn snapshot(&mut self, text: &str) -> bool {

@@ -2,6 +2,8 @@ import {
   cleanNoteText,
   cleanPanePrompt,
   parseRemoteKeys,
+  REMOTE_RID_KEEP,
+  REMOTE_RID_TTL_MS,
   type RemoteErrorCode,
   type RemoteNeedsConfirm,
   type RemotePhoneCall,
@@ -43,6 +45,21 @@ const ACT_ERRORS: Record<ActFail['error'], RemoteErrorCode> = {
   busy: 'busy',
   state: 'busy',
   unavailable: 'internal',
+}
+
+export function onceByRid(recent: Map<string, { at: number; out: Promise<PhoneResult> }>, rid: string | undefined, run: () => PhoneResult | Promise<PhoneResult>, now = Date.now()): Promise<PhoneResult> {
+  for (const [k, v] of recent) if (now - v.at >= REMOTE_RID_TTL_MS) recent.delete(k)
+  if (!rid) return Promise.resolve(run())
+  const hit = recent.get(rid)
+  if (hit) return hit.out
+  const out = Promise.resolve(run())
+  recent.set(rid, { at: now, out })
+  while (recent.size > REMOTE_RID_KEEP) {
+    const first = recent.keys().next().value
+    if (first === undefined) break
+    recent.delete(first)
+  }
+  return out
 }
 
 export function installRemotePhone(): void {
@@ -164,12 +181,13 @@ export function installRemotePhone(): void {
     return { ok: true }
   }
 
-  handleOrrery('ws.open', (call) => open(call))
-  handleOrrery('ws.close', (call) => close(call))
-  handleOrrery('ws.rename', (call) => rename(call))
-  handleOrrery('ws.move', (call) => move(call))
-  handleOrrery('ws.reopen', (call) => reopen(call))
-  handleOrrery('ws.compact', (call) => compact(call))
-  handleOrrery('ws.send', (call) => send(call))
-  handleOrrery('ws.keys', (call) => keys(call))
+  const recent = new Map<string, { at: number; out: Promise<PhoneResult> }>()
+  handleOrrery('ws.open', (call) => onceByRid(recent, call.rid, () => open(call)))
+  handleOrrery('ws.close', (call) => onceByRid(recent, call.rid, () => close(call)))
+  handleOrrery('ws.rename', (call) => onceByRid(recent, call.rid, () => rename(call)))
+  handleOrrery('ws.move', (call) => onceByRid(recent, call.rid, () => move(call)))
+  handleOrrery('ws.reopen', (call) => onceByRid(recent, call.rid, () => reopen(call)))
+  handleOrrery('ws.compact', (call) => onceByRid(recent, call.rid, () => compact(call)))
+  handleOrrery('ws.send', (call) => onceByRid(recent, call.rid, () => send(call)))
+  handleOrrery('ws.keys', (call) => onceByRid(recent, call.rid, () => keys(call)))
 }

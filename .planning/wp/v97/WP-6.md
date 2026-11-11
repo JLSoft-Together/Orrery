@@ -27,3 +27,6 @@
 - Báo cáo: `.planning/wp/v97/WP-6-report.md`
 
 ### Nhật ký
+- 2026-11-12 WP-6: đọc brief + WP-3/5/7 report, review WP-5, gateway remote/**, pty.rs, hub frames; thiết kế: Board (summary + broadcast ws.patch có base), patch.rs, confirm.rs, pty_bridge.rs (WS client view tới hub, claim bit gỡ ở gateway vì proto crate từ chối flag ≠ more), awake.rs (browser args), Web Lock.
+- 2026-11-12 WP-6: code xong (Board/patch/confirm/phone_ws/pty_bridge/phone_pty/awake + window/guest/pty.rs nối dây + 5 lỗi WP-5 + useRemoteAwake); cargo test remote 42 pass ×3, toàn shell 236 pass, clippy remote/ sạch, shim --check sạch, typecheck web sạch, Vitest 6 pass.
+- 2026-11-12 WP-6 vòng 2: deadline 2 s + backlog 4 MiB cho bridge, idle 45 s LAN, ASK_WAIT 4 s + rid dedupe renderer, gen trên FromHub, Slot trong task; test remote 43, shell 237, Vitest 25 pass.

@@ -1,0 +1,35 @@
+{
+  "kind": "v97-mobile",
+  "args": "Orrery Remote v97: làm theo .planning/PLAN-v97-mobile.md + PROGRESS-2026-11-12-v97.md, brief .planning/wp/v97/; chạy liên tục, commit từng gói ĐẠT, push feat/v97-mobile cuối mỗi lượt",
+  "dir": "D:\\work\\web\\claude-code-monitor",
+  "status": "running",
+  "startedAt": "2026-11-11T18:32:55.008Z",
+  "phases": [
+    {
+      "id": "wave1",
+      "status": "done",
+      "at": "2026-11-11T19:03:58.326Z",
+      "note": "WP-0/2/3/9 ĐẠT, WP-1 chờ đo trên máy"
+    },
+    {
+      "id": "wave2",
+      "status": "done",
+      "at": "2026-11-11T19:56:01.286Z",
+      "note": "WP-4/9/10 ĐẠT"
+    },
+    {
+      "id": "wave3",
+      "status": "running",
+      "at": "2026-11-11T19:56:01.426Z"
+    },
+    {
+      "id": "wave4",
+      "status": "todo"
+    },
+    {
+      "id": "wave5",
+      "status": "todo"
+    }
+  ],
+  "updatedAt": "2026-11-11T19:56:01.430Z"
+}

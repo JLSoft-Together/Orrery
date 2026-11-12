@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use core_remote_proto::relay::{decode, encode_close, encode_data, Control as RelayControl, ControlKind, Envelope};
+use core_remote_proto::relay::{decode, encode_close, encode_data, encode_pair_close, encode_pair_open, Control as RelayControl, ControlKind, Envelope};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio::net::TcpStream;
@@ -16,7 +16,8 @@ use ureq::tls::{RootCerts, TlsConfig};
 use super::config::now_secs;
 use super::ctx::Ctx;
 use super::limits::HANDSHAKE;
-use super::link::{Budget, Link, Out, Outbox, Peer, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_PROTO, DRAIN_MAX, INBOX, OUTBOX};
+use super::link::{Budget, Link, Origin, Out, Outbox, Peer, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_NORMAL, CLOSE_PROTO, DRAIN_MAX, INBOX, OUTBOX};
+use super::pair::Armed;
 use super::session;
 use crate::state::lock;
 
@@ -179,6 +180,7 @@ pub struct Conn {
     pub gen: u64,
     pub tx: mpsc::Sender<Vec<u8>>,
     pub budget: Arc<Budget>,
+    pub pairing: bool,
 }
 
 #[derive(Default)]
@@ -188,7 +190,7 @@ pub struct Conns {
 }
 
 impl Conns {
-    pub fn open(&mut self, conn: u16) -> Option<(u64, mpsc::Receiver<Vec<u8>>, Arc<Budget>)> {
+    pub fn open(&mut self, conn: u16, pairing: bool) -> Option<(u64, mpsc::Receiver<Vec<u8>>, Arc<Budget>)> {
         if self.map.len() >= MAX_CONNS && !self.map.contains_key(&conn) {
             return None;
         }
@@ -196,7 +198,7 @@ impl Conns {
         self.next_gen += 1;
         let (tx, rx) = mpsc::channel(INBOX);
         let budget = Arc::new(Budget::default());
-        self.map.insert(conn, Conn { gen: self.next_gen, tx, budget: budget.clone() });
+        self.map.insert(conn, Conn { gen: self.next_gen, tx, budget: budget.clone(), pairing });
         Some((self.next_gen, rx, budget))
     }
 
@@ -208,6 +210,10 @@ impl Conns {
 
     pub fn current(&self, conn: u16, gen: u64) -> bool {
         self.map.get(&conn).is_some_and(|c| c.gen == gen)
+    }
+
+    pub fn pairing(&self, conn: u16) -> bool {
+        self.map.get(&conn).is_some_and(|c| c.pairing)
     }
 
     pub fn data(&mut self, conn: u16, bytes: &[u8]) {
@@ -223,15 +229,28 @@ impl Conns {
 
 fn route(ctx: &Arc<Ctx>, conns: &mut Conns, out: &mpsc::Sender<(u16, u64, Out)>, bytes: &[u8]) {
     match decode(bytes) {
-        Ok(Envelope::Control(RelayControl { t: ControlKind::Open, conn })) => {
-            let Some((gen, rx, budget)) = conns.open(conn) else { return };
-            let link = Link { rx, out: Outbox::Relay(conn, gen, out.clone()), peer: Peer::Relay(conn), budget };
+        Ok(Envelope::Control(RelayControl { t: ControlKind::Open, conn, ip, country, pairing })) => {
+            if pairing && ctx.pairing.spend_relay() {
+                ctx.changed();
+            }
+            let Some((gen, rx, budget)) = conns.open(conn, pairing) else { return };
+            let origin = Origin { ip, country, pairing };
+            let link = Link { rx, out: Outbox::Relay(conn, gen, out.clone()), peer: Peer::Relay(conn), origin, budget };
             tokio::spawn(session::serve(ctx.clone(), link, None, Instant::now() + HANDSHAKE));
         }
-        Ok(Envelope::Control(RelayControl { t: ControlKind::Close, conn })) => conns.close(conn, None),
+        Ok(Envelope::Control(RelayControl { t: ControlKind::Close, conn, .. })) => conns.close(conn, None),
         Ok(Envelope::Data { conn, bytes }) => conns.data(conn, bytes),
         Err(_) => {}
     }
+}
+
+fn arm_bytes(armed: Armed) -> Vec<u8> {
+    let left = armed.and_then(|(hash, exp)| exp.checked_sub(now_secs()).filter(|t| *t > 0).map(|t| (hash, t)));
+    let bytes = match left {
+        Some((hash, ttl)) => encode_pair_open(&hash, ttl),
+        None => encode_pair_close(),
+    };
+    bytes.unwrap_or_default()
 }
 
 async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) -> Option<u16> {
@@ -240,11 +259,22 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
     let mut conns = Conns::default();
     let mut ping = interval(PING_EVERY);
     ping.tick().await;
+    let mut armed = ctx.pairing.armed();
+    let first = *armed.borrow_and_update();
+    if first.is_some() && sink.send(Message::Binary(arm_bytes(first).into())).await.is_err() {
+        return None;
+    }
     loop {
         tokio::select! {
             _ = stop.changed() => {
                 let _ = sink.close().await;
                 return None;
+            }
+            Ok(()) = armed.changed() => {
+                let now = *armed.borrow_and_update();
+                if sink.send(Message::Binary(arm_bytes(now).into())).await.is_err() {
+                    return None;
+                }
             }
             _ = ctx.relay_wake.notified() => {
                 let c = ctx.clone();
@@ -275,7 +305,7 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
                             }
                         }
                         Out::Close(code, _) => {
-                            if matches!(code, CLOSE_HANDSHAKE | CLOSE_DEVICE | CLOSE_PROTO) {
+                            if matches!(code, CLOSE_HANDSHAKE | CLOSE_DEVICE | CLOSE_PROTO) || (code == CLOSE_NORMAL && conns.pairing(conn)) {
                                 if let Ok(env) = encode_close(conn, code) {
                                     if sink.feed(Message::Binary(env.into())).await.is_err() {
                                         return None;

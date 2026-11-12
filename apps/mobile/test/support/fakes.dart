@@ -99,6 +99,8 @@ class FakeCrypto implements RemoteCrypto {
     String? relay,
     int exp = 4000000000,
     List<int>? mkey,
+    List<String>? lan,
+    String? pt,
   }) => jsonEncode({
     'machine': machine,
     'name': name,
@@ -107,6 +109,8 @@ class FakeCrypto implements RemoteCrypto {
     'relay': relay,
     'exp': exp,
     'mkey': base64Url.encode(mkey ?? List.filled(32, 7)),
+    'lan': lan,
+    'pt': pt,
   });
 
   @override
@@ -121,6 +125,14 @@ class FakeCrypto implements RemoteCrypto {
         relay: map['relay'] as String?,
         mkey: Uint8List.fromList(base64Url.decode(map['mkey'] as String)),
         exp: map['exp'] as int,
+        lan: [
+          for (final e in (map['lan'] as List?) ?? const [])
+            LanEndpoint(
+              (e as String).split(':').first,
+              int.parse(e.split(':').last),
+            ),
+        ],
+        ticket: map['pt'] as String?,
       );
     } catch (_) {
       throw const CryptoException(CryptoFailure.badQr);

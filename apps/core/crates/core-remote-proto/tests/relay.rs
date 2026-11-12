@@ -67,19 +67,13 @@ fn envelope_round_trip() {
     assert_eq!(&data[..2], &[0, 5]);
     assert_eq!(decode(&data).unwrap(), Envelope::Data { conn: 5, bytes: b"noise" });
 
-    let open = Control {
-        t: ControlKind::Open,
-        conn: 9,
-    };
+    let open = Control::new(ControlKind::Open, 9);
     let bytes = encode_control(&open).unwrap();
     assert_eq!(&bytes[2..], br#"{"t":"open","conn":9}"#);
     assert_eq!(decode(&bytes).unwrap(), Envelope::Control(open));
     assert_eq!(
         decode(b"\0\0{\"t\":\"close\",\"conn\":2}").unwrap(),
-        Envelope::Control(Control {
-            t: ControlKind::Close,
-            conn: 2
-        })
+        Envelope::Control(Control::new(ControlKind::Close, 2))
     );
 }
 
@@ -91,10 +85,7 @@ fn bad_envelopes_fail() {
     assert_eq!(decode(b"\0\0{\"t\":\"open\",\"conn\":0}").unwrap_err(), Error::BadMessage);
     assert_eq!(decode(b"\0\0not json").unwrap_err(), Error::BadMessage);
     assert_eq!(decode(&vec![0u8; 2 + 65_536]).unwrap_err(), Error::TooLarge);
-    let control = Control {
-        t: ControlKind::Open,
-        conn: 0,
-    };
+    let control = Control::new(ControlKind::Open, 0);
     assert_eq!(encode_control(&control).unwrap_err(), Error::BadMessage);
 }
 
@@ -104,6 +95,34 @@ fn close_control_carries_the_code_and_still_parses_as_a_close() {
     assert_eq!(&bytes[..2], &[0, 0]);
     let value: serde_json::Value = serde_json::from_slice(&bytes[2..]).unwrap();
     assert_eq!(value, serde_json::json!({ "t": "close", "conn": 7, "code": 4401 }));
-    assert_eq!(decode(&bytes).unwrap(), Envelope::Control(Control { t: ControlKind::Close, conn: 7 }));
+    assert_eq!(decode(&bytes).unwrap(), Envelope::Control(Control::new(ControlKind::Close, 7)));
     assert_eq!(core_remote_proto::relay::encode_close(0, 4401).unwrap_err(), Error::BadMessage);
+}
+
+#[test]
+fn open_control_carries_ip_country_and_pairing_and_old_shape_still_parses() {
+    let bytes = b"\0\0{\"t\":\"open\",\"conn\":3,\"ip\":\"203.0.113.9\",\"country\":\"VN\",\"pairing\":true}";
+    let Envelope::Control(c) = decode(bytes).unwrap() else { panic!("control") };
+    assert_eq!(c.t, ControlKind::Open);
+    assert_eq!(c.conn, 3);
+    assert_eq!(c.ip.as_deref(), Some("203.0.113.9"));
+    assert_eq!(c.country.as_deref(), Some("VN"));
+    assert!(c.pairing);
+    let Envelope::Control(plain) = decode(b"\0\0{\"t\":\"open\",\"conn\":4,\"extra\":1}").unwrap() else { panic!("control") };
+    assert_eq!(plain, Control::new(ControlKind::Open, 4));
+}
+
+#[test]
+fn pair_open_and_close_controls_go_on_conn_zero() {
+    let ticket = core_remote_proto::pair::PairTicket::parse("AAAAAAAAAAAAAAAAAAAAAA").unwrap();
+    let open = core_remote_proto::relay::encode_pair_open(&ticket.hash(), 120).unwrap();
+    assert_eq!(&open[..2], &[0, 0]);
+    let value: serde_json::Value = serde_json::from_slice(&open[2..]).unwrap();
+    assert_eq!(value, serde_json::json!({ "t": "pair.open", "h": ticket.hash_text(), "ttl": 120 }));
+    assert!(core_remote_proto::relay::encode_pair_open(&ticket.hash(), 0).is_err());
+    assert!(core_remote_proto::relay::encode_pair_open(&ticket.hash(), 301).is_err());
+    assert_eq!(ticket.hash_text().len(), 43);
+    let close = core_remote_proto::relay::encode_pair_close().unwrap();
+    assert_eq!(&close[2..], br#"{"t":"pair.close"}"#);
+    assert!(decode(&open).is_err());
 }

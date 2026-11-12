@@ -19,8 +19,14 @@ export function encodeData(conn: number, bytes: ArrayBuffer | Uint8Array, offset
   return out;
 }
 
-export function encodeControl(kind: ControlKind, conn: number): Uint8Array {
-  const json = utf8(JSON.stringify({ t: kind, conn }));
+export interface OpenInfo {
+  ip?: string;
+  country?: string;
+  pairing?: true;
+}
+
+export function encodeControl(kind: ControlKind, conn: number, info: OpenInfo = {}): Uint8Array {
+  const json = utf8(JSON.stringify({ t: kind, conn, ip: info.ip, country: info.country, pairing: info.pairing }));
   const out = new Uint8Array(ENVELOPE_HEADER + json.length);
   out.set(json, ENVELOPE_HEADER);
   return out;

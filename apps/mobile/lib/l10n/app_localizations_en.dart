@@ -474,6 +474,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pairing => 'Pairing...';
 
   @override
+  String get pairViaLan => 'Pairing over Wi-Fi (LAN)...';
+
+  @override
+  String get pairViaRelay =>
+      'Not on the same network, pairing through the relay...';
+
+  @override
   String get pushTitle => 'Notifications';
 
   @override

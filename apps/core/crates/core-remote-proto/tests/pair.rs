@@ -1,4 +1,4 @@
-use core_remote_proto::pair::{PairCode, PairInitiator, PairResponder, QrPayload, MAX_QR_LEN};
+use core_remote_proto::pair::{LanAddr, PairCode, PairInitiator, PairResponder, PairTicket, QrPayload, MAX_QR_LEN};
 use core_remote_proto::{Error, StaticKeypair};
 
 const NOW: u64 = 1_800_000_000;
@@ -7,9 +7,9 @@ fn qr_for(desktop: &StaticKeypair, code: &PairCode) -> QrPayload {
     QrPayload {
         machine: "machine-a".into(),
         name: "Studio".into(),
-        host: Some("192.168.1.20".into()),
-        port: Some(4318),
+        lan: vec![LanAddr::new("192.168.1.20", 4318)],
         relay: Some("https://relay.example.dev".into()),
+        ticket: None,
         mkey: *desktop.public(),
         code: code.clone(),
         exp: NOW + 300,
@@ -122,8 +122,7 @@ fn qr_round_trip_and_limits() {
     assert!(text.len() <= MAX_QR_LEN);
     let back = QrPayload::decode(&text).unwrap();
     assert_eq!(back.machine, qr.machine);
-    assert_eq!(back.host, qr.host);
-    assert_eq!(back.port, qr.port);
+    assert_eq!(back.lan, qr.lan);
     assert_eq!(back.relay, qr.relay);
     assert_eq!(back.mkey, qr.mkey);
     assert_eq!(back.code.as_bytes(), qr.code.as_bytes());
@@ -146,4 +145,122 @@ fn psk_depends_on_code_and_machine() {
     assert_ne!(a.as_slice(), b.as_slice());
     assert_eq!(a.as_slice(), code.derive_psk("machine-a").as_slice());
     assert!(PairCode::from_bytes(&[0u8; 15]).is_err());
+}
+
+fn b64(json: &serde_json::Value) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(serde_json::to_vec(json).unwrap())
+}
+
+fn wire(text: &str) -> serde_json::Value {
+    use base64::Engine;
+    serde_json::from_slice(&base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(text).unwrap()).unwrap()
+}
+
+#[test]
+fn v2_carries_every_lan_route_relay_and_ticket_and_stays_small() {
+    let desktop = StaticKeypair::generate().unwrap();
+    let code = PairCode::generate().unwrap();
+    let ticket = PairTicket::generate().unwrap();
+    assert_eq!(ticket.as_str().len(), 22);
+    let mut qr = qr_for(&desktop, &code);
+    qr.machine = "AbCdEfGhIjKlMnOpQrStUv".into();
+    qr.name = "DESKTOP-STUDIO01".into();
+    qr.lan = vec![LanAddr::new("192.168.100.200", 4320), LanAddr::new("10.10.10.10", 4320)];
+    qr.relay = Some("https://orrery-relay.orrery-abcdef.workers.dev".into());
+    qr.ticket = Some(ticket.clone());
+    let text = qr.encode().unwrap();
+    println!("qr v2 2 lan + relay + pt: {} chars", text.len());
+    assert!(text.len() <= 460, "{}", text.len());
+    let json = wire(&text);
+    assert_eq!(json["v"], 2);
+    assert_eq!(json["lan"], serde_json::json!(["192.168.100.200:4320", "10.10.10.10:4320"]));
+    assert_eq!(json["pt"], ticket.as_str());
+    assert!(json.get("host").is_none() && json.get("port").is_none());
+    let back = QrPayload::decode(&text).unwrap();
+    assert_eq!(back.lan, qr.lan);
+    assert_eq!(back.relay, qr.relay);
+    assert_eq!(back.ticket.as_ref().map(PairTicket::as_str), Some(ticket.as_str()));
+    assert_eq!(back.ticket.unwrap().hash(), ticket.hash());
+    let shown = format!("{qr:?}");
+    assert!(!shown.contains(ticket.as_str()));
+
+    qr.lan = vec![LanAddr::new("192.168.1.2", 4320)];
+    qr.relay = None;
+    qr.ticket = None;
+    let lan_only = qr.encode().unwrap();
+    println!("qr v2 1 lan only: {} chars", lan_only.len());
+    assert!(lan_only.len() <= 300, "{}", lan_only.len());
+}
+
+#[test]
+fn v1_still_decodes_with_its_host_as_the_only_lan_route() {
+    let desktop = StaticKeypair::generate().unwrap();
+    let code = PairCode::generate().unwrap();
+    let mut json = wire(&qr_for(&desktop, &code).encode().unwrap());
+    let obj = json.as_object_mut().unwrap();
+    obj.insert("v".into(), 1.into());
+    obj.remove("lan");
+    obj.insert("host".into(), "192.168.1.9".into());
+    obj.insert("port".into(), 4318.into());
+    let v1 = QrPayload::decode(&b64(&json)).unwrap();
+    assert_eq!(v1.lan, vec![LanAddr::new("192.168.1.9", 4318)]);
+    assert!(v1.ticket.is_none());
+    assert_eq!(v1.code.as_bytes(), code.as_bytes());
+
+    json.as_object_mut().unwrap().remove("port");
+    assert_eq!(QrPayload::decode(&b64(&json)).unwrap().lan, vec![LanAddr::new("192.168.1.9", 4320)]);
+    let obj = json.as_object_mut().unwrap();
+    obj.remove("host");
+    obj.remove("relay");
+    assert!(QrPayload::decode(&b64(&json)).unwrap().lan.is_empty());
+}
+
+#[test]
+fn malformed_v2_and_mixed_versions_are_refused() {
+    let desktop = StaticKeypair::generate().unwrap();
+    let code = PairCode::generate().unwrap();
+    let base = wire(&qr_for(&desktop, &code).encode().unwrap());
+    let with = |key: &str, value: serde_json::Value| {
+        let mut j = base.clone();
+        j.as_object_mut().unwrap().insert(key.into(), value);
+        QrPayload::decode(&b64(&j))
+    };
+    assert_eq!(with("v", 3.into()).unwrap_err(), core_remote_proto::Error::BadQr);
+    assert!(with("host", "1.2.3.4".into()).is_err());
+    assert!(with("lan", serde_json::json!(["1.2.3.4"])).is_err());
+    assert!(with("lan", serde_json::json!(["1.2.3.4:0"])).is_err());
+    assert!(with("lan", serde_json::json!(["1.2.3.4:70000"])).is_err());
+    assert!(with("lan", serde_json::json!([":4320"])).is_err());
+    assert!(with("lan", serde_json::json!(["::1:4320"])).is_err());
+    assert!(with("lan", serde_json::json!(["a:1", "b:1", "c:1", "d:1", "e:1"])).is_err());
+    assert!(with("lan", serde_json::json!(["a:1", "b:1", "c:1", "d:1"])).is_ok());
+    assert!(with("pt", "short".into()).is_err());
+    assert!(with("pt", "!!!!!!!!!!!!!!!!!!!!!!".into()).is_err());
+    assert!(with("pt", "AAAAAAAAAAAAAAAAAAAAAA".into()).is_ok());
+    let mut v1 = base.clone();
+    v1.as_object_mut().unwrap().insert("v".into(), 1.into());
+    assert!(QrPayload::decode(&b64(&v1)).is_err());
+    let mut no_relay = qr_for(&desktop, &code);
+    no_relay.relay = None;
+    no_relay.ticket = Some(PairTicket::generate().unwrap());
+    assert_eq!(no_relay.encode().unwrap_err(), core_remote_proto::Error::BadQr);
+}
+
+#[test]
+fn the_platform_in_msg3_reaches_the_desktop_and_bad_ones_are_refused() {
+    let desktop = StaticKeypair::generate().unwrap();
+    let phone = StaticKeypair::generate().unwrap();
+    let code = PairCode::generate().unwrap();
+    let qr = qr_for(&desktop, &code);
+    let (init, msg1) = PairInitiator::start_on(&phone, &qr, "dev-1", "Pixel", "android", NOW).unwrap();
+    let (resp, msg2) = PairResponder::start(&desktop, &code, "machine-a", &msg1).unwrap();
+    let (_p, msg3) = init.finish(&msg2).unwrap();
+    assert_eq!(resp.finish(&msg3).unwrap().platform.as_deref(), Some("android"));
+    let (init, msg1) = PairInitiator::start(&phone, &qr, "dev-1", "Pixel", NOW).unwrap();
+    let (resp, msg2) = PairResponder::start(&desktop, &code, "machine-a", &msg1).unwrap();
+    let (_p, msg3) = init.finish(&msg2).unwrap();
+    assert!(resp.finish(&msg3).unwrap().platform.is_none());
+    assert!(PairInitiator::start_on(&phone, &qr, "dev-1", "Pixel", "i os", NOW).is_err());
+    assert!(PairInitiator::start_on(&phone, &qr, "dev-1", "Pixel", "", NOW).is_err());
 }

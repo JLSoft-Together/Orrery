@@ -1,13 +1,13 @@
 mod conn;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use core_remote_proto::pair::{PairCode, QrPayload};
+use core_remote_proto::pair::{PairCode, PairTicket, QrPayload};
 use core_remote_proto::relay::{self, ControlKind, Envelope, RelayKey};
 use core_remote_proto::{StaticKeypair, KEY_LEN};
 use ed25519_dalek::{Signer, SigningKey};
@@ -116,24 +116,30 @@ fn main() {
         }
     };
 
-    let exp = now() + 300;
+    let exp = now() + 120;
+    let ticket = PairTicket::generate().expect("ticket");
     let qr = QrPayload {
         machine: desk.machine.clone(),
         name: NAME.into(),
-        host: None,
-        port: None,
+        lan: Vec::new(),
         relay: Some(relay_url.clone()),
+        ticket: Some(ticket.clone()),
         mkey: *desk.noise.public(),
         code: desk.code.clone(),
         exp,
     }
     .encode()
     .expect("qr");
-    let boot = relay::issue_token(&desk.relay_key, &desk.machine, "pair-bootstrap", exp).expect("token");
-    println!("{}", json!({ "ready": true, "machine": desk.machine, "qr": qr, "bootToken": boot }));
+    let armed = relay::encode_pair_open(&ticket.hash(), exp - now()).expect("pair.open");
+    if ws.send(Message::Binary(armed.into())).is_err() {
+        eprintln!("peer: pair.open failed");
+        std::process::exit(4);
+    }
+    println!("{}", json!({ "ready": true, "machine": desk.machine, "qr": qr }));
     let _ = std::io::stdout().flush();
 
     let mut conns: HashMap<u16, Conn> = HashMap::new();
+    let mut pairing: HashSet<u16> = HashSet::new();
     loop {
         let bytes = match ws.read() {
             Ok(Message::Binary(b)) => b,
@@ -145,17 +151,23 @@ fn main() {
                 match c.t {
                     ControlKind::Open => {
                         conns.insert(c.conn, Conn::New);
+                        if c.pairing {
+                            pairing.insert(c.conn);
+                        } else {
+                            pairing.remove(&c.conn);
+                        }
                     }
                     ControlKind::Close => {
                         conns.remove(&c.conn);
+                        pairing.remove(&c.conn);
                     }
                 }
-                eprintln!("peer: conn {} {:?}", c.conn, c.t);
+                eprintln!("peer: conn {} {:?} pairing={} ip={:?}", c.conn, c.t, c.pairing, c.ip);
                 continue;
             }
             Ok(Envelope::Data { conn, bytes }) => {
                 let state = conns.entry(conn).or_insert(Conn::New);
-                (conn, state.on_data(&mut desk, bytes))
+                (conn, state.on_data(&mut desk, bytes, pairing.contains(&conn)))
             }
             Err(_) => continue,
         };

@@ -140,6 +140,8 @@ export interface RemoteNeedsConfirm {
 export interface RemotePairStart {
   qr: string
   exp: number
+  relay?: boolean
+  lan?: number
 }
 
 const DEVICE_MAX = 100
@@ -243,6 +245,8 @@ export interface RemoteStatus {
   relay: 'off' | 'connecting' | 'online' | 'error'
   keepAwake: boolean
   devices: RemoteDevice[]
+  pairing?: { exp: number; relay: boolean } | null
+  pairEnded?: 'tries' | null
 }
 
 export type RelaySetupState = 'none' | 'ready' | 'deploying' | 'error'

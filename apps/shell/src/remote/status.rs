@@ -8,7 +8,8 @@ pub struct Shape<'a> {
     pub port: u16,
     pub addresses: Vec<String>,
     pub relay: &'static str,
-    pub pairing: Option<u64>,
+    pub pairing: Option<(u64, bool)>,
+    pub pair_ended: Option<&'static str>,
     pub name: &'a str,
 }
 
@@ -54,7 +55,8 @@ impl Shape<'_> {
             "keepAwake": cfg.keep_awake,
             "machine": cfg.machine_id,
             "name": self.name,
-            "pairing": self.pairing.map(|exp| json!({ "exp": exp })),
+            "pairing": self.pairing.map(|(exp, relay)| json!({ "exp": exp, "relay": relay })),
+            "pairEnded": self.pair_ended,
             "devices": devices,
         })
     }

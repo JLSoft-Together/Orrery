@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'link_state.dart';
 import 'machines.dart';
+import 'pairing.dart';
 import 'remote_host.dart';
 import 'store.dart';
 
@@ -17,8 +18,10 @@ class MachinesNotifier extends Notifier<List<Machine>> {
 
   void refresh() => state = ref.read(remoteHostProvider).machines.all;
 
-  Future<Machine> pair(String qrText) async {
-    final machine = await ref.read(remoteHostProvider).pairWithQr(qrText);
+  Future<Machine> pair(String qrText, {PairRouteListener? onRoute}) async {
+    final machine = await ref
+        .read(remoteHostProvider)
+        .pairWithQr(qrText, onRoute: onRoute);
     refresh();
     return machine;
   }

@@ -1,9 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { b64urlDecode } from "./bytes";
-import { CLOSE_BAD_FRAME, CLOSE_DEVICE, CLOSE_GATEWAY_OFF, CLOSE_PROTO, CLOSE_RATE, CLOSE_REPLACED } from "./close";
+import { CLOSE_BAD_FRAME, CLOSE_DEVICE, CLOSE_GATEWAY_OFF, CLOSE_NORMAL, CLOSE_PROTO, CLOSE_RATE, CLOSE_REPLACED } from "./close";
 import type { Env } from "./env";
-import { CONTROL_MAX, encodeControl, encodeData, MAX_CONN, MAX_ENVELOPE, NOISE_MAX, readConn } from "./envelope";
+import { CONTROL_MAX, encodeControl, encodeData, MAX_CONN, MAX_ENVELOPE, NOISE_MAX, readConn, type OpenInfo } from "./envelope";
 import { validDeviceId, validMachineId } from "./ids";
+import { cleanCountry, cleanIp, parsePairOpen, sameText, Strikes, ticketHash, validTicket } from "./pair";
 import { MACHINE_DOMAIN, REGISTER_DOMAIN, signedMessage, tsFresh, verifyEd25519 } from "./sign";
 import { verifyToken } from "./token";
 
@@ -22,6 +23,7 @@ interface Attachment {
   conn: number;
   device: string;
   closing: boolean;
+  pairing?: boolean;
 }
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -36,6 +38,8 @@ function nowSec(): number {
 }
 
 export class Room extends DurableObject<Env> {
+  private strikes = new Strikes();
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
@@ -50,6 +54,10 @@ export class Room extends DurableObject<Env> {
 
   private setMeta(key: string, value: string): void {
     this.ctx.storage.sql.exec("INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", key, value);
+  }
+
+  private dropMeta(key: string): void {
+    this.ctx.storage.sql.exec("DELETE FROM meta WHERE k = ?", key);
   }
 
   private lastTs(key: string): number {
@@ -183,6 +191,7 @@ export class Room extends DurableObject<Env> {
     }
     if (ts <= this.lastTs("machine_ts")) return json(409, { error: "replay" });
     this.setMeta("machine_ts", String(ts));
+    this.pairClose();
 
     for (const ws of this.ctx.getWebSockets("m")) {
       const att = this.attachment(ws);
@@ -206,6 +215,8 @@ export class Room extends DurableObject<Env> {
     const relayKey = this.getMeta("relay_key");
     const key = relayKey === null ? null : b64urlDecode(relayKey);
     if (!key) return json(404, { error: "not_registered" });
+    const info: OpenInfo = { ip: cleanIp(request.headers.get("x-orrery-ip")), country: cleanCountry(request.headers.get("x-orrery-country")) };
+    if (url.searchParams.has("pt")) return this.connectPairing(url.searchParams.get("pt") ?? "", info);
     const verdict = await verifyToken(key, machineId, url.searchParams.get("t") ?? "", nowSec());
     if (!verdict.ok) return this.rejectSocket(CLOSE_DEVICE, verdict.reason === "expired" ? "expired" : "bad token");
     if (this.isRevoked(verdict.deviceId)) return this.rejectSocket(CLOSE_DEVICE, "revoked");
@@ -214,14 +225,39 @@ export class Room extends DurableObject<Env> {
     if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
     const conn = this.allocConn();
     if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
+    return this.acceptPhone(desktop, conn, verdict.deviceId, info);
+  }
 
+  private acceptPhone(desktop: WebSocket, conn: number, device: string, info: OpenInfo): Response {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
     this.ctx.acceptWebSocket(server, ["p", `p:${conn}`]);
-    server.serializeAttachment({ role: "p", conn, device: verdict.deviceId, closing: false } satisfies Attachment);
-    desktop.send(encodeControl("open", conn));
+    server.serializeAttachment({ role: "p", conn, device, closing: false, pairing: info.pairing === true } satisfies Attachment);
+    desktop.send(encodeControl("open", conn, info));
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  private async connectPairing(ticket: string, info: OpenInfo): Promise<Response> {
+    const ip = info.ip ?? "unknown";
+    const nowMs = Date.now();
+    if (this.strikes.blocked(ip, nowMs)) return this.rejectSocket(CLOSE_RATE, "too many");
+    const hashed = validTicket(ticket) ? await ticketHash(ticket) : null;
+    const stored = this.getMeta("pair_h");
+    const exp = Number(this.getMeta("pair_exp") ?? "0");
+    const valid = hashed !== null && stored !== null && sameText(hashed, stored);
+    if (!valid || nowSec() >= exp) {
+      this.strikes.add(ip, nowMs);
+      return this.rejectSocket(CLOSE_DEVICE, valid ? "expired" : "bad ticket");
+    }
+    const desktop = this.desktop();
+    if (!desktop) return this.rejectSocket(CLOSE_GATEWAY_OFF, "gateway off");
+    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    const conn = this.allocConn();
+    if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
+    this.dropMeta("pair_h");
+    this.dropMeta("pair_exp");
+    return this.acceptPhone(desktop, conn, "", { ...info, pairing: true });
   }
 
   private allocConn(): number {
@@ -297,17 +333,32 @@ export class Room extends DurableObject<Env> {
     } catch {
       return;
     }
-    if (typeof value !== "object" || value === null) return;
-    const { t, conn, code } = value as Record<string, unknown>;
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+    const fields = value as Record<string, unknown>;
+    if (fields.t === "pair.open") return this.pairOpen(fields);
+    if (fields.t === "pair.close") return this.pairClose();
+    const { t, conn, code } = fields;
     if (t !== "close" || typeof conn !== "number" || typeof code !== "number") return;
     if (!Number.isInteger(conn) || conn < 1 || conn > MAX_CONN) return;
-    const reason = DESKTOP_CLOSE.get(code);
-    if (reason === undefined) return;
     const target = this.ctx.getWebSockets(`p:${conn}`)[0];
     const att = target ? this.attachment(target) : null;
     if (!target || !att || att.closing) return;
+    const reason = code === CLOSE_NORMAL && att.pairing === true ? "paired" : DESKTOP_CLOSE.get(code);
+    if (reason === undefined) return;
     this.markClosing(target, att);
     target.close(code, reason);
+  }
+
+  private pairOpen(fields: Record<string, unknown>): void {
+    const open = parsePairOpen(fields, nowSec());
+    if (!open) return;
+    this.setMeta("pair_h", open.h);
+    this.setMeta("pair_exp", String(open.exp));
+  }
+
+  private pairClose(): void {
+    this.dropMeta("pair_h");
+    this.dropMeta("pair_exp");
   }
 
   private fromPhone(ws: WebSocket, att: Attachment, message: ArrayBuffer): void {

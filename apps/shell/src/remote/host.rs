@@ -7,7 +7,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use super::text::remote_text;
-use super::{Asked, Host, Options, PtyEndpoint, Remote, Welcome, CHANGED};
+use super::{Asked, Host, Options, PairAsk, PtyEndpoint, Remote, Welcome, CHANGED};
 use crate::state::{lock, Shell, MAIN};
 
 const ASK_WAIT: std::time::Duration = std::time::Duration::from_secs(4);
@@ -25,12 +25,12 @@ pub fn theme(look: Option<&Value>) -> Value {
 }
 
 impl Host for AppHost {
-    fn confirm_pair(&self, name: &str) -> bool {
+    fn confirm_pair(&self, ask: &PairAsk) -> bool {
         if !cfg!(debug_assertions) && std::env::var_os("CCM_E2E_CONFIRM").is_some() {
             return false;
         }
         let t = remote_text(&crate::hosts::locale(&self.app));
-        crate::hosts::confirm(&self.app, &t.pair_title(name), t.pair_detail, t.allow, t.cancel)
+        crate::hosts::confirm(&self.app, &t.pair_title(ask), t.pair_detail, t.allow, t.cancel)
     }
 
     fn notify(&self, title: &str, body: &str) {

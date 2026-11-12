@@ -45,7 +45,12 @@ async function socketGet(request: Request, env: Env, url: URL, kind: "m" | "p", 
   if (await limited(env, request, kind)) return plain(429, "rate limited");
   const target = new URL(`https://room/${kind}/${machineId}`);
   target.search = url.search;
-  return roomStub(env, machineId).fetch(new Request(target, { method: "GET", headers: { upgrade: "websocket" } }));
+  const headers = new Headers({ upgrade: "websocket" });
+  const ip = request.headers.get("cf-connecting-ip");
+  const country = request.headers.get("cf-ipcountry");
+  if (ip) headers.set("x-orrery-ip", ip);
+  if (country) headers.set("x-orrery-country", country);
+  return roomStub(env, machineId).fetch(new Request(target, { method: "GET", headers }));
 }
 
 export default {

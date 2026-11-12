@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'discovery.dart';
+
 class FrameKind {
   static const int json = 0;
   static const int ptyOut = 1;
@@ -44,6 +46,8 @@ class QrData {
     this.host,
     this.port,
     this.relay,
+    this.lan = const [],
+    this.ticket,
   });
 
   final String machine;
@@ -51,6 +55,8 @@ class QrData {
   final String? host;
   final int? port;
   final String? relay;
+  final List<LanEndpoint> lan;
+  final String? ticket;
   final Uint8List mkey;
   final int exp;
 }

@@ -85,13 +85,21 @@ impl Identity {
 }
 
 #[derive(Serialize)]
+struct LanView<'a> {
+    host: &'a str,
+    port: u16,
+}
+
+#[derive(Serialize)]
 struct QrView<'a> {
     v: u16,
     machine: &'a str,
     name: &'a str,
     host: Option<&'a str>,
     port: Option<u16>,
+    lan: Vec<LanView<'a>>,
     relay: Option<&'a str>,
+    pt: Option<&'a str>,
     mkey: String,
     exp: u64,
 }
@@ -103,9 +111,11 @@ pub fn decode_qr(text: &str) -> Result<String, JsError> {
         v: core_remote_proto::pair::QR_VERSION,
         machine: &qr.machine,
         name: &qr.name,
-        host: qr.host.as_deref(),
-        port: qr.port,
+        host: qr.first_lan().map(|a| a.host.as_str()),
+        port: qr.first_lan().map(|a| a.port),
+        lan: qr.lan.iter().map(|a| LanView { host: &a.host, port: a.port }).collect(),
         relay: qr.relay.as_deref(),
+        pt: qr.ticket.as_ref().map(|t| t.as_str()),
         mkey: hex(&qr.mkey),
         exp: qr.exp,
     };

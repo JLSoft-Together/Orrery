@@ -77,8 +77,10 @@ export interface Socket {
   sendBinary(bytes: Uint8Array): void;
 }
 
-export async function openSocket(path: string): Promise<{ status: number; socket?: Socket }> {
-  const res = await send(path, { headers: { upgrade: "websocket" } });
+export async function openSocket(path: string, from: { ip?: string; country?: string } = {}): Promise<{ status: number; socket?: Socket }> {
+  const headers: Record<string, string> = { upgrade: "websocket" };
+  if (from.country) headers["cf-ipcountry"] = from.country;
+  const res = await send(path, { headers, ip: from.ip });
   const ws = res.webSocket;
   if (res.status !== 101 || !ws) return { status: res.status };
   const queue: MessageEvent["data"][] = [];
@@ -137,6 +139,20 @@ export function controlFrame(kind: "open" | "close", conn: number): Uint8Array {
   return concat(new Uint8Array([0, 0]), utf8(JSON.stringify({ t: kind, conn })));
 }
 
+export function pairOpenFrame(h: string, ttl: number): Uint8Array {
+  return concat(new Uint8Array([0, 0]), utf8(JSON.stringify({ t: "pair.open", h, ttl })));
+}
+
+export function pairCloseFrame(): Uint8Array {
+  return concat(new Uint8Array([0, 0]), utf8(JSON.stringify({ t: "pair.close" })));
+}
+
 export function closeFrame(conn: number, code: number): Uint8Array {
   return concat(new Uint8Array([0, 0]), utf8(JSON.stringify({ t: "close", conn, code })));
+}
+
+export function controlOf(data: unknown): Record<string, unknown> {
+  const bytes = bytesOf(data);
+  if (bytes[0] !== 0 || bytes[1] !== 0) throw new Error("expected a control frame");
+  return JSON.parse(new TextDecoder().decode(bytes.subarray(2))) as Record<string, unknown>;
 }

@@ -15,7 +15,7 @@ use tokio_tungstenite::WebSocketStream;
 
 use super::ctx::Ctx;
 use super::limits::{Pending, HANDSHAKE};
-use super::link::{Budget, Link, Out, Outbox, Peer, DRAIN_MAX, INBOX, OUTBOX};
+use super::link::{Budget, Link, Origin, Out, Outbox, Peer, DRAIN_MAX, INBOX, OUTBOX};
 use super::session;
 
 pub const PATH: &str = "/remote";
@@ -121,7 +121,8 @@ async fn handle(ctx: Arc<Ctx>, stream: TcpStream, ip: IpAddr, pending: Pending) 
     let (in_tx, in_rx) = mpsc::channel(INBOX);
     let (out_tx, out_rx) = mpsc::channel(OUTBOX);
     let budget = Arc::new(Budget::default());
-    let link = Link { rx: in_rx, out: Outbox::Lan(out_tx), peer: Peer::Lan(ip), budget: budget.clone() };
+    let origin = Origin { ip: Some(ip.to_string()), country: None, pairing: false };
+    let link = Link { rx: in_rx, out: Outbox::Lan(out_tx), peer: Peer::Lan(ip), origin, budget: budget.clone() };
     tokio::spawn(pump(ws, in_tx, out_rx, budget));
     session::serve(ctx, link, Some(pending), deadline).await;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { concat } from "../src/bytes";
 import { issueToken } from "../src/token";
-import { bytesOf, closeFrame, controlFrame, machineUrl, makeKeys, newMachine, nowSec, openSocket, randomKey, register, revoke, type Socket } from "./helpers";
+import { bytesOf, closeFrame, controlFrame, controlOf, machineUrl, makeKeys, newMachine, nowSec, openSocket, randomKey, register, revoke, type Socket } from "./helpers";
 
 interface Rig {
   machine: string;
@@ -41,9 +41,9 @@ describe("forwarding", () => {
   it("routes two phones through one desktop with the right connId, bytes untouched", async () => {
     const r = await rig();
     const p1 = await r.phone("dev-1");
-    expect(Array.from(bytesOf(await r.desktop.next()))).toEqual(Array.from(controlFrame("open", 1)));
+    expect(controlOf(await r.desktop.next())).toMatchObject({ t: "open", conn: 1 });
     const p2 = await r.phone("dev-2");
-    expect(Array.from(bytesOf(await r.desktop.next()))).toEqual(Array.from(controlFrame("open", 2)));
+    expect(controlOf(await r.desktop.next())).toMatchObject({ t: "open", conn: 2 });
 
     const a = pattern(300, 1);
     const b = pattern(5000, 2);
@@ -119,7 +119,7 @@ describe("forwarding", () => {
     p1.ws.close(1000, "bye");
     expect(Array.from(bytesOf(await r.desktop.next()))).toEqual(Array.from(controlFrame("close", 1)));
     await r.phone("dev-1");
-    expect(Array.from(bytesOf(await r.desktop.next()))).toEqual(Array.from(controlFrame("open", 2)));
+    expect(controlOf(await r.desktop.next())).toMatchObject({ t: "open", conn: 2 });
   });
 
   it("answers ping with pong and closes on stray text frames", async () => {
@@ -159,7 +159,7 @@ describe("desktop lifecycle", () => {
     expect((await r.desktop.closed()).code).toBe(4409);
     expect((await p.closed()).code).toBe(4503);
     const p2 = await r.phone("dev-2");
-    expect(Array.from(bytesOf(await replacement.socket!.next()))).toEqual(Array.from(controlFrame("open", 2)));
+    expect(controlOf(await replacement.socket!.next())).toMatchObject({ t: "open", conn: 2 });
     replacement.socket!.sendBinary(concat(new Uint8Array([0, 2]), pattern(3, 3)));
     expect(Array.from(bytesOf(await p2.next()))).toEqual(Array.from(pattern(3, 3)));
   });

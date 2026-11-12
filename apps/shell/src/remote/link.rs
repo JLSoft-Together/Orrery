@@ -50,10 +50,18 @@ pub enum Peer {
     Relay(u16),
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Origin {
+    pub ip: Option<String>,
+    pub country: Option<String>,
+    pub pairing: bool,
+}
+
 pub struct Link {
     pub rx: mpsc::Receiver<Vec<u8>>,
     pub out: Outbox,
     pub peer: Peer,
+    pub origin: Origin,
     pub budget: Arc<Budget>,
 }
 

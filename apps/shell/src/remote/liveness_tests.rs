@@ -33,7 +33,7 @@ fn drive(every_ms: u64, dead_ms: u64, echo: bool, watch_ms: u64) -> Run {
     let run = rt.block_on(async {
         let (stream, _) = tokio::time::timeout(Duration::from_secs(10), listener.accept()).await.unwrap().unwrap();
         let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
-        ws.send(Message::Binary(encode_control(&Control { t: ControlKind::Open, conn: 1 }).unwrap().into())).await.unwrap();
+        ws.send(Message::Binary(encode_control(&Control::new(ControlKind::Open, 1)).unwrap().into())).await.unwrap();
         let (init, msg1) = SessionInitiator::start(&phone.key, &desktop, &phone.id).unwrap();
         ws.send(Message::Binary(encode_data(1, &msg1).unwrap().into())).await.unwrap();
         let mut t = loop {

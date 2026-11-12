@@ -38,7 +38,10 @@ Setup setup(
     machines: repo,
     deviceName: 'Test phone',
     discovery: discovery,
-    config: const ConnectionConfig(lanBudget: Duration(milliseconds: 20)),
+    config: const ConnectionConfig(
+      lanBudget: Duration(milliseconds: 20),
+      pairLanBudget: Duration(milliseconds: 200),
+    ),
     confirmTimeout: const Duration(milliseconds: 300),
   );
   return Setup(pairing, repo, kv, sockets);

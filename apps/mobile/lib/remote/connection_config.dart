@@ -18,6 +18,7 @@ class NoNetworkWatcher implements NetworkWatcher {
 class ConnectionConfig {
   const ConnectionConfig({
     this.lanBudget = const Duration(milliseconds: 1500),
+    this.pairLanBudget = const Duration(seconds: 3),
     this.relayConnectTimeout = const Duration(seconds: 8),
     this.handshakeTimeout = const Duration(seconds: 5),
     this.backgroundGrace = const Duration(seconds: 30),
@@ -38,6 +39,7 @@ class ConnectionConfig {
   });
 
   final Duration lanBudget;
+  final Duration pairLanBudget;
   final Duration relayConnectTimeout;
   final Duration handshakeTimeout;
   final Duration backgroundGrace;
@@ -75,7 +77,7 @@ class ConnectionDeps {
   final ConnectionConfig config;
 }
 
-String relayPhoneUrl(String relay, String machineId, String token) {
+String _relayBase(String relay) {
   var base = relay.trim();
   if (base.startsWith('https://')) {
     base = 'wss://${base.substring(8)}';
@@ -85,7 +87,17 @@ String relayPhoneUrl(String relay, String machineId, String token) {
   while (base.endsWith('/')) {
     base = base.substring(0, base.length - 1);
   }
+  return base;
+}
+
+String relayPhoneUrl(String relay, String machineId, String token) {
   final id = Uri.encodeComponent(machineId);
   final query = Uri.encodeQueryComponent(token);
-  return '$base/p/$id?t=$query';
+  return '${_relayBase(relay)}/p/$id?t=$query';
+}
+
+String relayPairUrl(String relay, String machineId, String ticket) {
+  final id = Uri.encodeComponent(machineId);
+  final query = Uri.encodeQueryComponent(ticket);
+  return '${_relayBase(relay)}/p/$id?pt=$query';
 }

@@ -9,6 +9,7 @@ use crate::{now, Desk, NAME};
 
 const PAIR_MSG1_LEN: usize = 50;
 const TOKEN_TTL: u64 = 30 * 24 * 3600;
+const CLOSE_NORMAL: u16 = 1000;
 const CLOSE_HANDSHAKE: u16 = 4400;
 const CLOSE_DEVICE: u16 = 4401;
 const CLOSE_PROTO: u16 = 4426;
@@ -58,9 +59,10 @@ fn close_code(e: &Error) -> u16 {
 }
 
 impl Conn {
-    pub fn on_data(&mut self, desk: &mut Desk, data: &[u8]) -> Vec<Out> {
+    pub fn on_data(&mut self, desk: &mut Desk, data: &[u8], pairing_only: bool) -> Vec<Out> {
         match std::mem::replace(self, Conn::Done) {
             Conn::New if data.len() == PAIR_MSG1_LEN => self.pair_start(desk, data),
+            Conn::New if pairing_only => vec![Out::Close(CLOSE_HANDSHAKE)],
             Conn::New => self.session_start(desk, data),
             Conn::Pairing(responder) => pair_finish(desk, *responder, data),
             Conn::Live(mut live) => {
@@ -128,7 +130,9 @@ fn pair_finish(desk: &mut Desk, responder: PairResponder, data: &[u8]) -> Vec<Ou
         "relay": desk.relay_url,
         "relayToken": token,
     });
-    json_out(&mut paired.transport, &reply)
+    let mut outs = json_out(&mut paired.transport, &reply);
+    outs.push(Out::Close(CLOSE_NORMAL));
+    outs
 }
 
 impl Live {

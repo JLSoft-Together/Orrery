@@ -1,3 +1,7 @@
+use super::ctx::PairAsk;
+use super::devices::valid_platform;
+use super::pair::is_hidden;
+
 pub struct RemoteText {
     pub pair_detail: &'static str,
     pub allow: &'static str,
@@ -36,12 +40,38 @@ pub fn remote_text(locale: &str) -> &'static RemoteText {
     }
 }
 
+fn shown_ip(ip: Option<&str>) -> Option<&str> {
+    ip.filter(|s| !s.is_empty() && s.len() <= 45 && s.bytes().all(|b| b.is_ascii_hexdigit() || b == b'.' || b == b':'))
+}
+
+fn shown_country(c: Option<&str>) -> Option<&str> {
+    c.filter(|s| s.len() == 2 && s.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()))
+}
+
+pub fn shown_name(name: &str) -> String {
+    let kept: String = name
+        .chars()
+        .filter(|c| !c.is_control() && !is_hidden(*c) && !matches!(c, '«' | '»' | '“' | '”' | '‘' | '’' | '"' | '\'' | '`'))
+        .collect();
+    let kept = kept.split_whitespace().collect::<Vec<_>>().join(" ");
+    if kept.is_empty() {
+        "?".to_owned()
+    } else {
+        kept
+    }
+}
+
 impl RemoteText {
-    pub fn pair_title(&self, name: &str) -> String {
-        if self.vi {
-            format!("Cho phép «{name}» điều khiển Orrery?")
-        } else {
-            format!("Allow “{name}” to control Orrery?")
+    pub fn pair_title(&self, ask: &PairAsk) -> String {
+        let name = shown_name(&ask.name);
+        let platform = if valid_platform(&ask.platform) { format!("{} ", ask.platform) } else { String::new() };
+        let country = shown_country(ask.country.as_deref()).map(|c| format!(" [{c}]")).unwrap_or_default();
+        let via = if ask.via == "relay" { "relay" } else { "LAN" };
+        match (self.vi, shown_ip(ask.ip.as_deref())) {
+            (true, Some(ip)) => format!("Ghép qua {via} từ IP {ip}{country}: điện thoại {platform}«{name}»?"),
+            (true, None) => format!("Ghép qua {via} từ IP không rõ{country}: điện thoại {platform}«{name}»?"),
+            (false, Some(ip)) => format!("Pair via {via} from IP {ip}{country}: {platform}phone “{name}”?"),
+            (false, None) => format!("Pair via {via} from an unknown IP{country}: {platform}phone “{name}”?"),
         }
     }
 

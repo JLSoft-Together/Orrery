@@ -42,6 +42,8 @@ mod test_util;
 #[cfg(test)]
 mod pair_tests;
 #[cfg(test)]
+mod pair_relay_tests;
+#[cfg(test)]
 mod session_tests;
 #[cfg(test)]
 mod relay_tests;
@@ -74,11 +76,12 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use core_remote_proto::pair::{PairTicket, MAX_LAN};
 use serde_json::{json, Value};
 use tokio::runtime::Runtime;
 use tokio::sync::watch;
 
-pub use ctx::{Asked, Control, Host, PtyEndpoint, Welcome};
+pub use ctx::{Asked, Control, Host, PairAsk, PtyEndpoint, Welcome};
 pub use viewer_events::VEvent;
 
 use config::{now_secs, port_override, Config};
@@ -175,7 +178,7 @@ impl Remote {
             None => {
                 let cfg = Config::load(&self.dir);
                 let name = self.opts.name.clone().unwrap_or_else(config::machine_name);
-                let shape = status::Shape { running: false, port: cfg.port, addresses: Vec::new(), relay: "off", pairing: None, name: &name };
+                let shape = status::Shape { running: false, port: cfg.port, addresses: Vec::new(), relay: "off", pairing: None, pair_ended: None, name: &name };
                 shape.json(&cfg, Devices::load(&self.dir).list(), &[])
             }
         };
@@ -295,10 +298,15 @@ impl Remote {
 
     pub fn pair_start(&self) -> Result<Value, String> {
         let ctx = self.running_ctx()?;
-        let (code, exp) = ctx.pairing.start(now_secs()).ok_or("rng")?;
-        let qr = pair::qr(&ctx, code, exp).ok_or("qr")?;
+        let ticket = if ctx.relay_state() == "online" { Some(PairTicket::generate().map_err(|_| "rng")?) } else { None };
+        let relay = ticket.is_some();
+        let (code, exp) = ctx.pairing.start(now_secs(), ticket.as_ref()).ok_or("rng")?;
+        let Some(qr) = pair::qr(&ctx, code, exp, ticket) else {
+            ctx.pairing.cancel();
+            return Err("qr".into());
+        };
         ctx.changed();
-        Ok(json!({ "qr": qr, "exp": exp }))
+        Ok(json!({ "qr": qr, "exp": exp, "relay": relay, "lan": ctx.lan().len().min(MAX_LAN) }))
     }
 
     pub fn pair_cancel(&self) -> Value {

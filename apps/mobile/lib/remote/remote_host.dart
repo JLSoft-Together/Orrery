@@ -83,7 +83,10 @@ class RemoteHost {
     }
   }
 
-  Future<Machine> pairWithQr(String qrText) async {
+  Future<Machine> pairWithQr(
+    String qrText, {
+    PairRouteListener? onRoute,
+  }) async {
     final pairing = Pairing(
       crypto: deps.crypto,
       connector: deps.connector,
@@ -93,7 +96,7 @@ class RemoteHost {
       discovery: deps.discovery,
       config: deps.config,
     );
-    final machine = await pairing.pair(qrText);
+    final machine = await pairing.pair(qrText, onRoute: onRoute);
     await start(machine.id);
     return machine;
   }

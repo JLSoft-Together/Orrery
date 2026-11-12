@@ -9,7 +9,7 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use core_remote_proto::frame::{Chunker, Frame, Kind, Reassembler};
-use core_remote_proto::pair::{PairCode, PairResponder, QrPayload};
+use core_remote_proto::pair::{LanAddr, PairCode, PairResponder, QrPayload};
 use core_remote_proto::session;
 use core_remote_proto::{Error, StaticKeypair, Transport};
 use serde_json::{json, Value};
@@ -59,9 +59,9 @@ impl Gateway {
         QrPayload {
             machine: self.machine_id.clone(),
             name: self.name.clone(),
-            host: Some("127.0.0.1".into()),
-            port: Some(port),
+            lan: vec![LanAddr::new("127.0.0.1", port)],
             relay: Some("https://relay.example.dev".into()),
+            ticket: None,
             mkey: mkey_override.unwrap_or(*self.desktop.public()),
             code: self.code.clone(),
             exp: self.exp,

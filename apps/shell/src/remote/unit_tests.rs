@@ -206,8 +206,9 @@ fn the_pre_auth_budget_allows_a_few_small_frames_then_opens_up() {
 fn relay_conn_ids_are_tracked_by_generation() {
     use super::relay::Conns;
     let mut conns = Conns::default();
-    let (g1, mut rx1, _) = conns.open(7).unwrap();
-    let (g2, mut rx2, b2) = conns.open(7).unwrap();
+    let (g1, mut rx1, _) = conns.open(7, false).unwrap();
+    let (g2, mut rx2, b2) = conns.open(7, true).unwrap();
+    assert!(conns.pairing(7));
     assert_ne!(g1, g2);
     assert!(rx1.try_recv().is_err());
     assert!(matches!(rx1.try_recv(), Err(tokio::sync::mpsc::error::TryRecvError::Disconnected)));

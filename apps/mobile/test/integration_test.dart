@@ -131,6 +131,39 @@ void main() {
     },
   );
 
+  test('the gateway QR is v2 and an old v1 QR of the same code still pairs over LAN', () async {
+    final wire = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(gateway.qr))),
+    ) as Map<String, dynamic>;
+    expect(wire['v'], 2);
+    expect(wire['lan'], ['127.0.0.1:${gateway.port}']);
+    const crypto = RustRemoteCrypto();
+    final info = crypto.decodeQr(gateway.qr);
+    expect(info.lan.single.port, gateway.port);
+    expect((info.host, info.port), ('127.0.0.1', gateway.port));
+    final lan = (wire.remove('lan') as List).single as String;
+    wire['v'] = 1;
+    wire['host'] = lan.split(':').first;
+    wire['port'] = int.parse(lan.split(':').last);
+    final v1 = base64Url
+        .encode(utf8.encode(jsonEncode(wire)))
+        .replaceAll('=', '');
+    final old = crypto.decodeQr(v1);
+    expect(old.lan.single.port, gateway.port);
+    expect(old.ticket, isNull);
+    final kv = MemorySecureKv();
+    final repo = MachineRepository(secure: kv);
+    final machine = await Pairing(
+      crypto: crypto,
+      connector: IoWireSocket.connect,
+      keys: KeyStore(kv, crypto),
+      machines: repo,
+      deviceName: 'Old QR phone',
+    ).pair(v1);
+    expect(machine.id, gateway.machine);
+    expect(machine.lastPort, gateway.port);
+  });
+
   test('QR hết hạn bị từ chối, mã QR dùng lần 2 bị đóng 4400', () async {
     final kv = MemorySecureKv();
     const crypto = RustRemoteCrypto();

@@ -87,15 +87,15 @@ async function runSpike(cfg) {
 
   const qr = JSON.parse(prod.decodeQr(cfg.qr));
   const relay = qr.relay.replace(/^http/, "ws");
-  check("qr carries relay + mkey", qr.relay && qr.mkey.length === 64, qr.relay);
+  check("qr v2 carries relay + mkey + ticket", qr.v === 2 && qr.relay && qr.mkey.length === 64 && typeof qr.pt === "string" && qr.pt.length === 22, qr.relay);
   const id = prod.Identity.generate();
   const deviceId = "phone-" + toHex(crypto.getRandomValues(new Uint8Array(8)));
 
   t = now();
-  const s1 = await socket(`${relay}/p/${qr.machine}?t=${encodeURIComponent(cfg.bootToken)}`);
+  const s1 = await socket(`${relay}/p/${qr.machine}?pt=${encodeURIComponent(qr.pt)}`);
   const pairOpen = now();
   let c = now();
-  const pair = prod.Pairing.fromQr(id, cfg.qr, deviceId, cfg.name, Math.floor(Date.now() / 1000));
+  const pair = prod.Pairing.fromQrOn(id, cfg.qr, deviceId, cfg.name, "web", Math.floor(Date.now() / 1000));
   const msg1 = pair.msg1;
   let crypto1 = now() - c;
   s1.send(msg1);
@@ -108,7 +108,21 @@ async function runSpike(cfg) {
   const pairT = pair.intoTransport();
   const ok = JSON.parse((await recv(s1, pairT, new prod.Reassembler())).text);
   const pairDone = now();
-  s1.close();
+  const pairClose = await s1.next().then(
+    () => "message",
+    (e) => e.message,
+  );
+  check("desktop closes the pairing conn 1000 via relay", pairClose.startsWith("closed 1000"), pairClose);
+  const reuse = await socket(`${relay}/p/${qr.machine}?pt=${encodeURIComponent(qr.pt)}`).then(
+    (s) => s.next().then(() => "message", (e) => e.message),
+    (e) => e.message,
+  );
+  check("used ticket refused 4401", reuse.startsWith("closed 4401"), reuse);
+  const wrong = await socket(`${relay}/p/${qr.machine}?pt=${"B".repeat(22)}`).then(
+    (s) => s.next().then(() => "message", (e) => e.message),
+    (e) => e.message,
+  );
+  check("wrong ticket refused 4401", wrong.startsWith("closed 4401"), wrong);
   check("pair msg1 = 50 B", msg1.length === 50, msg1.length);
   check("pair.ok + relayToken", ok.t === "pair.ok" && typeof ok.relayToken === "string", ok.t);
   check("desktop static = QR mkey", toHex(desktopStatic) === qr.mkey);

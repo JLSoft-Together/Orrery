@@ -47,7 +47,7 @@ class FailMachines extends MachinesNotifier {
   List<Machine> build() => const [];
 
   @override
-  Future<Machine> pair(String qrText) =>
+  Future<Machine> pair(String qrText, {PairRouteListener? onRoute}) =>
       Future.error(const PairException(PairFailure.expired));
 }
 

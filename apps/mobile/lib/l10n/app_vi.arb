@@ -135,6 +135,8 @@
   "pairDenied": "Máy tính từ chối.",
   "pairProtocol": "Lỗi giao thức khi ghép.",
   "pairing": "Đang ghép...",
+  "pairViaLan": "Đang ghép qua Wi-Fi (LAN)...",
+  "pairViaRelay": "Khác mạng, đang ghép qua relay...",
   "pushTitle": "Thông báo",
   "pushHint": "Báo khi có pane cần bạn lúc app đang đóng.",
   "pushNotSetUp": "Chưa thiết lập trên máy tính. Thêm dự án Firebase trong Settings > Remote của Orrery.",

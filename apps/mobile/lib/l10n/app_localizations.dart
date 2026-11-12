@@ -908,6 +908,18 @@ abstract class AppLocalizations {
   /// **'Pairing...'**
   String get pairing;
 
+  /// No description provided for @pairViaLan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing over Wi-Fi (LAN)...'**
+  String get pairViaLan;
+
+  /// No description provided for @pairViaRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on the same network, pairing through the relay...'**
+  String get pairViaRelay;
+
   /// No description provided for @pushTitle.
   ///
   /// In en, this message translates to:

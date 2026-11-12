@@ -3,7 +3,7 @@ import { desktop, hasRemote } from './desktop'
 
 export { hasRemote }
 
-export const REMOTE_PAIR_MS = 5 * 60_000
+export const REMOTE_PAIR_MS = 2 * 60_000
 export const REMOTE_TOUCH_MS = 60_000
 export const REMOTE_LOG_MAX = 50
 

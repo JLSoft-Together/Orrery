@@ -37,6 +37,13 @@ export function checkVectors(wasm, v) {
   eq("qr mkey", qr.mkey, v.desktopStaticPublic);
   eq("qr exp", String(qr.exp), String(v.exp));
   eq("qr has no code", String("code" in qr), "false");
+  eq("qr v1 host as lan", JSON.stringify(qr.lan), JSON.stringify([{ host: "192.168.1.20", port: 4318 }]));
+  const q2 = JSON.parse(wasm.decodeQr(v.pair.qrV2));
+  eq("qr v2 lan", JSON.stringify(q2.lan.map((a) => `${a.host}:${a.port}`)), JSON.stringify(v.pair.qrV2Lan));
+  eq("qr v2 relay + pt", `${q2.relay} ${q2.pt}`, `${v.pair.qrV2Relay} ${v.pair.ticket}`);
+  eq("qr v2 first lan as host", `${q2.host}:${q2.port}`, v.pair.qrV2Lan[0]);
+  const p2 = wasm.Pairing.fromQrFixed(phone, v.pair.qrV2, v.deviceId, v.deviceName, v.now, fromHex(v.pair.phoneEphemeralPrivate));
+  eq("XXpsk3 msg1 from qr v2", p2.msg1, v.pair.msg1);
 
   const pair = wasm.Pairing.fromQrFixed(phone, v.pair.qr, v.deviceId, v.deviceName, v.now, fromHex(v.pair.phoneEphemeralPrivate));
   eq("XXpsk3 msg1", pair.msg1, v.pair.msg1);

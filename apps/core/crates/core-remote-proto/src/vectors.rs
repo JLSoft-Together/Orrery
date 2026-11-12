@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-use crate::pair::{PairCode, PairInitiator, PairResponder, QrPayload};
+use crate::pair::{LanAddr, PairCode, PairInitiator, PairResponder, PairTicket, QrPayload};
 use crate::relay::{issue_token, RelayKey};
 use crate::session::{accept_with, SessionInitiator};
 use crate::{StaticKeypair, KEY_LEN};
@@ -10,6 +10,8 @@ const DEVICE: &str = "device-0001";
 const DEVICE_NAME: &str = "Pixel 9";
 const EXP: u64 = 1_900_000_000;
 const NOW: u64 = 1_800_000_000;
+const QR_V1: &str = "eyJ2IjoxLCJtYWNoaW5lIjoibWFjaGluZS0wMDAxIiwibmFtZSI6IlN0dWRpbyIsImhvc3QiOiIxOTIuMTY4LjEuMjAiLCJwb3J0Ijo0MzE4LCJta2V5IjoiQjZOOHZCUWdrOGkzVmR3YkVPaHN0Q1kzU3RGcXFGUHRDOV9Bc3JodEhIdyIsImNvZGUiOiJ3Y0xEeE1YR3g4akp5c3ZNemM3UDBBIiwiZXhwIjoxOTAwMDAwMDAwfQ";
+const TICKET: &str = "ticket-0001-AAAAAAAAAA";
 
 fn seq(start: u8) -> [u8; KEY_LEN] {
     std::array::from_fn(|i| start.wrapping_add(i as u8))
@@ -31,20 +33,26 @@ fn build() -> Value {
     let relay_raw = seq(0xe1);
     let relay = RelayKey::from_bytes(&relay_raw).unwrap();
 
-    let qr = QrPayload {
+    let qr = QrPayload::decode(QR_V1).unwrap();
+    assert_eq!(qr.lan, vec![LanAddr::new("192.168.1.20", 4318)]);
+    assert_eq!(qr.code.as_bytes(), code.as_bytes());
+    assert_eq!(qr.mkey, *desktop.public());
+    let ticket = PairTicket::parse(TICKET).unwrap();
+    let qr_v2 = QrPayload {
         machine: MACHINE.into(),
         name: "Studio".into(),
-        host: Some("192.168.1.20".into()),
-        port: Some(4318),
-        relay: None,
+        lan: vec![LanAddr::new("192.168.1.20", 4318), LanAddr::new("10.0.0.7", 4320)],
+        relay: Some("https://orrery-relay.example.workers.dev".into()),
+        ticket: Some(ticket.clone()),
         mkey: *desktop.public(),
         code: code.clone(),
         exp: EXP,
-    };
-    let qr_text = qr.encode().unwrap();
+    }
+    .encode()
+    .unwrap();
     let psk = code.derive_psk(MACHINE);
 
-    let (init, pair1) = PairInitiator::start_with(&phone, &qr, DEVICE, DEVICE_NAME, NOW, Some(&phone_pair_e)).unwrap();
+    let (init, pair1) = PairInitiator::start_with(&phone, &qr, DEVICE, DEVICE_NAME, None, NOW, Some(&phone_pair_e)).unwrap();
     let (resp, pair2) = PairResponder::start_with(&desktop, &code, MACHINE, &pair1, Some(&desktop_pair_e)).unwrap();
     let (mut paired_desktop, pair3) = init.finish(&pair2).unwrap();
     let mut paired_device = resp.finish(&pair3).unwrap();
@@ -78,7 +86,12 @@ fn build() -> Value {
             "psk": hex(psk.as_slice()),
             "phoneEphemeralPrivate": hex(&phone_pair_e),
             "desktopEphemeralPrivate": hex(&desktop_pair_e),
-            "qr": qr_text,
+            "qr": QR_V1,
+            "qrV2": qr_v2,
+            "qrV2Lan": ["192.168.1.20:4318", "10.0.0.7:4320"],
+            "qrV2Relay": "https://orrery-relay.example.workers.dev",
+            "ticket": TICKET,
+            "ticketHash": ticket.hash_text(),
             "msg1": hex(&pair1),
             "msg2": hex(&pair2),
             "msg3": hex(&pair3),

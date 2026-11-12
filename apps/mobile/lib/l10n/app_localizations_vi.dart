@@ -455,6 +455,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pairing => 'Đang ghép...';
 
   @override
+  String get pairViaLan => 'Đang ghép qua Wi-Fi (LAN)...';
+
+  @override
+  String get pairViaRelay => 'Khác mạng, đang ghép qua relay...';
+
+  @override
   String get pushTitle => 'Thông báo';
 
   @override

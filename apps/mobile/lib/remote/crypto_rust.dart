@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import '../src/rust/api/remote.dart' as rust;
 import 'crypto.dart';
+import 'discovery.dart';
+import 'pair_routes.dart';
 
 CryptoException _map(rust.RemoteError error) {
   final failure = switch (error.kind) {
@@ -105,7 +107,13 @@ class RustRemoteCrypto implements RemoteCrypto {
   @override
   QrData decodeQr(String text) {
     final qr = _guard(() => rust.decodeQr(text: text));
+    final routes = readQrRoutes(text);
+    final host = qr.host;
     return QrData(
+      lan: routes.lan.isNotEmpty || host == null
+          ? routes.lan
+          : [LanEndpoint(host, qr.port ?? 4320)],
+      ticket: routes.ticket,
       machine: qr.machine,
       name: qr.name,
       host: qr.host,

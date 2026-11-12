@@ -36,6 +36,14 @@ impl Pairing {
             .map_err(fail)
     }
 
+    #[wasm_bindgen(js_name = fromQrOn)]
+    pub fn from_qr_on(identity: &Identity, qr: &str, device_id: &str, device_name: &str, platform: &str, now: f64) -> Result<Pairing, JsError> {
+        let qr = QrPayload::decode(qr).map_err(fail)?;
+        PairInitiator::start_on(identity.keypair(), &qr, device_id, device_name, platform, secs(now)?)
+            .map(Pairing::wrap)
+            .map_err(fail)
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[wasm_bindgen(js_name = fromParts)]
     pub fn from_parts(
@@ -51,9 +59,9 @@ impl Pairing {
         let qr = QrPayload {
             machine: machine.to_owned(),
             name: String::new(),
-            host: None,
-            port: None,
+            lan: Vec::new(),
             relay: None,
+            ticket: None,
             mkey: key(mkey)?,
             code: PairCode::from_bytes(code).map_err(fail)?,
             exp: secs(exp)?,

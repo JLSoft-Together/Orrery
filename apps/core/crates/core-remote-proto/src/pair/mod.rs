@@ -9,13 +9,18 @@ use crate::keys::KEY_LEN;
 use crate::wire::{read, remote_static, split_proto, valid_id, with_proto, write, Setup, PAIR_PATTERN};
 use crate::{prologue, Error, Result, StaticKeypair, Transport, PROTO};
 
-pub use qr::{PairCode, QrPayload, CODE_LEN, MAX_QR_LEN, PSK_LEN, PSK_SALT, QR_VERSION};
+pub use qr::{
+    LanAddr, PairCode, PairTicket, QrPayload, CODE_LEN, DEFAULT_LAN_PORT, MAX_LAN, MAX_QR_LEN, PSK_LEN, PSK_SALT, QR_V1, QR_VERSION,
+    TICKET_LEN, TICKET_TEXT_LEN,
+};
 
 #[derive(Serialize, Deserialize)]
 struct DeviceHello {
     #[serde(rename = "deviceId")]
     device_id: String,
     name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    platform: Option<String>,
 }
 
 pub struct PairInitiator {
@@ -40,12 +45,17 @@ pub struct PairResponder {
 pub struct PairedDevice {
     pub device_id: String,
     pub name: String,
+    pub platform: Option<String>,
     pub device_static: [u8; KEY_LEN],
     pub transport: Transport,
 }
 
 fn valid_name(name: &str) -> bool {
     name.len() <= 128 && !name.chars().any(char::is_control)
+}
+
+pub fn valid_platform(platform: &str) -> bool {
+    !platform.is_empty() && platform.len() <= 16 && platform.bytes().all(|b| b.is_ascii_alphanumeric())
 }
 
 impl PairInitiator {
@@ -56,7 +66,18 @@ impl PairInitiator {
         device_name: &str,
         now: u64,
     ) -> Result<(Self, Vec<u8>)> {
-        Self::start_with(local, qr, device_id, device_name, now, None)
+        Self::start_with(local, qr, device_id, device_name, None, now, None)
+    }
+
+    pub fn start_on(
+        local: &StaticKeypair,
+        qr: &QrPayload,
+        device_id: &str,
+        device_name: &str,
+        platform: &str,
+        now: u64,
+    ) -> Result<(Self, Vec<u8>)> {
+        Self::start_with(local, qr, device_id, device_name, Some(platform), now, None)
     }
 
     #[cfg(feature = "test-vectors")]
@@ -68,26 +89,29 @@ impl PairInitiator {
         now: u64,
         ephemeral: &[u8; KEY_LEN],
     ) -> Result<(Self, Vec<u8>)> {
-        Self::start_with(local, qr, device_id, device_name, now, Some(ephemeral))
+        Self::start_with(local, qr, device_id, device_name, None, now, Some(ephemeral))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn start_with(
         local: &StaticKeypair,
         qr: &QrPayload,
         device_id: &str,
         device_name: &str,
+        platform: Option<&str>,
         now: u64,
         ephemeral: Option<&[u8; KEY_LEN]>,
     ) -> Result<(Self, Vec<u8>)> {
         if qr.is_expired(now) {
             return Err(Error::Expired);
         }
-        if !valid_id(device_id) || !valid_name(device_name) {
+        if !valid_id(device_id) || !valid_name(device_name) || !platform.is_none_or(valid_platform) {
             return Err(Error::BadPayload);
         }
         let hello = serde_json::to_vec(&DeviceHello {
             device_id: device_id.to_owned(),
             name: device_name.to_owned(),
+            platform: platform.map(str::to_owned),
         })
         .map_err(|_| Error::BadPayload)?;
         let psk = qr.code.derive_psk(&qr.machine);
@@ -175,7 +199,7 @@ impl PairResponder {
     pub fn finish(mut self, msg3: &[u8]) -> Result<PairedDevice> {
         let payload = read(&mut self.hs, msg3)?;
         let hello: DeviceHello = serde_json::from_slice(&payload).map_err(|_| Error::BadPayload)?;
-        if !valid_id(&hello.device_id) || !valid_name(&hello.name) {
+        if !valid_id(&hello.device_id) || !valid_name(&hello.name) || !hello.platform.as_deref().is_none_or(valid_platform) {
             return Err(Error::BadPayload);
         }
         let device_static = remote_static(&self.hs)?;
@@ -183,6 +207,7 @@ impl PairResponder {
         Ok(PairedDevice {
             device_id: hello.device_id,
             name: hello.name,
+            platform: hello.platform,
             device_static,
             transport,
         })

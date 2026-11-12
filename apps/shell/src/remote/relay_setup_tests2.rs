@@ -248,7 +248,7 @@ fn an_empty_relay_url_means_lan_only_and_an_old_config_keeps_its_url() {
     assert_eq!((status["relay"].as_str(), status["relayUrl"].as_str()), (Some("off"), Some("")));
     let qr = QrPayload::decode(rig.remote.pair_start().unwrap()["qr"].as_str().unwrap()).unwrap();
     assert_eq!(qr.relay, None);
-    assert!(qr.host.is_some());
+    assert!(!qr.lan.is_empty());
     rig.remote.enable(false);
     let with = self::rig("cf-lan2", "https://orrery-relay.me.workers.dev", false);
     with.remote.enable(true);

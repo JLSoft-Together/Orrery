@@ -240,6 +240,8 @@
   "pairDenied": "The computer refused the pairing.",
   "pairProtocol": "Protocol error while pairing.",
   "pairing": "Pairing...",
+  "pairViaLan": "Pairing over Wi-Fi (LAN)...",
+  "pairViaRelay": "Not on the same network, pairing through the relay...",
   "pushTitle": "Notifications",
   "pushHint": "Alert me when a pane needs me while the app is closed.",
   "pushNotSetUp": "Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.",

@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../l10n/app_localizations.dart';
+import '../remote/link_state.dart';
 import '../remote/pairing.dart';
 import '../remote/providers.dart';
 import '../ui/kit/kit.dart';
 import '../ui/theme/orrery_shape.dart';
 import '../ui/widgets/common.dart';
+import 'pair_route_row.dart';
 
 String pairFailureText(AppLocalizations l, PairFailure failure) =>
     switch (failure) {
@@ -38,6 +40,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   late int _tab = kDebugMode && widget.startOnCode ? 1 : 0;
   bool _busy = false;
   PairFailure? _failure;
+  LinkRoute? _route;
 
   MobileScannerController get _scan => _controller ??= MobileScannerController(
     formats: const [BarcodeFormat.qrCode],
@@ -65,10 +68,18 @@ class _PairPageState extends ConsumerState<PairPage> {
     setState(() {
       _busy = true;
       _failure = null;
+      _route = null;
     });
     final navigator = Navigator.of(context);
     try {
-      await ref.read(machinesProvider.notifier).pair(text);
+      await ref
+          .read(machinesProvider.notifier)
+          .pair(
+            text,
+            onRoute: (route) {
+              if (mounted) setState(() => _route = route);
+            },
+          );
       if (!mounted) return;
       navigator.pop();
     } on PairException catch (error) {
@@ -76,6 +87,7 @@ class _PairPageState extends ConsumerState<PairPage> {
       setState(() {
         _busy = false;
         _failure = error.failure;
+        _route = null;
       });
     }
   }
@@ -192,14 +204,10 @@ class _PairPageState extends ConsumerState<PairPage> {
                   child: _tab == 0 ? _scanTab(context) : _codeTab(context),
                 ),
               ),
-              if (_busy && _tab == 0)
+              if (_busy)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    l.pairing,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: context.orrery.inkMuted),
-                  ),
+                  child: PairRouteRow(route: _route),
                 ),
             ],
           ),

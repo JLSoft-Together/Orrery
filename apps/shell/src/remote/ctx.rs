@@ -51,8 +51,17 @@ pub struct PtyEndpoint {
     pub protocol: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PairAsk {
+    pub name: String,
+    pub platform: String,
+    pub ip: Option<String>,
+    pub country: Option<String>,
+    pub via: &'static str,
+}
+
 pub trait Host: Send + Sync + 'static {
-    fn confirm_pair(&self, name: &str) -> bool;
+    fn confirm_pair(&self, ask: &PairAsk) -> bool;
     fn notify(&self, title: &str, body: &str);
     fn tap(&self) -> Option<StoreTap>;
     fn welcome(&self) -> Welcome;
@@ -223,6 +232,7 @@ impl Ctx {
             addresses: lan.iter().map(|a| a.ip().to_string()).collect(),
             relay: self.relay_state(),
             pairing: self.pairing.active(super::config::now_secs()),
+            pair_ended: self.pairing.ended(),
             name: &self.name,
         };
         let mut out = shape.json(&cfg, lock(&self.devices).list(), &online);

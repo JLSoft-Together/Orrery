@@ -18,10 +18,10 @@ Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bả
 ## 2. Bật và ghép điện thoại
 
 1. Orrery → Settings → **Điều khiển từ xa** → bật công tắc. Mặc định tắt.
-2. Bấm **Thêm điện thoại**: hiện QR, đếm ngược **5 phút**, dùng **1 lần**. Mã chỉ có hiệu lực khi QR đang hiện.
-3. Mở Orrery Remote trên điện thoại → thêm máy → quét QR. Điện thoại và máy phải cùng Wi-Fi khi ghép (ghép chỉ đi qua LAN).
-4. Orrery trên máy hỏi xác nhận "cho phép điện thoại này điều khiển?" → chọn Cho phép. Từ chối hoặc hết 5 phút thì quét lại QR mới.
-5. Sai mã quá 5 lần / phút (theo IP) thì bị chặn tạm.
+2. Bấm **Thêm điện thoại**: hiện QR, đếm ngược **2 phút**, dùng **1 lần**. Mã chỉ có hiệu lực khi QR đang hiện. Dưới QR ghi QR có relay hay không: relay đang online lúc bấm thì QR mang thêm vé ghép relay (điện thoại khác mạng vẫn ghép được), không thì "Chỉ LAN".
+3. Mở Orrery Remote trên điện thoại → thêm máy → quét QR. App thử mọi IP LAN trong QR (và mDNS) khoảng **3 giây**; không được (khác mạng, 4G) thì tự ghép qua relay bằng vé trong QR. Màn ghép hiện đường đang dùng (Wi-Fi / relay). QR cũ (v1, trước v98) vẫn quét được nhưng chỉ ghép qua LAN.
+4. Orrery trên máy hỏi xác nhận "Ghép «tên điện thoại» (android) từ IP … [quốc gia] qua LAN / relay?" → chọn Cho phép. Xem kỹ IP: IP lạ hoặc bạn không vừa quét QR thì chọn Huỷ. Từ chối hoặc hết 2 phút thì quét lại QR mới.
+5. Sai mã **5 lần** thì QR đang hiện bị huỷ (bấm Mã mới). Ngoài ra sai quá 5 lần / phút (theo IP) thì bị chặn tạm.
 
 Một app quản lý nhiều máy tính (Windows + Mac). Tên máy hiện trong app là tên máy đã đặt ở Orrery.
 

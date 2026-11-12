@@ -76,8 +76,8 @@ pub fn decode_qr(text: String) -> Result<QrInfo, RemoteError> {
     Ok(QrInfo {
         machine: qr.machine.clone(),
         name: qr.name.clone(),
-        host: qr.host.clone(),
-        port: qr.port,
+        host: qr.first_lan().map(|a| a.host.clone()),
+        port: qr.first_lan().map(|a| a.port),
         relay: qr.relay.clone(),
         mkey: qr.mkey.to_vec(),
         exp: qr.exp,
@@ -190,7 +190,7 @@ pub fn pair_start(
 ) -> Result<PairingStart, RemoteError> {
     let key = StaticKeypair::from_private(&private)?;
     let qr = QrPayload::decode(&qr_text)?;
-    let (initiator, msg1) = PairInitiator::start(&key, &qr, &device_id, &device_name, now)?;
+    let (initiator, msg1) = PairInitiator::start_on(&key, &qr, &device_id, &device_name, "android", now)?;
     Ok(PairingStart {
         handshake: PairingHandshake {
             inner: Mutex::new(Some(initiator)),

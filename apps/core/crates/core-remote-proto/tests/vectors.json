@@ -18,6 +18,14 @@
     "phoneEphemeralPrivate": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
     "psk": "69506148c2b7d837c93d04eacdb64cd342049e2ea5f22b2b7e8abdb4cae2b779",
     "qr": "eyJ2IjoxLCJtYWNoaW5lIjoibWFjaGluZS0wMDAxIiwibmFtZSI6IlN0dWRpbyIsImhvc3QiOiIxOTIuMTY4LjEuMjAiLCJwb3J0Ijo0MzE4LCJta2V5IjoiQjZOOHZCUWdrOGkzVmR3YkVPaHN0Q1kzU3RGcXFGUHRDOV9Bc3JodEhIdyIsImNvZGUiOiJ3Y0xEeE1YR3g4akp5c3ZNemM3UDBBIiwiZXhwIjoxOTAwMDAwMDAwfQ",
+    "qrV2": "eyJ2IjoyLCJtYWNoaW5lIjoibWFjaGluZS0wMDAxIiwibmFtZSI6IlN0dWRpbyIsImxhbiI6WyIxOTIuMTY4LjEuMjA6NDMxOCIsIjEwLjAuMC43OjQzMjAiXSwicmVsYXkiOiJodHRwczovL29ycmVyeS1yZWxheS5leGFtcGxlLndvcmtlcnMuZGV2IiwicHQiOiJ0aWNrZXQtMDAwMS1BQUFBQUFBQUFBIiwibWtleSI6IkI2Tjh2QlFnazhpM1Zkd2JFT2hzdENZM1N0RnFxRlB0QzlfQXNyaHRISHciLCJjb2RlIjoid2NMRHhNWEd4OGpKeXN2TXpjN1AwQSIsImV4cCI6MTkwMDAwMDAwMH0",
+    "qrV2Lan": [
+      "192.168.1.20:4318",
+      "10.0.0.7:4320"
+    ],
+    "qrV2Relay": "https://orrery-relay.example.workers.dev",
+    "ticket": "ticket-0001-AAAAAAAAAA",
+    "ticketHash": "rjUuFLVKsoh7CUsY7t2Cgov27GCIEFwxePhYK3v7xyg",
     "transportPhoneToDesktop": "6e900d112fcf1ab2f50640c918a9d0f7f9f5044e87",
     "transportPlaintext": "hello"
   },

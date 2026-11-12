@@ -27,10 +27,22 @@ pub enum ControlKind {
     Close,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Control {
     pub t: ControlKind,
     pub conn: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub country: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pairing: bool,
+}
+
+impl Control {
+    pub fn new(t: ControlKind, conn: u16) -> Self {
+        Self { t, conn, ip: None, country: None, pairing: false }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,6 +84,30 @@ pub fn encode_close(conn: u16, code: u16) -> Result<Vec<u8>> {
     out.extend_from_slice(&CONTROL_CONN.to_be_bytes());
     out.extend_from_slice(&json);
     Ok(out)
+}
+
+fn control_bytes(value: &serde_json::Value) -> Result<Vec<u8>> {
+    let json = serde_json::to_vec(value).map_err(|_| Error::BadMessage)?;
+    if json.len() > MAX_CONTROL {
+        return Err(Error::TooLarge);
+    }
+    let mut out = Vec::with_capacity(ENVELOPE_HEADER + json.len());
+    out.extend_from_slice(&CONTROL_CONN.to_be_bytes());
+    out.extend_from_slice(&json);
+    Ok(out)
+}
+
+pub const MAX_PAIR_TTL: u64 = 300;
+
+pub fn encode_pair_open(ticket_hash: &[u8; 32], ttl: u64) -> Result<Vec<u8>> {
+    if ttl == 0 || ttl > MAX_PAIR_TTL {
+        return Err(Error::BadMessage);
+    }
+    control_bytes(&serde_json::json!({ "t": "pair.open", "h": b64_encode(ticket_hash), "ttl": ttl }))
+}
+
+pub fn encode_pair_close() -> Result<Vec<u8>> {
+    control_bytes(&serde_json::json!({ "t": "pair.close" }))
 }
 
 pub fn decode(bytes: &[u8]) -> Result<Envelope<'_>> {

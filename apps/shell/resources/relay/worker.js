@@ -282,6 +282,7 @@ var CLOSE_PROTO = 4426;
 var CLOSE_REPLACED = 4409;
 var CLOSE_RATE = 4429;
 var CLOSE_GATEWAY_OFF = 4503;
+var CLOSE_NORMAL = 1e3;
 
 // src/envelope.ts
 var ENVELOPE_HEADER = 2;
@@ -299,8 +300,8 @@ function encodeData(conn, bytes, offset = 0) {
   return out;
 }
 __name(encodeData, "encodeData");
-function encodeControl(kind, conn) {
-  const json2 = utf8(JSON.stringify({ t: kind, conn }));
+function encodeControl(kind, conn, info = {}) {
+  const json2 = utf8(JSON.stringify({ t: kind, conn, ip: info.ip, country: info.country, pairing: info.pairing }));
   const out = new Uint8Array(ENVELOPE_HEADER + json2.length);
   out.set(json2, ENVELOPE_HEADER);
   return out;
@@ -310,6 +311,67 @@ function readConn(bytes) {
   return bytes[0] << 8 | bytes[1];
 }
 __name(readConn, "readConn");
+
+// src/pair.ts
+var PAIR_TTL_MAX = 300;
+var STRIKE_MAX = 20;
+var STRIKE_WINDOW_MS = 10 * 6e4;
+var STRIKE_IPS = 1024;
+var TICKET = /^[A-Za-z0-9_-]{22}$/;
+var HASH = /^[A-Za-z0-9_-]{43}$/;
+var IP = /^[0-9A-Fa-f:.]{2,45}$/;
+var COUNTRY = /^[A-Z0-9]{2}$/;
+function validTicket(value) {
+  return typeof value === "string" && TICKET.test(value);
+}
+__name(validTicket, "validTicket");
+async function ticketHash(ticket) {
+  return b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", utf8(ticket))));
+}
+__name(ticketHash, "ticketHash");
+function sameText(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+__name(sameText, "sameText");
+function parsePairOpen(value, nowSec2) {
+  const { h, ttl } = value;
+  if (typeof h !== "string" || !HASH.test(h)) return null;
+  if (typeof ttl !== "number" || !Number.isSafeInteger(ttl) || ttl < 1 || ttl > PAIR_TTL_MAX) return null;
+  return { h, exp: nowSec2 + ttl };
+}
+__name(parsePairOpen, "parsePairOpen");
+function cleanIp(value) {
+  return value !== null && IP.test(value) ? value : void 0;
+}
+__name(cleanIp, "cleanIp");
+function cleanCountry(value) {
+  return value !== null && COUNTRY.test(value) ? value : void 0;
+}
+__name(cleanCountry, "cleanCountry");
+var Strikes = class {
+  static {
+    __name(this, "Strikes");
+  }
+  map = /* @__PURE__ */ new Map();
+  add(ip, nowMs) {
+    const list = this.recent(ip, nowMs);
+    list.push(nowMs);
+    this.map.set(ip, list);
+    if (this.map.size > STRIKE_IPS) this.map.delete(this.map.keys().next().value);
+  }
+  blocked(ip, nowMs) {
+    return this.recent(ip, nowMs).length >= STRIKE_MAX;
+  }
+  recent(ip, nowMs) {
+    const list = (this.map.get(ip) ?? []).filter((t) => nowMs - t < STRIKE_WINDOW_MS);
+    if (list.length === 0) this.map.delete(ip);
+    else this.map.set(ip, list);
+    return list;
+  }
+};
 
 // src/sign.ts
 var MAX_SKEW_SEC = 120;
@@ -397,6 +459,7 @@ var Room = class extends DurableObject {
   static {
     __name(this, "Room");
   }
+  strikes = new Strikes();
   constructor(ctx, env) {
     super(ctx, env);
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
@@ -409,6 +472,9 @@ var Room = class extends DurableObject {
   }
   setMeta(key, value) {
     this.ctx.storage.sql.exec("INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", key, value);
+  }
+  dropMeta(key) {
+    this.ctx.storage.sql.exec("DELETE FROM meta WHERE k = ?", key);
   }
   lastTs(key) {
     const v = this.getMeta(key);
@@ -525,6 +591,7 @@ var Room = class extends DurableObject {
     }
     if (ts <= this.lastTs("machine_ts")) return json(409, { error: "replay" });
     this.setMeta("machine_ts", String(ts));
+    this.pairClose();
     for (const ws of this.ctx.getWebSockets("m")) {
       const att = this.attachment(ws);
       if (att && !att.closing) {
@@ -545,6 +612,8 @@ var Room = class extends DurableObject {
     const relayKey = this.getMeta("relay_key");
     const key = relayKey === null ? null : b64urlDecode(relayKey);
     if (!key) return json(404, { error: "not_registered" });
+    const info = { ip: cleanIp(request.headers.get("x-orrery-ip")), country: cleanCountry(request.headers.get("x-orrery-country")) };
+    if (url.searchParams.has("pt")) return this.connectPairing(url.searchParams.get("pt") ?? "", info);
     const verdict = await verifyToken(key, machineId, url.searchParams.get("t") ?? "", nowSec());
     if (!verdict.ok) return this.rejectSocket(CLOSE_DEVICE, verdict.reason === "expired" ? "expired" : "bad token");
     if (this.isRevoked(verdict.deviceId)) return this.rejectSocket(CLOSE_DEVICE, "revoked");
@@ -553,13 +622,37 @@ var Room = class extends DurableObject {
     if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
     const conn = this.allocConn();
     if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
+    return this.acceptPhone(desktop, conn, verdict.deviceId, info);
+  }
+  acceptPhone(desktop, conn, device, info) {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
     this.ctx.acceptWebSocket(server, ["p", `p:${conn}`]);
-    server.serializeAttachment({ role: "p", conn, device: verdict.deviceId, closing: false });
-    desktop.send(encodeControl("open", conn));
+    server.serializeAttachment({ role: "p", conn, device, closing: false, pairing: info.pairing === true });
+    desktop.send(encodeControl("open", conn, info));
     return new Response(null, { status: 101, webSocket: client });
+  }
+  async connectPairing(ticket, info) {
+    const ip = info.ip ?? "unknown";
+    const nowMs = Date.now();
+    if (this.strikes.blocked(ip, nowMs)) return this.rejectSocket(CLOSE_RATE, "too many");
+    const hashed = validTicket(ticket) ? await ticketHash(ticket) : null;
+    const stored = this.getMeta("pair_h");
+    const exp = Number(this.getMeta("pair_exp") ?? "0");
+    const valid = hashed !== null && stored !== null && sameText(hashed, stored);
+    if (!valid || nowSec() >= exp) {
+      this.strikes.add(ip, nowMs);
+      return this.rejectSocket(CLOSE_DEVICE, valid ? "expired" : "bad ticket");
+    }
+    const desktop = this.desktop();
+    if (!desktop) return this.rejectSocket(CLOSE_GATEWAY_OFF, "gateway off");
+    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    const conn = this.allocConn();
+    if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
+    this.dropMeta("pair_h");
+    this.dropMeta("pair_exp");
+    return this.acceptPhone(desktop, conn, "", { ...info, pairing: true });
   }
   allocConn() {
     let next = Number(this.getMeta("next_conn") ?? "1");
@@ -629,17 +722,30 @@ var Room = class extends DurableObject {
     } catch {
       return;
     }
-    if (typeof value !== "object" || value === null) return;
-    const { t, conn, code } = value;
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+    const fields = value;
+    if (fields.t === "pair.open") return this.pairOpen(fields);
+    if (fields.t === "pair.close") return this.pairClose();
+    const { t, conn, code } = fields;
     if (t !== "close" || typeof conn !== "number" || typeof code !== "number") return;
     if (!Number.isInteger(conn) || conn < 1 || conn > MAX_CONN) return;
-    const reason = DESKTOP_CLOSE.get(code);
-    if (reason === void 0) return;
     const target = this.ctx.getWebSockets(`p:${conn}`)[0];
     const att = target ? this.attachment(target) : null;
     if (!target || !att || att.closing) return;
+    const reason = code === CLOSE_NORMAL && att.pairing === true ? "paired" : DESKTOP_CLOSE.get(code);
+    if (reason === void 0) return;
     this.markClosing(target, att);
     target.close(code, reason);
+  }
+  pairOpen(fields) {
+    const open = parsePairOpen(fields, nowSec());
+    if (!open) return;
+    this.setMeta("pair_h", open.h);
+    this.setMeta("pair_exp", String(open.exp));
+  }
+  pairClose() {
+    this.dropMeta("pair_h");
+    this.dropMeta("pair_exp");
   }
   fromPhone(ws, att, message) {
     if (message.byteLength > NOISE_MAX) {
@@ -714,7 +820,12 @@ async function socketGet(request, env, url, kind, machineId) {
   if (await limited(env, request, kind)) return plain2(429, "rate limited");
   const target = new URL(`https://room/${kind}/${machineId}`);
   target.search = url.search;
-  return roomStub(env, machineId).fetch(new Request(target, { method: "GET", headers: { upgrade: "websocket" } }));
+  const headers = new Headers({ upgrade: "websocket" });
+  const ip = request.headers.get("cf-connecting-ip");
+  const country = request.headers.get("cf-ipcountry");
+  if (ip) headers.set("x-orrery-ip", ip);
+  if (country) headers.set("x-orrery-country", country);
+  return roomStub(env, machineId).fetch(new Request(target, { method: "GET", headers }));
 }
 __name(socketGet, "socketGet");
 var index_default = {

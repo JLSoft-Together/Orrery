@@ -17,10 +17,11 @@ use crate::state::lock;
 
 pub const HELLO_WAIT: Duration = Duration::from_secs(5);
 
-pub fn try_key(peer: Peer) -> (String, usize) {
-    match peer {
-        Peer::Lan(ip) => (format!("ip:{ip}"), MAX_PAIR_TRIES),
-        Peer::Relay(_) => ("relay".to_owned(), MAX_RELAY_PAIR_TRIES),
+pub fn try_key(link: &Link) -> (String, usize) {
+    match (link.peer, link.origin.ip.as_deref()) {
+        (Peer::Lan(ip), _) => (format!("ip:{ip}"), MAX_PAIR_TRIES),
+        (Peer::Relay(_), Some(ip)) => (format!("relay:{ip}"), MAX_PAIR_TRIES),
+        (Peer::Relay(_), None) => ("relay".to_owned(), MAX_RELAY_PAIR_TRIES),
     }
 }
 
@@ -28,8 +29,11 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
     let Ok(Some(msg1)) = timeout_at(deadline, link.rx.recv()).await else {
         return link.out.close(CLOSE_HANDSHAKE, "timeout").await;
     };
+    if link.origin.pairing && !pair::is_pair_msg1(&msg1) {
+        return link.out.close(CLOSE_HANDSHAKE, "pairing").await;
+    }
     if pair::is_pair_msg1(&msg1) {
-        let (key, max) = try_key(link.peer);
+        let (key, max) = try_key(&link);
         if !ctx.take_pair_try(key, max, std::time::Instant::now()) {
             return link.out.close(CLOSE_RATE, "pairing").await;
         }

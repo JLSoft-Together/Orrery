@@ -17,7 +17,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use super::config::{new_machine_id, now_secs, Config};
-use super::ctx::{Asked, Host, PtyEndpoint, Welcome};
+use super::ctx::{Asked, Host, PairAsk, PtyEndpoint, Welcome};
 use super::{Options, Remote};
 use crate::state::lock;
 use super::keys::{KeyStore, Read};
@@ -30,6 +30,7 @@ pub struct TestHost {
     pub answer: AtomicBool,
     pub env_confirm: AtomicBool,
     pub asked: Mutex<Vec<String>>,
+    pub pair_asks: Mutex<Vec<PairAsk>>,
     pub tap: Mutex<Option<StoreTap>>,
     pub notes: Mutex<Vec<String>>,
     pub awake: Mutex<Vec<bool>>,
@@ -49,8 +50,9 @@ pub type Viewed = (String, String, Value, Vec<String>);
 pub type ViewerFn = Box<dyn Fn(&str, &str, Value, &[String]) -> Value + Send + Sync>;
 
 impl Host for TestHost {
-    fn confirm_pair(&self, name: &str) -> bool {
-        lock(&self.asked).push(name.to_owned());
+    fn confirm_pair(&self, ask: &PairAsk) -> bool {
+        lock(&self.asked).push(ask.name.clone());
+        lock(&self.pair_asks).push(ask.clone());
         if self.env_confirm.load(Ordering::SeqCst) {
             return std::env::var("CCM_E2E_CONFIRM").is_ok_and(|v| v == "ok");
         }
@@ -217,7 +219,7 @@ pub async fn send_json(ws: &mut Ws, t: &mut Transport, v: Value) {
 
 pub async fn pair(addr: SocketAddr, qr: &QrPayload, phone: &Phone) -> Result<Value, Option<u16>> {
     let mut ws = connect(addr).await;
-    let (init, msg1) = PairInitiator::start(&phone.key, qr, &phone.id, "Pixel Test", now_secs()).unwrap();
+    let (init, msg1) = PairInitiator::start_on(&phone.key, qr, &phone.id, "Pixel Test", "android", now_secs()).unwrap();
     ws.send(Message::Binary(msg1.into())).await.unwrap();
     let msg2 = next_binary(&mut ws).await?;
     let (mut desk, msg3) = init.finish(&msg2).map_err(|_| None)?;

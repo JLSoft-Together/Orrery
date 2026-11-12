@@ -116,7 +116,7 @@ async function runBrowser(name, base) {
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     await page.goto(base);
     await page.waitForFunction(() => window.spikeReady === true, null, { timeout: 15000 });
-    const cfg = { qr: peer.info.qr, bootToken: peer.info.bootToken, name: `${name} spike`, iterations };
+    const cfg = { qr: peer.info.qr, name: `${name} spike`, iterations };
     const result = await page.evaluate((c) => window.runSpike(c), cfg);
     return { browser: name, version: browser.version(), ...result, errors, peerLog: peer.log };
   } catch (e) {

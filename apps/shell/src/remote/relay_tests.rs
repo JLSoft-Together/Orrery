@@ -79,7 +79,7 @@ fn the_relay_socket_is_signed_and_two_conn_ids_get_separate_sessions() {
         assert!(verify(&pubkey, MACHINE_DOMAIN, &machine, ts, &query(q, "sig")));
         let mut sessions = Vec::new();
         for (conn, phone) in [(1u16, &a), (2u16, &b)] {
-            ws.send(Message::Binary(encode_control(&Control { t: ControlKind::Open, conn }).unwrap().into())).await.unwrap();
+            ws.send(Message::Binary(encode_control(&Control::new(ControlKind::Open, conn)).unwrap().into())).await.unwrap();
             let (init, msg1) = SessionInitiator::start(&phone.key, &desktop, &phone.id).unwrap();
             ws.send(Message::Binary(encode_data(conn, &msg1).unwrap().into())).await.unwrap();
             sessions.push((conn, init));
@@ -117,7 +117,7 @@ fn the_relay_socket_is_signed_and_two_conn_ids_get_separate_sessions() {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         assert_eq!(ctx.live_count(), 2);
-        ws.send(Message::Binary(encode_control(&Control { t: ControlKind::Close, conn: 1 }).unwrap().into())).await.unwrap();
+        ws.send(Message::Binary(encode_control(&Control::new(ControlKind::Close, 1)).unwrap().into())).await.unwrap();
         for _ in 0..50 {
             if ctx.live_count() == 1 {
                 break;
@@ -188,7 +188,7 @@ fn a_failed_handshake_over_the_relay_tells_the_relay_to_close_that_phone_with_th
     rt.block_on(async {
         let (stream, _) = tokio::time::timeout(Duration::from_secs(10), listener.accept()).await.unwrap().unwrap();
         let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
-        ws.send(Message::Binary(encode_control(&Control { t: ControlKind::Open, conn: 3 }).unwrap().into())).await.unwrap();
+        ws.send(Message::Binary(encode_control(&Control::new(ControlKind::Open, 3)).unwrap().into())).await.unwrap();
         ws.send(Message::Binary(encode_data(3, &[7u8; 80]).unwrap().into())).await.unwrap();
         let close = loop {
             let msg = tokio::time::timeout(Duration::from_secs(10), ws.next()).await.unwrap().unwrap().unwrap();

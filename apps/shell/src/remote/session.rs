@@ -70,6 +70,10 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         Peer::Relay(_) => "relay",
     };
     let (ctl_tx, ctl_rx) = mpsc::channel(4);
+    if matches!(link.peer, Peer::Relay(_)) {
+        let (every, dead) = *lock(&ctx.keepalive);
+        phone.watch(every, dead);
+    }
     let live = match ctx.admit_live(&device, &key, via, ctl_tx, now_secs()) {
         Ok(id) => id,
         Err(Admit::Revoked) => return link.out.close(CLOSE_DEVICE, "device").await,

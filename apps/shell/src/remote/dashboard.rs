@@ -11,6 +11,7 @@ use tokio::sync::{mpsc, watch};
 use super::config::now_secs;
 use super::ctx::{Control, Ctx};
 use super::limits::{Rate, MAX_COMMANDS_PER_MINUTE};
+use super::liveness::{due, Liveness};
 use super::link::{Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_OFF, CLOSE_PROTO};
 use super::phone_ws::{next_ws, Extra};
 use super::viewer::flush_due;
@@ -95,6 +96,7 @@ pub struct Phone {
     pub(super) sec: Secure,
     pub(super) device: String,
     reasm: Reassembler,
+    alive: Option<Liveness>,
     hello: bool,
     feed: Option<Feed>,
     last_seq: u64,
@@ -117,7 +119,7 @@ impl Phone {
         let (direct_tx, direct_rx) = mpsc::channel(32);
         let x = Extra::new(ctx.board.subscribe(), &device);
         let push_rx = ctx.push_cfg.subscribe();
-        Phone { ctx, sec, device, reasm: Reassembler::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x }
+        Phone { ctx, sec, device, reasm: Reassembler::new(), alive: None, hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x }
     }
 
     pub fn first_hello(&mut self, msg: &[u8]) -> Option<(String, Value)> {
@@ -128,6 +130,10 @@ impl Phone {
         }
         let (id, t, v) = command(&frame.payload).ok()?;
         (t == "hello").then_some((id, v))
+    }
+
+    pub fn watch(&mut self, every: Duration, dead: Duration) {
+        self.alive = Some(Liveness::new(every, dead));
     }
 
     pub async fn start(mut self, id: &str, hello: &Value, rx: mpsc::Receiver<Vec<u8>>, ctl: mpsc::Receiver<Control>) {
@@ -141,7 +147,15 @@ impl Phone {
             tokio::select! {
                 msg = rx.recv() => {
                     let Some(msg) = msg else { break };
+                    if let Some(a) = self.alive.as_mut() {
+                        a.heard();
+                    }
                     if !self.inbound(&msg).await {
+                        break;
+                    }
+                }
+                _ = due(&mut self.alive) => {
+                    if !self.keepalive().await {
                         break;
                     }
                 }
@@ -192,6 +206,21 @@ impl Phone {
         }
     }
 
+    async fn keepalive(&mut self) -> bool {
+        let Some(a) = self.alive.as_mut() else { return true };
+        if a.expired() {
+            self.sec.close(CLOSE_HANDSHAKE, "idle").await;
+            return false;
+        }
+        a.sent();
+        self.sec.frame(Kind::Ping, 0, &[]).await
+    }
+
+    async fn pong(&mut self) -> bool {
+        let echo = self.alive.as_mut().is_none_or(Liveness::answer_is_echo);
+        !echo || self.sec.frame(Kind::Ping, 0, &[]).await
+    }
+
     async fn control(&mut self, c: Option<Control>) {
         let (event, code, reason) = match c {
             Some(Control::Revoked) => ("device.revoked", CLOSE_DEVICE, "revoked"),
@@ -220,7 +249,7 @@ impl Phone {
         };
         match message.kind {
             Kind::Json => self.command(&message.payload).await,
-            Kind::Ping => self.sec.frame(Kind::Ping, 0, &[]).await,
+            Kind::Ping => self.pong().await,
             Kind::PtyIn => self.pty_input(message.stream, message.payload, message.claim).await,
             Kind::PtyOut => true,
         }

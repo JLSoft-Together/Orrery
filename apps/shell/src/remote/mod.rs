@@ -13,6 +13,7 @@ pub mod host;
 mod keys;
 mod lan;
 mod limits;
+mod liveness;
 mod link;
 mod mdns;
 mod pair;
@@ -44,6 +45,8 @@ mod pair_tests;
 mod session_tests;
 #[cfg(test)]
 mod relay_tests;
+#[cfg(test)]
+mod liveness_tests;
 #[cfg(test)]
 mod unit_tests;
 #[cfg(test)]

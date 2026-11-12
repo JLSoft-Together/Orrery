@@ -100,6 +100,7 @@ pub struct Ctx {
     pub push_wake: Notify,
     pub push_cfg: watch::Sender<Value>,
     pub fcm: Fcm,
+    pub keepalive: Mutex<(Duration, Duration)>,
 }
 
 impl Ctx {
@@ -130,6 +131,7 @@ impl Ctx {
             push_wake: Notify::new(),
             push_cfg: watch::channel(push_event).0,
             fcm: Fcm::default(),
+            keepalive: Mutex::new((super::liveness::PING_EVERY, super::liveness::DEAD_AFTER)),
         }
     }
 

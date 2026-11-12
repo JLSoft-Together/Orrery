@@ -13,6 +13,7 @@ relay (`apps/relay`) và app `apps/mobile`. Thiết kế + lý do: `.planning/PL
 
 - LAN: không nhận frame nào trong 45 s (kể cả ping WS / kind 3) → gateway đóng phiên; điện thoại gửi ping ≤ 30 s / lần.
 - Keepalive relay: text frame `"ping"` → DO tự trả `"pong"` (`setWebSocketAutoResponse`), ngoài Noise, mỗi 30 s.
+- Keepalive phiên relay (WP-30): DO không biết phone chết khi TCP phone đứt không đóng (text `"ping"` được DO tự trả, không tới desktop) nên desktop gửi Noise ping (kind 3) mỗi 15 s; mọi frame từ phone (kể cả ping trả lại) reset timer; im lặng ≥ 45 s → gateway đóng phiên (close 4400 `idle` + control close conn cho relay), `live` bỏ khỏi `remoteStatus`. Phone không đổi: nó đã trả ping khi không có ping đang chờ. Desktop chỉ ping trên relay (LAN đã có timeout 45 s, tránh hai bên ping chéo).
 - Trước khi vào Noise không có dữ liệu ứng dụng nào. Handshake chưa xong trong 5 s → đóng. Frame đầu sau bắt tay IK phải là `hello` giải mã được trong 5 s, chỉ từ đó phiên mới được tính (`lastSeen`, thông báo, max 16 phiên); trước đó inbox max 4 frame / 64 KB.
 - mDNS `_orrery._tcp`, TXT `{v, k, n}`: `k` = base64url 8 byte đầu SHA-256(key tĩnh Noise của máy), `n` = tên máy; không có machineId.
 - Ghép sai: không huỷ QR; max 5 lần thử / phút / IP (LAN) hoặc / connId (relay) → `4429`.

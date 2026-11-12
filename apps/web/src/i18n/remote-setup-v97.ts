@@ -10,7 +10,7 @@ const en = {
     },
     step1: {
       title: 'Create a Cloudflare token',
-      body: 'Sign in to Cloudflare, choose Create Custom Token and give it these permissions on the account you want to use.',
+      body: 'Sign in to Cloudflare, press Create Token, pick Start from scratch (Custom) and give it these permissions on the account you want to use.',
       permScripts: 'Account · Workers Scripts · Edit',
       permAccount: 'Account · Account Settings · Read',
       open: 'Open the token page',
@@ -150,7 +150,7 @@ const vi: typeof en = {
     },
     step1: {
       title: 'Tạo token Cloudflare',
-      body: 'Đăng nhập Cloudflare, chọn Create Custom Token và cấp các quyền này trên account bạn muốn dùng.',
+      body: 'Đăng nhập Cloudflare, bấm Create Token, chọn Start from scratch (Custom) rồi tick các quyền này trên account bạn muốn dùng.',
       permScripts: 'Account · Workers Scripts · Edit',
       permAccount: 'Account · Account Settings · Read',
       open: 'Mở trang tạo token',

@@ -130,7 +130,7 @@ Settings → Điều khiển từ xa có hai khối, không cần đọc docs ha
 
 **Relay (ngoài mạng nhà)** — dùng tài khoản Cloudflare miễn phí của bạn:
 
-1. Bấm "Mở trang tạo token", chọn Create Custom Token, cấp `Account · Workers Scripts · Edit` và `Account · Account Settings · Read` trên account muốn dùng.
+1. Bấm "Mở trang tạo token", bấm Create Token → Start from scratch (Custom), tick `Account · Workers Scripts · Edit` và `Account · Account Settings · Read` trên account muốn dùng.
 2. Dán token vào ô (ẩn ký tự) rồi "Kiểm tra". Token được cất trong Keychain / Credential Manager của máy, không hiện lại trên màn hình. Mỗi lần mở Settings, nếu muốn chọn account hoặc cập nhật relay thì dán lại token.
 3. Chọn account (chỉ có một thì đã chọn sẵn) rồi "Dựng relay". Tiến độ từng bước hiện ngay: kiểm token, địa chỉ workers.dev, tải relay, bật địa chỉ, chờ relay phản hồi. Rời trang giữa chừng không dừng việc dựng; mở lại sẽ thấy tiến độ.
 4. Xong: địa chỉ relay (nút Sao chép), account, và "Cập nhật relay" khi bản kèm app mới hơn. Nếu relay chưa phản hồi ngay, đó là DNS đang lan, chờ vài phút.
@@ -149,3 +149,9 @@ Settings → Điều khiển từ xa có hai khối, không cần đọc docs ha
 Nội dung hai file chỉ nằm trong bộ nhớ của trang đến lúc gửi cho app, rồi app cất khoá trong Keychain; không lưu vào localStorage hay log.
 
 Đổi tên hiển thị: desktop sửa tên điện thoại đã ghép ngay trong list (alias lưu trong `devices.json`, giữ tên gốc điện thoại gửi), điện thoại đổi tên máy tính cục bộ; hai bên không đồng bộ tên. Điện thoại đổi tên session bằng lệnh `terminal.alias` có sẵn, cùng alias với desktop.
+
+## 14. Khoá app điện thoại
+
+App Orrery Remote khoá bằng vân tay / khuôn mặt hoặc PIN / mẫu hình / mật khẩu khoá màn hình của máy (`local_auth`), lớp 2 cạnh khoá ghép Noise. Bật mặc định; lần đầu mở app phải xác thực, sau đó phiên mở khoá có hạn mặc định 1 giờ (Mỗi lần mở · 15 phút · 1 giờ · 4 giờ, chỉnh ở nút khoá trên màn danh sách máy; đổi hoặc tắt phải xác thực trước).
+
+Khi khoá app đóng mọi kết nối tới máy tính (LAN và relay), không mở kết nối mới và không hiện session / terminal; tap thông báo hoặc deep link lúc đang khoá được giữ lại, xác thực xong mới mở. Android đặt `FLAG_SECURE` nên recent apps không lộ nội dung. Mốc mở khoá chỉ nằm trong RAM (đồng hồ đơn điệu + giờ máy, lấy số lớn hơn nên chỉnh giờ lùi không kéo dài phiên); process chết hoặc reboot thì khoá lại. Máy chưa đặt khoá màn hình: màn khoá báo cần đặt, có nút mở cài đặt bảo mật; chỉ ở trạng thái đó mới có nút "Tắt khoá app" kèm cảnh báo.

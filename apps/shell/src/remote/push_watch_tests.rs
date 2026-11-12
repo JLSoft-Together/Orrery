@@ -149,7 +149,7 @@ fn a_queued_job_is_dropped_when_the_phone_is_connected_by_the_time_it_would_send
     runtime().block_on(async {
         let (mut ws, mut t) = session(rig.addr(), &desktop, &phone).await.unwrap();
         hello(&mut ws, &mut t).await;
-        lock(&ctx.push).push(super::push::Job { device: "p".into(), token: TOKEN_A.into(), machine: "m".into(), pane: "p1".into(), kind: "done", locale: "en" });
+        lock(&ctx.push).push(super::push::Job { device: "p".into(), token: TOKEN_A.into(), machine: "m".into(), pane: "p1".into(), kind: "done", locale: "en", ..Default::default() });
         ctx.push_wake.notify_one();
         tokio::time::sleep(Duration::from_millis(500)).await;
     });

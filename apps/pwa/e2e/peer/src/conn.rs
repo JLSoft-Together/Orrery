@@ -237,6 +237,7 @@ impl Live {
                 let reply = match kind {
                     Some("hello") => {
                         extra.push(snapshot_event(desk));
+                        extra.push(json!({"t": "webpush.config", "key": data::VAPID_KEY}));
                         extra.push(data::ws_snapshot(desk));
                         json!({
                             "re": id, "ok": true, "machine": desk.machine, "name": NAME,
@@ -284,6 +285,14 @@ impl Live {
                     Some("ws.open") => {
                         println!("{}", json!({"ev": "open", "preset": value.get("preset"), "cwd": value.get("cwd")}));
                         json!({ "re": id, "ok": true, "paneKey": "p1" })
+                    }
+                    Some("push.register") => {
+                        println!("{}", json!({"ev": "push.register", "kind": value.get("kind"), "endpoint": value.get("endpoint"), "p256dh": value.get("p256dh"), "auth": value.get("auth"), "locale": value.get("locale"), "mute": value.get("mute"), "content": value.get("content")}));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("push.unregister") => {
+                        println!("{}", json!({"ev": "push.unregister"}));
+                        json!({ "re": id, "ok": true })
                     }
                     Some("confirm.answer") => {
                         println!("{}", json!({"ev": "confirm", "cid": value.get("cid"), "ok": value.get("ok")}));

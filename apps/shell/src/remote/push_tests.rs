@@ -37,7 +37,7 @@ fn ready(rig: &Rig, http: Arc<Fake>) -> Arc<super::ctx::Ctx> {
 }
 
 fn job(token: &str, kind: &'static str, locale: &'static str) -> Job {
-    Job { device: "dev".into(), token: token.to_owned(), machine: "machine-1".into(), pane: "pane-1".into(), kind, locale }
+    Job { device: if token == TOKEN_A { "a" } else { "b" }.into(), token: token.to_owned(), machine: "machine-1".into(), pane: "pane-1".into(), kind, locale, ..Job::default() }
 }
 
 #[test]

@@ -45,7 +45,7 @@ interface Entry {
 }
 
 const LOG_CAP = 200
-const DEVICE_EVENTS = /^(pty|fs|git|run)\./
+const DEVICE_EVENTS = /^(pty|fs|git|run|webpush)\./
 
 export interface PtyOut {
   machineId: string
@@ -65,6 +65,7 @@ export class RemoteHub {
   private readonly deps: HubDeps
   private readonly entries = new Map<string, Entry>()
   private readonly logs: LogEntry[] = []
+  private readonly pushKeys = new Map<string, string>()
 
   constructor(deps: HubDeps) {
     this.deps = deps
@@ -84,6 +85,10 @@ export class RemoteHub {
 
   view(machineId: string): MachineView {
     return this.entries.get(machineId)?.data.view ?? EMPTY_VIEW
+  }
+
+  pushKey(machineId: string): string | undefined {
+    return this.pushKeys.get(machineId)
   }
 
   session(machineId: string) {
@@ -141,6 +146,10 @@ export class RemoteHub {
       }),
       connection.events.on((event: JsonMap) => {
         data.handleEvent(event)
+        if (event.t === 'webpush.config') {
+          if (typeof event.key === 'string') this.pushKeys.set(id, event.key)
+          else this.pushKeys.delete(id)
+        }
         if (typeof event.t === 'string' && DEVICE_EVENTS.test(event.t)) this.device.emit({ machineId: id, event })
       }),
       connection.pty.on((chunk: PtyChunk) => this.pty.emit({ machineId: id, stream: chunk.stream, bytes: chunk.bytes })),
@@ -191,6 +200,7 @@ export class RemoteHub {
   async forget(machineId: string): Promise<void> {
     const entry = this.entries.get(machineId)
     this.entries.delete(machineId)
+    this.pushKeys.delete(machineId)
     if (entry) {
       for (const off of entry.offs) off()
       entry.data.onChange = () => {}

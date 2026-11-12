@@ -67,11 +67,13 @@ pub struct Config {
     pub relay: RelayConfig,
     #[serde(default)]
     pub firebase: FirebaseConfig,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub webpush_subject: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { machine_id: String::new(), enabled: false, port: DEFAULT_PORT, keep_awake: true, relay: RelayConfig::default(), firebase: FirebaseConfig::default() }
+        Config { machine_id: String::new(), enabled: false, port: DEFAULT_PORT, keep_awake: true, relay: RelayConfig::default(), firebase: FirebaseConfig::default(), webpush_subject: String::new() }
     }
 }
 

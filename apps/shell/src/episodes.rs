@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use core_serve::alerts::Emit;
 use serde_json::{json, Map, Value};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::state::lock;
 
@@ -174,6 +174,11 @@ pub fn start(app: &AppHandle) {
     let episodes_app = app.clone();
     spawn("episodes", move || {
         for msg in rx {
+            if msg.get("type").and_then(Value::as_str) == Some("telegram") {
+                if let Some(r) = episodes_app.try_state::<crate::remote::Remote>() {
+                    r.note_episode(&msg);
+                }
+            }
             for (channel, args) in calls_for(&msg) {
                 if channel == PHONE_CHANNEL {
                     let _ = phone_tx.send(args);

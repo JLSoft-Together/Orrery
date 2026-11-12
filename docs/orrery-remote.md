@@ -12,7 +12,7 @@ Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bả
 | Relay Cloudflare (`https://orrery-relay.jinvu.workers.dev`) | Có, đã deploy; bản có "đóng đúng 1 điện thoại" chưa deploy |
 | App Android | Có, build APK được; chạy được trên 1 máy thật (Galaxy A21s) |
 | iPhone / iPad | Web app (PWA) tải từ relay, đang làm ở v98. Không có app iOS native, không cần tài khoản Apple Developer |
-| Push thông báo native (APNs / FCM) | Phía điện thoại có (switch trong danh sách máy, Firebase do người dùng tự thiết lập trên máy tính, options gửi qua `push.config`); chạm thông báo mở thẳng pane. iPhone dùng Web Push riêng của web app (v98). Chưa kiểm trên máy thật. Dùng thêm Telegram / ntfy |
+| Push thông báo native (APNs / FCM) | Phía điện thoại có (switch trong danh sách máy, Firebase do người dùng tự thiết lập trên máy tính, options gửi qua `push.config`); chạm thông báo mở thẳng pane. iPhone dùng Web Push riêng của web app (v98, §13, mã hoá đầu cuối, có nội dung). Chưa kiểm trên iPhone thật. Dùng thêm Telegram / ntfy |
 | Quét QR bằng camera thật, mDNS thật, hiệu năng terminal trên máy thật | Chưa kiểm xong |
 
 ## 2. Bật và ghép điện thoại
@@ -167,6 +167,16 @@ Settings → Điều khiển từ xa có hai khối, không cần đọc docs ha
 4. "Cài thông báo đẩy". Xong: project id, số điện thoại đã đăng ký, "Gửi thử" (chọn điện thoại khi có nhiều máy), "Gỡ".
 
 Nội dung hai file chỉ nằm trong bộ nhớ của trang đến lúc gửi cho app, rồi app cất khoá trong Keychain; không lưu vào localStorage hay log.
+
+**Thông báo trên iPhone / iPad (web app, v98)** — không cần Firebase. Mỗi máy tính tự tạo một khoá VAPID cất trong Keychain / Credential Manager và gửi Web Push thẳng tới Apple (hoặc Edge / Chrome / Firefox nếu mở web app trên máy khác), không qua relay:
+
+1. iPhone / iPad: mở web app từ relay, Chia sẻ → Thêm vào Màn hình chính, rồi mở từ biểu tượng đó (Safari chỉ cho bật thông báo khi chạy từ Màn hình chính).
+2. Cài đặt → Thông báo → dòng "Thông báo đẩy" → "Bật" → cho phép. Mỗi máy tính đang nối được đăng ký riêng ("Đang bật · 2 máy tính").
+3. Chuông trên thẻ từng máy ở Home tắt / bật thông báo từ máy đó; 3 nhóm (chờ / xong / lỗi) và "Kèm nội dung" áp cho mọi máy.
+
+Thông báo có nội dung (ngoại lệ thứ 7 trong `CLAUDE.md`): tiêu đề `agent · session · dự án`, thân là câu hỏi / quyền đang chờ, "Xong sau 12m" hoặc lỗi; secret bị che, cắt 120 ký tự, hiện cả trên màn khoá. Tắt "Kèm nội dung" thì về chữ cố định. Nội dung Web Push được mã hoá đầu cuối (RFC 8291): Apple / Microsoft / Google chỉ thấy gói mã hoá. Thông báo Android (FCM) vẫn là chữ cố định cho tới khi có mã hoá bằng khoá thiết bị. Không push khi app đang mở trên điện thoại; chạm thông báo mở thẳng pane.
+
+Trên máy tính: Settings → Điều khiển từ xa → khối thiết bị → nút **Thông báo điện thoại** (chuông, "Bật 2 / 3") mở danh sách điện thoại đã ghép; mỗi dòng có trạng thái (biểu tượng + chữ + màu: đang bật · Web Push / FCM · kèm nội dung, tắt trên máy tính này, chưa bật trên điện thoại) và công tắc bật / tắt push cho riêng điện thoại đó, không cần huỷ ghép. Chi tiết giao thức: `docs/remote-integration.md` §7.6.
 
 Đổi tên hiển thị: desktop sửa tên điện thoại đã ghép ngay trong list (alias lưu trong `devices.json`, giữ tên gốc điện thoại gửi), điện thoại đổi tên máy tính cục bộ; hai bên không đồng bộ tên. Điện thoại đổi tên session bằng lệnh `terminal.alias` có sẵn, cùng alias với desktop.
 

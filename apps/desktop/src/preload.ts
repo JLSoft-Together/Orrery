@@ -328,6 +328,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   remotePushTest: (deviceId?: string): Promise<unknown> =>
     ipcRenderer.invoke('ccm:remote-push-test', typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? { deviceId } : {}),
   remotePushRemove: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-push-remove'),
+  remotePushDevice: (deviceId: string, on: boolean): Promise<unknown> =>
+    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-push-device', { deviceId, on: on === true }) : Promise.resolve({ ok: false, error: 'invalid' }),
   remoteGuard: (op: unknown): Promise<unknown> =>
     typeof op === 'object' && op !== null && JSON.stringify(op).length <= 4096 ? ipcRenderer.invoke('ccm:remote-guard', op) : Promise.resolve({ ok: false, error: 'invalid' }),
   onRemoteRelayProgress: (handler: (progress: unknown) => void): (() => void) => subscribe('ccm:remote-relay-progress', handler),

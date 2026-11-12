@@ -59,7 +59,7 @@ fn private_keys_never_land_in_a_json_file() {
     assert_eq!(runtime().block_on(pair(rig.addr(), &qr, &Phone::new("k"))).unwrap()["t"], "pair.ok");
     rig.remote.enable(false);
     let secrets: Vec<String> = lock(&rig.secrets.0).values().cloned().collect();
-    assert_eq!(secrets.len(), 3);
+    assert_eq!(secrets.len(), 4);
     for name in ["config.json", "devices.json"] {
         let text = std::fs::read_to_string(rig.dir.join(name)).unwrap();
         for s in &secrets {

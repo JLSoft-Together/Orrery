@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 34] = [
+const LOCAL: [&str; 35] = [
     "ccm:pty-endpoint",
     "ccm:pick-folder",
     "ccm:open-external",
@@ -46,6 +46,7 @@ const LOCAL: [&str; 34] = [
     "ccm:remote-push-setup",
     "ccm:remote-push-test",
     "ccm:remote-push-remove",
+    "ccm:remote-push-device",
     "ccm:remote-guard",
 ];
 

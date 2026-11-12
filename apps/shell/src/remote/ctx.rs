@@ -19,6 +19,8 @@ use super::limits::{Gate, MAX_SESSIONS};
 use super::pair::Pairing;
 use super::fcm::Fcm;
 use super::push::{config_event, PushState};
+use super::push_content::Facts;
+use super::webpush_send::WebPush;
 use super::status::Shape;
 use super::viewer_events::Hub;
 use super::workspace::Board;
@@ -29,6 +31,7 @@ pub const MAX_PAIR_TRIES: usize = 5;
 pub const MAX_RELAY_PAIR_TRIES: usize = 20;
 pub const RENEW_BEFORE: u64 = 7 * 86_400;
 const PAIR_WINDOW: Duration = Duration::from_secs(60);
+pub const PUSH_SETTLE: Duration = Duration::from_millis(1200);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Admit {
@@ -112,6 +115,9 @@ pub struct Ctx {
     pub push_wake: Notify,
     pub push_cfg: watch::Sender<Value>,
     pub fcm: Fcm,
+    pub webpush: WebPush,
+    pub facts: Mutex<Facts>,
+    pub settle: Mutex<Duration>,
     pub keepalive: Mutex<(Duration, Duration)>,
 }
 
@@ -145,6 +151,9 @@ impl Ctx {
             push_wake: Notify::new(),
             push_cfg: watch::channel(push_event).0,
             fcm: Fcm::default(),
+            webpush: WebPush::default(),
+            facts: Mutex::new(Facts::default()),
+            settle: Mutex::new(PUSH_SETTLE),
             keepalive: Mutex::new((super::liveness::PING_EVERY, super::liveness::DEAD_AFTER)),
         }
     }

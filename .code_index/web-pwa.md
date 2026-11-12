@@ -22,3 +22,9 @@
 
 ## WP-60 (v98)
 - `lib/monitorModel.ts` `formatElapsed(ms, t)` nhận hàm dịch; khoá `duration.{lessThanMinute,minutes,hours,days}` trong `i18n/{vi,en}.ts` (vi `p` `g` `n`, en `m` `h` `d`); gọi từ `SessionCard.vue`, `SessionRow.vue`
+
+## WP-56a (Web Push)
+- `public/push-sw.js`: SW push riêng mỗi máy (`/app/push-sw.js`, scope `/app/push/<machineId>/`, không precache — `vite/serviceWorker.ts` SKIP): `push` → `showNotification(title, {body, tag, data:{url}})`, bỏ khi có cửa sổ focus + visible (WebKit hiện rồi đóng); `notificationclick` → `postMessage {type:'orrery-open', url}` + focus, hoặc `openWindow`. Vì sao riêng: 1 subscription = 1 `applicationServerKey`, mỗi máy có khoá VAPID riêng.
+- `src/push/webPush.ts`: `pushSupport` (iOS cần standalone), `validKey`, `muteFor` (chuông tắt = 3 nhóm), `registerFields`, `ensureSubscription` / `dropSubscription` (`PushBrowser` để test; `find` kiểm đúng scope, không đụng SW chính).
+- `src/stores/push.ts`: `enable` (xin quyền chỉ ở đây, từ nút) / `disable` (`push.unregister`), `sync(machine)` khi nhận `webpush.config` (`hub.onDevice`), khi bell / nhóm / content đổi (`prefs.events`), quên máy → drop; `openFromWorker` điều hướng deep link. `remote/hub.ts` giữ `pushKey(machine)` (DEVICE_EVENTS có `webpush.`). `notifyPrefs.ts` thêm `push` (opt-in), `content` mặc định `true`.
+- UI: `SettingsView` dòng `push-row` (`data-state` unsupported|install|denied|off|on, icon + chữ + màu). Test `src/push/push.test.ts` (helpers, store, SW chạy trong `new Function` với `self` giả). E2E `e2e/lib/push-steps.mjs` (2 bước / browser, peer gửi `webpush.config` + in `push.register`; Chromium: PushManager giả qua init script, CDP `ServiceWorker.deliverPushMessage`; ảnh → `docs/qa/v98/WP-56a`).

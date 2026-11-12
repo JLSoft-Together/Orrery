@@ -298,6 +298,9 @@ impl Phone {
         if !self.sec.json(&push).await {
             return false;
         }
+        if v.get("platform").and_then(Value::as_str) == Some("web") && !self.sec.json(&self.ctx.webpush_config_event()).await {
+            return false;
+        }
         if self.feed.is_some() {
             return self.resync_event().await;
         }

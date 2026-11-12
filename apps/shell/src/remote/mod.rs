@@ -28,6 +28,8 @@ mod phone_pty;
 mod push;
 mod push_setup;
 mod push_watch;
+mod push_content;
+mod push_web;
 mod phone_ws;
 pub mod pty_bridge;
 mod rebind;
@@ -40,6 +42,8 @@ mod text;
 mod viewer;
 mod viewer_events;
 mod viewer_map;
+mod webpush;
+mod webpush_send;
 mod workspace;
 
 #[cfg(test)]
@@ -76,6 +80,14 @@ mod push_watch_tests;
 mod relay_setup_tests;
 #[cfg(test)]
 mod guard_tests;
+#[cfg(test)]
+mod webpush_tests;
+#[cfg(test)]
+mod push_web_tests;
+#[cfg(test)]
+mod push_content_tests;
+#[cfg(test)]
+mod webpush_live_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -100,7 +112,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 18] = [
+pub const CHANNELS: [&str; 19] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -118,6 +130,7 @@ pub const CHANNELS: [&str; 18] = [
     "ccm:remote-push-setup",
     "ccm:remote-push-test",
     "ccm:remote-push-remove",
+    "ccm:remote-push-device",
     "ccm:remote-guard",
 ];
 pub const RELAY_PROGRESS: &str = "ccm:remote-relay-progress";
@@ -172,6 +185,7 @@ impl Remote {
         let name = self.opts.name.clone().unwrap_or_else(config::machine_name);
         let c = Arc::new(Ctx::new(self.host.clone(), self.dir.clone(), keys, name));
         c.fcm.set_account(self.saved_account());
+        c.webpush.set_vapid(webpush::Vapid::load_or_create(self.secrets.as_ref()));
         *slot = Some(c.clone());
         Ok(c)
     }
@@ -430,6 +444,7 @@ impl Remote {
             "ccm:remote-push-setup" => Ok(self.push_setup(arg)),
             "ccm:remote-push-test" => Ok(self.push_test(arg)),
             "ccm:remote-push-remove" => Ok(self.push_remove()),
+            "ccm:remote-push-device" => Ok(self.push_device(arg)),
             "ccm:remote-guard" => Ok(self.guard_call(arg)),
             _ => Err("unknown channel".into()),
         }

@@ -32,3 +32,12 @@
 
 ### Báo cáo
 `.planning/wp/v98/WP-56a-report.md`: thiết kế (nội dung, VAPID, mã hoá, đăng ký, endpoint whitelist, mute), file + symbol, test chạy thật (số, lệnh), thử thật với Edge, việc dở, rủi ro (iOS: quyền chỉ khi standalone, Apple từ chối `sub`, push bị bỏ khi SW không `showNotification`), hợp đồng cho WP-56b (dựng nội dung dùng chung, FCM).
+
+### Nhật ký
+- [x] 2026-11-13 Rust Web Push: `remote/webpush.rs` (RFC 8291 aes128gcm + VAPID ES256 bằng `ring`, khoá keychain `orrery-vapid`), `webpush_send.rs` (whitelist endpoint, TTL / Urgency / Topic, 404/410 xoá, 429/5xx retry), `push_content.rs` (title/body, mask, cắt 120), `push_web.rs` (đăng ký `kind:"webpush"`, `webpush.config`, giao), `push.rs` / `push_watch.rs` / `devices.rs` / `status.rs` / `push_setup.rs` (`push_device`), móc episode ở `episodes.rs` — `cargo test --bin orrery-shell remote::` 193 pass / 0 fail (vector RFC 8291 §5 + Appendix A byte-for-byte, RFC 8292 JWT verify)
+- [x] 2026-11-13 Web app: `public/push-sw.js` (SW push riêng mỗi máy, scope `/app/push/<machineId>/`), `src/push/webPush.ts`, `stores/push.ts` (xin quyền chỉ khi bấm, đăng ký khi nhận `webpush.config`, chuông / nhóm → `mute`, Tắt → `push.unregister`), `SettingsView.vue` dòng "Thông báo đẩy", `remote/hub.ts` giữ key, `notifyPrefs.ts` (`content` mặc định bật, `push`), i18n vi/en — pwa Vitest 167 pass, typecheck sạch
+- [x] 2026-11-13 Desktop UI: `RemotePushBell.vue` (+ test 4) trong Settings → Điều khiển từ xa → thiết bị, IPC `ccm:remote-push-device` (preload + shim sinh lại), `RemoteDevice.push/pushOn/pushContent` — web Vitest 2151 pass, typecheck web/shared sạch
+- [x] 2026-11-13 E2E pwa: peer gửi `webpush.config` + in `push.register`; `e2e/lib/push-steps.mjs` (+2 bước / browser, 30 / browser) — Chromium 30/30, WebKit 30/30 (lượt đầu)
+- [x] 2026-11-13 Edge 157 thật (profile tạm, msedge + CDP): Rust `live_send` → WNS 2xx, SW nhận + giải mã sau ~1,5 s, `showNotification` đúng title/body/tag/deep link; app đang focus → bỏ banner. Log `docs/qa/v98/WP-56a/edge-live.log`. Sửa `ensureSubscription` chờ SW `activated` trước `subscribe` (lỗi chỉ lộ khi đăng ký thật)
+- [x] 2026-11-13 Docs (`CLAUDE.md` ngoại lệ thứ 7, `remote-integration.md` §7.6, `orrery-remote.md` §13), `.code_index`, ảnh `docs/qa/v98/WP-56a/`, báo cáo `WP-56a-report.md`; full shell 387 pass, E2E 60/60; tiến trình nền đã tắt
+- [x] 2026-11-13 Vòng 2: aud bỏ :443, mask sau khi bỏ ký tự ẩn, kiểm lại thiết bị trước mỗi lần gửi, Topic kèm auth — remote:: 197 pass, pwa 167 pass

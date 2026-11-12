@@ -235,6 +235,9 @@ export interface RemoteDevice {
   lastSeen: number
   via?: 'lan' | 'relay'
   state: RemoteDeviceState
+  push?: 'web' | 'fcm' | 'none'
+  pushOn?: boolean
+  pushContent?: boolean
 }
 
 export interface RemoteStatus {

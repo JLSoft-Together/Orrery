@@ -150,3 +150,6 @@ Shape-checked in collector `server.ts` (unknown / malformed dropped, `maxPayload
 - v97 WP-20: `packages/shared/src/remote.ts` `PushStatus` / `PushSetupResult` / `PushTestResult` / `PushSetupError` / `PushTestError` (IPC `ccm:remote-push-*`); `push.config` do `apps/shell/src/remote/push.rs` phát.
 
 - v98 WP-59: `remote.ts` `RemoteGuardState` / `RemoteGuardBlock` / `RemoteGuardLogLine` / `RemoteGuardOp` / `RemoteGuardReply` / `RemoteGuardError`, `RemoteStatus.guardRev?`; IPC `ccm:remote-guard` (shell `remote/guard_ops.rs`). Control relay mới: `docs/remote-integration.md` §1 + §5.1.
+
+## v98 WP-56a
+- `RemoteDevice` thêm `push?: 'web'|'fcm'|'none'`, `pushOn?`, `pushContent?` (`packages/shared/src/remote.ts`). Phiên Noise: event `webpush.config {key?}` (desktop → web app), `push.register {kind:"webpush", endpoint, p256dh, auth, locale, mute, content}` (docs/remote-integration.md §7.6).

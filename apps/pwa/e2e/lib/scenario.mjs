@@ -1,13 +1,14 @@
 import { join } from 'node:path'
 import { idbCounts, makeCtx, PHONE, wait } from './ctx.mjs'
 import { lockStep } from './lock-step.mjs'
+import { pushSteps } from './push-steps.mjs'
 import { startPeer } from './procs.mjs'
 import { screenshotSteps } from './shots.mjs'
 import { uiSteps } from './ui-steps.mjs'
 import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
 
-export const STEPS_PER_BROWSER = 28
+export const STEPS_PER_BROWSER = 30
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -93,6 +94,7 @@ export async function runScenario({ browserName, launch, env, record }) {
     })
 
     await uiSteps(c, page, peer)
+    await pushSteps(c, page, context, peer)
 
     await step('route policy select: LAN-only without a LAN address goes offline, automatic reconnects', async () => {
       await byId(page, `machine-${id}`).locator('[data-testid="route-select"]').selectOption('lan')

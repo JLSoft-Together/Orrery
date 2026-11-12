@@ -9,7 +9,7 @@ use tokio::sync::watch;
 use super::config::FirebaseConfig;
 use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
-use super::devices::clean_mute;
+use super::devices::{clean_mute, Device, WebSub};
 use super::fcm::Outcome;
 use super::pane_link::valid_pane_key;
 use crate::state::{lock, take_slot};
@@ -63,7 +63,7 @@ pub fn title_body(kind: &str, locale: &str) -> (&'static str, &'static str) {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Job {
     pub device: String,
     pub token: String,
@@ -71,6 +71,10 @@ pub struct Job {
     pub pane: String,
     pub kind: &'static str,
     pub locale: &'static str,
+    pub web: Option<WebSub>,
+    pub content: bool,
+    pub terminal: String,
+    pub worked: Option<u64>,
 }
 
 pub fn message(job: &Job) -> Value {
@@ -137,26 +141,42 @@ impl Ctx {
         self.fcm.has_account() && lock(&self.config).firebase.is_set()
     }
 
-    pub fn push_attention(&self, pane: &str, kind: &str, now: Instant) -> usize {
-        if !self.running.load(Ordering::SeqCst) || !valid_pane_key(pane) || !self.push_ready() {
-            return 0;
-        }
+    pub fn push_targets(&self, keep: impl Fn(&Device) -> bool) -> Vec<Job> {
+        let (fcm, web) = (self.push_ready(), self.web_ready());
         let machine = self.machine_id();
-        let kind = kind_of(kind);
-        let targets: Vec<(String, String, String)> = lock(&self.devices)
+        lock(&self.devices)
             .list()
             .iter()
-            .filter(|d| !d.push_token.is_empty() && d.wants(kind))
-            .map(|d| (d.device_id.clone(), d.push_token.clone(), d.push_locale.clone()))
-            .collect();
+            .filter(|d| !d.push_off && keep(d))
+            .filter_map(|d| {
+                let sub = d.web_push.clone().filter(|_| web);
+                if sub.is_none() && (d.push_token.is_empty() || !fcm) {
+                    return None;
+                }
+                Some(Job { device: d.device_id.clone(), token: d.push_token.clone(), machine: machine.clone(), locale: locale_of(Some(&d.push_locale)), web: sub, content: d.push_content, ..Job::default() })
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub fn push_attention(&self, pane: &str, kind: &str, now: Instant) -> usize {
+        self.push_pane(pane, kind, "", None, now)
+    }
+
+    pub fn push_pane(&self, pane: &str, kind: &str, terminal: &str, worked: Option<u64>, now: Instant) -> usize {
+        if !self.running.load(Ordering::SeqCst) || !valid_pane_key(pane) {
+            return 0;
+        }
+        let kind = kind_of(kind);
+        let targets = self.push_targets(|d| d.wants(kind));
         let mut queued = 0;
         {
             let mut st = lock(&self.push);
-            for (device, token, locale) in targets {
-                if self.is_live(&device) || !st.admit(&device, pane, now) {
+            for job in targets {
+                if self.is_live(&job.device) || !st.admit(&job.device, pane, now) {
                     continue;
                 }
-                st.push(Job { device, token, machine: machine.clone(), pane: pane.to_owned(), kind, locale: locale_of(Some(&locale)) });
+                st.push(Job { pane: pane.to_owned(), kind, terminal: terminal.to_owned(), worked, ..job });
                 queued += 1;
             }
         }
@@ -167,21 +187,15 @@ impl Ctx {
     }
 
     pub fn push_security(&self, except: Option<&str>) -> usize {
-        if !self.running.load(Ordering::SeqCst) || !self.push_ready() {
+        if !self.running.load(Ordering::SeqCst) {
             return 0;
         }
-        let machine = self.machine_id();
-        let targets: Vec<(String, String, String)> = lock(&self.devices)
-            .list()
-            .iter()
-            .filter(|d| !d.push_token.is_empty() && Some(d.device_id.as_str()) != except)
-            .map(|d| (d.device_id.clone(), d.push_token.clone(), d.push_locale.clone()))
-            .collect();
+        let targets = self.push_targets(|d| Some(d.device_id.as_str()) != except);
         let queued = targets.len();
         {
             let mut st = lock(&self.push);
-            for (device, token, locale) in targets {
-                st.push(Job { device, token, machine: machine.clone(), pane: String::new(), kind: "security", locale: locale_of(Some(&locale)) });
+            for job in targets {
+                st.push(Job { kind: "security", content: false, ..job });
             }
         }
         if queued > 0 {
@@ -194,12 +208,29 @@ impl Ctx {
         lock(&self.push).drain()
     }
 
+    pub fn still_wanted(&self, job: &Job) -> bool {
+        lock(&self.devices).find(&job.device).is_some_and(|d| {
+            !d.push_off
+                && match &job.web {
+                    Some(sub) => d.web_push.as_ref() == Some(sub),
+                    None => !job.token.is_empty() && d.push_token == job.token,
+                }
+        })
+    }
+
     pub fn deliver(&self, job: &Job) -> Outcome {
+        let job = &self.settled(job);
+        if !self.still_wanted(job) {
+            return Outcome::Fail("no_device");
+        }
+        if let Some(sub) = &job.web {
+            return self.deliver_web(job, sub);
+        }
         let project = lock(&self.config).firebase.project_id.clone();
         if project.is_empty() {
             return Outcome::Fail("not_configured");
         }
-        let outcome = self.fcm.send(&project, &message(job));
+        let outcome = self.fcm.send_while(&project, &message(job), &|| self.still_wanted(job));
         if outcome == Outcome::Dead {
             lock(&self.devices).clear_push_token(&job.token);
             self.changed();
@@ -231,6 +262,13 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
             _ = ctx.push_wake.notified() => {}
             _ = stop.changed() => break,
         }
+        let settle = *lock(&ctx.settle);
+        if !settle.is_zero() {
+            tokio::select! {
+                _ = tokio::time::sleep(settle) => {}
+                _ = stop.changed() => break,
+            }
+        }
         for job in ctx.take_push_jobs() {
             if (job.kind != "security" && ctx.is_live(&job.device)) || *stop.borrow() {
                 continue;
@@ -243,19 +281,34 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
 
 impl Phone {
     pub(super) async fn push_register(&mut self, id: &str, v: &Value) -> bool {
+        if v.get("kind").and_then(Value::as_str) == Some("webpush") {
+            return self.push_register_web(id, v).await;
+        }
         let token = v.get("token").and_then(Value::as_str).unwrap_or("");
         if !valid_token(token) {
             return self.sec.json(&error(Value::from(id), "invalid")).await;
         }
         let locale = locale_of(v.get("locale").and_then(Value::as_str));
         let mute = clean_mute(v.get("mute").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str));
-        let stored = lock(&self.ctx.devices).set_push_mute(&self.device, token, locale, mute);
+        let content = v.get("content").and_then(Value::as_bool).unwrap_or(true);
+        let stored = {
+            let mut devices = lock(&self.ctx.devices);
+            let ok = devices.set_push_mute(&self.device, token, locale, mute);
+            if ok {
+                devices.set_push_content(&self.device, content);
+            }
+            ok
+        };
+        if stored {
+            self.ctx.changed();
+        }
         let reply = if stored { json!({ "re": id, "ok": true }) } else { error(Value::from(id), "denied") };
         self.sec.json(&reply).await
     }
 
     pub(super) async fn push_unregister(&mut self, id: &str) -> bool {
         lock(&self.ctx.devices).clear_push(&self.device);
+        self.ctx.changed();
         self.sec.json(&json!({ "re": id, "ok": true })).await
     }
 }

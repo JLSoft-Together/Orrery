@@ -322,3 +322,6 @@ Invariants:
 
 - v98 WP-59: Settings → Điều khiển từ xa 3 mục mới (gate `hasRemoteGuard`): `remote/RemoteGuardBlocked.vue` (danh sách IP bị chặn: chip nguồn icon + chữ, lý do, số lỗi, lúc chặn, hết hạn / vĩnh viễn, bậc; Gỡ, Gỡ hết hỏi lại; form chặn tay IP / CIDR + hạn `GUARD_TTLS`, lỗi tại chỗ), `RemoteGuardTrust.vue` (gửi cả danh sách), `RemoteAccessLog.vue` (200 dòng, kết quả icon + chữ); state `composables/useRemoteGuard.ts` (tải lại khi `status.guardRev` đổi) ← `lib/remoteGuard.ts` (`remoteGuard`, `looksLikeRule`, `splitRules`) ← `desktop.remoteGuard`; i18n `i18n/remote-v98.ts` `remoteV98.guard.*`; search `remoteBlocked` / `remoteTrusted` / `remoteAccess`; test `RemoteGuard.test.ts`.
 - WP-59 vòng 2: `RemoteDeviceRow.vue` nhãn platform `web` (`remoteV97.devices.platform.web`), shared `RemoteDevice.platform` thêm `'web'`.
+
+## v98 WP-56a
+- `components/settings/remote/RemotePushBell.vue` (+ test): nút chuông "Thông báo điện thoại · Bật n / N" trong `#after` của khối thiết bị `SettingsRemote.vue`, mở danh sách điện thoại (trạng thái icon + chữ + màu: on / off / none, kênh Web Push / FCM, kèm nội dung), công tắc `role=switch` → `stores/remote.ts setDevicePush` → `lib/remote.ts remotePushDevice` → `ccm:remote-push-device`; Esc đóng + trả focus. i18n `remoteV98.push.*` (`i18n/remote-v98.ts`).

@@ -32,6 +32,9 @@ pub fn device_json(d: &Device, via: Option<&str>) -> Value {
         "pairedAt": d.paired_at,
         "lastSeen": d.last_seen,
         "state": if via.is_some() { "connected" } else { "idle" },
+        "push": d.push_channel(),
+        "pushOn": !d.push_off,
+        "pushContent": d.push_content,
     });
     if let Some(via) = via {
         v["via"] = Value::from(via);

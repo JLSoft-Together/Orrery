@@ -5,10 +5,11 @@ export interface NotifyPrefs {
   done: boolean
   error: boolean
   content: boolean
+  push: boolean
   bells: Record<string, boolean>
 }
 
-export const DEFAULT_NOTIFY: NotifyPrefs = { waiting: true, done: true, error: false, content: false, bells: {} }
+export const DEFAULT_NOTIFY: NotifyPrefs = { waiting: true, done: true, error: false, content: true, push: false, bells: {} }
 
 const KEY = 'notifyPrefs'
 
@@ -23,6 +24,7 @@ export function normalizeNotify(raw: unknown): NotifyPrefs {
     done: typeof o.done === 'boolean' ? o.done : DEFAULT_NOTIFY.done,
     error: typeof o.error === 'boolean' ? o.error : DEFAULT_NOTIFY.error,
     content: typeof o.content === 'boolean' ? o.content : DEFAULT_NOTIFY.content,
+    push: typeof o.push === 'boolean' ? o.push : DEFAULT_NOTIFY.push,
     bells,
   }
 }

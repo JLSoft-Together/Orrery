@@ -23,6 +23,10 @@ export const remotePairCancel = async (): Promise<boolean> => (await desktop?.re
 export const remoteRevoke = async (deviceId: string): Promise<boolean> => (await desktop?.remoteRevoke?.(deviceId).catch(() => false)) ?? false
 export const remoteDeviceRename = async (deviceId: string, name: string): Promise<boolean> => (await desktop?.remoteDeviceRename?.(deviceId, name).catch(() => false)) ?? false
 export const remoteRevokeAll = async (): Promise<boolean> => (await desktop?.remoteRevokeAll?.().catch(() => false)) ?? false
+export const remotePushDevice = async (deviceId: string, on: boolean): Promise<boolean> => {
+  const r = (await desktop?.remotePushDevice?.(deviceId, on).catch(() => null)) as { ok?: unknown } | null | undefined
+  return r?.ok === true
+}
 export const remotePublish = async (summary: RemoteWorkspaceSnapshot): Promise<boolean> => (await desktop?.remotePublish?.(summary).catch(() => false)) ?? false
 export const onRemoteChanged = (handler: (status: RemoteStatus) => void): (() => void) => desktop?.onRemoteChanged?.(handler) ?? (() => undefined)
 

@@ -15,6 +15,7 @@ import RemoteGuardBlocked from './remote/RemoteGuardBlocked.vue'
 import RemoteGuardTrust from './remote/RemoteGuardTrust.vue'
 import RemoteLogList from './remote/RemoteLogList.vue'
 import RemotePairPanel from './remote/RemotePairPanel.vue'
+import RemotePushBell from './remote/RemotePushBell.vue'
 import RemotePushSetup from './remote/RemotePushSetup.vue'
 import RemoteRelaySetup from './remote/RemoteRelaySetup.vue'
 import SettingEmbed from './SettingEmbed.vue'
@@ -130,6 +131,7 @@ onMounted(() => {
           <span>{{ t('remoteV97.devices.empty') }}</span>
         </div>
         <template #after>
+          <RemotePushBell v-if="devices.length" :devices="devices" @toggle="(id, on) => void remote.setDevicePush(id, on)" />
           <Transition name="ccm-fade" mode="out-in">
             <div v-if="devices.length && !askAll" key="all" class="mt-2 flex justify-end px-3">
               <button type="button" class="ccm-btn ccm-btn-danger" data-remote-revoke-all @click="askAll = true">{{ t('remoteV97.devices.revokeAll') }}</button>

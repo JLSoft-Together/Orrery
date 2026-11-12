@@ -131,7 +131,12 @@ impl Fcm {
         }
     }
 
+    #[cfg(test)]
     pub fn send(&self, project_id: &str, message: &Value) -> Outcome {
+        self.send_while(project_id, message, &|| true)
+    }
+
+    pub fn send_while(&self, project_id: &str, message: &Value, wanted: &dyn Fn() -> bool) -> Outcome {
         let url = format!("https://fcm.googleapis.com/v1/projects/{project_id}/messages:send");
         let body = message.to_string();
         let mut refreshed = false;
@@ -139,6 +144,9 @@ impl Fcm {
         for attempt in 0..ATTEMPTS {
             if attempt > 0 {
                 std::thread::sleep(*lock(&self.gap) * (1 << (attempt - 1)));
+            }
+            if !wanted() {
+                return Outcome::Fail("no_device");
             }
             let token = match self.access_token(false) {
                 Ok(t) => t,

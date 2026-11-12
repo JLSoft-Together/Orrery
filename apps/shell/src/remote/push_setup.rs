@@ -4,7 +4,7 @@ use super::config::{Config, FirebaseConfig};
 use super::fcm::Outcome;
 use super::fcm_files::{self, ServiceAccount, MAX_FILE};
 use super::keys::Read;
-use super::push::{locale_of, Job};
+use super::push::Job;
 use super::Remote;
 use crate::state::lock;
 
@@ -88,19 +88,11 @@ impl Remote {
 
     pub fn push_test(&self, arg: &Value) -> Value {
         let Ok(ctx) = self.ctx() else { return fail("keyring") };
-        if !ctx.push_ready() {
-            return fail("not_configured");
-        }
         let only = arg.get("deviceId").and_then(Value::as_str);
-        let machine = ctx.machine_id();
-        let jobs: Vec<Job> = lock(&ctx.devices)
-            .list()
-            .iter()
-            .filter(|d| !d.push_token.is_empty() && only.is_none_or(|id| id == d.device_id))
-            .map(|d| Job { device: d.device_id.clone(), token: d.push_token.clone(), machine: machine.clone(), pane: String::new(), kind: "test", locale: locale_of(Some(&d.push_locale)) })
-            .collect();
+        let jobs: Vec<Job> = ctx.push_targets(|d| only.is_none_or(|id| id == d.device_id)).into_iter().map(|j| Job { kind: "test", content: false, ..j }).collect();
         if jobs.is_empty() {
-            return fail("no_device");
+            let fcm_waiting = lock(&ctx.devices).list().iter().any(|d| !d.push_token.is_empty() && only.is_none_or(|id| id == d.device_id));
+            return fail(if !ctx.push_ready() && (fcm_waiting || !ctx.web_ready()) { "not_configured" } else { "no_device" });
         }
         let (mut sent, mut error) = (0, None);
         for job in &jobs {
@@ -114,6 +106,16 @@ impl Remote {
             (0, Some(e)) => fail(e),
             (n, _) => json!({ "ok": true, "sent": n }),
         }
+    }
+
+    pub fn push_device(&self, arg: &Value) -> Value {
+        let (Some(id), Some(on)) = (arg.get("deviceId").and_then(Value::as_str), arg.get("on").and_then(Value::as_bool)) else { return fail("invalid") };
+        let Ok(ctx) = self.ctx() else { return fail("keyring") };
+        if !lock(&ctx.devices).set_push_off(id, !on) {
+            return fail("no_device");
+        }
+        ctx.changed();
+        json!({ "ok": true, "on": on })
     }
 
     pub fn push_remove(&self) -> Value {

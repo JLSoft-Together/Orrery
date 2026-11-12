@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import type { Plugin } from 'vite'
 
-const SKIP = new Set(['sw.js', 'version.json'])
+const SKIP = new Set(['sw.js', 'push-sw.js', 'version.json'])
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

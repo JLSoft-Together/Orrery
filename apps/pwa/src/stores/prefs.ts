@@ -5,7 +5,7 @@ import type { Db } from '../storage/idb'
 import { clearLocalPrefs, DEFAULT_LOCAL_PREFS, loadLocalPrefs, saveLocalPrefs, type LanguagePref, type LocalPrefs, type MonitorMode, type ThemePref, type WorkspaceMode } from '../storage/localPrefs'
 import { bellOn, DEFAULT_NOTIFY, loadNotify, saveNotify, type NotifyPrefs } from '../storage/notifyPrefs'
 
-export type NotifyKey = 'waiting' | 'done' | 'error' | 'content'
+export type NotifyKey = 'waiting' | 'done' | 'error' | 'content' | 'push'
 
 export type PrefEvent = { kind: 'bell'; machineId: string; on: boolean } | { kind: 'notify'; key: NotifyKey; on: boolean }
 

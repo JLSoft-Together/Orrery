@@ -166,6 +166,7 @@ interface DesktopBridge {
   remotePairCancel?: () => Promise<boolean>
   remoteRevoke?: (deviceId: string) => Promise<boolean>
   remoteDeviceRename?: (deviceId: string, name: string) => Promise<boolean>
+  remotePushDevice?: (deviceId: string, on: boolean) => Promise<unknown>
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   remoteGuard?: (op: RemoteGuardOp) => Promise<RemoteGuardReply | null>

@@ -8,6 +8,7 @@ import { startRouter } from './router'
 import { useHubStore } from './stores/hub'
 import { useLockStore } from './stores/lock'
 import { usePrefsStore } from './stores/prefs'
+import { usePushStore } from './stores/push'
 import { useUpdateStore } from './stores/update'
 import { DEFAULT_CONFIG } from './remote/types'
 import { registerServiceWorker } from './update/serviceWorker'
@@ -75,6 +76,7 @@ async function boot(): Promise<void> {
     await prefs.attach(runtime.db)
     await lock.whenUnlocked()
     await hub.start(runtime)
+    usePushStore().start()
   } catch (error) {
     hub.bootError = error instanceof Error ? error.message : String(error)
   }

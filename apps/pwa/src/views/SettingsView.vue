@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Bell, Bug, Check, Clock, EyeOff, Fingerprint, Globe, Lock, Moon, Trash2, TriangleAlert, ChevronRight } from 'lucide-vue-next'
-import { onMounted } from 'vue'
+import { Bell, BellOff, BellRing, Bug, Check, Clock, EyeOff, Fingerprint, Globe, Lock, Moon, SquarePlus, Trash2, TriangleAlert, ChevronRight } from 'lucide-vue-next'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageBar from '../components/PageBar.vue'
 import SettingsMachines from '../components/SettingsMachines.vue'
@@ -12,6 +12,7 @@ import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
 import { useLockStore } from '../stores/lock'
 import { usePrefsStore, type NotifyKey } from '../stores/prefs'
+import { usePushStore } from '../stores/push'
 import { useUpdateStore } from '../stores/update'
 import type { LanguagePref, ThemePref } from '../storage/localPrefs'
 
@@ -20,6 +21,7 @@ const hub = useHubStore()
 const lock = useLockStore()
 const prefs = usePrefsStore()
 const update = useUpdateStore()
+const push = usePushStore()
 
 const timeoutKey: Record<number, string> = { 60000: 'm1', 900000: 'm15', 3600000: 'h1', 14400000: 'h4' }
 const notifyRows: Array<{ key: NotifyKey; icon: typeof Bell; label: string }> = [
@@ -28,7 +30,34 @@ const notifyRows: Array<{ key: NotifyKey; icon: typeof Bell; label: string }> = 
   { key: 'error', icon: TriangleAlert, label: 'settings.notifyError' },
 ]
 
-onMounted(() => void lock.checkSupport())
+onMounted(() => {
+  void lock.checkSupport()
+  push.refresh()
+})
+
+type PushRow = 'unsupported' | 'install' | 'denied' | 'off' | 'on'
+const pushRow = computed<PushRow>(() => {
+  if (push.support !== 'ok') return push.support
+  if (push.permission === 'denied') return 'denied'
+  return push.permission === 'granted' && prefs.notify.push ? 'on' : 'off'
+})
+const pushOnCount = computed(() => Object.values(push.states).filter((s) => s === 'on').length)
+const pushFailed = computed(() => Object.values(push.states).some((s) => s === 'error'))
+const pushView = computed(() => {
+  switch (pushRow.value) {
+    case 'on':
+      if (pushFailed.value) return { icon: TriangleAlert, tone: 'warn', text: t('settings.pushError') }
+      return { icon: BellRing, tone: 'ok', text: pushOnCount.value ? t('settings.pushOn', { n: pushOnCount.value }) : t('settings.pushOnWaiting') }
+    case 'denied':
+      return { icon: TriangleAlert, tone: 'warn', text: t('settings.pushDenied') }
+    case 'install':
+      return { icon: SquarePlus, tone: 'muted', text: t('settings.pushInstall') }
+    case 'unsupported':
+      return { icon: BellOff, tone: 'muted', text: t('settings.pushUnsupported') }
+    default:
+      return { icon: Bell, tone: '', text: t('settings.pushOff') }
+  }
+})
 
 async function toggleLock(on: boolean): Promise<void> {
   if (on) {
@@ -98,6 +127,15 @@ function setTheme(event: Event): void {
 
     <h2 class="label head">{{ t('settings.notifications') }}</h2>
     <div class="card group" data-testid="settings-notify">
+      <div class="row" data-testid="push-row" :data-state="pushRow">
+        <component :is="pushView.icon" :size="20" :stroke-width="2" class="ico" :class="pushView.tone" aria-hidden="true" />
+        <div class="text">
+          <span class="name">{{ t('settings.push') }}</span>
+          <span class="desc" :class="pushView.tone" role="status" data-testid="push-status">{{ pushView.text }}</span>
+        </div>
+        <button v-if="pushRow === 'off'" type="button" class="btn btn-primary" :disabled="push.busy" data-testid="push-enable" @click="push.enable()">{{ t('settings.pushEnable') }}</button>
+        <button v-else-if="pushRow === 'on'" type="button" class="btn" :disabled="push.busy" data-testid="push-disable" @click="push.disable()">{{ t('settings.pushDisable') }}</button>
+      </div>
       <div v-for="r in notifyRows" :key="r.key" class="row">
         <component :is="r.icon" :size="20" :stroke-width="2" class="ico" aria-hidden="true" />
         <span class="name grow">{{ t(r.label) }}</span>
@@ -263,6 +301,20 @@ function setTheme(event: Event): void {
   border-top: 1px solid var(--ccm-line);
   font-size: 0.75rem;
   color: var(--ccm-ink-faint);
+}
+
+.ico.ok,
+.desc.ok {
+  color: var(--ccm-done);
+}
+
+.ico.warn,
+.desc.warn {
+  color: var(--ccm-warning);
+}
+
+.ico.muted {
+  color: var(--ccm-ink-muted);
 }
 
 .fail {

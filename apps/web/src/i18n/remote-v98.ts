@@ -35,6 +35,16 @@ const why = {
 
 const en = {
   remoteV98: {
+    push: {
+      bell: 'Phone notifications',
+      count: '{on} of {n} on',
+      hint: 'Turn push off for one phone without unpairing it. The phone keeps its own switches too.',
+      empty: 'No paired phone yet.',
+      toggle: 'Push to {name}',
+      state: { on: 'Push on', off: 'Off on this computer', none: 'Not turned on in the phone' },
+      channel: { web: 'Web Push', fcm: 'FCM' },
+      content: { on: 'with content', off: 'fixed text' },
+    },
     guard: {
       blockedTitle: 'Blocked IPs',
       trustedTitle: 'Trusted IPs',
@@ -87,6 +97,16 @@ const en = {
 
 const vi = {
   remoteV98: {
+    push: {
+      bell: 'Thông báo điện thoại',
+      count: 'Bật {on} / {n}',
+      hint: 'Tắt push cho một điện thoại mà không cần huỷ ghép. Điện thoại vẫn có công tắc riêng.',
+      empty: 'Chưa ghép điện thoại nào.',
+      toggle: 'Push tới {name}',
+      state: { on: 'Đang bật push', off: 'Tắt trên máy tính này', none: 'Chưa bật trên điện thoại' },
+      channel: { web: 'Web Push', fcm: 'FCM' },
+      content: { on: 'kèm nội dung', off: 'chữ cố định' },
+    },
     guard: {
       blockedTitle: 'IP bị chặn',
       trustedTitle: 'IP tin cậy',

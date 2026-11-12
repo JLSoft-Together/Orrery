@@ -139,6 +139,14 @@ export const useHubStore = defineStore('hub', () => {
     })
   }
 
+  function onDevice(handler: (machineId: string, event: JsonMap) => void): () => void {
+    return need().hub.device.on((item) => handler(item.machineId, item.event))
+  }
+
+  function pushKey(id: string): string | undefined {
+    return runtime?.hub.pushKey(id)
+  }
+
   async function answerConfirm(id: string, cid: string, ok: boolean): Promise<void> {
     await need().hub.answerConfirm(id, cid, ok)
   }
@@ -161,5 +169,5 @@ export const useHubStore = defineStore('hub', () => {
     runtime?.hub.note(text)
   }
 
-  return { ready, bootError, machines, links, views, rtt, log, notices, viewOnly, ptyFor, command, events, answerConfirm, linkOf, viewOf, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
+  return { ready, bootError, machines, links, views, rtt, log, notices, viewOnly, ptyFor, command, events, onDevice, pushKey, answerConfirm, linkOf, viewOf, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
 })

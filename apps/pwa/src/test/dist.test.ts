@@ -73,7 +73,9 @@ describe('production build', () => {
     const sw = readFileSync(join(out, 'sw.js'), 'utf8')
     const list = JSON.parse(/const FILES = (\[.*\])/.exec(sw)?.[1] ?? '[]') as string[]
     expect(list).toContain('/app/')
-    for (const file of walk(out).filter((f) => f !== 'sw.js' && f !== 'index.html')) expect(list).toContain(`/app/${file}`)
+    for (const file of walk(out).filter((f) => f !== 'sw.js' && f !== 'push-sw.js' && f !== 'index.html')) expect(list).toContain(`/app/${file}`)
+    expect(list).not.toContain('/app/push-sw.js')
+    expect(readFileSync(join(out, 'push-sw.js'), 'utf8')).toContain("addEventListener('push'")
     expect(sw).toContain("addEventListener('push'")
     expect(sw).toContain("addEventListener('notificationclick'")
     expect(sw).not.toContain('__')

@@ -872,4 +872,70 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get lockSaveFailed => 'Không lưu được cài đặt.';
+
+  @override
+  String get homeTitle => 'Máy của tôi';
+
+  @override
+  String get homeConnected => 'Đang kết nối';
+
+  @override
+  String get homeDuplicates => 'Bản trùng tên';
+
+  @override
+  String idleCount(int count) {
+    return '$count rảnh';
+  }
+
+  @override
+  String pairedOn(String date) {
+    return 'Ghép $date';
+  }
+
+  @override
+  String cleanOld(int count) {
+    return 'Dọn $count bản cũ';
+  }
+
+  @override
+  String get cleanOldTitle => 'Dọn bản cũ?';
+
+  @override
+  String cleanOldBody(int count) {
+    return 'Điện thoại sẽ quên $count bản trùng tên với bản mới hơn. Bản mới giữ nguyên.';
+  }
+
+  @override
+  String get cleanOldDone => 'Đã dọn bản cũ.';
+
+  @override
+  String get pairNewMachine => 'Ghép máy mới';
+
+  @override
+  String get enterCodeManual => 'Nhập mã thủ công';
+
+  @override
+  String get pairTabScan => 'Quét QR';
+
+  @override
+  String get pairTabCode => 'Nhập mã';
+
+  @override
+  String get pairScanTitle => 'Đưa mã QR vào khung';
+
+  @override
+  String get pairE2eTitle => 'Kết nối mã hoá đầu cuối';
+
+  @override
+  String get pairE2eBody =>
+      'Điện thoại và máy dùng chung khoá Noise. Relay chỉ chuyển byte đã mã hoá.';
+
+  @override
+  String get pairCodeLabel => 'Mã ghép trên máy tính';
+
+  @override
+  String get pairCodeField => 'Mã ghép';
+
+  @override
+  String get pairCodeSubmit => 'Ghép';
 }

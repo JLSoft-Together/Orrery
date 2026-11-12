@@ -253,6 +253,7 @@ class Harness {
     required this.linkState,
     this.id = 'm1',
     this.machines,
+    this.extraLinks = const {},
   });
 
   final FakeMachineApi api;
@@ -260,6 +261,7 @@ class Harness {
   final LinkState linkState;
   final String id;
   final List<Machine>? machines;
+  final Map<String, LinkState> extraLinks;
   late ProviderContainer container;
 
   FakeViewNotifier get viewNotifier =>
@@ -272,6 +274,14 @@ class Harness {
     machineApiProvider(id).overrideWithValue(api),
     machineViewProvider(id).overrideWith(() => FakeViewNotifier(id, viewState)),
     linkProvider(id).overrideWith(() => FakeLinkNotifier(id, linkState)),
+    for (final other in machines ?? const <Machine>[])
+      if (other.id != id) ...[
+        machineViewProvider(other.id)
+            .overrideWith(() => FakeViewNotifier(other.id, viewState)),
+        linkProvider(other.id).overrideWith(
+          () => FakeLinkNotifier(other.id, extraLinks[other.id] ?? linkOffline),
+        ),
+      ],
     machinesProvider.overrideWith(
       () => FakeMachines(machines ?? [machine(id, 'Dev PC')]),
     ),

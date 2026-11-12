@@ -1681,6 +1681,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not save the setting.'**
   String get lockSaveFailed;
+
+  /// No description provided for @homeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My computers'**
+  String get homeTitle;
+
+  /// No description provided for @homeConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get homeConnected;
+
+  /// No description provided for @homeDuplicates.
+  ///
+  /// In en, this message translates to:
+  /// **'Same name'**
+  String get homeDuplicates;
+
+  /// No description provided for @idleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} idle'**
+  String idleCount(int count);
+
+  /// No description provided for @pairedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired {date}'**
+  String pairedOn(String date);
+
+  /// No description provided for @cleanOld.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Remove 1 old copy} other{Remove {count} old copies}}'**
+  String cleanOld(int count);
+
+  /// No description provided for @cleanOldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove old copies?'**
+  String get cleanOldTitle;
+
+  /// No description provided for @cleanOldBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone forgets {count} copies that share a name with a newer one. The newer one stays.'**
+  String cleanOldBody(int count);
+
+  /// No description provided for @cleanOldDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Old copies removed.'**
+  String get cleanOldDone;
+
+  /// No description provided for @pairNewMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair a new computer'**
+  String get pairNewMachine;
+
+  /// No description provided for @enterCodeManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter code manually'**
+  String get enterCodeManual;
+
+  /// No description provided for @pairTabScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR'**
+  String get pairTabScan;
+
+  /// No description provided for @pairTabCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter code'**
+  String get pairTabCode;
+
+  /// No description provided for @pairScanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at the QR code'**
+  String get pairScanTitle;
+
+  /// No description provided for @pairE2eTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End-to-end encrypted'**
+  String get pairE2eTitle;
+
+  /// No description provided for @pairE2eBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone and the computer share a Noise key. The relay only carries encrypted bytes.'**
+  String get pairE2eBody;
+
+  /// No description provided for @pairCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing code from the computer'**
+  String get pairCodeLabel;
+
+  /// No description provided for @pairCodeField.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing code'**
+  String get pairCodeField;
+
+  /// No description provided for @pairCodeSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get pairCodeSubmit;
 }
 
 class _AppLocalizationsDelegate

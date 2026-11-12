@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../ui/kit/kit.dart';
+import '../ui/theme/orrery_shape.dart';
 import '../ui/widgets/common.dart';
 import 'app_lock.dart';
 import 'device_auth.dart';
@@ -131,13 +133,31 @@ class LockScreen extends StatefulWidget {
 
 class _LockScreenState extends State<LockScreen> {
   bool _confirming = false;
+  bool _wasBusy = false;
+  int _shakes = 0;
 
   @override
   void initState() {
     super.initState();
+    widget.lock.addListener(_onLock);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.lock.loaded) widget.lock.unlock();
     });
+  }
+
+  void _onLock() {
+    final lock = widget.lock;
+    final ended = _wasBusy && !lock.busy;
+    _wasBusy = lock.busy;
+    if (ended && lock.lastOutcome == AuthOutcome.failed && mounted) {
+      setState(() => _shakes++);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.lock.removeListener(_onLock);
+    super.dispose();
   }
 
   Future<void> _askTurnOff() async {
@@ -170,79 +190,137 @@ class _LockScreenState extends State<LockScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.orrery;
     final lock = widget.lock;
     final missing = lock.lastOutcome == AuthOutcome.notAvailable;
+    final text = Theme.of(context).textTheme;
     return Scaffold(
       key: const ValueKey('lock-screen'),
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.lock_rounded, size: 64, color: scheme.primary),
-                  const SizedBox(height: 20),
-                  Text(
-                    l.lockTitle,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _confirming ? l.lockTurnOffWarn : _message(context),
-                    key: const ValueKey('lock-message'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 24),
-                  if (_confirming) ...[
-                    FilledButton(
-                      key: const ValueKey('lock-turn-off-confirm'),
-                      onPressed: _turnOff,
-                      child: Text(l.lockTurnOff),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      key: const ValueKey('lock-turn-off-cancel'),
-                      onPressed: () => setState(() => _confirming = false),
-                      child: Text(l.cancel),
-                    ),
-                  ] else ...[
-                    FilledButton.icon(
-                      key: const ValueKey('lock-unlock'),
-                      onPressed: lock.busy ? null : lock.unlock,
-                      icon: lock.busy
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.fingerprint_rounded),
-                      label: Text(l.lockUnlock),
-                    ),
-                    if (missing &&
-                        defaultTargetPlatform == TargetPlatform.android) ...[
-                      const SizedBox(height: 8),
-                      OutlinedButton(
-                        key: const ValueKey('lock-open-security'),
-                        onPressed: widget.privacy.openSecuritySettings,
-                        child: Text(l.lockOpenSecurity),
+        child: FadeIn(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ShakeBox(
+                        trigger: _shakes,
+                        child: const OrbitMark(size: 112),
                       ),
-                    ],
-                    if (missing) ...[
-                      const SizedBox(height: 8),
-                      TextButton(
-                        key: const ValueKey('lock-turn-off'),
-                        onPressed: _askTurnOff,
-                        child: Text(l.lockTurnOff),
+                      const SizedBox(height: 24),
+                      Text(
+                        l.lockTitle,
+                        textAlign: TextAlign.center,
+                        style: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _confirming ? l.lockTurnOffWarn : _message(context),
+                        key: const ValueKey('lock-message'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: c.inkMuted),
+                      ),
+                      const SizedBox(height: 32),
+                      if (_confirming) ...[
+                        OrreryButton(
+                          key: const ValueKey('lock-turn-off-confirm'),
+                          label: l.lockTurnOff,
+                          kind: ButtonKind.danger,
+                          onPressed: _turnOff,
+                        ),
+                        const SizedBox(height: 8),
+                        OrreryButton(
+                          key: const ValueKey('lock-turn-off-cancel'),
+                          label: l.cancel,
+                          kind: ButtonKind.text,
+                          onPressed: () => setState(() => _confirming = false),
+                        ),
+                      ] else ...[
+                        _FingerprintButton(
+                          busy: lock.busy,
+                          onTap: lock.busy ? null : lock.unlock,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(l.lockUnlock, style: text.titleSmall),
+                        if (missing &&
+                            defaultTargetPlatform ==
+                                TargetPlatform.android) ...[
+                          const SizedBox(height: 16),
+                          OrreryButton(
+                            key: const ValueKey('lock-open-security'),
+                            label: l.lockOpenSecurity,
+                            kind: ButtonKind.secondary,
+                            onPressed: widget.privacy.openSecuritySettings,
+                          ),
+                        ],
+                        if (missing) ...[
+                          const SizedBox(height: 8),
+                          OrreryButton(
+                            key: const ValueKey('lock-turn-off'),
+                            label: l.lockTurnOff,
+                            kind: ButtonKind.text,
+                            onPressed: _askTurnOff,
+                          ),
+                        ],
+                      ],
                     ],
-                  ],
-                ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FingerprintButton extends StatelessWidget {
+  const _FingerprintButton({required this.busy, required this.onTap});
+
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.orrery;
+    return Semantics(
+      button: true,
+      child: Material(
+        key: const ValueKey('lock-unlock'),
+        color: c.selection,
+        shape: CircleBorder(
+          side: BorderSide(color: c.accent.withValues(alpha: 0.55)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox.square(
+            dimension: 76,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: motion(context, 150),
+                child: busy
+                    ? SizedBox.square(
+                        key: const ValueKey('busy'),
+                        dimension: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: c.accent,
+                        ),
+                      )
+                    : Icon(
+                        Icons.fingerprint_rounded,
+                        key: const ValueKey('icon'),
+                        size: 40,
+                        color: c.accent,
+                      ),
               ),
             ),
           ),

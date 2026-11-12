@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import { V } from './arb_viewers.mjs'
 import { L } from './arb_lock.mjs'
+import { H } from './arb_home.mjs'
 
 const S = (en, vi, ph) => ({ en, vi, ph })
 const str = (...n) => Object.fromEntries(n.map((x) => [x, 'String']))
@@ -152,7 +153,7 @@ const T = {
   pairScanHint: S('Scan the QR code in Orrery Settings', 'Quét mã QR trong Settings của Orrery'),
 }
 
-Object.assign(T, V, L)
+Object.assign(T, V, L, H)
 
 for (const lang of ['en', 'vi']) {
   const out = { '@@locale': lang }

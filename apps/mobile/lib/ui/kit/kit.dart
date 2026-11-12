@@ -8,3 +8,4 @@ export 'pulse_dot.dart';
 export 'shake.dart';
 export 'states.dart';
 export 'status_chip.dart';
+export 'segmented.dart';

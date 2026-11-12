@@ -35,12 +35,16 @@ void main() {
         ),
       ),
     );
+    await tester.tap(find.byKey(const ValueKey('pair-tab-1')));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('pair-code')),
       ' orrery://pair?a=1&b=2 ',
     );
     await tester.tap(find.byKey(const ValueKey('pair-code-submit')));
     await tester.pump();
+    await tester.pumpAndSettle();
     expect(fake.codes, ['orrery://pair?a=1&b=2']);
+    expect(find.byKey(const ValueKey('pair-error')), findsOneWidget);
   });
 }

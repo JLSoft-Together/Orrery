@@ -452,5 +452,52 @@
   "lockMinutes15": "15 minutes",
   "lockHour1": "1 hour (default)",
   "lockHours4": "4 hours",
-  "lockSaveFailed": "Could not save the setting."
+  "lockSaveFailed": "Could not save the setting.",
+  "homeTitle": "My computers",
+  "homeConnected": "Connected",
+  "homeDuplicates": "Same name",
+  "idleCount": "{count} idle",
+  "@idleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pairedOn": "Paired {date}",
+  "@pairedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "cleanOld": "{count, plural, =1{Remove 1 old copy} other{Remove {count} old copies}}",
+  "@cleanOld": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cleanOldTitle": "Remove old copies?",
+  "cleanOldBody": "This phone forgets {count} copies that share a name with a newer one. The newer one stays.",
+  "@cleanOldBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cleanOldDone": "Old copies removed.",
+  "pairNewMachine": "Pair a new computer",
+  "enterCodeManual": "Enter code manually",
+  "pairTabScan": "Scan QR",
+  "pairTabCode": "Enter code",
+  "pairScanTitle": "Point the camera at the QR code",
+  "pairE2eTitle": "End-to-end encrypted",
+  "pairE2eBody": "This phone and the computer share a Noise key. The relay only carries encrypted bytes.",
+  "pairCodeLabel": "Pairing code from the computer",
+  "pairCodeField": "Pairing code",
+  "pairCodeSubmit": "Pair"
 }

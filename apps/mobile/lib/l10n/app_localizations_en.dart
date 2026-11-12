@@ -908,4 +908,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lockSaveFailed => 'Could not save the setting.';
+
+  @override
+  String get homeTitle => 'My computers';
+
+  @override
+  String get homeConnected => 'Connected';
+
+  @override
+  String get homeDuplicates => 'Same name';
+
+  @override
+  String idleCount(int count) {
+    return '$count idle';
+  }
+
+  @override
+  String pairedOn(String date) {
+    return 'Paired $date';
+  }
+
+  @override
+  String cleanOld(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Remove $count old copies',
+      one: 'Remove 1 old copy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cleanOldTitle => 'Remove old copies?';
+
+  @override
+  String cleanOldBody(int count) {
+    return 'This phone forgets $count copies that share a name with a newer one. The newer one stays.';
+  }
+
+  @override
+  String get cleanOldDone => 'Old copies removed.';
+
+  @override
+  String get pairNewMachine => 'Pair a new computer';
+
+  @override
+  String get enterCodeManual => 'Enter code manually';
+
+  @override
+  String get pairTabScan => 'Scan QR';
+
+  @override
+  String get pairTabCode => 'Enter code';
+
+  @override
+  String get pairScanTitle => 'Point the camera at the QR code';
+
+  @override
+  String get pairE2eTitle => 'End-to-end encrypted';
+
+  @override
+  String get pairE2eBody =>
+      'This phone and the computer share a Noise key. The relay only carries encrypted bytes.';
+
+  @override
+  String get pairCodeLabel => 'Pairing code from the computer';
+
+  @override
+  String get pairCodeField => 'Pairing code';
+
+  @override
+  String get pairCodeSubmit => 'Pair';
 }

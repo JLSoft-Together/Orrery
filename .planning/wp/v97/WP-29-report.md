@@ -30,3 +30,15 @@ Không đụng ui/terminal, pty_stream, remote/*. Home / Ghép / Khoá, ARB, mac
 
 ## Commit message đề xuất
 feat(mobile): Orrery light and Galaxy theme tokens, spring page transition, and a shared UI kit (chip, card, button, sheet, dialog, banner, empty state, animated list, shake) with reduce-motion support
+
+## Đợt 2 — Home A + Ghép máy
+- Đổi: apps/mobile/lib/app/home_page.dart (viết lại: tiêu đề, nhóm "Đang kết nối" / "Bản trùng tên", thẻ máy dùng OrreryCard + LinkPill + chip đang chạy / cần bạn / rảnh, AnimatedItems thêm / xoá, AnimatedRename, empty state orbit, "Dọn N bản cũ" có confirm), app/home_groups.dart (mới, `groupMachines`: mỗi tên giữ 1 bản: đang ready > chưa thu hồi > pairedAt mới nhất; còn lại vào "Bản trùng tên"), app/pair_page.dart (tab Quét QR | Nhập mã, khung QR có 4 góc cam, thẻ info mã hoá đầu cuối, lỗi ghép thành NoticeCard; tab Nhập mã + ô `pair-code` chỉ ở debug), ui/kit/segmented.dart (mới), tool/arb_home.mjs (mới, gộp vào gen_arb.mjs) + app_{en,vi}.arb + app_localizations*.dart sinh lại.
+- Không hiện ms (chưa có nguồn đo). Dọn bản cũ gọi `MachinesNotifier.forget` từng bản, không sửa machines.dart.
+- Test: test/home_wp29_test.dart (grouping + dọn có confirm / huỷ), pair_page_test.dart (đổi sang bấm tab Nhập mã, kiểm thẻ lỗi), support/ui_fakes.dart (Harness `extraLinks`, override link / view cho máy phụ), wp29_shots_test.dart. analyze sạch, 256 test pass.
+- Nhìn: docs/qa/v97/WP-29/home-{light,dark}.png, home-empty-*, pair-qr-*, pair-code-*, pair-error-*: khớp home-a / pair-qr / pair-code / error của mockup (khác: không có dòng "Windows 11 · Orrery 2.3.0" vì app chưa có dữ liệu OS / version; ô mã 8 ký tự rời không làm vì Pairing chỉ nhận chuỗi QR).
+
+## Đợt 2 — Màn khoá + cài đặt khoá
+- Đổi: apps/mobile/lib/security/lock_gate.dart (LockScreen: OrbitMark, FadeIn 250 ms, ShakeBox ±6 px 240 ms + haptic chỉ khi `AuthOutcome.failed`, nút vân tay tròn, OrreryButton cho các nút phụ; logic giữ nguyên, key giữ nguyên), lock_settings_page.dart (OrreryCard + SectionLabel, OrreryDialog), test/lock_wp29_test.dart (fade + shake chỉ khi failed), wp29_shots_test.dart.
+- Nhìn: docs/qa/v97/WP-29/lock-{light,dark}.png, lock-settings-{light,dark}.png khớp mockup lock (khác: không có dòng "Tự khoá sau 1 giờ" dưới đáy, nhãn vân tay dùng "Mở khoá").
+- analyze sạch, `flutter test --concurrency=4` pass toàn bộ.
+- Tiêu chí còn lại: motion theo spec (có test), vi + en (ARB sinh lại), không comment, file < 400 dòng, index cập nhật.

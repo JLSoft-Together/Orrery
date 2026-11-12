@@ -6,6 +6,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/app_localizations.dart';
 import '../remote/pairing.dart';
 import '../remote/providers.dart';
+import '../ui/kit/kit.dart';
+import '../ui/theme/orrery_shape.dart';
+import '../ui/widgets/common.dart';
 
 String pairFailureText(AppLocalizations l, PairFailure failure) =>
     switch (failure) {
@@ -20,26 +23,30 @@ String pairFailureText(AppLocalizations l, PairFailure failure) =>
     };
 
 class PairPage extends ConsumerStatefulWidget {
-  const PairPage({super.key, this.scanner});
+  const PairPage({super.key, this.scanner, this.startOnCode = false});
 
   final Widget? scanner;
+  final bool startOnCode;
 
   @override
   ConsumerState<PairPage> createState() => _PairPageState();
 }
 
 class _PairPageState extends ConsumerState<PairPage> {
-  final MobileScannerController _controller = MobileScannerController(
+  MobileScannerController? _controller;
+  final TextEditingController _code = TextEditingController();
+  late int _tab = kDebugMode && widget.startOnCode ? 1 : 0;
+  bool _busy = false;
+  PairFailure? _failure;
+
+  MobileScannerController get _scan => _controller ??= MobileScannerController(
     formats: const [BarcodeFormat.qrCode],
   );
-  final TextEditingController _code = TextEditingController();
-  bool _busy = false;
-  String? _message;
 
   @override
   void dispose() {
     _code.dispose();
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -57,7 +64,7 @@ class _PairPageState extends ConsumerState<PairPage> {
     if (_busy) return;
     setState(() {
       _busy = true;
-      _message = AppLocalizations.of(context).pairing;
+      _failure = null;
     });
     final navigator = Navigator.of(context);
     try {
@@ -68,50 +75,170 @@ class _PairPageState extends ConsumerState<PairPage> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _message = pairFailureText(AppLocalizations.of(context), error.failure);
+        _failure = error.failure;
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(AppLocalizations.of(context).pairMachine)),
-      body: Column(
-        children: [
-          Expanded(
-            child:
-                widget.scanner ??
-                MobileScanner(controller: _controller, onDetect: _onDetect),
-          ),
-          if (kDebugMode)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
+  Widget _scanTab(BuildContext context) {
+    final l = context.l10n;
+    final c = context.orrery;
+    return Column(
+      key: const ValueKey('tab-scan'),
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: context.shape.cardRadius,
+            child: ColoredBox(
+              color: c.well,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      key: const ValueKey('pair-code'),
-                      controller: _code,
-                      decoration: const InputDecoration(
-                        labelText: 'Nhập mã ghép',
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    key: const ValueKey('pair-code-submit'),
-                    onPressed: _busy ? null : () => _pair(_code.text.trim()),
-                    child: const Text('Ghép'),
+                  widget.scanner ??
+                      MobileScanner(controller: _scan, onDetect: _onDetect),
+                  IgnorePointer(
+                    child: CustomPaint(painter: _Brackets(c.accent)),
                   ),
                 ],
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(_message ?? AppLocalizations.of(context).pairScanHint),
           ),
-        ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          l.pairScanTitle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l.pairScanHint,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: c.inkMuted),
+        ),
+        const SizedBox(height: 16),
+        NoticeCard(
+          tone: NoticeTone.info,
+          title: l.pairE2eTitle,
+          body: l.pairE2eBody,
+        ),
+      ],
+    );
+  }
+
+  Widget _codeTab(BuildContext context) {
+    final l = context.l10n;
+    return Column(
+      key: const ValueKey('tab-code'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l.pairCodeLabel, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 10),
+        TextField(
+          key: const ValueKey('pair-code'),
+          controller: _code,
+          decoration: InputDecoration(labelText: l.pairCodeField),
+        ),
+        const Spacer(),
+        OrreryButton(
+          key: const ValueKey('pair-code-submit'),
+          label: l.pairCodeSubmit,
+          busy: _busy,
+          onPressed: _busy ? null : () => _pair(_code.text.trim()),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final failure = _failure;
+    return Scaffold(
+      appBar: AppBar(title: Text(l.pairMachine)),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (kDebugMode) ...[
+                OrrerySegmented(
+                  keyPrefix: 'pair-tab',
+                  labels: [l.pairTabScan, l.pairTabCode],
+                  index: _tab,
+                  onChanged: (i) => setState(() => _tab = i),
+                ),
+                const SizedBox(height: 14),
+              ],
+              AnimatedSize(
+                duration: motion(context),
+                curve: context.tokens.out,
+                alignment: Alignment.topCenter,
+                child: failure == null
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: NoticeCard(
+                          key: const ValueKey('pair-error'),
+                          tone: NoticeTone.error,
+                          title: pairFailureText(l, failure),
+                        ),
+                      ),
+              ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: motion(context),
+                  child: _tab == 0 ? _scanTab(context) : _codeTab(context),
+                ),
+              ),
+              if (_busy && _tab == 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    l.pairing,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: context.orrery.inkMuted),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
+
+class _Brackets extends CustomPainter {
+  const _Brackets(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final side = size.shortestSide * 0.62;
+    final r = Rect.fromCenter(
+      center: size.center(Offset.zero),
+      width: side,
+      height: side,
+    );
+    const len = 28.0;
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    for (final (corner, dx, dy) in [
+      (r.topLeft, 1.0, 1.0),
+      (r.topRight, -1.0, 1.0),
+      (r.bottomLeft, 1.0, -1.0),
+      (r.bottomRight, -1.0, -1.0),
+    ]) {
+      canvas.drawLine(corner, corner.translate(len * dx, 0), p);
+      canvas.drawLine(corner, corner.translate(0, len * dy), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Brackets old) => old.color != color;
 }

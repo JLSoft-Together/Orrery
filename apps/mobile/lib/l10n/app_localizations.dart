@@ -1795,6 +1795,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pair'**
   String get pairCodeSubmit;
+
+  /// No description provided for @chipWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you'**
+  String get chipWaiting;
+
+  /// No description provided for @monFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count}'**
+  String monFilterAll(int count);
+
+  /// No description provided for @monFilterRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running {count}'**
+  String monFilterRunning(int count);
+
+  /// No description provided for @monFilterWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting {count}'**
+  String monFilterWaiting(int count);
+
+  /// No description provided for @monFilterIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle {count}'**
+  String monFilterIdle(int count);
+
+  /// No description provided for @monFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No session in this filter'**
+  String get monFilterEmpty;
+
+  /// No description provided for @viewModeToCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Group by state'**
+  String get viewModeToCompact;
+
+  /// No description provided for @viewModeToCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Show as cards'**
+  String get viewModeToCards;
+
+  /// No description provided for @viewModeToGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all panes in a grid'**
+  String get viewModeToGrid;
+
+  /// No description provided for @viewModeToSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show one pane at a time'**
+  String get viewModeToSingle;
+
+  /// No description provided for @detailSubagents.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents'**
+  String get detailSubagents;
+
+  /// No description provided for @detailStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Since {time}'**
+  String detailStarted(String time);
+
+  /// No description provided for @detailOpenTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal'**
+  String get detailOpenTerminal;
+
+  /// No description provided for @detailNotInWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is not open in the Workspace'**
+  String get detailNotInWorkspace;
+
+  /// No description provided for @detailTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Running tool'**
+  String get detailTool;
+
+  /// No description provided for @detailWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for'**
+  String get detailWaiting;
+
+  /// No description provided for @detailContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Context'**
+  String get detailContext;
+
+  /// No description provided for @detailNoSubagents.
+  ///
+  /// In en, this message translates to:
+  /// **'No sub-agents'**
+  String get detailNoSubagents;
+
+  /// No description provided for @wsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get wsTitle;
+
+  /// No description provided for @wsOpenFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Open full screen'**
+  String get wsOpenFull;
+
+  /// No description provided for @wsPaneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 pane in this tab} other{{count} panes in this tab}} · swipe to switch'**
+  String wsPaneHint(int count);
+
+  /// No description provided for @wsNoTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'No tab open'**
+  String get wsNoTabs;
+
+  /// No description provided for @wsAllTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get wsAllTabs;
+
+  /// No description provided for @paneSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Panes in tab {tab}'**
+  String paneSheetTitle(String tab);
+
+  /// No description provided for @paneSheetOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch pane'**
+  String get paneSheetOpen;
 }
 
 class _AppLocalizationsDelegate

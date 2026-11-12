@@ -9,8 +9,10 @@ class AnimatedItems<T> extends StatefulWidget {
     required this.items,
     required this.keyOf,
     required this.builder,
+    this.gap = 10,
   });
 
+  final double gap;
   final List<T> items;
   final Object Function(T item) keyOf;
   final Widget Function(BuildContext context, T item) builder;
@@ -85,6 +87,7 @@ class _AnimatedItemsState<T> extends State<AnimatedItems<T>> {
           _ItemTransition(
             key: ValueKey(slot.key),
             leaving: slot.leaving,
+            gap: widget.gap,
             animateIn: slot.entering,
             onGone: () => _drop(slot),
             child: widget.builder(context, slot.item),
@@ -101,8 +104,10 @@ class _ItemTransition extends StatefulWidget {
     required this.animateIn,
     required this.onGone,
     required this.child,
+    required this.gap,
   });
 
+  final double gap;
   final bool leaving;
   final bool animateIn;
   final VoidCallback onGone;
@@ -186,7 +191,7 @@ class _ItemTransitionState extends State<_ItemTransition>
         child: SlideTransition(
           position: widget.leaving ? exit : enter,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: widget.gap),
             child: widget.child,
           ),
         ),

@@ -499,5 +499,79 @@
   "pairE2eBody": "This phone and the computer share a Noise key. The relay only carries encrypted bytes.",
   "pairCodeLabel": "Pairing code from the computer",
   "pairCodeField": "Pairing code",
-  "pairCodeSubmit": "Pair"
+  "pairCodeSubmit": "Pair",
+  "chipWaiting": "Waiting for you",
+  "monFilterAll": "All {count}",
+  "@monFilterAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "monFilterRunning": "Running {count}",
+  "@monFilterRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "monFilterWaiting": "Waiting {count}",
+  "@monFilterWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "monFilterIdle": "Idle {count}",
+  "@monFilterIdle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "monFilterEmpty": "No session in this filter",
+  "viewModeToCompact": "Group by state",
+  "viewModeToCards": "Show as cards",
+  "viewModeToGrid": "Show all panes in a grid",
+  "viewModeToSingle": "Show one pane at a time",
+  "detailSubagents": "Sub-agents",
+  "detailStarted": "Since {time}",
+  "@detailStarted": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "detailOpenTerminal": "Open terminal",
+  "detailNotInWorkspace": "This session is not open in the Workspace",
+  "detailTool": "Running tool",
+  "detailWaiting": "Waiting for",
+  "detailContext": "Context",
+  "detailNoSubagents": "No sub-agents",
+  "wsTitle": "Workspace",
+  "wsOpenFull": "Open full screen",
+  "wsPaneHint": "{count, plural, =1{1 pane in this tab} other{{count} panes in this tab}} · swipe to switch",
+  "@wsPaneHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "wsNoTabs": "No tab open",
+  "wsAllTabs": "All",
+  "paneSheetTitle": "Panes in tab {tab}",
+  "@paneSheetTitle": {
+    "placeholders": {
+      "tab": {
+        "type": "String"
+      }
+    }
+  },
+  "paneSheetOpen": "Switch pane"
 }

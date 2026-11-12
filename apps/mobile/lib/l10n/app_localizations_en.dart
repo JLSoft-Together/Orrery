@@ -980,4 +980,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pairCodeSubmit => 'Pair';
+
+  @override
+  String get chipWaiting => 'Waiting for you';
+
+  @override
+  String monFilterAll(int count) {
+    return 'All $count';
+  }
+
+  @override
+  String monFilterRunning(int count) {
+    return 'Running $count';
+  }
+
+  @override
+  String monFilterWaiting(int count) {
+    return 'Waiting $count';
+  }
+
+  @override
+  String monFilterIdle(int count) {
+    return 'Idle $count';
+  }
+
+  @override
+  String get monFilterEmpty => 'No session in this filter';
+
+  @override
+  String get viewModeToCompact => 'Group by state';
+
+  @override
+  String get viewModeToCards => 'Show as cards';
+
+  @override
+  String get viewModeToGrid => 'Show all panes in a grid';
+
+  @override
+  String get viewModeToSingle => 'Show one pane at a time';
+
+  @override
+  String get detailSubagents => 'Sub-agents';
+
+  @override
+  String detailStarted(String time) {
+    return 'Since $time';
+  }
+
+  @override
+  String get detailOpenTerminal => 'Open terminal';
+
+  @override
+  String get detailNotInWorkspace =>
+      'This session is not open in the Workspace';
+
+  @override
+  String get detailTool => 'Running tool';
+
+  @override
+  String get detailWaiting => 'Waiting for';
+
+  @override
+  String get detailContext => 'Context';
+
+  @override
+  String get detailNoSubagents => 'No sub-agents';
+
+  @override
+  String get wsTitle => 'Workspace';
+
+  @override
+  String get wsOpenFull => 'Open full screen';
+
+  @override
+  String wsPaneHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count panes in this tab',
+      one: '1 pane in this tab',
+    );
+    return '$_temp0 · swipe to switch';
+  }
+
+  @override
+  String get wsNoTabs => 'No tab open';
+
+  @override
+  String get wsAllTabs => 'All';
+
+  @override
+  String paneSheetTitle(String tab) {
+    return 'Panes in tab $tab';
+  }
+
+  @override
+  String get paneSheetOpen => 'Switch pane';
 }

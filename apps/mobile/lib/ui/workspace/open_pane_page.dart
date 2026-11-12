@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../kit/quiet_size.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/link_state.dart';
@@ -168,9 +171,7 @@ class _OpenPanePageState extends ConsumerState<OpenPanePage> {
             selected: {_preset},
             onSelectionChanged: (v) => setState(() => _preset = v.first),
           ),
-          AnimatedSize(
-            duration: motion(context),
-            curve: Curves.easeOutCubic,
+          QuietSize(
             alignment: Alignment.topCenter,
             child: !agentic
                 ? const SizedBox(width: double.infinity)

@@ -105,9 +105,13 @@ void main() {
       await glide(tester);
       await tester.tap(find.text('Fake Desktop'));
       await glide(tester);
-      await until(tester, () => find.text('demo').evaluate().isNotEmpty);
+      await until(
+        tester,
+        () =>
+            find.byKey(const ValueKey('pane-open-full')).evaluate().isNotEmpty,
+      );
       await glide(tester);
-      await tester.tap(find.text('demo'));
+      await tester.tap(find.byKey(const ValueKey('pane-open-full')));
       await glide(tester);
       await until(
         tester,

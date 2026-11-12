@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/providers.dart';
+import '../kit/kit.dart';
 import '../model/workspace_model.dart';
-import '../theme/orrery_theme.dart';
-import '../viewers/async_panel.dart';
-import '../workspace/session_rename.dart';
+import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
+import '../workspace/machine_scope.dart';
+import '../workspace/session_rename.dart';
+import 'monitor_cards.dart';
+import 'monitor_filter.dart';
 import 'monitor_model.dart';
+import 'session_detail_page.dart';
+import 'view_prefs.dart';
 
 final monitorProvider = Provider.family<List<MonitorProject>, String>((
   ref,
@@ -17,343 +22,252 @@ final monitorProvider = Provider.family<List<MonitorProject>, String>((
   return parseMonitor(snapshot);
 });
 
-class MonitorPage extends ConsumerWidget {
+final machineNameProvider = Provider.family<String, String>(
+  (ref, id) => ref.watch(
+    machinesProvider.select(
+      (m) => m.where((x) => x.id == id).firstOrNull?.displayName ?? '',
+    ),
+  ),
+);
+
+class MonitorPage extends ConsumerStatefulWidget {
   const MonitorPage({super.key, required this.machineId, required this.onOpen});
 
   final String machineId;
   final ValueChanged<String> onOpen;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
-    final projects = ref.watch(monitorProvider(machineId));
-    return Scaffold(
-      appBar: AppBar(title: Text(l.vMonitor)),
-      body: projects.isEmpty
-          ? EmptyState(icon: Icons.public_rounded, text: l.vMonitorEmpty)
-          : ListView.builder(
-              key: const ValueKey('monitor-list'),
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-              itemCount: projects.length,
-              itemBuilder: (context, index) => Appear(
-                key: ValueKey('mp-${projects[index].cwd}'),
-                delay: index * 30,
-                child: _ProjectBlock(
-                  machineId: machineId,
-                  project: projects[index],
-                  onOpen: onOpen,
-                ),
-              ),
-            ),
-    );
-  }
+  ConsumerState<MonitorPage> createState() => _MonitorPageState();
 }
 
-class _ProjectBlock extends StatelessWidget {
-  const _ProjectBlock({
-    required this.machineId,
-    required this.project,
-    required this.onOpen,
-  });
+class _MonitorPageState extends ConsumerState<MonitorPage> {
+  MonitorFilter _filter = MonitorFilter.all;
 
-  final String machineId;
-  final MonitorProject project;
-  final ValueChanged<String> onOpen;
+  void _rename(MonitorSession s) =>
+      renameSession(context, ref, widget.machineId, s.terminalId, s.alias);
+
+  void _detail(MonitorSession s) => Navigator.of(context).push(
+    machineRoute<void>(
+      widget.machineId,
+      (_) => SessionDetailPage(
+        machineId: widget.machineId,
+        terminalId: s.terminalId,
+        onOpen: widget.onOpen,
+      ),
+    ),
+  );
+
+  String _filterLabel(MonitorFilter f, int n) {
+    final l = context.l10n;
+    return switch (f) {
+      MonitorFilter.all => l.monFilterAll(n),
+      MonitorFilter.running => l.monFilterRunning(n),
+      MonitorFilter.waiting => l.monFilterWaiting(n),
+      MonitorFilter.idle => l.monFilterIdle(n),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-            child: Row(
-              children: [
-                Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    project.name.isEmpty ? l.otherProject : project.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Text(
-                  l.panesCount(project.sessions.length),
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          for (final s in project.sessions)
-            _SessionCard(
-              machineId: machineId,
-              session: s,
-              onTap: () => onOpen(s.terminalId),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-String _compact(int n) {
-  if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
-  return '$n';
-}
-
-class _SessionCard extends ConsumerWidget {
-  const _SessionCard({
-    required this.machineId,
-    required this.session,
-    required this.onTap,
-  });
-
-  final String machineId;
-  final MonitorSession session;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    void rename() => renameSession(
-      context,
-      ref,
-      machineId,
-      session.terminalId,
-      session.alias,
-    );
-    final l = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    final meta = [
-      ?session.model,
-      ?session.branch,
-      if (session.totalTokens != null)
-        l.vTokens(_compact(session.totalTokens!)),
+    final c = context.orrery;
+    final id = widget.machineId;
+    final all = flattenSessions(ref.watch(monitorProvider(id)));
+    final mode = ref.watch(viewPrefsProvider.select((p) => p.monitor));
+    final alternate = mode == ViewMode.alternate;
+    final link = ref.watch(linkProvider(id));
+    final shown = [
+      for (final s in all)
+        if (matchesFilter(_filter, s)) s,
     ];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          key: ValueKey('mon-${session.terminalId}'),
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          onLongPress: rename,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    AgentGlyph(agent: session.provider),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        session.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    StatusBadge(state: session.rail, compact: true),
-                    PopupMenuButton<String>(
-                      key: ValueKey('mon-menu-${session.terminalId}'),
-                      tooltip: l.more,
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        Icons.more_vert_rounded,
-                        size: 20,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      onSelected: (_) => rename(),
-                      itemBuilder: (_) => [
-                        PopupMenuItem<String>(
-                          key: const ValueKey('mon-rename-session'),
-                          value: 'rename',
-                          child: Text(l.renameSession),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                if (session.tool != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.build_outlined,
-                          size: 14,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            [session.tool!, ?session.toolSummary].join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (session.waitingFor != null &&
-                    session.rail == RailState.asked)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      session.waitingFor!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: context.statusColors.asked,
-                      ),
-                    ),
-                  ),
-                if (meta.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      meta.join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                if (session.contextPct != null)
-                  _ContextBar(percent: session.contextPct!),
-                for (final a in session.subagents) _AgentRow(agent: a),
-              ],
-            ),
-          ),
+    return Scaffold(
+      backgroundColor: c.canvas,
+      appBar: AppBar(
+        title: Text(
+          ref.watch(machineNameProvider(id)),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-      ),
-    );
-  }
-}
-
-class _ContextBar extends StatelessWidget {
-  const _ContextBar({required this.percent});
-
-  final int percent;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.statusColors;
-    final color = percent >= 85
-        ? colors.failed
-        : percent >= 65
-        ? colors.warning
-        : colors.working;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: percent / 100,
-                minHeight: 5,
-                color: color,
-                backgroundColor: scheme.surfaceContainerHighest,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            context.l10n.vContextPct(percent),
-            style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AgentRow extends StatelessWidget {
-  const _AgentRow({required this.agent});
-
-  final MonitorAgent agent;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final style = statusStyle(context, agent.rail);
-    final detail = [
-      ?agent.tool,
-      ?agent.toolSummary,
-      if (agent.contextPct != null) context.l10n.vContextPct(agent.contextPct!),
-      if (agent.totalTokens != null)
-        context.l10n.vTokens(_compact(agent.totalTokens!)),
-    ].join(' · ');
-    return Padding(
-      padding: EdgeInsets.only(left: agent.depth * 16.0, top: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.subdirectory_arrow_right_rounded,
-            size: 16,
-            color: scheme.outline,
+        actions: [
+          Center(child: LinkPill(link: link)),
+          ViewModeButton(
+            key: const ValueKey('monitor-view-mode'),
+            alternate: alternate,
+            primaryIcon: Icons.view_agenda_outlined,
+            alternateIcon: Icons.view_list_rounded,
+            tooltip: alternate ? l.viewModeToCards : l.viewModeToCompact,
+            onPressed: () =>
+                ref.read(viewPrefsProvider.notifier).toggleMonitor(),
           ),
           const SizedBox(width: 4),
-          Icon(style.icon, size: 15, color: style.color),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  agent.name ?? agent.id,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (detail.isNotEmpty)
-                  Text(
-                    detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
+      body: all.isEmpty
+          ? EmptyState(title: l.vMonitorEmpty)
+          : Column(
+              children: [
+                QuietSize(
+                  alignment: Alignment.topCenter,
+                  child: alternate
+                      ? const SizedBox(width: double.infinity)
+                      : _Filters(
+                          all: all,
+                          selected: _filter,
+                          label: _filterLabel,
+                          onSelect: (f) => setState(() => _filter = f),
+                        ),
+                ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: motion(context),
+                    switchInCurve: context.tokens.out,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.98,
+                          end: 1,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: ListView(
+                      key: ValueKey(alternate),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      children: [
+                        if (alternate)
+                          _Grouped(
+                            sessions: all,
+                            onTap: _detail,
+                            onLongPress: _rename,
+                          )
+                        else if (shown.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 48),
+                            child: Text(
+                              l.monFilterEmpty,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: c.inkMuted),
+                            ),
+                          )
+                        else
+                          AnimatedItems<MonitorSession>(
+                            items: shown,
+                            keyOf: (s) => s.terminalId,
+                            builder: (context, s) => SessionCard(
+                              session: s,
+                              onTap: () => _detail(s),
+                              onLongPress: () => _rename(s),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _Filters extends StatelessWidget {
+  const _Filters({
+    required this.all,
+    required this.selected,
+    required this.label,
+    required this.onSelect,
+  });
+
+  final List<MonitorSession> all;
+  final MonitorFilter selected;
+  final String Function(MonitorFilter, int) label;
+  final ValueChanged<MonitorFilter> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        itemCount: MonitorFilter.values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final f = MonitorFilter.values[i];
+          final n = all.where((s) => matchesFilter(f, s)).length;
+          final on = f == selected;
+          return OrreryFilterChip(
+            key: ValueKey('mon-filter-${f.name}'),
+            label: label(f, n),
+            selected: on,
+            onTap: () => onSelect(f),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _Grouped extends StatelessWidget {
+  const _Grouped({
+    required this.sessions,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final List<MonitorSession> sessions;
+  final ValueChanged<MonitorSession> onTap;
+  final ValueChanged<MonitorSession> onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupByState(sessions);
+    return AnimatedItems<(RailState, List<MonitorSession>)>(
+      items: groups,
+      keyOf: (g) => g.$1,
+      gap: 0,
+      builder: (context, g) {
+        final look = railLook(context, g.$1);
+        final tint = look.tone.resolve(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+              child: Row(
+                children: [
+                  Icon(look.icon, size: 16, color: tint),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${look.label} · ${g.$2.length}'.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
+                      color: tint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            OrreryCard(
+              padding: EdgeInsets.zero,
+              child: AnimatedItems<MonitorSession>(
+                items: g.$2,
+                keyOf: (s) => s.terminalId,
+                gap: 0,
+                builder: (context, s) => SessionRow(
+                  session: s,
+                  first: g.$2.first == s,
+                  onTap: () => onTap(s),
+                  onLongPress: () => onLongPress(s),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

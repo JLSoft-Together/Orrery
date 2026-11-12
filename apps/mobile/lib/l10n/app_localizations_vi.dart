@@ -938,4 +938,93 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pairCodeSubmit => 'Ghép';
+
+  @override
+  String get chipWaiting => 'Chờ bạn';
+
+  @override
+  String monFilterAll(int count) {
+    return 'Tất cả $count';
+  }
+
+  @override
+  String monFilterRunning(int count) {
+    return 'Đang chạy $count';
+  }
+
+  @override
+  String monFilterWaiting(int count) {
+    return 'Chờ bạn $count';
+  }
+
+  @override
+  String monFilterIdle(int count) {
+    return 'Rảnh $count';
+  }
+
+  @override
+  String get monFilterEmpty => 'Không có session nào trong bộ lọc này';
+
+  @override
+  String get viewModeToCompact => 'Nhóm theo trạng thái';
+
+  @override
+  String get viewModeToCards => 'Xem dạng thẻ';
+
+  @override
+  String get viewModeToGrid => 'Xem lưới mọi pane';
+
+  @override
+  String get viewModeToSingle => 'Xem từng pane';
+
+  @override
+  String get detailSubagents => 'Sub-agent';
+
+  @override
+  String detailStarted(String time) {
+    return 'Từ $time';
+  }
+
+  @override
+  String get detailOpenTerminal => 'Mở terminal';
+
+  @override
+  String get detailNotInWorkspace => 'Session này chưa mở trong Workspace';
+
+  @override
+  String get detailTool => 'Tool đang chạy';
+
+  @override
+  String get detailWaiting => 'Đang chờ';
+
+  @override
+  String get detailContext => 'Ngữ cảnh';
+
+  @override
+  String get detailNoSubagents => 'Chưa có sub-agent';
+
+  @override
+  String get wsTitle => 'Workspace';
+
+  @override
+  String get wsOpenFull => 'Mở toàn màn hình';
+
+  @override
+  String wsPaneHint(int count) {
+    return 'Vuốt ngang để đổi pane · $count pane trong tab';
+  }
+
+  @override
+  String get wsNoTabs => 'Chưa có tab nào';
+
+  @override
+  String get wsAllTabs => 'Tất cả';
+
+  @override
+  String paneSheetTitle(String tab) {
+    return 'Pane trong tab $tab';
+  }
+
+  @override
+  String get paneSheetOpen => 'Đổi pane';
 }

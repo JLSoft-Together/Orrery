@@ -117,7 +117,11 @@ void main() {
       tester,
       const TabPage(machineId: 'm1', tabKey: 't1', paneKey: 'a'),
     );
+    await tester.tap(find.byKey(const ValueKey('pane-picker')));
+    await tester.pumpAndSettle();
     expect(find.text('Mine'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('pane-row-a')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Tab actions'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('action-rename-session')));
@@ -164,6 +168,8 @@ void main() {
     await h.pump(tester, MonitorPage(machineId: 'm1', onOpen: (_) {}));
     await tester.pump();
     expect(find.text('Old name'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('mon-t-1')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('mon-menu-t-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('mon-rename-session')));
@@ -172,6 +178,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('rename-save')));
     await tester.pumpAndSettle();
     expect(h.api.commands.last.$2, {'terminalId': 't-1', 'alias': 'New'});
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await tester.longPress(find.byKey(const ValueKey('mon-t-1')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('rename-field')), findsOneWidget);

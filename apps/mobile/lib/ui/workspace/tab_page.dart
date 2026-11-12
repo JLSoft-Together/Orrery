@@ -5,12 +5,12 @@ import '../../remote/providers.dart';
 import '../commands.dart';
 import '../model/workspace_model.dart';
 import '../terminal/terminal_pane.dart';
-import '../theme/orrery_theme.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
-import '../widgets/link_widgets.dart';
 import '../viewers/viewer_menu.dart';
+import 'offline_notice.dart';
 import 'pane_actions.dart';
+import 'pane_picker.dart';
 import 'split_view.dart';
 
 class TabPage extends ConsumerStatefulWidget {
@@ -30,7 +30,7 @@ class TabPage extends ConsumerStatefulWidget {
 }
 
 class _TabPageState extends ConsumerState<TabPage> {
-  late String _tabKey = widget.tabKey;
+  late final String _tabKey = widget.tabKey;
   String? _paneKey;
   int _index = 0;
   PageController? _pages;
@@ -90,11 +90,15 @@ class _TabPageState extends ConsumerState<TabPage> {
     if (current == index) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && (_pages?.hasClients ?? false)) {
-        _pages!.animateToPage(
-          index,
-          duration: motion(context, 260),
-          curve: Curves.easeOutCubic,
-        );
+        if (reduceMotion(context)) {
+          _pages!.jumpToPage(index);
+        } else {
+          _pages!.animateToPage(
+            index,
+            duration: motion(context, 260),
+            curve: Curves.easeOutCubic,
+          );
+        }
       }
     });
   }
@@ -126,25 +130,24 @@ class _TabPageState extends ConsumerState<TabPage> {
     _paneKey ??= tab.panes[index].key;
     _pages ??= PageController(initialPage: index);
     _syncPages(index);
-    final siblings = model.tabs.where((t) => t.project == tab.project).toList();
     final wide = MediaQuery.sizeOf(context).width >= 700;
     final current = tab.panes[index];
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        titleSpacing: Navigator.canPop(context) ? 0 : 16,
-        title: Row(
-          children: [
-            Flexible(
-              child: Text(
-                tab.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+        titleSpacing: 0,
+        title: Align(
+          alignment: Alignment.centerLeft,
+          child: PanePickerButton(
+            pane: current,
+            tabName: tab.displayName,
+            onTap: () => showPaneSheet(
+              context,
+              tab: tab,
+              currentKey: current.key,
+              onPick: _goTo,
             ),
-            const SizedBox(width: 8),
-            LinkChip(link: link),
-          ],
+          ),
         ),
         actions: [
           if ((current.cwd ?? tab.project) != null)
@@ -167,23 +170,11 @@ class _TabPageState extends ConsumerState<TabPage> {
         top: false,
         child: Column(
           children: [
-            OfflineBanner(
+            OfflineNotice(
               link: link,
               updatedAt: view.updatedAt,
               onRetry: () => ref.read(machineApiProvider(id)).retry(),
             ),
-            if (siblings.length > 1)
-              _TabChips(
-                tabs: siblings,
-                selected: _tabKey,
-                onSelect: (key) => setState(() {
-                  _tabKey = key;
-                  _paneKey = null;
-                  _index = 0;
-                  _pages?.dispose();
-                  _pages = null;
-                }),
-              ),
             Expanded(
               child: wide
                   ? SplitView(
@@ -196,8 +187,6 @@ class _TabPageState extends ConsumerState<TabPage> {
                     )
                   : _phonePages(tab, model),
             ),
-            if (!wide && tab.panes.length > 1)
-              _Dots(tab: tab, index: index, onSelect: _goTo, onSwipe: _swipe),
           ],
         ),
       ),
@@ -231,6 +220,7 @@ class _TabPageState extends ConsumerState<TabPage> {
             tabKey: tab.key,
             pane: pane,
             onSwipe: _swipe,
+            compactHeader: true,
             onActions: () => showTabActions(
               context,
               ref,
@@ -242,116 +232,6 @@ class _TabPageState extends ConsumerState<TabPage> {
           ),
         );
       },
-    );
-  }
-}
-
-class _TabChips extends StatelessWidget {
-  const _TabChips({
-    required this.tabs,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  final List<TabInfo> tabs;
-  final String selected;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        itemCount: tabs.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final tab = tabs[i];
-          final needs = tab.panes.any((p) => p.needsUser);
-          return ChoiceChip(
-            key: ValueKey('tab-${tab.key}'),
-            selected: tab.key == selected,
-            onSelected: (_) => onSelect(tab.key),
-            avatar: needs
-                ? Icon(
-                    Icons.front_hand_outlined,
-                    size: 16,
-                    color: context.statusColors.asked,
-                  )
-                : null,
-            label: Text(
-              '${i + 1}. ${tab.displayName}',
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _Dots extends StatelessWidget {
-  const _Dots({
-    required this.tab,
-    required this.index,
-    required this.onSelect,
-    required this.onSwipe,
-  });
-
-  final TabInfo tab;
-  final int index;
-  final ValueChanged<int> onSelect;
-  final ValueChanged<int> onSwipe;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragEnd: (d) {
-        final v = d.primaryVelocity ?? 0;
-        if (v.abs() > 200) onSwipe(v < 0 ? 1 : -1);
-      },
-      child: SizedBox(
-        height: 40,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < tab.panes.length; i++)
-              Semantics(
-                button: true,
-                selected: i == index,
-                label: tab.panes[i].title,
-                child: InkResponse(
-                  key: ValueKey('dot-$i'),
-                  onTap: () => onSelect(i),
-                  radius: 20,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 14,
-                    ),
-                    child: AnimatedContainer(
-                      duration: motion(context),
-                      curve: Curves.easeOutCubic,
-                      width: i == index ? 20 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: tab.panes[i].needsUser
-                            ? context.statusColors.asked
-                            : (i == index
-                                  ? scheme.primary
-                                  : scheme.outlineVariant),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

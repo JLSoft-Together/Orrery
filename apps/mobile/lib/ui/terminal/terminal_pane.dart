@@ -29,6 +29,7 @@ class TerminalPane extends ConsumerStatefulWidget {
     required this.tabKey,
     required this.pane,
     this.showInput = true,
+    this.compactHeader = false,
     this.onActions,
     this.onSwipe,
   });
@@ -37,6 +38,7 @@ class TerminalPane extends ConsumerStatefulWidget {
   final String tabKey;
   final PaneInfo pane;
   final bool showInput;
+  final bool compactHeader;
   final VoidCallback? onActions;
   final ValueChanged<int>? onSwipe;
 
@@ -277,6 +279,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
           pane: pane,
           facts: facts,
           claimed: _claimed && online,
+          compact: widget.compactHeader,
           onActions: widget.onActions,
           onSwipe: widget.onSwipe,
         ),

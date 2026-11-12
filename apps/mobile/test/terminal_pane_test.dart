@@ -230,10 +230,8 @@ void main() {
       tester.widget<TextField>(find.byKey(const ValueKey('input'))).enabled,
       isFalse,
     );
-    final key = tester.widget<ButtonStyleButton>(
-      find.byKey(const ValueKey('key-esc')),
-    );
-    expect(key.onPressed, isNull);
+    final key = tester.widget<InkWell>(find.byKey(const ValueKey('key-esc')));
+    expect(key.onTap, isNull);
     expect(h.api.inputs, isEmpty);
   });
 

@@ -42,10 +42,13 @@ Future<_Source> _pump(WidgetTester tester, Harness h) async {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('en'),
-        builder: (context, child) => DeepLinkHost(
-          navigatorKey: navigator,
-          source: source,
-          child: child ?? const SizedBox.shrink(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: DeepLinkHost(
+            navigatorKey: navigator,
+            source: source,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
         home: const Scaffold(body: Text('home')),
       ),

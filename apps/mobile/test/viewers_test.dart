@@ -562,6 +562,9 @@ void main() {
       await h.pump(tester, MonitorPage(machineId: 'm1', onOpen: (_) {}));
       await tester.pump();
       expect(find.text('Refactor'), findsOneWidget);
+      expect(find.textContaining('2 subagents'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('mon-t1')));
+      await tester.pumpAndSettle();
       expect(find.text('explorer'), findsOneWidget);
       expect(find.text('grandchild'), findsOneWidget);
       expect(find.textContaining('context 42%'), findsOneWidget);

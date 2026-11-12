@@ -126,6 +126,8 @@ void main() {
         vi,
         b,
       );
+      await tester.tap(find.byKey(const ValueKey('mon-t-a')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('mon-menu-t-a')));
       await tester.pumpAndSettle();
       await shot(tester, key, '07-monitor-menu-$tag');

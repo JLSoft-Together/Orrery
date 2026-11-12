@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../kit/kit.dart';
 import '../model/workspace_model.dart';
-import '../theme/orrery_theme.dart';
+import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 
 class PermissionBar extends StatelessWidget {
@@ -20,49 +21,50 @@ class PermissionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final color = context.statusColors.asked;
+    final c = context.orrery;
     final visible = pane.isAsked;
-    return AnimatedSize(
-      duration: motion(context),
-      curve: Curves.easeOutCubic,
+    return QuietSize(
       alignment: Alignment.topCenter,
       child: !visible
           ? const SizedBox(width: double.infinity)
           : Container(
               width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: color.withValues(alpha: 0.5)),
+                color: c.waiting.withValues(alpha: 0.1),
+                borderRadius: context.shape.cardRadius,
+                border: Border.all(color: c.waiting.withValues(alpha: 0.38)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.front_hand_outlined, size: 18, color: color),
+                      Icon(Icons.schedule_rounded, size: 18, color: c.waiting),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           pane.waitText ?? l.statusAsked,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: c.ink,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _button(l.answerYes, 'approve', filled: true),
-                      _button(l.answerYesAlways, '2'),
-                      _button(l.answerNo, 'deny'),
-                      _button(l.answerEsc, 'esc'),
+                      _button(l.answerYes, 'approve', ButtonKind.primary),
+                      _button(l.answerYesAlways, '2', ButtonKind.secondary),
+                      _button(l.answerNo, 'deny', ButtonKind.secondary),
+                      _button(l.answerEsc, 'esc', ButtonKind.secondary),
                     ],
                   ),
                 ],
@@ -71,23 +73,18 @@ class PermissionBar extends StatelessWidget {
     );
   }
 
-  Widget _button(String label, String keys, {bool filled = false}) {
-    void tap() {
-      HapticFeedback.mediumImpact();
-      onKeys(keys);
-    }
-
-    final key = ValueKey('answer-$keys');
-    return filled
-        ? FilledButton(
-            key: key,
-            onPressed: enabled ? tap : null,
-            child: Text(label),
-          )
-        : OutlinedButton(
-            key: key,
-            onPressed: enabled ? tap : null,
-            child: Text(label),
-          );
+  Widget _button(String label, String keys, ButtonKind kind) {
+    return OrreryButton(
+      key: ValueKey('answer-$keys'),
+      label: label,
+      kind: kind,
+      expand: false,
+      onPressed: enabled
+          ? () {
+              HapticFeedback.mediumImpact();
+              onKeys(keys);
+            }
+          : null,
+    );
   }
 }

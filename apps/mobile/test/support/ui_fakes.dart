@@ -12,6 +12,7 @@ import 'package:orrery_remote/remote/protocol.dart';
 import 'package:orrery_remote/remote/providers.dart';
 import 'package:orrery_remote/remote/store.dart';
 import 'package:orrery_remote/ui/machine_api.dart';
+import 'package:orrery_remote/ui/monitor/view_prefs.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
 
@@ -246,6 +247,18 @@ MachineView view({
   hello: hello,
 );
 
+class MemoryViewPrefsStore implements ViewPrefsStore {
+  MemoryViewPrefsStore([this.value = const ViewPrefs()]);
+
+  ViewPrefs value;
+
+  @override
+  Future<ViewPrefs> load() async => value;
+
+  @override
+  Future<void> save(ViewPrefs prefs) async => value = prefs;
+}
+
 class Harness {
   Harness({
     required this.api,
@@ -254,7 +267,10 @@ class Harness {
     this.id = 'm1',
     this.machines,
     this.extraLinks = const {},
-  });
+    ViewPrefsStore? prefsStore,
+  }) : prefs = prefsStore ?? MemoryViewPrefsStore();
+
+  final ViewPrefsStore prefs;
 
   final FakeMachineApi api;
   final MachineView viewState;
@@ -271,6 +287,7 @@ class Harness {
       container.read(linkProvider(id).notifier) as FakeLinkNotifier;
 
   List<Override> get overrides => [
+    viewPrefsStoreProvider.overrideWithValue(prefs),
     machineApiProvider(id).overrideWithValue(api),
     machineViewProvider(id).overrideWith(() => FakeViewNotifier(id, viewState)),
     linkProvider(id).overrideWith(() => FakeLinkNotifier(id, linkState)),
@@ -296,6 +313,7 @@ class Harness {
     GlobalKey? boundary,
     RemoteTheme remote = RemoteTheme.fallback,
     String? fontFamily,
+    bool quiet = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -314,6 +332,10 @@ class Harness {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             locale: locale,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: quiet),
+              child: child!,
+            ),
             home: home,
           ),
         ),

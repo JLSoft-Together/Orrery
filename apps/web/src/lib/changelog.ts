@@ -18,6 +18,13 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.3',
+    date: '2026-11-12',
+    items: [
+      { en: 'macOS: dragging files from Finder or Explorer into a pane inserts @path again', vi: 'macOS: kéo file từ Finder hoặc Explorer vào pane lại ra @path' },
+    ],
+  },
+  {
     version: '4.0.2',
     date: '2026-11-11',
     items: [

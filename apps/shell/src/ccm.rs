@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 16] = [
+const LOCAL: [&str; 17] = [
     "ccm:pty-endpoint",
     "ccm:pick-folder",
     "ccm:open-external",
@@ -29,6 +29,7 @@ const LOCAL: [&str; 16] = [
     "ccm:capture-rect",
     "ccm:clipboard-image",
     "ccm:clipboard-image-file",
+    "ccm:drop-paths",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -173,6 +174,11 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         "ccm:clipboard-image-file" => {
             let raw = arg(&args, 0).clone();
             Ok(json!(blocking(move || shot::clipboard_file(&raw)).await?))
+        }
+        "ccm:drop-paths" => {
+            let names: Vec<String> = arg(&args, 0).as_array().map(|a| a.iter().map(|v| v.as_str().unwrap_or("").to_owned()).collect()).unwrap_or_default();
+            let handle = app.clone();
+            Ok(json!(blocking(move || crate::drop_paths::for_names(&handle, names)).await?))
         }
         c if crate::files_ipc::handles(c) => {
             let (handle, channel) = (app.clone(), c.to_owned());

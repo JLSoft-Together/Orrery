@@ -93,9 +93,9 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
     }
     #[cfg(windows)]
     {
-        b = b.decorations(false).shadow(true).disable_drag_drop_handler();
+        b = b.decorations(false).shadow(true);
     }
-    Ok(b)
+    Ok(b.disable_drag_drop_handler())
 }
 
 pub fn create_main(app: &AppHandle, hidden: bool) -> Result<WebviewWindow, String> {

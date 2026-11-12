@@ -7,3 +7,12 @@
 - Nhìn: CHƯA NHÌN: A21s (`R58N661JMPA` = `192.168.1.217:34351`) đang khoá PIN (màn hình mã PIN, không có PIN, không đoán), không mở được app để đo; con đã tắt màn hình lại (KEYCODE_SLEEP). Đã build profile arm64 (có log WP26 tạm) và `adb install -r` lên máy: bản cài hiện là APK profile CÓ instrumentation log (chỉ debugPrint, mã nguồn đã gỡ) — cần cài lại từ cây sạch. Không có ảnh trong `docs/qa/v97/WP-26/` (thư mục rỗng/được tạo).
 - Ngoài phạm vi cần main xử lý: (1) chủ nhân mở khoá A21s để chạy lại đo 5 lần `seq 1 3000` + vuốt (cài APK build mới từ cây sạch; có thể thêm log đếm dòng trong buffer nếu cần); (2) nếu 5 lần vẫn thiếu dòng khi không có `pty.overflow` thì nguyên nhân nằm ở render/viewport hoặc hub, cần WP riêng. (3) Dev app Orrery 4556 không đụng.
 - Commit message đề xuất: fix(mobile): re-attach the phone terminal after pty.overflow even when the gateway already dropped the stream (detach notFound), with a 3000-line replay test
+
+## QA máy thật (A21s R58N661JMPA, lượt 2)
+- Kết quả: 0/5 lần đo được, CHƯA KIỂM số dòng. Chi tiết `docs/qa/v97/WP-26/RESULT.md`.
+- Lý do: app đã mở khoá + ghép được và mở được pane, nhưng buffer terminal điện thoại không đọc được từ ngoài: FLAG_SECURE làm ảnh rỗng, TerminalView không có semantics (uiautomator dump không thấy chữ), nút "Đo terminal" là spike cũ không đếm buffer, app không có log đếm; pane đang "Chỉ xem".
+- Cần: hook log đếm 1..3000 trong `terminal_pane.dart` + build debug (ngoài luật lượt này) hoặc cách tắt FLAG_SECURE tạm. Không đụng gì thiết bị ngoài `adb tap` / `uiautomator dump`.
+
+### QA máy thật (lượt 3, đã đo)
+- A21s qua Relay, debug APK có `LineProbe` (`apps/mobile/lib/ui/terminal/wp26_probe.dart`, test `test/line_probe_test.dart`): 5/5 lần `1..3000` + swipe adb liên tục đều `numbers=3000 first=1 last=3000 missing=[] dup=[]`, 0 `pty.overflow`. Log + script ở `docs/qa/v97/WP-26/` (`RESULT.md`, `trial*.log`, `trial.sh`).
+- Không tái hiện được mất dòng; chưa gây overflow thật nên fix `_reattach` vẫn chỉ có test giả. Kết luận: giữ LineProbe (gọn, chỉ debug).

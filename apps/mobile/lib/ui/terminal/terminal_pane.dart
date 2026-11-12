@@ -20,6 +20,7 @@ import 'input_bar.dart';
 import 'pane_header.dart';
 import 'permission_bar.dart';
 import 'terminal_surface.dart';
+import 'wp26_probe.dart';
 
 class TerminalPane extends ConsumerStatefulWidget {
   const TerminalPane({
@@ -46,6 +47,7 @@ class TerminalPane extends ConsumerStatefulWidget {
 class _TerminalPaneState extends ConsumerState<TerminalPane> {
   final Terminal _terminal = Terminal(maxLines: 5000);
   final TerminalController _controller = TerminalController();
+  late final LineProbe _probe = LineProbe(_terminal);
   final StringBuffer _pendingOut = StringBuffer();
   bool _flushScheduled = false;
   PtyHandle? _handle;
@@ -77,6 +79,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
 
   @override
   void dispose() {
+    _probe.dispose();
     _typingTimer?.cancel();
     _outSub?.cancel();
     _evSub?.cancel();
@@ -120,6 +123,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   void _flushOut() {
     _flushScheduled = false;
     if (!mounted || _pendingOut.isEmpty) return;
+    _probe.schedule();
     final data = _pendingOut.toString();
     _pendingOut.clear();
     _writing = true;
@@ -182,6 +186,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   }
 
   void _onEvent(JsonMap event) {
+    _probe.event('${event['t']}');
     switch (event['t']) {
       case 'pty.ready':
         _flushOut();

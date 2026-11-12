@@ -23,6 +23,11 @@ class MachinesNotifier extends Notifier<List<Machine>> {
     return machine;
   }
 
+  Future<void> rename(String machineId, String? alias) async {
+    await ref.read(remoteHostProvider).machines.rename(machineId, alias);
+    refresh();
+  }
+
   Future<void> forget(String machineId) async {
     await ref.read(remoteHostProvider).forget(machineId);
     refresh();

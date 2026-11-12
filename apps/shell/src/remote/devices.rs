@@ -5,9 +5,11 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 use super::config::{write_json, DEVICES_FILE};
+use super::pair::is_hidden;
 
 pub const EXPIRE_SECS: u64 = 30 * 86_400;
 pub const MAX_DEVICES: usize = 32;
+pub const MAX_ALIAS: usize = 40;
 const DAY: u64 = 86_400;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -15,6 +17,8 @@ const DAY: u64 = 86_400;
 pub struct Device {
     pub device_id: String,
     pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub alias: String,
     #[serde(default)]
     pub platform: String,
     pub pubkey: String,
@@ -33,6 +37,7 @@ impl Device {
         Device {
             device_id: device_id.to_owned(),
             name: name.to_owned(),
+            alias: String::new(),
             platform: String::new(),
             pubkey: URL_SAFE_NO_PAD.encode(key),
             paired_at: now,
@@ -40,6 +45,14 @@ impl Device {
             token_exp: 0,
             push_token: String::new(),
             push_locale: String::new(),
+        }
+    }
+
+    pub fn display_name(&self) -> &str {
+        if self.alias.is_empty() {
+            &self.name
+        } else {
+            &self.alias
         }
     }
 
@@ -62,6 +75,11 @@ pub struct Devices {
 
 pub fn valid_platform(p: &str) -> bool {
     !p.is_empty() && p.len() <= 16 && p.bytes().all(|b| b.is_ascii_alphanumeric())
+}
+
+pub fn clean_alias(raw: &str) -> String {
+    let kept: String = raw.chars().filter(|c| !c.is_control() && !is_hidden(*c)).collect();
+    kept.trim().chars().take(MAX_ALIAS).collect::<String>().trim().to_owned()
 }
 
 pub fn known_platform(p: &str) -> &'static str {
@@ -122,9 +140,19 @@ impl Devices {
         let d = self.list.iter_mut().find(|d| d.device_id == id)?;
         let first_today = d.last_seen / DAY != now / DAY || d.last_seen == d.paired_at;
         d.last_seen = now;
-        let name = d.name.clone();
+        let name = d.display_name().to_owned();
         self.save();
         Some((name, first_today))
+    }
+
+    pub fn rename(&mut self, id: &str, raw: &str) -> Option<String> {
+        let alias = clean_alias(raw);
+        let d = self.list.iter_mut().find(|d| d.device_id == id)?;
+        if d.alias != alias {
+            d.alias = alias;
+            self.save();
+        }
+        self.find(id).map(|d| d.display_name().to_owned())
     }
 
     pub fn set_platform(&mut self, id: &str, platform: &str) {

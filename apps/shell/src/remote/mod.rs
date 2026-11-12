@@ -87,7 +87,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 16] = [
+pub const CHANNELS: [&str; 17] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -95,6 +95,7 @@ pub const CHANNELS: [&str; 16] = [
     "ccm:remote-pair-cancel",
     "ccm:remote-revoke",
     "ccm:remote-revoke-all",
+    "ccm:remote-device-rename",
     "ccm:remote-keep-awake",
     "ccm:remote-relay-status",
     "ccm:remote-relay-token",
@@ -312,6 +313,18 @@ impl Remote {
         Ok(json!(true))
     }
 
+    pub fn rename_device(&self, arg: &Value) -> Result<Value, String> {
+        let id = arg.get("deviceId").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= 128).ok_or("device")?;
+        let name = arg.get("name").and_then(Value::as_str).ok_or("name")?;
+        let ctx = self.ctx().map_err(str::to_owned)?;
+        let shown = lock(&ctx.devices).rename(id, name);
+        if shown.is_none() {
+            return Ok(json!(false));
+        }
+        ctx.changed();
+        Ok(json!(true))
+    }
+
     pub fn revoke_all(&self) -> Result<Value, String> {
         let ctx = self.ctx().map_err(str::to_owned)?;
         let ids = lock(&ctx.devices).ids();
@@ -386,6 +399,7 @@ impl Remote {
                 let Some(id) = arg.as_str() else { return Ok(json!(false)) };
                 Ok(self.revoke(&[id.to_owned()]).unwrap_or(json!(false)))
             }
+            "ccm:remote-device-rename" => Ok(self.rename_device(arg).unwrap_or(json!(false))),
             "ccm:remote-revoke-all" => Ok(self.revoke_all().unwrap_or(json!(false))),
             "ccm:remote-publish" => Ok(json!(self.publish(arg))),
             "ccm:remote-keep-awake" => Ok(self.keep_awake(arg.as_bool().unwrap_or(true))),

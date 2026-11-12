@@ -163,6 +163,7 @@ interface DesktopBridge {
   remotePairStart?: () => Promise<RemotePairStart | null>
   remotePairCancel?: () => Promise<boolean>
   remoteRevoke?: (deviceId: string) => Promise<boolean>
+  remoteDeviceRename?: (deviceId: string, name: string) => Promise<boolean>
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */

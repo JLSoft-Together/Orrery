@@ -31,6 +31,7 @@ class MonitorSession {
     required this.title,
     required this.rail,
     required this.subagents,
+    this.alias,
     this.provider,
     this.branch,
     this.model,
@@ -42,6 +43,7 @@ class MonitorSession {
     this.statusSince,
   });
 
+  final String? alias;
   final String terminalId;
   final String title;
   final RailState rail;
@@ -144,6 +146,7 @@ List<MonitorProject> parseMonitor(Map<String, dynamic>? snapshot) {
       MonitorSession(
         terminalId: id,
         title: str(t['alias']) ?? str(t['title']) ?? id,
+        alias: str(t['alias']),
         rail: _rail(str(t['status'])),
         subagents: ordered,
         provider: str(t['provider']),

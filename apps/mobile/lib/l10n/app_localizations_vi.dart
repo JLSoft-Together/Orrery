@@ -300,6 +300,23 @@ class AppLocalizationsVi extends AppLocalizations {
   String get renameTab => 'Đổi tên tab';
 
   @override
+  String get renameSession => 'Đổi tên session';
+
+  @override
+  String get renameSessionHint => 'Để trống = tên gốc';
+
+  @override
+  String get renameMachine => 'Đổi tên máy tính';
+
+  @override
+  String get renameMachineHint => 'Để trống = tên do máy tính đặt';
+
+  @override
+  String machineOriginal(String name) {
+    return 'Máy tính đặt tên $name';
+  }
+
+  @override
   String get renameHint => 'Để trống = tên mặc định';
 
   @override

@@ -8,6 +8,7 @@ import '../ui/theme/orrery_theme.dart';
 import '../ui/ui_providers.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/link_widgets.dart';
+import '../ui/widgets/name_dialog.dart';
 import '../ui/workspace/workspace_page.dart';
 import 'pair_page.dart';
 
@@ -114,7 +115,7 @@ class _MachineCard extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l.forgetTitle(machine.name)),
+        title: Text(l.forgetTitle(machine.displayName)),
         content: Text(l.forgetBody),
         actions: [
           TextButton(
@@ -129,6 +130,19 @@ class _MachineCard extends ConsumerWidget {
       ),
     );
     return ok ?? false;
+  }
+
+  Future<void> _rename(BuildContext context, WidgetRef ref) async {
+    final l = context.l10n;
+    final name = await showNameDialog(
+      context,
+      title: l.renameMachine,
+      initial: machine.alias ?? '',
+      maxLength: maxMachineAlias,
+      hint: l.renameMachineHint,
+    );
+    if (name == null) return;
+    await ref.read(machinesProvider.notifier).rename(machine.id, name);
   }
 
   @override
@@ -161,6 +175,7 @@ class _MachineCard extends ConsumerWidget {
       ),
       child: Card(
         child: PressScale(
+          onLongPress: () => _rename(context, ref),
           onTap: () {
             ref.read(activeMachineProvider.notifier).select(machine.id);
             Navigator.of(context).push(
@@ -180,7 +195,7 @@ class _MachineCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        machine.name,
+                        machine.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -193,6 +208,16 @@ class _MachineCard extends ConsumerWidget {
                         last,
                         style: TextStyle(color: scheme.onSurfaceVariant),
                       ),
+                      if (machine.alias != null)
+                        Text(
+                          l.machineOriginal(machine.name),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -211,10 +236,22 @@ class _MachineCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: scheme.onSurfaceVariant,
+                PopupMenuButton<String>(
+                  key: ValueKey('machine-menu-${machine.id}'),
+                  tooltip: l.more,
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  onSelected: (_) => _rename(context, ref),
+                  itemBuilder: (_) => [
+                    PopupMenuItem<String>(
+                      key: const ValueKey('machine-rename'),
+                      value: 'rename',
+                      child: Text(l.renameMachine),
+                    ),
+                  ],
                 ),
               ],
             ),

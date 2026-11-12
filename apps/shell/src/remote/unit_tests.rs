@@ -244,3 +244,41 @@ fn a_platform_outside_android_and_ios_is_stored_and_shown_as_unknown() {
     devices.set_platform("p", "android");
     assert_eq!(devices.list()[0].platform, "android");
 }
+
+#[test]
+fn renaming_a_device_keeps_the_paired_name_and_an_empty_alias_restores_it() {
+    let dir = temp_dir("rename");
+    let mut d = Devices::load(&dir);
+    assert!(d.add(Device::new("p1", "Pixel 7", &[1u8; 32], 1_000)));
+    assert_eq!(d.rename("p1", "  Work phone \u{202E}\n"), Some("Work phone".to_owned()));
+    assert_eq!(d.find("p1").unwrap().name, "Pixel 7");
+    assert_eq!(Devices::load(&dir).find("p1").unwrap().alias, "Work phone");
+    assert_eq!(d.touch("p1", 5_000).map(|(name, _)| name), Some("Work phone".to_owned()));
+    let long = "\u{1F4F1}".repeat(60);
+    assert_eq!(d.rename("p1", &long).unwrap().chars().count(), 40);
+    assert_eq!(d.rename("p1", " \t \u{200B}"), Some("Pixel 7".to_owned()));
+    assert!(Devices::load(&dir).find("p1").unwrap().alias.is_empty());
+    assert_eq!(d.rename("nope", "x"), None);
+    assert_eq!(d.rename("p1", "Keep"), Some("Keep".to_owned()));
+    assert_eq!(d.remove(&["p1".to_owned()]).len(), 1);
+    assert!(d.add(Device::new("p1", "Pixel 7", &[1u8; 32], 9_000)));
+    assert!(d.find("p1").unwrap().alias.is_empty());
+}
+
+#[test]
+fn the_rename_channel_updates_status_and_rejects_bad_input() {
+    let rig = rig("rename-ipc", "https://relay.invalid", true);
+    let ctx = rig.remote.ctx().unwrap();
+    assert!(lock(&ctx.devices).add(Device::new("p1", "Pixel 7", &[1u8; 32], 10)));
+    let call = |v: Value| rig.remote.call("ccm:remote-device-rename", &[v]).unwrap();
+    assert_eq!(call(json!({"deviceId": "p1", "name": "Desk"})), json!(true));
+    let status = rig.remote.call("ccm:remote-status", &[]).unwrap();
+    assert_eq!(status["devices"][0]["name"], "Desk");
+    assert_eq!(status["devices"][0]["originalName"], "Pixel 7");
+    assert_eq!(status["devices"][0]["alias"], "Desk");
+    assert_eq!(call(json!({"deviceId": "ghost", "name": "x"})), json!(false));
+    assert_eq!(call(json!({"deviceId": "p1"})), json!(false));
+    assert_eq!(call(json!("p1")), json!(false));
+    assert_eq!(call(json!({"deviceId": "p1", "name": ""})), json!(true));
+    assert_eq!(rig.remote.call("ccm:remote-status", &[]).unwrap()["devices"][0]["name"], "Pixel 7");
+}

@@ -18,7 +18,12 @@ final workspaceModelProvider = Provider.family<WorkspaceModel, String>((
   final workspace = ref.watch(
     machineViewProvider(id).select((view) => view.workspace),
   );
-  return WorkspaceModel.parse(workspace);
+  ref.watch(
+    machineViewProvider(id)
+        .select((view) => sessionAliasKey(sessionAliases(view.snapshot))),
+  );
+  final snapshot = ref.read(machineViewProvider(id)).snapshot;
+  return WorkspaceModel.parse(workspace).withAliases(sessionAliases(snapshot));
 });
 
 final paneFactsProvider = Provider.family<PaneFacts, (String, String?)>((

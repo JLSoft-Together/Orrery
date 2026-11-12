@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../commands.dart';
 import '../model/workspace_model.dart';
+import '../ui_providers.dart';
 import '../widgets/common.dart';
+import '../widgets/name_dialog.dart';
+import 'session_rename.dart';
 
 Future<void> showTabActions(
   BuildContext context,
@@ -35,6 +38,13 @@ Future<void> showTabActions(
             title: Text(l.renameTab),
             onTap: () => Navigator.pop(sheet, 'rename'),
           ),
+          if (pane.isTerm && pane.terminalId != null)
+            ListTile(
+              key: const ValueKey('action-rename-session'),
+              leading: const Icon(Icons.drive_file_rename_outline_rounded),
+              title: Text(l.renameSession),
+              onTap: () => Navigator.pop(sheet, 'rename-session'),
+            ),
           ListTile(
             key: const ValueKey('action-move'),
             leading: const Icon(Icons.drive_file_move_outline),
@@ -76,6 +86,14 @@ Future<void> showTabActions(
   switch (choice) {
     case 'rename':
       await _rename(context, ref, machineId, tab);
+    case 'rename-session':
+      await renameSession(
+        context,
+        ref,
+        machineId,
+        pane.terminalId!,
+        ref.read(paneFactsProvider((machineId, pane.terminalId))).alias,
+      );
     case 'move':
       await _move(context, ref, machineId, model, tab, pane);
     case 'reopen':
@@ -93,9 +111,13 @@ Future<void> _rename(
   String machineId,
   TabInfo tab,
 ) async {
-  final name = await showDialog<String>(
-    context: context,
-    builder: (dialog) => _RenameDialog(initial: tab.name ?? ''),
+  final l = context.l10n;
+  final name = await showNameDialog(
+    context,
+    title: l.renameTab,
+    initial: tab.name ?? '',
+    maxLength: 100,
+    hint: l.renameHint,
   );
   if (name == null || !context.mounted) return;
   await runCommand(context, ref, machineId, 'ws.rename', {
@@ -198,50 +220,4 @@ Future<void> _close(
   );
   if (ok != true || !context.mounted) return;
   await runCommand(context, ref, machineId, 'ws.close', {'paneKey': pane.key});
-}
-
-class _RenameDialog extends StatefulWidget {
-  const _RenameDialog({required this.initial});
-
-  final String initial;
-
-  @override
-  State<_RenameDialog> createState() => _RenameDialogState();
-}
-
-class _RenameDialogState extends State<_RenameDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initial,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    return AlertDialog(
-      title: Text(l.renameTab),
-      content: TextField(
-        key: const ValueKey('rename-field'),
-        controller: _controller,
-        autofocus: true,
-        maxLength: 100,
-        decoration: InputDecoration(hintText: l.renameHint),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l.cancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _controller.text.trim()),
-          child: Text(l.save),
-        ),
-      ],
-    );
-  }
 }

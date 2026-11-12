@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 32] = [
+const LOCAL: [&str; 33] = [
     "ccm:pty-endpoint",
     "ccm:pick-folder",
     "ccm:open-external",
@@ -36,6 +36,7 @@ const LOCAL: [&str; 32] = [
     "ccm:remote-pair-cancel",
     "ccm:remote-revoke",
     "ccm:remote-revoke-all",
+    "ccm:remote-device-rename",
     "ccm:remote-publish",
     "ccm:remote-relay-status",
     "ccm:remote-relay-token",

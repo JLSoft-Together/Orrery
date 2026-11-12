@@ -218,9 +218,13 @@ export function parseRemotePhoneCall<T extends RemoteCommandName>(raw: unknown, 
 
 export type RemoteDeviceState = 'connected' | 'idle' | 'revoked'
 
+export const REMOTE_DEVICE_ALIAS_MAX = 40
+
 export interface RemoteDevice {
   deviceId: string
   name: string
+  originalName?: string
+  alias?: string
   platform: 'android' | 'ios' | 'unknown'
   pairedAt: number
   lastSeen: number

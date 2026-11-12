@@ -27,6 +27,29 @@ class RelayToken {
   }
 }
 
+const int maxMachineAlias = 40;
+
+String? cleanAlias(String? raw) {
+  if (raw == null) return null;
+  final kept = String.fromCharCodes(
+    raw.runes.where(
+      (r) =>
+          r >= 0x20 &&
+          !(r >= 0x7f && r <= 0x9f) &&
+          r != 0xad &&
+          !(r >= 0x200b && r <= 0x200f) &&
+          !(r >= 0x2028 && r <= 0x202e) &&
+          !(r >= 0x2060 && r <= 0x206f) &&
+          r != 0xfeff,
+    ),
+  );
+  final trimmed = kept.trim();
+  if (trimmed.isEmpty) return null;
+  final cut = trimmed.runes.take(maxMachineAlias).toList();
+  final text = String.fromCharCodes(cut).trim();
+  return text.isEmpty ? null : text;
+}
+
 class Machine {
   const Machine({
     required this.id,
@@ -38,10 +61,12 @@ class Machine {
     this.relayUrl,
     this.relayToken,
     this.revoked = false,
+    this.alias,
   });
 
   final String id;
   final String name;
+  final String? alias;
   final Uint8List mkey;
   final int pairedAt;
   final String? lastHost;
@@ -49,6 +74,8 @@ class Machine {
   final String? relayUrl;
   final RelayToken? relayToken;
   final bool revoked;
+
+  String get displayName => alias ?? name;
 
   Machine copyWith({
     String? name,
@@ -67,6 +94,20 @@ class Machine {
     relayUrl: relayUrl ?? this.relayUrl,
     relayToken: relayToken ?? this.relayToken,
     revoked: revoked ?? this.revoked,
+    alias: alias,
+  );
+
+  Machine withAlias(String? next) => Machine(
+    id: id,
+    name: name,
+    mkey: mkey,
+    pairedAt: pairedAt,
+    lastHost: lastHost,
+    lastPort: lastPort,
+    relayUrl: relayUrl,
+    relayToken: relayToken,
+    revoked: revoked,
+    alias: next,
   );
 
   Map<String, Object?> toPublicJson() => {
@@ -78,6 +119,7 @@ class Machine {
     'lastPort': lastPort,
     'relayUrl': relayUrl,
     'revoked': revoked,
+    if (alias != null) 'alias': alias,
   };
 
   static Machine fromPublicJson(Map<String, dynamic> json, RelayToken? token) =>
@@ -91,6 +133,7 @@ class Machine {
         relayUrl: json['relayUrl'] as String?,
         relayToken: token,
         revoked: json['revoked'] == true,
+        alias: cleanAlias(json['alias'] as String?),
       );
 }
 
@@ -139,11 +182,22 @@ class MachineRepository {
 
   Future<void> save(Machine machine) async {
     await load();
-    _machines[machine.id] = machine;
+    final existing = _machines[machine.id];
+    _machines[machine.id] = existing == null
+        ? machine
+        : machine.withAlias(existing.alias);
     final token = machine.relayToken;
     if (token != null) {
       await _secure.write(_tokenKey(machine.id), token.token);
     }
+    await _persist();
+  }
+
+  Future<void> rename(String id, String? raw) async {
+    await load();
+    final machine = _machines[id];
+    if (machine == null) return;
+    _machines[id] = machine.withAlias(cleanAlias(raw));
     await _persist();
   }
 

@@ -147,3 +147,5 @@ Settings → Điều khiển từ xa có hai khối, không cần đọc docs ha
 4. "Cài thông báo đẩy". Xong: project id, số điện thoại đã đăng ký, "Gửi thử" (chọn điện thoại khi có nhiều máy), "Gỡ".
 
 Nội dung hai file chỉ nằm trong bộ nhớ của trang đến lúc gửi cho app, rồi app cất khoá trong Keychain; không lưu vào localStorage hay log.
+
+Đổi tên hiển thị: desktop sửa tên điện thoại đã ghép ngay trong list (alias lưu trong `devices.json`, giữ tên gốc điện thoại gửi), điện thoại đổi tên máy tính cục bộ; hai bên không đồng bộ tên. Điện thoại đổi tên session bằng lệnh `terminal.alias` có sẵn, cùng alias với desktop.

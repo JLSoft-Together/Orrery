@@ -24,7 +24,9 @@ pub fn relay_kind(state: &str) -> &'static str {
 pub fn device_json(d: &Device, via: Option<&str>) -> Value {
     let mut v = json!({
         "deviceId": d.device_id,
-        "name": d.name,
+        "name": d.display_name(),
+        "originalName": d.name,
+        "alias": d.alias,
         "platform": super::devices::known_platform(&d.platform),
         "pairedAt": d.paired_at,
         "lastSeen": d.last_seen,

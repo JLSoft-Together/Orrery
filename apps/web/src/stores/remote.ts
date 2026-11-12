@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { RemoteStatus } from '@ccm/shared'
-import { hasRemote, isConnected, onRemoteChanged, remoteEnable, remoteKeepAwake, remoteRevoke, remoteRevokeAll, remoteStatus, REMOTE_LOG_MAX, REMOTE_TOUCH_MS, type RemoteLogLine } from '../lib/remote'
+import { hasRemote, isConnected, onRemoteChanged, remoteDeviceRename, remoteEnable, remoteKeepAwake, remoteRevoke, remoteRevokeAll, remoteStatus, REMOTE_LOG_MAX, REMOTE_TOUCH_MS, type RemoteLogLine } from '../lib/remote'
 
 let seq = 0
 
@@ -41,6 +41,12 @@ export const useRemoteStore = defineStore('remote', () => {
     return ok
   }
 
+  async function renameDevice(deviceId: string, name: string): Promise<boolean> {
+    const ok = await remoteDeviceRename(deviceId, name)
+    if (ok) apply(await remoteStatus())
+    return ok
+  }
+
   async function revokeAll(): Promise<boolean> {
     const ok = await remoteRevokeAll()
     if (ok) apply(await remoteStatus())
@@ -68,5 +74,5 @@ export const useRemoteStore = defineStore('remote', () => {
     return sized.value[paneKey] ? (devices.value.find(isConnected)?.name ?? '') : null
   }
 
-  return { status, log, touched, sized, supported, enabled, devices, connected, start, stop, setEnabled, setKeepAwake, revoke, revokeAll, record, setSized, watching }
+  return { status, log, touched, sized, supported, enabled, devices, connected, start, stop, setEnabled, setKeepAwake, revoke, renameDevice, revokeAll, record, setSized, watching }
 })

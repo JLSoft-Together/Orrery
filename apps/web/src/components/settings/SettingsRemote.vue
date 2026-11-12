@@ -57,6 +57,10 @@ async function revoke(deviceId: string): Promise<void> {
   await remote.revoke(deviceId)
 }
 
+async function renameDevice(deviceId: string, name: string): Promise<void> {
+  await remote.renameDevice(deviceId, name)
+}
+
 async function revokeAll(): Promise<void> {
   busy.value = true
   await remote.revokeAll()
@@ -110,7 +114,7 @@ onMounted(() => void remote.start())
     <SettingEmbed id="remoteDevices">
       <SettingSection id="remote-devices" :title="t('remoteV97.devices.title')">
         <TransitionGroup v-if="devices.length" tag="div" name="ccm-list" class="ccm-list-inflow relative divide-y divide-line" data-remote-devices>
-          <RemoteDeviceRow v-for="d in devices" :key="d.deviceId" :device="d" @revoke="revoke" />
+          <RemoteDeviceRow v-for="d in devices" :key="d.deviceId" :device="d" @revoke="revoke" @rename="renameDevice" />
         </TransitionGroup>
         <div v-else class="flex items-center gap-3 px-3 py-4 text-sm text-ink-muted" role="status" data-remote-empty>
           <Smartphone :size="18" class="shrink-0" aria-hidden="true" />

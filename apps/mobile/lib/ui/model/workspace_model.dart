@@ -104,6 +104,24 @@ class PaneInfo {
   final String? sessionId;
   final String? terminalId;
 
+  PaneInfo withTitle(String next) => PaneInfo(
+    key: key,
+    kind: kind,
+    title: next,
+    rail: rail,
+    subagents: subagents,
+    dirty: dirty,
+    busy: busy,
+    preset: preset,
+    agent: agent,
+    cwd: cwd,
+    branch: branch,
+    waitText: waitText,
+    attention: attention,
+    sessionId: sessionId,
+    terminalId: terminalId,
+  );
+
   bool get isTerm => kind == 'term';
   bool get isAsked => rail == RailState.asked;
   bool get needsUser => rail == RailState.asked || rail == RailState.failed;
@@ -266,6 +284,30 @@ class WorkspaceModel {
     return WorkspaceModel(
       tabs: tabs,
       closedCount: closed is num ? closed.toInt() : 0,
+    );
+  }
+
+  WorkspaceModel withAliases(Map<String, String> aliases) {
+    if (aliases.isEmpty) return this;
+    return WorkspaceModel(
+      closedCount: closedCount,
+      tabs: [
+        for (final t in tabs)
+          TabInfo(
+            key: t.key,
+            name: t.name,
+            project: t.project,
+            tree: t.tree,
+            zoom: t.zoom,
+            folded: t.folded,
+            panes: [
+              for (final p in t.panes)
+                aliases[p.terminalId] == null
+                    ? p
+                    : p.withTitle(aliases[p.terminalId]!),
+            ],
+          ),
+      ],
     );
   }
 

@@ -620,6 +620,36 @@ abstract class AppLocalizations {
   /// **'Rename tab'**
   String get renameTab;
 
+  /// No description provided for @renameSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename session'**
+  String get renameSession;
+
+  /// No description provided for @renameSessionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty = original title'**
+  String get renameSessionHint;
+
+  /// No description provided for @renameMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename computer'**
+  String get renameMachine;
+
+  /// No description provided for @renameMachineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty = name set on the computer'**
+  String get renameMachineHint;
+
+  /// No description provided for @machineOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Named {name} on the computer'**
+  String machineOriginal(String name);
+
   /// No description provided for @renameHint.
   ///
   /// In en, this message translates to:

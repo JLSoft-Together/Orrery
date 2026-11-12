@@ -133,7 +133,11 @@ class _WorkspaceBody extends ConsumerWidget {
               ref.watch(
                 machinesProvider.select(
                   (m) =>
-                      m.where((x) => x.id == machineId).firstOrNull?.name ?? '',
+                      m
+                          .where((x) => x.id == machineId)
+                          .firstOrNull
+                          ?.displayName ??
+                      '',
                 ),
               ),
               maxLines: 1,

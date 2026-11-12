@@ -316,6 +316,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameTab => 'Rename tab';
 
   @override
+  String get renameSession => 'Rename session';
+
+  @override
+  String get renameSessionHint => 'Empty = original title';
+
+  @override
+  String get renameMachine => 'Rename computer';
+
+  @override
+  String get renameMachineHint => 'Empty = name set on the computer';
+
+  @override
+  String machineOriginal(String name) {
+    return 'Named $name on the computer';
+  }
+
+  @override
   String get renameHint => 'Empty = default name';
 
   @override

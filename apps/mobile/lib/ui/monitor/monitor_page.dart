@@ -5,6 +5,7 @@ import '../../remote/providers.dart';
 import '../model/workspace_model.dart';
 import '../theme/orrery_theme.dart';
 import '../viewers/async_panel.dart';
+import '../workspace/session_rename.dart';
 import '../widgets/common.dart';
 import 'monitor_model.dart';
 
@@ -37,7 +38,11 @@ class MonitorPage extends ConsumerWidget {
               itemBuilder: (context, index) => Appear(
                 key: ValueKey('mp-${projects[index].cwd}'),
                 delay: index * 30,
-                child: _ProjectBlock(project: projects[index], onOpen: onOpen),
+                child: _ProjectBlock(
+                  machineId: machineId,
+                  project: projects[index],
+                  onOpen: onOpen,
+                ),
               ),
             ),
     );
@@ -45,8 +50,13 @@ class MonitorPage extends ConsumerWidget {
 }
 
 class _ProjectBlock extends StatelessWidget {
-  const _ProjectBlock({required this.project, required this.onOpen});
+  const _ProjectBlock({
+    required this.machineId,
+    required this.project,
+    required this.onOpen,
+  });
 
+  final String machineId;
   final MonitorProject project;
   final ValueChanged<String> onOpen;
 
@@ -87,7 +97,11 @@ class _ProjectBlock extends StatelessWidget {
             ),
           ),
           for (final s in project.sessions)
-            _SessionCard(session: s, onTap: () => onOpen(s.terminalId)),
+            _SessionCard(
+              machineId: machineId,
+              session: s,
+              onTap: () => onOpen(s.terminalId),
+            ),
         ],
       ),
     );
@@ -100,14 +114,26 @@ String _compact(int n) {
   return '$n';
 }
 
-class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session, required this.onTap});
+class _SessionCard extends ConsumerWidget {
+  const _SessionCard({
+    required this.machineId,
+    required this.session,
+    required this.onTap,
+  });
 
+  final String machineId;
   final MonitorSession session;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    void rename() => renameSession(
+      context,
+      ref,
+      machineId,
+      session.terminalId,
+      session.alias,
+    );
     final l = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final meta = [
@@ -125,6 +151,7 @@ class _SessionCard extends StatelessWidget {
           key: ValueKey('mon-${session.terminalId}'),
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
+          onLongPress: rename,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -146,6 +173,24 @@ class _SessionCard extends StatelessWidget {
                       ),
                     ),
                     StatusBadge(state: session.rail, compact: true),
+                    PopupMenuButton<String>(
+                      key: ValueKey('mon-menu-${session.terminalId}'),
+                      tooltip: l.more,
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        Icons.more_vert_rounded,
+                        size: 20,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      onSelected: (_) => rename(),
+                      itemBuilder: (_) => [
+                        PopupMenuItem<String>(
+                          key: const ValueKey('mon-rename-session'),
+                          value: 'rename',
+                          child: Text(l.renameSession),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 if (session.tool != null)

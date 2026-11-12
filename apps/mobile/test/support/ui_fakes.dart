@@ -143,6 +143,14 @@ class FakeMachines extends MachinesNotifier {
   List<Machine> build() => list;
 
   @override
+  Future<void> rename(String machineId, String? alias) async {
+    state = [
+      for (final m in state)
+        if (m.id == machineId) m.withAlias(cleanAlias(alias)) else m,
+    ];
+  }
+
+  @override
   Future<void> forget(String machineId) async {
     forgotten.add(machineId);
     state = state.where((m) => m.id != machineId).toList();

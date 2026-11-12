@@ -87,3 +87,9 @@ Hợp đồng: `docs/remote-integration.md`. Crypto + frame nằm ở crate `app
 - Quyền POST_NOTIFICATIONS kiểm lúc `init` và khi app resume (`OrreryRemoteApp` -> `PushService.refreshPermission`); thu hồi -> switch tắt + `pushRevoked`
 - analysis_options: `deprecated_member_use: ignore` vì `getToken`/`deleteToken`/`onTokenRefresh` của firebase_messaging 17 deprecated nhưng FCM v1 cần token cũ
 - `buildPushService` log lỗi qua `dart:developer` (`orrery.push`); `RemoteHostPush.dispose`; test tách `test/push_test.dart`, `push_ui_test.dart`, `support/push_fakes.dart`
+
+## WP-23 đổi tên
+- remote/machines.dart: `Machine.alias` (lưu machines.json, `displayName`), `cleanAlias` (max 40 rune, bỏ ký tự điều khiển / ẩn, rỗng = null), `MachineRepository.rename(id, raw)`; `save` luôn giữ alias hiện có (copy cũ không ghi đè), `remove` (forget) xoá alias; `MachinesNotifier.rename`
+- ui/widgets/name_dialog.dart: `showNameDialog` / `NameDialog` dùng chung (đổi tên tab, session, máy); ui/workspace/session_rename.dart: `renameSession` gửi `terminal.alias {terminalId, alias|null}` (max 80, cùng alias desktop, đã whitelist ở dashboard + StoreTap); `ui_providers.workspaceModelProvider` đè `pane.title` bằng alias từ snapshot (`sessionAliases`); `PaneFacts.alias`
+- UI: home (menu ⋮ `machine-menu-<id>` + giữ lâu, dòng "Máy tính đặt tên …"), Monitor (`mon-menu-<terminalId>` + giữ lâu), pane actions (`action-rename-session`, `action-rename` = đổi tên tab `ws.rename` đã có sẵn); l10n `renameSession*`, `renameMachine*`, `machineOriginal`
+- Test: test/rename_test.dart, rename_shots_test.dart (`WP23_SHOTS=1 WP23_OUT=...`)

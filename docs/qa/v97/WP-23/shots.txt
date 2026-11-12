@@ -1,0 +1,12 @@
+rename-1-list-light
+rename-2-editing-light
+rename-3-saved-light
+rename-4-long-light
+rename-5-esc-light
+rename-6-restored-light
+rename-1-list-dark
+rename-2-editing-dark
+rename-3-saved-dark
+rename-4-long-dark
+rename-5-esc-dark
+rename-6-restored-dark

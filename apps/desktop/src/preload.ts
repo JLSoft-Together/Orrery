@@ -308,6 +308,10 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   remotePairCancel: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-pair-cancel'),
   remoteRevoke: (deviceId: string): Promise<unknown> =>
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-revoke', deviceId) : Promise.resolve(false),
+  remoteDeviceRename: (deviceId: string, name: string): Promise<unknown> =>
+    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 && typeof name === 'string' && name.length <= 200
+      ? ipcRenderer.invoke('ccm:remote-device-rename', { deviceId, name })
+      : Promise.resolve(false),
   remoteRevokeAll: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-revoke-all'),
   remotePublish: (summary: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:remote-publish', summary),
   remoteRelayStatus: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-relay-status'),

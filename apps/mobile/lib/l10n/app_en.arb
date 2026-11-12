@@ -171,6 +171,18 @@
   "paneClosed": "The pane you were viewing was closed",
   "tabActions": "Tab actions",
   "renameTab": "Rename tab",
+  "renameSession": "Rename session",
+  "renameSessionHint": "Empty = original title",
+  "renameMachine": "Rename computer",
+  "renameMachineHint": "Empty = name set on the computer",
+  "machineOriginal": "Named {name} on the computer",
+  "@machineOriginal": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "renameHint": "Empty = default name",
   "save": "Save",
   "movePane": "Move pane to another tab",

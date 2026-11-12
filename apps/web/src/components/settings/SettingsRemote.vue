@@ -4,11 +4,14 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, CircleCheck, CircleOff, LoaderCircle, Plus, Smartphone, SmartphoneNfc } from 'lucide-vue-next'
 import type { RemoteStatus } from '@ccm/shared'
 import { activeDevices } from '../../lib/remote'
+import { hasPushSetup, hasRelaySetup } from '../../composables/useRemoteSetupIpc'
 import { useRemoteStore } from '../../stores/remote'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import RemoteDeviceRow from './remote/RemoteDeviceRow.vue'
 import RemoteLogList from './remote/RemoteLogList.vue'
 import RemotePairPanel from './remote/RemotePairPanel.vue'
+import RemotePushSetup from './remote/RemotePushSetup.vue'
+import RemoteRelaySetup from './remote/RemoteRelaySetup.vue'
 import SettingEmbed from './SettingEmbed.vue'
 import SettingSection from './SettingSection.vue'
 
@@ -125,6 +128,18 @@ onMounted(() => void remote.start())
             </div>
           </Transition>
         </template>
+      </SettingSection>
+    </SettingEmbed>
+
+    <SettingEmbed v-if="hasRelaySetup" id="remoteRelay">
+      <SettingSection id="remote-relay" :title="t('remoteV97.relaySetup.title')">
+        <RemoteRelaySetup />
+      </SettingSection>
+    </SettingEmbed>
+
+    <SettingEmbed v-if="hasPushSetup" id="remotePush">
+      <SettingSection id="remote-push" :title="t('remoteV97.pushSetup.title')">
+        <RemotePushSetup />
       </SettingSection>
     </SettingEmbed>
 

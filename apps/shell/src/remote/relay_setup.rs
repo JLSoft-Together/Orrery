@@ -198,7 +198,12 @@ impl Remote {
     }
 
     pub fn relay_deploy(&self, arg: &Value, progress: &dyn Fn(&str)) -> Value {
-        let Some(account) = arg.as_str().filter(|a| cf_api::valid_account(a)) else { return json!({ "ok": false, "error": "no_account" }) };
+        let saved = self.read_config().relay.account_id;
+        let picked = match arg.as_str() {
+            Some("") | None => saved.as_str(),
+            Some(a) => a,
+        };
+        let Some(account) = Some(picked).filter(|a| cf_api::valid_account(a)) else { return json!({ "ok": false, "error": "no_account" }) };
         let Some(guard) = self.acquire() else { return json!({ "ok": false, "error": "busy" }) };
         self.setup.cancel.store(false, Ordering::SeqCst);
         *lock(&self.setup.error) = None;

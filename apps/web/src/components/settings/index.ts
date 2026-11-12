@@ -126,6 +126,8 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'remote', id: 'remote', labelKey: 'remoteV97.enable', hintKey: 'remoteV97.enableHint', needs: 'remote' },
   { page: 'remote', id: 'remoteAdd', labelKey: 'remoteV97.add.title', hintKey: 'remoteV97.add.hint', needs: 'remote' },
   { page: 'remote', id: 'remoteDevices', labelKey: 'remoteV97.devices.title', needs: 'remote' },
+  { page: 'remote', id: 'remoteRelay', labelKey: 'remoteV97.relaySetup.title', hintKey: 'remoteV97.relaySetup.intro', needs: 'remote' },
+  { page: 'remote', id: 'remotePush', labelKey: 'remoteV97.pushSetup.title', hintKey: 'remoteV97.pushSetup.intro', needs: 'remote' },
   { page: 'remote', id: 'remoteAwake', labelKey: 'remoteV97.awake', hintKey: 'remoteV97.awakeHint', needs: 'remote' },
   { page: 'remote', id: 'remoteLog', labelKey: 'remoteV97.log.title', needs: 'remote' },
 

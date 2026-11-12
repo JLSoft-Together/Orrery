@@ -1,3 +1,5 @@
+import setup from './remote-setup-v97'
+
 const en = {
   remoteV97: {
     cancel: 'Cancel',
@@ -80,6 +82,7 @@ const en = {
       phone: 'Phone',
       device: '{name} is using this terminal',
     },
+    ...setup.en,
   },
 }
 
@@ -165,6 +168,7 @@ const vi: typeof en = {
       phone: 'Điện thoại',
       device: '{name} đang dùng terminal này',
     },
+    ...setup.vi,
   },
 }
 

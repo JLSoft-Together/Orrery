@@ -123,3 +123,27 @@ Thao tác nguy hiểm (xoá branch, bỏ thay đổi, push, commit amend, chạy
 - Trên điện thoại: key và token relay trong Keychain / Keystore (flutter_secure_storage); cache snapshot trong thư mục cache của app, không backup.
 - Relay không log, không đọc nội dung.
 - Env, secret, app key, token PTY không bao giờ ra điện thoại.
+
+## 13. Dựng relay và thông báo đẩy trong Settings
+
+Settings → Điều khiển từ xa có hai khối, không cần đọc docs hay chạy lệnh.
+
+**Relay (ngoài mạng nhà)** — dùng tài khoản Cloudflare miễn phí của bạn:
+
+1. Bấm "Mở trang tạo token", chọn Create Custom Token, cấp `Account · Workers Scripts · Edit` và `Account · Account Settings · Read` trên account muốn dùng.
+2. Dán token vào ô (ẩn ký tự) rồi "Kiểm tra". Token được cất trong Keychain / Credential Manager của máy, không hiện lại trên màn hình. Mỗi lần mở Settings, nếu muốn chọn account hoặc cập nhật relay thì dán lại token.
+3. Chọn account (chỉ có một thì đã chọn sẵn) rồi "Dựng relay". Tiến độ từng bước hiện ngay: kiểm token, địa chỉ workers.dev, tải relay, bật địa chỉ, chờ relay phản hồi. Rời trang giữa chừng không dừng việc dựng; mở lại sẽ thấy tiến độ.
+4. Xong: địa chỉ relay (nút Sao chép), account, và "Cập nhật relay" khi bản kèm app mới hơn. Nếu relay chưa phản hồi ngay, đó là DNS đang lan, chờ vài phút.
+
+"Gỡ" hỏi hai kiểu: chỉ gỡ khỏi máy này, hoặc xoá luôn Worker trên Cloudflare (app hỏi xác nhận thêm một lần). Chưa xoá Worker thì nó vẫn nằm trong account của bạn.
+
+Điện thoại ghép nối trước khi có relay cần ghép lại để dùng relay; điện thoại đã ghép với relay này không cần làm gì thêm.
+
+**Thông báo đẩy** — dùng project Firebase của bạn:
+
+1. Firebase console → Add app → Android, package `dev.ccm.orrery.remote` → tải `google-services.json`.
+2. Project settings → Service accounts → Generate new private key → tải file khoá.
+3. Thả cả hai file vào vùng thả (hoặc "chọn file"). App nhận diện theo nội dung nên không cần đúng tên file; mỗi loại hiện dấu ✓ kèm tên project. Hai file khác project, file quá 64 KB hay không phải JSON Firebase đều bị báo ngay trên màn hình.
+4. "Cài thông báo đẩy". Xong: project id, số điện thoại đã đăng ký, "Gửi thử" (chọn điện thoại khi có nhiều máy), "Gỡ".
+
+Nội dung hai file chỉ nằm trong bộ nhớ của trang đến lúc gửi cho app, rồi app cất khoá trong Keychain; không lưu vào localStorage hay log.

@@ -255,6 +255,8 @@ export type RelaySetupError =
   | 'bundle'
   | 'busy'
   | 'rejected'
+  | 'cancelled'
+  | 'migration'
 
 export type RelayDeployStep = 'verify' | 'subdomain' | 'upload' | 'enable' | 'health' | 'done'
 

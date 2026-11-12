@@ -31,7 +31,7 @@ Chốt qua grill với chủ nhân 2026-11-12. Dùng nội bộ: không store, k
 | 23 | Chặn IP tự động | Relay + cổng LAN desktop: **20 lỗi / 10 phút** (bắt tay Noise sai, token sai, mã ghép sai, bị 429, khung sai) → chặn **1 giờ → 24 giờ → 7 ngày** nếu tái phạm. IP thiết bị đã ghép đang nối hợp lệ và IP trong danh sách tin cậy không bao giờ bị chặn tự động |
 | 24 | Danh sách IP | Desktop Settings → Điều khiển từ xa: xem (IP, nguồn relay / LAN, lý do, số lần, lúc chặn, hết hạn), **gỡ từng / gỡ hết** (xác nhận), **chặn tay IP / CIDR** (có hạn hoặc vĩnh viễn), **danh sách tin cậy**, **nhật ký truy cập** 200 lần nối / lỗi gần nhất |
 | 25 | Siết relay | Mỗi IP max 4 kết nối đồng thời, chưa bắt tay xong trong 5 s thì cắt, khung quá cỡ thì cắt + tính lỗi; web app CSP chặt (không script lạ / inline, chỉ nối relay + LAN) + HSTS |
-| 26 | Ghép qua relay | Mã ghép sống 2 phút, sai 5 lần là huỷ; **desktop hiện hộp duyệt** "Ghép <tên máy> từ IP <ip>?" mới cho ghép |
+| 26 | Ghép qua relay | Mã ghép sống 2 phút; sai 5 lần / nguồn thì loại nguồn đó, tổng 20 lần sai thì huỷ QR (chủ nhân duyệt đổi 2026-11-13, WP-59); **desktop hiện hộp duyệt** "Ghép <tên máy> từ IP <ip>?" mới cho ghép |
 | 27 | Cảnh báo | Desktop + Telegram + push tới điện thoại cũ khi: **thiết bị mới ghép**; **có IP bị chặn** (gộp, max 1 lần / giờ); **thiết bị đã ghép nối từ IP / quốc gia chưa thấy** (quốc gia từ `cf-ipcountry` của relay) |
 | 28 | Dev không cần Mac | Cu em làm trên Windows + iPhone: Vite dev + Cloudflare quick tunnel (https thật trên iPhone), Eruda console chỉ bản dev + log gửi về dev server, Playwright WebKit trên Windows; không debug breakpoint Safari |
 

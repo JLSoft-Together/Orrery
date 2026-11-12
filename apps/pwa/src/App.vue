@@ -3,6 +3,7 @@ import { TriangleAlert, X } from 'lucide-vue-next'
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ConfirmHost from './components/ConfirmHost.vue'
+import RemoteConfirmHost from './components/RemoteConfirmHost.vue'
 import TabBar, { type TabId } from './components/TabBar.vue'
 import UpdateBar from './components/UpdateBar.vue'
 import { isWaiting, parseSessions } from './lib/monitorModel'
@@ -18,7 +19,8 @@ import MonitorView from './views/MonitorView.vue'
 import PairView from './views/PairView.vue'
 import SessionView from './views/SessionView.vue'
 import SettingsView from './views/SettingsView.vue'
-import WorkspaceStub from './views/WorkspaceStub.vue'
+import TerminalView from './views/TerminalView.vue'
+import WorkspaceView from './views/WorkspaceView.vue'
 
 const { t } = useI18n()
 const hub = useHubStore()
@@ -28,11 +30,15 @@ const wide = useWide()
 
 const master = computed<Route>(() => {
   const r = route.value
-  return wide.value && r.name === 'session' ? { name: 'monitor', machine: r.machine } : r
+  if (wide.value && r.name === 'session') return { name: 'monitor', machine: r.machine }
+  if (wide.value && r.name === 'workspace' && r.pane) return { name: 'workspace', machine: r.machine }
+  return r
 })
+const fullTerminal = computed(() => !wide.value && route.value.name === 'workspace' && route.value.pane !== undefined)
 const viewKey = computed(() => JSON.stringify(master.value))
 const selectedTerminal = computed(() => (route.value.name === 'session' ? route.value.terminal : undefined))
 const sessionRoute = computed(() => (route.value.name === 'session' ? route.value : null))
+const paneRoute = computed(() => (route.value.name === 'workspace' && route.value.pane ? { machine: route.value.machine, pane: route.value.pane } : null))
 const renderReady = computed(() => hub.ready || hub.bootError !== null)
 
 const tabMachine = computed(() => {
@@ -53,7 +59,7 @@ const activeTab = computed<TabId | null>(() => {
       return null
   }
 })
-const showTabs = computed(() => activeTab.value !== null && (activeTab.value === 'settings' ? tabMachine.value !== null : true))
+const showTabs = computed(() => !fullTerminal.value && activeTab.value !== null && (activeTab.value === 'settings' ? tabMachine.value !== null : true))
 const badge = computed(() => (tabMachine.value ? parseSessions(hub.viewOf(tabMachine.value).snapshot).filter((s) => isWaiting(s.rail)).length : 0))
 
 function selectTab(tab: TabId): void {
@@ -89,13 +95,14 @@ watch(
     </div>
     <div class="body">
       <div class="master">
-        <main class="scroll">
-          <div v-if="renderReady" :key="viewKey" class="view" :class="routeDirection">
+        <main class="scroll" :class="{ fill: fullTerminal }">
+          <div v-if="renderReady" :key="viewKey" class="view" :class="[routeDirection, { fill: fullTerminal }]">
             <HomeView v-if="master.name === 'home'" />
             <PairView v-else-if="master.name === 'pair'" />
             <MonitorView v-else-if="master.name === 'monitor'" :machine="master.machine" :selected="selectedTerminal" />
             <SessionView v-else-if="master.name === 'session'" :machine="master.machine" :terminal="master.terminal" />
-            <WorkspaceStub v-else-if="master.name === 'workspace'" :machine="master.machine" :pane="master.pane" />
+            <TerminalView v-else-if="master.name === 'workspace' && master.pane" :machine="master.machine" :pane="master.pane" />
+            <WorkspaceView v-else-if="master.name === 'workspace'" :machine="master.machine" :selected="paneRoute?.pane" />
             <SettingsView v-else-if="master.name === 'settings'" />
             <DebugView v-else-if="master.name === 'debug'" />
           </div>
@@ -104,10 +111,12 @@ watch(
       </div>
       <aside v-if="wide" class="detail" data-testid="detail-pane">
         <SessionView v-if="sessionRoute" :key="sessionRoute.terminal" :machine="sessionRoute.machine" :terminal="sessionRoute.terminal" embedded />
+        <TerminalView v-else-if="paneRoute" :key="paneRoute.pane" :machine="paneRoute.machine" :pane="paneRoute.pane" embedded />
         <p v-else class="placeholder">{{ t('machines.detailEmpty') }}</p>
       </aside>
     </div>
     <ConfirmHost />
+    <RemoteConfirmHost />
   </div>
 </template>
 
@@ -172,8 +181,16 @@ watch(
   overflow-x: hidden;
 }
 
+.scroll.fill {
+  overflow: hidden;
+}
+
 .view {
   min-height: 100%;
+}
+
+.view.fill {
+  height: 100%;
 }
 
 .view.push {

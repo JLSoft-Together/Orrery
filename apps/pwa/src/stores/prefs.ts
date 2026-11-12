@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { Emitter } from '../remote/emitter'
 import type { Db } from '../storage/idb'
-import { clearLocalPrefs, DEFAULT_LOCAL_PREFS, loadLocalPrefs, saveLocalPrefs, type LanguagePref, type LocalPrefs, type MonitorMode, type ThemePref } from '../storage/localPrefs'
+import { clearLocalPrefs, DEFAULT_LOCAL_PREFS, loadLocalPrefs, saveLocalPrefs, type LanguagePref, type LocalPrefs, type MonitorMode, type ThemePref, type WorkspaceMode } from '../storage/localPrefs'
 import { bellOn, DEFAULT_NOTIFY, loadNotify, saveNotify, type NotifyPrefs } from '../storage/notifyPrefs'
 
 export type NotifyKey = 'waiting' | 'done' | 'error' | 'content'
@@ -41,6 +41,10 @@ export const usePrefsStore = defineStore('prefs', () => {
     patchLocal({ monitorMode })
   }
 
+  function setWorkspaceMode(workspaceMode: WorkspaceMode): void {
+    patchLocal({ workspaceMode })
+  }
+
   function setLastMachine(id: string | null): void {
     if (local.value.lastMachine !== id) patchLocal({ lastMachine: id })
   }
@@ -75,5 +79,5 @@ export const usePrefsStore = defineStore('prefs', () => {
     notify.value = { ...DEFAULT_NOTIFY, bells: {} }
   }
 
-  return { local, notify, events, patchLocal, attach, setLanguage, setTheme, setMonitorMode, setLastMachine, setNotify, bell, setBell, dropMachine, resetAll }
+  return { local, notify, events, patchLocal, attach, setLanguage, setTheme, setMonitorMode, setWorkspaceMode, setLastMachine, setNotify, bell, setBell, dropMachine, resetAll }
 })

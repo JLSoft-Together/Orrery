@@ -4,8 +4,10 @@ import { lockStep } from './lock-step.mjs'
 import { startPeer } from './procs.mjs'
 import { screenshotSteps } from './shots.mjs'
 import { uiSteps } from './ui-steps.mjs'
+import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
+import { workspaceShots } from './ws-shots.mjs'
 
-export const STEPS_PER_BROWSER = 19
+export const STEPS_PER_BROWSER = 28
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -110,6 +112,9 @@ export async function runScenario({ browserName, launch, env, record }) {
     })
 
     await screenshotSteps(c, page, peer)
+    await workspaceSteps(c, page, peer)
+    await workspaceShots(c, page, peer)
+    await viewOnlyStep(c, page, peer)
 
     await step('desktop gone: card turns stale, reload shows the saved snapshot from IndexedDB at once, Monitor shows the offline banner', async () => {
       peer.stop()

@@ -31,3 +31,7 @@
 
 ### Báo cáo
 `.planning/wp/v98/WP-55b-report.md`: cách xử lý CSP (đo trước / sau), màn đã làm (file + symbol), test / E2E chạy thật (số), ảnh, khác mockup + lý do, việc dở (gồm việc cần desktop), rủi ro iOS thật (bàn phím, IME, cuộn, nền).
+
+### Nhật ký
+- Bước 1 xong. Đo trên trang terminal tối thiểu dưới CSP relay (`style-src 'self'`): xterm 6.0.0 thuần = WebKit 12 vi phạm `style-src-elem inline`, Chromium 8, chữ không có màu (DomRenderer + Viewport tạo `<style>`). Cách chọn (a): `src/terminal/xtermStyles.ts` chặn `document.createElement('style')`, trả `div` ẩn có setter `textContent` nạp vào `CSSStyleSheet.replaceSync` + `adoptedStyleSheets`. Sau: 0 vi phạm cả 2 trình duyệt, màu đúng (#e5e5ea / đỏ). Không đổi `apps/relay`.
+- Xong: typecheck sạch, 156 test pass, build sạch, E2E WebKit 28/28 + Chromium 28/28, 0 vi phạm CSP. Báo cáo: `.planning/wp/v98/WP-55b-report.md`.

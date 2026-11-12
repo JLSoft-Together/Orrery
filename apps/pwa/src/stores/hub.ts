@@ -4,7 +4,8 @@ import { randomHex } from '../remote/bytes'
 import type { LogEntry } from '../remote/hub'
 import { EMPTY_VIEW, type MachineView } from '../remote/machineData'
 import { linkState } from '../remote/linkRules'
-import type { LinkState, Machine, RoutePolicy } from '../remote/types'
+import { RemoteCommandError, type JsonMap, type LinkState, type Machine, type RoutePolicy } from '../remote/types'
+import type { PtyStreams } from '../terminal/ptyStreams'
 import type { Runtime } from '../runtime'
 
 export interface Notice {
@@ -22,6 +23,7 @@ export const useHubStore = defineStore('hub', () => {
   const rtt = shallowRef<Record<string, number>>({})
   const log = shallowRef<LogEntry[]>([])
   const notices = ref<Notice[]>([])
+  const viewOnly = shallowRef<Record<string, boolean>>({})
   let runtime: Runtime | null = null
 
   function linkOf(id: string): LinkState {
@@ -115,11 +117,39 @@ export const useHubStore = defineStore('hub', () => {
     }
   }
 
+  function ptyFor(id: string): PtyStreams {
+    return need().pty.for(id)
+  }
+
+  async function command(id: string, type: string, fields?: JsonMap, timeoutMs?: number): Promise<JsonMap> {
+    const session = need().hub.session(id)
+    if (!session || linkOf(id).status !== 'ready') throw new RemoteCommandError('offline')
+    try {
+      const reply = await session.request(type, fields, timeoutMs)
+      return reply
+    } catch (error) {
+      if (error instanceof RemoteCommandError && error.code === 'denied') viewOnly.value = { ...viewOnly.value, [id]: true }
+      throw error
+    }
+  }
+
+  function events(id: string, handler: (event: JsonMap) => void): () => void {
+    return need().hub.device.on((item) => {
+      if (item.machineId === id) handler(item.event)
+    })
+  }
+
+  async function answerConfirm(id: string, cid: string, ok: boolean): Promise<void> {
+    await need().hub.answerConfirm(id, cid, ok)
+  }
+
   function foreground(): void {
     runtime?.hub.foreground()
+    runtime?.pty.resumeAll()
   }
 
   function background(): void {
+    runtime?.pty.suspendAll()
     runtime?.hub.background()
   }
 
@@ -131,5 +161,5 @@ export const useHubStore = defineStore('hub', () => {
     runtime?.hub.note(text)
   }
 
-  return { ready, bootError, machines, links, views, rtt, log, notices, linkOf, viewOf, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
+  return { ready, bootError, machines, links, views, rtt, log, notices, viewOnly, ptyFor, command, events, answerConfirm, linkOf, viewOf, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
 })

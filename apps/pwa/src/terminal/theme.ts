@@ -1,0 +1,25 @@
+export const TERM_FONT = 'ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas, monospace'
+
+export const TERM_THEME = {
+  background: '#121216',
+  foreground: '#e6e6ea',
+  cursor: '#e8835d',
+  cursorAccent: '#121216',
+  selectionBackground: '#3a3a46',
+  black: '#1d1d23',
+  red: '#ff6b6b',
+  green: '#4cc38a',
+  yellow: '#f7d046',
+  blue: '#6ea8fe',
+  magenta: '#c9a0ff',
+  cyan: '#4cc2b8',
+  white: '#d4d4da',
+  brightBlack: '#6f6f7b',
+  brightRed: '#ff8f8f',
+  brightGreen: '#7ddcae',
+  brightYellow: '#ffe27a',
+  brightBlue: '#9cc3ff',
+  brightMagenta: '#dcc0ff',
+  brightCyan: '#7fe0d6',
+  brightWhite: '#ffffff',
+}

@@ -3,11 +3,13 @@ import { DEFAULT_LOCK_TIMEOUT, normalizeTimeout } from '../lib/lockPolicy'
 export type LanguagePref = 'auto' | 'vi' | 'en'
 export type ThemePref = 'auto' | 'light' | 'dark'
 export type MonitorMode = 'cards' | 'groups'
+export type WorkspaceMode = 'focus' | 'grid'
 
 export interface LocalPrefs {
   language: LanguagePref
   theme: ThemePref
   monitorMode: MonitorMode
+  workspaceMode: WorkspaceMode
   lockEnabled: boolean
   lockTimeout: number
   lockClose: boolean
@@ -19,6 +21,7 @@ export const DEFAULT_LOCAL_PREFS: LocalPrefs = {
   language: 'auto',
   theme: 'auto',
   monitorMode: 'cards',
+  workspaceMode: 'focus',
   lockEnabled: false,
   lockTimeout: DEFAULT_LOCK_TIMEOUT,
   lockClose: true,
@@ -39,6 +42,7 @@ export function normalizeLocalPrefs(raw: unknown): LocalPrefs {
     language: pick(o.language, ['auto', 'vi', 'en'], 'auto'),
     theme: pick(o.theme, ['auto', 'light', 'dark'], 'auto'),
     monitorMode: pick(o.monitorMode, ['cards', 'groups'], 'cards'),
+    workspaceMode: pick(o.workspaceMode, ['focus', 'grid'], 'focus'),
     lockEnabled: o.lockEnabled === true && credentialId !== null,
     lockTimeout: normalizeTimeout(o.lockTimeout),
     lockClose: o.lockClose !== false,

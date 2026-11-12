@@ -24,7 +24,8 @@ const inspectorPort = Number(flags.inspectorPort ?? 9331)
 const relayHttp = `http://127.0.0.1:${relayPort}`
 const exe = process.platform === 'win32' ? 'pwa-e2e-peer.exe' : 'pwa-e2e-peer'
 const peerExe = join(root, 'apps/core/target/debug', exe)
-const qaDir = join(root, 'docs/qa/v98/WP-55a')
+const qaDir = join(pwa, 'e2e/.out/shots-55a')
+const qaDirB = join(root, 'docs/qa/v98/WP-55b')
 const results = []
 const videoPath = join(tmpdir(), 'orrery-pwa-fake-camera.y4m')
 
@@ -63,6 +64,7 @@ async function launch(name) {
 
 async function main() {
   mkdirSync(qaDir, { recursive: true })
+  mkdirSync(qaDirB, { recursive: true })
   writeBlankVideo(videoPath)
   if (!flags['no-build']) await build()
   const persist = mkdtempSync(join(tmpdir(), 'orrery-pwa-relay-'))
@@ -72,7 +74,7 @@ async function main() {
     await waitHealth(relayHttp, 90_000).catch((e) => {
       throw new Error(`${e.message}\n${relay.log.join('')}`)
     })
-    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, videoPath, webHash: stat.state.web }
+    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, qaDirB, videoPath, webHash: stat.state.web }
     for (const browserName of browsers) {
       try {
         await runScenario({ browserName, launch, env, record: (r) => results.push(r) })

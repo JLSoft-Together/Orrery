@@ -1,4 +1,5 @@
 mod conn;
+mod data;
 
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
@@ -33,6 +34,8 @@ pub struct Desk {
     pub rev: u64,
     pub t1: &'static str,
     pub title: String,
+    pub view_only: bool,
+    pub asked: bool,
 }
 
 pub fn now() -> u64 {
@@ -116,6 +119,31 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
                 outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
             }
         }
+        "big" => {
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.big().into_iter().map(|o| (*id, o)));
+            }
+        }
+        "demo" => {
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.demo().into_iter().map(|o| (*id, o)));
+            }
+        }
+        "confirm" => {
+            let value = json!({"t": "confirm.ask", "cid": "cid1", "re": "git.discard", "title": "Bỏ thay đổi trong src/app.ts?", "detail": "git checkout -- src/app.ts", "ok": "Bỏ thay đổi", "cancel": "Giữ lại"});
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
+        "viewonly" => desk.view_only = true,
+        "asked" => {
+            desk.asked = true;
+            desk.rev += 1;
+            let value = data::ws_snapshot(desk);
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
         "revoke" => {
             desk.devices.clear();
             for id in conns.keys() {
@@ -163,6 +191,8 @@ fn main() {
         rev: 1,
         t1: "working",
         title: "claude".to_owned(),
+        view_only: false,
+        asked: false,
     };
 
     let ts = now();

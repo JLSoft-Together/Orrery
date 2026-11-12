@@ -90,3 +90,16 @@
 :root[data-theme='light'] {
   color-scheme: light;
 }
+
+:root {
+  --ccm-term-bg: #121216;
+  --ccm-term-ink: #e6e6ea;
+  --ccm-term-faint: #8d8d98;
+  --ccm-term-line: #2a2a31;
+  --ccm-diff-add: #4cc38a;
+  --ccm-diff-add-fill: rgba(76, 195, 138, 0.16);
+  --ccm-diff-del: #ff6b6b;
+  --ccm-diff-del-fill: rgba(255, 107, 107, 0.17);
+  --ccm-diff-hunk-fill: #1b2233;
+  --ccm-diff-hunk: #8ea4d6;
+}

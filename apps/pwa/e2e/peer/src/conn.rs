@@ -5,6 +5,7 @@ use core_remote_proto::session::accept;
 use core_remote_proto::{Error, Transport, PROTO};
 use serde_json::{json, Value};
 
+use crate::data;
 use crate::{now, Desk, NAME};
 
 fn terminals(desk: &Desk) -> Value {
@@ -36,18 +37,6 @@ fn snapshot_event(desk: &Desk) -> Value {
     json!({"t": "snapshot", "seq": desk.seq, "data": {"terminals": terminals(desk), "agents": agents(), "activity": activity()}})
 }
 
-fn ws_snapshot(desk: &Desk) -> Value {
-    json!({
-        "t": "ws.snapshot",
-        "rev": desk.rev,
-        "closedCount": 0,
-        "tabs": [{
-            "key": "tab1", "name": "api", "project": "api", "tree": {"pane": "p1"},
-            "panes": [{"key": "p1", "kind": "agent", "title": desk.title, "state": "working", "rail": "working", "subagents": 0, "dirty": false, "busy": true}]
-        }]
-    })
-}
-
 const PAIR_MSG1_LEN: usize = 50;
 const TOKEN_TTL: u64 = 30 * 24 * 3600;
 const CLOSE_NORMAL: u16 = 1000;
@@ -64,6 +53,7 @@ pub struct Live {
     transport: Transport,
     reassembler: Reassembler,
     device: String,
+    attached: Vec<u32>,
 }
 
 pub enum Conn {
@@ -107,6 +97,20 @@ impl Conn {
         }
     }
 
+    pub fn big(&mut self) -> Vec<Out> {
+        match self {
+            Conn::Live(live) => live.big(),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn demo(&mut self) -> Vec<Out> {
+        match self {
+            Conn::Live(live) => live.demo(),
+            _ => Vec::new(),
+        }
+    }
+
     pub fn on_data(&mut self, desk: &mut Desk, data: &[u8], pairing_only: bool) -> Vec<Out> {
         match std::mem::replace(self, Conn::Done) {
             Conn::New if data.len() == PAIR_MSG1_LEN => self.pair_start(desk, data),
@@ -146,6 +150,7 @@ impl Conn {
                     transport: accepted.transport,
                     reassembler: Reassembler::new(),
                     device: accepted.device_id,
+                    attached: Vec::new(),
                 }));
                 vec![Out::Send(msg2)]
             }
@@ -188,6 +193,24 @@ impl Live {
         json_out(&mut self.transport, value)
     }
 
+    fn demo(&mut self) -> Vec<Out> {
+        let payload = data::demo_payload();
+        let mut outs = Vec::new();
+        for stream in self.attached.clone() {
+            outs.extend(sealed(&mut self.transport, Kind::PtyOut, stream, &payload));
+        }
+        outs
+    }
+
+    fn big(&mut self) -> Vec<Out> {
+        let payload = data::big_payload();
+        let mut outs = Vec::new();
+        for stream in self.attached.clone() {
+            outs.extend(sealed(&mut self.transport, Kind::PtyOut, stream, &payload));
+        }
+        outs
+    }
+
     fn on_data(&mut self, desk: &Desk, data: &[u8]) -> Vec<Out> {
         let Ok(plain) = self.transport.open(data) else {
             eprintln!("peer: decrypt failed for {}", self.device);
@@ -202,6 +225,7 @@ impl Live {
     }
 
     fn respond(&mut self, desk: &Desk, message: Message) -> Vec<Out> {
+        let mut tail: Vec<(u32, &[u8])> = Vec::new();
         match message.kind {
             Kind::Json => {
                 let Ok(value) = serde_json::from_slice::<Value>(&message.payload) else {
@@ -213,14 +237,14 @@ impl Live {
                 let reply = match kind {
                     Some("hello") => {
                         extra.push(snapshot_event(desk));
-                        extra.push(ws_snapshot(desk));
+                        extra.push(data::ws_snapshot(desk));
                         json!({
                             "re": id, "ok": true, "machine": desk.machine, "name": NAME,
                             "version": "2.3.0", "minProto": PROTO, "locale": "vi",
                         })
                     }
                     Some("ws.get") => {
-                        extra.push(ws_snapshot(desk));
+                        extra.push(data::ws_snapshot(desk));
                         json!({ "re": id, "ok": true })
                     }
                     Some("resync") => {
@@ -228,15 +252,64 @@ impl Live {
                         json!({ "re": id, "ok": true })
                     }
                     Some("echo") => json!({ "re": id, "ok": true, "data": value.get("data") }),
-                    _ => json!({ "re": id, "ok": false, "error": "invalid" }),
+                    Some("pty.attach") => {
+                        let stream = value.get("stream").and_then(Value::as_u64).unwrap_or(0) as u32;
+                        if !self.attached.contains(&stream) {
+                            self.attached.push(stream);
+                        }
+                        println!("{}", json!({"ev": "attach", "stream": stream, "sessionId": value.get("sessionId"), "cols": value.get("cols"), "rows": value.get("rows")}));
+                        extra.push(json!({"t": "pty.ready", "stream": stream, "cols": 80, "rows": 24}));
+                        tail.push((stream, data::BANNER));
+                        json!({ "re": id, "ok": true, "stream": stream })
+                    }
+                    Some("pty.detach") => {
+                        let stream = value.get("stream").and_then(Value::as_u64).unwrap_or(0) as u32;
+                        self.attached.retain(|s| *s != stream);
+                        println!("{}", json!({"ev": "detach", "stream": stream}));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("pty.resize") => {
+                        println!("{}", json!({"ev": "resize", "stream": value.get("stream"), "cols": value.get("cols"), "rows": value.get("rows")}));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.keys") | Some("ws.send") | Some("ws.open") if desk.view_only => json!({ "re": id, "ok": false, "error": "denied" }),
+                    Some("ws.keys") => {
+                        println!("{}", json!({"ev": "keys", "keys": value.get("keys"), "paneKey": value.get("paneKey"), "since": value.get("since")}));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.send") => {
+                        println!("{}", json!({"ev": "send", "text": value.get("text"), "paneKey": value.get("paneKey")}));
+                        json!({ "re": id, "ok": true, "submitted": true })
+                    }
+                    Some("ws.open") => {
+                        println!("{}", json!({"ev": "open", "preset": value.get("preset"), "cwd": value.get("cwd")}));
+                        json!({ "re": id, "ok": true, "paneKey": "p1" })
+                    }
+                    Some("confirm.answer") => {
+                        println!("{}", json!({"ev": "confirm", "cid": value.get("cid"), "ok": value.get("ok")}));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some(other) => match data::viewer(other, &value) {
+                        Some(body) => json!({ "re": id, "ok": true, "data": body }),
+                        None => json!({ "re": id, "ok": false, "error": "invalid" }),
+                    },
+                    None => json!({ "re": id, "ok": false, "error": "invalid" }),
                 };
                 let mut outs = json_out(&mut self.transport, &reply);
                 for event in extra {
                     outs.extend(json_out(&mut self.transport, &event));
                 }
+                for (stream, bytes) in tail {
+                    outs.extend(sealed(&mut self.transport, Kind::PtyOut, stream, bytes));
+                }
                 outs
             }
-            Kind::PtyIn => sealed(&mut self.transport, Kind::PtyOut, message.stream, &message.payload),
+            Kind::PtyIn if desk.view_only => Vec::new(),
+            Kind::PtyIn => {
+                let hex: String = message.payload.iter().map(|b| format!("{b:02x}")).collect();
+                println!("{}", json!({"ev": "pty_in", "stream": message.stream, "claim": message.claim, "hex": hex}));
+                sealed(&mut self.transport, Kind::PtyOut, message.stream, &message.payload)
+            }
             Kind::Ping => sealed(&mut self.transport, Kind::Ping, 0, &[]),
             Kind::PtyOut => Vec::new(),
         }

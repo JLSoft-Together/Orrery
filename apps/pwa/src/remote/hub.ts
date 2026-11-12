@@ -1,6 +1,7 @@
 import { MachineConnection, type ConnectionDeps } from './connection'
 import { Emitter } from './emitter'
 import { MachineData, type MachineView, type SnapshotCache, EMPTY_VIEW } from './machineData'
+import type { PtyChunk } from './session'
 import { RemoteCommandError, type JsonMap, type LinkState, type Machine, type RoutePolicy } from './types'
 import { linkState } from './linkRules'
 
@@ -44,9 +45,23 @@ interface Entry {
 }
 
 const LOG_CAP = 200
+const DEVICE_EVENTS = /^(pty|fs|git|run)\./
+
+export interface PtyOut {
+  machineId: string
+  stream: number
+  bytes: Uint8Array
+}
+
+export interface DeviceEvent {
+  machineId: string
+  event: JsonMap
+}
 
 export class RemoteHub {
   readonly events = new Emitter<HubEvent>()
+  readonly pty = new Emitter<PtyOut>()
+  readonly device = new Emitter<DeviceEvent>()
   private readonly deps: HubDeps
   private readonly entries = new Map<string, Entry>()
   private readonly logs: LogEntry[] = []
@@ -73,6 +88,10 @@ export class RemoteHub {
 
   session(machineId: string) {
     return this.entries.get(machineId)?.connection.activeSession ?? null
+  }
+
+  async answerConfirm(machineId: string, cid: string, ok: boolean): Promise<void> {
+    await this.entries.get(machineId)?.data.answerConfirm(cid, ok)
   }
 
   note(text: string, machineId?: string): void {
@@ -120,7 +139,11 @@ export class RemoteHub {
         this.note(`${link.status}${link.route ? ` via ${link.route}` : ''}${link.reason !== 'none' ? ` (${link.reason})` : ''}`, id)
         this.events.emit({ kind: 'link', machineId: id, link })
       }),
-      connection.events.on((event: JsonMap) => data.handleEvent(event)),
+      connection.events.on((event: JsonMap) => {
+        data.handleEvent(event)
+        if (typeof event.t === 'string' && DEVICE_EVENTS.test(event.t)) this.device.emit({ machineId: id, event })
+      }),
+      connection.pty.on((chunk: PtyChunk) => this.pty.emit({ machineId: id, stream: chunk.stream, bytes: chunk.bytes })),
       connection.rtt.on((ms) => this.events.emit({ kind: 'rtt', machineId: id, ms })),
     ]
     data.onChange = (view) => this.events.emit({ kind: 'view', machineId: id, view })

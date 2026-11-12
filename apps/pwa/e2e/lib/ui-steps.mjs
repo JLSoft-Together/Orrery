@@ -40,7 +40,7 @@ export async function uiSteps(c, page, peer) {
     if ((await page.locator('[data-testid="monitor-groups"] button').count()) !== 4) throw new Error('rows')
   })
 
-  await step('Session detail: sub-agents, last activity, terminal button goes to the Workspace stub', async () => {
+  await step('Session detail: sub-agents, last activity, terminal button opens that pane in the Workspace', async () => {
     await byId(page, 'row-t2').click()
     await byId(page, 'session-view').waitFor({ timeout: 5000 })
     await expectText(page, '[data-testid="session-subagents"]', /Build the shell/)
@@ -48,7 +48,8 @@ export async function uiSteps(c, page, peer) {
     if ((await page.locator('[data-testid="session-activity"] > li').count()) !== 3) throw new Error('activity rows')
     await expectText(page, '[data-testid="session-activity"]', /Công cụ lỗi/)
     await byId(page, 'open-terminal').click()
-    await byId(page, 'workspace-soon').waitFor()
+    await byId(page, 'terminal-view').waitFor({ timeout: 8000 })
+    if ((await byId(page, 'terminal-view').getAttribute('data-pane')) !== 'p2') throw new Error('wrong pane from the session')
     await byId(page, 'back').click()
     await byId(page, 'session-view').waitFor()
     await byId(page, 'back').click()

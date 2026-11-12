@@ -47,19 +47,40 @@ export function startPeer(exe, relayHttp) {
   child.stderr.on('data', (d) => log.push(String(d).trim()))
   return new Promise((resolve, reject) => {
     const rl = createInterface({ input: child.stdout })
-    rl.once('line', (line) =>
-      resolve({
-        child,
-        log,
-        info: JSON.parse(line),
-        send: (command) => child.stdin.write(`${command}\n`),
-        stop() {
-          child.stdin.end()
-          killTree(child)
-          children.delete(child)
-        },
-      }),
-    )
+    const events = []
+    let first = true
+    rl.on('line', (line) => {
+      if (first) {
+        first = false
+        resolve({
+          child,
+          log,
+          events,
+          info: JSON.parse(line),
+          send: (command) => child.stdin.write(`${command}\n`),
+          async waitEvent(match, ms = 8000) {
+            const end = Date.now() + ms
+            while (Date.now() < end) {
+              const found = events.find(match)
+              if (found) return found
+              await new Promise((r) => setTimeout(r, 50))
+            }
+            throw new Error(`peer event not seen: ${JSON.stringify(events.slice(-6))}`)
+          },
+          stop() {
+            child.stdin.end()
+            killTree(child)
+            children.delete(child)
+          },
+        })
+        return
+      }
+      try {
+        events.push(JSON.parse(line))
+      } catch {
+        return
+      }
+    })
     child.once('exit', (code) => reject(new Error(`peer exited ${code}: ${log.join(' ')}`)))
   })
 }

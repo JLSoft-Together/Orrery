@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "orrery-relay",
+  "account_id": "80786e06fd9be997d29bc5bc4de835e6",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
   "workers_dev": true,

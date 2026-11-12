@@ -11,7 +11,10 @@ int? fuzzyScore(String path, String query) {
     if (at < 0) return null;
     var gain = 1;
     if (at == previous + 1) gain += 5;
-    if (at == 0 || text[at - 1] == '/' || text[at - 1] == '_' || text[at - 1] == '.') {
+    if (at == 0 ||
+        text[at - 1] == '/' ||
+        text[at - 1] == '_' ||
+        text[at - 1] == '.') {
       gain += 4;
     }
     if (at >= nameStart) gain += 2;

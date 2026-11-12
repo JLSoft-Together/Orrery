@@ -139,6 +139,8 @@ const T = {
   pushTitle: S('Notifications', 'Thông báo'),
   pushHint: S('Alert me when a pane needs me while the app is closed.', 'Báo khi có pane cần bạn lúc app đang đóng.'),
   pushNotSetUp: S('Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.', 'Chưa thiết lập trên máy tính. Thêm dự án Firebase trong Settings > Remote của Orrery.'),
+  pushForeign: S('This computer uses a different Firebase project; notifications are off for it', 'Máy này dùng Firebase khác, không nhận thông báo'),
+  pushRevoked: S('Notification permission is off in the system settings.', 'Quyền thông báo đang tắt trong cài đặt hệ thống.'),
   pushDenied: S('Notification permission was refused. Allow it in the system settings.', 'Quyền thông báo bị từ chối. Cho phép trong cài đặt hệ thống.'),
   pushUnavailable: S('Notifications are not available in this build.', 'Bản này chưa dùng được thông báo.'),
   pairScanHint: S('Scan the QR code in Orrery Settings', 'Quét mã QR trong Settings của Orrery'),

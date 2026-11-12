@@ -46,3 +46,11 @@ Tạo Firebase project, nhập config (apiKey/appId/senderId/projectId) vào cà
 
 ### Commit message đề xuất
 feat(mobile): FCM push notifications with Firebase initialized at runtime from gateway-provided options, notification tap opens the pane, switch in the machine list
+
+## Vòng 2 (fix review flutter, chỉ apps/mobile)
+- CAO 1: tile hiện hint pushForeign (vi/en) khi máy khác project Firebase; máy foreign không nhận `push.register`. CAO 2: `setEnabled` dùng config project đã init / máy được chạm, bỏ `configs.first`.
+- TRUNG BÌNH: listen `onMessageOpenedApp`/`onTokenRefresh` sau init; ghi chú không cần background handler (payload có `notification` + channel attention); pending `push.unregister` lưu kv; kiểm quyền lúc khởi động + resume (revoked -> switch tắt + hint); bỏ `dynamic`, catch typed (`PushException`) báo lỗi vào state tile, dispose huỷ subscription; `deprecated_member_use` ignore trong analysis_options.
+- THẤP: `RemoteHostPush.dispose`, serialize toggle, `buildPushService` log lỗi, gradle kts format, `dart format` file chạm tới.
+- Test: 23 + UI tests, `flutter test --concurrency=4` 187 pass, `flutter analyze` sạch. Test tách push_test / push_ui_test / support/push_fakes (<=420 dòng).
+- LƯU Ý: lệnh `dart format test lib` lỡ format thêm nhiều file ngoài WP-14 trong apps/mobile/lib/ui/** (chỉ khoảng trắng, test vẫn pass); không có git revert nên giữ nguyên, main cân nhắc khi commit.
+- Còn lại: tile toàn cục nên máy được chạm khi chưa init = máy vừa gửi `push.config` gần nhất (`_candidate`), chưa có switch riêng từng máy.

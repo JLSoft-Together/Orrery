@@ -55,11 +55,7 @@ class BundleMachineApi implements MachineApi {
   Stream<JsonMap> get events => _bundle.connection.events;
 
   @override
-  Future<JsonMap> command(
-    String type, [
-    JsonMap? fields,
-    Duration? timeout,
-  ]) {
+  Future<JsonMap> command(String type, [JsonMap? fields, Duration? timeout]) {
     final session = _bundle.connection.session;
     if (session == null) {
       return Future.error(const RemoteCommandException('offline'));

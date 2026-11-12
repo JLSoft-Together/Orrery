@@ -41,7 +41,9 @@ class _ShellState extends ConsumerState<_Shell> {
   void _openTerminal(String terminalId) {
     final id = widget.machineId;
     final model = ref.read(workspaceModelProvider(id));
-    final pane = model.panes.where((p) => p.terminalId == terminalId).firstOrNull;
+    final pane = model.panes
+        .where((p) => p.terminalId == terminalId)
+        .firstOrNull;
     final tab = pane == null ? null : model.tabOfPane(pane.key);
     if (pane == null || tab == null) {
       toast(context, context.l10n.vNotInWorkspace);

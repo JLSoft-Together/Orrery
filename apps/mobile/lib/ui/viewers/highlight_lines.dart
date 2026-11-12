@@ -108,9 +108,7 @@ class CodeColors {
     if (key.startsWith('comment') || key == 'quote') {
       return dark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70);
     }
-    if (key.startsWith('keyword') ||
-        key == 'selector-tag' ||
-        key == 'doctag') {
+    if (key.startsWith('keyword') || key == 'selector-tag' || key == 'doctag') {
       return dark ? const Color(0xFFFF7AB2) : const Color(0xFFAD3DA4);
     }
     if (key.startsWith('string') ||

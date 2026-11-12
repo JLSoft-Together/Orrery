@@ -26,12 +26,15 @@ abstract class PushHost {
   List<PushSession> get readyNow;
 
   Stream<PushConfigUpdate> get configs;
+
+  Future<void> dispose();
 }
 
 enum PushResult { on, off, denied, unavailable }
 
 const String pushEnabledKey = 'push.enabled';
 const String pushConfigsKey = 'push.configs';
+const String pushPendingKey = 'push.unregister';
 
 Uri? pushLink(Map<String, String> data) {
   final machine = data['m'];
@@ -66,13 +69,33 @@ class PushService implements LinkSource {
   final List<StreamSubscription<Object?>> _subs = [];
   final Map<String, PushConfig?> _configs = {};
   final Map<String, PushSession> _sessions = {};
-  final Map<String, String> _tokens = {};
+  final Set<String> _pending = {};
+  String? _token;
+  String? _candidate;
   bool _enabled = false;
+  bool _revoked = false;
+  String? _error;
   Uri? _initial;
+  Future<void> _queue = Future<void>.value();
 
-  bool get enabled => _enabled;
+  bool get enabled => _enabled && !_revoked;
+
+  bool get revoked => _revoked;
+
+  String? get error => _error;
 
   bool get configured => _configs.values.any((c) => c != null);
+
+  bool isForeign(String machineId) {
+    final config = _configs[machineId];
+    final active = gateway.activeProject;
+    return config != null && active != null && config.projectId != active;
+  }
+
+  int get foreignCount => _configs.keys.where(isForeign).length;
+
+  bool get usable =>
+      _configs.entries.any((e) => e.value != null && !isForeign(e.key));
 
   Stream<void> get changes => _changes.stream;
 
@@ -87,19 +110,26 @@ class PushService implements LinkSource {
 
   Future<void> init() async {
     _enabled = (await kv.read(pushEnabledKey)) == 'on';
-    await _loadConfigs();
+    await _load();
     _subs
-      ..add(gateway.tokenRefresh.listen(_onRefresh, onError: (Object _) {}))
-      ..add(gateway.opened.listen(_onOpened, onError: (Object _) {}))
+      ..add(gateway.tokenRefresh.listen(_onRefresh, onError: _fail))
+      ..add(gateway.opened.listen(_onOpened, onError: _fail))
       ..add(host.readySessions.listen(_onSession))
       ..add(host.configs.listen(_onConfig));
     for (final session in host.readyNow) {
       _sessions[session.machineId] = session;
     }
-    if (_enabled) {
-      final initial = await gateway.initialOpen(_distinct());
+    if (!_enabled) return;
+    final config = _firstConfig();
+    if (config == null) return;
+    try {
+      if (!await gateway.open(config)) return;
+      final initial = await gateway.initialOpen();
       if (initial != null) _initial = pushLink(initial);
+      await _checkPermission();
       await _syncAll();
+    } on PushException catch (e) {
+      _fail(e);
     }
   }
 
@@ -108,24 +138,42 @@ class PushService implements LinkSource {
       await sub.cancel();
     }
     _subs.clear();
+    await gateway.dispose();
+    await host.dispose();
     await _changes.close();
     await _taps.close();
   }
 
-  Future<void> _loadConfigs() async {
+  void _fail(Object error) {
+    _error = error is PushException ? error.code : 'error';
+    _notify();
+  }
+
+  Future<void> _load() async {
     final raw = await kv.read(pushConfigsKey);
-    if (raw == null) return;
-    try {
-      final map = jsonDecode(raw);
-      if (map is! Map<String, dynamic>) return;
-      for (final entry in map.entries) {
-        final value = entry.value;
-        _configs[entry.key] = value is Map<String, dynamic>
-            ? PushConfig.tryParse(value)
-            : null;
+    if (raw != null) {
+      try {
+        final map = jsonDecode(raw);
+        if (map is Map<String, dynamic>) {
+          for (final entry in map.entries) {
+            final value = entry.value;
+            _configs[entry.key] = value is Map<String, dynamic>
+                ? PushConfig.tryParse(value)
+                : null;
+          }
+        }
+      } on FormatException {
+        _configs.clear();
       }
-    } on FormatException {
-      return;
+    }
+    final pending = await kv.read(pushPendingKey);
+    if (pending != null) {
+      try {
+        final list = jsonDecode(pending);
+        if (list is List<dynamic>) _pending.addAll(list.whereType<String>());
+      } on FormatException {
+        _pending.clear();
+      }
     }
   }
 
@@ -134,16 +182,47 @@ class PushService implements LinkSource {
     jsonEncode({for (final e in _configs.entries) e.key: e.value?.toJson()}),
   );
 
-  List<PushConfig> _distinct() {
-    final seen = <String, PushConfig>{};
+  Future<void> _savePending() =>
+      kv.write(pushPendingKey, jsonEncode(_pending.toList()));
+
+  PushConfig? _firstConfig() {
     for (final config in _configs.values) {
-      if (config != null) seen[config.projectId] = config;
+      if (config != null) return config;
     }
-    return seen.values.toList();
+    return null;
+  }
+
+  PushConfig? _targetConfig(String? machineId) {
+    final active = gateway.activeProject;
+    if (active != null) {
+      for (final config in _configs.values) {
+        if (config?.projectId == active) return config;
+      }
+      return null;
+    }
+    return _configs[machineId ?? _candidate];
   }
 
   void _notify() {
     if (!_changes.isClosed) _changes.add(null);
+  }
+
+  Future<void> refreshPermission() async {
+    if (!_enabled || gateway.activeProject == null) return;
+    try {
+      await _checkPermission();
+      if (!_revoked) await _syncAll();
+    } on PushException catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<void> _checkPermission() async {
+    final revoked = await gateway.permission() != PushPermission.granted;
+    if (revoked != _revoked) {
+      _revoked = revoked;
+      _notify();
+    }
   }
 
   void _onOpened(Map<String, String> data) {
@@ -152,8 +231,8 @@ class PushService implements LinkSource {
   }
 
   void _onRefresh(PushTokenChange change) {
-    _tokens[change.projectId] = change.token;
-    if (!_enabled) return;
+    _token = change.token;
+    if (!enabled) return;
     for (final entry in _configs.entries) {
       if (entry.value?.projectId == change.projectId) {
         unawaited(_register(entry.key));
@@ -163,10 +242,15 @@ class PushService implements LinkSource {
 
   void _onSession(PushSession session) {
     _sessions[session.machineId] = session;
+    if (_pending.contains(session.machineId) && !_enabled) {
+      unawaited(_flushPending(session));
+      return;
+    }
     unawaited(_register(session.machineId));
   }
 
   void _onConfig(PushConfigUpdate update) {
+    if (update.config != null) _candidate = update.machineId;
     if (_configs.containsKey(update.machineId) &&
         _configs[update.machineId] == update.config) {
       unawaited(_register(update.machineId));
@@ -178,33 +262,42 @@ class PushService implements LinkSource {
     unawaited(_register(update.machineId));
   }
 
-  Future<void> _send(PushSession session, String type, Map<String, Object?> f) async {
+  Future<bool> _send(
+    PushSession session,
+    String type,
+    Map<String, Object?> fields,
+  ) async {
     try {
-      await session.send(type, f);
-    } on Object {
-      return;
+      await session.send(type, fields);
+      return true;
+    } on Exception {
+      return false;
     }
   }
 
-  Future<String?> _tokenFor(PushConfig config) async {
-    final known = _tokens[config.projectId];
-    if (known != null) return known;
-    final fresh = await gateway.token(config);
-    if (fresh != null) _tokens[config.projectId] = fresh;
-    return fresh;
+  Future<void> _flushPending(PushSession session) async {
+    if (await _send(session, 'push.unregister', const {})) {
+      _pending.remove(session.machineId);
+      await _savePending();
+    }
   }
 
   Future<void> _register(String machineId) async {
     final config = _configs[machineId];
     final session = _sessions[machineId];
-    if (!_enabled || config == null || session == null) return;
-    final token = await _tokenFor(config);
-    if (token == null || !_enabled) return;
-    await _send(session, 'push.register', {
-      'token': token,
-      'platform': platform,
-      'locale': localeCode() == 'vi' ? 'vi' : 'en',
-    });
+    if (!enabled || config == null || session == null) return;
+    if (isForeign(machineId)) return;
+    try {
+      final token = _token ??= await gateway.token();
+      if (token == null || !enabled) return;
+      await _send(session, 'push.register', {
+        'token': token,
+        'platform': platform,
+        'locale': localeCode() == 'vi' ? 'vi' : 'en',
+      });
+    } on PushException catch (e) {
+      _fail(e);
+    }
   }
 
   Future<void> _syncAll() async {
@@ -213,34 +306,63 @@ class PushService implements LinkSource {
     }
   }
 
-  Future<PushResult> setEnabled(bool on) async {
+  Future<PushResult> setEnabled(bool on, {String? machineId}) {
+    final done = Completer<PushResult>();
+    _queue = _queue.then((_) async {
+      try {
+        done.complete(await _toggle(on, machineId));
+      } on Object catch (error, stack) {
+        done.completeError(error, stack);
+      }
+    });
+    return done.future;
+  }
+
+  Future<PushResult> _toggle(bool on, String? machineId) async {
     if (on == _enabled) return on ? PushResult.on : PushResult.off;
-    if (!on) {
-      _enabled = false;
-      await kv.write(pushEnabledKey, 'off');
-      _notify();
-      for (final session in _sessions.values) {
-        await _send(session, 'push.unregister', const {});
+    if (!on) return _turnOff();
+    final config = _targetConfig(machineId);
+    if (config == null) return PushResult.unavailable;
+    try {
+      if (!await gateway.open(config)) return PushResult.unavailable;
+      _error = null;
+      if (await gateway.requestPermission() != PushPermission.granted) {
+        return PushResult.denied;
       }
-      for (final config in _distinct()) {
-        await gateway.deleteToken(config);
-      }
-      _tokens.clear();
-      return PushResult.off;
+      _token = await gateway.token();
+      if (_token == null) return PushResult.unavailable;
+    } on PushException catch (e) {
+      _fail(e);
+      return PushResult.unavailable;
     }
-    final configs = _distinct();
-    if (configs.isEmpty) return PushResult.unavailable;
-    final permission = await gateway.requestPermission(configs.first);
-    if (permission != PushPermission.granted) return PushResult.denied;
-    var any = false;
-    for (final config in configs) {
-      if (await _tokenFor(config) != null) any = true;
-    }
-    if (!any) return PushResult.unavailable;
     _enabled = true;
+    _revoked = false;
+    _pending.clear();
+    await _savePending();
     await kv.write(pushEnabledKey, 'on');
     _notify();
     await _syncAll();
     return PushResult.on;
+  }
+
+  Future<PushResult> _turnOff() async {
+    _enabled = false;
+    await kv.write(pushEnabledKey, 'off');
+    for (final machineId in _configs.keys) {
+      final session = _sessions[machineId];
+      if (session == null ||
+          !await _send(session, 'push.unregister', const {})) {
+        _pending.add(machineId);
+      }
+    }
+    await _savePending();
+    try {
+      if (gateway.activeProject != null) await gateway.deleteToken();
+    } on PushException catch (e) {
+      _fail(e);
+    }
+    _token = null;
+    _notify();
+    return PushResult.off;
   }
 }

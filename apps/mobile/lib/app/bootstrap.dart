@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:ui';
 
@@ -27,7 +28,13 @@ Future<PushService?> buildPushService(RemoteHost host) async {
     );
     await service.init();
     return service;
-  } on Object {
+  } on Object catch (error, stack) {
+    developer.log(
+      'push disabled',
+      name: 'orrery.push',
+      error: error,
+      stackTrace: stack,
+    );
     return null;
   }
 }

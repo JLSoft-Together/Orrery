@@ -21,7 +21,11 @@ Future<void> showViewerMenu(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            title: Text(baseName(root), maxLines: 1, overflow: TextOverflow.ellipsis),
+            title: Text(
+              baseName(root),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             subtitle: Text(root, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           const Divider(height: 1),

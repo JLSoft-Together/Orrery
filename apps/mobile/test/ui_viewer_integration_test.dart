@@ -21,10 +21,16 @@ import 'package:orrery_remote/ui/viewers/explorer_page.dart';
 import 'support/fonts.dart';
 import 'support/gateway.dart';
 
-Future<void> until(WidgetTester tester, bool Function() done, [String Function()? dump]) async {
+Future<void> until(
+  WidgetTester tester,
+  bool Function() done, [
+  String Function()? dump,
+]) async {
   for (var i = 0; i < 500; i++) {
     if (done()) return;
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
     await tester.pump(const Duration(milliseconds: 50));
   }
   fail('condition not reached ${dump?.call()}');
@@ -46,7 +52,9 @@ void main() {
   setUp(() async => gateway = await Gateway.start());
   tearDown(() => gateway.stop());
 
-  testWidgets('explorer reads a file, saves with base, then gets fs.changed', (tester) async {
+  testWidgets('explorer reads a file, saves with base, then gets fs.changed', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -73,7 +81,10 @@ void main() {
     });
     final id = host.machines.all.single.id;
     await tester.runAsync(() => host.setForeground(true));
-    await until(tester, () => host.bundle(id).connection.state.status == LinkStatus.ready);
+    await until(
+      tester,
+      () => host.bundle(id).connection.state.status == LinkStatus.ready,
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [remoteHostProvider.overrideWithValue(host)],
@@ -87,17 +98,27 @@ void main() {
     await until(tester, () => find.text('main.dart').evaluate().isNotEmpty);
     await tester.tap(find.text('main.dart'));
     await glide(tester);
-    await until(tester, () => find.byKey(const ValueKey('file-edit')).evaluate().isNotEmpty);
+    await until(
+      tester,
+      () => find.byKey(const ValueKey('file-edit')).evaluate().isNotEmpty,
+    );
     await tester.tap(find.byKey(const ValueKey('file-edit')));
     await glide(tester);
-    await tester.enterText(find.byKey(const ValueKey('file-editor')), 'void main() { print(1); }\n');
+    await tester.enterText(
+      find.byKey(const ValueKey('file-editor')),
+      'void main() { print(1); }\n',
+    );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('file-save')));
     await until(tester, () => find.text('Saved').evaluate().isNotEmpty);
     await until(
       tester,
-      () => find.byKey(const ValueKey('conflict-banner')).evaluate().isEmpty &&
-          find.textContaining('print', findRichText: true).evaluate().isNotEmpty,
+      () =>
+          find.byKey(const ValueKey('conflict-banner')).evaluate().isEmpty &&
+          find
+              .textContaining('print', findRichText: true)
+              .evaluate()
+              .isNotEmpty,
       () => [
         for (final e in find.byType(RichText).evaluate())
           (e.widget as RichText).text.toPlainText(),
@@ -112,7 +133,9 @@ void main() {
     await until(tester, () => find.text('Saved').evaluate().length == 1);
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 6; i++) {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
       await tester.pump(const Duration(milliseconds: 100));
     }
   });

@@ -13,7 +13,6 @@ import 'commit_page.dart';
 import 'log_models.dart';
 import 'viewer_api.dart';
 
-
 String relativeTime(int seconds) {
   final then = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
   final diff = DateTime.now().difference(then);
@@ -56,9 +55,7 @@ class _LogPageState extends ConsumerState<LogPage> {
       }
     });
     _scroll.addListener(() {
-      if (_more &&
-          !_loading &&
-          _scroll.position.extentAfter < 600) {
+      if (_more && !_loading && _scroll.position.extentAfter < 600) {
         _load(append: true);
       }
     });

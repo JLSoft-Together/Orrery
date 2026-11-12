@@ -1,0 +1,18 @@
+# WP-14 review (cee32555, apps/mobile). analyze sạch, test 179 pass.
+
+Kết luận: CẦN SỬA
+
+- lib/push/push_gateway.dart:40-60 (_for) + push_providers.dart:49 — CAO — DECISIONS "khác projectId ⇒ hiện hint" chưa làm: máy khác projectId bị _for trả null, requestPermission trả denied / token null im lặng, UI không hint (không có string l10n nào). Cách sửa: PushService giữ `Set<String> foreignMachines` (config.projectId != project đã init), PushState thêm field, PushTile hiện hint "Máy này dùng Firebase khác, không nhận thông báo" (en+vi), thêm test.
+- lib/push/push_service.dart setEnabled (requestPermission(configs.first)) — CAO — nếu configs.first thuộc project bị từ chối thì cả bật thất bại; đồng thời chưa chọn rõ "project của máy đầu tiên". Cách sửa: chốt project đầu = project đã init (gateway expose activeProject), chỉ xin quyền/token cho project đó, bỏ qua config khác.
+- lib/push/push_gateway.dart (_open) — TRUNG BÌNH — Firebase.initializeApp gọi đúng 1 lần (có guard Firebase.apps), cold start đúng (init() đọc config cache từ kv rồi initialOpen) OK. Nhưng `gateway.opened` (FirebaseMessaging.onMessageOpenedApp) được listen trong init() trước khi Firebase init (khi chưa bật / chưa có config): nên chỉ listen sau _for thành công, hoặc init Firebase từ config cache trước khi listen.
+- Không có FirebaseMessaging.onBackgroundMessage / @pragma('vm:entry-point') — TRUNG BÌNH — chấp nhận được CHỈ nếu desktop gửi FCM message có khối `notification` (hệ thống tự hiện); nếu data-only thì nền sẽ không hiện gì. Xác nhận payload desktop; nếu cần data-only thì thêm handler top-level khởi tạo Firebase bằng options cache từ secure kv.
+- lib/push/push_service.dart setEnabled(false) — TRUNG BÌNH — push.unregister chỉ gửi tới _sessions đang có; máy offline lúc tắt không bao giờ biết, desktop còn gửi tới token đã xoá. Cách sửa: lưu danh sách "cần unregister" vào kv, gửi khi máy đó ready lại (_onSession khi !_enabled).
+- push_service.dart _onSession/_register — TRUNG BÌNH — không kiểm quyền POST_NOTIFICATIONS lúc khởi động khi enabled=on; nếu người dùng thu hồi trong Settings vẫn hiện switch bật. Cách sửa: init() gọi gateway.permission (getNotificationSettings) và tự tắt/hiện hint.
+- push_gateway.dart (_open, token, deleteToken) — TRUNG BÌNH — `final dynamic` + `catch on Object` nuốt mọi lỗi, bỏ type-safety; onTokenRefresh subscription không lưu/cancel; _refresh controller không bao giờ close. Cách sửa: gọi thẳng messaging.onTokenRefresh/getToken/deleteToken, giữ StreamSubscription và thêm dispose() vào PushGateway.
+- lib/push/remote_host_push.dart:26,35,40 — THẤP — 3 subscription (connectionCreated, readySessions, events) không cancel, không có dispose; kết nối bị xoá vẫn nằm trong luồng. Cách sửa: giữ subs + dispose(), gọi từ PushService.dispose.
+- push_service.dart setEnabled — THẤP — không chống toggle đồng thời (bật/tắt nhanh chồng nhau). Cách sửa: khoá bằng Future đang chạy.
+- lib/app/bootstrap.dart buildPushService — THẤP — catch on Object trả null, người dùng không biết push hỏng; ít nhất log qua dart:developer.
+- android/settings.gradle.kts:23 + android/app/build.gradle.kts:49 — THẤP — diff làm hỏng format (`apply false}` dính dòng, mất newline cuối file); biên dịch được nhưng nên khôi phục.
+- lib/push/push_service.dart:~165 (_send signature) — THẤP — dòng >80 cột, chưa dart format.
+
+Đã đúng: payload chỉ lấy m/p và validate regex (pushLink, không nội dung); onTokenRefresh gửi lại push.register; deep link retry khi navigator chưa sẵn; context.mounted có trong PushTile; manifest có POST_NOTIFICATIONS + default_notification_channel_id "attention" khớp MainActivity + icon ic_stat_orrery; không còn comment trong lib/push; push.unregister khi xoá máy; không dùng google-services.json.

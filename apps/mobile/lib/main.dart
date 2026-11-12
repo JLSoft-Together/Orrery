@@ -7,6 +7,7 @@ import 'package:orrery_remote/app/deep_link_host.dart';
 import 'package:orrery_remote/app/home_page.dart';
 import 'package:orrery_remote/app/link_source.dart';
 import 'package:orrery_remote/push/push_providers.dart';
+import 'package:orrery_remote/push/push_service.dart';
 import 'package:orrery_remote/l10n/app_localizations.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
@@ -34,10 +35,8 @@ Future<void> main() async {
       child: OrreryRemoteApp(
         rustStatus: 'proto_version = $version, echo = ${echoed.length} bytes',
         host: host,
-        linkSource: MergedLinkSource([
-          const AppLinksSource(),
-          ?push,
-        ]),
+        push: push,
+        linkSource: MergedLinkSource([const AppLinksSource(), ?push]),
       ),
     ),
   );
@@ -49,12 +48,14 @@ class OrreryRemoteApp extends StatefulWidget {
     required this.rustStatus,
     this.terminal,
     this.host,
+    this.push,
     this.linkSource = const AppLinksSource(),
   });
 
   final String rustStatus;
   final Terminal? terminal;
   final RemoteHost? host;
+  final PushService? push;
   final LinkSource linkSource;
 
   @override
@@ -84,6 +85,7 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
     switch (state) {
       case AppLifecycleState.resumed:
         host.setForeground(true);
+        widget.push?.refreshPermission();
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:

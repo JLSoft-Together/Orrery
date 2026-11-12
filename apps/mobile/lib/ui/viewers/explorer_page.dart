@@ -301,10 +301,22 @@ class _ExplorerPageState extends ConsumerState<ExplorerPage> {
 Widget fileIcon(String name, ColorScheme scheme) {
   final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
   final icon = switch (ext) {
-    'dart' || 'kt' || 'rs' || 'ts' || 'js' || 'py' || 'java' || 'swift' => Icons.code_rounded,
+    'dart' ||
+    'kt' ||
+    'rs' ||
+    'ts' ||
+    'js' ||
+    'py' ||
+    'java' ||
+    'swift' => Icons.code_rounded,
     'json' || 'yaml' || 'yml' || 'toml' || 'xml' => Icons.data_object_rounded,
     'md' || 'txt' => Icons.article_outlined,
-    'png' || 'jpg' || 'jpeg' || 'webp' || 'svg' || 'gif' => Icons.image_outlined,
+    'png' ||
+    'jpg' ||
+    'jpeg' ||
+    'webp' ||
+    'svg' ||
+    'gif' => Icons.image_outlined,
     _ => Icons.insert_drive_file_outlined,
   };
   return Icon(icon, size: 22, color: scheme.onSurfaceVariant);

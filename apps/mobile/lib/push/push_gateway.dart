@@ -2,10 +2,20 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 
 import 'push_config.dart';
 
 enum PushPermission { granted, denied }
+
+class PushException implements Exception {
+  const PushException(this.code);
+
+  final String code;
+
+  @override
+  String toString() => 'PushException($code)';
+}
 
 class PushTokenChange {
   const PushTokenChange(this.projectId, this.token);
@@ -15,17 +25,25 @@ class PushTokenChange {
 }
 
 abstract class PushGateway {
-  Future<PushPermission> requestPermission(PushConfig config);
+  String? get activeProject;
 
-  Future<String?> token(PushConfig config);
+  Future<bool> open(PushConfig config);
 
-  Future<void> deleteToken(PushConfig config);
+  Future<PushPermission> permission();
+
+  Future<PushPermission> requestPermission();
+
+  Future<String?> token();
+
+  Future<void> deleteToken();
 
   Stream<PushTokenChange> get tokenRefresh;
 
   Stream<Map<String, String>> get opened;
 
-  Future<Map<String, String>?> initialOpen(Iterable<PushConfig> configs);
+  Future<Map<String, String>?> initialOpen();
+
+  Future<void> dispose();
 }
 
 class FirebasePushGateway implements PushGateway {
@@ -33,6 +51,9 @@ class FirebasePushGateway implements PushGateway {
 
   final StreamController<PushTokenChange> _refresh =
       StreamController.broadcast();
+  final StreamController<Map<String, String>> _opened =
+      StreamController.broadcast();
+  final List<StreamSubscription<Object?>> _subs = [];
   FirebaseMessaging? _active;
   String? _project;
   Future<void>? _opening;
@@ -40,13 +61,39 @@ class FirebasePushGateway implements PushGateway {
   static Map<String, String> _data(RemoteMessage message) =>
       message.data.map((key, value) => MapEntry(key, '$value'));
 
-  Future<FirebaseMessaging?> _for(PushConfig config) async {
+  static PushPermission _status(AuthorizationStatus status) =>
+      status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional
+      ? PushPermission.granted
+      : PushPermission.denied;
+
+  FirebaseMessaging get _messaging {
+    final active = _active;
+    if (active == null) throw const PushException('not-open');
+    return active;
+  }
+
+  Future<T> _guard<T>(Future<T> Function() run) async {
+    try {
+      return await run();
+    } on FirebaseException catch (error) {
+      throw PushException(error.code);
+    } on PlatformException catch (error) {
+      throw PushException(error.code);
+    }
+  }
+
+  @override
+  String? get activeProject => _project;
+
+  @override
+  Future<bool> open(PushConfig config) async {
     if (_project == null) {
       final running = _opening;
       if (running != null) {
         await running;
       } else {
-        final job = _open(config);
+        final job = _init(config);
         _opening = job;
         try {
           await job;
@@ -55,93 +102,77 @@ class FirebasePushGateway implements PushGateway {
         }
       }
     }
-    return _project == config.projectId ? _active : null;
+    return _project == config.projectId;
   }
 
-  Future<void> _open(PushConfig config) async {
-    try {
-      final app = Firebase.apps.isNotEmpty
-          ? Firebase.app()
-          : await Firebase.initializeApp(
-              options: FirebaseOptions(
-                apiKey: config.apiKey,
-                appId: config.appId,
-                messagingSenderId: config.senderId,
-                projectId: config.projectId,
-              ),
-            );
-      if (app.options.projectId != config.projectId) return;
-      final messaging = FirebaseMessaging.instance;
-      final dynamic stream = messaging;
-      (stream.onTokenRefresh as Stream<String>).listen(
-        (token) => _refresh.add(PushTokenChange(config.projectId, token)),
-        onError: (Object _) {},
+  Future<void> _init(PushConfig config) => _guard(() async {
+    final app = Firebase.apps.isNotEmpty
+        ? Firebase.app()
+        : await Firebase.initializeApp(
+            options: FirebaseOptions(
+              apiKey: config.apiKey,
+              appId: config.appId,
+              messagingSenderId: config.senderId,
+              projectId: config.projectId,
+            ),
+          );
+    final messaging = FirebaseMessaging.instance;
+    final project = app.options.projectId;
+    _subs
+      ..add(
+        messaging.onTokenRefresh.listen(
+          (token) => _refresh.add(PushTokenChange(project, token)),
+          onError: (Object _) {},
+        ),
+      )
+      ..add(
+        FirebaseMessaging.onMessageOpenedApp.listen(
+          (message) => _opened.add(_data(message)),
+          onError: (Object _) {},
+        ),
       );
-      _active = messaging;
-      _project = config.projectId;
-    } on Object {
-      return;
-    }
-  }
+    _active = messaging;
+    _project = project;
+  });
 
   @override
-  Future<PushPermission> requestPermission(PushConfig config) async {
-    final messaging = await _for(config);
-    if (messaging == null) return PushPermission.denied;
-    try {
-      final status = (await messaging.requestPermission()).authorizationStatus;
-      return status == AuthorizationStatus.authorized ||
-              status == AuthorizationStatus.provisional
-          ? PushPermission.granted
-          : PushPermission.denied;
-    } on Object {
-      return PushPermission.denied;
-    }
-  }
+  Future<PushPermission> permission() => _guard(
+    () async => _status(
+      (await _messaging.getNotificationSettings()).authorizationStatus,
+    ),
+  );
 
   @override
-  Future<String?> token(PushConfig config) async {
-    final messaging = await _for(config);
-    if (messaging == null) return null;
-    try {
-      final dynamic dynamicMessaging = messaging;
-      return await dynamicMessaging.getToken() as String?;
-    } on Object {
-      return null;
-    }
-  }
+  Future<PushPermission> requestPermission() => _guard(
+    () async =>
+        _status((await _messaging.requestPermission()).authorizationStatus),
+  );
 
   @override
-  Future<void> deleteToken(PushConfig config) async {
-    final messaging = await _for(config);
-    if (messaging == null) return;
-    try {
-      final dynamic dynamicMessaging = messaging;
-      await dynamicMessaging.deleteToken();
-    } on Object {
-      return;
-    }
-  }
+  Future<String?> token() => _guard(() => _messaging.getToken());
+
+  @override
+  Future<void> deleteToken() => _guard(() => _messaging.deleteToken());
 
   @override
   Stream<PushTokenChange> get tokenRefresh => _refresh.stream;
 
   @override
-  Stream<Map<String, String>> get opened =>
-      FirebaseMessaging.onMessageOpenedApp.map(_data);
+  Stream<Map<String, String>> get opened => _opened.stream;
 
   @override
-  Future<Map<String, String>?> initialOpen(Iterable<PushConfig> configs) async {
-    for (final config in configs) {
-      final messaging = await _for(config);
-      if (messaging == null) continue;
-      try {
-        final message = await messaging.getInitialMessage();
-        if (message != null) return _data(message);
-      } on Object {
-        continue;
-      }
+  Future<Map<String, String>?> initialOpen() => _guard(() async {
+    final message = await _messaging.getInitialMessage();
+    return message == null ? null : _data(message);
+  });
+
+  @override
+  Future<void> dispose() async {
+    for (final sub in _subs) {
+      await sub.cancel();
     }
-    return null;
+    _subs.clear();
+    await _refresh.close();
+    await _opened.close();
   }
 }

@@ -72,7 +72,10 @@ class _Body extends StatelessWidget {
             children: [
               SelectableText(
                 detail.message,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -129,7 +132,10 @@ class _Body extends StatelessWidget {
                           ),
                           if (file.path.contains('/'))
                             Text(
-                              file.path.substring(0, file.path.lastIndexOf('/')),
+                              file.path.substring(
+                                0,
+                                file.path.lastIndexOf('/'),
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

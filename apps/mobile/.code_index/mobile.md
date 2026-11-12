@@ -78,3 +78,12 @@ Hợp đồng: `docs/remote-integration.md`. Crypto + frame nằm ở crate `app
 - app/link_source.dart `MergedLinkSource`; app/deep_link_host.dart thử lại 1 frame khi Navigator chưa dựng; remote_host.dart `connectionCreated`, `connections`, `forget` gửi `push.unregister`; main.dart tạo push trước `startAll`
 - Android: `POST_NOTIFICATIONS`, meta channel mặc định `attention` + icon `ic_stat_orrery`, `MainActivity` tạo channel `attention`, `strings.xml` en / vi. Không có google-services
 - Test: test/push_test.dart (service với fake gateway / host, link, widget tap -> TabPage, switch); fake_gateway Rust gửi `push.config` sau hello, nhận `push.register` / `push.unregister`
+
+## WP-14 vòng 2 (mobile)
+- Chỉ init 1 Firebase: `PushGateway.open(config)` khởi tạo app mặc định theo config đầu tiên, `activeProject`; máy có projectId khác = `PushService.isForeign` (không register), tile hiện `pushForeign` thay switch khi mọi máy đều foreign. `setEnabled(on, machineId:)` dùng config của project đã init, hoặc của máy được chạm khi chưa init, không bao giờ `configs.first`; bật/tắt xếp hàng tuần tự
+- `onMessageOpenedApp` + `onTokenRefresh` chỉ listen sau `open()` (trong `FirebasePushGateway._init`), huỷ trong `dispose()`; lỗi Firebase/Platform -> `PushException` -> `PushService.error` -> tile `pushUnavailable`
+- Không cần background handler: payload desktop có khối `notification` + `android.notification.channel_id: attention` (apps/shell/src/remote/push.rs:78-80), hệ thống tự hiện khi app nền / bị kill
+- Tắt khi máy offline: `push.unregister` còn nợ lưu kv `push.unregister`, gửi khi máy đó ready lại (`_onSession`); bật lại xoá nợ
+- Quyền POST_NOTIFICATIONS kiểm lúc `init` và khi app resume (`OrreryRemoteApp` -> `PushService.refreshPermission`); thu hồi -> switch tắt + `pushRevoked`
+- analysis_options: `deprecated_member_use: ignore` vì `getToken`/`deleteToken`/`onTokenRefresh` của firebase_messaging 17 deprecated nhưng FCM v1 cần token cũ
+- `buildPushService` log lỗi qua `dart:developer` (`orrery.push`); `RemoteHostPush.dispose`; test tách `test/push_test.dart`, `push_ui_test.dart`, `support/push_fakes.dart`

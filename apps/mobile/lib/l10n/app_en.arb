@@ -231,6 +231,8 @@
   "pushTitle": "Notifications",
   "pushHint": "Alert me when a pane needs me while the app is closed.",
   "pushNotSetUp": "Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.",
+  "pushForeign": "This computer uses a different Firebase project; notifications are off for it",
+  "pushRevoked": "Notification permission is off in the system settings.",
   "pushDenied": "Notification permission was refused. Allow it in the system settings.",
   "pushUnavailable": "Notifications are not available in this build.",
   "pairScanHint": "Scan the QR code in Orrery Settings",

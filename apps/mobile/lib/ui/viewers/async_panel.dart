@@ -46,7 +46,11 @@ class AsyncPanel<T> extends StatefulWidget {
   });
 
   final Future<T> Function() load;
-  final Widget Function(BuildContext context, T data, Future<void> Function() reload)
+  final Widget Function(
+    BuildContext context,
+    T data,
+    Future<void> Function() reload,
+  )
   builder;
   final Stream<JsonMap>? events;
   final bool Function(JsonMap event)? reloadOn;

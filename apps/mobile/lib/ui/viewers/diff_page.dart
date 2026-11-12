@@ -57,7 +57,8 @@ class DiffPage extends ConsumerWidget {
       body: AsyncPanel<JsonMap>(
         load: () => api.map(type, fields),
         events: root == null ? null : api.events,
-        reloadOn: (event) => root != null && changedUnder(event, 'git.changed', root!),
+        reloadOn: (event) =>
+            root != null && changedUnder(event, 'git.changed', root!),
         builder: (context, data, reload) {
           if (data['binary'] == true) {
             return EmptyState(

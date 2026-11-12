@@ -162,7 +162,10 @@ class _RunPageState extends ConsumerState<RunPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
               children: [
                 if (_configs.isEmpty)
-                  EmptyState(icon: Icons.play_disabled_rounded, text: l.vRunNoConfigs)
+                  EmptyState(
+                    icon: Icons.play_disabled_rounded,
+                    text: l.vRunNoConfigs,
+                  )
                 else
                   Card(
                     elevation: 0,
@@ -176,7 +179,9 @@ class _RunPageState extends ConsumerState<RunPage> {
                             key: const ValueKey('run-config'),
                             initialValue: _configId,
                             isExpanded: true,
-                            decoration: InputDecoration(labelText: l.vRunConfig),
+                            decoration: InputDecoration(
+                              labelText: l.vRunConfig,
+                            ),
                             items: [
                               for (final c in _configs)
                                 DropdownMenuItem(
@@ -196,7 +201,9 @@ class _RunPageState extends ConsumerState<RunPage> {
                                 ? _deviceId
                                 : null,
                             isExpanded: true,
-                            decoration: InputDecoration(labelText: l.vRunDevice),
+                            decoration: InputDecoration(
+                              labelText: l.vRunDevice,
+                            ),
                             items: [
                               for (final d in _devices)
                                 DropdownMenuItem(
@@ -280,7 +287,10 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(20),
@@ -301,11 +311,11 @@ class _SessionCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  [
-                    ?session.deviceName,
-                    ?session.progress,
-                  ].join(' · '),
-                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+                  [?session.deviceName, ?session.progress].join(' · '),
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             if (session.live)

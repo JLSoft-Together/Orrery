@@ -15,9 +15,8 @@ class MergedLinkSource implements LinkSource {
       for (final source in sources)
         source.links.listen(controller.add, onError: (Object _) {}),
     ];
-    controller.onCancel = () => Future.wait([
-      for (final sub in subs) sub.cancel(),
-    ]);
+    controller.onCancel = () =>
+        Future.wait([for (final sub in subs) sub.cancel()]);
   });
 }
 

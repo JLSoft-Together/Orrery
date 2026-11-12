@@ -468,6 +468,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.';
 
   @override
+  String get pushForeign =>
+      'This computer uses a different Firebase project; notifications are off for it';
+
+  @override
+  String get pushRevoked =>
+      'Notification permission is off in the system settings.';
+
+  @override
   String get pushDenied =>
       'Notification permission was refused. Allow it in the system settings.';
 

@@ -39,14 +39,10 @@ class _ChangesPageState extends ConsumerState<ChangesPage> {
   }
 
   Future<void> _stage(String type, List<String> paths, Reload reload) =>
-      viewerAction(
-        context,
-        ref,
-        widget.machineId,
-        type,
-        {'root': widget.root, 'paths': paths},
-        after: reload,
-      );
+      viewerAction(context, ref, widget.machineId, type, {
+        'root': widget.root,
+        'paths': paths,
+      }, after: reload);
 
   Future<void> _discard(ChangeEntry entry, Reload reload) => viewerAction(
     context,
@@ -102,8 +98,7 @@ class _ChangesPageState extends ConsumerState<ChangesPage> {
         ),
         events: _api.events,
         reloadOn: (event) => changedUnder(event, 'git.changed', widget.root),
-        builder: (context, status, reload) =>
-            _content(context, status, reload),
+        builder: (context, status, reload) => _content(context, status, reload),
       ),
     );
   }
@@ -151,7 +146,8 @@ class _ChangesPageState extends ConsumerState<ChangesPage> {
                           entry: e,
                           staged: true,
                           onTap: () => _openDiff(e),
-                          onToggle: () => _stage('git.unstage', [e.path], reload),
+                          onToggle: () =>
+                              _stage('git.unstage', [e.path], reload),
                         ),
                       if (unstaged.isNotEmpty)
                         _Section(
@@ -254,10 +250,30 @@ class _Branch extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_upward_rounded, size: 14, color: scheme.onSurfaceVariant),
-                  Text('${status.ahead} ', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
-                  Icon(Icons.arrow_downward_rounded, size: 14, color: scheme.onSurfaceVariant),
-                  Text('${status.behind}', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                  Icon(
+                    Icons.arrow_upward_rounded,
+                    size: 14,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  Text(
+                    '${status.ahead} ',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_downward_rounded,
+                    size: 14,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  Text(
+                    '${status.behind}',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),

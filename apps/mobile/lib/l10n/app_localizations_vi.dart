@@ -448,6 +448,12 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chưa thiết lập trên máy tính. Thêm dự án Firebase trong Settings > Remote của Orrery.';
 
   @override
+  String get pushForeign => 'Máy này dùng Firebase khác, không nhận thông báo';
+
+  @override
+  String get pushRevoked => 'Quyền thông báo đang tắt trong cài đặt hệ thống.';
+
+  @override
   String get pushDenied =>
       'Quyền thông báo bị từ chối. Cho phép trong cài đặt hệ thống.';
 

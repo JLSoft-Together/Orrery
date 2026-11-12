@@ -133,6 +133,8 @@
   "pushTitle": "Thông báo",
   "pushHint": "Báo khi có pane cần bạn lúc app đang đóng.",
   "pushNotSetUp": "Chưa thiết lập trên máy tính. Thêm dự án Firebase trong Settings > Remote của Orrery.",
+  "pushForeign": "Máy này dùng Firebase khác, không nhận thông báo",
+  "pushRevoked": "Quyền thông báo đang tắt trong cài đặt hệ thống.",
   "pushDenied": "Quyền thông báo bị từ chối. Cho phép trong cài đặt hệ thống.",
   "pushUnavailable": "Bản này chưa dùng được thông báo.",
   "pairScanHint": "Quét mã QR trong Settings của Orrery",

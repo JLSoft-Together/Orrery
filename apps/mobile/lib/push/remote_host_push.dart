@@ -23,26 +23,42 @@ class RemoteHostPush implements PushHost {
     for (final connection in host.connections) {
       _watch(connection);
     }
-    host.connectionCreated.listen(_watch);
+    _subs.add(host.connectionCreated.listen(_watch));
   }
 
   final RemoteHost host;
   final StreamController<PushSession> _ready = StreamController.broadcast();
   final StreamController<PushConfigUpdate> _configs =
       StreamController.broadcast();
+  final List<StreamSubscription<Object?>> _subs = [];
 
   void _watch(MachineConnection connection) {
-    connection.readySessions.listen((session) {
-      if (!_ready.isClosed) {
-        _ready.add(_ConnectionSession(connection.machineId, session));
-      }
-    });
-    connection.events.listen((event) {
-      if (event['t'] != 'push.config' || _configs.isClosed) return;
-      _configs.add(
-        PushConfigUpdate(connection.machineId, PushConfig.tryParse(event)),
+    _subs
+      ..add(
+        connection.readySessions.listen((session) {
+          if (!_ready.isClosed) {
+            _ready.add(_ConnectionSession(connection.machineId, session));
+          }
+        }),
+      )
+      ..add(
+        connection.events.listen((event) {
+          if (event['t'] != 'push.config' || _configs.isClosed) return;
+          _configs.add(
+            PushConfigUpdate(connection.machineId, PushConfig.tryParse(event)),
+          );
+        }),
       );
-    });
+  }
+
+  @override
+  Future<void> dispose() async {
+    for (final sub in _subs) {
+      await sub.cancel();
+    }
+    _subs.clear();
+    await _ready.close();
+    await _configs.close();
   }
 
   @override

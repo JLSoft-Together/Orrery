@@ -896,6 +896,18 @@ abstract class AppLocalizations {
   /// **'Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.'**
   String get pushNotSetUp;
 
+  /// No description provided for @pushForeign.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer uses a different Firebase project; notifications are off for it'**
+  String get pushForeign;
+
+  /// No description provided for @pushRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission is off in the system settings.'**
+  String get pushRevoked;
+
   /// No description provided for @pushDenied.
   ///
   /// In en, this message translates to:

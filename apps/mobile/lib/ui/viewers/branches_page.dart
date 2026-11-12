@@ -183,9 +183,8 @@ class _BranchesPageState extends ConsumerState<BranchesPage> {
     return Scaffold(
       appBar: AppBar(title: Text(l.vBranches)),
       body: AsyncPanel<RefsInfo>(
-        load: () async => RefsInfo.parse(
-          await _api.map('log.refs', {'root': widget.root}),
-        ),
+        load: () async =>
+            RefsInfo.parse(await _api.map('log.refs', {'root': widget.root})),
         events: _api.events,
         reloadOn: (event) => changedUnder(event, 'git.changed', widget.root),
         builder: _list,
@@ -262,10 +261,7 @@ class _BranchesPageState extends ConsumerState<BranchesPage> {
                   _ => _delete(b, reload),
                 },
                 itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'push',
-                    child: Text(l.vPushAction),
-                  ),
+                  PopupMenuItem(value: 'push', child: Text(l.vPushAction)),
                   PopupMenuItem(
                     value: 'update',
                     enabled: b.upstream != null && !b.gone,

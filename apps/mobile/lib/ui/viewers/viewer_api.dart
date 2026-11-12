@@ -104,13 +104,11 @@ class ViewerApi {
       (await call(type, fields)).map;
 }
 
-final viewerApiProvider = Provider.family<ViewerApi, String>(
-  (ref, id) {
-    final api = ViewerApi(ref.read(machineApiProvider(id)));
-    ref.onDispose(api.dispose);
-    return api;
-  },
-);
+final viewerApiProvider = Provider.family<ViewerApi, String>((ref, id) {
+  final api = ViewerApi(ref.read(machineApiProvider(id)));
+  ref.onDispose(api.dispose);
+  return api;
+});
 
 bool changedUnder(JsonMap event, String type, String root) {
   if (event['t'] != type) return false;

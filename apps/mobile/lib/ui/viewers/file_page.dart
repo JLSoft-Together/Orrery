@@ -66,10 +66,13 @@ class _FilePageState extends ConsumerState<FilePage> {
   void _onEvent(JsonMap event) {
     if (event['t'] != 'fs.changed') return;
     final paths = event['paths'];
-    if (paths is! List || !paths.any((p) => p is String && samePath(p, widget.path))) {
+    if (paths is! List ||
+        !paths.any((p) => p is String && samePath(p, widget.path))) {
       return;
     }
-    final own = _saving || DateTime.now().difference(_lastSave) < const Duration(seconds: 3);
+    final own =
+        _saving ||
+        DateTime.now().difference(_lastSave) < const Duration(seconds: 3);
     if (_editing) {
       if (own) return;
       if (mounted) setState(() => _diskChanged = true);
@@ -241,7 +244,8 @@ class _FilePageState extends ConsumerState<FilePage> {
     final l = context.l10n;
     if (file == null) {
       if (_error != null) {
-        final limit = _error is RemoteCommandException &&
+        final limit =
+            _error is RemoteCommandException &&
             (_error! as RemoteCommandException).code == 'limit';
         return ErrorState(
           message: limit ? l.vFileTooBigPhone : viewerErrorText(l, _error!),
@@ -259,7 +263,10 @@ class _FilePageState extends ConsumerState<FilePage> {
       _ => l.errDenied,
     };
     if (notice != null || file.text == null) {
-      return EmptyState(icon: Icons.insert_drive_file_outlined, text: notice ?? '');
+      return EmptyState(
+        icon: Icons.insert_drive_file_outlined,
+        text: notice ?? '',
+      );
     }
     return Column(
       children: [
@@ -295,11 +302,11 @@ class _FilePageState extends ConsumerState<FilePage> {
             Wrap(
               children: [
                 TextButton(
-                  onPressed: () => Clipboard.setData(
-                    ClipboardData(text: _edit.text),
-                  ).then((_) {
-                    if (context.mounted) toast(context, l.vCopied);
-                  }),
+                  onPressed: () =>
+                      Clipboard.setData(ClipboardData(text: _edit.text))
+                          .then((_) {
+                            if (context.mounted) toast(context, l.vCopied);
+                          }),
                   child: Text(l.vCopyMine),
                 ),
                 TextButton(

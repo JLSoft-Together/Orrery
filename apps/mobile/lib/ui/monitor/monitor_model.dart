@@ -130,7 +130,9 @@ List<MonitorProject> parseMonitor(Map<String, dynamic>? snapshot) {
 
     walk(str(main?['id']), 1);
     for (final parent in byParent.keys.toList()) {
-      if (parent != null && parent != str(main?['id']) && !known.contains(parent)) {
+      if (parent != null &&
+          parent != str(main?['id']) &&
+          !known.contains(parent)) {
         walk(parent, 1);
       }
     }
@@ -166,8 +168,12 @@ List<MonitorProject> parseMonitor(Map<String, dynamic>? snapshot) {
       ),
   ];
   projects.sort((a, b) {
-    final ra = a.sessions.map((s) => _railRank(s.rail)).reduce((x, y) => x < y ? x : y);
-    final rb = b.sessions.map((s) => _railRank(s.rail)).reduce((x, y) => x < y ? x : y);
+    final ra = a.sessions
+        .map((s) => _railRank(s.rail))
+        .reduce((x, y) => x < y ? x : y);
+    final rb = b.sessions
+        .map((s) => _railRank(s.rail))
+        .reduce((x, y) => x < y ? x : y);
     return ra.compareTo(rb);
   });
   return projects;

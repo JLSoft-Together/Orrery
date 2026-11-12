@@ -8,10 +8,11 @@ import '../viewers/async_panel.dart';
 import '../widgets/common.dart';
 import 'monitor_model.dart';
 
-final monitorProvider = Provider.family<List<MonitorProject>, String>((ref, id) {
-  final snapshot = ref.watch(
-    machineViewProvider(id).select((v) => v.snapshot),
-  );
+final monitorProvider = Provider.family<List<MonitorProject>, String>((
+  ref,
+  id,
+) {
+  final snapshot = ref.watch(machineViewProvider(id).select((v) => v.snapshot));
   return parseMonitor(snapshot);
 });
 
@@ -77,7 +78,10 @@ class _ProjectBlock extends StatelessWidget {
                 ),
                 Text(
                   l.panesCount(project.sessions.length),
-                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -157,10 +161,7 @@ class _SessionCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            [
-                              session.tool!,
-                              ?session.toolSummary,
-                            ].join(' · '),
+                            [session.tool!, ?session.toolSummary].join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -172,7 +173,8 @@ class _SessionCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (session.waitingFor != null && session.rail == RailState.asked)
+                if (session.waitingFor != null &&
+                    session.rail == RailState.asked)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
@@ -271,7 +273,11 @@ class _AgentRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.subdirectory_arrow_right_rounded, size: 16, color: scheme.outline),
+          Icon(
+            Icons.subdirectory_arrow_right_rounded,
+            size: 16,
+            color: scheme.outline,
+          ),
           const SizedBox(width: 4),
           Icon(style.icon, size: 15, color: style.color),
           const SizedBox(width: 6),
@@ -283,14 +289,20 @@ class _AgentRow extends StatelessWidget {
                   agent.name ?? agent.id,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 if (detail.isNotEmpty)
                   Text(
                     detail,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),

@@ -7,6 +7,7 @@ use super::config::{now_secs, Config};
 use super::devices::{Device, Devices};
 use super::fcm_files::PACKAGE;
 use super::fcm_tests::{gs_json, sa_json, script, Fake, KEY_A, KEY_B};
+use super::fcm_files::{MASTER_SECRET, SEALED_FILE};
 use super::push_setup::SECRET;
 use super::test_util::*;
 use super::{Options, Remote};
@@ -36,7 +37,7 @@ fn with_http(rig: &Rig, http: Arc<Fake>) {
 }
 
 fn secret_text(rig: &Rig) -> String {
-    lock(&rig.secrets.0).get(SECRET).cloned().unwrap_or_default()
+    std::fs::read_to_string(rig.dir.join(SEALED_FILE)).unwrap_or_default()
 }
 
 fn restarted(rig: &Rig) -> Remote {
@@ -50,7 +51,9 @@ fn setup_validates_stores_the_key_in_the_keychain_and_only_options_in_the_config
     assert_eq!(rig.remote.push_status(), json!({ "configured": false, "tokens": 0 }));
     let out = rig.remote.push_setup(&files("demo-proj", KEY_A));
     assert_eq!(out, json!({ "ok": true, "projectId": "demo-proj" }));
-    assert!(secret_text(&rig).contains("PRIVATE KEY"));
+    assert!(secret_text(&rig).starts_with("o1:"));
+    assert!(!secret_text(&rig).contains("PRIVATE") && !secret_text(&rig).contains(KEY_A));
+    assert!(lock(&rig.secrets.0).get(SECRET).is_none());
     let disk = std::fs::read_to_string(Config::path(&rig.dir)).unwrap();
     assert!(!disk.contains("PRIVATE") && !disk.contains(KEY_A));
     let cfg = Config::load(&rig.dir).firebase;
@@ -151,7 +154,7 @@ fn remove_wipes_the_options_the_key_and_the_tokens() {
     assert_eq!(rig.remote.push_setup(&files("demo-proj", KEY_A))["ok"], true);
     assert_eq!(rig.remote.push_remove(), json!({ "ok": true }));
     assert_eq!(rig.remote.push_status(), json!({ "configured": false, "tokens": 0 }));
-    assert_eq!(secret_text(&rig), "-");
+    assert!(!rig.dir.join(SEALED_FILE).exists());
     assert!(!Config::load(&rig.dir).firebase.is_set());
     assert!(!rig.remote.ctx().unwrap().push_ready());
     assert_eq!(rig.remote.push_remove(), json!({ "ok": true }));
@@ -167,4 +170,49 @@ fn the_channels_are_routed_through_call() {
     assert_eq!(rig.remote.call("ccm:remote-push-status", &[]).unwrap()["configured"], false);
     assert_eq!(rig.remote.call("ccm:remote-push-setup", &[files("demo-proj", KEY_A)]).unwrap()["ok"], true);
     assert_eq!(rig.remote.call("ccm:remote-push-remove", &[]).unwrap()["ok"], true);
+}
+
+#[test]
+fn the_sealed_file_reads_back_after_a_restart_and_hides_the_key() {
+    let rig = rig("pushs-big", "", false);
+    let args = json!({ "googleServices": gs_json("demo-proj", PACKAGE), "serviceAccount": sa_json("demo-proj", KEY_A) });
+    assert_eq!(rig.remote.push_setup(&args)["ok"], true);
+    let account = restarted(&rig).saved_account().expect("sealed account reads back");
+    assert_eq!(account.private_key.as_str(), super::fcm_files::restore(&super::fcm_files::stored(&account)).unwrap().private_key.as_str());
+    let sealed = secret_text(&rig);
+    assert!(sealed.len() > 600 && !sealed.contains("BEGIN"));
+    let master = lock(&rig.secrets.0).get(MASTER_SECRET).cloned().unwrap();
+    assert!(master.len() < 100);
+}
+
+#[test]
+fn a_service_account_over_the_credential_manager_limit_round_trips() {
+    use super::fcm_files::{load_account, save_account, ServiceAccount};
+    let rig = rig("pushs-4k", "", false);
+    let parsed = super::fcm_files::parse(&gs_json("demo-proj", PACKAGE), &sa_json("demo-proj", KEY_A)).unwrap();
+    let mut account: ServiceAccount = parsed.account;
+    account.client_email = format!("{}@demo-proj.iam.gserviceaccount.com", "a".repeat(4096));
+    assert!(super::fcm_files::stored(&account).len() > 4096);
+    assert!(save_account(&rig.secrets, &rig.dir, &account));
+    let back = load_account(&rig.secrets, &rig.dir).unwrap();
+    assert_eq!(back.client_email, account.client_email);
+    assert!(!secret_text(&rig).contains(&"a".repeat(64)));
+}
+
+#[test]
+fn without_a_working_keychain_setup_fails_with_keyring_and_writes_no_file() {
+    let rig = rig("pushs-nokeyring", "", false);
+    rig.secrets.1.store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(rig.remote.push_setup(&files("demo-proj", KEY_A)), json!({ "ok": false, "error": "keyring" }));
+    assert!(!rig.dir.join(SEALED_FILE).exists());
+}
+
+#[test]
+fn a_legacy_keychain_entry_is_still_read_and_dropped_on_the_next_setup() {
+    let rig = rig("pushs-legacy", "", false);
+    let parsed = super::fcm_files::parse(&gs_json("demo-proj", PACKAGE), &sa_json("demo-proj", KEY_A)).unwrap();
+    lock(&rig.secrets.0).insert(SECRET.into(), super::fcm_files::stored(&parsed.account));
+    assert!(rig.remote.saved_account().is_none());
+    assert_eq!(rig.remote.push_setup(&files("demo-proj", KEY_A))["ok"], true);
+    assert_ne!(lock(&rig.secrets.0).get(SECRET).map(String::as_str), Some(super::fcm_files::stored(&parsed.account).as_str()));
 }

@@ -1,8 +1,14 @@
 use std::fmt;
+use std::path::Path;
 
+use aes_gcm::aead::{Aead, KeyInit};
+use aes_gcm::{Aes256Gcm, Nonce};
+use base64::engine::general_purpose::STANDARD as B64;
+use base64::Engine;
 use serde_json::Value;
 use zeroize::Zeroizing;
 
+use super::keys::{KeyStore, Read};
 use super::config::FirebaseConfig;
 
 pub const PACKAGE: &str = "dev.ccm.orrery.remote";
@@ -110,4 +116,72 @@ pub fn restore(raw: &str) -> Option<ServiceAccount> {
     let v: Value = serde_json::from_str(raw).ok()?;
     let (email, key) = (text(&v, "client_email"), text(&v, "private_key"));
     (!email.is_empty() && pem_der(key).is_some()).then(|| ServiceAccount { client_email: email.to_owned(), private_key: Zeroizing::new(key.to_owned()) })
+}
+
+pub const MASTER_SECRET: &str = "orrery-fcm-master";
+pub const SEALED_FILE: &str = "fcm-sa.sealed";
+const SEAL_PREFIX: &str = "o1:";
+
+fn master(store: &dyn KeyStore, create: bool) -> Option<Zeroizing<[u8; 32]>> {
+    let decode = |text: &str| -> Option<Zeroizing<[u8; 32]>> { Some(Zeroizing::new(B64.decode(text.trim()).ok()?.try_into().ok()?)) };
+    match store.read(MASTER_SECRET) {
+        Read::Found(text) => return decode(&text),
+        Read::Failed => return None,
+        Read::Missing if !create => return None,
+        Read::Missing => {}
+    }
+    let mut fresh = Zeroizing::new([0u8; 32]);
+    getrandom::fill(fresh.as_mut_slice()).ok()?;
+    if !store.write(MASTER_SECRET, &B64.encode(fresh.as_slice())) {
+        return None;
+    }
+    match store.read(MASTER_SECRET) {
+        Read::Found(back) => decode(&back).filter(|k| k.as_slice() == fresh.as_slice()),
+        _ => None,
+    }
+}
+
+fn seal(key: &[u8; 32], plain: &str) -> Option<String> {
+    let mut nonce = [0u8; 12];
+    getrandom::fill(&mut nonce).ok()?;
+    let ct = Aes256Gcm::new(key.into()).encrypt(Nonce::from_slice(&nonce), plain.as_bytes()).ok()?;
+    let mut out = nonce.to_vec();
+    out.extend_from_slice(&ct);
+    Some(format!("{SEAL_PREFIX}{}", B64.encode(out)))
+}
+
+fn unseal(key: &[u8; 32], sealed: &str) -> Option<Zeroizing<String>> {
+    let raw = B64.decode(sealed.trim().strip_prefix(SEAL_PREFIX)?).ok()?;
+    if raw.len() < 12 + 16 {
+        return None;
+    }
+    let (nonce, ct) = raw.split_at(12);
+    let plain = Aes256Gcm::new(key.into()).decrypt(Nonce::from_slice(nonce), ct).ok()?;
+    String::from_utf8(plain).ok().map(Zeroizing::new)
+}
+
+fn write_private(path: &Path, text: &str) -> bool {
+    let tmp = path.with_extension("tmp");
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut opts, 0o600);
+    let wrote = opts.open(&tmp).and_then(|mut f| std::io::Write::write_all(&mut f, text.as_bytes())).is_ok();
+    wrote && std::fs::rename(&tmp, path).is_ok()
+}
+
+pub fn save_account(store: &dyn KeyStore, dir: &Path, account: &ServiceAccount) -> bool {
+    let Some(key) = master(store, true) else { return false };
+    let Some(sealed) = seal(&key, &stored(account)) else { return false };
+    write_private(&dir.join(SEALED_FILE), &sealed)
+}
+
+pub fn load_account(store: &dyn KeyStore, dir: &Path) -> Option<ServiceAccount> {
+    let sealed = std::fs::read_to_string(dir.join(SEALED_FILE)).ok()?;
+    let key = master(store, false)?;
+    restore(&unseal(&key, &sealed)?)
+}
+
+pub fn remove_account(dir: &Path) {
+    let _ = std::fs::remove_file(dir.join(SEALED_FILE));
 }

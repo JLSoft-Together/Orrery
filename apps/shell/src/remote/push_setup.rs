@@ -16,6 +16,9 @@ impl Remote {
         if !Config::load(&self.dir).firebase.is_set() {
             return None;
         }
+        if let Some(a) = fcm_files::load_account(self.secrets.as_ref(), &self.dir) {
+            return Some(a);
+        }
         match self.secrets.read(SECRET) {
             Read::Found(v) if v.as_str() != CLEARED => fcm_files::restore(&v),
             _ => None,
@@ -56,8 +59,11 @@ impl Remote {
             Ok(p) => p,
             Err(e) => return fail(e),
         };
-        if !self.secrets.write(SECRET, &fcm_files::stored(&parsed.account)) {
+        if !fcm_files::save_account(self.secrets.as_ref(), &self.dir, &parsed.account) {
             return fail("keyring");
+        }
+        if matches!(self.secrets.read(SECRET), Read::Found(_)) {
+            let _ = self.secrets.delete(SECRET);
         }
         let project = parsed.firebase.project_id.clone();
         let ctx = self.ctx().ok();
@@ -111,7 +117,10 @@ impl Remote {
     }
 
     pub fn push_remove(&self) -> Value {
-        let _ = self.secrets.delete(SECRET);
+        fcm_files::remove_account(&self.dir);
+        if matches!(self.secrets.read(SECRET), Read::Found(_)) {
+            let _ = self.secrets.delete(SECRET);
+        }
         self.edit_config(|cfg| cfg.firebase = FirebaseConfig::default());
         match self.ctx().ok() {
             Some(c) => {

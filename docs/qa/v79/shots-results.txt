@@ -1,0 +1,48 @@
+PASS shot 01-monitor-open-vi-dark — ok
+PASS shot 02-monitor-closed-vi-dark — ok
+PASS shot 03-session-card-hover — ok
+PASS shot 04-session-card-menu — ok
+PASS cards counted + heights — [92,92,92,92,92,92]
+PASS shot 05-agent-map-with-details — ok
+PASS shot 06-monitor-sheet-narrow — ok
+PASS narrow sheet is a bottom sheet under 75% of the window height — 461
+PASS shot 07-monitor-narrow-zoom-cluster — ok
+PASS shot 08-header-limits-popover — ok
+PASS shot 09-monitor-light — ok
+PASS shot 10-settings-general — ok
+PASS settings general: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-appearance — ok
+PASS settings appearance: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-editor — ok
+PASS settings editor: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-notify — ok
+PASS settings notify: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-reminders — ok
+PASS settings reminders: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-github — ok
+PASS settings github: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-integrations — ok
+PASS settings integrations: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-access — ok
+PASS settings access: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-data — ok
+PASS settings data: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS shot 10-settings-about — ok
+PASS settings about: sidebar beside content, content >= 400px tall — {"sideRight":424,"contentLeft":424,"contentH":691}
+PASS Thông báo page <= 1.3 screens (scrollHeight vs 900) — 691
+PASS shot 11-settings-search — ok
+PASS Settings focus inside dialog while searching
+PASS shot 12-settings-search-picked-flash — ok
+PASS shot 13-settings-light — ok
+PASS shot 14-history — ok
+PASS shot 15-usage — ok
+PASS shot 16-devices — ok
+PASS shot 17-extensions — ok
+PASS shot 18-workspace-1-pane-dark — ok
+PASS shot 19-workspace-1-pane-light — ok
+PASS shot 20-workspace-split-2-pane — ok
+PASS rail rows counted — 24
+PASS shot 21-workspace-rail-7-projects — ok
+PASS shot 22-git-log-toolbar — ok
+PASS shot 23-git-log-toolbar-more — ok
+PASS shot 24-workspace-light-log — ok

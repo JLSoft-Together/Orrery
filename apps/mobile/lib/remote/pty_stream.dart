@@ -253,9 +253,18 @@ class PtyStreams {
     if (session == null || !connection.isReady || entry._suspended) return;
     try {
       await session.request('pty.detach', {'stream': entry.stream});
+    } on RemoteCommandException catch (error) {
+      if (error.code != 'notFound') return;
+    }
+    if (!connection.isReady || entry._suspended) return;
+    try {
       await _sendAttach(session, entry);
-    } on RemoteCommandException {
-      return;
+    } on RemoteCommandException catch (error) {
+      entry._events.add({
+        't': 'pty.error',
+        'stream': entry.stream,
+        'error': error.code,
+      });
     }
   }
 

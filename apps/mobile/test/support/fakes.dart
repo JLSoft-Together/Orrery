@@ -168,6 +168,9 @@ class FakeServer implements WireSocket {
   final int? closeOnHandshake;
   final bool dropOnHandshake;
   bool silent;
+  bool hub = false;
+  final Map<int, List<int>> ring = {};
+  final Set<int> gone = {};
 
   final StreamController<Object?> _in = StreamController<Object?>();
   final List<Map<String, dynamic>> commands = [];
@@ -261,6 +264,17 @@ class FakeServer implements WireSocket {
         pushJson({'re': id, 'ok': false, 'error': 'denied', 'detail': 'no'});
       case 'silent':
         break;
+      case 'pty.attach' when hub:
+        final stream = command['stream'] as int;
+        gone.remove(stream);
+        pushJson({'re': id, 'ok': true, 'stream': stream});
+        pushJson({'t': 'pty.ready', 'stream': stream, 'cols': 80, 'rows': 24});
+        final kept = ring[stream];
+        if (kept != null && kept.isNotEmpty) {
+          _in.add(fakeFrame(FrameKind.ptyOut, stream, List<int>.of(kept)));
+        }
+      case 'pty.detach' when hub && gone.contains(command['stream']):
+        pushJson({'re': id, 'ok': false, 'error': 'notFound'});
       default:
         pushJson({'re': id, 'ok': true});
     }
@@ -271,8 +285,14 @@ class FakeServer implements WireSocket {
     _in.add(fakeFrame(FrameKind.json, 0, utf8.encode(jsonEncode(value))));
   }
 
+  void hubOverflow(int stream) {
+    gone.add(stream);
+    pushJson({'t': 'pty.overflow', 'stream': stream});
+  }
+
   void pushPty(int stream, List<int> bytes) {
     if (_in.isClosed) return;
+    if (hub) ring.putIfAbsent(stream, () => []).addAll(bytes);
     _in.add(fakeFrame(FrameKind.ptyOut, stream, bytes));
   }
 

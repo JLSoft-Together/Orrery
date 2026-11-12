@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orrery_remote/remote/connection.dart';
 import 'package:orrery_remote/remote/protocol.dart';
 import 'package:orrery_remote/remote/pty_stream.dart';
+import 'package:xterm/xterm.dart';
 
 import 'connection_test.dart' show settle;
 import 'support/fakes.dart';
@@ -205,6 +206,40 @@ void main() {
         bed.commands.where((c) => c['t'] == 'pty.attach').length,
         before + 1,
       );
+    });
+  });
+
+  test('overflow in the middle of 3000 lines re-attaches and keeps every line once', () {
+    fakeAsync((async) {
+      final bed = Bed(async);
+      final server = bed.servers.last..hub = true;
+      final a = bed.attach('s1');
+      final terminal = Terminal(maxLines: 5000);
+      const decoder = Utf8Decoder(allowMalformed: true);
+      a.events.listen((e) {
+        if (e['t'] == 'pty.ready') {
+          terminal.write('[0m[3J[2J[H');
+        }
+      });
+      decoder.bind(a.output).listen(terminal.write);
+      server.pushJson({'t': 'pty.ready', 'stream': 1, 'cols': 80, 'rows': 24});
+      async.flushMicrotasks();
+      for (var n = 1; n <= 3000; n++) {
+        server.pushPty(1, utf8.encode('$n\r\n'));
+        if (n == 1962 || n == 2500) {
+          server.hubOverflow(1);
+        }
+        if (n % 50 == 0) async.flushMicrotasks();
+      }
+      async.flushMicrotasks();
+      async.elapse(const Duration(milliseconds: 100));
+      final numbers = <int>[];
+      for (var i = 0; i < terminal.buffer.lines.length; i++) {
+        final n = int.tryParse(terminal.buffer.lines[i].getText().trim());
+        if (n != null) numbers.add(n);
+      }
+      expect(bed.commands.where((c) => c['t'] == 'pty.attach').length, 3);
+      expect(numbers, List.generate(3000, (i) => i + 1));
     });
   });
 

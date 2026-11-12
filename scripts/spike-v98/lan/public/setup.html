@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài CA Orrery spike</title>
+<style>
+body { margin: 0; padding: 16px; font: 17px/1.5 -apple-system, system-ui, sans-serif; background: #f5f5f7; color: #1d1d1f; }
+@media (prefers-color-scheme: dark) { body { background: #000; color: #f5f5f7; } }
+a.btn { display: block; margin: 14px 0; padding: 16px; border-radius: 12px; background: #e8833a; color: #fff; text-align: center; font-weight: 600; text-decoration: none; }
+a.ghost { background: transparent; color: inherit; border: 1px solid #8e8e93; }
+ol { padding-left: 22px; }
+li { margin: 8px 0; }
+code { word-break: break-all; }
+</style>
+</head>
+<body>
+<h1>Cài CA Orrery spike</h1>
+<p>Trang này là http thường, chỉ để tải hồ sơ CA. Mở bằng <b>Safari</b> (không dùng Chrome / app khác).</p>
+<a class="btn" href="/ca.mobileconfig">1. Tải hồ sơ CA</a>
+<ol>
+  <li>Safari hỏi "Cho phép tải hồ sơ cấu hình?" → <b>Cho phép</b> → Đóng.</li>
+  <li><b>Cài đặt</b> → dòng <b>Đã tải về hồ sơ</b> ở đầu (hoặc Cài đặt chung → VPN &amp; Quản lý thiết bị) → <b>Orrery spike CA</b> → <b>Cài đặt</b>, nhập mã máy, Cài đặt lần nữa.</li>
+  <li><b>Cài đặt → Cài đặt chung → Giới thiệu → Cài đặt tin cậy chứng nhận</b> (cuối trang) → bật <b>Orrery spike CA</b> → Tiếp tục.</li>
+  <li>Quay lại Safari, mở trang test https bên dưới. Không được hiện cảnh báo "kết nối không riêng tư".</li>
+</ol>
+<a class="btn ghost" href="https://{{IP}}:{{PORT_A}}/">2. Mở trang test https://{{IP}}:{{PORT_A}}/</a>
+<p>Gỡ sau spike: Cài đặt → Cài đặt chung → VPN &amp; Quản lý thiết bị → Orrery spike CA → Xoá hồ sơ.</p>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Orrery spike">
+<meta name="theme-color" content="#e8833a">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/style.css">
+<title>Orrery spike LAN</title>
+<script src="/app.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>Orrery spike LAN</h1>
+  <p id="env" class="muted">Đang đọc môi trường…</p>
+  <p id="banner" class="banner" hidden></p>
+</header>
+
+<section>
+  <h2>1. Hồ sơ CA</h2>
+  <p>Chưa cài hồ sơ CA thì mở trang http bên dưới bằng Safari, tải hồ sơ, cài rồi bật tin cậy đầy đủ. Nếu Safari báo "kết nối không riêng tư" khi mở trang này thì CA chưa được tin: đừng bấm "vẫn truy cập", quay lại cài CA.</p>
+  <a id="caLink" class="btn ghost" href="#">Mở trang tải hồ sơ CA (http :4321)</a>
+</section>
+
+<section>
+  <h2>2. fetch + wss LAN</h2>
+  <p class="muted">Tự chạy 1 lần khi mở trang. fetch <code id="pingUrl"></code>, rồi wss echo: 1 khung 64 KiB + 10 lần đo RTT.</p>
+  <button id="runNet" class="btn">Thử kết nối lại</button>
+  <ul id="netOut" class="out"></ul>
+</section>
+
+<section id="a2hs">
+  <h2>3. Thêm vào màn hình chính</h2>
+  <p>Trong Safari: bấm nút Chia sẻ (ô vuông có mũi tên lên) → <b>Thêm vào MH chính</b> → Thêm. Rồi mở app <b>Orrery spike</b> từ màn hình chính, bước 2 tự chạy lại trong chế độ PWA.</p>
+</section>
+
+<section>
+  <h2>4. Thông báo</h2>
+  <p id="pushHint" class="muted"></p>
+  <button id="enablePush" class="btn">Bật thông báo</button>
+  <ul id="pushOut" class="out"></ul>
+</section>
+
+<section>
+  <h2>5. Push thử</h2>
+  <p class="muted">Bấm "sau 15 s" rồi khoá màn hình (hoặc vuốt đóng app) và chờ. Chạm thông báo phải mở lại trang này với dòng "Mở từ push".</p>
+  <button id="push15" class="btn">Gửi push thử sau 15 s</button>
+  <button id="push0" class="btn ghost">Gửi push ngay</button>
+  <ul id="pushSendOut" class="out"></ul>
+</section>
+
+<section>
+  <h2>Biến thể</h2>
+  <p class="muted">CSP hiện tại: <code id="cspNow"></code></p>
+  <div class="links">
+    <a id="linkA" class="btn ghost" href="/">Origin A, CSP IP cố định</a>
+    <a id="linkWild" class="btn ghost" href="/?csp=wild">Origin A, CSP wildcard wss://*:4320</a>
+    <a id="linkB" class="btn ghost" href="#">Origin B (:4322) → wss :4320</a>
+    <a id="linkBWild" class="btn ghost" href="#">Origin B, CSP wildcard</a>
+  </div>
+</section>
+
+<section>
+  <h2>Nhật ký</h2>
+  <pre id="log"></pre>
+</section>
+</body>
+</html>

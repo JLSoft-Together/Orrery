@@ -69,6 +69,7 @@ export const en: Messages = {
       failed: { title: 'Pairing failed', body: 'The encrypted handshake did not complete. Make a new code on your computer and try again.' },
     },
   },
+  duration: { lessThanMinute: '<1m', minutes: '{n}m', hours: '{n}h', days: '{n}d' },
   monitor: {
     lost: 'Disconnected',
     lostTitle: 'Disconnected from {name}',

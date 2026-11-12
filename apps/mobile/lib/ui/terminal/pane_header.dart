@@ -151,7 +151,7 @@ class PaneHeader extends StatelessWidget {
           final detail = facts.toolSummary;
           final time = since == null
               ? ''
-              : ' · ${elapsedText(now.difference(since))}';
+              : ' · ${elapsedText(context.l10n, now.difference(since))}';
           return Text(
             '${facts.tool}${detail == null ? '' : ' · $detail'}$time',
             maxLines: 1,

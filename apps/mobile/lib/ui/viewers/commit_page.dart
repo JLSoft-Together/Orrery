@@ -79,7 +79,7 @@ class _Body extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${detail.hash.length > 7 ? detail.hash.substring(0, 7) : detail.hash} · ${detail.author} · ${relativeTime(detail.time)}',
+                '${detail.hash.length > 7 ? detail.hash.substring(0, 7) : detail.hash} · ${detail.author} · ${relativeTime(context.l10n, detail.time)}',
                 style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
               ),
             ],

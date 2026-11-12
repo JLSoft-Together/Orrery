@@ -1237,4 +1237,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsThemeDark => 'Dark';
+
+  @override
+  String get durationLessThanMinute => '<1m';
+
+  @override
+  String durationSeconds(int n) {
+    return '${n}s';
+  }
+
+  @override
+  String durationMinutes(int n) {
+    return '${n}m';
+  }
+
+  @override
+  String durationHours(int n) {
+    return '${n}h';
+  }
+
+  @override
+  String durationDays(int n) {
+    return '${n}d';
+  }
 }

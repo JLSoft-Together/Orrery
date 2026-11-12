@@ -356,5 +356,10 @@
   "pushGroupError": "Lỗi hoặc thoát bất thường",
   "settingsThemeSystem": "Theo điện thoại",
   "settingsThemeLight": "Sáng",
-  "settingsThemeDark": "Tối"
+  "settingsThemeDark": "Tối",
+  "durationLessThanMinute": "<1p",
+  "durationSeconds": "{n}s",
+  "durationMinutes": "{n}p",
+  "durationHours": "{n}g",
+  "durationDays": "{n}n"
 }

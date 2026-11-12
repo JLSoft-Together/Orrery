@@ -14,6 +14,7 @@ import {
 } from './monitorModel'
 import { decodeFrame } from './qrDecode'
 import { checkQrText, pairErrorKey } from './qrInput'
+import { createAppI18n } from '../i18n'
 import type { Machine } from '../remote/types'
 
 function machine(id: string, name: string, pairedAt: number, revoked = false): Machine {
@@ -99,11 +100,17 @@ describe('monitor model', () => {
     expect(groupByState([] as MonitorSession[])).toEqual([])
   })
 
-  it('formats elapsed time compactly', () => {
-    expect(formatElapsed(30_000)).toBe('<1m')
-    expect(formatElapsed(5 * 60_000)).toBe('5m')
-    expect(formatElapsed(3 * 3_600_000)).toBe('3h')
-    expect(formatElapsed(50 * 3_600_000)).toBe('2d')
+  it('formats elapsed time compactly in each language', () => {
+    const en = createAppI18n('en').global.t
+    const vi = createAppI18n('vi').global.t
+    expect(formatElapsed(30_000, en)).toBe('<1m')
+    expect(formatElapsed(5 * 60_000, en)).toBe('5m')
+    expect(formatElapsed(3 * 3_600_000, en)).toBe('3h')
+    expect(formatElapsed(50 * 3_600_000, en)).toBe('2d')
+    expect(formatElapsed(30_000, vi)).toBe('<1p')
+    expect(formatElapsed(5 * 60_000, vi)).toBe('5p')
+    expect(formatElapsed(3 * 3_600_000, vi)).toBe('3g')
+    expect(formatElapsed(50 * 3_600_000, vi)).toBe('2n')
   })
 
   it('reads the newest 12 activity lines of one terminal, newest first', () => {

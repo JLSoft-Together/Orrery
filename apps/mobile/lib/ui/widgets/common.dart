@@ -201,11 +201,22 @@ class _PressScaleState extends State<PressScale> {
 String clock(DateTime time) =>
     '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
-String elapsedText(Duration d) {
+String elapsedText(AppLocalizations l, Duration d) {
   if (d.isNegative) d = Duration.zero;
-  if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes % 60}m';
-  if (d.inMinutes > 0) return '${d.inMinutes}m ${d.inSeconds % 60}s';
-  return '${d.inSeconds}s';
+  if (d.inHours > 0) {
+    return '${l.durationHours(d.inHours)} ${l.durationMinutes(d.inMinutes % 60)}';
+  }
+  if (d.inMinutes > 0) {
+    return '${l.durationMinutes(d.inMinutes)} ${l.durationSeconds(d.inSeconds % 60)}';
+  }
+  return l.durationSeconds(d.inSeconds);
+}
+
+String shortElapsed(AppLocalizations l, Duration d) {
+  if (d.isNegative || d.inSeconds < 60) return l.durationLessThanMinute;
+  if (d.inDays >= 1) return l.durationDays(d.inDays);
+  if (d.inHours >= 1) return l.durationHours(d.inHours);
+  return l.durationMinutes(d.inMinutes);
 }
 
 class Ticker1s extends StatefulWidget {

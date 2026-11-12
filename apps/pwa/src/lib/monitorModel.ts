@@ -159,12 +159,14 @@ export function groupByState(sessions: MonitorSession[]): Array<{ rail: Rail; se
   return GROUP_ORDER.map((rail) => ({ rail, sessions: sessions.filter((s) => s.rail === rail) })).filter((g) => g.sessions.length > 0)
 }
 
-export function formatElapsed(ms: number): string {
-  if (ms < 60_000) return '<1m'
+export type Translate = (key: string, named?: Record<string, unknown>) => string
+
+export function formatElapsed(ms: number, t: Translate): string {
+  if (ms < 60_000) return t('duration.lessThanMinute')
   const hours = Math.floor(ms / 3_600_000)
-  if (hours >= 24) return `${Math.floor(hours / 24)}d`
-  if (hours >= 1) return `${hours}h`
-  return `${Math.floor(ms / 60_000)}m`
+  if (hours >= 24) return t('duration.days', { n: Math.floor(hours / 24) })
+  if (hours >= 1) return t('duration.hours', { n: hours })
+  return t('duration.minutes', { n: Math.floor(ms / 60_000) })
 }
 
 export const ACTIVITY_SHOWN = 12

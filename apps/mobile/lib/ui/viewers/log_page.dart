@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../remote/protocol.dart';
 import '../theme/orrery_theme.dart';
 import '../widgets/common.dart';
@@ -13,13 +14,10 @@ import 'commit_page.dart';
 import 'log_models.dart';
 import 'viewer_api.dart';
 
-String relativeTime(int seconds) {
+String relativeTime(AppLocalizations l, int seconds) {
   final then = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
   final diff = DateTime.now().difference(then);
-  if (diff.inMinutes < 1) return '<1m';
-  if (diff.inHours < 1) return '${diff.inMinutes}m';
-  if (diff.inDays < 1) return '${diff.inHours}h';
-  if (diff.inDays < 14) return '${diff.inDays}d';
+  if (diff.inDays < 14) return shortElapsed(l, diff);
   return '${then.year}-${then.month.toString().padLeft(2, '0')}-${then.day.toString().padLeft(2, '0')}';
 }
 
@@ -266,7 +264,7 @@ class CommitRow extends StatelessWidget {
                       ),
                     const SizedBox(height: 4),
                     Text(
-                      '${commit.shortHash} · ${commit.author} · ${relativeTime(commit.time)}',
+                      '${commit.shortHash} · ${commit.author} · ${relativeTime(context.l10n, commit.time)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

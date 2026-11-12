@@ -643,5 +643,38 @@
   "pushGroupError": "Error or unexpected exit",
   "settingsThemeSystem": "Follows the phone",
   "settingsThemeLight": "Light",
-  "settingsThemeDark": "Dark"
+  "settingsThemeDark": "Dark",
+  "durationLessThanMinute": "<1m",
+  "durationSeconds": "{n}s",
+  "@durationSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutes": "{n}m",
+  "@durationMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHours": "{n}h",
+  "@durationHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "durationDays": "{n}d",
+  "@durationDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  }
 }

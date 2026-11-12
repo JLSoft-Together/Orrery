@@ -3,12 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../theme/orrery_shape.dart';
-
-String shortElapsed(Duration d) {
-  if (d.isNegative || d.inSeconds < 60) return '<1m';
-  if (d.inHours >= 1) return '${d.inHours}h';
-  return '${d.inMinutes}m';
-}
+import '../widgets/common.dart';
 
 class SinceText extends StatefulWidget {
   const SinceText({super.key, required this.since});
@@ -41,7 +36,7 @@ class _SinceTextState extends State<SinceText> {
     final since = widget.since;
     if (since == null) return const SizedBox.shrink();
     return Text(
-      shortElapsed(DateTime.now().difference(since)),
+      shortElapsed(context.l10n, DateTime.now().difference(since)),
       style: TextStyle(
         fontSize: 12,
         height: 16 / 12,

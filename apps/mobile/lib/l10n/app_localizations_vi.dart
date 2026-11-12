@@ -1181,4 +1181,27 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get settingsThemeDark => 'Tối';
+
+  @override
+  String get durationLessThanMinute => '<1p';
+
+  @override
+  String durationSeconds(int n) {
+    return '${n}s';
+  }
+
+  @override
+  String durationMinutes(int n) {
+    return '${n}p';
+  }
+
+  @override
+  String durationHours(int n) {
+    return '${n}g';
+  }
+
+  @override
+  String durationDays(int n) {
+    return '${n}n';
+  }
 }

@@ -19,3 +19,6 @@
 - `remote/hub.ts`: `pty` + `device` emitters (pty.* fs.* git.* run.* events), `answerConfirm`. `stores/hub.ts`: `ptyFor`, `command` (marks `viewOnly[machine]` on `denied`), `events`, `answerConfirm`.
 - Views: `WorkspaceView` (A focus + chips + swipe + send sheet, B grid, `prefs.workspaceMode`, new pane), `TerminalView` (header picker, PermissionBar `ws.keys`, `TerminalSurface`, KeyBar, InputBar, deep-link notices, ViewerPage overlay), `ViewerPage` (+ `ViewerFiles/Changes/Log/Run`, `lib/viewer{Model,Api}.ts`, `useAsync`). `RemoteConfirmHost` shows `view.confirms` (60 s). `lib/workspaceModel.ts`. iPad: App.vue keeps master = Workspace, detail = TerminalView.
 - E2E: peer `data.rs` (fixtures, 64 KiB payload, demo), stdout events `peer.events` / `waitEvent`; `e2e/lib/ws-steps.mjs`, `ws-shots.mjs` (shots -> docs/qa/v98/WP-55b); 28 steps per browser.
+
+## WP-60 (v98)
+- `lib/monitorModel.ts` `formatElapsed(ms, t)` nhận hàm dịch; khoá `duration.{lessThanMinute,minutes,hours,days}` trong `i18n/{vi,en}.ts` (vi `p` `g` `n`, en `m` `h` `d`); gọi từ `SessionCard.vue`, `SessionRow.vue`

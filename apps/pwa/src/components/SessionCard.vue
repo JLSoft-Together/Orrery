@@ -10,7 +10,7 @@ const props = defineProps<{ session: MonitorSession; now: number; lost?: boolean
 const emit = defineEmits<{ open: [] }>()
 const { t } = useI18n()
 
-const elapsed = computed(() => (props.session.since ? formatElapsed(props.now - props.session.since) : null))
+const elapsed = computed(() => (props.session.since ? formatElapsed(props.now - props.session.since, t) : null))
 const activeSubs = computed(() => props.session.subagents.filter((s) => isRunning(s.rail)).length)
 const line = computed(() => {
   const s = props.session

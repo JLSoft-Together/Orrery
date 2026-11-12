@@ -135,3 +135,7 @@ Hợp đồng: `docs/remote-integration.md`. Crypto + frame nằm ở crate `app
 - Độ trễ LAN: `RemoteSession.onRtt` (đo Noise ping frame), `Connection.rtt` (ping ngay lúc ready + keepalive 30 s, chỉ LAN), `latencyProvider(id)` (StreamProvider) → `LinkPill(latencyMs:)` ở machine_card / home_duplicates / monitor_page; `LinkState` không chứa latency (tránh đổi trạng thái kết nối)
 - Android: `res/values/colors.xml` `notification_accent` + meta `default_notification_color`
 - scripts/check.mjs: gen-l10n → dart format file đổi → analyze → test (bỏ nếu analyze lỗi, `--force-test`) → file > 400 dòng; chỉ in tóm tắt
+
+## WP-60 (v98)
+- Đơn vị thời gian qua l10n: khoá `durationLessThanMinute` / `durationSeconds` / `durationMinutes` / `durationHours` / `durationDays` (vi `p` `g` `n`, en `m` `h` `d`) sửa tay trong `app_{en,vi}.arb` (`tool/gen_arb.mjs` đã cũ, KHÔNG chạy lại); `ui/widgets/common.dart` `shortElapsed(l, d)` + `elapsedText(l, d)`, `log_page.dart` `relativeTime(l, seconds)` dùng chung; test `test/duration_text_test.dart`
+- Tách file: `remote/connect_route.dart` (`openRoute`, `sendHello`, `startKeepalive`, `closeCodeAfterOffline`), `link_rules.dart` `markRevoked`; `viewers/changes_widgets.dart` (`ChangesBranch/Section/FileRow`), `explorer_row.dart` (`ExplorerRow`, `fileIcon`), `run_widgets.dart` (`RunSessionCard`, `RunLogView`); `monitor/session_detail_parts.dart` (`SessionHead/Facts/Subagents`)

@@ -2239,6 +2239,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get settingsThemeDark;
+
+  /// No description provided for @durationLessThanMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'<1m'**
+  String get durationLessThanMinute;
+
+  /// No description provided for @durationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{n}s'**
+  String durationSeconds(int n);
+
+  /// No description provided for @durationMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n}m'**
+  String durationMinutes(int n);
+
+  /// No description provided for @durationHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{n}h'**
+  String durationHours(int n);
+
+  /// No description provided for @durationDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n}d'**
+  String durationDays(int n);
 }
 
 class _AppLocalizationsDelegate

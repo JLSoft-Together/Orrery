@@ -67,6 +67,7 @@ export const vi = {
       failed: { title: 'Ghép thất bại', body: 'Bắt tay mã hoá không thành công. Tạo mã mới trên máy tính rồi thử lại.' },
     },
   },
+  duration: { lessThanMinute: '<1p', minutes: '{n}p', hours: '{n}g', days: '{n}n' },
   monitor: {
     lost: 'Mất kết nối',
     lostTitle: 'Mất kết nối tới {name}',

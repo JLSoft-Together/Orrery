@@ -93,3 +93,9 @@ Future<void> storeRelayToken(
   if (parsed == null || machine == null) return;
   await machines.save(machine.copyWith(relayToken: parsed));
 }
+
+Future<void> markRevoked(MachineRepository machines, String machineId) async {
+  final machine = machines.get(machineId);
+  if (machine == null) return;
+  await machines.save(machine.copyWith(revoked: true));
+}

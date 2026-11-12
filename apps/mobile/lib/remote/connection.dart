@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:clock/clock.dart';
 
 import 'connect_attempt.dart';
+import 'connect_route.dart';
 import 'connection_config.dart';
 export 'connection_config.dart';
 import 'crypto.dart';
@@ -284,27 +285,14 @@ class MachineConnection {
       return const ConnectAttempt.failed(LinkState());
     }
     _emit(_state.copyWith(status: LinkStatus.discovering, clearRoute: true));
-    final lan = await openLan(deps, machine);
-    if (generation != _generation) {
-      await lan?.socket.close();
-      return const ConnectAttempt.failed(LinkState());
-    }
-    var opened = lan;
-    if (opened == null) {
-      final relay = await openRelay(
-        deps,
-        machine,
-        clock.now().millisecondsSinceEpoch ~/ 1000,
-      );
-      final failure = relay.failure;
-      if (failure != null) return ConnectAttempt.failed(failure);
-      opened = relay.opened;
-      if (generation != _generation) {
-        await opened!.socket.close();
-        return const ConnectAttempt.failed(LinkState());
-      }
-    }
-    return _handshake(generation, machine, identity, opened!);
+    final route = await openRoute(
+      deps,
+      machine,
+      () => generation == _generation,
+    );
+    final failure = route.failure;
+    if (failure != null) return ConnectAttempt.failed(failure);
+    return _handshake(generation, machine, identity, route.opened!);
   }
 
   Future<ConnectAttempt> _handshake(
@@ -350,26 +338,15 @@ class MachineConnection {
     session.start();
     final JsonMap reply;
     try {
-      reply = await session.request('hello', {
-        'proto': deps.config.proto,
-        'app': deps.config.appName,
-        'platform': deps.config.platform,
-        'caps': <String>[],
-      });
+      reply = await sendHello(session, deps.config);
     } on RemoteCommandException catch (error) {
-      if (error.code == 'offline') {
-        final code = await session.closed.timeout(
-          const Duration(milliseconds: 500),
-          onTimeout: () => null,
-        );
-        await _dropSession();
-        return ConnectAttempt.failed(
-          _classify(code, opened.route == LinkRoute.relay),
-        );
-      }
+      final offline = error.code == 'offline';
+      final code = offline ? await closeCodeAfterOffline(session) : null;
       await _dropSession();
       return ConnectAttempt.failed(
-        helloFailure(error.code, opened.route, deps.config.proto),
+        offline
+            ? _classify(code, opened.route == LinkRoute.relay)
+            : helloFailure(error.code, opened.route, deps.config.proto),
       );
     }
     if (generation != _generation) {
@@ -386,22 +363,14 @@ class MachineConnection {
 
   void _startKeepalive(RemoteSession session) {
     _keepaliveTimer?.cancel();
-    if (!session.viaRelay) {
-      session.onRtt = (rtt) {
-        if (!session.isClosed && !_rtt.isClosed) _rtt.add(rtt.inMilliseconds);
-      };
-      session.sendKeepalive();
-    }
-    _keepaliveTimer = Timer.periodic(deps.config.keepalive, (_) {
-      if (session.isClosed) return;
-      final idle = clock.now().difference(session.lastActivity);
-      if (idle > deps.config.deadAfter) {
-        _hint = LinkReason.networkLost;
-        unawaited(session.close());
-        return;
-      }
-      session.sendKeepalive();
-    });
+    _keepaliveTimer = startKeepalive(
+      session,
+      deps.config,
+      onRtt: (millis) {
+        if (!_rtt.isClosed) _rtt.add(millis);
+      },
+      onDead: () => _hint = LinkReason.networkLost,
+    );
   }
 
   void _onSessionEvent(JsonMap event) {
@@ -422,10 +391,7 @@ class MachineConnection {
   }
 
   Future<void> _onRevoked() async {
-    final machine = deps.machines.get(machineId);
-    if (machine != null) {
-      await deps.machines.save(machine.copyWith(revoked: true));
-    }
+    await markRevoked(deps.machines, machineId);
     _generation++;
     _wake();
     await _dropSession();

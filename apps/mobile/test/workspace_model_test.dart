@@ -102,7 +102,7 @@ void main() {
     expect(PaneFacts.of(null, 't-a').hasTool, isFalse);
   });
 
-  test('theme follows hello mode and palette, with fallbacks', () {
+  test('theme follows hello mode, palette is parsed but the app keeps orrery tokens', () {
     final remote = RemoteTheme.fromHello({
       'mode': 'dark',
       'palette': {'--ccm-accent': '#ff8800', 'bad': 12},
@@ -113,6 +113,6 @@ void main() {
     expect(parseColor('#abc'), const Color(0xFFAABBCC));
     expect(parseColor('red'), isNull);
     final theme = buildOrreryTheme(remote, Brightness.dark);
-    expect(theme.colorScheme.primary, const Color(0xFFFF8800));
+    expect(theme.colorScheme.primary, const Color(0xFFE8835D));
   });
 }

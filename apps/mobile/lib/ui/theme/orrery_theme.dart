@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'orrery_colors.dart';
+import 'orrery_shape.dart';
+import 'spring_transition.dart';
+
 class RemoteTheme {
   const RemoteTheme(this.mode, this.palette);
 
@@ -82,21 +86,21 @@ class StatusColors extends ThemeExtension<StatusColors> {
   final Color warning;
 
   static const StatusColors light = StatusColors(
-    working: Color(0xFF0060DF),
-    asked: Color(0xFFB25000),
-    failed: Color(0xFFD70015),
-    done: Color(0xFF248A3D),
-    idle: Color(0xFF6C6C70),
-    warning: Color(0xFFB25000),
+    working: Color(0xFFB02F00),
+    asked: Color(0xFF7F5500),
+    failed: Color(0xFFC4001A),
+    done: Color(0xFF1B6F30),
+    idle: Color(0xFF61616C),
+    warning: Color(0xFF7F5500),
   );
 
   static const StatusColors dark = StatusColors(
-    working: Color(0xFF64A8FF),
-    asked: Color(0xFFFFB340),
-    failed: Color(0xFFFF6961),
-    done: Color(0xFF32D74B),
-    idle: Color(0xFF9A9AA0),
-    warning: Color(0xFFFFB340),
+    working: Color(0xFFF5A524),
+    asked: Color(0xFFF7D046),
+    failed: Color(0xFFFF6B6B),
+    done: Color(0xFF4CC38A),
+    idle: Color(0xFF8E8E9A),
+    warning: Color(0xFFF7D046),
   );
 
   @override
@@ -135,110 +139,169 @@ extension StatusColorsX on BuildContext {
       Theme.of(this).extension<StatusColors>() ?? StatusColors.light;
 }
 
+TextStyle _style(
+  String? family,
+  Color color,
+  double size,
+  double line, [
+  FontWeight weight = FontWeight.w400,
+]) => TextStyle(
+  fontFamily: family,
+  color: color,
+  fontSize: size,
+  height: line / size,
+  fontWeight: weight,
+);
+
 ThemeData buildOrreryTheme(
   RemoteTheme remote,
   Brightness brightness, {
   String? fontFamily,
 }) {
   final dark = brightness == Brightness.dark;
-  final accent =
-      remote.pick(const ['accent', 'accent-fill', 'primary']) ??
-      (dark ? const Color(0xFF0A84FF) : const Color(0xFF0060DF));
-  final background =
-      remote.pick(const ['bg', 'background', 'surface-0']) ??
-      (dark ? const Color(0xFF000000) : const Color(0xFFF2F2F7));
-  final surface =
-      remote.pick(const ['surface', 'card', 'surface-1']) ??
-      (dark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF));
-  final ink =
-      remote.pick(const ['ink', 'text', 'fg', 'foreground']) ??
-      (dark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E));
-  final base = ColorScheme.fromSeed(seedColor: accent, brightness: brightness);
-  final scheme = base.copyWith(
-    primary: accent,
-    onPrimary: accent.computeLuminance() > 0.5
-        ? const Color(0xFF111111)
-        : Colors.white,
-    surface: surface,
-    onSurface: ink,
-    onSurfaceVariant: ink.withValues(alpha: 0.72),
-    surfaceContainerLowest: background,
-    surfaceContainerLow: surface,
-    surfaceContainer: surface,
-    surfaceContainerHigh: dark
-        ? const Color(0xFF2C2C2E)
-        : const Color(0xFFEAEAF0),
-    surfaceContainerHighest: dark
-        ? const Color(0xFF3A3A3C)
-        : const Color(0xFFE0E0E8),
-    outlineVariant: dark ? const Color(0xFF3A3A3C) : const Color(0xFFD8D8DE),
-    error: dark ? const Color(0xFFFF6961) : const Color(0xFFD70015),
-  );
-  final radius = BorderRadius.circular(14);
+  final c = dark ? OrreryColors.dark : OrreryColors.light;
+  const shape = OrreryShape();
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: c.accent,
+        brightness: brightness,
+      ).copyWith(
+        primary: c.accent,
+        onPrimary: c.onAccent,
+        primaryContainer: c.selection,
+        onPrimaryContainer: c.accentInk,
+        surface: c.canvas,
+        onSurface: c.ink,
+        onSurfaceVariant: c.inkMuted,
+        surfaceContainerLowest: c.canvas,
+        surfaceContainerLow: c.surface,
+        surfaceContainer: c.control,
+        surfaceContainerHigh: c.raised,
+        surfaceContainerHighest: c.raised,
+        outline: c.lineStrong,
+        outlineVariant: c.line,
+        error: c.error,
+        scrim: c.scrim,
+      );
+  final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
+  final text = base
+      .apply(bodyColor: c.ink, displayColor: c.ink, fontFamily: fontFamily)
+      .copyWith(
+        headlineMedium: _style(fontFamily, c.ink, 28, 34, FontWeight.w600),
+        titleMedium: _style(fontFamily, c.ink, 17, 24, FontWeight.w600),
+        titleSmall: _style(fontFamily, c.ink, 15, 20, FontWeight.w600),
+        bodyMedium: _style(fontFamily, c.ink, 14, 20),
+        bodySmall: _style(fontFamily, c.inkMuted, 12, 16),
+        labelMedium: _style(fontFamily, c.inkMuted, 12, 16, FontWeight.w600),
+      );
+  final control = RoundedRectangleBorder(borderRadius: shape.controlRadius);
+  OutlineInputBorder field(Color color, [double width = 1]) =>
+      OutlineInputBorder(
+        borderRadius: shape.controlRadius,
+        borderSide: BorderSide(color: color, width: width),
+      );
   return ThemeData(
     useMaterial3: true,
+    brightness: brightness,
     fontFamily: fontFamily,
     colorScheme: scheme,
-    scaffoldBackgroundColor: background,
+    textTheme: text,
+    scaffoldBackgroundColor: c.canvas,
+    canvasColor: c.canvas,
     visualDensity: VisualDensity.standard,
-    extensions: [dark ? StatusColors.dark : StatusColors.light],
+    extensions: [
+      c,
+      shape,
+      const OrreryMotion(),
+      dark ? StatusColors.dark : StatusColors.light,
+    ],
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: OrrerySpringTransitionsBuilder(),
+        TargetPlatform.iOS: OrrerySpringTransitionsBuilder(),
+      },
+    ),
     appBarTheme: AppBarTheme(
-      backgroundColor: background,
-      foregroundColor: ink,
+      backgroundColor: c.canvas,
+      foregroundColor: c.ink,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: TextStyle(
-        fontFamily: fontFamily,
-        color: ink,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-      ),
+      titleTextStyle: text.titleMedium,
     ),
     cardTheme: CardThemeData(
-      color: surface,
+      color: c.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: BorderSide(color: scheme.outlineVariant),
+        borderRadius: shape.cardRadius,
+        side: BorderSide(color: c.line),
       ),
     ),
-    dividerTheme: DividerThemeData(color: scheme.outlineVariant, space: 1),
+    dividerTheme: DividerThemeData(color: c.line, space: 1),
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: surface,
+      backgroundColor: c.surface,
       showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(shape.card + 4),
+        ),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: c.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: shape.cardRadius,
+        side: BorderSide(color: c.line),
       ),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: control,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: scheme.surfaceContainerHigh,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
+      fillColor: c.control,
+      border: field(c.lineStrong),
+      enabledBorder: field(c.lineStrong),
+      focusedBorder: field(c.accent, 1.5),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: c.accent,
+        foregroundColor: c.onAccent,
+        minimumSize: Size(shape.touch, shape.touch),
+        shape: control,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        foregroundColor: c.ink,
+        backgroundColor: c.control,
+        side: BorderSide(color: c.lineStrong),
+        minimumSize: Size(shape.touch, shape.touch),
+        shape: control,
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      style: TextButton.styleFrom(
+        foregroundColor: c.accentInk,
+        minimumSize: Size(shape.touch, shape.touch),
+        shape: control,
+      ),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: c.accent,
+      foregroundColor: c.onAccent,
+      elevation: 0,
+      highlightElevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: c.surface,
+      indicatorColor: c.selection,
+      surfaceTintColor: Colors.transparent,
     ),
   );
 }

@@ -64,8 +64,7 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final now =
         state == AppLifecycleState.resumed ||
-        (state == AppLifecycleState.inactive &&
-            defaultTargetPlatform != TargetPlatform.iOS);
+        state == AppLifecycleState.inactive;
     if (now != _resumed) setState(() => _resumed = now);
   }
 

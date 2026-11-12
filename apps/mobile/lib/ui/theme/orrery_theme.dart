@@ -216,10 +216,7 @@ ThemeData buildOrreryTheme(
       dark ? StatusColors.dark : StatusColors.light,
     ],
     pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: OrrerySpringTransitionsBuilder(),
-        TargetPlatform.iOS: OrrerySpringTransitionsBuilder(),
-      },
+      builders: {TargetPlatform.android: OrrerySpringTransitionsBuilder()},
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: c.canvas,

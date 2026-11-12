@@ -2,6 +2,7 @@
 
 One line per change: what, then the key file / symbol. Details live in `collector.md`, `web.md`, `protocol.md`, `desktop.md`, the `.planning/PLAN-v*.md` plans and `docs/*-integration.md`. Paths are relative to the package (`apps/web/src`, `apps/collector/src`, `apps/desktop/src`) unless they start at the repo root. Cleaned 2026-10-17: entries for removed code (`.bat` launchers, `scripts/launch.mjs`, collector borrowing / takeover, PWA, `SessionView.vue`, `AgentContextMenu.vue`, `AgentNode.vue`, `spikes/`) were dropped; full history is in git.
 
+- 2026-11-12 WP-57 v98: xoá `apps/mobile/ios` + `rust_builder/ios` và nhánh iOS trong Dart (`lib/app/bootstrap.dart`, `lib/remote/device_name.dart`, `lib/security/lock_gate.dart`); docs `docs/orrery-remote.md` §1 / §11 + mục đánh đổi web app iPhone, `docs/remote-integration.md` §7.1 / §7.2.
 - 2026-11-12 WP-20 v97: desktop gửi push FCM HTTP v1 thẳng + cài Firebase bằng 2 file: `apps/shell/src/remote/{fcm_files,fcm_jwt,fcm,push,push_setup}.rs`, IPC `ccm:remote-push-*`, docs `remote-integration.md` §7.4.
 - 2026-11-12 WP-16 v97 docs: ngoại lệ §11as `docs/claude-code-integration.md`, hướng dẫn `docs/orrery-remote.md`, dòng v97 trong `.code_index/features.md`.
 - 2026-11-11 WP2 v89 UI: sheet MCP & plugin theo session `components/workspace/SessionToolsSheet.vue` + `lib/sessionTools.ts`, entry pane `TermPane.vue` (`tools`) / card `cardMenu` (`card:tools`), restart `--resume` qua `workspace.requestRestart`.

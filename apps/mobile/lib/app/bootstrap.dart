@@ -24,7 +24,7 @@ Future<PushService?> buildPushService(RemoteHost host) async {
       gateway: FirebasePushGateway(),
       kv: FlutterSecureKv(),
       host: RemoteHostPush(host),
-      platform: Platform.isIOS ? 'ios' : 'android',
+      platform: 'android',
       localeCode: () => PlatformDispatcher.instance.locale.languageCode,
     );
     await service.init();
@@ -45,7 +45,6 @@ Future<RemoteHost> buildRemoteHost() async {
   final cache = await getApplicationCacheDirectory();
   final secure = FlutterSecureKv();
   const crypto = RustRemoteCrypto();
-  final platform = Platform.isIOS ? 'ios' : 'android';
   final deps = ConnectionDeps(
     crypto: crypto,
     connector: IoWireSocket.connect,
@@ -53,7 +52,7 @@ Future<RemoteHost> buildRemoteHost() async {
     machines: MachineRepository(directory: support, secure: secure),
     discovery: const BonsoirLanDiscovery(),
     network: ConnectivityNetworkWatcher(),
-    config: ConnectionConfig(platform: platform),
+    config: ConnectionConfig(platform: 'android'),
   );
   final host = RemoteHost(
     deps: deps,

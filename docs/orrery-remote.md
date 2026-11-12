@@ -11,8 +11,8 @@ Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bả
 | Gateway trên máy (Windows, Tauri) | Có, đã test tự động |
 | Relay Cloudflare (`https://orrery-relay.jinvu.workers.dev`) | Có, đã deploy; bản có "đóng đúng 1 điện thoại" chưa deploy |
 | App Android | Có, build APK được; chạy được trên 1 máy thật (Galaxy A21s) |
-| App iOS | **Chưa build**, chưa chạy thử (cần Mac + TestFlight) |
-| Push thông báo native (APNs / FCM) | Phía điện thoại có (switch trong danh sách máy, Firebase do người dùng tự thiết lập trên máy tính, options gửi qua `push.config`); chạm thông báo mở thẳng pane. iOS chưa có APNs. Chưa kiểm trên máy thật. Dùng thêm Telegram / ntfy |
+| iPhone / iPad | Web app (PWA) tải từ relay, đang làm ở v98. Không có app iOS native, không cần tài khoản Apple Developer |
+| Push thông báo native (APNs / FCM) | Phía điện thoại có (switch trong danh sách máy, Firebase do người dùng tự thiết lập trên máy tính, options gửi qua `push.config`); chạm thông báo mở thẳng pane. iPhone dùng Web Push riêng của web app (v98). Chưa kiểm trên máy thật. Dùng thêm Telegram / ntfy |
 | Quét QR bằng camera thật, mDNS thật, hiệu năng terminal trên máy thật | Chưa kiểm xong |
 
 ## 2. Bật và ghép điện thoại
@@ -44,7 +44,7 @@ Port LAN mặc định **4320**; đổi bằng biến môi trường `CCM_REMOTE
 Lần đầu bật, hệ điều hành có thể hỏi cho phép Orrery nhận kết nối.
 
 - **Windows**: chọn **Mạng riêng tư**, cho phép. Lỡ chọn sai: Windows Security → Firewall → Allow an app → Orrery → tick Private. Cần mở TCP **4320**.
-- **macOS**: hộp "cho phép nhận kết nối mạng đến" → Allow. App iOS cũng sẽ hỏi quyền **Local Network** khi tìm máy.
+- **macOS**: hộp "cho phép nhận kết nối mạng đến" → Allow.
 - Settings → Điều khiển từ xa có dòng nhắc firewall kèm port đang dùng. Không vào được qua LAN thì relay vẫn dùng được (máy cần có Internet).
 
 ## 5. Thu hồi, hết hạn, ngắt
@@ -67,7 +67,7 @@ Tin của 1 pane (chờ, hỏi, xin quyền, xong việc) có nút **Mở trên 
 
 - Link chỉ có khi remote đang chạy, đã ghép ít nhất 1 điện thoại, và pane còn mở. Tin `job` / `limit` / `disk` / `note` không có link.
 - Máy chưa ghép trong app: báo "Chưa ghép máy này". Pane đã đóng: báo pane không còn mở.
-- Android App Links tự mở app cần relay trả `assetlinks.json`; chưa kiểm trên máy thật, và lệnh deploy relay kèm cert debug chưa chạy. iOS: chưa làm.
+- Android App Links tự mở app cần relay trả `assetlinks.json`; chưa kiểm trên máy thật, và lệnh deploy relay kèm cert debug chưa chạy. iPhone dùng web app nên không dùng App Links.
 
 ## 8. Giới hạn
 
@@ -115,7 +115,13 @@ Thao tác nguy hiểm (xoá branch, bỏ thay đổi, push, commit amend, chạy
 
 **Android (APK, chưa lên store)**: `cd apps/mobile && flutter build apk` (hoặc `--profile` để đo hiệu năng), file ở `apps/mobile/build/app/outputs/flutter-apk/`; cài bằng `adb install -r <file>.apk`. Package `dev.ccm.orrery.remote`, minSdk 24. Cần Rust toolchain (cargokit build 3 ABI).
 
-**iOS (TestFlight, chưa làm)**: cần Mac, tài khoản Apple Developer, bật capability Associated Domains; quyền Local Network (`NSBonjourServices`) đã khai trong project. Điền `APPLE_APP_ID` (Team ID) vào `apps/relay/wrangler.jsonc` rồi deploy relay. Chưa có bản build iOS nào chạy thử. App chỉ cài qua APK + TestFlight, chưa lên store.
+**iPhone / iPad (web app, đang làm ở v98)**: dùng web app tải từ relay của bạn, không có app iOS native, không cần Mac hay tài khoản Apple Developer. Các bước cài web app lên màn hình chính và cài CA cho LAN sẽ bổ sung ở v98.
+
+### Web app iPhone và relay: đánh đổi
+
+- Web app được relay phát: code chạy trên iPhone đến từ relay Cloudflare của chính bạn, không đến từ store.
+- Ai kiểm soát tài khoản Cloudflare đó có thể sửa code web app. Bật 2FA cho tài khoản Cloudflare, giữ API token kín.
+- Mã hoá đầu cuối vẫn là Noise giữa iPhone và máy tính. Nhưng code chạy Noise trên iPhone do relay phát, nên tin relay = tin code đó.
 
 ## 12. Dữ liệu và bảo mật
 

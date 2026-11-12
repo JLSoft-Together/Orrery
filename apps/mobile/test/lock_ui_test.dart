@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -241,31 +240,6 @@ void main() {
     expect(lock.locked, isFalse);
     expect(find.byType(TabPage), findsOneWidget);
     expect(h.api.attached, contains('b'));
-    lock.dispose();
-  });
-
-  testWidgets('leaving the screen shows a cover on iOS while unlocked', (
-    tester,
-  ) async {
-    await _size(tester);
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    final lock = await _loaded(FakeAuth());
-    await tester.pumpWidget(
-      _app(
-        const Text('secret'),
-        builder: (context, child) => LockGate(lock: lock, child: child!),
-      ),
-    );
-    await tester.pumpAndSettle();
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    await tester.pump();
-    expect(find.byKey(const ValueKey('lock-cover')), findsOneWidget);
-    expect(find.text('secret'), findsNothing);
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    expect(find.byKey(const ValueKey('lock-cover')), findsNothing);
-    expect(find.text('secret'), findsOneWidget);
-    debugDefaultTargetPlatformOverride = null;
     lock.dispose();
   });
 

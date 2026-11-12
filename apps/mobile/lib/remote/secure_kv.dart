@@ -9,13 +9,7 @@ abstract class SecureKv {
 }
 
 class FlutterSecureKv implements SecureKv {
-  FlutterSecureKv()
-    : _storage = const FlutterSecureStorage(
-        iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock_this_device,
-          synchronizable: false,
-        ),
-      );
+  FlutterSecureKv() : _storage = const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 

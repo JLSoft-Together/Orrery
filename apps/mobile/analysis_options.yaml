@@ -15,7 +15,6 @@ analyzer:
   exclude:
     - build/**
     - android/**
-    - ios/**
 
     - rust_builder/cargokit/**
 linter:

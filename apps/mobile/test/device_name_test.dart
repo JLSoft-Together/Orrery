@@ -24,17 +24,6 @@ void main() {
     );
   });
 
-  test('ios machine id maps to a friendly name', () {
-    expect(
-      friendlyDeviceName(
-        fallback: 'iPhone',
-        manufacturer: 'Apple',
-        model: 'iPhone14,5',
-      ),
-      'iPhone 13',
-    );
-  });
-
   test('name is cut to 40 characters and empty falls back', () {
     final long = friendlyDeviceName(
       fallback: 'x',

@@ -14,7 +14,10 @@ void main() {
       pushLink({'m': 'machine-1', 'p': 'pane_1', 'k': 'done'}).toString(),
       'orrery-remote://m/machine-1/p/pane_1',
     );
-    expect(pushLink({'m': 'machine-1'}), isNull);
+    expect(
+      pushLink({'m': 'machine-1'}).toString(),
+      'orrery-remote://m/machine-1',
+    );
     expect(pushLink({'m': 'm 1', 'p': 'p1'}), isNull);
     expect(pushLink({'m': 'm1', 'p': '../x'}), isNull);
     expect(pushLink({'m': 'm1', 'p': 'a/b'}), isNull);
@@ -81,6 +84,9 @@ void main() {
         'platform': 'android',
         'locale': 'vi',
         'mute': ['error'],
+        'content': true,
+        'seal': 2,
+        'sealOk': false,
       });
     }
     expect(r.kv.data[pushEnabledKey], 'on');

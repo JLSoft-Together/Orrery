@@ -4,7 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 
+import 'local_notifier.dart';
+import 'push_background.dart';
 import 'push_config.dart';
+import 'push_notice.dart';
 
 enum PushPermission { granted, denied }
 
@@ -43,11 +46,22 @@ abstract class PushGateway {
 
   Future<Map<String, String>?> initialOpen();
 
+  bool get sealing;
+
+  Stream<PushArrival> get arrivals;
+
+  Future<void> show(PushNotice notice, {required String channelName});
+
   Future<void> dispose();
 }
 
 class FirebasePushGateway implements PushGateway {
-  FirebasePushGateway();
+  FirebasePushGateway({PushNotifier? notifier})
+    : _notifier = notifier ?? LocalPushNotifier();
+
+  final PushNotifier _notifier;
+  final StreamController<PushArrival> _arrivals = StreamController.broadcast();
+  bool _sealing = false;
 
   final StreamController<PushTokenChange> _refresh =
       StreamController.broadcast();
@@ -133,7 +147,31 @@ class FirebasePushGateway implements PushGateway {
       );
     _active = messaging;
     _project = project;
+    await _listen();
   });
+
+  Future<void> _listen() async {
+    _subs.add(
+      FirebaseMessaging.onMessage.listen(
+        (message) => _arrivals.add(
+          PushArrival(_data(message), shown: message.notification != null),
+        ),
+        onError: (Object _) {},
+      ),
+    );
+    try {
+      final ready = await _notifier.init(
+        onTap: (payload) {
+          final data = pushTapData(payload);
+          if (data != null && !_opened.isClosed) _opened.add(data);
+        },
+      );
+      FirebaseMessaging.onBackgroundMessage(pushBackgroundMessage);
+      _sealing = ready;
+    } on Object {
+      _sealing = false;
+    }
+  }
 
   @override
   Future<PushPermission> permission() => _guard(
@@ -163,8 +201,23 @@ class FirebasePushGateway implements PushGateway {
   @override
   Future<Map<String, String>?> initialOpen() => _guard(() async {
     final message = await _messaging.getInitialMessage();
-    return message == null ? null : _data(message);
+    if (message != null) return _data(message);
+    try {
+      return pushTapData(await _notifier.launchPayload());
+    } on Object {
+      return null;
+    }
   });
+
+  @override
+  bool get sealing => _sealing;
+
+  @override
+  Stream<PushArrival> get arrivals => _arrivals.stream;
+
+  @override
+  Future<void> show(PushNotice notice, {required String channelName}) =>
+      _notifier.show(notice, channelName: channelName);
 
   @override
   Future<void> dispose() async {
@@ -174,5 +227,6 @@ class FirebasePushGateway implements PushGateway {
     _subs.clear();
     await _refresh.close();
     await _opened.close();
+    await _arrivals.close();
   }
 }

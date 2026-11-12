@@ -121,34 +121,33 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
         builder: (_) => WorkspacePage(machineId: link.machineId),
       ),
     );
+    final pane = link.paneKey;
+    if (pane == null) return;
     _watch = ref.listenManual(
       workspaceModelProvider(link.machineId),
-      (_, model) => _check(link, model),
+      (_, model) => _check(link.machineId, pane, model),
       fireImmediately: true,
     );
     _timeout = Timer(linkWait, _stopWaiting);
   }
 
-  void _check(PaneLink link, WorkspaceModel model) {
+  void _check(String machineId, String paneKey, WorkspaceModel model) {
     final nav = widget.navigatorKey.currentState;
     final context = widget.navigatorKey.currentContext;
     if (nav == null || context == null) return;
-    final tab = model.tabOfPane(link.paneKey);
+    final tab = model.tabOfPane(paneKey);
     if (tab != null) {
       _stopWaiting();
       nav.push(
         machineRoute<void>(
-          link.machineId,
-          (_) => TabPage(
-            machineId: link.machineId,
-            tabKey: tab.key,
-            paneKey: link.paneKey,
-          ),
+          machineId,
+          (_) =>
+              TabPage(machineId: machineId, tabKey: tab.key, paneKey: paneKey),
         ),
       );
       return;
     }
-    final view = ref.read(machineViewProvider(link.machineId));
+    final view = ref.read(machineViewProvider(machineId));
     if (view.workspace != null && !view.stale) {
       _stopWaiting();
       toast(context, AppLocalizations.of(context).linkPaneGone);

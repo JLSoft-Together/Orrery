@@ -1,0 +1,15 @@
+{
+  "devicePrivate": "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb",
+  "devicePublic": "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f",
+  "ephemeralPrivate": "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a",
+  "ephemeralPublic": "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a",
+  "shared": "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742",
+  "desktopPrivate": "a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4",
+  "desktopPublic": "1c9fd88f45606d932a80c71824ae151d15d73e77de38e8e000852e614fae7019",
+  "staticShared": "709e32d6ae0a5731fea82113324fc01e686dc28cb7781e61487752faf875490c",
+  "machine": "Qm9yZWFsLW1hY2hpbmUtMQ",
+  "kind": "question",
+  "plain": "{\"b\":\"Có chạy migration không?\",\"p\":\"p1\",\"t\":\"Claude · Sửa lỗi · orrery\"}",
+  "okm": "140442ad716e4aa872f89f95f2cbb6c7baf5488b559baa57d802f9d1f7b85971af0448af8d122ec1a062da80",
+  "e": "hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmoI4FTSY4b3ADblAFGYGBuTSdlVjLPLXBe8oMqGJpceafascNHvmO89q7T2TCEjxvMlL4dEjCn1jHYiH8-odvgwIsMdHCagUp9bolNPil6AnWERY_YmUMqimarGyiI4aZ2MhrSOLGYq4AyvelJR_1KMxIb2aHOlV9ypQZ3vOq7upW-Wzyqo3w2HfFmUJNV11pM"
+}

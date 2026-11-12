@@ -18,6 +18,7 @@ class PushState {
     required this.revoked,
     required this.error,
     this.muted = '',
+    this.content = true,
   });
 
   const PushState.none()
@@ -27,7 +28,8 @@ class PushState {
       foreign = 0,
       revoked = false,
       error = null,
-      muted = '';
+      muted = '',
+      content = true;
 
   final bool enabled;
   final bool configured;
@@ -36,6 +38,7 @@ class PushState {
   final bool revoked;
   final String? error;
   final String muted;
+  final bool content;
 
   bool wants(String group) => !muted.split(',').contains(group);
 
@@ -48,11 +51,20 @@ class PushState {
       other.foreign == foreign &&
       other.revoked == revoked &&
       other.error == error &&
-      other.muted == muted;
+      other.muted == muted &&
+      other.content == content;
 
   @override
-  int get hashCode =>
-      Object.hash(enabled, configured, usable, foreign, revoked, error, muted);
+  int get hashCode => Object.hash(
+    enabled,
+    configured,
+    usable,
+    foreign,
+    revoked,
+    error,
+    muted,
+    content,
+  );
 }
 
 class PushStateNotifier extends Notifier<PushState> {
@@ -76,6 +88,7 @@ class PushStateNotifier extends Notifier<PushState> {
       for (final g in pushGroups)
         if (!s.wants(g)) g,
     ].join(','),
+    content: s.content,
   );
 }
 
@@ -144,6 +157,15 @@ class PushTile extends ConsumerWidget {
                           onChanged: (on) => service.setGroup(group, on),
                         ),
                       ],
+                      Divider(height: 1, color: context.orrery.line),
+                      SwitchListTile(
+                        key: const ValueKey('push-content'),
+                        secondary: const Icon(Icons.subject_rounded),
+                        title: Text(l.pushContent),
+                        subtitle: Text(l.pushContentHint),
+                        value: state.content,
+                        onChanged: service.setContent,
+                      ),
                     ],
                   )
                 : const SizedBox(width: double.infinity),

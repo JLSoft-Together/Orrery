@@ -28,3 +28,7 @@
 
 ### Báo cáo
 `.planning/wp/v98/WP-56b-report.md`: sơ đồ mã hoá + lý do, cách chống mất thông báo, file + symbol, test chạy thật (số, lệnh), bước QA A21s, rủi ro (để review độc lập).
+
+### Nhật ký
+- 2026-11-13 (opus, một mình): xong. Sealed box X25519 → HKDF-SHA256 (`orrery-push/1` ‖ machineId, salt = khoá tạm ‖ khoá thiết bị) → ChaCha20-Poly1305 (AAD machineId + kind), dùng chung khoá Noise (lý do trong báo cáo / docs §7.7). Desktop chỉ `ring`; Android Dart thuần (`cryptography` 2.9, không FRB, không cài codegen). Chống mất: app mới gửi `seal: 1`; desktop gửi tin cố định + bản mã thăm dò cho tới khi handler nền chứng minh mở được (`sealOk`), sau đó mới data-only; mở lỗi → chữ cố định theo kind. `flutter_local_notifications` 22.3.3 (bản 23 cần compileSdk 37) + desugaring. Test: shell remote 205 / 0 (+8), toàn bộ 399 / 0; `check.mjs` analyze sạch, 291 / 0 (+13 so 278); vector Rust ↔ Dart ↔ OpenSSL khớp. Chưa build APK, chưa thử A21s — bước QA trong `WP-56b-report.md`.
+- 2026-11-13 vòng 2 (sau review crypto: 1 vừa, 3 thấp): `sealOk` hết hạn 48 h (`pushSealAt`, về thăm dò); sơ đồ v2 `orrery-push/2` trộn static-static (desktop ↔ thiết bị) vào HKDF, app chỉ mở cho máy đã ghép, v1 bỏ (chưa phát hành), `seal: 2`; `CLAUDE.md` ghi machine id + kind lộ cho Google; link chỉ tới máy `orrery-remote://m/<m>`. Shell remote 206 / 0, core-remote-proto 48 / 0, `check.mjs` 295 / 0. QA thêm bước 12–14.

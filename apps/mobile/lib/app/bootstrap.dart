@@ -2,8 +2,10 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../push/push_background.dart';
 import '../push/push_gateway.dart';
 import '../push/push_service.dart';
 import '../push/remote_host_push.dart';
@@ -20,12 +22,16 @@ import '../remote/wire.dart';
 
 Future<PushService?> buildPushService(RemoteHost host) async {
   try {
+    final kv = FlutterSecureKv();
     final service = PushService(
       gateway: FirebasePushGateway(),
-      kv: FlutterSecureKv(),
+      kv: kv,
       host: RemoteHostPush(host),
       platform: 'android',
       localeCode: () => PlatformDispatcher.instance.locale.languageCode,
+      resumed: () =>
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
+      machineKey: pairedMachineKeys(kv),
     );
     await service.init();
     return service;

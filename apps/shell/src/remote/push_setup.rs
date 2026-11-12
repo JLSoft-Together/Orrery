@@ -89,7 +89,7 @@ impl Remote {
     pub fn push_test(&self, arg: &Value) -> Value {
         let Ok(ctx) = self.ctx() else { return fail("keyring") };
         let only = arg.get("deviceId").and_then(Value::as_str);
-        let jobs: Vec<Job> = ctx.push_targets(|d| only.is_none_or(|id| id == d.device_id)).into_iter().map(|j| Job { kind: "test", content: false, ..j }).collect();
+        let jobs: Vec<Job> = ctx.push_targets(|d| only.is_none_or(|id| id == d.device_id)).into_iter().map(|j| Job { kind: "test", ..j }).collect();
         if jobs.is_empty() {
             let fcm_waiting = lock(&ctx.devices).list().iter().any(|d| !d.push_token.is_empty() && only.is_none_or(|id| id == d.device_id));
             return fail(if !ctx.push_ready() && (fcm_waiting || !ctx.web_ready()) { "not_configured" } else { "no_device" });

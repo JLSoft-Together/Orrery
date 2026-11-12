@@ -41,6 +41,12 @@ pub struct Device {
     pub push_content: bool,
     #[serde(default, skip_serializing_if = "is_no")]
     pub push_off: bool,
+    #[serde(default, skip_serializing_if = "is_no")]
+    pub push_seal: bool,
+    #[serde(default, skip_serializing_if = "is_no")]
+    pub push_seal_ok: bool,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub push_seal_at: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,6 +68,10 @@ fn is_no(v: &bool) -> bool {
     !*v
 }
 
+fn is_zero(v: &u64) -> bool {
+    *v == 0
+}
+
 impl Device {
     pub fn new(device_id: &str, name: &str, key: &[u8; 32], now: u64) -> Device {
         Device {
@@ -80,6 +90,9 @@ impl Device {
             web_push: None,
             push_content: true,
             push_off: false,
+            push_seal: false,
+            push_seal_ok: false,
+            push_seal_at: 0,
         }
     }
 
@@ -281,6 +294,17 @@ impl Devices {
     pub fn set_push_content(&mut self, id: &str, content: bool) {
         if let Some(d) = self.list.iter_mut().find(|d| d.device_id == id && d.push_content != content) {
             d.push_content = content;
+            self.save();
+        }
+    }
+
+    pub fn set_push_seal(&mut self, id: &str, seal: bool, ok: bool, now: u64) {
+        let ok = seal && ok;
+        let at = if ok { now } else { 0 };
+        if let Some(d) = self.list.iter_mut().find(|d| d.device_id == id && (d.push_seal, d.push_seal_ok, d.push_seal_at) != (seal, ok, at)) {
+            d.push_seal = seal;
+            d.push_seal_ok = ok;
+            d.push_seal_at = at;
             self.save();
         }
     }

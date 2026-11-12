@@ -484,6 +484,59 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pushUnavailable => 'Bản này chưa dùng được thông báo.';
 
   @override
+  String get pushContent => 'Kèm nội dung';
+
+  @override
+  String get pushContentHint =>
+      'Hiện agent, phiên, project và câu hỏi trong thông báo. Tắt: chỉ chữ cố định.';
+
+  @override
+  String get pushFixedDoneTitle => 'Agent đã xong lượt';
+
+  @override
+  String get pushFixedDoneBody => 'Một phiên vừa xong lượt. Chạm để mở.';
+
+  @override
+  String get pushFixedQuestionTitle => 'Agent đang hỏi';
+
+  @override
+  String get pushFixedQuestionBody =>
+      'Một phiên đang chờ câu trả lời. Chạm để mở.';
+
+  @override
+  String get pushFixedPermissionTitle => 'Cần cấp quyền';
+
+  @override
+  String get pushFixedPermissionBody =>
+      'Một phiên đang chờ bạn cho phép. Chạm để mở.';
+
+  @override
+  String get pushFixedErrorTitle => 'Phiên bị lỗi';
+
+  @override
+  String get pushFixedErrorBody => 'Một phiên vừa dừng vì lỗi. Chạm để mở.';
+
+  @override
+  String get pushFixedSecurityTitle => 'Cảnh báo bảo mật Orrery';
+
+  @override
+  String get pushFixedSecurityBody =>
+      'Có thiết bị mới, IP bị chặn hoặc nơi nối lạ trên máy tính. Xem Cài đặt > Điều khiển từ xa trên máy tính.';
+
+  @override
+  String get pushFixedAttentionTitle => 'Phiên cần chú ý';
+
+  @override
+  String get pushFixedAttentionBody => 'Một phiên cần bạn. Chạm để mở.';
+
+  @override
+  String get pushFixedTestTitle => 'Orrery';
+
+  @override
+  String get pushFixedTestBody =>
+      'Thông báo thử từ máy tính. Push đã hoạt động.';
+
+  @override
   String get pairScanHint => 'Quét mã QR trong Settings của Orrery';
 
   @override

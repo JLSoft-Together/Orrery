@@ -11,6 +11,14 @@ void main() {
     expect(link, const PaneLink(machine, 'pane-1'));
   });
 
+  test('a custom scheme link to a machine only has no pane', () {
+    expect(
+      parsePaneLink(Uri.parse('orrery-remote://m/$machine')),
+      const PaneLink(machine, null),
+    );
+    expect(parsePaneLink(Uri.parse('orrery-remote://m/bad%20id')), isNull);
+  });
+
   test('relay https link carries machine and pane', () {
     final link = parsePaneLink(
       Uri.parse('https://orrery-relay.jinvu.workers.dev/o/$machine/p1.a:b'),

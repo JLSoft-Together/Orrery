@@ -29,6 +29,7 @@ mod push;
 mod push_setup;
 mod push_watch;
 mod push_content;
+mod push_seal;
 mod push_web;
 mod phone_ws;
 pub mod pty_bridge;
@@ -86,6 +87,8 @@ mod webpush_tests;
 mod push_web_tests;
 #[cfg(test)]
 mod push_content_tests;
+#[cfg(test)]
+mod push_seal_tests;
 #[cfg(test)]
 mod webpush_live_tests;
 

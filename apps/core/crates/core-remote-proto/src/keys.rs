@@ -43,6 +43,20 @@ impl StaticKeypair {
     pub(crate) fn private(&self) -> &[u8; KEY_LEN] {
         &self.private
     }
+
+    pub fn agree(&self, peer: &[u8]) -> Result<Zeroizing<[u8; KEY_LEN]>> {
+        let peer = parse_public(peer)?;
+        let mut dh = DefaultResolver
+            .resolve_dh(&DHChoice::Curve25519)
+            .ok_or(Error::Noise)?;
+        dh.set(self.private.as_slice());
+        let mut out = Zeroizing::new([0u8; KEY_LEN]);
+        dh.dh(&peer, out.as_mut_slice()).map_err(|_| Error::BadKey)?;
+        if out.iter().all(|b| *b == 0) {
+            return Err(Error::BadKey);
+        }
+        Ok(out)
+    }
 }
 
 impl fmt::Debug for StaticKeypair {

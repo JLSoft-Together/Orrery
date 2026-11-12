@@ -6,12 +6,13 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tokio::sync::watch;
 
-use super::config::FirebaseConfig;
+use super::config::{now_secs, FirebaseConfig};
 use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
 use super::devices::{clean_mute, Device, WebSub};
 use super::fcm::Outcome;
 use super::pane_link::valid_pane_key;
+use super::push_seal::{device_key, seal_fresh, SEAL_LEVEL};
 use crate::state::{lock, take_slot};
 
 pub const PANE_GAP: Duration = Duration::from_secs(30);
@@ -75,6 +76,8 @@ pub struct Job {
     pub content: bool,
     pub terminal: String,
     pub worked: Option<u64>,
+    pub seal_key: Option<[u8; 32]>,
+    pub seal_ok: bool,
 }
 
 pub fn message(job: &Job) -> Value {
@@ -144,6 +147,7 @@ impl Ctx {
     pub fn push_targets(&self, keep: impl Fn(&Device) -> bool) -> Vec<Job> {
         let (fcm, web) = (self.push_ready(), self.web_ready());
         let machine = self.machine_id();
+        let now = now_secs();
         lock(&self.devices)
             .list()
             .iter()
@@ -153,7 +157,7 @@ impl Ctx {
                 if sub.is_none() && (d.push_token.is_empty() || !fcm) {
                     return None;
                 }
-                Some(Job { device: d.device_id.clone(), token: d.push_token.clone(), machine: machine.clone(), locale: locale_of(Some(&d.push_locale)), web: sub, content: d.push_content, ..Job::default() })
+                Some(Job { device: d.device_id.clone(), token: d.push_token.clone(), machine: machine.clone(), locale: locale_of(Some(&d.push_locale)), web: sub, content: d.push_content, seal_key: d.push_seal.then(|| device_key(&d.pubkey)).flatten(), seal_ok: seal_fresh(d, now), ..Job::default() })
             })
             .collect()
     }
@@ -230,7 +234,7 @@ impl Ctx {
         if project.is_empty() {
             return Outcome::Fail("not_configured");
         }
-        let outcome = self.fcm.send_while(&project, &message(job), &|| self.still_wanted(job));
+        let outcome = self.fcm.send_while(&project, &self.fcm_message(job), &|| self.still_wanted(job));
         if outcome == Outcome::Dead {
             lock(&self.devices).clear_push_token(&job.token);
             self.changed();
@@ -291,11 +295,14 @@ impl Phone {
         let locale = locale_of(v.get("locale").and_then(Value::as_str));
         let mute = clean_mute(v.get("mute").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str));
         let content = v.get("content").and_then(Value::as_bool).unwrap_or(true);
+        let seal = v.get("seal").and_then(Value::as_u64).is_some_and(|s| s >= SEAL_LEVEL);
+        let seal_ok = seal && v.get("sealOk").and_then(Value::as_bool) == Some(true);
         let stored = {
             let mut devices = lock(&self.ctx.devices);
             let ok = devices.set_push_mute(&self.device, token, locale, mute);
             if ok {
                 devices.set_push_content(&self.device, content);
+                devices.set_push_seal(&self.device, seal, seal_ok, now_secs());
             }
             ok
         };

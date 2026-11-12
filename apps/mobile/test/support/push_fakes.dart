@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:orrery_remote/push/push_config.dart';
 import 'package:orrery_remote/push/push_gateway.dart';
+import 'package:orrery_remote/push/push_notice.dart';
 import 'package:orrery_remote/push/push_service.dart';
 import 'package:orrery_remote/remote/protocol.dart';
 import 'package:orrery_remote/remote/secure_kv.dart';
@@ -37,6 +39,11 @@ class FakeGateway implements PushGateway {
       StreamController.broadcast();
   final StreamController<Map<String, String>> open_ =
       StreamController.broadcast();
+  final StreamController<PushArrival> arrive = StreamController.broadcast();
+  final List<PushNotice> shown = [];
+  @override
+  bool sealing = true;
+  bool showFails = false;
 
   @override
   String? get activeProject => project;
@@ -74,6 +81,15 @@ class FakeGateway implements PushGateway {
 
   @override
   Future<Map<String, String>?> initialOpen() async => initial;
+
+  @override
+  Stream<PushArrival> get arrivals => arrive.stream;
+
+  @override
+  Future<void> show(PushNotice notice, {required String channelName}) async {
+    if (showFails) throw const PushException('show');
+    shown.add(notice);
+  }
 
   @override
   Future<void> dispose() async => disposed = true;
@@ -130,6 +146,8 @@ class Rig {
       host: host,
       platform: 'android',
       localeCode: () => locale,
+      resumed: () => resumed,
+      machineKey: (id) async => machineKeys[id],
     );
   }
 
@@ -137,4 +155,6 @@ class Rig {
   final FakeHost host = FakeHost();
   final MemorySecureKv kv = MemorySecureKv();
   late final PushService service;
+  bool resumed = true;
+  final Map<String, Uint8List> machineKeys = {};
 }

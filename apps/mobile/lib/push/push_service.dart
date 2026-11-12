@@ -1,55 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../app/link_source.dart';
-import '../app/pane_link.dart';
 import '../remote/secure_kv.dart';
 import 'push_config.dart';
 import 'push_gateway.dart';
+import 'push_host.dart';
+import 'push_notice.dart';
+import 'push_present.dart';
+import 'push_seal.dart';
 
-abstract class PushSession {
-  String get machineId;
-
-  Future<void> send(String type, Map<String, Object?> fields);
-}
-
-class PushConfigUpdate {
-  const PushConfigUpdate(this.machineId, this.config);
-
-  final String machineId;
-  final PushConfig? config;
-}
-
-abstract class PushHost {
-  Stream<PushSession> get readySessions;
-
-  List<PushSession> get readyNow;
-
-  Stream<PushConfigUpdate> get configs;
-
-  Future<void> dispose();
-}
-
-enum PushResult { on, off, denied, unavailable }
-
-const String pushEnabledKey = 'push.enabled';
-const String pushConfigsKey = 'push.configs';
-const String pushPendingKey = 'push.unregister';
-const String pushMuteKey = 'push.mute';
-const List<String> pushGroups = ['waiting', 'done', 'error'];
-
-Uri? pushLink(Map<String, String> data) {
-  final machine = data['m'];
-  final pane = data['p'];
-  if (machine == null || pane == null) return null;
-  if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(machine)) return null;
-  if (!RegExp(r'^[A-Za-z0-9_.:-]{1,128}$').hasMatch(pane)) return null;
-  return Uri(
-    scheme: appLinkScheme,
-    host: 'm',
-    pathSegments: [machine, 'p', pane],
-  );
-}
+export 'push_host.dart';
 
 class PushService implements LinkSource {
   PushService({
@@ -58,13 +20,29 @@ class PushService implements LinkSource {
     required this.host,
     required this.platform,
     required this.localeCode,
+    this.resumed = _alwaysResumed,
+    this.machineKey = _noMachine,
   });
+
+  static bool _alwaysResumed() => true;
+
+  static Future<Uint8List?> _noMachine(String _) async => null;
 
   final PushGateway gateway;
   final SecureKv kv;
   final PushHost host;
   final String platform;
   final String Function() localeCode;
+  final bool Function() resumed;
+  final Future<Uint8List?> Function(String machineId) machineKey;
+  late final PushPresenter _presenter = PushPresenter(
+    gateway: gateway,
+    kv: kv,
+    sessionOpen: (m) => host.readyNow.any((s) => s.machineId == m),
+    resumed: resumed,
+    localeCode: localeCode,
+    machineKey: machineKey,
+  );
 
   final StreamController<void> _changes = StreamController.broadcast();
   final StreamController<Uri> _taps = StreamController.broadcast();
@@ -80,6 +58,17 @@ class PushService implements LinkSource {
   Uri? _initial;
   Future<void> _queue = Future<void>.value();
   Set<String> _mute = {'error'};
+  bool _content = true;
+
+  bool get content => _content;
+
+  Future<void> setContent(bool on) async {
+    if (_content == on) return;
+    _content = on;
+    _notify();
+    await kv.write(pushContentKey, on ? 'on' : 'off');
+    await _syncAll();
+  }
 
   bool wants(String group) => !_mute.contains(group);
 
@@ -124,6 +113,7 @@ class PushService implements LinkSource {
 
   Future<void> init() async {
     _enabled = (await kv.read(pushEnabledKey)) == 'on';
+    _content = (await kv.read(pushContentKey)) != 'off';
     final mute = await kv.read(pushMuteKey);
     if (mute != null) {
       try {
@@ -137,6 +127,7 @@ class PushService implements LinkSource {
     _subs
       ..add(gateway.tokenRefresh.listen(_onRefresh, onError: _fail))
       ..add(gateway.opened.listen(_onOpened, onError: _fail))
+      ..add(gateway.arrivals.listen(_presenter.present))
       ..add(host.readySessions.listen(_onSession))
       ..add(host.configs.listen(_onConfig));
     for (final session in host.readyNow) {
@@ -321,6 +312,11 @@ class PushService implements LinkSource {
           for (final g in pushGroups)
             if (_mute.contains(g)) g,
         ],
+        'content': _content,
+        if (gateway.sealing) ...{
+          'seal': pushSealLevel,
+          'sealOk': await kv.read(pushSealOkKey) == 'on',
+        },
       });
     } on PushException catch (e) {
       _fail(e);

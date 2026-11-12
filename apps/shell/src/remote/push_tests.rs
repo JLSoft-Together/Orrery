@@ -12,8 +12,8 @@ use super::push::*;
 use super::test_util::*;
 use crate::state::lock;
 
-const TOKEN_A: &str = "tokenAAAAAAAAAAAAAAAAAAAAAAAA:APA91bAAAA";
-const TOKEN_B: &str = "tokenBBBBBBBBBBBBBBBBBBBBBBBB:APA91bBBBB";
+pub(super) const TOKEN_A: &str = "tokenAAAAAAAAAAAAAAAAAAAAAAAA:APA91bAAAA";
+pub(super) const TOKEN_B: &str = "tokenBBBBBBBBBBBBBBBBBBBBBBBB:APA91bBBBB";
 
 fn add_device(rig: &Rig, id: &str, token: &str, locale: &str) {
     let ctx = rig.remote.ctx().unwrap();
@@ -25,7 +25,7 @@ fn add_device(rig: &Rig, id: &str, token: &str, locale: &str) {
     }
 }
 
-fn ready(rig: &Rig, http: Arc<Fake>) -> Arc<super::ctx::Ctx> {
+pub(super) fn ready(rig: &Rig, http: Arc<Fake>) -> Arc<super::ctx::Ctx> {
     let ctx = rig.remote.ctx().unwrap();
     ctx.running.store(true, std::sync::atomic::Ordering::SeqCst);
     let parsed = super::fcm_files::parse(&gs_json("demo-proj", PACKAGE), &sa_json("demo-proj", KEY_A)).unwrap();

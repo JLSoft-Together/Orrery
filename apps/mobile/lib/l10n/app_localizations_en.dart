@@ -508,6 +508,61 @@ class AppLocalizationsEn extends AppLocalizations {
       'Notifications are not available in this build.';
 
   @override
+  String get pushContent => 'Include content';
+
+  @override
+  String get pushContentHint =>
+      'Show the agent, session, project and the question in the notification. Off: fixed text only.';
+
+  @override
+  String get pushFixedDoneTitle => 'Agent finished';
+
+  @override
+  String get pushFixedDoneBody =>
+      'A session finished its turn. Tap to open it.';
+
+  @override
+  String get pushFixedQuestionTitle => 'Agent has a question';
+
+  @override
+  String get pushFixedQuestionBody =>
+      'A session is waiting for your answer. Tap to open it.';
+
+  @override
+  String get pushFixedPermissionTitle => 'Permission needed';
+
+  @override
+  String get pushFixedPermissionBody =>
+      'A session needs your approval. Tap to open it.';
+
+  @override
+  String get pushFixedErrorTitle => 'Session error';
+
+  @override
+  String get pushFixedErrorBody =>
+      'A session stopped with an error. Tap to open it.';
+
+  @override
+  String get pushFixedSecurityTitle => 'Orrery security alert';
+
+  @override
+  String get pushFixedSecurityBody =>
+      'A new device, a blocked IP or a sign-in from a new place on your computer. Check Settings > Remote on the computer.';
+
+  @override
+  String get pushFixedAttentionTitle => 'Session needs attention';
+
+  @override
+  String get pushFixedAttentionBody => 'A session needs you. Tap to open it.';
+
+  @override
+  String get pushFixedTestTitle => 'Orrery';
+
+  @override
+  String get pushFixedTestBody =>
+      'Test notification from your computer. Push works.';
+
+  @override
   String get pairScanHint => 'Scan the QR code in Orrery Settings';
 
   @override

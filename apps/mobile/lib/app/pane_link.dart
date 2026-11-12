@@ -8,7 +8,7 @@ class PaneLink {
   const PaneLink(this.machineId, this.paneKey);
 
   final String machineId;
-  final String paneKey;
+  final String? paneKey;
 
   @override
   bool operator ==(Object other) =>
@@ -27,6 +27,7 @@ PaneLink? parsePaneLink(Uri uri) {
   final List<String> parts;
   if (uri.scheme == appLinkScheme && uri.host == 'm') {
     parts = uri.pathSegments;
+    if (parts.length == 1) return _build(parts[0], null);
     if (parts.length != 3 || parts[1] != 'p') return null;
     return _build(parts[0], parts[2]);
   }
@@ -38,8 +39,9 @@ PaneLink? parsePaneLink(Uri uri) {
   return null;
 }
 
-PaneLink? _build(String machine, String pane) {
-  if (!_machinePattern.hasMatch(machine) || !_panePattern.hasMatch(pane)) {
+PaneLink? _build(String machine, String? pane) {
+  if (!_machinePattern.hasMatch(machine) ||
+      (pane != null && !_panePattern.hasMatch(pane))) {
     return null;
   }
   return PaneLink(machine, pane);

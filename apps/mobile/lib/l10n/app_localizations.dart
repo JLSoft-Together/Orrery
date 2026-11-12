@@ -962,6 +962,102 @@ abstract class AppLocalizations {
   /// **'Notifications are not available in this build.'**
   String get pushUnavailable;
 
+  /// No description provided for @pushContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Include content'**
+  String get pushContent;
+
+  /// No description provided for @pushContentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the agent, session, project and the question in the notification. Off: fixed text only.'**
+  String get pushContentHint;
+
+  /// No description provided for @pushFixedDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent finished'**
+  String get pushFixedDoneTitle;
+
+  /// No description provided for @pushFixedDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session finished its turn. Tap to open it.'**
+  String get pushFixedDoneBody;
+
+  /// No description provided for @pushFixedQuestionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent has a question'**
+  String get pushFixedQuestionTitle;
+
+  /// No description provided for @pushFixedQuestionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session is waiting for your answer. Tap to open it.'**
+  String get pushFixedQuestionBody;
+
+  /// No description provided for @pushFixedPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission needed'**
+  String get pushFixedPermissionTitle;
+
+  /// No description provided for @pushFixedPermissionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session needs your approval. Tap to open it.'**
+  String get pushFixedPermissionBody;
+
+  /// No description provided for @pushFixedErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Session error'**
+  String get pushFixedErrorTitle;
+
+  /// No description provided for @pushFixedErrorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session stopped with an error. Tap to open it.'**
+  String get pushFixedErrorBody;
+
+  /// No description provided for @pushFixedSecurityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orrery security alert'**
+  String get pushFixedSecurityTitle;
+
+  /// No description provided for @pushFixedSecurityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A new device, a blocked IP or a sign-in from a new place on your computer. Check Settings > Remote on the computer.'**
+  String get pushFixedSecurityBody;
+
+  /// No description provided for @pushFixedAttentionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Session needs attention'**
+  String get pushFixedAttentionTitle;
+
+  /// No description provided for @pushFixedAttentionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session needs you. Tap to open it.'**
+  String get pushFixedAttentionBody;
+
+  /// No description provided for @pushFixedTestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orrery'**
+  String get pushFixedTestTitle;
+
+  /// No description provided for @pushFixedTestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Test notification from your computer. Push works.'**
+  String get pushFixedTestBody;
+
   /// No description provided for @pairScanHint.
   ///
   /// In en, this message translates to:

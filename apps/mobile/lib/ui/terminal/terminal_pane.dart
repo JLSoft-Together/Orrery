@@ -19,6 +19,7 @@ import '../widgets/common.dart';
 import 'input_bar.dart';
 import 'pane_header.dart';
 import 'permission_bar.dart';
+import 'sticky_modifiers.dart';
 import 'terminal_surface.dart';
 import 'wp26_probe.dart';
 
@@ -51,6 +52,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   final TerminalController _controller = TerminalController();
   late final LineProbe _probe = LineProbe(_terminal);
   final StringBuffer _pendingOut = StringBuffer();
+  final StickyModifiers _mods = StickyModifiers();
   bool _flushScheduled = false;
   PtyHandle? _handle;
   StreamSubscription<String>? _outSub;
@@ -91,6 +93,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
       unawaited(_api.detach(handle).catchError((Object _) {}));
     }
     _controller.dispose();
+    _mods.dispose();
     super.dispose();
   }
 
@@ -139,7 +142,8 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   void _onOutput(String data) {
     final handle = _handle;
     if (handle == null || _writing) return;
-    _api.input(handle, Uint8List.fromList(utf8.encode(data)), claim: true);
+    final out = _mods.apply(data);
+    _api.input(handle, Uint8List.fromList(utf8.encode(out)), claim: true);
   }
 
   void _onTerminalResize(int cols, int rows, int pw, int ph) {
@@ -300,6 +304,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
             (MediaQuery.sizeOf(context).height >= 520 || _typing))
           ExtraKeysRow(
             terminal: _terminal,
+            mods: _mods,
             enabled: online && _handle != null,
             onUse: () {
               _beginTyping();

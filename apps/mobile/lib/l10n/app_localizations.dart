@@ -2075,8 +2075,158 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPushHint.
   ///
   /// In en, this message translates to:
-  /// **'The computer decides what to send: sessions waiting for you, finished runs and failures.'**
+  /// **'Choose which events reach this phone. The computer sends them while the app is closed.'**
   String get settingsPushHint;
+
+  /// No description provided for @actTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get actTitle;
+
+  /// No description provided for @actEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet'**
+  String get actEmpty;
+
+  /// No description provided for @actStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Session started'**
+  String get actStarted;
+
+  /// No description provided for @actEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Session ended'**
+  String get actEnded;
+
+  /// No description provided for @actRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed'**
+  String get actRenamed;
+
+  /// No description provided for @actStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status changed'**
+  String get actStatus;
+
+  /// No description provided for @actCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Context cleared'**
+  String get actCleared;
+
+  /// No description provided for @actCompacted.
+  ///
+  /// In en, this message translates to:
+  /// **'Compacted'**
+  String get actCompacted;
+
+  /// No description provided for @actAgentStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agent started'**
+  String get actAgentStarted;
+
+  /// No description provided for @actAgentDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agent finished'**
+  String get actAgentDone;
+
+  /// No description provided for @actAgentFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agent failed'**
+  String get actAgentFailed;
+
+  /// No description provided for @actAgentCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agent cancelled'**
+  String get actAgentCancelled;
+
+  /// No description provided for @actTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool'**
+  String get actTool;
+
+  /// No description provided for @actToolFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool failed'**
+  String get actToolFailed;
+
+  /// No description provided for @actTurnStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn started'**
+  String get actTurnStarted;
+
+  /// No description provided for @actTurnDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn finished'**
+  String get actTurnDone;
+
+  /// No description provided for @actTurnFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn failed'**
+  String get actTurnFailed;
+
+  /// No description provided for @actTurnStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn interrupted'**
+  String get actTurnStopped;
+
+  /// No description provided for @actSensitive.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitive action'**
+  String get actSensitive;
+
+  /// No description provided for @pushGroupWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Session waiting for you'**
+  String get pushGroupWaiting;
+
+  /// No description provided for @pushGroupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Session finished'**
+  String get pushGroupDone;
+
+  /// No description provided for @pushGroupError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error or unexpected exit'**
+  String get pushGroupError;
+
+  /// No description provided for @settingsThemeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows the phone'**
+  String get settingsThemeSystem;
+
+  /// No description provided for @settingsThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsThemeLight;
+
+  /// No description provided for @settingsThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsThemeDark;
 }
 
 class _AppLocalizationsDelegate

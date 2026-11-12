@@ -59,6 +59,10 @@ final linkProvider = NotifierProvider.family<LinkNotifier, LinkState, String>(
   LinkNotifier.new,
 );
 
+final latencyProvider = StreamProvider.family<int, String>(
+  (ref, id) => ref.read(remoteHostProvider).bundle(id).connection.rtt,
+);
+
 class MachineViewNotifier extends Notifier<MachineView> {
   MachineViewNotifier(this.machineId);
 

@@ -102,7 +102,10 @@ class DuplicateRow extends ConsumerWidget {
                   icon: Icons.block_rounded,
                   label: l.linkRevoked,
                 )
-              : LinkPill(link: link),
+              : LinkPill(
+                  link: link,
+                  latencyMs: ref.watch(latencyProvider(machine.id)).value,
+                ),
         ],
       ),
     );

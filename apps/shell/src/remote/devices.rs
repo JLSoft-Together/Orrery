@@ -30,6 +30,8 @@ pub struct Device {
     pub push_token: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub push_locale: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub push_mute: Vec<String>,
 }
 
 impl Device {
@@ -45,6 +47,7 @@ impl Device {
             token_exp: 0,
             push_token: String::new(),
             push_locale: String::new(),
+            push_mute: Vec::new(),
         }
     }
 
@@ -59,6 +62,25 @@ impl Device {
     pub fn expired(&self, now: u64) -> bool {
         now.saturating_sub(self.last_seen) >= EXPIRE_SECS
     }
+
+    pub fn wants(&self, kind: &str) -> bool {
+        !self.push_mute.iter().any(|m| m == push_group(kind))
+    }
+}
+
+pub const PUSH_GROUPS: [&str; 3] = ["waiting", "done", "error"];
+
+pub fn push_group(kind: &str) -> &'static str {
+    match kind {
+        "done" => "done",
+        "error" => "error",
+        _ => "waiting",
+    }
+}
+
+pub fn clean_mute<'a>(raw: impl IntoIterator<Item = &'a str>) -> Vec<String> {
+    let raw: Vec<&str> = raw.into_iter().take(16).collect();
+    PUSH_GROUPS.iter().filter(|g| raw.contains(g)).map(|g| (*g).to_owned()).collect()
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -174,6 +196,10 @@ impl Devices {
     }
 
     pub fn set_push(&mut self, id: &str, token: &str, locale: &str) -> bool {
+        self.set_push_mute(id, token, locale, Vec::new())
+    }
+
+    pub fn set_push_mute(&mut self, id: &str, token: &str, locale: &str, mute: Vec<String>) -> bool {
         if self.find(id).is_none() {
             return false;
         }
@@ -184,6 +210,7 @@ impl Devices {
         if let Some(d) = self.list.iter_mut().find(|d| d.device_id == id) {
             d.push_token = token.to_owned();
             d.push_locale = locale.to_owned();
+            d.push_mute = mute;
         }
         self.save();
         true

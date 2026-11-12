@@ -8,6 +8,7 @@ import '../../security/lock_settings_page.dart';
 import '../kit/kit.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
+import 'appearance_rows.dart';
 
 class SettingsBody extends ConsumerWidget {
   const SettingsBody({super.key, required this.machineId});
@@ -51,24 +52,7 @@ class SettingsBody extends ConsumerWidget {
             ),
           ],
           SectionLabel(l.settingsAppearance),
-          OrreryCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _InfoRow(
-                  icon: Icons.language_rounded,
-                  label: l.settingsLanguage,
-                  value: l.settingsFollowsMachine,
-                ),
-                Divider(height: 1, color: context.orrery.line),
-                _InfoRow(
-                  icon: Icons.dark_mode_outlined,
-                  label: l.settingsTheme,
-                  value: l.settingsFollowsMachine,
-                ),
-              ],
-            ),
-          ),
+          const AppearanceRows(),
           SectionLabel(l.settingsAbout),
           OrreryCard(
             padding: EdgeInsets.zero,

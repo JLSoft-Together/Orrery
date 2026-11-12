@@ -25,6 +25,7 @@ pub fn transition(from: &str, to: &str) -> Option<&'static str> {
     match (from, to) {
         (WORKING, "waiting") => Some("attention"),
         (WORKING, "idle") => Some("done"),
+        (WORKING | "waiting", "error") => Some("error"),
         _ => None,
     }
 }

@@ -495,7 +495,7 @@ void main() {
       unawaited(lanConn.connect());
       lan.tick();
       lan.tick(const Duration(seconds: 31));
-      expect(lan.servers.single.pingFrames, 1);
+      expect(lan.servers.single.pingFrames, 2);
       expect(lan.servers.single.texts, isEmpty);
       unawaited(lanConn.dispose());
 

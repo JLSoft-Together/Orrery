@@ -32,7 +32,9 @@ fn seeded() -> Watch {
 fn only_working_to_waiting_or_idle_needs_the_owner() {
     assert_eq!(transition("working", "waiting"), Some("attention"));
     assert_eq!(transition("working", "idle"), Some("done"));
-    for (a, b) in [("idle", "working"), ("waiting", "working"), ("waiting", "idle"), ("idle", "waiting"), ("working", "working"), ("working", "error"), ("", "idle"), ("stale", "idle")] {
+    assert_eq!(transition("working", "error"), Some("error"));
+    assert_eq!(transition("waiting", "error"), Some("error"));
+    for (a, b) in [("idle", "working"), ("waiting", "working"), ("waiting", "idle"), ("idle", "waiting"), ("working", "working"), ("error", "error"), ("idle", "error"), ("", "idle"), ("stale", "idle")] {
         assert_eq!(transition(a, b), None, "{a}->{b}");
     }
 }

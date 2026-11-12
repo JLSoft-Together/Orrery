@@ -5,6 +5,7 @@ import '../remote/providers.dart';
 import 'machine_api.dart';
 import 'model/pane_facts.dart';
 import 'model/workspace_model.dart';
+import 'monitor/view_prefs.dart';
 import 'theme/orrery_theme.dart';
 
 final machineApiProvider = Provider.family<MachineApi, String>(
@@ -52,12 +53,23 @@ final activeMachineProvider = NotifierProvider<ActiveMachine, String?>(
 
 final remoteThemeProvider = Provider<RemoteTheme>((ref) {
   final id = ref.watch(activeMachineProvider);
-  if (id == null) return RemoteTheme.fallback;
-  final hello = ref.watch(machineViewProvider(id).select((v) => v.hello));
-  return RemoteTheme.fromHello(hello?['theme']);
+  final pick = ref.watch(viewPrefsProvider.select((p) => p.theme));
+  final hello = id == null
+      ? null
+      : ref.watch(machineViewProvider(id).select((v) => v.hello));
+  final remote = RemoteTheme.fromHello(hello?['theme']);
+  final mode = switch (pick) {
+    'system' => ThemeMode.system,
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => remote.mode,
+  };
+  return RemoteTheme(mode, remote.palette);
 });
 
 final remoteLocaleProvider = Provider<Locale?>((ref) {
+  final pick = ref.watch(viewPrefsProvider.select((p) => p.language));
+  if (pick != 'auto') return Locale(pick);
   final id = ref.watch(activeMachineProvider);
   if (id == null) return null;
   final hello = ref.watch(machineViewProvider(id).select((v) => v.hello));

@@ -144,7 +144,10 @@ class MachineCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                LinkPill(link: link),
+                LinkPill(
+                  link: link,
+                  latencyMs: ref.watch(latencyProvider(machine.id)).value,
+                ),
                 PopupMenuButton<String>(
                   key: ValueKey('machine-menu-${machine.id}'),
                   tooltip: l.more,

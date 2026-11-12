@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ui/commands.dart';
 import '../ui/kit/kit.dart';
+import '../ui/theme/orrery_shape.dart';
 import '../ui/widgets/common.dart';
 import 'push_service.dart';
 
@@ -16,6 +17,7 @@ class PushState {
     required this.foreign,
     required this.revoked,
     required this.error,
+    this.muted = '',
   });
 
   const PushState.none()
@@ -24,7 +26,8 @@ class PushState {
       usable = false,
       foreign = 0,
       revoked = false,
-      error = null;
+      error = null,
+      muted = '';
 
   final bool enabled;
   final bool configured;
@@ -32,6 +35,9 @@ class PushState {
   final int foreign;
   final bool revoked;
   final String? error;
+  final String muted;
+
+  bool wants(String group) => !muted.split(',').contains(group);
 
   @override
   bool operator ==(Object other) =>
@@ -41,11 +47,12 @@ class PushState {
       other.usable == usable &&
       other.foreign == foreign &&
       other.revoked == revoked &&
-      other.error == error;
+      other.error == error &&
+      other.muted == muted;
 
   @override
   int get hashCode =>
-      Object.hash(enabled, configured, usable, foreign, revoked, error);
+      Object.hash(enabled, configured, usable, foreign, revoked, error, muted);
 }
 
 class PushStateNotifier extends Notifier<PushState> {
@@ -65,6 +72,10 @@ class PushStateNotifier extends Notifier<PushState> {
     foreign: s.foreignCount,
     revoked: s.revoked,
     error: s.error,
+    muted: [
+      for (final g in pushGroups)
+        if (!s.wants(g)) g,
+    ].join(','),
   );
 }
 
@@ -100,21 +111,69 @@ class PushTile extends ConsumerWidget {
         : l.pushHint;
     return OrreryCard(
       padding: EdgeInsets.zero,
-      child: SwitchListTile(
-        key: const ValueKey('push-switch'),
-        secondary: const Icon(Icons.notifications_none_rounded),
-        title: Text(l.pushTitle),
-        subtitle: Text(subtitle),
-        value: state.enabled,
-        onChanged: (value) async {
-          final result = await service.setEnabled(value);
-          if (!context.mounted) return;
-          if (result == PushResult.denied) toast(context, l.pushDenied);
-          if (result == PushResult.unavailable) {
-            toast(context, l.pushUnavailable);
-          }
-        },
+      child: Column(
+        children: [
+          _master(context, service, state, subtitle),
+          QuietSize(
+            child: state.enabled
+                ? Column(
+                    children: [
+                      for (final (group, icon, label) in [
+                        (
+                          'waiting',
+                          Icons.notifications_active_outlined,
+                          l.pushGroupWaiting,
+                        ),
+                        (
+                          'done',
+                          Icons.check_circle_outline_rounded,
+                          l.pushGroupDone,
+                        ),
+                        (
+                          'error',
+                          Icons.error_outline_rounded,
+                          l.pushGroupError,
+                        ),
+                      ]) ...[
+                        Divider(height: 1, color: context.orrery.line),
+                        SwitchListTile(
+                          key: ValueKey('push-group-$group'),
+                          secondary: Icon(icon),
+                          title: Text(label),
+                          value: state.wants(group),
+                          onChanged: (on) => service.setGroup(group, on),
+                        ),
+                      ],
+                    ],
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _master(
+    BuildContext context,
+    PushService service,
+    PushState state,
+    String subtitle,
+  ) {
+    final l = context.l10n;
+    return SwitchListTile(
+      key: const ValueKey('push-switch'),
+      secondary: const Icon(Icons.notifications_none_rounded),
+      title: Text(l.pushTitle),
+      subtitle: Text(subtitle),
+      value: state.enabled,
+      onChanged: (value) async {
+        final result = await service.setEnabled(value);
+        if (!context.mounted) return;
+        if (result == PushResult.denied) toast(context, l.pushDenied);
+        if (result == PushResult.unavailable) {
+          toast(context, l.pushUnavailable);
+        }
+      },
     );
   }
 

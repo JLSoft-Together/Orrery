@@ -2,18 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/protocol.dart';
 import '../commands.dart';
-import '../kit/kit.dart'
-    show ButtonKind, ChipTone, NoticeCard, NoticeTone, OrreryButton, OrreryChip;
 import '../model/workspace_model.dart' show baseName;
-import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import 'async_panel.dart';
 import 'code_view.dart';
+import 'file_parts.dart';
 import 'highlight_lines.dart';
 import 'viewer_api.dart';
 import 'viewer_models.dart';
@@ -273,150 +270,22 @@ class _FilePageState extends ConsumerState<FilePage> {
     }
     return Column(
       children: [
-        _pathLine(context),
+        FilePathLine(path: widget.path),
         if (_loading) const LinearProgressIndicator(minHeight: 2),
-        if (_diskChanged) _conflictBanner(context),
+        if (_diskChanged)
+          FileConflictBanner(mine: () => _edit.text, onReload: _load),
         Expanded(
           child: _editing
-              ? _editor(context)
+              ? FileEditor(controller: _edit, onChanged: () => setState(() {}))
               : CodeView(key: ValueKey(_base), lines: _lines),
         ),
-        _footer(context, file),
+        FileFooter(
+          lang: file.lang,
+          lines: _editing ? _edit.text.split('\n').length : _lines.length,
+          editing: _editing,
+          dirty: _dirty,
+        ),
       ],
-    );
-  }
-
-  Widget _pathLine(BuildContext context) {
-    final c = context.orrery;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          widget.path,
-          key: const ValueKey('file-path'),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontFamilyFallback: monoFallback,
-            fontSize: 12,
-            color: c.inkFaint,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _footer(BuildContext context, FileView file) {
-    final l = context.l10n;
-    final c = context.orrery;
-    final count = _editing ? _edit.text.split('\n').length : _lines.length;
-    final lang = file.lang;
-    final parts = [
-      if (lang != null && lang.isNotEmpty) lang,
-      l.fileLines(count),
-      _editing ? l.fileEditing : l.fileReadOnly,
-    ];
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.surface,
-        border: Border(top: BorderSide(color: c.line)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  parts.join(' · '),
-                  key: const ValueKey('file-footer'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: c.inkMuted),
-                ),
-              ),
-              OrreryChip(
-                key: const ValueKey('file-state'),
-                tone: _dirty ? ChipTone.waiting : ChipTone.done,
-                icon: _dirty ? Icons.edit_outlined : Icons.check_rounded,
-                label: _dirty ? l.fileUnsaved : l.vSaved,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _conflictBanner(BuildContext context) {
-    final l = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Column(
-        key: const ValueKey('conflict-banner'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          NoticeCard(tone: NoticeTone.warning, title: l.vFileChangedOnDisk),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OrreryButton(
-                  label: l.vCopyMine,
-                  kind: ButtonKind.secondary,
-                  onPressed: () =>
-                      Clipboard.setData(ClipboardData(text: _edit.text))
-                          .then((_) {
-                            if (context.mounted) toast(context, l.vCopied);
-                          }),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OrreryButton(
-                  key: const ValueKey('conflict-reload'),
-                  label: l.vReloadDiscard,
-                  kind: ButtonKind.danger,
-                  onPressed: _load,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _editor(BuildContext context) {
-    final c = context.orrery;
-    return ColoredBox(
-      color: c.well,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-        child: TextField(
-          key: const ValueKey('file-editor'),
-          controller: _edit,
-          maxLines: null,
-          expands: true,
-          textAlignVertical: TextAlignVertical.top,
-          keyboardType: TextInputType.multiline,
-          autocorrect: false,
-          enableSuggestions: false,
-          onChanged: (_) => setState(() {}),
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontFamilyFallback: monoFallback,
-            fontSize: 13,
-            height: 1.4,
-            color: c.wellInk,
-          ),
-          cursorColor: c.accent,
-          decoration: const InputDecoration(border: InputBorder.none),
-        ),
-      ),
     );
   }
 }

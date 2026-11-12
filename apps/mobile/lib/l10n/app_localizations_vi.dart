@@ -1099,5 +1099,80 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get settingsPushHint =>
-      'Máy tính quyết định gửi gì: session chờ bạn, session xong, lỗi.';
+      'Chọn loại thông báo gửi về điện thoại này. Máy tính gửi cả khi app đang đóng.';
+
+  @override
+  String get actTitle => 'Hoạt động gần đây';
+
+  @override
+  String get actEmpty => 'Chưa có hoạt động';
+
+  @override
+  String get actStarted => 'Session bắt đầu';
+
+  @override
+  String get actEnded => 'Session kết thúc';
+
+  @override
+  String get actRenamed => 'Đổi tên';
+
+  @override
+  String get actStatus => 'Đổi trạng thái';
+
+  @override
+  String get actCleared => 'Đã xoá context';
+
+  @override
+  String get actCompacted => 'Đã compact';
+
+  @override
+  String get actAgentStarted => 'Sub-agent bắt đầu';
+
+  @override
+  String get actAgentDone => 'Sub-agent xong';
+
+  @override
+  String get actAgentFailed => 'Sub-agent lỗi';
+
+  @override
+  String get actAgentCancelled => 'Sub-agent bị huỷ';
+
+  @override
+  String get actTool => 'Tool';
+
+  @override
+  String get actToolFailed => 'Tool lỗi';
+
+  @override
+  String get actTurnStarted => 'Bắt đầu lượt';
+
+  @override
+  String get actTurnDone => 'Xong lượt';
+
+  @override
+  String get actTurnFailed => 'Lượt bị lỗi';
+
+  @override
+  String get actTurnStopped => 'Lượt bị ngắt';
+
+  @override
+  String get actSensitive => 'Thao tác nhạy cảm';
+
+  @override
+  String get pushGroupWaiting => 'Session chờ bạn';
+
+  @override
+  String get pushGroupDone => 'Session xong';
+
+  @override
+  String get pushGroupError => 'Lỗi hoặc thoát bất thường';
+
+  @override
+  String get settingsThemeSystem => 'Theo điện thoại';
+
+  @override
+  String get settingsThemeLight => 'Sáng';
+
+  @override
+  String get settingsThemeDark => 'Tối';
 }

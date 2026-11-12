@@ -89,7 +89,12 @@ class _MonitorPageState extends ConsumerState<MonitorPage> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          Center(child: LinkPill(link: link)),
+          Center(
+            child: LinkPill(
+              link: link,
+              latencyMs: ref.watch(latencyProvider(id)).value,
+            ),
+          ),
           ViewModeButton(
             key: const ValueKey('monitor-view-mode'),
             alternate: alternate,

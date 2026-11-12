@@ -59,6 +59,8 @@ class RemoteSession {
   final Completer<int?> _closed = Completer<int?>();
   int _counter = 0;
   bool _pingOutstanding = false;
+  DateTime? _pingAt;
+  void Function(Duration rtt)? onRtt;
   bool _running = false;
   late DateTime lastActivity;
 
@@ -123,6 +125,9 @@ class RemoteSession {
       case FrameKind.ping:
         if (_pingOutstanding) {
           _pingOutstanding = false;
+          final at = _pingAt;
+          _pingAt = null;
+          if (at != null) onRtt?.call(_clock().difference(at));
         } else {
           _sendFrame(FrameKind.ping, 0, Uint8List(0));
         }
@@ -213,6 +218,7 @@ class RemoteSession {
       _socket.sendText('ping');
     } else {
       _pingOutstanding = true;
+      _pingAt = _clock();
       _sendFrame(FrameKind.ping, 0, Uint8List(0));
     }
   }

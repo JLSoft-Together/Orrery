@@ -9,6 +9,7 @@ use tokio::sync::watch;
 use super::config::FirebaseConfig;
 use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
+use super::devices::clean_mute;
 use super::fcm::Outcome;
 use super::pane_link::valid_pane_key;
 use crate::state::{lock, take_slot};
@@ -30,6 +31,7 @@ pub fn kind_of(raw: &str) -> &'static str {
         "done" => "done",
         "question" => "question",
         "permission" => "permission",
+        "error" => "error",
         _ => "attention",
     }
 }
@@ -51,6 +53,8 @@ pub fn title_body(kind: &str, locale: &str) -> (&'static str, &'static str) {
         ("question", true) => ("Agent đang hỏi", "Một phiên đang chờ câu trả lời. Chạm để mở."),
         ("permission", false) => ("Permission needed", "A session needs your approval. Tap to open it."),
         ("permission", true) => ("Cần cấp quyền", "Một phiên đang chờ bạn cho phép. Chạm để mở."),
+        ("error", false) => ("Session error", "A session stopped with an error. Tap to open it."),
+        ("error", true) => ("Phiên bị lỗi", "Một phiên vừa dừng vì lỗi. Chạm để mở."),
         (_, false) => ("Session needs attention", "A session needs you. Tap to open it."),
         (_, true) => ("Phiên cần chú ý", "Một phiên cần bạn. Chạm để mở."),
     }
@@ -139,7 +143,7 @@ impl Ctx {
         let targets: Vec<(String, String, String)> = lock(&self.devices)
             .list()
             .iter()
-            .filter(|d| !d.push_token.is_empty())
+            .filter(|d| !d.push_token.is_empty() && d.wants(kind))
             .map(|d| (d.device_id.clone(), d.push_token.clone(), d.push_locale.clone()))
             .collect();
         let mut queued = 0;
@@ -217,7 +221,8 @@ impl Phone {
             return self.sec.json(&error(Value::from(id), "invalid")).await;
         }
         let locale = locale_of(v.get("locale").and_then(Value::as_str));
-        let stored = lock(&self.ctx.devices).set_push(&self.device, token, locale);
+        let mute = clean_mute(v.get("mute").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str));
+        let stored = lock(&self.ctx.devices).set_push_mute(&self.device, token, locale, mute);
         let reply = if stored { json!({ "re": id, "ok": true }) } else { error(Value::from(id), "denied") };
         self.sec.json(&reply).await
     }

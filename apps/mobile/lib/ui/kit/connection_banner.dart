@@ -31,8 +31,12 @@ class LinkPill extends StatelessWidget {
       _ => (ChipTone.idle, Icons.cloud_off_rounded, false),
     };
     final base = linkLabel(context, link);
-    final label = link.status == LinkStatus.ready && latencyMs != null
-        ? '$base · $latencyMs ms'
+    final ms = latencyMs;
+    final label =
+        link.status == LinkStatus.ready &&
+            link.route == LinkRoute.lan &&
+            ms != null
+        ? '$base · $ms ms'
         : base;
     return OrreryChip(tone: tone, icon: icon, label: label, pulse: pulse);
   }

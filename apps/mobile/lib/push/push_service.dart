@@ -35,6 +35,8 @@ enum PushResult { on, off, denied, unavailable }
 const String pushEnabledKey = 'push.enabled';
 const String pushConfigsKey = 'push.configs';
 const String pushPendingKey = 'push.unregister';
+const String pushMuteKey = 'push.mute';
+const List<String> pushGroups = ['waiting', 'done', 'error'];
 
 Uri? pushLink(Map<String, String> data) {
   final machine = data['m'];
@@ -77,6 +79,18 @@ class PushService implements LinkSource {
   String? _error;
   Uri? _initial;
   Future<void> _queue = Future<void>.value();
+  Set<String> _mute = {'error'};
+
+  bool wants(String group) => !_mute.contains(group);
+
+  Future<void> setGroup(String group, bool on) async {
+    if (!pushGroups.contains(group) || wants(group) == on) return;
+    _mute = {..._mute}..remove(group);
+    if (!on) _mute.add(group);
+    _notify();
+    await kv.write(pushMuteKey, jsonEncode(_mute.toList()));
+    await _syncAll();
+  }
 
   bool get enabled => _enabled && !_revoked;
 
@@ -110,6 +124,15 @@ class PushService implements LinkSource {
 
   Future<void> init() async {
     _enabled = (await kv.read(pushEnabledKey)) == 'on';
+    final mute = await kv.read(pushMuteKey);
+    if (mute != null) {
+      try {
+        final list = jsonDecode(mute);
+        if (list is List) _mute = list.whereType<String>().toSet();
+      } on FormatException {
+        _mute = {'error'};
+      }
+    }
     await _load();
     _subs
       ..add(gateway.tokenRefresh.listen(_onRefresh, onError: _fail))
@@ -294,6 +317,10 @@ class PushService implements LinkSource {
         'token': token,
         'platform': platform,
         'locale': localeCode() == 'vi' ? 'vi' : 'en',
+        'mute': [
+          for (final g in pushGroups)
+            if (_mute.contains(g)) g,
+        ],
       });
     } on PushException catch (e) {
       _fail(e);

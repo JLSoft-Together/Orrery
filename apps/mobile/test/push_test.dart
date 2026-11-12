@@ -80,9 +80,27 @@ void main() {
         'token': 'token-a-1',
         'platform': 'android',
         'locale': 'vi',
+        'mute': ['error'],
       });
     }
     expect(r.kv.data[pushEnabledKey], 'on');
+  });
+
+  test('a muted group is saved and re-sent to every machine', () async {
+    final r = Rig();
+    final s1 = FakeSession('m1');
+    await r.service.init();
+    r.host.connect(s1);
+    r.host.config.add(const PushConfigUpdate('m1', pushConfigA));
+    await settle();
+    expect(await r.service.setEnabled(true), PushResult.on);
+    expect(r.service.wants('error'), isFalse);
+    await r.service.setGroup('done', false);
+    await r.service.setGroup('error', true);
+    expect(r.service.wants('done'), isFalse);
+    expect(r.service.wants('error'), isTrue);
+    expect(s1.sent.last.$2['mute'], ['done']);
+    expect(r.kv.data[pushMuteKey], isNotNull);
   });
 
   test('a locale other than vi is sent as en', () async {

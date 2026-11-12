@@ -22,6 +22,7 @@ class MachineConnection {
   final ConnectionDeps deps;
 
   final StreamController<LinkState> _states = StreamController.broadcast();
+  final StreamController<int> _rtt = StreamController.broadcast();
   final StreamController<JsonMap> _events = StreamController.broadcast();
   final StreamController<PtyChunk> _pty = StreamController.broadcast();
   final StreamController<RemoteSession> _sessions =
@@ -46,6 +47,8 @@ class MachineConnection {
   LinkState get state => _state;
 
   Stream<LinkState> get states => _states.stream;
+
+  Stream<int> get rtt => _rtt.stream;
 
   Stream<JsonMap> get events => _events.stream;
 
@@ -90,6 +93,7 @@ class MachineConnection {
   Future<void> dispose() async {
     await disconnect();
     await _states.close();
+    await _rtt.close();
     await _events.close();
     await _pty.close();
     await _sessions.close();
@@ -382,6 +386,12 @@ class MachineConnection {
 
   void _startKeepalive(RemoteSession session) {
     _keepaliveTimer?.cancel();
+    if (!session.viaRelay) {
+      session.onRtt = (rtt) {
+        if (!session.isClosed && !_rtt.isClosed) _rtt.add(rtt.inMilliseconds);
+      };
+      session.sendKeepalive();
+    }
     _keepaliveTimer = Timer.periodic(deps.config.keepalive, (_) {
       if (session.isClosed) return;
       final idle = clock.now().difference(session.lastActivity);

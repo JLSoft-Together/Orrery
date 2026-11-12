@@ -93,11 +93,13 @@ export type RemoteCommand =
   | { t: 'ws.compact'; paneKey: string }
   | { t: 'ws.send'; paneKey: string; text: string }
   | { t: 'ws.keys'; paneKey: string; keys: string; since: number }
-  | { t: 'push.register'; token: string; platform: RemotePushPlatform; locale: RemotePushLocale }
+  | { t: 'push.register'; token: string; platform: RemotePushPlatform; locale: RemotePushLocale; mute?: RemotePushGroup[] }
   | { t: 'push.unregister' }
 
 export type RemotePushPlatform = 'android' | 'ios'
 export type RemotePushLocale = 'vi' | 'en'
+export type RemotePushGroup = 'waiting' | 'done' | 'error'
+export const REMOTE_PUSH_GROUPS: readonly RemotePushGroup[] = ['waiting', 'done', 'error']
 export const REMOTE_PUSH_TOKEN_RE = /^[A-Za-z0-9:_.-]{16,512}$/
 export const REMOTE_PUSH_KINDS = ['done', 'question', 'permission', 'attention'] as const
 export type RemotePushKind = (typeof REMOTE_PUSH_KINDS)[number]
@@ -198,7 +200,8 @@ export function parseRemoteCommand(raw: unknown, name: RemoteCommandName): Remot
       if (typeof raw.token !== 'string' || !REMOTE_PUSH_TOKEN_RE.test(raw.token)) return null
       if (raw.platform !== 'android' && raw.platform !== 'ios') return null
       if (raw.locale !== 'vi' && raw.locale !== 'en') return null
-      return { t: 'push.register', token: raw.token, platform: raw.platform, locale: raw.locale }
+      const mute = Array.isArray(raw.mute) ? REMOTE_PUSH_GROUPS.filter((g) => (raw.mute as unknown[]).includes(g)) : []
+      return { t: 'push.register', token: raw.token, platform: raw.platform, locale: raw.locale, ...(mute.length ? { mute } : {}) }
     }
     case 'push.unregister':
       return { t: 'push.unregister' }

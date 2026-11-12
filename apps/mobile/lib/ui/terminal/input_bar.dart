@@ -4,41 +4,81 @@ import 'package:xterm/xterm.dart';
 
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
+import 'sticky_modifiers.dart';
 
 class ExtraKeysRow extends StatelessWidget {
   const ExtraKeysRow({
     super.key,
     required this.terminal,
+    required this.mods,
     required this.enabled,
     required this.onUse,
   });
 
   final Terminal terminal;
+  final StickyModifiers mods;
   final bool enabled;
   final VoidCallback onUse;
 
   void _tap(TerminalKey key, {bool shift = false, bool ctrl = false}) {
     HapticFeedback.selectionClick();
-    terminal.keyInput(key, shift: shift, ctrl: ctrl);
+    final (c, a) = mods.take();
+    terminal.keyInput(key, shift: shift, ctrl: ctrl || c, alt: a);
+    onUse();
+  }
+
+  void _mod(VoidCallback toggle) {
+    HapticFeedback.selectionClick();
+    toggle();
     onUse();
   }
 
   @override
   Widget build(BuildContext context) {
-    final keys = <(Object, String, VoidCallback)>[
-      ('Esc', 'esc', () => _tap(TerminalKey.escape)),
-      ('Tab', 'tab', () => _tap(TerminalKey.tab)),
-      ('Shift+Tab', 'shift-tab', () => _tap(TerminalKey.tab, shift: true)),
-      ('^C', 'ctrl-c', () => _tap(TerminalKey.keyC, ctrl: true)),
-      (Icons.arrow_upward_rounded, 'up', () => _tap(TerminalKey.arrowUp)),
-      (Icons.arrow_downward_rounded, 'down', () => _tap(TerminalKey.arrowDown)),
-      (Icons.arrow_back_rounded, 'left', () => _tap(TerminalKey.arrowLeft)),
+    return ListenableBuilder(
+      listenable: mods,
+      builder: (context, _) => _build(context),
+    );
+  }
+
+  Widget _build(BuildContext context) {
+    final keys = <(Object, String, VoidCallback, ModState?)>[
+      ('Esc', 'esc', () => _tap(TerminalKey.escape), null),
+      ('Tab', 'tab', () => _tap(TerminalKey.tab), null),
+      ('Ctrl', 'ctrl', () => _mod(mods.toggleCtrl), mods.ctrl),
+      ('Alt', 'alt', () => _mod(mods.toggleAlt), mods.alt),
+      (
+        'Shift+Tab',
+        'shift-tab',
+        () => _tap(TerminalKey.tab, shift: true),
+        null,
+      ),
+      ('^C', 'ctrl-c', () => _tap(TerminalKey.keyC, ctrl: true), null),
+      (Icons.arrow_upward_rounded, 'up', () => _tap(TerminalKey.arrowUp), null),
+      (
+        Icons.arrow_downward_rounded,
+        'down',
+        () => _tap(TerminalKey.arrowDown),
+        null,
+      ),
+      (
+        Icons.arrow_back_rounded,
+        'left',
+        () => _tap(TerminalKey.arrowLeft),
+        null,
+      ),
       (
         Icons.arrow_forward_rounded,
         'right',
         () => _tap(TerminalKey.arrowRight),
+        null,
       ),
-      (Icons.keyboard_return_rounded, 'enter', () => _tap(TerminalKey.enter)),
+      (
+        Icons.keyboard_return_rounded,
+        'enter',
+        () => _tap(TerminalKey.enter),
+        null,
+      ),
     ];
     return SizedBox(
       height: 52,
@@ -48,10 +88,11 @@ class ExtraKeysRow extends StatelessWidget {
         itemCount: keys.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final (label, id, action) = keys[index];
+          final (label, id, action, mod) = keys[index];
           return _KeyButton(
             id: id,
             label: label,
+            mod: mod,
             onTap: enabled ? action : null,
           );
         },
@@ -65,11 +106,13 @@ class _KeyButton extends StatefulWidget {
     required this.id,
     required this.label,
     required this.onTap,
+    this.mod,
   });
 
   final String id;
   final Object label;
   final VoidCallback? onTap;
+  final ModState? mod;
 
   @override
   State<_KeyButton> createState() => _KeyButtonState();
@@ -82,43 +125,64 @@ class _KeyButtonState extends State<_KeyButton> {
   Widget build(BuildContext context) {
     final c = context.orrery;
     final enabled = widget.onTap != null;
-    final fg = enabled ? c.ink : c.inkFaint;
+    final mod = widget.mod ?? ModState.off;
+    final locked = enabled && mod == ModState.locked;
+    final armed = enabled && mod != ModState.off;
+    final fg = !enabled
+        ? c.inkFaint
+        : locked
+        ? c.onAccent
+        : armed
+        ? c.accentInk
+        : c.ink;
+    final fill = locked
+        ? c.accent
+        : armed || _down
+        ? c.accent.withValues(alpha: 0.14)
+        : c.control;
+    final edge = armed || _down
+        ? c.accent.withValues(alpha: armed ? 0.9 : 0.5)
+        : c.lineStrong;
     final label = widget.label;
     return Semantics(
       button: true,
+      toggled: widget.mod == null ? null : armed,
       label: widget.id,
       child: AnimatedScale(
         scale: _down && !reduceMotion(context) ? 0.94 : 1,
         duration: const Duration(milliseconds: 90),
-        child: Material(
-          color: _down ? c.accent.withValues(alpha: 0.12) : c.control,
-          shape: RoundedRectangleBorder(
+        child: AnimatedContainer(
+          duration: motion(context, 150),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: fill,
             borderRadius: context.shape.controlRadius,
-            side: BorderSide(
-              color: _down ? c.accent.withValues(alpha: 0.5) : c.lineStrong,
-            ),
+            border: Border.all(color: edge, width: armed ? 1.5 : 1),
           ),
           clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: ValueKey('key-${widget.id}'),
-            onTap: widget.onTap,
-            onHighlightChanged: (v) => setState(() => _down = v),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Center(
-                  child: label is IconData
-                      ? Icon(label, size: 20, color: fg)
-                      : Text(
-                          label as String,
-                          style: TextStyle(
-                            fontFamily: 'OrreryMono',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: fg,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: ValueKey('key-${widget.id}'),
+              onTap: widget.onTap,
+              onHighlightChanged: (v) => setState(() => _down = v),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Center(
+                    child: label is IconData
+                        ? Icon(label, size: 20, color: fg)
+                        : Text(
+                            label as String,
+                            style: TextStyle(
+                              fontFamily: 'OrreryMono',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: fg,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ),
             ),

@@ -42,7 +42,7 @@ fn job(token: &str, kind: &'static str, locale: &'static str) -> Job {
 
 #[test]
 fn every_kind_has_fixed_text_in_both_locales_and_the_payload_carries_no_content() {
-    for kind in ["done", "question", "permission", "attention"] {
+    for kind in ["done", "question", "permission", "attention", "error"] {
         for locale in ["vi", "en"] {
             let (title, body) = title_body(kind, locale);
             assert!(!title.is_empty() && title.chars().count() <= 80);
@@ -270,4 +270,22 @@ fn a_phone_registers_and_unregisters_over_a_real_session_gets_push_config_and_no
         assert!(lock(&ctx.devices).find("p").unwrap().push_token.is_empty());
     });
     rig.remote.enable(false);
+}
+
+#[test]
+fn a_muted_group_is_stored_cleaned_and_skipped() {
+    use super::devices::{clean_mute, push_group};
+    assert_eq!(clean_mute(["error", "bogus", "done", "error"]), vec!["done".to_owned(), "error".to_owned()]);
+    assert_eq!(push_group("question"), "waiting");
+    assert_eq!(push_group("permission"), "waiting");
+    assert_eq!(push_group("attention"), "waiting");
+    let dir = temp_dir("push-mute");
+    let mut devices = Devices::load(&dir);
+    assert!(devices.add(Device::new("a", "A", &[1; 32], 10)));
+    assert!(devices.set_push_mute("a", TOKEN_A, "vi", clean_mute(["error"])));
+    let reloaded = Devices::load(&dir);
+    let d = reloaded.find("a").unwrap();
+    assert!(d.wants("done") && d.wants("question") && !d.wants("error"));
+    assert!(devices.set_push("a", TOKEN_A, "vi"));
+    assert!(devices.find("a").unwrap().wants("error"));
 }

@@ -1154,5 +1154,80 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPushHint =>
-      'The computer decides what to send: sessions waiting for you, finished runs and failures.';
+      'Choose which events reach this phone. The computer sends them while the app is closed.';
+
+  @override
+  String get actTitle => 'Recent activity';
+
+  @override
+  String get actEmpty => 'No activity yet';
+
+  @override
+  String get actStarted => 'Session started';
+
+  @override
+  String get actEnded => 'Session ended';
+
+  @override
+  String get actRenamed => 'Renamed';
+
+  @override
+  String get actStatus => 'Status changed';
+
+  @override
+  String get actCleared => 'Context cleared';
+
+  @override
+  String get actCompacted => 'Compacted';
+
+  @override
+  String get actAgentStarted => 'Sub-agent started';
+
+  @override
+  String get actAgentDone => 'Sub-agent finished';
+
+  @override
+  String get actAgentFailed => 'Sub-agent failed';
+
+  @override
+  String get actAgentCancelled => 'Sub-agent cancelled';
+
+  @override
+  String get actTool => 'Tool';
+
+  @override
+  String get actToolFailed => 'Tool failed';
+
+  @override
+  String get actTurnStarted => 'Turn started';
+
+  @override
+  String get actTurnDone => 'Turn finished';
+
+  @override
+  String get actTurnFailed => 'Turn failed';
+
+  @override
+  String get actTurnStopped => 'Turn interrupted';
+
+  @override
+  String get actSensitive => 'Sensitive action';
+
+  @override
+  String get pushGroupWaiting => 'Session waiting for you';
+
+  @override
+  String get pushGroupDone => 'Session finished';
+
+  @override
+  String get pushGroupError => 'Error or unexpected exit';
+
+  @override
+  String get settingsThemeSystem => 'Follows the phone';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsThemeDark => 'Dark';
 }

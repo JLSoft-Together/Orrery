@@ -9,6 +9,7 @@ import '../workspace/session_rename.dart';
 import 'monitor_cards.dart';
 import 'monitor_model.dart';
 import 'monitor_page.dart';
+import 'session_activity.dart';
 
 String _compact(int n) {
   if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
@@ -85,6 +86,11 @@ class SessionDetailPage extends ConsumerWidget {
                         count: s.subagents.length,
                       ),
                       _Subagents(session: s),
+                      SectionLabel(l.actTitle),
+                      SessionActivity(
+                        machineId: machineId,
+                        terminalId: terminalId,
+                      ),
                     ],
                   ),
                 ),

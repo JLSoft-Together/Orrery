@@ -110,7 +110,13 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('file-save')));
-    await until(tester, () => find.text('Saved').evaluate().isNotEmpty);
+    await until(
+      tester,
+      () => find
+          .descendant(of: find.byType(SnackBar), matching: find.text('Saved'))
+          .evaluate()
+          .isNotEmpty,
+    );
     await until(
       tester,
       () =>
@@ -130,7 +136,18 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('file-editor')), 'second');
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('file-save')));
-    await until(tester, () => find.text('Saved').evaluate().length == 1);
+    await until(
+      tester,
+      () =>
+          find
+              .descendant(
+                of: find.byType(SnackBar),
+                matching: find.text('Saved'),
+              )
+              .evaluate()
+              .length ==
+          1,
+    );
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 6; i++) {
       await tester.runAsync(

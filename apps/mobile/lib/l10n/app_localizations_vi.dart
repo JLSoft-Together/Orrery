@@ -1027,4 +1027,77 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get paneSheetOpen => 'Đổi pane';
+
+  @override
+  String diffAdded(int count) {
+    return '$count thêm';
+  }
+
+  @override
+  String diffRemoved(int count) {
+    return '$count xoá';
+  }
+
+  @override
+  String fileLines(int count) {
+    return '$count dòng';
+  }
+
+  @override
+  String get fileReadOnly => 'chỉ đọc';
+
+  @override
+  String get fileEditing => 'đang sửa';
+
+  @override
+  String get fileUnsaved => 'Chưa lưu';
+
+  @override
+  String get navSettings => 'Cài đặt';
+
+  @override
+  String get settingsTitle => 'Cài đặt';
+
+  @override
+  String get settingsSecurity => 'Bảo mật';
+
+  @override
+  String get settingsAppearance => 'Giao diện';
+
+  @override
+  String get settingsLanguage => 'Ngôn ngữ';
+
+  @override
+  String get settingsTheme => 'Chủ đề';
+
+  @override
+  String get settingsFollowsMachine => 'Theo máy tính';
+
+  @override
+  String get settingsAbout => 'Về app';
+
+  @override
+  String get settingsAppName => 'Orrery Remote';
+
+  @override
+  String get settingsAppHint => 'Điều khiển từ xa app Orrery trên máy tính';
+
+  @override
+  String get settingsMachine => 'Máy đang kết nối';
+
+  @override
+  String get lockShortEvery => 'Mỗi lần';
+
+  @override
+  String get lockShortMinutes15 => '15 phút';
+
+  @override
+  String get lockShortHour1 => '1 giờ';
+
+  @override
+  String get lockShortHours4 => '4 giờ';
+
+  @override
+  String get settingsPushHint =>
+      'Máy tính quyết định gửi gì: session chờ bạn, session xong, lỗi.';
 }

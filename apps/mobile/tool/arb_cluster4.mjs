@@ -1,0 +1,26 @@
+const S = (en, vi, ph) => ({ en, vi, ph })
+
+export const C4 = {
+  diffAdded: S('{count} added', '{count} thêm', { count: 'int' }),
+  diffRemoved: S('{count} removed', '{count} xoá', { count: 'int' }),
+  fileLines: S('{count, plural, =1{1 line} other{{count} lines}}', '{count} dòng', { count: 'int' }),
+  fileReadOnly: S('read only', 'chỉ đọc'),
+  fileEditing: S('editing', 'đang sửa'),
+  fileUnsaved: S('Unsaved', 'Chưa lưu'),
+  navSettings: S('Settings', 'Cài đặt'),
+  settingsTitle: S('Settings', 'Cài đặt'),
+  settingsSecurity: S('Security', 'Bảo mật'),
+  settingsAppearance: S('Appearance', 'Giao diện'),
+  settingsLanguage: S('Language', 'Ngôn ngữ'),
+  settingsTheme: S('Theme', 'Chủ đề'),
+  settingsFollowsMachine: S('Follows the computer', 'Theo máy tính'),
+  settingsAbout: S('About', 'Về app'),
+  settingsAppName: S('Orrery Remote', 'Orrery Remote'),
+  settingsAppHint: S('Remote for the Orrery app on your computer', 'Điều khiển từ xa app Orrery trên máy tính'),
+  settingsMachine: S('Connected computer', 'Máy đang kết nối'),
+  lockShortEvery: S('Always', 'Mỗi lần'),
+  lockShortMinutes15: S('15 min', '15 phút'),
+  lockShortHour1: S('1 hour', '1 giờ'),
+  lockShortHours4: S('4 hours', '4 giờ'),
+  settingsPushHint: S('The computer decides what to send: sessions waiting for you, finished runs and failures.', 'Máy tính quyết định gửi gì: session chờ bạn, session xong, lỗi.'),
+}

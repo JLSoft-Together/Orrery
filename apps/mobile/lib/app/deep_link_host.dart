@@ -13,6 +13,7 @@ import '../ui/workspace/machine_scope.dart';
 import '../ui/workspace/tab_page.dart';
 import '../ui/workspace/workspace_page.dart';
 import '../security/app_lock.dart';
+import 'app_lock_scope.dart';
 import 'link_source.dart';
 import 'pane_link.dart';
 
@@ -155,5 +156,6 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) =>
+      AppLockScope(lock: widget.lock, child: widget.child);
 }

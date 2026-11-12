@@ -195,7 +195,10 @@ void main() {
     final write = h.api.commands.firstWhere((c) => c.$1 == 'fs.write');
     expect(write.$2!['base'], 100);
     expect(write.$2!['text'], 'changed');
-    expect(find.text('Saved'), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(SnackBar), matching: find.text('Saved')),
+      findsOneWidget,
+    );
 
     conflict = true;
     await tester.tap(find.byKey(const ValueKey('file-edit')));

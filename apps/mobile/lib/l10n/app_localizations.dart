@@ -1945,6 +1945,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Switch pane'**
   String get paneSheetOpen;
+
+  /// No description provided for @diffAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} added'**
+  String diffAdded(int count);
+
+  /// No description provided for @diffRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} removed'**
+  String diffRemoved(int count);
+
+  /// No description provided for @fileLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 line} other{{count} lines}}'**
+  String fileLines(int count);
+
+  /// No description provided for @fileReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'read only'**
+  String get fileReadOnly;
+
+  /// No description provided for @fileEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'editing'**
+  String get fileEditing;
+
+  /// No description provided for @fileUnsaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved'**
+  String get fileUnsaved;
+
+  /// No description provided for @navSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get navSettings;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get settingsSecurity;
+
+  /// No description provided for @settingsAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get settingsAppearance;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsTheme;
+
+  /// No description provided for @settingsFollowsMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows the computer'**
+  String get settingsFollowsMachine;
+
+  /// No description provided for @settingsAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settingsAbout;
+
+  /// No description provided for @settingsAppName.
+  ///
+  /// In en, this message translates to:
+  /// **'Orrery Remote'**
+  String get settingsAppName;
+
+  /// No description provided for @settingsAppHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote for the Orrery app on your computer'**
+  String get settingsAppHint;
+
+  /// No description provided for @settingsMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected computer'**
+  String get settingsMachine;
+
+  /// No description provided for @lockShortEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get lockShortEvery;
+
+  /// No description provided for @lockShortMinutes15.
+  ///
+  /// In en, this message translates to:
+  /// **'15 min'**
+  String get lockShortMinutes15;
+
+  /// No description provided for @lockShortHour1.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get lockShortHour1;
+
+  /// No description provided for @lockShortHours4.
+  ///
+  /// In en, this message translates to:
+  /// **'4 hours'**
+  String get lockShortHours4;
+
+  /// No description provided for @settingsPushHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer decides what to send: sessions waiting for you, finished runs and failures.'**
+  String get settingsPushHint;
 }
 
 class _AppLocalizationsDelegate

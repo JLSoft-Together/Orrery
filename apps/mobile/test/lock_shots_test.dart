@@ -104,7 +104,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       await shot(tester, key, '04-settings-default-$tag');
-      await tester.tap(find.byKey(const ValueKey('lock-timeout-minutes15')));
+      await tester.tap(find.byKey(const ValueKey('lock-timeout-1')));
       await tester.pumpAndSettle();
       await shot(tester, key, '05-settings-15min-$tag');
       await tester.pumpWidget(const SizedBox());

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../ui/commands.dart';
 import '../ui/kit/kit.dart';
+import '../ui/theme/orrery_shape.dart';
 import '../ui/widgets/common.dart';
 import 'app_lock.dart';
 import 'device_auth.dart';
 
-class LockSettingsPage extends StatelessWidget {
-  const LockSettingsPage({super.key, required this.lock});
+class LockControls extends StatelessWidget {
+  const LockControls({super.key, required this.lock});
 
   final AppLock lock;
 
@@ -62,62 +63,103 @@ class LockSettingsPage extends StatelessWidget {
     }
   }
 
-  String _label(BuildContext context, LockTimeout value) {
+  String _short(BuildContext context, LockTimeout value) {
     final l = context.l10n;
     return switch (value) {
-      LockTimeout.everyOpen => l.lockEveryOpen,
-      LockTimeout.minutes15 => l.lockMinutes15,
-      LockTimeout.hour1 => l.lockHour1,
-      LockTimeout.hours4 => l.lockHours4,
+      LockTimeout.everyOpen => l.lockShortEvery,
+      LockTimeout.minutes15 => l.lockShortMinutes15,
+      LockTimeout.hour1 => l.lockShortHour1,
+      LockTimeout.hours4 => l.lockShortHours4,
     };
   }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    return ListenableBuilder(
+      listenable: lock,
+      builder: (context, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OrreryCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  key: const ValueKey('lock-switch'),
+                  secondary: const Icon(Icons.lock_outline_rounded),
+                  title: Text(l.lockSwitch),
+                  subtitle: Text(l.lockSwitchHint),
+                  value: lock.enabled,
+                  onChanged: lock.busy
+                      ? null
+                      : (value) => _change(context, enabled: value),
+                ),
+                Divider(height: 1, color: context.orrery.line),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 20,
+                            color: context.orrery.accentInk,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            l.lockAfter,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      AnimatedOpacity(
+                        duration: motion(context),
+                        opacity: lock.enabled ? 1 : 0.45,
+                        child: IgnorePointer(
+                          ignoring: !lock.enabled || lock.busy,
+                          child: OrrerySegmented(
+                            keyPrefix: 'lock-timeout',
+                            labels: [
+                              for (final v in LockTimeout.values)
+                                _short(context, v),
+                            ],
+                            index: LockTimeout.values.indexOf(lock.timeout),
+                            onChanged: (i) => _change(
+                              context,
+                              timeout: LockTimeout.values[i],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class LockSettingsPage extends StatelessWidget {
+  const LockSettingsPage({super.key, required this.lock});
+
+  final AppLock lock;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(title: Text(l.lockSettingsTitle)),
-      body: ListenableBuilder(
-        listenable: lock,
-        builder: (context, _) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-          children: [
-            OrreryCard(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: SwitchListTile(
-                key: const ValueKey('lock-switch'),
-                title: Text(l.lockSwitch),
-                subtitle: Text(l.lockSwitchHint),
-                value: lock.enabled,
-                onChanged: lock.busy
-                    ? null
-                    : (value) => _change(context, enabled: value),
-              ),
-            ),
-            SectionLabel(l.lockAfter),
-            OrreryCard(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: RadioGroup<LockTimeout>(
-                groupValue: lock.timeout,
-                onChanged: (value) {
-                  if (value == null || lock.busy || !lock.enabled) return;
-                  _change(context, timeout: value);
-                },
-                child: Column(
-                  children: [
-                    for (final value in LockTimeout.values)
-                      RadioListTile<LockTimeout>(
-                        key: ValueKey('lock-timeout-${value.name}'),
-                        title: Text(_label(context, value)),
-                        value: value,
-                        enabled: lock.enabled && !lock.busy,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [LockControls(lock: lock)],
       ),
     );
   }

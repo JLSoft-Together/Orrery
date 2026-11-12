@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../remote/protocol.dart';
 import '../commands.dart';
+import '../kit/kit.dart' show ButtonKind, NoticeCard, NoticeTone, OrreryButton;
+import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import 'viewer_api.dart';
 
@@ -111,7 +113,6 @@ class _AsyncPanelState<T> extends State<AsyncPanel<T>> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
     if (!_has) {
       if (_error != null) {
         return ErrorState(
@@ -126,15 +127,16 @@ class _AsyncPanelState<T> extends State<AsyncPanel<T>> {
         Column(
           children: [
             if (_error != null)
-              Material(
-                color: scheme.errorContainer,
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.error_outline, color: scheme.error),
-                  title: Text(viewerErrorText(l, _error!)),
-                  trailing: TextButton(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: NoticeCard(
+                  tone: NoticeTone.error,
+                  title: viewerErrorText(l, _error!),
+                  trailing: OrreryButton(
+                    label: l.vRetry,
+                    kind: ButtonKind.text,
+                    expand: false,
                     onPressed: reload,
-                    child: Text(l.vRetry),
                   ),
                 ),
               ),
@@ -161,21 +163,23 @@ class ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    final l = context.l10n;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded, size: 44, color: scheme.error),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
+            NoticeCard(tone: NoticeTone.error, title: message),
             if (onRetry != null) ...[
               const SizedBox(height: 12),
-              OutlinedButton(
+              OrreryButton(
+                key: const ValueKey('error-retry'),
+                label: l.vRetry,
+                icon: Icons.refresh_rounded,
+                kind: ButtonKind.secondary,
                 onPressed: onRetry,
-                child: Text(context.l10n.vRetry),
               ),
             ],
           ],
@@ -193,19 +197,30 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = context.orrery;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: scheme.onSurfaceVariant),
-            const SizedBox(height: 10),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: c.raised,
+                shape: BoxShape.circle,
+                border: Border.all(color: c.line),
+              ),
+              child: SizedBox.square(
+                dimension: 72,
+                child: Icon(icon, size: 32, color: c.inkFaint),
+              ),
+            ),
+            const SizedBox(height: 14),
             Text(
               text,
               textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: c.inkMuted),
             ),
           ],
         ),

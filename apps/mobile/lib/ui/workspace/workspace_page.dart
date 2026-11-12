@@ -8,6 +8,7 @@ import '../ui_providers.dart';
 import '../widgets/common.dart';
 import 'inbox_page.dart';
 import 'machine_scope.dart';
+import 'settings_body.dart';
 import 'shell_nav.dart';
 import 'tab_page.dart';
 import 'workspace_body.dart';
@@ -62,6 +63,7 @@ class _ShellState extends ConsumerState<_Shell> {
           WorkspaceBody(id),
           MonitorPage(machineId: id, onOpen: _openTerminal),
           InboxPage(machineId: id),
+          SettingsBody(machineId: id),
         ],
       ),
       bottomNavigationBar: ShellNav(
@@ -87,6 +89,12 @@ class _ShellState extends ConsumerState<_Shell> {
             selectedIcon: Icons.inbox_rounded,
             label: l.inbox,
             badge: inbox,
+          ),
+          NavItem(
+            id: 'settings',
+            icon: Icons.tune_rounded,
+            selectedIcon: Icons.tune_rounded,
+            label: l.navSettings,
           ),
         ],
       ),

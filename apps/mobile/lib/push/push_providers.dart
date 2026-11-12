@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../ui/commands.dart';
+import '../ui/kit/kit.dart';
 import '../ui/widgets/common.dart';
 import 'push_service.dart';
 
@@ -97,10 +98,11 @@ class PushTile extends ConsumerWidget {
         : state.foreign > 0
         ? l.pushForeign
         : l.pushHint;
-    return Card(
+    return OrreryCard(
+      padding: EdgeInsets.zero,
       child: SwitchListTile(
         key: const ValueKey('push-switch'),
-        secondary: const Icon(Icons.notifications_active_outlined),
+        secondary: const Icon(Icons.notifications_none_rounded),
         title: Text(l.pushTitle),
         subtitle: Text(subtitle),
         value: state.enabled,
@@ -116,8 +118,9 @@ class PushTile extends ConsumerWidget {
     );
   }
 
-  Widget _hint(Key key, String title, String text) => Card(
+  Widget _hint(Key key, String title, String text) => OrreryCard(
     key: key,
+    padding: EdgeInsets.zero,
     child: ListTile(
       leading: const Icon(Icons.notifications_off_outlined),
       title: Text(title),

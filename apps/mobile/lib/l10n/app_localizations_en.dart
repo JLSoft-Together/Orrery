@@ -1076,4 +1076,83 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paneSheetOpen => 'Switch pane';
+
+  @override
+  String diffAdded(int count) {
+    return '$count added';
+  }
+
+  @override
+  String diffRemoved(int count) {
+    return '$count removed';
+  }
+
+  @override
+  String fileLines(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lines',
+      one: '1 line',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get fileReadOnly => 'read only';
+
+  @override
+  String get fileEditing => 'editing';
+
+  @override
+  String get fileUnsaved => 'Unsaved';
+
+  @override
+  String get navSettings => 'Settings';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsSecurity => 'Security';
+
+  @override
+  String get settingsAppearance => 'Appearance';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get settingsFollowsMachine => 'Follows the computer';
+
+  @override
+  String get settingsAbout => 'About';
+
+  @override
+  String get settingsAppName => 'Orrery Remote';
+
+  @override
+  String get settingsAppHint => 'Remote for the Orrery app on your computer';
+
+  @override
+  String get settingsMachine => 'Connected computer';
+
+  @override
+  String get lockShortEvery => 'Always';
+
+  @override
+  String get lockShortMinutes15 => '15 min';
+
+  @override
+  String get lockShortHour1 => '1 hour';
+
+  @override
+  String get lockShortHours4 => '4 hours';
+
+  @override
+  String get settingsPushHint =>
+      'The computer decides what to send: sessions waiting for you, finished runs and failures.';
 }

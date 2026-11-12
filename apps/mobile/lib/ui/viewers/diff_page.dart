@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/protocol.dart';
+import '../kit/kit.dart' show ChipTone, OrreryChip;
 import '../model/workspace_model.dart' show baseName;
 import '../widgets/common.dart';
 import 'async_panel.dart';
@@ -79,7 +80,34 @@ class DiffPage extends ConsumerWidget {
               text: l.vDiffEmpty,
             );
           }
-          return DiffView(text: text);
+          final lines = parseDiff(text);
+          final added = lines.where((e) => e.kind == DiffKind.add).length;
+          final removed = lines.where((e) => e.kind == DiffKind.del).length;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                child: Row(
+                  children: [
+                    OrreryChip(
+                      key: const ValueKey('diff-added'),
+                      tone: ChipTone.done,
+                      icon: Icons.add_rounded,
+                      label: l.diffAdded(added),
+                    ),
+                    const SizedBox(width: 8),
+                    OrreryChip(
+                      key: const ValueKey('diff-removed'),
+                      tone: ChipTone.error,
+                      icon: Icons.remove_rounded,
+                      label: l.diffRemoved(removed),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: DiffView(text: text)),
+            ],
+          );
         },
       ),
     );

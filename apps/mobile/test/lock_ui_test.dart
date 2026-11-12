@@ -155,10 +155,10 @@ void main() {
     expect(auth.calls, 1);
     expect(lock.enabled, isTrue);
     auth.queue.add(AuthOutcome.failed);
-    await tester.tap(find.byKey(const ValueKey('lock-timeout-hours4')));
+    await tester.tap(find.byKey(const ValueKey('lock-timeout-3')));
     await tester.pumpAndSettle();
     expect(lock.timeout, LockTimeout.hour1);
-    await tester.tap(find.byKey(const ValueKey('lock-timeout-hours4')));
+    await tester.tap(find.byKey(const ValueKey('lock-timeout-3')));
     await tester.pumpAndSettle();
     expect(lock.timeout, LockTimeout.hours4);
     expect(auth.calls, 3);

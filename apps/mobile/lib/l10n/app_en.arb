@@ -573,5 +573,48 @@
       }
     }
   },
-  "paneSheetOpen": "Switch pane"
+  "paneSheetOpen": "Switch pane",
+  "diffAdded": "{count} added",
+  "@diffAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "diffRemoved": "{count} removed",
+  "@diffRemoved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fileLines": "{count, plural, =1{1 line} other{{count} lines}}",
+  "@fileLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fileReadOnly": "read only",
+  "fileEditing": "editing",
+  "fileUnsaved": "Unsaved",
+  "navSettings": "Settings",
+  "settingsTitle": "Settings",
+  "settingsSecurity": "Security",
+  "settingsAppearance": "Appearance",
+  "settingsLanguage": "Language",
+  "settingsTheme": "Theme",
+  "settingsFollowsMachine": "Follows the computer",
+  "settingsAbout": "About",
+  "settingsAppName": "Orrery Remote",
+  "settingsAppHint": "Remote for the Orrery app on your computer",
+  "settingsMachine": "Connected computer",
+  "lockShortEvery": "Always",
+  "lockShortMinutes15": "15 min",
+  "lockShortHour1": "1 hour",
+  "lockShortHours4": "4 hours",
+  "settingsPushHint": "The computer decides what to send: sessions waiting for you, finished runs and failures."
 }

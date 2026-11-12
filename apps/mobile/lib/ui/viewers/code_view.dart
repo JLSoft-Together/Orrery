@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import 'highlight_lines.dart';
 import 'viewer_models.dart' show monoFallback;
@@ -69,8 +70,8 @@ class _CodeViewState extends State<CodeView> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    final colors = CodeColors(Theme.of(context).brightness == Brightness.dark);
+    final c = context.orrery;
+    const colors = CodeColors(true);
     final lines = widget.lines;
     var longest = 0;
     for (final line in lines) {
@@ -87,7 +88,7 @@ class _CodeViewState extends State<CodeView> {
       fontFamilyFallback: monoFallback,
       fontSize: 13,
       height: 1.0,
-      color: scheme.onSurface,
+      color: c.wellInk,
     );
     return Column(
       children: [
@@ -113,7 +114,7 @@ class _CodeViewState extends State<CodeView> {
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      fillColor: scheme.surfaceContainerHigh,
+                      fillColor: c.control,
                     ),
                   ),
                 ),
@@ -125,10 +126,7 @@ class _CodeViewState extends State<CodeView> {
                     _hits.isEmpty
                         ? l.vNoMatches
                         : '${_current + 1}/${_hits.length}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 12, color: c.inkMuted),
                   ),
                 ),
                 IconButton(
@@ -146,68 +144,71 @@ class _CodeViewState extends State<CodeView> {
           ),
         ),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, box) {
-              final width = (_gutter + longest * _charWidth + 24).clamp(
-                box.maxWidth,
-                double.infinity,
-              );
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: width,
-                  height: box.maxHeight,
-                  child: ListView.builder(
-                    key: const ValueKey('code-list'),
-                    controller: _vertical,
-                    itemExtent: _lineHeight,
-                    itemCount: lines.length,
-                    itemBuilder: (context, index) {
-                      final hit = hitSet.contains(index);
-                      return Container(
-                        color: index == activeLine
-                            ? scheme.primary.withValues(alpha: 0.28)
-                            : hit
-                            ? scheme.primary.withValues(alpha: 0.12)
-                            : null,
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: _gutter,
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Text(
-                                  '${index + 1}',
-                                  textAlign: TextAlign.right,
-                                  style: mono.copyWith(
-                                    fontSize: 11,
-                                    color: scheme.onSurfaceVariant,
+          child: ColoredBox(
+            color: c.well,
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final width = (_gutter + longest * _charWidth + 24).clamp(
+                  box.maxWidth,
+                  double.infinity,
+                );
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: width,
+                    height: box.maxHeight,
+                    child: ListView.builder(
+                      key: const ValueKey('code-list'),
+                      controller: _vertical,
+                      itemExtent: _lineHeight,
+                      itemCount: lines.length,
+                      itemBuilder: (context, index) {
+                        final hit = hitSet.contains(index);
+                        return Container(
+                          color: index == activeLine
+                              ? c.accent.withValues(alpha: 0.32)
+                              : hit
+                              ? c.accent.withValues(alpha: 0.14)
+                              : null,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: _gutter,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: Text(
+                                    '${index + 1}',
+                                    textAlign: TextAlign.right,
+                                    style: mono.copyWith(
+                                      fontSize: 11,
+                                      color: c.wellInk.withValues(alpha: 0.5),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  for (final (text, cls) in lines[index])
-                                    TextSpan(
-                                      text: text,
-                                      style: TextStyle(color: colors.of(cls)),
-                                    ),
-                                ],
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    for (final (text, cls) in lines[index])
+                                      TextSpan(
+                                        text: text,
+                                        style: TextStyle(color: colors.of(cls)),
+                                      ),
+                                  ],
+                                ),
+                                style: mono,
+                                softWrap: false,
                               ),
-                              style: mono,
-                              softWrap: false,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ],

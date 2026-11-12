@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/orrery_theme.dart';
+import '../theme/orrery_colors.dart';
 import 'viewer_models.dart' show monoFallback;
 import '../widgets/common.dart';
 
@@ -131,95 +131,95 @@ class _DiffViewState extends State<DiffView> {
   @override
   Widget build(BuildContext context) {
     final rows = foldRows(_lines, _open);
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.statusColors;
+    const c = OrreryColors.dark;
     final mono = TextStyle(
       fontFamily: 'monospace',
       fontFamilyFallback: monoFallback,
       fontSize: 12.5,
       height: 1.35,
-      color: scheme.onSurface,
+      color: c.wellInk,
     );
-    return ListView.builder(
-      key: const ValueKey('diff-list'),
-      padding: const EdgeInsets.only(bottom: 32),
-      itemCount: rows.length,
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        if (row is FoldRow) {
-          return InkWell(
-            onTap: () => setState(() => _open.add(row.start)),
-            child: Container(
-              height: 36,
-              alignment: Alignment.center,
-              color: scheme.surfaceContainerHigh,
+    return ColoredBox(
+      color: c.well,
+      child: ListView.builder(
+        key: const ValueKey('diff-list'),
+        padding: const EdgeInsets.only(bottom: 32),
+        itemCount: rows.length,
+        itemBuilder: (context, index) {
+          final row = rows[index];
+          if (row is FoldRow) {
+            return InkWell(
+              onTap: () => setState(() => _open.add(row.start)),
+              child: Container(
+                height: 36,
+                alignment: Alignment.center,
+                color: c.info.withValues(alpha: 0.12),
+                child: Text(
+                  context.l10n.vUnchangedLines(row.count),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: c.inkMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          }
+          final line = (row as LineRow).line;
+          if (line.kind == DiffKind.hunk) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              color: c.info.withValues(alpha: 0.14),
               child: Text(
-                context.l10n.vUnchangedLines(row.count),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+                line.text,
+                style: mono.copyWith(color: c.inkMuted, fontSize: 12),
               ),
-            ),
-          );
-        }
-        final line = (row as LineRow).line;
-        if (line.kind == DiffKind.hunk) {
+            );
+          }
+          final add = line.kind == DiffKind.add;
+          final del = line.kind == DiffKind.del;
+          final tint = add
+              ? c.diffAdd.withValues(alpha: 0.18)
+              : del
+              ? c.diffDel.withValues(alpha: 0.2)
+              : null;
+          final sign = add ? '+' : (del ? '−' : ' ');
+          final accent = add
+              ? c.diffAdd
+              : del
+              ? c.diffDel
+              : c.wellInk.withValues(alpha: 0.5);
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            color: scheme.primary.withValues(alpha: 0.10),
-            child: Text(
-              line.text,
-              style: mono.copyWith(color: scheme.primary, fontSize: 12),
+            color: tint,
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 38,
+                  child: Text(
+                    '${line.newNo ?? line.oldNo ?? ''}',
+                    textAlign: TextAlign.right,
+                    style: mono.copyWith(fontSize: 11, color: accent),
+                  ),
+                ),
+                SizedBox(
+                  width: 18,
+                  child: Text(
+                    sign,
+                    textAlign: TextAlign.center,
+                    style: mono.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Expanded(child: Text(line.text, style: mono)),
+              ],
             ),
           );
-        }
-        final add = line.kind == DiffKind.add;
-        final del = line.kind == DiffKind.del;
-        final tint = add
-            ? colors.done.withValues(alpha: 0.16)
-            : del
-            ? colors.failed.withValues(alpha: 0.16)
-            : null;
-        final sign = add ? '+' : (del ? '-' : ' ');
-        return Container(
-          color: tint,
-          padding: const EdgeInsets.symmetric(vertical: 1),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 34,
-                child: Text(
-                  '${line.newNo ?? line.oldNo ?? ''}',
-                  textAlign: TextAlign.right,
-                  style: mono.copyWith(
-                    fontSize: 11,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 16,
-                child: Text(
-                  sign,
-                  textAlign: TextAlign.center,
-                  style: mono.copyWith(
-                    color: add
-                        ? colors.done
-                        : del
-                        ? colors.failed
-                        : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Expanded(child: Text(line.text, style: mono)),
-            ],
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 }

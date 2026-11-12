@@ -188,7 +188,7 @@ export type RemoteDeviceState = 'connected' | 'idle' | 'revoked'
 export interface RemoteDevice {
   deviceId: string
   name: string
-  platform: 'android' | 'ios'
+  platform: 'android' | 'ios' | 'unknown'
   pairedAt: number
   lastSeen: number
   via?: 'lan' | 'relay'

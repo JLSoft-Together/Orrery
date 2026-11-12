@@ -86,7 +86,8 @@ export function installRemotePhone(): void {
     return out
   }
 
-  function log(device: string, key: string, params: Record<string, unknown>, pane?: Pane): void {
+  function log(deviceId: string, key: string, params: Record<string, unknown>, pane?: Pane): void {
+    const device = remote.devices.find((d) => d.deviceId === deviceId)?.name ?? deviceId
     const text = t(`remoteV97.log.${key}`, params)
     remote.record(device, text, true, pane?.key)
     const session = pane ? act.sessionOf(pane) : undefined
@@ -181,7 +182,15 @@ export function installRemotePhone(): void {
     return { ok: true }
   }
 
+  function typed(sessionId: string): PhoneResult {
+    const pane = workspace.panes.find((p) => isTerm(p) && p.sessionId === sessionId)
+    if (!pane || !isTerm(pane)) return fail('notFound')
+    if (presetOf(pane) === 'shell' && !pane.ranCommand) workspace.update(pane.key, { ranCommand: true })
+    return { ok: true }
+  }
+
   const recent = new Map<string, { at: number; out: Promise<PhoneResult> }>()
+  handleOrrery('remote.typed', (call) => typed(call.sessionId))
   handleOrrery('ws.open', (call) => onceByRid(recent, call.rid, () => open(call)))
   handleOrrery('ws.close', (call) => onceByRid(recent, call.rid, () => close(call)))
   handleOrrery('ws.rename', (call) => onceByRid(recent, call.rid, () => rename(call)))

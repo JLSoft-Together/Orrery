@@ -6,6 +6,8 @@ use super::pty_bridge::{spawn, Attach, FromHub, Slot, Spec, ToHub};
 
 pub const MAX_SESSION_ID: usize = 64;
 pub const MAX_DIM: u64 = 1000;
+pub const TYPED: &str = "remote.typed";
+const TYPED_GAP: std::time::Duration = std::time::Duration::from_secs(2);
 
 fn dim(v: &Value, key: &str, fallback: u16) -> u16 {
     v.get(key).and_then(Value::as_u64).filter(|n| (1..=MAX_DIM).contains(n)).map_or(fallback, |n| n as u16)
@@ -32,7 +34,7 @@ impl Phone {
         let gen = self.x.next_gen;
         let spec = Spec { re: id.to_owned(), stream, session: session.to_owned(), cols: dim(v, "cols", 80), rows: dim(v, "rows", 24), gen, backlog: self.x.backlog.clone() };
         let tx = spawn(self.ctx.host.clone(), spec, slot, self.x.hub_tx.clone());
-        self.x.attaches.insert(stream, Attach { tx, gen });
+        self.x.attaches.insert(stream, Attach { tx, gen, session: session.to_owned(), typed_at: None });
         true
     }
 
@@ -50,12 +52,29 @@ impl Phone {
     }
 
     pub(super) async fn pty_input(&mut self, stream: u32, bytes: Vec<u8>, claim: bool) -> bool {
+        let entered = bytes.iter().any(|b| matches!(b, 13 | 10));
         let Some(a) = self.x.attaches.get(&stream) else { return true };
         if a.tx.try_send(ToHub::Input(bytes, claim)).is_ok() {
+            if entered {
+                self.typed(stream);
+            }
             return true;
         }
         self.x.attaches.remove(&stream);
         self.sec.json(&serde_json::json!({ "t": "pty.overflow", "stream": stream })).await
+    }
+
+    fn typed(&mut self, stream: u32) {
+        let now = std::time::Instant::now();
+        let Some(a) = self.x.attaches.get_mut(&stream) else { return };
+        if a.typed_at.is_some_and(|t| now.duration_since(t) < TYPED_GAP) {
+            return;
+        }
+        a.typed_at = Some(now);
+        let (host, session, device) = (self.ctx.host.clone(), a.session.clone(), self.device.clone());
+        tokio::task::spawn_blocking(move || {
+            host.ask(TYPED, serde_json::json!({ "device": device, "sessionId": session }));
+        });
     }
 
     pub(super) async fn on_hub(&mut self, msg: FromHub) -> bool {

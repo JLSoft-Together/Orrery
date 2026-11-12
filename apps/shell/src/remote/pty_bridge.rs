@@ -57,6 +57,8 @@ impl Drop for Slot {
 pub struct Attach {
     pub tx: mpsc::Sender<ToHub>,
     pub gen: u64,
+    pub session: String,
+    pub typed_at: Option<std::time::Instant>,
 }
 
 pub struct Spec {

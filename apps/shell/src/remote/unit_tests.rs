@@ -229,3 +229,18 @@ fn lan_rebind_finds_gone_and_new_addresses() {
     assert_eq!(super::rebind::changed_set(&[a], &[a]), (vec![], vec![]));
     assert_eq!(super::rebind::changed_set(&[a], &[b]), (vec![a], vec![b]));
 }
+
+#[test]
+fn a_platform_outside_android_and_ios_is_stored_and_shown_as_unknown() {
+    let dir = temp_dir("platform");
+    let mut devices = Devices::load(&dir);
+    let phone = Phone::new("p");
+    assert!(devices.add(Device::new("p", "Phone", phone.key.public(), 1)));
+    assert_eq!(super::status::device_json(&devices.list()[0], None)["platform"], "unknown");
+    devices.set_platform("p", "cli");
+    assert_eq!(devices.list()[0].platform, "unknown");
+    devices.set_platform("p", "ios");
+    assert_eq!(super::status::device_json(&devices.list()[0], None)["platform"], "ios");
+    devices.set_platform("p", "android");
+    assert_eq!(devices.list()[0].platform, "android");
+}

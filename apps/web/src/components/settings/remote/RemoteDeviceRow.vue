@@ -16,6 +16,7 @@ const busy = ref(false)
 const live = computed(() => props.device.state === 'connected')
 const seen = computed(() => (live.value ? null : relativeTime(expMs(props.device.lastSeen), locale.value, now.value)))
 const paired = computed(() => relativeTime(expMs(props.device.pairedAt), locale.value, now.value))
+const platformLabel = computed(() => t(`remoteV97.devices.platform.${props.device.platform === 'android' || props.device.platform === 'ios' ? props.device.platform : 'unknown'}`))
 const via = computed(() => (props.device.via === 'relay' ? { icon: Cloud, label: t('remoteV97.devices.relay') } : props.device.via === 'lan' ? { icon: Wifi, label: t('remoteV97.devices.lan') } : null))
 
 async function confirm(): Promise<void> {
@@ -30,7 +31,7 @@ async function confirm(): Promise<void> {
     <div class="min-w-0 flex-1">
       <p class="truncate text-sm font-medium" :title="device.name">{{ device.name }}</p>
       <p class="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-2xs text-ink-faint">
-        <span>{{ t(`remoteV97.devices.platform.${device.platform}`) }}</span>
+        <span>{{ platformLabel }}</span>
         <span v-if="paired">{{ t('remoteV97.devices.paired', { when: paired }) }}</span>
         <span v-if="seen">{{ t('remoteV97.devices.lastSeen', { when: seen }) }}</span>
       </p>

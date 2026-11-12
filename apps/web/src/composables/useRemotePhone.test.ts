@@ -10,6 +10,8 @@ describe('phone commands (ws.* with source phone)', () => {
   let busyKeys = new Set<string>()
   const compactStart = vi.fn((_key: string) => true)
 
+  let orreryApi: typeof import('./useOrreryApi')
+
   async function boot() {
     vi.resetModules()
     setActivePinia(createPinia())
@@ -18,6 +20,7 @@ describe('phone commands (ws.* with source phone)', () => {
     vi.doMock('./usePaneInfo', () => ({ usePaneInfo: () => ({ isBusy: (p: { key: string }) => busyKeys.has(p.key) }) }))
     const phone = await import('./useRemotePhone')
     const orrery = await import('./useOrreryApi')
+    orreryApi = orrery
     const store = await import('../stores/workspace')
     const uiStore = await import('../stores/ui')
     const remoteStore = await import('../stores/remote')
@@ -39,6 +42,19 @@ describe('phone commands (ws.* with source phone)', () => {
     localStorage.clear()
     sessionStorage.clear()
     ;({ ws, call, ui, remote } = await boot())
+  })
+
+  it('a command typed from the phone marks a shell pane as busy like desktop Enter does', async () => {
+    const sh = pane('shell', 'C:\\work\\B', 'sh')
+    const ag = pane('claude', 'C:\\work\\A', 'ag')
+    const run = (sessionId: string, source = 'phone') => orreryApi.runOrrery('remote.typed', { device: 'Pixel', sessionId }, { source }) as Promise<Record<string, unknown>>
+    expect(sh.ranCommand).toBeUndefined()
+    expect(await run('pty-sh')).toMatchObject({ ok: true })
+    expect(ws.panes.find((p) => p.key === sh.key)?.ranCommand).toBe(true)
+    expect(await run('pty-ag')).toMatchObject({ ok: true })
+    expect(ws.panes.find((p) => p.key === ag.key)?.ranCommand).toBeUndefined()
+    expect(await run('pty-none')).toMatchObject({ ok: false })
+    expect(await run('pty-sh', 'mcp')).toMatchObject({ ok: false })
   })
 
   it('open docks into the project tab, keeps the desktop focus and the view, and only submits on request', async () => {

@@ -19,9 +19,9 @@ const RELAY = process.env.CCM_E2E_RELAY || 'https://orrery-relay.jinvu.workers.d
 const EXE = process.platform === 'win32' ? '.exe' : ''
 const PHONE = process.env.CCM_E2E_PHONE || path.join(REPO, 'apps/mobile/rust/target/debug/examples/phone_cli' + EXE)
 const CORE = process.env.CCM_CORE_BIN || path.join(REPO, 'apps/core/target/debug/orrery-core' + EXE)
-const RESULT = path.join(REPO, 'docs/qa/v97/WP-15/RESULT.md')
-const SHOTS = path.join(REPO, 'docs/qa/v97/WP-15')
-const NAMES = ['', 'Bật remote, listener LAN riêng', 'Ghép bằng QR + confirm native', 'IK + hello + snapshot + ws.snapshot', 'ws.open shell, desktop không đổi focus / view', 'pty.attach + echo + claim', 'ws.open khi desktop ở Monitor (H5)', 'ws.close pane bận → confirm.ask tới điện thoại', 'fs.list / fs.read / denied / UNC', 'Thu hồi → 4401, nối lại bị từ chối', 'Lặp 3–5 qua relay + thu hồi qua relay', 'Tắt remote → listener đóng']
+const RESULT = path.join(REPO, 'docs/qa/v97/WP-18/RESULT.md')
+const SHOTS = path.join(REPO, 'docs/qa/v97/WP-18')
+const NAMES = ['', 'Bật remote, listener LAN riêng', 'Ghép bằng QR + confirm native', 'IK + hello + snapshot + ws.snapshot', 'ws.open shell, desktop không đổi focus / view', 'pty.attach + echo + claim', 'ws.open khi desktop ở Monitor (H5)', 'ws.close pane bận → confirm.ask tới điện thoại', 'fs.list / fs.read / denied / UNC', 'Thu hồi → 4401, nối lại bị từ chối', 'Lặp 3–5 qua relay + thu hồi qua relay', 'Tắt remote → listener đóng', 'F3 ws.patch ≤ 1 s + log lệnh + tên nền tảng']
 const items = NAMES.map(() => [])
 const log = []
 const t0 = Date.now()
@@ -60,9 +60,23 @@ function listeners(port) {
 }
 const isPrivate = (ip) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)
 
+function applyOp(root, op) {
+  const parts = op.path.split('/').slice(1).map((x) => x.replace(/~1/g, '/').replace(/~0/g, '~'))
+  const last = parts.pop()
+  let node = root
+  for (const p of parts) node = node[p]
+  if (op.op === 'remove') {
+    if (Array.isArray(node)) node.splice(Number(last), 1)
+    else delete node[last]
+  } else if (Array.isArray(node) && op.op === 'add') node.splice(Number(last), 0, op.value)
+  else node[last] = op.value
+}
+
 class Phone {
   constructor(state, url) {
     this.events = []
+    this.summary = null
+    this.lastKind = ''
     this.n = 0
     this.buf = ''
     this.proc = spawn(PHONE, ['repl', '--state', state, '--url', url], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
@@ -73,12 +87,37 @@ class Phone {
         const line = this.buf.slice(0, i)
         this.buf = this.buf.slice(i + 1)
         try {
-          this.events.push(JSON.parse(line))
+          const ev = JSON.parse(line)
+          ev.at = Date.now()
+          this.events.push(ev)
+          if (ev.ev === 'json') this.track(ev.msg)
         } catch {}
       }
     })
     this.proc.stderr.on('data', () => {})
     this.exited = new Promise((r) => this.proc.on('exit', r))
+  }
+  track(msg) {
+    if (msg.t === 'ws.snapshot') {
+      this.summary = JSON.parse(JSON.stringify(msg))
+      this.lastKind = 'ws.snapshot'
+    } else if (msg.t === 'ws.patch' && this.summary && msg.base === this.summary.rev) {
+      for (const op of msg.ops) applyOp(this.summary, op)
+      this.summary.rev = msg.rev
+      this.lastKind = 'ws.patch'
+    }
+  }
+  wsPane(key) {
+    return (this.summary?.tabs ?? []).flatMap((t) => t.panes).find((p) => p.key === key) ?? null
+  }
+  async waitPane(key, pred, ms) {
+    const end = Date.now() + ms
+    while (Date.now() < end) {
+      const p = this.wsPane(key)
+      if (p && pred(p)) return { pane: p, at: Date.now(), kind: this.lastKind }
+      await sleep(25)
+    }
+    return null
   }
   async until(pred, ms = 15000) {
     const end = Date.now() + ms
@@ -122,11 +161,14 @@ const HELLO = { t: 'hello', proto: 1, app: 'phone-cli', platform: 'cli', caps: [
 
 async function paneOnPhone(phone, key, ms = 30000) {
   const t = Date.now()
+  let nextGet = t + 6000
   while (Date.now() - t < ms) {
-    await phone.cmd({ t: 'ws.get' })
-    const hit = phone.events.filter((e) => e.ev === 'json' && e.msg.t === 'ws.snapshot').map((e) => e.msg.tabs.flatMap((x) => x.panes).find((p) => p.key === key)).find((p) => p?.sessionId)
-    if (hit) return { pane: hit, ms: Date.now() - t }
-    await sleep(3000)
+    const hit = await phone.waitPane(key, (p) => !!p.sessionId, 500)
+    if (hit) return { pane: hit.pane, ms: Date.now() - t }
+    if (Date.now() > nextGet) {
+      await phone.cmd({ t: 'ws.get' })
+      nextGet = Date.now() + 6000
+    }
   }
   return { pane: null, ms }
 }
@@ -246,6 +288,7 @@ function pairCli(qr, state, name) {
     note(`relay.token event: ${relayToken ? 'có (exp ' + relayToken.exp + ')' : 'không có'}`)
 
     const before = await desk()
+    const sentAt = Date.now()
     const open1 = await p1.cmd({ t: 'ws.open', cwd: dirs.a, preset: 'shell' })
     check(4, 'ws.open → ok + paneKey', open1?.ok === true && !!open1.paneKey, JSON.stringify(open1))
     const key1 = open1?.paneKey
@@ -254,6 +297,9 @@ function pairCli(qr, state, name) {
     check(4, 'ui.view unchanged', after.view === before.view, `${before.view} → ${after.view}`)
     check(4, 'active pane / tab unchanged', after.active === before.active && after.tab === before.tab, `${before.active} → ${after.active}`)
     check(4, 'new pane runs a shell in the asked cwd', await until(async () => (await pane(key1))?.state === 'running', 25000), JSON.stringify(await pane(key1)))
+    const seen = await p1.waitPane(key1, () => true, 4000)
+    const seenMs = seen ? seen.at - sentAt : -1
+    note('F3: ws.open gửi → pane mới có trong summary điện thoại sau ' + seenMs + ' ms (qua ' + (seen?.kind || 'không có') + ')')
     const found1 = await paneOnPhone(p1, key1)
     const phonePane = found1.pane
     check(4, 'phone sees the new pane (ws.get) with a sessionId', !!phonePane?.sessionId, `${found1.ms} ms ${JSON.stringify(phonePane ?? {}).slice(0, 160)}`)
@@ -302,6 +348,20 @@ function pairCli(qr, state, name) {
     const answer = await p1.cmd({ t: 'confirm.answer', cid: closeReply?.confirm, ok: true })
     check(7, 'confirm.answer ok → reply ok', answer?.ok === true, JSON.stringify(answer))
     check(7, 'pane closed on the desktop', await until(async () => !(await pane(key2)), 10000))
+
+    check(12, 'F3: pane mới tới điện thoại ≤ 1 s sau ws.open, qua ws.patch (không cần ws.get)', seenMs >= 0 && seenMs <= 1000 && seen?.kind === 'ws.patch', seenMs + ' ms ' + (seen?.kind || ''))
+    const logLines = await evaluate(`${S}.get('remote').log.map((l) => l.text)`)
+    note('log lệnh: ' + JSON.stringify(logLines))
+    check(12, 'log có dòng mở pane (ws.open)', logLines.some((l) => /^mở /.test(l) || /opened /.test(l)), JSON.stringify(logLines))
+    check(12, 'log có dòng đóng pane (ws.close)', logLines.some((l) => /^đóng /.test(l) || /closed /.test(l)), JSON.stringify(logLines))
+    await evaluate(`${UI}.settingsPage = 'remote'; ${UI}.settingsOpen = true`)
+    await sleep(1200)
+    const settingsText = await evaluate('document.body.innerText')
+    check(12, 'Settings hiện log lệnh (data-remote-log có ≥ 2 dòng)', (await evaluate("document.querySelectorAll('[data-remote-log] li').length")) >= 2)
+    check(12, 'F2: hàng thiết bị hiện "Không rõ" thay vì key thô', /Không rõ/.test(settingsText) && !/remoteV97\.devices\.platform/.test(settingsText), (settingsText.match(/E2E Phone One[^\n]*\n?[^\n]*/) || [''])[0])
+    await shot('v97-settings-remote-log')
+    fs.copyFileSync(path.join(OUT, 'v97-settings-remote-log.png'), path.join(SHOTS, 'settings-remote-log.png'))
+    await evaluate(`${UI}.settingsOpen = false`)
 
     const list = await p1.cmd({ t: 'fs.list', root: dirs.a, dir: dirs.a })
     check(8, 'fs.list in pane cwd → entry hello.txt', list?.ok === true && JSON.stringify(list.data).includes('hello.txt'), JSON.stringify(list ?? {}).slice(0, 200))
@@ -394,7 +454,7 @@ function pairCli(qr, state, name) {
       const state = !list.length ? 'CHƯA CHẠY' : list.every((c) => c.ok) ? 'ĐẠT' : 'LỖI'
       return `| ${n} | ${name} | ${state} | ${list.filter((c) => c.ok).length}/${list.length} |`
     }).filter(Boolean)
-    const md = [`# WP-15 RESULT — ${new Date().toISOString()} (${secs}s)`, '', '| # | Mục | Kết quả | Kiểm |', '|---|---|---|---|', ...rows, '', '## Log', '', '```', ...log, '```', ''].join('\n')
+    const md = [`# WP-18 RESULT — ${new Date().toISOString()} (${secs}s)`, '', '| # | Mục | Kết quả | Kiểm |', '|---|---|---|---|', ...rows, '', '## Log', '', '```', ...log, '```', ''].join('\n')
     fs.mkdirSync(path.dirname(RESULT), { recursive: true })
     fs.writeFileSync(RESULT, md)
     try {

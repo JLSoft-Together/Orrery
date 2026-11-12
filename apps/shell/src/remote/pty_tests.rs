@@ -112,6 +112,12 @@ fn a_phone_views_and_types_into_a_desktop_pane_through_the_real_hub() {
         desk_until(&mut d, |m| matches!(m, Message::Text(t) if t.as_str().contains("\"resized\"") && t.as_str().contains("50"))).await;
         desk_until(&mut d, |m| matches!(m, Message::Binary(b) if String::from_utf8_lossy(b).contains("phone-mark"))).await;
         phone_output(&mut ws, &mut t, 7, "phone-mark").await;
+        let wait = std::time::Instant::now();
+        let typed = || lock(&rig.host.asks).iter().filter(|(a, v)| a == "remote.typed" && v["sessionId"] == id.as_str() && v["device"] == "p").count();
+        while typed() == 0 && wait.elapsed() < Duration::from_secs(3) {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert_eq!(typed(), 1);
         d.send(Message::Text(json!({ "t": "claim" }).to_string().into())).await.unwrap();
         d.send(Message::Binary(b"echo desk-again\r".to_vec().into())).await.unwrap();
         let events = phone_output(&mut ws, &mut t, 7, "desk-again").await;

@@ -245,6 +245,11 @@ const fromBot = <A extends TelegramInbound['action']>(action: A) => spec('page',
  */
 export const ORRERY_ACTIONS = {
   'remote.summary.get': spec('page', ['phone'], (a) => (a === undefined || a === null || (typeof a === 'object' && !Array.isArray(a)) ? {} : null)),
+  'remote.typed': spec('page', ['phone'], (a) => {
+    const o = a && typeof a === 'object' && !Array.isArray(a) ? (a as Record<string, unknown>) : null
+    const id = o?.sessionId
+    return typeof id === 'string' && id.length > 0 && id.length <= 64 ? { sessionId: id } : null
+  }),
   'ws.open': fromPhone('ws.open'),
   'ws.close': fromPhone('ws.close'),
   'ws.rename': fromPhone('ws.rename'),

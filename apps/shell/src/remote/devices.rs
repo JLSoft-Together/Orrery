@@ -58,6 +58,14 @@ pub fn valid_platform(p: &str) -> bool {
     !p.is_empty() && p.len() <= 16 && p.bytes().all(|b| b.is_ascii_alphanumeric())
 }
 
+pub fn known_platform(p: &str) -> &'static str {
+    match p {
+        "android" => "android",
+        "ios" => "ios",
+        _ => "unknown",
+    }
+}
+
 impl Devices {
     pub fn load(dir: &Path) -> Devices {
         let path = dir.join(DEVICES_FILE);
@@ -117,6 +125,7 @@ impl Devices {
         if !valid_platform(platform) {
             return;
         }
+        let platform = known_platform(platform);
         if let Some(d) = self.list.iter_mut().find(|d| d.device_id == id && d.platform != platform) {
             d.platform = platform.to_owned();
             self.save();

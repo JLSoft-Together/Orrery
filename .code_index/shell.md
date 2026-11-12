@@ -145,3 +145,5 @@ Cargo workspace riêng (`[workspace]` trống, `Cargo.lock` riêng, target `apps
 
 ## Remote link (v97 WP-13)
 - `remote/pane_link.rs`: `valid_pane_key`, `pane_of(summary, terminalId)` (terminalId -> paneKey an toàn URL), `build(relay, machine, pane)` (chỉ https), `Remote::link_for(terminalId)` (cần `ctx.running` + ≥ 1 device + summary), `call(app, p)` -> `{url|null}`; host call `remote.link` ở `hosts.rs`.
+
+- remote/ WP-18: `phone_pty.rs` `typed()` gửi `remote.typed` tới renderer khi điện thoại gõ Enter vào pty (pane shell thành busy); `devices.rs` `known_platform`.

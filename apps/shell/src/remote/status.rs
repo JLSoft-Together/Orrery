@@ -25,7 +25,7 @@ pub fn device_json(d: &Device, via: Option<&str>) -> Value {
     let mut v = json!({
         "deviceId": d.device_id,
         "name": d.name,
-        "platform": d.platform,
+        "platform": super::devices::known_platform(&d.platform),
         "pairedAt": d.paired_at,
         "lastSeen": d.last_seen,
         "state": if via.is_some() { "connected" } else { "idle" },

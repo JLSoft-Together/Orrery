@@ -29,22 +29,29 @@ pub struct Pending {
     ip: IpAddr,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Refused {
+    Total,
+    Ip,
+}
+
 impl Gate {
-    pub fn admit(self: &Arc<Self>, ip: IpAddr, now: Instant) -> Option<Pending> {
+    pub fn admit(self: &Arc<Self>, ip: IpAddr, now: Instant) -> Result<Pending, Refused> {
         let mut map = lock(&self.map);
         let total: usize = map.values().map(|e| e.pending).sum();
-        if total >= MAX_PENDING_TOTAL {
-            return None;
-        }
         let entry = map.entry(ip).or_default();
         if entry.pending >= MAX_PENDING_PER_IP {
-            return None;
+            return Err(Refused::Ip);
         }
         if !take_slot(&mut entry.opens, now, MAX_OPENS_PER_MINUTE, MINUTE) {
-            return None;
+            return Err(Refused::Ip);
+        }
+        if total >= MAX_PENDING_TOTAL {
+            entry.opens.pop();
+            return Err(Refused::Total);
         }
         entry.pending += 1;
-        Some(Pending { gate: self.clone(), ip })
+        Ok(Pending { gate: self.clone(), ip })
     }
 
     #[cfg(test)]

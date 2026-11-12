@@ -2,20 +2,26 @@ import { DurableObject } from "cloudflare:workers";
 import { b64urlDecode } from "./bytes";
 import { CLOSE_BAD_FRAME, CLOSE_DEVICE, CLOSE_GATEWAY_OFF, CLOSE_NORMAL, CLOSE_PROTO, CLOSE_RATE, CLOSE_REPLACED } from "./close";
 import type { Env } from "./env";
-import { CONTROL_MAX, encodeControl, encodeData, MAX_CONN, MAX_ENVELOPE, NOISE_MAX, readConn, type OpenInfo } from "./envelope";
+import { ipKey } from "./cidr";
+import { encodeControl, encodeData, encodeNotice, GUARD_CONTROL_MAX, MAX_CONN, MAX_ENVELOPE, NOISE_MAX, readConn, type OpenInfo } from "./envelope";
+import { Guard, RECENT_CONNS, RECENT_MS, type StrikeWhy } from "./guard";
+import { guardControl } from "./guard-control";
 import { validDeviceId, validMachineId } from "./ids";
-import { cleanCountry, cleanIp, parsePairOpen, sameText, Strikes, ticketHash, validTicket } from "./pair";
+import { cleanCountry, cleanIp, parsePairOpen, sameText, ticketHash, validTicket } from "./pair";
 import { MACHINE_DOMAIN, REGISTER_DOMAIN, signedMessage, tsFresh, verifyEd25519 } from "./sign";
 import { verifyToken } from "./token";
 
 const MAX_PHONES = 64;
 const MAX_REVOKE_BATCH = 64;
 const MAX_BODY = 8192;
+export const MAX_PER_IP = 4;
+export const FIRST_FRAME_MS = 5000;
 const DESKTOP_CLOSE: ReadonlyMap<number, string> = new Map([
   [CLOSE_BAD_FRAME, "bad frame"],
   [CLOSE_DEVICE, "device"],
   [CLOSE_PROTO, "proto"],
   [CLOSE_GATEWAY_OFF, "gateway off"],
+  [CLOSE_RATE, "rate"],
 ]);
 
 interface Attachment {
@@ -24,6 +30,11 @@ interface Attachment {
   device: string;
   closing: boolean;
   pairing?: boolean;
+  key?: string | null;
+  ip?: string;
+  at?: number;
+  fed?: boolean;
+  good?: boolean;
 }
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -38,12 +49,14 @@ function nowSec(): number {
 }
 
 export class Room extends DurableObject<Env> {
-  private strikes = new Strikes();
+  readonly guard: Guard;
+  private recent = new Map<number, { key: string | null | undefined; ip: string | undefined; at: number }>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS revoked (device_id TEXT PRIMARY KEY)");
+    this.guard = new Guard(ctx.storage.sql);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
@@ -74,6 +87,7 @@ export class Room extends DurableObject<Env> {
     const parts = url.pathname.split("/").filter(Boolean);
     if (request.method === "POST" && parts[0] === "register") return this.register(request);
     if (request.method === "POST" && parts[0] === "revoke") return this.revoke(request);
+    if (request.method === "POST" && parts[0] === "strike" && parts.length === 1) return this.rateStrike(request);
     if (request.method === "GET" && parts[0] === "m" && parts.length === 2) return this.connectMachine(request, url, parts[1]);
     if (request.method === "GET" && parts[0] === "p" && parts.length === 2) return this.connectPhone(request, url, parts[1]);
     return json(404, { error: "not_found" });
@@ -159,6 +173,10 @@ export class Room extends DurableObject<Env> {
 
   private markClosing(ws: WebSocket, att: Attachment): void {
     ws.serializeAttachment({ ...att, closing: true } satisfies Attachment);
+    if (att.role !== "p" || att.conn === 0 || att.closing) return;
+    this.recent.delete(att.conn);
+    this.recent.set(att.conn, { key: att.key, ip: att.ip, at: Date.now() });
+    if (this.recent.size > RECENT_CONNS) this.recent.delete(this.recent.keys().next().value as number);
   }
 
   private desktop(): WebSocket | null {
@@ -216,48 +234,117 @@ export class Room extends DurableObject<Env> {
     const key = relayKey === null ? null : b64urlDecode(relayKey);
     if (!key) return json(404, { error: "not_registered" });
     const info: OpenInfo = { ip: cleanIp(request.headers.get("x-orrery-ip")), country: cleanCountry(request.headers.get("x-orrery-country")) };
-    if (url.searchParams.has("pt")) return this.connectPairing(url.searchParams.get("pt") ?? "", info);
+    const ipk = ipKey(info.ip);
+    if (this.guard.manualBlocked(info.ip, nowSec())) return this.rejectSocket(CLOSE_RATE, "blocked");
+    if (url.searchParams.has("pt")) return this.connectPairing(url.searchParams.get("pt") ?? "", info, ipk);
     const verdict = await verifyToken(key, machineId, url.searchParams.get("t") ?? "", nowSec());
-    if (!verdict.ok) return this.rejectSocket(CLOSE_DEVICE, verdict.reason === "expired" ? "expired" : "bad token");
-    if (this.isRevoked(verdict.deviceId)) return this.rejectSocket(CLOSE_DEVICE, "revoked");
+    const bad = !verdict.ok ? (verdict.reason === "expired" ? "expired" : "bad token") : this.isRevoked(verdict.deviceId) ? "revoked" : null;
+    if (bad !== null || !verdict.ok) {
+      if (this.guard.autoBlocked(ipk, nowSec())) return this.rejectSocket(CLOSE_RATE, "blocked");
+      this.strike(ipk, info.ip, "token");
+      return this.rejectSocket(CLOSE_DEVICE, bad ?? "bad token");
+    }
+    if (this.guard.autoBlocked(ipk, nowSec()) && !this.guard.vouched(ipk, verdict.deviceId, Date.now())) return this.rejectSocket(CLOSE_RATE, "blocked");
     const desktop = this.desktop();
     if (!desktop) return this.rejectSocket(CLOSE_GATEWAY_OFF, "gateway off");
-    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    const full = this.full(ipk, info.ip);
+    if (full !== null) return full;
     const conn = this.allocConn();
     if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
-    return this.acceptPhone(desktop, conn, verdict.deviceId, info);
+    return this.acceptPhone(desktop, conn, verdict.deviceId, info, ipk);
   }
 
-  private acceptPhone(desktop: WebSocket, conn: number, device: string, info: OpenInfo): Response {
+  private full(ipk: string | null, ip: string | undefined): Response | null {
+    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    if (ipk === null || this.guard.trusted(ip)) return null;
+    const open = this.ctx.getWebSockets(`ip:${ipk}`).filter((ws) => this.attachment(ws)?.closing === false).length;
+    if (open < MAX_PER_IP) return null;
+    this.strike(ipk, ip, "rate");
+    return this.rejectSocket(CLOSE_RATE, "too many");
+  }
+
+  private acceptPhone(desktop: WebSocket, conn: number, device: string, info: OpenInfo, ipk: string | null): Response {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    this.ctx.acceptWebSocket(server, ["p", `p:${conn}`]);
-    server.serializeAttachment({ role: "p", conn, device, closing: false, pairing: info.pairing === true } satisfies Attachment);
+    this.ctx.acceptWebSocket(server, ipk === null ? ["p", `p:${conn}`] : ["p", `p:${conn}`, `ip:${ipk}`]);
+    const att: Attachment = { role: "p", conn, device, closing: false, pairing: info.pairing === true, key: ipk, ip: info.ip, at: Date.now(), good: false };
+    server.serializeAttachment(att);
     desktop.send(encodeControl("open", conn, info));
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private async connectPairing(ticket: string, info: OpenInfo): Promise<Response> {
-    const ip = info.ip ?? "unknown";
-    const nowMs = Date.now();
-    if (this.strikes.blocked(ip, nowMs)) return this.rejectSocket(CLOSE_RATE, "too many");
+  private async connectPairing(ticket: string, info: OpenInfo, ipk: string | null): Promise<Response> {
+    if (this.guard.autoBlocked(ipk, nowSec())) return this.rejectSocket(CLOSE_RATE, "blocked");
     const hashed = validTicket(ticket) ? await ticketHash(ticket) : null;
     const stored = this.getMeta("pair_h");
     const exp = Number(this.getMeta("pair_exp") ?? "0");
     const valid = hashed !== null && stored !== null && sameText(hashed, stored);
     if (!valid || nowSec() >= exp) {
-      this.strikes.add(ip, nowMs);
+      this.strike(ipk, info.ip, "ticket");
       return this.rejectSocket(CLOSE_DEVICE, valid ? "expired" : "bad ticket");
     }
     const desktop = this.desktop();
     if (!desktop) return this.rejectSocket(CLOSE_GATEWAY_OFF, "gateway off");
-    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    const full = this.full(ipk, info.ip);
+    if (full !== null) return full;
     const conn = this.allocConn();
     if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
     this.dropMeta("pair_h");
     this.dropMeta("pair_exp");
-    return this.acceptPhone(desktop, conn, "", { ...info, pairing: true });
+    return this.acceptPhone(desktop, conn, "", { ...info, pairing: true }, ipk);
+  }
+
+  private liveGood(ipk: string): boolean {
+    return this.ctx.getWebSockets(`ip:${ipk}`).some((ws) => {
+      const att = this.attachment(ws);
+      return att !== null && !att.closing && att.good === true;
+    });
+  }
+
+  private strike(ipk: string | null | undefined, ip: string | undefined, why: StrikeWhy): void {
+    if (ipk === null || ipk === undefined) return;
+    const row = this.guard.strike(ipk, ip, why, Date.now(), this.liveGood(ipk));
+    if (row === null) return;
+    this.desktop()?.send(encodeNotice({ t: "blocked", row }));
+    for (const ws of this.ctx.getWebSockets(`ip:${ipk}`)) {
+      const att = this.attachment(ws);
+      if (att && !att.closing && att.good !== true) this.dropPhone(ws, att, CLOSE_RATE, "blocked");
+    }
+  }
+
+  strikeConn(conn: number, why: StrikeWhy): void {
+    const target = this.ctx.getWebSockets(`p:${conn}`).find((ws) => this.attachment(ws)?.closing === false) ?? this.ctx.getWebSockets(`p:${conn}`)[0];
+    const att = target ? this.attachment(target) : null;
+    if (att && att.role === "p") return this.strike(att.key, att.ip, why);
+    const gone = this.recent.get(conn);
+    if (gone && Date.now() - gone.at < RECENT_MS) this.strike(gone.key, gone.ip, why);
+  }
+
+  markConnGood(conn: number): void {
+    const target = this.ctx.getWebSockets(`p:${conn}`).find((ws) => this.attachment(ws)?.closing === false);
+    const att = target ? this.attachment(target) : null;
+    if (!target || !att || att.role !== "p" || att.good === true) return;
+    target.serializeAttachment({ ...att, good: true } satisfies Attachment);
+    this.guard.markGood(att.key, att.device, Date.now());
+  }
+
+  sendList(): void {
+    this.desktop()?.send(encodeNotice({ t: "block.list", ...this.guard.list(nowSec()) }));
+  }
+
+  closeMatching(): void {
+    const now = nowSec();
+    for (const ws of this.ctx.getWebSockets("p")) {
+      const att = this.attachment(ws);
+      if (att && !att.closing && this.guard.manualBlocked(att.ip, now)) this.dropPhone(ws, att, CLOSE_RATE, "blocked");
+    }
+  }
+
+  private async rateStrike(request: Request): Promise<Response> {
+    const ip = cleanIp(request.headers.get("x-orrery-ip"));
+    this.strike(ipKey(ip), ip, "rate");
+    return json(200, { ok: true });
   }
 
   private allocConn(): number {
@@ -297,6 +384,7 @@ export class Room extends DurableObject<Env> {
     if (typeof message === "string") {
       this.markClosing(ws, att);
       ws.close(CLOSE_BAD_FRAME, "text frame");
+      if (att.role === "p") this.strike(att.key, att.ip, "frame");
       this.afterGone(att);
       return;
     }
@@ -326,7 +414,7 @@ export class Room extends DurableObject<Env> {
   }
 
   private desktopControl(bytes: Uint8Array): void {
-    if (bytes.length > CONTROL_MAX) return;
+    if (bytes.length > GUARD_CONTROL_MAX + 2) return;
     let value: unknown;
     try {
       value = JSON.parse(new TextDecoder().decode(bytes.subarray(2)));
@@ -337,6 +425,7 @@ export class Room extends DurableObject<Env> {
     const fields = value as Record<string, unknown>;
     if (fields.t === "pair.open") return this.pairOpen(fields);
     if (fields.t === "pair.close") return this.pairClose();
+    if (guardControl(this, fields, nowSec())) return;
     const { t, conn, code } = fields;
     if (t !== "close" || typeof conn !== "number" || typeof code !== "number") return;
     if (!Number.isInteger(conn) || conn < 1 || conn > MAX_CONN) return;
@@ -364,7 +453,16 @@ export class Room extends DurableObject<Env> {
   private fromPhone(ws: WebSocket, att: Attachment, message: ArrayBuffer): void {
     if (message.byteLength > NOISE_MAX) {
       this.dropPhone(ws, att, CLOSE_BAD_FRAME, "too large");
+      this.strike(att.key, att.ip, "frame");
       return;
+    }
+    if (att.fed !== true && att.at !== undefined) {
+      if (Date.now() - att.at > FIRST_FRAME_MS) {
+        this.dropPhone(ws, att, CLOSE_BAD_FRAME, "timeout");
+        this.strike(att.key, att.ip, "timeout");
+        return;
+      }
+      ws.serializeAttachment({ ...att, fed: true } satisfies Attachment);
     }
     const desktop = this.desktop();
     if (!desktop) {

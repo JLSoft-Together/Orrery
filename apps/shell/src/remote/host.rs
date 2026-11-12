@@ -37,6 +37,14 @@ impl Host for AppHost {
         let _ = self.app.notification().builder().title(title).body(body).show();
     }
 
+    fn telegram(&self, text: &str) {
+        let app = self.app.clone();
+        let args = json!([{ "kind": "remote", "detail": { "text": text } }]);
+        let _ = std::thread::Builder::new().name("remote-alert".into()).spawn(move || {
+            let _ = crate::desk::call_inside(&app, "desk:tg-alert", args);
+        });
+    }
+
     fn tap(&self) -> Option<StoreTap> {
         lock(&self.app.state::<Shell>().serve).as_ref().and_then(crate::serve::Serve::tap)
     }

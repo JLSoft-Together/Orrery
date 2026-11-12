@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use core_remote_proto::relay::{decode, encode_close, encode_data, encode_pair_close, encode_pair_open, Control as RelayControl, ControlKind, Envelope};
+use core_remote_proto::relay::{decode, decode_notice, encode_close, encode_data, encode_good, encode_pair_close, encode_pair_open, encode_strike, Control as RelayControl, ControlKind, Envelope, Notice};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio::net::TcpStream;
@@ -16,7 +16,8 @@ use ureq::tls::{RootCerts, TlsConfig};
 use super::config::now_secs;
 use super::ctx::Ctx;
 use super::limits::HANDSHAKE;
-use super::link::{Budget, Link, Origin, Out, Outbox, Peer, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_NORMAL, CLOSE_PROTO, DRAIN_MAX, INBOX, OUTBOX};
+use super::guard_ip::parse_ip;
+use super::link::{Budget, Link, Origin, Out, Outbox, Peer, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_NORMAL, CLOSE_PROTO, CLOSE_RATE, DRAIN_MAX, INBOX, OUTBOX};
 use super::pair::Armed;
 use super::session;
 use crate::state::lock;
@@ -212,6 +213,10 @@ impl Conns {
         self.map.get(&conn).is_some_and(|c| c.gen == gen)
     }
 
+    pub fn has(&self, conn: u16) -> bool {
+        self.map.contains_key(&conn)
+    }
+
     pub fn pairing(&self, conn: u16) -> bool {
         self.map.get(&conn).is_some_and(|c| c.pairing)
     }
@@ -234,13 +239,34 @@ fn route(ctx: &Arc<Ctx>, conns: &mut Conns, out: &mpsc::Sender<(u16, u64, Out)>,
                 ctx.changed();
             }
             let Some((gen, rx, budget)) = conns.open(conn, pairing) else { return };
+            let blocked = ip.as_deref().and_then(parse_ip).is_some_and(|a| ctx.guard.manual_blocked(a, now_secs()));
             let origin = Origin { ip, country, pairing };
             let link = Link { rx, out: Outbox::Relay(conn, gen, out.clone()), peer: Peer::Relay(conn), origin, budget };
+            if blocked {
+                let c = ctx.clone();
+                tokio::spawn(async move {
+                    c.record(&link, "blocked", "manual", None);
+                    link.out.close(CLOSE_RATE, "blocked").await;
+                });
+                return;
+            }
             tokio::spawn(session::serve(ctx.clone(), link, None, Instant::now() + HANDSHAKE));
         }
         Ok(Envelope::Control(RelayControl { t: ControlKind::Close, conn, .. })) => conns.close(conn, None),
         Ok(Envelope::Data { conn, bytes }) => conns.data(conn, bytes),
-        Err(_) => {}
+        Err(_) => match decode_notice(bytes) {
+            Some(Notice::Blocked(row)) => {
+                let k = row.k.clone();
+                ctx.guard.relay_blocked(row);
+                ctx.alert_blocked(&k, "relay");
+                ctx.changed();
+            }
+            Some(Notice::BlockList { items, .. }) => {
+                ctx.guard.relay_list(items);
+                ctx.changed();
+            }
+            None => {}
+        },
     }
 }
 
@@ -264,6 +290,11 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
     if first.is_some() && sink.send(Message::Binary(arm_bytes(first).into())).await.is_err() {
         return None;
     }
+    for frame in ctx.guard.sync_frames(now_secs()) {
+        if sink.send(Message::Binary(frame.into())).await.is_err() {
+            return None;
+        }
+    }
     loop {
         tokio::select! {
             _ = stop.changed() => {
@@ -274,6 +305,13 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
                 let now = *armed.borrow_and_update();
                 if sink.send(Message::Binary(arm_bytes(now).into())).await.is_err() {
                     return None;
+                }
+            }
+            _ = ctx.guard.wake.notified() => {
+                for frame in ctx.guard.take_ops(now_secs()) {
+                    if sink.send(Message::Binary(frame.into())).await.is_err() {
+                        return None;
+                    }
                 }
             }
             _ = ctx.relay_wake.notified() => {
@@ -290,7 +328,8 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
                 let mut drained = 0;
                 while let Some((conn, gen, item)) = next.take() {
                     drained += 1;
-                    if !conns.current(conn, gen) {
+                    let gone_strike = matches!(item, Out::Strike(_)) && !conns.has(conn);
+                    if !conns.current(conn, gen) && !gone_strike {
                         if drained < DRAIN_MAX {
                             next = out_rx.try_recv().ok();
                         }
@@ -304,8 +343,22 @@ async fn connection(ctx: &Arc<Ctx>, ws: Ws, stop: &mut watch::Receiver<bool>) ->
                                 }
                             }
                         }
+                        Out::Strike(why) => {
+                            if let Ok(env) = encode_strike(conn, why) {
+                                if sink.feed(Message::Binary(env.into())).await.is_err() {
+                                    return None;
+                                }
+                            }
+                        }
+                        Out::Good => {
+                            if let Ok(env) = encode_good(conn) {
+                                if sink.feed(Message::Binary(env.into())).await.is_err() {
+                                    return None;
+                                }
+                            }
+                        }
                         Out::Close(code, _) => {
-                            if matches!(code, CLOSE_HANDSHAKE | CLOSE_DEVICE | CLOSE_PROTO) || (code == CLOSE_NORMAL && conns.pairing(conn)) {
+                            if matches!(code, CLOSE_HANDSHAKE | CLOSE_DEVICE | CLOSE_PROTO | CLOSE_RATE) || (code == CLOSE_NORMAL && conns.pairing(conn)) {
                                 if let Ok(env) = encode_close(conn, code) {
                                     if sink.feed(Message::Binary(env.into())).await.is_err() {
                                         return None;

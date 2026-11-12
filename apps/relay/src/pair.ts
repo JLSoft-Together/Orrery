@@ -1,9 +1,6 @@
 import { b64urlEncode, utf8 } from "./bytes";
 
 export const PAIR_TTL_MAX = 300;
-export const STRIKE_MAX = 20;
-export const STRIKE_WINDOW_MS = 10 * 60_000;
-export const STRIKE_IPS = 1024;
 
 const TICKET = /^[A-Za-z0-9_-]{22}$/;
 const HASH = /^[A-Za-z0-9_-]{43}$/;
@@ -43,26 +40,4 @@ export function cleanIp(value: string | null): string | undefined {
 
 export function cleanCountry(value: string | null): string | undefined {
   return value !== null && COUNTRY.test(value) ? value : undefined;
-}
-
-export class Strikes {
-  private map = new Map<string, number[]>();
-
-  add(ip: string, nowMs: number): void {
-    const list = this.recent(ip, nowMs);
-    list.push(nowMs);
-    this.map.set(ip, list);
-    if (this.map.size > STRIKE_IPS) this.map.delete(this.map.keys().next().value as string);
-  }
-
-  blocked(ip: string, nowMs: number): boolean {
-    return this.recent(ip, nowMs).length >= STRIKE_MAX;
-  }
-
-  private recent(ip: string, nowMs: number): number[] {
-    const list = (this.map.get(ip) ?? []).filter((t) => nowMs - t < STRIKE_WINDOW_MS);
-    if (list.length === 0) this.map.delete(ip);
-    else this.map.set(ip, list);
-    return list;
-  }
 }

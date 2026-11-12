@@ -22,6 +22,8 @@ pub const CLOSE_OFF: u16 = 4503;
 #[derive(Debug)]
 pub enum Out {
     Msg(Vec<u8>),
+    Strike(&'static str),
+    Good,
     Close(u16, &'static str),
 }
 

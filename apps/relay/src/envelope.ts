@@ -6,6 +6,7 @@ export const NOISE_MAX = 65_535;
 export const MAX_ENVELOPE = ENVELOPE_HEADER + NOISE_MAX;
 export const MAX_CONN = 65_535;
 export const CONTROL_MAX = 256;
+export const GUARD_CONTROL_MAX = 4096;
 
 export type ControlKind = "open" | "close";
 
@@ -34,4 +35,11 @@ export function encodeControl(kind: ControlKind, conn: number, info: OpenInfo = 
 
 export function readConn(bytes: Uint8Array): number {
   return (bytes[0] << 8) | bytes[1];
+}
+
+export function encodeNotice(value: Record<string, unknown>): Uint8Array {
+  const json = utf8(JSON.stringify(value));
+  const out = new Uint8Array(ENVELOPE_HEADER + json.length);
+  out.set(json, ENVELOPE_HEADER);
+  return out;
 }

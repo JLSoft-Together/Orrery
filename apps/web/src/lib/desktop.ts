@@ -15,6 +15,8 @@ import type {
   PtyEndpoint,
   RemotePairStart,
   RemoteStatus,
+  RemoteGuardOp,
+  RemoteGuardReply,
   RemoteWorkspaceSnapshot,
   RunCommandPreview,
   RunConfig,
@@ -166,6 +168,7 @@ interface DesktopBridge {
   remoteDeviceRename?: (deviceId: string, name: string) => Promise<boolean>
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
+  remoteGuard?: (op: RemoteGuardOp) => Promise<RemoteGuardReply | null>
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */
   onOrrery?: (handler: (action: unknown, args: unknown, caller: unknown) => unknown) => void
   captureRect?: (rect: { x: number; y: number; width: number; height: number }) => Promise<Uint8Array | null>

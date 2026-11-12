@@ -44,7 +44,7 @@ const en = {
     devices: {
       title: 'Paired phones',
       empty: 'No phones paired yet.',
-      platform: { android: 'Android', ios: 'iPhone', unknown: 'Unknown' },
+      platform: { android: 'Android', ios: 'iPhone', web: 'Web app', unknown: 'Unknown' },
       paired: 'Paired {when}',
       lastSeen: 'Last seen {when}',
       connected: 'Connected',
@@ -141,7 +141,7 @@ const vi: typeof en = {
     devices: {
       title: 'Điện thoại đã ghép nối',
       empty: 'Chưa ghép nối điện thoại nào.',
-      platform: { android: 'Android', ios: 'iPhone', unknown: 'Không rõ' },
+      platform: { android: 'Android', ios: 'iPhone', web: 'Web app', unknown: 'Không rõ' },
       paired: 'Ghép nối {when}',
       lastSeen: 'Lần cuối {when}',
       connected: 'Đang kết nối',

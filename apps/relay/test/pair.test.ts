@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { concat } from "../src/bytes";
-import { STRIKE_MAX, ticketHash } from "../src/pair";
+import { ticketHash } from "../src/pair";
+import { STRIKE_MAX } from "../src/guard";
 import { issueToken } from "../src/token";
 import {
   bytesOf,
@@ -198,9 +199,10 @@ describe("pairing over the relay with a one-time ticket", () => {
     for (let i = 0; i < STRIKE_MAX; i++) {
       expect((await (await pairPhone(r, newTicket(), { ip })).socket!.closed()).code).toBe(4401);
     }
+    expect(controlOf(await r.desktop.next())).toMatchObject({ t: "blocked", row: { k: ip, level: 1, n: STRIKE_MAX, why: "ticket" } });
     const ticket = newTicket();
     await arm(r, ticket);
-    expect(await (await pairPhone(r, ticket, { ip })).socket!.closed()).toEqual({ code: 4429, reason: "too many" });
+    expect(await (await pairPhone(r, ticket, { ip })).socket!.closed()).toEqual({ code: 4429, reason: "blocked" });
     expect((await pairPhone(r, ticket, { ip: newIp() })).status).toBe(101);
     expect(controlOf(await r.desktop.next())).toMatchObject({ pairing: true });
   });

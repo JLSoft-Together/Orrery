@@ -32,6 +32,7 @@ pub fn kind_of(raw: &str) -> &'static str {
         "question" => "question",
         "permission" => "permission",
         "error" => "error",
+        "security" => "security",
         _ => "attention",
     }
 }
@@ -55,6 +56,8 @@ pub fn title_body(kind: &str, locale: &str) -> (&'static str, &'static str) {
         ("permission", true) => ("Cần cấp quyền", "Một phiên đang chờ bạn cho phép. Chạm để mở."),
         ("error", false) => ("Session error", "A session stopped with an error. Tap to open it."),
         ("error", true) => ("Phiên bị lỗi", "Một phiên vừa dừng vì lỗi. Chạm để mở."),
+        ("security", false) => ("Orrery security alert", "A new device, a blocked IP or a sign-in from a new place on your computer. Check Settings → Remote on the computer."),
+        ("security", true) => ("Cảnh báo bảo mật Orrery", "Có thiết bị mới, IP bị chặn hoặc nơi nối lạ trên máy tính. Xem Cài đặt → Điều khiển từ xa trên máy tính."),
         (_, false) => ("Session needs attention", "A session needs you. Tap to open it."),
         (_, true) => ("Phiên cần chú ý", "Một phiên cần bạn. Chạm để mở."),
     }
@@ -163,6 +166,30 @@ impl Ctx {
         queued
     }
 
+    pub fn push_security(&self, except: Option<&str>) -> usize {
+        if !self.running.load(Ordering::SeqCst) || !self.push_ready() {
+            return 0;
+        }
+        let machine = self.machine_id();
+        let targets: Vec<(String, String, String)> = lock(&self.devices)
+            .list()
+            .iter()
+            .filter(|d| !d.push_token.is_empty() && Some(d.device_id.as_str()) != except)
+            .map(|d| (d.device_id.clone(), d.push_token.clone(), d.push_locale.clone()))
+            .collect();
+        let queued = targets.len();
+        {
+            let mut st = lock(&self.push);
+            for (device, token, locale) in targets {
+                st.push(Job { device, token, machine: machine.clone(), pane: String::new(), kind: "security", locale: locale_of(Some(&locale)) });
+            }
+        }
+        if queued > 0 {
+            self.push_wake.notify_one();
+        }
+        queued
+    }
+
     pub fn take_push_jobs(&self) -> Vec<Job> {
         lock(&self.push).drain()
     }
@@ -205,7 +232,7 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
             _ = stop.changed() => break,
         }
         for job in ctx.take_push_jobs() {
-            if ctx.is_live(&job.device) || *stop.borrow() {
+            if (job.kind != "security" && ctx.is_live(&job.device)) || *stop.borrow() {
                 continue;
             }
             let c = ctx.clone();

@@ -7,7 +7,12 @@ import { activeDevices } from '../../lib/remote'
 import { hasPushSetup, hasRelaySetup } from '../../composables/useRemoteSetupIpc'
 import { useRemoteStore } from '../../stores/remote'
 import ToggleSwitch from '../ToggleSwitch.vue'
+import { useRemoteGuard } from '../../composables/useRemoteGuard'
+import { hasRemoteGuard } from '../../lib/remoteGuard'
+import RemoteAccessLog from './remote/RemoteAccessLog.vue'
 import RemoteDeviceRow from './remote/RemoteDeviceRow.vue'
+import RemoteGuardBlocked from './remote/RemoteGuardBlocked.vue'
+import RemoteGuardTrust from './remote/RemoteGuardTrust.vue'
 import RemoteLogList from './remote/RemoteLogList.vue'
 import RemotePairPanel from './remote/RemotePairPanel.vue'
 import RemotePushSetup from './remote/RemotePushSetup.vue'
@@ -18,6 +23,7 @@ import SettingSection from './SettingSection.vue'
 const { t } = useI18n()
 const remote = useRemoteStore()
 
+const guard = useRemoteGuard()
 const pairing = ref(false)
 const askAll = ref(false)
 const busy = ref(false)
@@ -68,7 +74,10 @@ async function revokeAll(): Promise<void> {
   askAll.value = false
 }
 
-onMounted(() => void remote.start())
+onMounted(() => {
+  void remote.start()
+  if (hasRemoteGuard) void guard.refresh()
+})
 </script>
 
 <template>
@@ -152,6 +161,26 @@ onMounted(() => void remote.start())
         <ToggleSwitch v-model="awake" class="px-3" :label="t('remoteV97.awake')" :hint="t('remoteV97.awakeHint')" :disabled="!enabled" data-remote-awake />
       </SettingSection>
     </SettingEmbed>
+
+    <template v-if="hasRemoteGuard">
+      <SettingEmbed id="remoteBlocked">
+        <SettingSection id="remote-blocked" :title="t('remoteV98.guard.blockedTitle')">
+          <RemoteGuardBlocked :blocked="guard.state.value.blocked" :busy="guard.busy.value" :error="guard.error.value" @run="guard.run" />
+        </SettingSection>
+      </SettingEmbed>
+
+      <SettingEmbed id="remoteTrusted">
+        <SettingSection id="remote-trusted" :title="t('remoteV98.guard.trustedTitle')">
+          <RemoteGuardTrust :trusted="guard.state.value.trusted" :busy="guard.busy.value" @run="guard.run" />
+        </SettingSection>
+      </SettingEmbed>
+
+      <SettingEmbed id="remoteAccess">
+        <SettingSection id="remote-access" :title="t('remoteV98.guard.logTitle')">
+          <RemoteAccessLog :log="guard.state.value.log" :busy="guard.busy.value" @refresh="guard.refresh" />
+        </SettingSection>
+      </SettingEmbed>
+    </template>
 
     <SettingEmbed id="remoteLog">
       <SettingSection id="remote-log" :title="t('remoteV97.log.title')">

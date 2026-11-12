@@ -110,6 +110,120 @@ pub fn encode_pair_close() -> Result<Vec<u8>> {
     control_bytes(&serde_json::json!({ "t": "pair.close" }))
 }
 
+pub const MAX_GUARD_CONTROL: usize = 4096;
+pub const MAX_NOTICE: usize = 32 * 1024;
+pub const MAX_GUARD_RULES: usize = 32;
+pub const MAX_RULE_LEN: usize = 49;
+pub const STRIKE_REASONS: [&str; 8] = ["handshake", "timeout", "device", "code", "pairing", "rate", "frame", "hello"];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockRule {
+    pub cidr: String,
+    pub ttl: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockRow {
+    pub k: String,
+    pub until: u64,
+    pub level: u8,
+    pub n: u32,
+    pub at: u64,
+    pub why: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Notice {
+    Blocked(BlockRow),
+    BlockList { items: Vec<BlockRow>, total: u32 },
+}
+
+pub fn valid_rule_text(text: &str) -> bool {
+    (2..=MAX_RULE_LEN).contains(&text.len()) && text.bytes().all(|b| b.is_ascii_hexdigit() || matches!(b, b':' | b'.' | b'/'))
+}
+
+fn guard_bytes(value: &serde_json::Value) -> Result<Vec<u8>> {
+    let json = serde_json::to_vec(value).map_err(|_| Error::BadMessage)?;
+    if json.len() > MAX_GUARD_CONTROL {
+        return Err(Error::TooLarge);
+    }
+    let mut out = Vec::with_capacity(ENVELOPE_HEADER + json.len());
+    out.extend_from_slice(&CONTROL_CONN.to_be_bytes());
+    out.extend_from_slice(&json);
+    Ok(out)
+}
+
+pub fn encode_strike(conn: u16, why: &str) -> Result<Vec<u8>> {
+    if conn == CONTROL_CONN || !STRIKE_REASONS.contains(&why) {
+        return Err(Error::BadMessage);
+    }
+    control_bytes(&serde_json::json!({ "t": "strike", "conn": conn, "why": why }))
+}
+
+pub fn encode_good(conn: u16) -> Result<Vec<u8>> {
+    if conn == CONTROL_CONN {
+        return Err(Error::BadMessage);
+    }
+    control_bytes(&serde_json::json!({ "t": "good", "conn": conn }))
+}
+
+pub fn encode_block_list() -> Result<Vec<u8>> {
+    control_bytes(&serde_json::json!({ "t": "block.list" }))
+}
+
+pub fn encode_block_remove(target: Option<&str>) -> Result<Vec<u8>> {
+    match target {
+        Some(c) if valid_rule_text(c) => control_bytes(&serde_json::json!({ "t": "block.remove", "c": c })),
+        Some(_) => Err(Error::BadMessage),
+        None => control_bytes(&serde_json::json!({ "t": "block.remove", "all": true })),
+    }
+}
+
+pub fn encode_block_set(rules: &[BlockRule]) -> Result<Vec<u8>> {
+    if rules.len() > MAX_GUARD_RULES || rules.iter().any(|r| !valid_rule_text(&r.cidr) || r.ttl == Some(0)) {
+        return Err(Error::BadMessage);
+    }
+    let list: Vec<serde_json::Value> = rules
+        .iter()
+        .map(|r| match r.ttl {
+            Some(ttl) => serde_json::json!({ "c": r.cidr, "ttl": ttl }),
+            None => serde_json::json!({ "c": r.cidr }),
+        })
+        .collect();
+    guard_bytes(&serde_json::json!({ "t": "block.set", "list": list }))
+}
+
+pub fn encode_trust_set(list: &[String]) -> Result<Vec<u8>> {
+    if list.len() > MAX_GUARD_RULES || list.iter().any(|c| !valid_rule_text(c)) {
+        return Err(Error::BadMessage);
+    }
+    guard_bytes(&serde_json::json!({ "t": "trust.set", "list": list }))
+}
+
+fn valid_row(row: &BlockRow) -> bool {
+    valid_rule_text(&row.k) && (1..=3).contains(&row.level) && row.why.len() <= 16 && row.why.bytes().all(|b| b.is_ascii_lowercase())
+}
+
+pub fn decode_notice(bytes: &[u8]) -> Option<Notice> {
+    if bytes.len() < ENVELOPE_HEADER || bytes.len() > ENVELOPE_HEADER + MAX_NOTICE || bytes[..2] != CONTROL_CONN.to_be_bytes() {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_slice(&bytes[ENVELOPE_HEADER..]).ok()?;
+    match value.get("t")?.as_str()? {
+        "blocked" => {
+            let row: BlockRow = serde_json::from_value(value.get("row")?.clone()).ok()?;
+            valid_row(&row).then_some(Notice::Blocked(row))
+        }
+        "block.list" => {
+            let items: Vec<BlockRow> = serde_json::from_value(value.get("items")?.clone()).ok()?;
+            let total = value.get("total").and_then(serde_json::Value::as_u64).unwrap_or(items.len() as u64);
+            let items = items.into_iter().filter(valid_row).collect();
+            Some(Notice::BlockList { items, total: u32::try_from(total).unwrap_or(u32::MAX) })
+        }
+        _ => None,
+    }
+}
+
 pub fn decode(bytes: &[u8]) -> Result<Envelope<'_>> {
     if bytes.len() < ENVELOPE_HEADER {
         return Err(Error::BadMessage);

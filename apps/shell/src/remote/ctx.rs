@@ -13,6 +13,7 @@ use tokio::sync::{mpsc, watch, Notify};
 
 use super::config::Config;
 use super::devices::{Devices, EXPIRE_SECS};
+use super::guard::Guard;
 use super::keys::Keys;
 use super::limits::{Gate, MAX_SESSIONS};
 use super::pair::Pairing;
@@ -63,6 +64,7 @@ pub struct PairAsk {
 pub trait Host: Send + Sync + 'static {
     fn confirm_pair(&self, ask: &PairAsk) -> bool;
     fn notify(&self, title: &str, body: &str);
+    fn telegram(&self, _text: &str) {}
     fn tap(&self) -> Option<StoreTap>;
     fn welcome(&self) -> Welcome;
     fn changed(&self, status: Value);
@@ -94,6 +96,7 @@ pub struct Ctx {
     pub config: Mutex<Config>,
     pub devices: Mutex<Devices>,
     pub pairing: Pairing,
+    pub guard: Guard,
     pub gate: Arc<Gate>,
     pub relay_wake: Notify,
     pub running: AtomicBool,
@@ -117,6 +120,7 @@ impl Ctx {
         let config = Config::load(&dir);
         let devices = Devices::load(&dir);
         let push_event = config_event(&config.firebase);
+        let guard = Guard::load(&dir);
         Ctx {
             host,
             dir,
@@ -125,6 +129,7 @@ impl Ctx {
             config: Mutex::new(config),
             devices: Mutex::new(devices),
             pairing: Pairing::default(),
+            guard,
             gate: Arc::new(Gate::default()),
             relay_wake: Notify::new(),
             running: AtomicBool::new(false),
@@ -166,11 +171,17 @@ impl Ctx {
         Ok(id)
     }
 
-    pub fn take_pair_try(&self, key: String, max: usize, now: Instant) -> bool {
+    pub fn take_pair_try(&self, keys: &[(String, usize)], now: Instant) -> bool {
         let mut map = lock(&self.pair_tries);
         map.retain(|_, times| times.iter().any(|t| now.duration_since(*t) < PAIR_WINDOW));
-        let times = map.entry(key).or_default();
-        crate::state::take_slot(times, now, max, PAIR_WINDOW)
+        let full = keys.iter().any(|(key, max)| map.get(key).is_some_and(|times| times.iter().filter(|t| now.duration_since(**t) < PAIR_WINDOW).count() >= *max));
+        if full {
+            return false;
+        }
+        for (key, max) in keys {
+            crate::state::take_slot(map.entry(key.clone()).or_default(), now, *max, PAIR_WINDOW);
+        }
+        true
     }
 
     pub fn drop_live(&self, id: u64) {
@@ -237,6 +248,7 @@ impl Ctx {
         };
         let mut out = shape.json(&cfg, lock(&self.devices).list(), &online);
         out["error"] = if running && lan.is_empty() { Value::from("lan") } else { Value::Null };
+        out["guardRev"] = Value::from(self.guard.rev());
         out
     }
 

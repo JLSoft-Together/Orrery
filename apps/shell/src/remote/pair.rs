@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -11,11 +12,14 @@ use tokio::time::{timeout, timeout_at, Instant};
 use super::config::now_secs;
 use super::ctx::{Ctx, PairAsk};
 use super::devices::Device;
-use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_NORMAL, CLOSE_PROTO};
+use super::guard_hooks::link_ip;
+use super::guard_ip::key;
+use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_NORMAL, CLOSE_PROTO, CLOSE_RATE};
 use crate::state::lock;
 
 pub const PAIR_TTL: u64 = 120;
 pub const MAX_PAIR_FAILS: usize = 5;
+pub const MAX_QR_FAILS: usize = 20;
 pub const MAX_NAME: usize = 40;
 pub const CONFIRM_TIMEOUT: Duration = Duration::from_secs(120);
 const PAIR_MSG1_LEN: usize = 2 + 32 + 16;
@@ -26,7 +30,8 @@ struct Slot {
     code: PairCode,
     exp: u64,
     serial: u64,
-    fails: usize,
+    fails: HashMap<String, usize>,
+    total: usize,
     relay: bool,
 }
 
@@ -53,7 +58,7 @@ impl Pairing {
         let code = PairCode::generate().ok()?;
         let exp = now + PAIR_TTL;
         let serial = self.serial.fetch_add(1, Ordering::SeqCst) + 1;
-        *lock(&self.slot) = Some(Slot { code: code.clone(), exp, serial, fails: 0, relay: ticket.is_some() });
+        *lock(&self.slot) = Some(Slot { code: code.clone(), exp, serial, fails: HashMap::new(), total: 0, relay: ticket.is_some() });
         *lock(&self.ended) = None;
         self.armed.send_replace(ticket.map(|t| (t.hash(), exp)));
         Some((code, exp))
@@ -100,11 +105,16 @@ impl Pairing {
         false
     }
 
-    pub fn fail(&self, ticket: &Ticket) -> bool {
+    pub fn barred(&self, ticket: &Ticket, source: &str) -> bool {
+        lock(&self.slot).as_ref().filter(|s| s.serial == ticket.serial).is_some_and(|s| s.fails.get(source).is_some_and(|n| *n >= MAX_PAIR_FAILS))
+    }
+
+    pub fn fail(&self, ticket: &Ticket, source: &str) -> bool {
         let mut slot = lock(&self.slot);
         let Some(s) = slot.as_mut().filter(|s| s.serial == ticket.serial) else { return false };
-        s.fails += 1;
-        if s.fails < MAX_PAIR_FAILS {
+        *s.fails.entry(source.to_owned()).or_default() += 1;
+        s.total += 1;
+        if s.total < MAX_QR_FAILS {
             return false;
         }
         self.clear(&mut slot);
@@ -199,31 +209,42 @@ fn ask_for(link: &Link, name: &str, platform: Option<&str>) -> PairAsk {
     }
 }
 
+pub fn source(link: &Link) -> String {
+    let ip = link_ip(link).map_or_else(|| "?".to_owned(), key);
+    match link.peer {
+        Peer::Lan(_) => format!("lan:{ip}"),
+        Peer::Relay(_) => format!("relay:{ip}"),
+    }
+}
+
 pub async fn run(ctx: Arc<Ctx>, mut link: Link, msg1: Vec<u8>, deadline: Instant) {
     let Some(ticket) = ctx.pairing.ticket(now_secs()) else {
-        link.out.close(CLOSE_DEVICE, "pairing").await;
-        return;
+        return ctx.refuse(&link, CLOSE_DEVICE, "pairing", "pairing").await;
     };
+    let from = source(&link);
+    if ctx.pairing.barred(&ticket, &from) {
+        return ctx.refuse(&link, CLOSE_RATE, "tries", "code").await;
+    }
     let machine = ctx.machine_id();
     let (responder, msg2) = match PairResponder::start(&ctx.keys.noise, &ticket.code, &machine, &msg1) {
         Ok(v) => v,
         Err(Error::ProtoTooOld { .. }) => return link.out.close(CLOSE_PROTO, "old").await,
         Err(Error::ProtoTooNew { .. }) => return link.out.close(CLOSE_PROTO, "new").await,
-        Err(_) => return link.out.close(CLOSE_HANDSHAKE, "handshake").await,
+        Err(_) => return ctx.refuse(&link, CLOSE_HANDSHAKE, "handshake", "handshake").await,
     };
     if !link.out.send(Out::Msg(msg2)).await {
         return;
     }
     let Ok(Some(msg3)) = timeout_at(deadline, link.rx.recv()).await else {
-        return link.out.close(CLOSE_HANDSHAKE, "timeout").await;
+        return ctx.refuse(&link, CLOSE_HANDSHAKE, "timeout", "timeout").await;
     };
     let paired = match responder.finish(&msg3) {
         Ok(p) => p,
         Err(_) => {
-            if ctx.pairing.fail(&ticket) {
+            if ctx.pairing.fail(&ticket, &from) {
                 ctx.changed();
             }
-            return link.out.close(CLOSE_HANDSHAKE, "handshake").await;
+            return ctx.refuse(&link, CLOSE_HANDSHAKE, "handshake", "code").await;
         }
     };
     if !ctx.pairing.consume(&ticket) {
@@ -240,6 +261,7 @@ pub async fn run(ctx: Arc<Ctx>, mut link: Link, msg1: Vec<u8>, deadline: Instant
     let ask = ask_for(&link, &name, paired.platform.as_deref());
     let asked = timeout(CONFIRM_TIMEOUT, tokio::task::spawn_blocking(move || host.confirm_pair(&ask))).await;
     if !matches!(asked, Ok(Ok(true))) {
+        ctx.record(&link, "denied", "confirm", Some(&name));
         sec.json(&json!({ "t": "pair.denied" })).await;
         return sec.close(CLOSE_NORMAL, "denied").await;
     }
@@ -260,5 +282,6 @@ pub async fn run(ctx: Arc<Ctx>, mut link: Link, msg1: Vec<u8>, deadline: Instant
     merge(&mut reply, ctx.relay_token(&paired.device_id, now));
     sec.json(&reply).await;
     sec.close(CLOSE_NORMAL, "paired").await;
+    ctx.paired(&link, &paired.device_id, &name);
     ctx.changed();
 }

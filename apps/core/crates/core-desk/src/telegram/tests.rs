@@ -321,3 +321,16 @@ fn pane_link_button_only_when_the_shell_returns_a_valid_link() {
     assert!(rows[0][0].get("callback_data").is_some());
     w.tg.stop();
 }
+
+#[test]
+fn remote_alerts_post_escaped_text_to_every_routed_chat() {
+    let w = world();
+    setup(&w, false);
+    w.tg.lock().data.alerts = true;
+    assert!(!w.tg.alert("remote", &json!({ "text": "  " })));
+    assert!(w.tg.alert("remote", &json!({ "text": "Orrery Remote: IP blocked\n<b>203.0.113.9</b>\u{7}" })));
+    assert_eq!(sent_texts(&w).last().map(String::as_str), Some("🛡 Orrery Remote: IP blocked\n&lt;b&gt;203.0.113.9&lt;/b&gt;"));
+    w.tg.lock().data.alerts = false;
+    assert!(!w.tg.alert("remote", &json!({ "text": "x" })));
+    w.tg.stop();
+}

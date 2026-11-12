@@ -120,12 +120,12 @@ fn the_gate_counts_pending_connections_per_ip() {
     let gate = std::sync::Arc::new(Gate::default());
     let ip: IpAddr = "192.168.1.9".parse().unwrap();
     let now = std::time::Instant::now();
-    let held: Vec<_> = (0..MAX_PENDING_PER_IP).map(|_| gate.admit(ip, now).unwrap()).collect();
-    assert!(gate.admit(ip, now).is_none());
-    assert!(gate.admit("192.168.1.10".parse().unwrap(), now).is_some());
+    let held: Vec<_> = (0..MAX_PENDING_PER_IP).map(|_| gate.admit(ip, now).ok().unwrap()).collect();
+    assert_eq!(gate.admit(ip, now).err(), Some(super::limits::Refused::Ip));
+    assert!(gate.admit("192.168.1.10".parse().unwrap(), now).is_ok());
     drop(held);
     assert_eq!(gate.pending(ip), 0);
-    assert!(gate.admit(ip, now).is_some());
+    assert!(gate.admit(ip, now).is_ok());
 }
 
 #[test]

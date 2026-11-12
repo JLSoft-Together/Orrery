@@ -123,6 +123,13 @@ pub fn disk(vi: bool, l: &str, f: &str) -> String {
     if vi { format!("💾 Ổ {} sắp đầy: còn {}.", esc(l), esc(f)) } else { format!("💾 Disk {} is almost full: {} left.", esc(l), esc(f)) }
 }
 
+pub const REMOTE_ALERT_MAX: usize = 600;
+
+pub fn remote_alert(text: &str) -> String {
+    let clipped: String = text.chars().filter(|c| *c == '\n' || !c.is_control()).take(REMOTE_ALERT_MAX).collect();
+    format!("🛡 {}", esc(&clipped))
+}
+
 pub fn run_failed(vi: bool, c: &str, code: &str) -> String {
     if vi { format!("❌ <b>{}</b> lỗi: {}", esc(c), esc(code)) } else { format!("❌ <b>{}</b> failed: {}", esc(c), esc(code)) }
 }

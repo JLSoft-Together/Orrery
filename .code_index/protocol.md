@@ -148,3 +148,5 @@ Shape-checked in collector `server.ts` (unknown / malformed dropped, `maxPayload
 - WP-18: action page `remote.typed` (source phone, args {sessionId}) trong `ORRERY_ACTIONS`; `RemoteDevice.platform` thêm `unknown`.
 - v97 WP-19: `packages/shared/src/remote.ts` `RelaySetupStatus` / `RelayTokenResult` / `RelayDeployResult` / `RelayRemoveResult` / `RelayDeployProgress` (IPC `ccm:remote-relay-*`, shell `remote/relay_setup.rs`; preload `remoteRelay*`).
 - v97 WP-20: `packages/shared/src/remote.ts` `PushStatus` / `PushSetupResult` / `PushTestResult` / `PushSetupError` / `PushTestError` (IPC `ccm:remote-push-*`); `push.config` do `apps/shell/src/remote/push.rs` phát.
+
+- v98 WP-59: `remote.ts` `RemoteGuardState` / `RemoteGuardBlock` / `RemoteGuardLogLine` / `RemoteGuardOp` / `RemoteGuardReply` / `RemoteGuardError`, `RemoteStatus.guardRev?`; IPC `ccm:remote-guard` (shell `remote/guard_ops.rs`). Control relay mới: `docs/remote-integration.md` §1 + §5.1.

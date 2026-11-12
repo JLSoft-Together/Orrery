@@ -126,3 +126,52 @@ fn pair_open_and_close_controls_go_on_conn_zero() {
     assert_eq!(&close[2..], br#"{"t":"pair.close"}"#);
     assert!(decode(&open).is_err());
 }
+
+#[test]
+fn guard_controls_go_on_conn_zero_and_check_their_fields() {
+    use core_remote_proto::relay::{encode_block_list, encode_block_remove, encode_block_set, encode_strike, encode_trust_set, BlockRule, MAX_GUARD_RULES};
+    let json = |b: &[u8]| -> serde_json::Value { serde_json::from_slice(&b[2..]).unwrap() };
+    let strike = encode_strike(7, "handshake").unwrap();
+    assert_eq!(&strike[..2], &[0, 0]);
+    assert_eq!(json(&strike), serde_json::json!({ "t": "strike", "conn": 7, "why": "handshake" }));
+    assert!(encode_strike(0, "handshake").is_err());
+    assert_eq!(json(&core_remote_proto::relay::encode_good(9).unwrap()), serde_json::json!({ "t": "good", "conn": 9 }));
+    assert!(core_remote_proto::relay::encode_good(0).is_err());
+    assert!(encode_strike(7, "203.0.113.9").is_err());
+    assert_eq!(json(&encode_block_list().unwrap()), serde_json::json!({ "t": "block.list" }));
+    assert_eq!(json(&encode_block_remove(Some("203.0.113.9")).unwrap()), serde_json::json!({ "t": "block.remove", "c": "203.0.113.9" }));
+    assert_eq!(json(&encode_block_remove(None).unwrap()), serde_json::json!({ "t": "block.remove", "all": true }));
+    assert!(encode_block_remove(Some("x\"}")).is_err());
+    let rules = vec![BlockRule { cidr: "198.51.100.0/24".into(), ttl: Some(3600) }, BlockRule { cidr: "2001:db8::/32".into(), ttl: None }];
+    assert_eq!(
+        json(&encode_block_set(&rules).unwrap()),
+        serde_json::json!({ "t": "block.set", "list": [{ "c": "198.51.100.0/24", "ttl": 3600 }, { "c": "2001:db8::/32" }] })
+    );
+    assert!(encode_block_set(&[BlockRule { cidr: "1.2.3.4".into(), ttl: Some(0) }]).is_err());
+    let full: Vec<String> = (0..MAX_GUARD_RULES).map(|i| format!("ffff:ffff:ffff:ffff:ffff:ffff:ffff:{i:04x}/128")).collect();
+    let trust = encode_trust_set(&full).unwrap();
+    assert!(trust.len() > 256 && trust.len() <= 2 + 4096);
+    let mut over = full.clone();
+    over.push("10.0.0.1".into());
+    assert!(encode_trust_set(&over).is_err());
+    assert!(encode_trust_set(&["10.0.0.0/8 ".into()]).is_err());
+    assert!(decode(&strike).is_err());
+}
+
+#[test]
+fn relay_notices_decode_rows_and_drop_bad_ones() {
+    use core_remote_proto::relay::{decode_notice, BlockRow, Notice};
+    let row = BlockRow { k: "203.0.113.9".into(), until: 1_900_000_000, level: 2, n: 20, at: 1_899_990_000, why: "code".into() };
+    let blocked = [&[0u8, 0][..], br#"{"t":"blocked","row":{"k":"203.0.113.9","until":1900000000,"level":2,"n":20,"at":1899990000,"why":"code"}}"#].concat();
+    assert_eq!(decode_notice(&blocked), Some(Notice::Blocked(row.clone())));
+    let list = [
+        &[0u8, 0][..],
+        br#"{"t":"block.list","total":3,"items":[{"k":"203.0.113.9","until":1900000000,"level":2,"n":20,"at":1899990000,"why":"code"},{"k":"bad<ip>","until":1,"level":1,"n":1,"at":1,"why":"code"},{"k":"10.0.0.1","until":1,"level":9,"n":1,"at":1,"why":"code"}]}"#,
+    ]
+    .concat();
+    assert_eq!(decode_notice(&list), Some(Notice::BlockList { items: vec![row], total: 3 }));
+    assert_eq!(decode_notice(br#"\0\0{"t":"open","conn":1}"#), None);
+    assert_eq!(decode_notice(&[&[0u8, 1][..], br#"{"t":"blocked"}"#].concat()), None);
+    assert_eq!(decode_notice(&[&[0u8, 0][..], br#"{"t":"blocked","row":{"k":"1.2.3.4"}}"#].concat()), None);
+    assert!(decode(&blocked).is_err());
+}

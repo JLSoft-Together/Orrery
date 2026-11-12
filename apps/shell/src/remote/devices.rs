@@ -10,6 +10,7 @@ use super::pair::is_hidden;
 pub const EXPIRE_SECS: u64 = 30 * 86_400;
 pub const MAX_DEVICES: usize = 32;
 pub const MAX_ALIAS: usize = 40;
+pub const MAX_COUNTRIES: usize = 8;
 const DAY: u64 = 86_400;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +33,8 @@ pub struct Device {
     pub push_locale: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub push_mute: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub countries: Vec<String>,
 }
 
 impl Device {
@@ -48,6 +51,7 @@ impl Device {
             push_token: String::new(),
             push_locale: String::new(),
             push_mute: Vec::new(),
+            countries: Vec::new(),
         }
     }
 
@@ -108,6 +112,7 @@ pub fn known_platform(p: &str) -> &'static str {
     match p {
         "android" => "android",
         "ios" => "ios",
+        "web" => "web",
         _ => "unknown",
     }
 }
@@ -250,6 +255,18 @@ impl Devices {
             self.save();
         }
         changed
+    }
+
+    pub fn note_place(&mut self, id: &str, country: Option<&str>) -> bool {
+        let Some(d) = self.list.iter_mut().find(|d| d.device_id == id) else { return false };
+        let Some(c) = country.filter(|c| !d.countries.iter().any(|k| k == c)) else { return false };
+        let fresh = !d.countries.is_empty();
+        d.countries.push(c.to_owned());
+        if d.countries.len() > MAX_COUNTRIES {
+            d.countries.remove(0);
+        }
+        self.save();
+        fresh
     }
 
     pub fn expired(&self, now: u64) -> Vec<String> {

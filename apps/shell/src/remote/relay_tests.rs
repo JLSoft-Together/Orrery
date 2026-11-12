@@ -34,9 +34,8 @@ async fn recv_env(ws: &mut tokio_tungstenite::WebSocketStream<tokio::net::TcpStr
     loop {
         let msg = tokio::time::timeout(Duration::from_secs(10), ws.next()).await.unwrap().unwrap().unwrap();
         if let Message::Binary(b) = msg {
-            match decode(&b).unwrap() {
-                Envelope::Data { conn, bytes } => return (conn, bytes.to_vec()),
-                Envelope::Control(_) => continue,
+            if let Ok(Envelope::Data { conn, bytes }) = decode(&b) {
+                return (conn, bytes.to_vec());
             }
         }
     }
@@ -189,18 +188,26 @@ fn a_failed_handshake_over_the_relay_tells_the_relay_to_close_that_phone_with_th
         let (stream, _) = tokio::time::timeout(Duration::from_secs(10), listener.accept()).await.unwrap().unwrap();
         let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
         ws.send(Message::Binary(encode_control(&Control::new(ControlKind::Open, 3)).unwrap().into())).await.unwrap();
-        ws.send(Message::Binary(encode_data(3, &[7u8; 80]).unwrap().into())).await.unwrap();
+        let mut junk = vec![0u8, 1];
+        junk.extend_from_slice(&[7u8; 78]);
+        ws.send(Message::Binary(encode_data(3, &junk).unwrap().into())).await.unwrap();
+        let mut seen = Vec::new();
         let close = loop {
             let msg = tokio::time::timeout(Duration::from_secs(10), ws.next()).await.unwrap().unwrap().unwrap();
             if let Message::Binary(b) = msg {
                 if b.len() > 2 && b[0] == 0 && b[1] == 0 {
-                    break serde_json::from_slice::<Value>(&b[2..]).unwrap();
+                    let v = serde_json::from_slice::<Value>(&b[2..]).unwrap();
+                    if v["t"] == "close" {
+                        break v;
+                    }
+                    seen.push(v);
                 }
             }
         };
-        assert_eq!(close["t"], "close");
         assert_eq!(close["conn"], 3);
-        assert!(matches!(close["code"].as_u64(), Some(4400 | 4401 | 4426)), "{close}");
+        assert_eq!(close["code"], 4400, "{close}");
+        assert_eq!(seen.last(), Some(&json!({ "t": "strike", "conn": 3, "why": "handshake" })), "{seen:?}");
+        assert!(seen.iter().all(|v| !v.to_string().contains("203.0.113")));
     });
     rig.remote.enable(false);
 }

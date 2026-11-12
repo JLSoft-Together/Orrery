@@ -2,7 +2,7 @@ use super::base::{topic_key, DigestMsg, Entry, Target, Tg, UPLOAD_TIMEOUT_MS};
 use super::html::{cell, cell_t, digest_html, episode_html, markup, quote, Row, CAPTION_MAX, MESSAGE_MAX};
 use super::outbound::{MAX_EPISODES, SENT_MAP_MAX};
 use super::shape::Route;
-use super::text_act::{disk, limit, run_failed};
+use super::text_act::{disk, limit, remote_alert, run_failed};
 use super::text_more::{plan_label, run_shot, tail_button};
 use serde_json::{json, Map, Value};
 use std::sync::Arc;
@@ -178,7 +178,14 @@ impl Tg {
         if kind == "limit" {
             return self.limit_alert(detail);
         }
-        let html = disk(self.vi(), detail["label"].as_str().unwrap_or(""), detail["free"].as_str().unwrap_or(""));
+        let html = if kind == "remote" {
+            match detail["text"].as_str().filter(|t| !t.trim().is_empty()) {
+                Some(t) => remote_alert(t),
+                None => return false,
+            }
+        } else {
+            disk(self.vi(), detail["label"].as_str().unwrap_or(""), detail["free"].as_str().unwrap_or(""))
+        };
         let mut chats: Vec<String> = Vec::new();
         for r in &self.lock().data.routes {
             if !chats.contains(&r.chat_id) {

@@ -130,6 +130,9 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'remote', id: 'remotePush', labelKey: 'remoteV97.pushSetup.title', hintKey: 'remoteV97.pushSetup.intro', needs: 'remote' },
   { page: 'remote', id: 'remoteAwake', labelKey: 'remoteV97.awake', hintKey: 'remoteV97.awakeHint', needs: 'remote' },
   { page: 'remote', id: 'remoteLog', labelKey: 'remoteV97.log.title', needs: 'remote' },
+  { page: 'remote', id: 'remoteBlocked', labelKey: 'remoteV98.guard.blockedTitle', hintKey: 'remoteV98.guard.selfHint', needs: 'remote' },
+  { page: 'remote', id: 'remoteTrusted', labelKey: 'remoteV98.guard.trustedTitle', hintKey: 'remoteV98.guard.trusted.hint', needs: 'remote' },
+  { page: 'remote', id: 'remoteAccess', labelKey: 'remoteV98.guard.logTitle', hintKey: 'remoteV98.guard.log.hint', needs: 'remote' },
 
   { page: 'reminders', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
   { page: 'reminders', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },

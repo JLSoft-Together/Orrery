@@ -14,7 +14,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
 use super::ctx::Ctx;
-use super::limits::{Pending, HANDSHAKE};
+use super::limits::{Pending, Refused, HANDSHAKE};
 use super::link::{Budget, Link, Origin, Out, Outbox, Peer, DRAIN_MAX, INBOX, OUTBOX};
 use super::session;
 
@@ -102,9 +102,19 @@ pub async fn accept_loop(ctx: Arc<Ctx>, listener: std::net::TcpListener, mut sto
         tokio::select! {
             got = listener.accept() => {
                 let Ok((stream, peer)) = got else { continue };
-                let Some(pending) = ctx.gate.admit(peer.ip(), std::time::Instant::now()) else {
+                if !ctx.guard.admits(peer.ip(), super::config::now_secs()) {
                     drop(stream);
                     continue;
+                }
+                let pending = match ctx.gate.admit(peer.ip(), std::time::Instant::now()) {
+                    Ok(p) => p,
+                    Err(why) => {
+                        drop(stream);
+                        if why == Refused::Ip {
+                            ctx.strike_lan(peer.ip(), "rate");
+                        }
+                        continue;
+                    }
                 };
                 let _ = stream.set_nodelay(true);
                 tokio::spawn(handle(ctx.clone(), stream, peer.ip(), pending));
@@ -158,6 +168,7 @@ pub async fn pump(ws: WebSocketStream<TcpStream>, in_tx: mpsc::Sender<Vec<u8>>, 
                             return;
                         }
                     }
+                    Out::Strike(_) | Out::Good => {}
                     Out::Close(code, reason) => {
                         let _ = sink.send(close_message(code, reason)).await;
                         return;

@@ -9,6 +9,8 @@ use tokio::time::{timeout_at, Instant};
 use super::config::now_secs;
 use super::ctx::{Admit, Ctx, MAX_PAIR_TRIES, MAX_RELAY_PAIR_TRIES};
 use super::dashboard::Phone;
+use super::guard_hooks::link_ip;
+use super::guard_ip::key;
 use super::limits::Pending;
 use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_PROTO, CLOSE_RATE};
 use super::pair;
@@ -17,25 +19,24 @@ use crate::state::lock;
 
 pub const HELLO_WAIT: Duration = Duration::from_secs(5);
 
-pub fn try_key(link: &Link) -> (String, usize) {
-    match (link.peer, link.origin.ip.as_deref()) {
-        (Peer::Lan(ip), _) => (format!("ip:{ip}"), MAX_PAIR_TRIES),
-        (Peer::Relay(_), Some(ip)) => (format!("relay:{ip}"), MAX_PAIR_TRIES),
-        (Peer::Relay(_), None) => ("relay".to_owned(), MAX_RELAY_PAIR_TRIES),
+pub fn try_keys(link: &Link) -> Vec<(String, usize)> {
+    match (link.peer, link_ip(link)) {
+        (Peer::Lan(ip), _) => vec![(format!("ip:{}", key(ip)), MAX_PAIR_TRIES)],
+        (Peer::Relay(_), Some(ip)) => vec![(format!("relay:{}", key(ip)), MAX_PAIR_TRIES), ("relay".to_owned(), MAX_RELAY_PAIR_TRIES)],
+        (Peer::Relay(_), None) => vec![("relay".to_owned(), MAX_RELAY_PAIR_TRIES)],
     }
 }
 
 pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, deadline: Instant) {
     let Ok(Some(msg1)) = timeout_at(deadline, link.rx.recv()).await else {
-        return link.out.close(CLOSE_HANDSHAKE, "timeout").await;
+        return ctx.refuse(&link, CLOSE_HANDSHAKE, "timeout", "timeout").await;
     };
     if link.origin.pairing && !pair::is_pair_msg1(&msg1) {
-        return link.out.close(CLOSE_HANDSHAKE, "pairing").await;
+        return ctx.refuse(&link, CLOSE_HANDSHAKE, "pairing", "pairing").await;
     }
     if pair::is_pair_msg1(&msg1) {
-        let (key, max) = try_key(&link);
-        if !ctx.take_pair_try(key, max, std::time::Instant::now()) {
-            return link.out.close(CLOSE_RATE, "pairing").await;
+        if !ctx.take_pair_try(&try_keys(&link), std::time::Instant::now()) {
+            return ctx.refuse(&link, CLOSE_RATE, "pairing", "rate").await;
         }
         pair::run(ctx, link, msg1, deadline).await;
         drop(pending);
@@ -50,11 +51,11 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         Ok(v) => v,
         Err(Error::Unauthorized) => {
             ctx.notify_unknown(std::time::Instant::now());
-            return link.out.close(CLOSE_DEVICE, "device").await;
+            return ctx.refuse(&link, CLOSE_DEVICE, "device", "device").await;
         }
         Err(Error::ProtoTooOld { .. }) => return link.out.close(CLOSE_PROTO, "old").await,
         Err(Error::ProtoTooNew { .. }) => return link.out.close(CLOSE_PROTO, "new").await,
-        Err(_) => return link.out.close(CLOSE_HANDSHAKE, "handshake").await,
+        Err(_) => return ctx.refuse(&link, CLOSE_HANDSHAKE, "handshake", "handshake").await,
     };
     if !link.out.send(Out::Msg(msg2)).await {
         return;
@@ -64,10 +65,10 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
     let sec = Secure { transport: session.transport, out: link.out.clone() };
     let mut phone = Phone::new(ctx.clone(), sec, device.clone());
     let Ok(Some(first)) = timeout_at(Instant::now() + HELLO_WAIT, link.rx.recv()).await else {
-        return link.out.close(CLOSE_HANDSHAKE, "hello").await;
+        return ctx.refuse(&link, CLOSE_HANDSHAKE, "hello", "hello").await;
     };
     let Some((id, hello)) = phone.first_hello(&first) else {
-        return link.out.close(CLOSE_HANDSHAKE, "hello").await;
+        return ctx.refuse(&link, CLOSE_HANDSHAKE, "hello", "hello").await;
     };
     let via = match link.peer {
         Peer::Lan(_) => "lan",
@@ -84,6 +85,7 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         Err(Admit::Full) => return link.out.close(CLOSE_RATE, "sessions").await,
     };
     link.budget.open();
+    let _ = link.out.send(Out::Good).await;
     ctx.board.mark_connect();
     drop(pending);
     let touched = lock(&ctx.devices).touch(&device, now_secs());
@@ -91,8 +93,10 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         let t = remote_text(&ctx.host.welcome().locale);
         ctx.host.notify(t.connected_title, &t.connected_body(&name));
     }
+    let ip = ctx.session_opened(&link, &device);
     ctx.changed();
     phone.start(&id, &hello, link.rx, ctl_rx).await;
+    ctx.session_closed(ip);
     ctx.drop_live(live);
     ctx.changed();
 }

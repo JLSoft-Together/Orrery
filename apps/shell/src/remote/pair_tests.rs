@@ -5,7 +5,7 @@ use core_remote_proto::pair::{LanAddr, PairCode, PairTicket};
 use super::devices::Devices;
 use super::ctx::{PairAsk, MAX_PAIR_TRIES};
 use super::link::{CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_RATE};
-use super::pair::{clean_name, Pairing, MAX_NAME, MAX_PAIR_FAILS, PAIR_TTL};
+use super::pair::{clean_name, Pairing, MAX_NAME, MAX_PAIR_FAILS, MAX_QR_FAILS, PAIR_TTL};
 use super::test_util::*;
 use crate::state::lock;
 
@@ -65,7 +65,7 @@ fn a_used_code_is_refused_the_second_time() {
 }
 
 #[test]
-fn five_wrong_codes_cancel_the_shown_qr_and_one_ip_gets_five_tries_a_minute() {
+fn five_wrong_codes_from_one_ip_bar_that_ip_but_keep_the_qr_shown_for_other_sources() {
     let rig = rig("pair-wrong", "", false);
     rig.host.answer.store(true, Ordering::SeqCst);
     rig.remote.enable(true);
@@ -74,17 +74,22 @@ fn five_wrong_codes_cancel_the_shown_qr_and_one_ip_gets_five_tries_a_minute() {
     bad.code = PairCode::generate().unwrap();
     let rt = runtime();
     assert_eq!(MAX_PAIR_TRIES, MAX_PAIR_FAILS);
-    for _ in 0..MAX_PAIR_FAILS - 1 {
+    for _ in 0..MAX_PAIR_FAILS {
         assert_eq!(rt.block_on(pair(rig.addr(), &bad, &Phone::new("x"))), Err(Some(CLOSE_HANDSHAKE)));
     }
     assert!(!rig.remote.status()["pairing"].is_null());
     assert!(rig.remote.status()["pairEnded"].is_null());
-    assert_eq!(rt.block_on(pair(rig.addr(), &bad, &Phone::new("x"))), Err(Some(CLOSE_HANDSHAKE)));
-    assert!(rig.remote.status()["pairing"].is_null());
-    assert_eq!(rig.remote.status()["pairEnded"], "tries");
     assert_eq!(rt.block_on(pair(rig.addr(), &good, &Phone::new("y"))), Err(Some(CLOSE_RATE)));
+    assert!(!rig.remote.status()["pairing"].is_null());
     assert!(lock(&rig.host.asked).is_empty());
     assert!(Devices::load(&rig.dir).list().is_empty());
+    let state = rig.remote.guard_call(&serde_json::json!({ "op": "get" }))["state"].clone();
+    let log = state["log"].as_array().unwrap();
+    assert_eq!(log.iter().filter(|e| e["why"] == "code").count(), MAX_PAIR_FAILS);
+    assert!(log.iter().all(|e| e["ip"] == "127.0.0.1" && e["via"] == "lan" && e["result"] == "fail"));
+    let text = state.to_string();
+    let b64 = |c: &PairCode| base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, c.as_bytes());
+    assert!(!text.contains(&b64(&good.code)) && !text.contains(&b64(&bad.code)));
     rig.remote.enable(false);
 }
 
@@ -136,7 +141,7 @@ fn device_names_lose_control_and_bidi_characters_and_are_capped() {
 }
 
 #[test]
-fn failures_count_per_shown_code_and_the_fifth_cancels_it_and_disarms_the_relay() {
+fn five_failures_bar_one_source_and_twenty_in_total_cancel_the_code_and_disarm_the_relay() {
     let p = Pairing::default();
     let armed = p.armed();
     let ticket = PairTicket::generate().unwrap();
@@ -145,17 +150,25 @@ fn failures_count_per_shown_code_and_the_fifth_cancels_it_and_disarms_the_relay(
     assert_eq!(p.active(1_000), Some((exp, true)));
     let old = p.ticket(1_000).unwrap();
     p.start(1_001, Some(&ticket)).unwrap();
-    assert!(!p.fail(&old));
+    assert!(!p.fail(&old, "lan:10.0.0.9"));
     let cur = p.ticket(1_001).unwrap();
-    for _ in 0..MAX_PAIR_FAILS - 1 {
-        assert!(!p.fail(&cur));
+    for _ in 0..MAX_PAIR_FAILS {
+        assert!(!p.fail(&cur, "lan:10.0.0.9"));
+    }
+    assert!(p.barred(&cur, "lan:10.0.0.9"));
+    assert!(!p.barred(&cur, "lan:10.0.0.10"));
+    assert!(!p.barred(&cur, "relay:10.0.0.9"));
+    assert!(p.active(1_001).is_some());
+    assert!(armed.borrow().is_some());
+    for i in MAX_PAIR_FAILS..MAX_QR_FAILS - 1 {
+        assert!(!p.fail(&cur, &format!("lan:10.0.1.{i}")));
     }
     assert!(p.active(1_001).is_some());
-    assert!(p.fail(&cur));
+    assert!(p.fail(&cur, "lan:10.0.2.1"));
     assert!(p.active(1_001).is_none());
     assert_eq!(p.ended(), Some("tries"));
     assert_eq!(*armed.borrow(), None);
-    assert!(!p.fail(&cur));
+    assert!(!p.fail(&cur, "lan:10.0.2.1"));
     p.start(1_002, None).unwrap();
     assert_eq!(p.ended(), None);
     assert_eq!(*armed.borrow(), None);

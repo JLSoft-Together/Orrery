@@ -7,6 +7,9 @@ import { validMachineId, validPaneKey } from "./ids";
 export { Room } from "./room";
 
 const MAX_BODY = 8192;
+const RATE_NOTE_MS = 60_000;
+const RATE_NOTE_IPS = 1024;
+const rateNoted = new Map<string, number>();
 
 function plain(status: number, text: string): Response {
   return new Response(text, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
@@ -40,9 +43,25 @@ async function adminPost(request: Request, env: Env, scope: string): Promise<Res
   );
 }
 
+function noteRate(env: Env, machineId: string, ip: string | null): void {
+  if (!ip) return;
+  const now = Date.now();
+  const last = rateNoted.get(ip);
+  if (last !== undefined && now - last < RATE_NOTE_MS) return;
+  rateNoted.delete(ip);
+  rateNoted.set(ip, now);
+  if (rateNoted.size > RATE_NOTE_IPS) rateNoted.delete(rateNoted.keys().next().value as string);
+  void roomStub(env, machineId)
+    .fetch(new Request("https://room/strike", { method: "POST", headers: { "x-orrery-ip": ip } }))
+    .catch(() => undefined);
+}
+
 async function socketGet(request: Request, env: Env, url: URL, kind: "m" | "p", machineId: string): Promise<Response> {
   if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return plain(426, "upgrade required");
-  if (await limited(env, request, kind)) return plain(429, "rate limited");
+  if (await limited(env, request, kind)) {
+    if (kind === "p") noteRate(env, machineId, request.headers.get("cf-connecting-ip"));
+    return plain(429, "rate limited");
+  }
   const target = new URL(`https://room/${kind}/${machineId}`);
   target.search = url.search;
   const headers = new Headers({ upgrade: "websocket" });

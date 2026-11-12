@@ -21,7 +21,7 @@ Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bả
 2. Bấm **Thêm điện thoại**: hiện QR, đếm ngược **2 phút**, dùng **1 lần**. Mã chỉ có hiệu lực khi QR đang hiện. Dưới QR ghi QR có relay hay không: relay đang online lúc bấm thì QR mang thêm vé ghép relay (điện thoại khác mạng vẫn ghép được), không thì "Chỉ LAN".
 3. Mở Orrery Remote trên điện thoại → thêm máy → quét QR. App thử mọi IP LAN trong QR (và mDNS) khoảng **3 giây**; không được (khác mạng, 4G) thì tự ghép qua relay bằng vé trong QR. Màn ghép hiện đường đang dùng (Wi-Fi / relay). QR cũ (v1, trước v98) vẫn quét được nhưng chỉ ghép qua LAN.
 4. Orrery trên máy hỏi xác nhận "Ghép «tên điện thoại» (android) từ IP … [quốc gia] qua LAN / relay?" → chọn Cho phép. Xem kỹ IP: IP lạ hoặc bạn không vừa quét QR thì chọn Huỷ. Từ chối hoặc hết 2 phút thì quét lại QR mới.
-5. Sai mã **5 lần** thì QR đang hiện bị huỷ (bấm Mã mới). Ngoài ra sai quá 5 lần / phút (theo IP) thì bị chặn tạm.
+5. Một điện thoại / IP sai mã **5 lần** thì IP đó không dùng được QR này nữa (QR vẫn dùng được cho máy khác); tổng 20 lần sai trên 1 QR thì QR bị huỷ (bấm Mã mới). Ngoài ra sai quá 5 lần / phút (theo IP) thì bị chặn tạm, và quá nhiều lỗi thì IP bị chặn hẳn (mục 12).
 
 Một app quản lý nhiều máy tính (Windows + Mac). Tên máy hiện trong app là tên máy đã đặt ở Orrery.
 
@@ -74,7 +74,9 @@ Tin của 1 pane (chờ, hỏi, xin quyền, xong việc) có nút **Mở trên 
 | Mục | Giá trị |
 |---|---|
 | Port LAN | 4320 |
-| Mã QR ghép | 5 phút, 1 lần |
+| Mã QR ghép | 2 phút, 1 lần |
+| Lỗi trước khi bị chặn IP | 20 / 10 phút → chặn 1 giờ, tái phạm 24 giờ, rồi 7 ngày |
+| Kết nối relay cùng 1 IP | max 4 |
 | Thiết bị không dùng | 30 ngày thì hết hạn |
 | Phiên cùng lúc | max 16 |
 | Attach pane / điện thoại | max 4 |
@@ -129,6 +131,18 @@ Thao tác nguy hiểm (xoá branch, bỏ thay đổi, push, commit amend, chạy
 - Trên điện thoại: key và token relay trong Keychain / Keystore (flutter_secure_storage); cache snapshot trong thư mục cache của app, không backup.
 - Relay không log, không đọc nội dung.
 - Env, secret, app key, token PTY không bao giờ ra điện thoại.
+
+### Chặn IP, danh sách tin cậy, nhật ký, cảnh báo (v98)
+
+- **Tự chặn**: một IP gây 20 lỗi trong 10 phút (bắt tay sai, token sai / hết hạn / bị thu hồi, mã hoặc vé ghép sai, thử quá nhanh, gói tin sai / quá cỡ) bị chặn **1 giờ**; bị chặn lại trong 7 ngày sau đó thì **24 giờ**, rồi **7 ngày**. Áp ở cả cổng LAN của máy và relay. IPv6 bị chặn theo cả dải /64.
+- **Không bao giờ tự chặn**: IP trong **danh sách tin cậy**, và IP đang có (hoặc vừa có trong 10 phút) phiên hợp lệ của điện thoại đã ghép — tức là cả các máy khác sau cùng router / NAT (IPv4) hoặc cùng dải /64 (IPv6) với điện thoại đó. Trên relay, điện thoại đã ghép vẫn vào được dù IP của nó bị tự chặn nếu nó vừa mở phiên thành công trong 24 giờ qua (ví dụ dùng chung IP 4G với kẻ dò); chỉ có token mà không có khoá của điện thoại thì không được miễn.
+- **Xem và gỡ**: Settings → Điều khiển từ xa → **IP bị chặn**: IP / dải — IPv6 theo /64, nơi chặn (LAN / relay / chặn tay), lý do, số lỗi, lúc chặn, hết hạn, bậc. **Gỡ** từng IP hoặc **Gỡ hết** (hỏi lại). Máy tính luôn gỡ được vì đây là thao tác trên chính máy, không cần điện thoại nối được; chặn chỉ áp cho điện thoại, không bao giờ áp cho kết nối relay của máy tính.
+- Huỷ mã ghép: một IP sai mã 5 lần thì IP đó không dùng được mã đang hiện; tổng 20 lần sai thì mã bị huỷ. Trong cùng Wi-Fi, 4 máy là đủ huỷ mã của bạn — chỉ làm hỏng lượt ghép đó, bấm Mã mới.
+- **Chặn tay**: nhập IP hoặc dải CIDR (IPv4 tối thiểu /8, IPv6 tối thiểu /16), chọn 1 giờ / 1 ngày / 7 ngày / 30 ngày / vĩnh viễn. Không chặn được dải đang có điện thoại nối (thu hồi điện thoại thay vào đó). Chặn tay áp cho mọi kết nối, kể cả điện thoại đã ghép, và máy tính tự áp cả khi relay chưa cập nhật. Gỡ 1 IP không gỡ dải chặn tay rộng hơn chứa nó.
+- **Tin cậy**: thêm mạng nhà / văn phòng (IP hoặc CIDR, max 32). Danh sách tin cậy và chặn tay lưu trên máy (`<data>/remote/guard.json`) và tự đồng bộ lên relay mỗi lần nối.
+- **Nhật ký truy cập**: 200 lần nối / lỗi gần nhất (giờ, IP, quốc gia nếu qua relay, đường, thiết bị, kết quả, lý do). Không ghi mã ghép, vé, token, khoá. Nhật ký chỉ nằm trong bộ nhớ, mất khi tắt Orrery.
+- **Cảnh báo** (thông báo trên máy + Telegram nếu đã bật Telegram và bật cảnh báo + thông báo đẩy tới các điện thoại khác đã bật push): thiết bị mới vừa ghép; có IP bị chặn (gộp, tối đa 1 lần / giờ); điện thoại đã ghép nối qua relay từ quốc gia chưa thấy (tối đa 1 lần / giờ / thiết bị). Tin Telegram (có thể vào nhóm có người khác) và thông báo đẩy không chứa IP hay tên thiết bị; chi tiết xem trên máy tính.
+- Relay dựng trước v98: bấm **Cập nhật relay** để có chặn IP và giới hạn 4 kết nối / IP ở relay; chưa cập nhật thì chỉ cổng LAN chặn.
 
 ## 13. Dựng relay và thông báo đẩy trong Settings
 

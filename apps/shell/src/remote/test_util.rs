@@ -33,6 +33,7 @@ pub struct TestHost {
     pub pair_asks: Mutex<Vec<PairAsk>>,
     pub tap: Mutex<Option<StoreTap>>,
     pub notes: Mutex<Vec<String>>,
+    pub telegrams: Mutex<Vec<String>>,
     pub awake: Mutex<Vec<bool>>,
     pub changes: AtomicUsize,
     pub asks: Mutex<Vec<(String, Value)>>,
@@ -60,6 +61,9 @@ impl Host for TestHost {
     }
     fn notify(&self, title: &str, body: &str) {
         lock(&self.notes).push(format!("{title}: {body}"));
+    }
+    fn telegram(&self, text: &str) {
+        lock(&self.telegrams).push(text.to_owned());
     }
     fn tap(&self) -> Option<StoreTap> {
         lock(&self.tap).clone()

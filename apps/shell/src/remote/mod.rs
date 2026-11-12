@@ -1,3 +1,4 @@
+mod alerts;
 pub mod awake;
 mod cf_api;
 mod cf_http;
@@ -9,6 +10,10 @@ mod devices;
 mod fcm;
 mod fcm_files;
 mod fcm_jwt;
+mod guard;
+mod guard_hooks;
+mod guard_ip;
+mod guard_ops;
 pub mod host;
 mod keys;
 mod lan;
@@ -69,6 +74,8 @@ mod push_setup_tests;
 mod push_watch_tests;
 #[cfg(test)]
 mod relay_setup_tests;
+#[cfg(test)]
+mod guard_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -93,7 +100,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 17] = [
+pub const CHANNELS: [&str; 18] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -111,6 +118,7 @@ pub const CHANNELS: [&str; 17] = [
     "ccm:remote-push-setup",
     "ccm:remote-push-test",
     "ccm:remote-push-remove",
+    "ccm:remote-guard",
 ];
 pub const RELAY_PROGRESS: &str = "ccm:remote-relay-progress";
 const SWEEP_EVERY: Duration = Duration::from_secs(3600);
@@ -422,6 +430,7 @@ impl Remote {
             "ccm:remote-push-setup" => Ok(self.push_setup(arg)),
             "ccm:remote-push-test" => Ok(self.push_test(arg)),
             "ccm:remote-push-remove" => Ok(self.push_remove()),
+            "ccm:remote-guard" => Ok(self.guard_call(arg)),
             _ => Err("unknown channel".into()),
         }
     }

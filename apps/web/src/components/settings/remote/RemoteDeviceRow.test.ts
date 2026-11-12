@@ -72,3 +72,9 @@ describe('RemoteDeviceRow rename', () => {
     expect(row.find('[data-remote-device-original]').exists()).toBe(false)
   })
 })
+
+describe('RemoteDeviceRow platform', () => {
+  it('labels the iPhone web app as web, not unknown', () => {
+    expect(mountRow(device({ platform: 'web' })).text()).toContain('Web app')
+  })
+})

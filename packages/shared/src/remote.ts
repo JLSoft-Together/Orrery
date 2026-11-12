@@ -230,7 +230,7 @@ export interface RemoteDevice {
   name: string
   originalName?: string
   alias?: string
-  platform: 'android' | 'ios' | 'unknown'
+  platform: 'android' | 'ios' | 'web' | 'unknown'
   pairedAt: number
   lastSeen: number
   via?: 'lan' | 'relay'
@@ -247,6 +247,7 @@ export interface RemoteStatus {
   devices: RemoteDevice[]
   pairing?: { exp: number; relay: boolean } | null
   pairEnded?: 'tries' | null
+  guardRev?: number
 }
 
 export type RelaySetupState = 'none' | 'ready' | 'deploying' | 'error'
@@ -306,3 +307,47 @@ export type PushTestResult = { ok: true; sent: number } | { ok: false; error: Pu
 export interface RelayDeployProgress {
   step: RelayDeployStep
 }
+
+export type RemoteGuardSource = 'lan' | 'relay' | 'manual'
+export type RemoteGuardResult = 'ok' | 'fail' | 'blocked' | 'denied'
+
+export interface RemoteGuardBlock {
+  key: string
+  source: RemoteGuardSource
+  why: string
+  count: number
+  at: number
+  until: number | null
+  level: number
+}
+
+export interface RemoteGuardLogLine {
+  at: number
+  ip: string
+  via: 'lan' | 'relay'
+  country?: string
+  device?: string
+  result: RemoteGuardResult
+  why: string
+}
+
+export interface RemoteGuardState {
+  blocked: RemoteGuardBlock[]
+  trusted: string[]
+  log: RemoteGuardLogLine[]
+  rev: number
+}
+
+export type RemoteGuardOp =
+  | { op: 'get' }
+  | { op: 'unblock'; key: string }
+  | { op: 'unblock-all' }
+  | { op: 'block'; cidr: string; ttl: number | null }
+  | { op: 'trust'; list: string[] }
+
+export type RemoteGuardError = 'invalid' | 'live' | 'full' | 'keyring'
+
+export type RemoteGuardReply = { ok: true; state: RemoteGuardState } | { ok: false; error: RemoteGuardError; state?: RemoteGuardState }
+
+export const REMOTE_GUARD_RULES_MAX = 32
+export const REMOTE_GUARD_TEXT_MAX = 64

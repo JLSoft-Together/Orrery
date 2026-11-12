@@ -226,3 +226,124 @@ fn a_ticket_the_relay_spent_is_not_armed_again_when_the_desktop_reconnects() {
     });
     rig.remote.enable(false);
 }
+
+#[test]
+fn the_relay_gets_trust_and_manual_blocks_on_connect_and_its_blocks_reach_the_desktop_list_and_alerts() {
+    let rt = runtime();
+    let listener = rt.block_on(TcpListener::bind("127.0.0.1:0")).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let rig = rig("guard-relay", &format!("http://127.0.0.1:{port}"), true);
+    let ctx = rig.remote.ctx().unwrap();
+    assert_eq!(rig.remote.guard_call(&serde_json::json!({ "op": "trust", "list": ["198.51.100.0/24"] }))["ok"], true);
+    assert_eq!(rig.remote.guard_call(&serde_json::json!({ "op": "block", "cidr": "192.0.2.0/24", "ttl": 3600 }))["ok"], true);
+    rig.remote.enable(true);
+    rt.block_on(async {
+        let mut ws = accept(&listener).await;
+        let trust = ctl(&mut ws, |v| v["t"] == "trust.set").await;
+        assert_eq!(trust["list"], serde_json::json!(["198.51.100.0/24"]));
+        let set = ctl(&mut ws, |v| v["t"] == "block.set").await;
+        assert_eq!(set["list"][0]["c"], "192.0.2.0/24");
+        assert!((3590..=3600).contains(&set["list"][0]["ttl"].as_u64().unwrap()), "{set}");
+        ctl(&mut ws, |v| v["t"] == "block.list").await;
+        wait_online(&ctx).await;
+        let rev = rig.remote.status()["guardRev"].as_u64().unwrap();
+        let row = r#"{"k":"203.0.113.66","until":4102444800,"level":2,"n":20,"at":4102358400,"why":"ticket"}"#;
+        send(&mut ws, [&[0u8, 0][..], format!(r#"{{"t":"block.list","total":1,"items":[{row}]}}"#).as_bytes()].concat()).await;
+        send(&mut ws, [&[0u8, 0][..], format!(r#"{{"t":"blocked","row":{}}}"#, row.replace("203.0.113.66", "203.0.113.67")).as_bytes()].concat()).await;
+        for _ in 0..100 {
+            if rig.remote.guard_call(&serde_json::json!({}))["state"]["blocked"].as_array().unwrap().len() == 3 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(rig.remote.status()["guardRev"].as_u64().unwrap() > rev);
+        let state = rig.remote.guard_call(&serde_json::json!({}))["state"].clone();
+        let keys: Vec<(String, String)> = state["blocked"].as_array().unwrap().iter().map(|b| (b["key"].as_str().unwrap().to_owned(), b["source"].as_str().unwrap().to_owned())).collect();
+        assert_eq!(keys, [("192.0.2.0/24".to_owned(), "manual".to_owned()), ("203.0.113.67".into(), "relay".into()), ("203.0.113.66".into(), "relay".into())]);
+        assert_eq!(rig.remote.guard_call(&serde_json::json!({ "op": "unblock", "key": "203.0.113.66" }))["ok"], true);
+        let removed = ctl(&mut ws, |v| v["t"] == "block.remove").await;
+        assert_eq!(removed["c"], "203.0.113.66");
+    });
+    let notes = lock(&rig.host.notes).clone();
+    assert_eq!(notes.iter().filter(|n| n.contains("203.0.113.67") && n.contains("relay")).count(), 1, "{notes:?}");
+    rig.remote.enable(false);
+}
+
+#[test]
+fn a_paired_phone_on_the_relay_from_a_new_country_alerts_once_and_is_remembered() {
+    let rt = runtime();
+    let listener = rt.block_on(TcpListener::bind("127.0.0.1:0")).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let rig = rig("guard-place", &format!("http://127.0.0.1:{port}"), true);
+    let ctx = rig.remote.ctx().unwrap();
+    let phone = Phone::new("phone-w");
+    {
+        let mut devices = lock(&ctx.devices);
+        assert!(devices.add(Device::new(&phone.id, "Pixel W", phone.key.public(), now_secs())));
+        devices.note_place(&phone.id, Some("US"));
+    }
+    let desktop = rig.desktop_key();
+    rig.remote.enable(true);
+    let mut seen = Vec::new();
+    rt.block_on(async {
+        let mut ws = accept(&listener).await;
+        wait_online(&ctx).await;
+        for conn in [11u16, 12] {
+            send(&mut ws, open(conn, false)).await;
+            let (init, msg1) = SessionInitiator::start(&phone.key, &desktop, &phone.id).unwrap();
+            send(&mut ws, encode_data(conn, &msg1).unwrap()).await;
+            let msg2 = loop {
+                let (c, b) = data(&mut ws, &mut seen).await;
+                if c == conn {
+                    break b;
+                }
+            };
+            assert!(!seen.iter().any(|v| v["t"] == "good" && v["conn"] == conn), "good before hello: {seen:?}");
+            let mut t: Transport = init.finish(&msg2).unwrap();
+            let hello = seal_json(&mut t, &serde_json::json!({ "id": "h1", "t": "hello", "proto": 1, "app": "test", "platform": "android", "caps": [] }));
+            send(&mut ws, encode_data(conn, &hello).unwrap()).await;
+            loop {
+                let (c, b) = data(&mut ws, &mut seen).await;
+                if c == conn && open_json(&mut t, &b).is_some_and(|v| v["re"] == "h1") {
+                    break;
+                }
+            }
+            send(&mut ws, encode_control(&Control::new(ControlKind::Close, conn)).unwrap()).await;
+        }
+    });
+    let notes = lock(&rig.host.notes).clone();
+    assert_eq!(notes.iter().filter(|n| n.contains("new country") && n.contains("203.0.113.7 [VN]")).count(), 1, "{notes:?}");
+    assert!([11u16, 12].iter().all(|c| seen.iter().any(|v| v["t"] == "good" && v["conn"] == *c)), "{seen:?}");
+    let saved = Devices::load(&rig.dir);
+    assert_eq!(saved.list()[0].countries, ["US", "VN"]);
+    rig.remote.enable(false);
+}
+
+#[test]
+fn a_strike_still_reaches_the_relay_when_the_phone_left_and_manual_blocks_apply_on_an_old_relay() {
+    let rt = runtime();
+    let listener = rt.block_on(TcpListener::bind("127.0.0.1:0")).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let rig = rig("guard-gone", &format!("http://127.0.0.1:{port}"), true);
+    let ctx = rig.remote.ctx().unwrap();
+    rig.remote.enable(true);
+    rt.block_on(async {
+        let mut ws = accept(&listener).await;
+        wait_online(&ctx).await;
+        let mut junk = vec![0u8, 1];
+        junk.extend_from_slice(&[7u8; 78]);
+        send(&mut ws, open(21, false)).await;
+        send(&mut ws, encode_data(21, &junk).unwrap()).await;
+        send(&mut ws, encode_control(&Control::new(ControlKind::Close, 21)).unwrap()).await;
+        let strike = ctl(&mut ws, |v| v["t"] == "strike").await;
+        assert_eq!(strike, serde_json::json!({ "t": "strike", "conn": 21, "why": "handshake" }));
+
+        assert_eq!(rig.remote.guard_call(&serde_json::json!({ "op": "block", "cidr": "203.0.113.0/24", "ttl": null }))["ok"], true);
+        send(&mut ws, open(31, false)).await;
+        let closed = ctl(&mut ws, |v| v["t"] == "close" && v["conn"] == 31).await;
+        assert_eq!(closed["code"], 4429);
+    });
+    let log = rig.remote.guard_call(&serde_json::json!({}))["state"]["log"].clone();
+    assert_eq!((log[0]["result"].as_str(), log[0]["why"].as_str(), log[0]["ip"].as_str()), (Some("blocked"), Some("manual"), Some("203.0.113.7")));
+    rig.remote.enable(false);
+}

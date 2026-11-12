@@ -1,5 +1,5 @@
 var __defProp = Object.defineProperty;
-var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __name = (target2, value) => __defProp(target2, "name", { value, configurable: true });
 
 // src/app.ts
 var PROTO = 1;
@@ -284,12 +284,139 @@ var CLOSE_RATE = 4429;
 var CLOSE_GATEWAY_OFF = 4503;
 var CLOSE_NORMAL = 1e3;
 
+// src/cidr.ts
+var MIN_PREFIX_V4 = 8;
+var MIN_PREFIX_V6 = 16;
+var V6_KEY_BITS = 64;
+var V4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+var HEX = /^[0-9A-Fa-f]{1,4}$/;
+function parseV4(text) {
+  const m = V4.exec(text);
+  if (!m) return null;
+  let n = 0n;
+  for (let i = 1; i <= 4; i++) {
+    const part = m[i];
+    if (part.length > 1 && part.startsWith("0")) return null;
+    const v = Number(part);
+    if (v > 255) return null;
+    n = n << 8n | BigInt(v);
+  }
+  return n;
+}
+__name(parseV4, "parseV4");
+function groups(text) {
+  if (text === "") return [];
+  const out = [];
+  for (const g of text.split(":")) {
+    if (!HEX.test(g)) return null;
+    out.push(parseInt(g, 16));
+  }
+  return out;
+}
+__name(groups, "groups");
+function parseV6(text) {
+  if (text.length > 45 || text.includes(":::")) return null;
+  let tail = null;
+  let body = text;
+  const lastColon = text.lastIndexOf(":");
+  if (text.slice(lastColon + 1).includes(".")) {
+    tail = parseV4(text.slice(lastColon + 1));
+    if (tail === null) return null;
+    body = text.slice(0, lastColon + 1) + "0:0";
+  }
+  const halves = body.split("::");
+  if (halves.length > 2) return null;
+  const head = groups(halves[0]);
+  const rest = halves.length === 2 ? groups(halves[1]) : [];
+  if (!head || !rest) return null;
+  const total = head.length + rest.length;
+  if (halves.length === 1 ? total !== 8 : total > 7) return null;
+  const all = [...head, ...new Array(8 - total).fill(0), ...rest];
+  let n = 0n;
+  for (const g of all) n = n << 16n | BigInt(g);
+  if (tail !== null) n = n & ~0xffffffffn | tail;
+  return n;
+}
+__name(parseV6, "parseV6");
+function parseIp(text) {
+  if (text.includes(":")) {
+    const n2 = parseV6(text);
+    if (n2 === null) return null;
+    if (n2 >> 32n === 0xffffn) return { v: 4, n: n2 & 0xffffffffn };
+    return { v: 6, n: n2 };
+  }
+  const n = parseV4(text);
+  return n === null ? null : { v: 4, n };
+}
+__name(parseIp, "parseIp");
+function mask(v, bits) {
+  const width = v === 4 ? 32 : 128;
+  return bits === 0 ? 0n : (1n << BigInt(bits)) - 1n << BigInt(width - bits);
+}
+__name(mask, "mask");
+function parseCidr(text) {
+  const slash = text.indexOf("/");
+  const addr = parseIp(slash < 0 ? text : text.slice(0, slash));
+  if (!addr) return null;
+  const width = addr.v === 4 ? 32 : 128;
+  let bits = width;
+  if (slash >= 0) {
+    const raw = text.slice(slash + 1);
+    if (!/^\d{1,3}$/.test(raw)) return null;
+    bits = Number(raw);
+    if (bits > width) return null;
+  }
+  if (bits < (addr.v === 4 ? MIN_PREFIX_V4 : MIN_PREFIX_V6)) return null;
+  return { v: addr.v, n: addr.n & mask(addr.v, bits), bits };
+}
+__name(parseCidr, "parseCidr");
+function inCidr(addr, cidr) {
+  return addr.v === cidr.v && (addr.n & mask(addr.v, cidr.bits)) === cidr.n;
+}
+__name(inCidr, "inCidr");
+function v6Text(n) {
+  const parts = [];
+  for (let i = 7; i >= 0; i--) parts.push((n >> BigInt(i * 16) & 0xffffn).toString(16));
+  let best = -1;
+  let bestLen = 1;
+  for (let i = 0; i < 8; ) {
+    if (parts[i] !== "0") {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < 8 && parts[j] === "0") j++;
+    if (j - i > bestLen) {
+      best = i;
+      bestLen = j - i;
+    }
+    i = j;
+  }
+  if (best < 0) return parts.join(":");
+  return `${parts.slice(0, best).join(":")}::${parts.slice(best + bestLen).join(":")}`;
+}
+__name(v6Text, "v6Text");
+function cidrText(c) {
+  const width = c.v === 4 ? 32 : 128;
+  const base = c.v === 4 ? [24n, 16n, 8n, 0n].map((s) => String(c.n >> s & 255n)).join(".") : v6Text(c.n);
+  return c.bits === width ? base : `${base}/${c.bits}`;
+}
+__name(cidrText, "cidrText");
+function ipKey(text) {
+  if (text === void 0) return null;
+  const addr = parseIp(text);
+  if (!addr) return null;
+  if (addr.v === 4) return cidrText({ ...addr, bits: 32 });
+  return cidrText({ v: 6, n: addr.n & mask(6, V6_KEY_BITS), bits: V6_KEY_BITS });
+}
+__name(ipKey, "ipKey");
+
 // src/envelope.ts
 var ENVELOPE_HEADER = 2;
 var NOISE_MAX = 65535;
 var MAX_ENVELOPE = ENVELOPE_HEADER + NOISE_MAX;
 var MAX_CONN = 65535;
-var CONTROL_MAX = 256;
+var GUARD_CONTROL_MAX = 4096;
 function encodeData(conn, bytes, offset = 0) {
   const src = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const body = src.subarray(offset);
@@ -311,12 +438,266 @@ function readConn(bytes) {
   return bytes[0] << 8 | bytes[1];
 }
 __name(readConn, "readConn");
+function encodeNotice(value) {
+  const json2 = utf8(JSON.stringify(value));
+  const out = new Uint8Array(ENVELOPE_HEADER + json2.length);
+  out.set(json2, ENVELOPE_HEADER);
+  return out;
+}
+__name(encodeNotice, "encodeNotice");
+
+// src/guard.ts
+var STRIKE_MAX = 20;
+var STRIKE_WINDOW_MS = 10 * 6e4;
+var STRIKE_KEYS = 1024;
+var BLOCK_SECS = [3600, 86400, 7 * 86400];
+var REPEAT_SECS = 7 * 86400;
+var MAX_ROWS = 1024;
+var LIST_MAX = 200;
+var MAX_RULES = 32;
+var SPARE_MS = 10 * 6e4;
+var DEVICE_SPARE_MS = 24 * 36e5;
+var RECENT_CONNS = 64;
+var RECENT_MS = 3e4;
+var STRIKE_REASONS = ["handshake", "timeout", "device", "code", "pairing", "rate", "frame", "hello", "token", "ticket"];
+var RULE_TEXT = /^[0-9A-Fa-f:./]{2,49}$/;
+function overlap(a, b) {
+  return a.v === b.v && (a.bits >= b.bits ? inCidr(a, b) : inCidr(b, a));
+}
+__name(overlap, "overlap");
+function isStrikeWhy(value) {
+  return typeof value === "string" && STRIKE_REASONS.includes(value);
+}
+__name(isStrikeWhy, "isStrikeWhy");
+function parseRules(value) {
+  if (!Array.isArray(value) || value.length > MAX_RULES) return null;
+  const out = [];
+  for (const item of value) {
+    if (typeof item !== "string" || !RULE_TEXT.test(item)) return null;
+    const c = parseCidr(item);
+    if (!c) return null;
+    out.push(c);
+  }
+  return out;
+}
+__name(parseRules, "parseRules");
+function parseManual(value, nowSec2) {
+  if (!Array.isArray(value) || value.length > MAX_RULES) return null;
+  const out = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) return null;
+    const { c, ttl } = item;
+    if (typeof c !== "string" || !RULE_TEXT.test(c)) return null;
+    const cidr = parseCidr(c);
+    if (!cidr) return null;
+    if (ttl !== void 0 && (typeof ttl !== "number" || !Number.isSafeInteger(ttl) || ttl < 1)) return null;
+    out.push({ c: cidr, until: ttl === void 0 ? null : nowSec2 + ttl });
+  }
+  return out;
+}
+__name(parseManual, "parseManual");
+var Guard = class {
+  constructor(sql) {
+    this.sql = sql;
+    sql.exec("CREATE TABLE IF NOT EXISTS guard_block (k TEXT PRIMARY KEY, level INTEGER NOT NULL, until INTEGER NOT NULL, at INTEGER NOT NULL, n INTEGER NOT NULL, why TEXT NOT NULL)");
+    sql.exec("CREATE TABLE IF NOT EXISTS guard_rule (kind TEXT PRIMARY KEY, v TEXT NOT NULL)");
+  }
+  sql;
+  static {
+    __name(this, "Guard");
+  }
+  strikes = /* @__PURE__ */ new Map();
+  good = /* @__PURE__ */ new Map();
+  goodDevices = /* @__PURE__ */ new Map();
+  trust = null;
+  manual = null;
+  loadRule(kind) {
+    const rows = this.sql.exec("SELECT v FROM guard_rule WHERE kind = ?", kind).toArray();
+    if (rows.length === 0) return [];
+    try {
+      return JSON.parse(rows[0].v);
+    } catch {
+      return [];
+    }
+  }
+  trustList() {
+    if (this.trust === null) this.trust = parseRules(this.loadRule("trust")) ?? [];
+    return this.trust;
+  }
+  manualList() {
+    if (this.manual === null) {
+      const raw = this.loadRule("manual");
+      const list = [];
+      if (Array.isArray(raw)) {
+        for (const item of raw) {
+          const c = typeof item?.c === "string" ? parseCidr(item.c) : null;
+          if (c) list.push({ c, until: typeof item.until === "number" ? item.until : null });
+        }
+      }
+      this.manual = list;
+    }
+    return this.manual;
+  }
+  setTrust(list) {
+    this.trust = list;
+    this.sql.exec("INSERT INTO guard_rule (kind, v) VALUES ('trust', ?) ON CONFLICT(kind) DO UPDATE SET v = excluded.v", JSON.stringify(list.map(cidrText)));
+    for (const k of [...this.strikes.keys()]) if (this.trustedKey(k)) this.strikes.delete(k);
+    for (const t of list) this.remove(t);
+  }
+  setManual(list) {
+    this.manual = list;
+    const raw = list.map((r) => ({ c: cidrText(r.c), until: r.until }));
+    this.sql.exec("INSERT INTO guard_rule (kind, v) VALUES ('manual', ?) ON CONFLICT(kind) DO UPDATE SET v = excluded.v", JSON.stringify(raw));
+  }
+  trustedKey(key) {
+    const c = parseCidr(key);
+    return c !== null && this.trustList().some((t) => t.v === c.v && t.bits <= c.bits && inCidr(c, t));
+  }
+  trusted(ip) {
+    const addr = ip === void 0 ? null : parseIp(ip);
+    return addr !== null && this.trustList().some((t) => inCidr(addr, t));
+  }
+  manualBlocked(ip, nowSec2) {
+    const addr = ip === void 0 ? null : parseIp(ip);
+    return addr !== null && this.manualList().some((r) => (r.until === null || r.until > nowSec2) && inCidr(addr, r.c));
+  }
+  row(key) {
+    const rows = this.sql.exec("SELECT k, level, until, at, n, why FROM guard_block WHERE k = ?", key).toArray();
+    return rows.length === 0 ? null : rows[0];
+  }
+  autoBlocked(key, nowSec2) {
+    if (key === null) return false;
+    const r = this.row(key);
+    return r !== null && r.until > nowSec2;
+  }
+  markGood(key, device, nowMs) {
+    for (const [map, k] of [[this.good, key], [this.goodDevices, device]]) {
+      if (k === null || k === void 0 || k === "") continue;
+      map.delete(k);
+      map.set(k, nowMs);
+      if (map.size > STRIKE_KEYS) map.delete(map.keys().next().value);
+    }
+  }
+  vouched(key, device, nowMs) {
+    const byIp = key === null ? void 0 : this.good.get(key);
+    const byDevice = this.goodDevices.get(device);
+    return byIp !== void 0 && nowMs - byIp < SPARE_MS || byDevice !== void 0 && nowMs - byDevice < DEVICE_SPARE_MS;
+  }
+  spared(key, nowMs, liveGood) {
+    if (liveGood) return true;
+    const at = this.good.get(key);
+    return at !== void 0 && nowMs - at < SPARE_MS;
+  }
+  strike(key, ip, why, nowMs, liveGood) {
+    if (key === null || this.trusted(ip) || this.trustedKey(key)) return null;
+    const list = (this.strikes.get(key) ?? []).filter((t) => nowMs - t < STRIKE_WINDOW_MS);
+    list.push(nowMs);
+    this.strikes.delete(key);
+    this.strikes.set(key, list);
+    if (this.strikes.size > STRIKE_KEYS) this.strikes.delete(this.strikes.keys().next().value);
+    if (list.length < STRIKE_MAX || this.spared(key, nowMs, liveGood)) return null;
+    const nowSec2 = Math.floor(nowMs / 1e3);
+    const old = this.row(key);
+    if (old !== null && old.until > nowSec2) return null;
+    const level = old !== null && nowSec2 <= old.until + REPEAT_SECS ? Math.min(old.level + 1, BLOCK_SECS.length) : 1;
+    const row = { k: key, level, until: nowSec2 + BLOCK_SECS[level - 1], at: nowSec2, n: list.length, why };
+    this.sql.exec(
+      "INSERT INTO guard_block (k, level, until, at, n, why) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(k) DO UPDATE SET level = excluded.level, until = excluded.until, at = excluded.at, n = excluded.n, why = excluded.why",
+      row.k,
+      row.level,
+      row.until,
+      row.at,
+      row.n,
+      row.why
+    );
+    this.strikes.delete(key);
+    this.sweep(nowSec2);
+    return row;
+  }
+  sweep(nowSec2) {
+    this.sql.exec("DELETE FROM guard_block WHERE until + ? < ?", REPEAT_SECS, nowSec2);
+    const count = this.sql.exec("SELECT COUNT(*) AS c FROM guard_block").one().c;
+    if (count > MAX_ROWS) {
+      this.sql.exec("DELETE FROM guard_block WHERE k IN (SELECT k FROM guard_block ORDER BY until ASC LIMIT ?)", count - MAX_ROWS);
+    }
+  }
+  list(nowSec2) {
+    const total = this.sql.exec("SELECT COUNT(*) AS c FROM guard_block WHERE until > ?", nowSec2).one().c;
+    const items = this.sql.exec("SELECT k, level, until, at, n, why FROM guard_block WHERE until > ? ORDER BY at DESC LIMIT ?", nowSec2, LIST_MAX).toArray();
+    return { items, total };
+  }
+  remove(target2) {
+    if (target2 === "all") {
+      const n2 = this.sql.exec("SELECT COUNT(*) AS c FROM guard_block").one().c;
+      this.sql.exec("DELETE FROM guard_block");
+      this.strikes.clear();
+      return n2;
+    }
+    let n = 0;
+    for (const r of this.sql.exec("SELECT k FROM guard_block").toArray()) {
+      const c = parseCidr(r.k);
+      if (c && overlap(c, target2)) {
+        this.sql.exec("DELETE FROM guard_block WHERE k = ?", r.k);
+        n++;
+      }
+    }
+    for (const k of [...this.strikes.keys()]) {
+      const c = parseCidr(k);
+      if (c && overlap(c, target2)) this.strikes.delete(k);
+    }
+    return n;
+  }
+};
+
+// src/guard-control.ts
+function target(fields) {
+  if (fields.all === true) return "all";
+  return typeof fields.c === "string" && RULE_TEXT.test(fields.c) ? parseCidr(fields.c) : null;
+}
+__name(target, "target");
+function guardControl(room, fields, nowSec2) {
+  switch (fields.t) {
+    case "strike": {
+      const { conn, why } = fields;
+      if (typeof conn !== "number" || !Number.isInteger(conn) || conn < 1 || conn > MAX_CONN || !isStrikeWhy(why)) return true;
+      room.strikeConn(conn, why);
+      return true;
+    }
+    case "good": {
+      const { conn } = fields;
+      if (typeof conn === "number" && Number.isInteger(conn) && conn >= 1 && conn <= MAX_CONN) room.markConnGood(conn);
+      return true;
+    }
+    case "block.list":
+      room.sendList();
+      return true;
+    case "block.remove": {
+      const t = target(fields);
+      if (t === null) return true;
+      room.guard.remove(t);
+      room.sendList();
+      return true;
+    }
+    case "block.set": {
+      const list = parseManual(fields.list, nowSec2);
+      if (list === null) return true;
+      room.guard.setManual(list);
+      room.closeMatching();
+      return true;
+    }
+    case "trust.set": {
+      const list = parseRules(fields.list);
+      if (list !== null) room.guard.setTrust(list);
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+__name(guardControl, "guardControl");
 
 // src/pair.ts
 var PAIR_TTL_MAX = 300;
-var STRIKE_MAX = 20;
-var STRIKE_WINDOW_MS = 10 * 6e4;
-var STRIKE_IPS = 1024;
 var TICKET = /^[A-Za-z0-9_-]{22}$/;
 var HASH = /^[A-Za-z0-9_-]{43}$/;
 var IP = /^[0-9A-Fa-f:.]{2,45}$/;
@@ -351,27 +732,6 @@ function cleanCountry(value) {
   return value !== null && COUNTRY.test(value) ? value : void 0;
 }
 __name(cleanCountry, "cleanCountry");
-var Strikes = class {
-  static {
-    __name(this, "Strikes");
-  }
-  map = /* @__PURE__ */ new Map();
-  add(ip, nowMs) {
-    const list = this.recent(ip, nowMs);
-    list.push(nowMs);
-    this.map.set(ip, list);
-    if (this.map.size > STRIKE_IPS) this.map.delete(this.map.keys().next().value);
-  }
-  blocked(ip, nowMs) {
-    return this.recent(ip, nowMs).length >= STRIKE_MAX;
-  }
-  recent(ip, nowMs) {
-    const list = (this.map.get(ip) ?? []).filter((t) => nowMs - t < STRIKE_WINDOW_MS);
-    if (list.length === 0) this.map.delete(ip);
-    else this.map.set(ip, list);
-    return list;
-  }
-};
 
 // src/sign.ts
 var MAX_SKEW_SEC = 120;
@@ -438,11 +798,14 @@ __name(verifyToken, "verifyToken");
 var MAX_PHONES = 64;
 var MAX_REVOKE_BATCH = 64;
 var MAX_BODY = 8192;
+var MAX_PER_IP = 4;
+var FIRST_FRAME_MS = 5e3;
 var DESKTOP_CLOSE = /* @__PURE__ */ new Map([
   [CLOSE_BAD_FRAME, "bad frame"],
   [CLOSE_DEVICE, "device"],
   [CLOSE_PROTO, "proto"],
-  [CLOSE_GATEWAY_OFF, "gateway off"]
+  [CLOSE_GATEWAY_OFF, "gateway off"],
+  [CLOSE_RATE, "rate"]
 ]);
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -459,11 +822,13 @@ var Room = class extends DurableObject {
   static {
     __name(this, "Room");
   }
-  strikes = new Strikes();
+  guard;
+  recent = /* @__PURE__ */ new Map();
   constructor(ctx, env) {
     super(ctx, env);
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS revoked (device_id TEXT PRIMARY KEY)");
+    this.guard = new Guard(ctx.storage.sql);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
   getMeta(key) {
@@ -488,6 +853,7 @@ var Room = class extends DurableObject {
     const parts = url.pathname.split("/").filter(Boolean);
     if (request.method === "POST" && parts[0] === "register") return this.register(request);
     if (request.method === "POST" && parts[0] === "revoke") return this.revoke(request);
+    if (request.method === "POST" && parts[0] === "strike" && parts.length === 1) return this.rateStrike(request);
     if (request.method === "GET" && parts[0] === "m" && parts.length === 2) return this.connectMachine(request, url, parts[1]);
     if (request.method === "GET" && parts[0] === "p" && parts.length === 2) return this.connectPhone(request, url, parts[1]);
     return json(404, { error: "not_found" });
@@ -562,6 +928,10 @@ var Room = class extends DurableObject {
   }
   markClosing(ws, att) {
     ws.serializeAttachment({ ...att, closing: true });
+    if (att.role !== "p" || att.conn === 0 || att.closing) return;
+    this.recent.delete(att.conn);
+    this.recent.set(att.conn, { key: att.key, ip: att.ip, at: Date.now() });
+    if (this.recent.size > RECENT_CONNS) this.recent.delete(this.recent.keys().next().value);
   }
   desktop() {
     for (const ws of this.ctx.getWebSockets("m")) {
@@ -613,46 +983,107 @@ var Room = class extends DurableObject {
     const key = relayKey === null ? null : b64urlDecode(relayKey);
     if (!key) return json(404, { error: "not_registered" });
     const info = { ip: cleanIp(request.headers.get("x-orrery-ip")), country: cleanCountry(request.headers.get("x-orrery-country")) };
-    if (url.searchParams.has("pt")) return this.connectPairing(url.searchParams.get("pt") ?? "", info);
+    const ipk = ipKey(info.ip);
+    if (this.guard.manualBlocked(info.ip, nowSec())) return this.rejectSocket(CLOSE_RATE, "blocked");
+    if (url.searchParams.has("pt")) return this.connectPairing(url.searchParams.get("pt") ?? "", info, ipk);
     const verdict = await verifyToken(key, machineId, url.searchParams.get("t") ?? "", nowSec());
-    if (!verdict.ok) return this.rejectSocket(CLOSE_DEVICE, verdict.reason === "expired" ? "expired" : "bad token");
-    if (this.isRevoked(verdict.deviceId)) return this.rejectSocket(CLOSE_DEVICE, "revoked");
+    const bad = !verdict.ok ? verdict.reason === "expired" ? "expired" : "bad token" : this.isRevoked(verdict.deviceId) ? "revoked" : null;
+    if (bad !== null || !verdict.ok) {
+      if (this.guard.autoBlocked(ipk, nowSec())) return this.rejectSocket(CLOSE_RATE, "blocked");
+      this.strike(ipk, info.ip, "token");
+      return this.rejectSocket(CLOSE_DEVICE, bad ?? "bad token");
+    }
+    if (this.guard.autoBlocked(ipk, nowSec()) && !this.guard.vouched(ipk, verdict.deviceId, Date.now())) return this.rejectSocket(CLOSE_RATE, "blocked");
     const desktop = this.desktop();
     if (!desktop) return this.rejectSocket(CLOSE_GATEWAY_OFF, "gateway off");
-    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    const full = this.full(ipk, info.ip);
+    if (full !== null) return full;
     const conn = this.allocConn();
     if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
-    return this.acceptPhone(desktop, conn, verdict.deviceId, info);
+    return this.acceptPhone(desktop, conn, verdict.deviceId, info, ipk);
   }
-  acceptPhone(desktop, conn, device, info) {
+  full(ipk, ip) {
+    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    if (ipk === null || this.guard.trusted(ip)) return null;
+    const open = this.ctx.getWebSockets(`ip:${ipk}`).filter((ws) => this.attachment(ws)?.closing === false).length;
+    if (open < MAX_PER_IP) return null;
+    this.strike(ipk, ip, "rate");
+    return this.rejectSocket(CLOSE_RATE, "too many");
+  }
+  acceptPhone(desktop, conn, device, info, ipk) {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    this.ctx.acceptWebSocket(server, ["p", `p:${conn}`]);
-    server.serializeAttachment({ role: "p", conn, device, closing: false, pairing: info.pairing === true });
+    this.ctx.acceptWebSocket(server, ipk === null ? ["p", `p:${conn}`] : ["p", `p:${conn}`, `ip:${ipk}`]);
+    const att = { role: "p", conn, device, closing: false, pairing: info.pairing === true, key: ipk, ip: info.ip, at: Date.now(), good: false };
+    server.serializeAttachment(att);
     desktop.send(encodeControl("open", conn, info));
     return new Response(null, { status: 101, webSocket: client });
   }
-  async connectPairing(ticket, info) {
-    const ip = info.ip ?? "unknown";
-    const nowMs = Date.now();
-    if (this.strikes.blocked(ip, nowMs)) return this.rejectSocket(CLOSE_RATE, "too many");
+  async connectPairing(ticket, info, ipk) {
+    if (this.guard.autoBlocked(ipk, nowSec())) return this.rejectSocket(CLOSE_RATE, "blocked");
     const hashed = validTicket(ticket) ? await ticketHash(ticket) : null;
     const stored = this.getMeta("pair_h");
     const exp = Number(this.getMeta("pair_exp") ?? "0");
     const valid = hashed !== null && stored !== null && sameText(hashed, stored);
     if (!valid || nowSec() >= exp) {
-      this.strikes.add(ip, nowMs);
+      this.strike(ipk, info.ip, "ticket");
       return this.rejectSocket(CLOSE_DEVICE, valid ? "expired" : "bad ticket");
     }
     const desktop = this.desktop();
     if (!desktop) return this.rejectSocket(CLOSE_GATEWAY_OFF, "gateway off");
-    if (this.ctx.getWebSockets("p").length >= MAX_PHONES) return this.rejectSocket(CLOSE_RATE, "too many");
+    const full = this.full(ipk, info.ip);
+    if (full !== null) return full;
     const conn = this.allocConn();
     if (conn === 0) return this.rejectSocket(CLOSE_RATE, "too many");
     this.dropMeta("pair_h");
     this.dropMeta("pair_exp");
-    return this.acceptPhone(desktop, conn, "", { ...info, pairing: true });
+    return this.acceptPhone(desktop, conn, "", { ...info, pairing: true }, ipk);
+  }
+  liveGood(ipk) {
+    return this.ctx.getWebSockets(`ip:${ipk}`).some((ws) => {
+      const att = this.attachment(ws);
+      return att !== null && !att.closing && att.good === true;
+    });
+  }
+  strike(ipk, ip, why) {
+    if (ipk === null || ipk === void 0) return;
+    const row = this.guard.strike(ipk, ip, why, Date.now(), this.liveGood(ipk));
+    if (row === null) return;
+    this.desktop()?.send(encodeNotice({ t: "blocked", row }));
+    for (const ws of this.ctx.getWebSockets(`ip:${ipk}`)) {
+      const att = this.attachment(ws);
+      if (att && !att.closing && att.good !== true) this.dropPhone(ws, att, CLOSE_RATE, "blocked");
+    }
+  }
+  strikeConn(conn, why) {
+    const target2 = this.ctx.getWebSockets(`p:${conn}`).find((ws) => this.attachment(ws)?.closing === false) ?? this.ctx.getWebSockets(`p:${conn}`)[0];
+    const att = target2 ? this.attachment(target2) : null;
+    if (att && att.role === "p") return this.strike(att.key, att.ip, why);
+    const gone = this.recent.get(conn);
+    if (gone && Date.now() - gone.at < RECENT_MS) this.strike(gone.key, gone.ip, why);
+  }
+  markConnGood(conn) {
+    const target2 = this.ctx.getWebSockets(`p:${conn}`).find((ws) => this.attachment(ws)?.closing === false);
+    const att = target2 ? this.attachment(target2) : null;
+    if (!target2 || !att || att.role !== "p" || att.good === true) return;
+    target2.serializeAttachment({ ...att, good: true });
+    this.guard.markGood(att.key, att.device, Date.now());
+  }
+  sendList() {
+    this.desktop()?.send(encodeNotice({ t: "block.list", ...this.guard.list(nowSec()) }));
+  }
+  closeMatching() {
+    const now = nowSec();
+    for (const ws of this.ctx.getWebSockets("p")) {
+      const att = this.attachment(ws);
+      if (att && !att.closing && this.guard.manualBlocked(att.ip, now)) this.dropPhone(ws, att, CLOSE_RATE, "blocked");
+    }
+  }
+  async rateStrike(request) {
+    const ip = cleanIp(request.headers.get("x-orrery-ip"));
+    this.strike(ipKey(ip), ip, "rate");
+    return json(200, { ok: true });
   }
   allocConn() {
     let next = Number(this.getMeta("next_conn") ?? "1");
@@ -688,6 +1119,7 @@ var Room = class extends DurableObject {
     if (typeof message === "string") {
       this.markClosing(ws, att);
       ws.close(CLOSE_BAD_FRAME, "text frame");
+      if (att.role === "p") this.strike(att.key, att.ip, "frame");
       this.afterGone(att);
       return;
     }
@@ -710,12 +1142,12 @@ var Room = class extends DurableObject {
       this.desktopControl(bytes);
       return;
     }
-    const target = this.ctx.getWebSockets(`p:${conn}`)[0];
-    if (!target) return;
-    target.send(bytes.slice(2));
+    const target2 = this.ctx.getWebSockets(`p:${conn}`)[0];
+    if (!target2) return;
+    target2.send(bytes.slice(2));
   }
   desktopControl(bytes) {
-    if (bytes.length > CONTROL_MAX) return;
+    if (bytes.length > GUARD_CONTROL_MAX + 2) return;
     let value;
     try {
       value = JSON.parse(new TextDecoder().decode(bytes.subarray(2)));
@@ -726,16 +1158,17 @@ var Room = class extends DurableObject {
     const fields = value;
     if (fields.t === "pair.open") return this.pairOpen(fields);
     if (fields.t === "pair.close") return this.pairClose();
+    if (guardControl(this, fields, nowSec())) return;
     const { t, conn, code } = fields;
     if (t !== "close" || typeof conn !== "number" || typeof code !== "number") return;
     if (!Number.isInteger(conn) || conn < 1 || conn > MAX_CONN) return;
-    const target = this.ctx.getWebSockets(`p:${conn}`)[0];
-    const att = target ? this.attachment(target) : null;
-    if (!target || !att || att.closing) return;
+    const target2 = this.ctx.getWebSockets(`p:${conn}`)[0];
+    const att = target2 ? this.attachment(target2) : null;
+    if (!target2 || !att || att.closing) return;
     const reason = code === CLOSE_NORMAL && att.pairing === true ? "paired" : DESKTOP_CLOSE.get(code);
     if (reason === void 0) return;
-    this.markClosing(target, att);
-    target.close(code, reason);
+    this.markClosing(target2, att);
+    target2.close(code, reason);
   }
   pairOpen(fields) {
     const open = parsePairOpen(fields, nowSec());
@@ -750,7 +1183,16 @@ var Room = class extends DurableObject {
   fromPhone(ws, att, message) {
     if (message.byteLength > NOISE_MAX) {
       this.dropPhone(ws, att, CLOSE_BAD_FRAME, "too large");
+      this.strike(att.key, att.ip, "frame");
       return;
+    }
+    if (att.fed !== true && att.at !== void 0) {
+      if (Date.now() - att.at > FIRST_FRAME_MS) {
+        this.dropPhone(ws, att, CLOSE_BAD_FRAME, "timeout");
+        this.strike(att.key, att.ip, "timeout");
+        return;
+      }
+      ws.serializeAttachment({ ...att, fed: true });
     }
     const desktop = this.desktop();
     if (!desktop) {
@@ -783,6 +1225,9 @@ var Room = class extends DurableObject {
 
 // src/index.ts
 var MAX_BODY2 = 8192;
+var RATE_NOTE_MS = 6e4;
+var RATE_NOTE_IPS = 1024;
+var rateNoted = /* @__PURE__ */ new Map();
 function plain2(status, text) {
   return new Response(text, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 }
@@ -815,17 +1260,31 @@ async function adminPost(request, env, scope) {
   );
 }
 __name(adminPost, "adminPost");
+function noteRate(env, machineId, ip) {
+  if (!ip) return;
+  const now = Date.now();
+  const last = rateNoted.get(ip);
+  if (last !== void 0 && now - last < RATE_NOTE_MS) return;
+  rateNoted.delete(ip);
+  rateNoted.set(ip, now);
+  if (rateNoted.size > RATE_NOTE_IPS) rateNoted.delete(rateNoted.keys().next().value);
+  void roomStub(env, machineId).fetch(new Request("https://room/strike", { method: "POST", headers: { "x-orrery-ip": ip } })).catch(() => void 0);
+}
+__name(noteRate, "noteRate");
 async function socketGet(request, env, url, kind, machineId) {
   if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return plain2(426, "upgrade required");
-  if (await limited(env, request, kind)) return plain2(429, "rate limited");
-  const target = new URL(`https://room/${kind}/${machineId}`);
-  target.search = url.search;
+  if (await limited(env, request, kind)) {
+    if (kind === "p") noteRate(env, machineId, request.headers.get("cf-connecting-ip"));
+    return plain2(429, "rate limited");
+  }
+  const target2 = new URL(`https://room/${kind}/${machineId}`);
+  target2.search = url.search;
   const headers = new Headers({ upgrade: "websocket" });
   const ip = request.headers.get("cf-connecting-ip");
   const country = request.headers.get("cf-ipcountry");
   if (ip) headers.set("x-orrery-ip", ip);
   if (country) headers.set("x-orrery-country", country);
-  return roomStub(env, machineId).fetch(new Request(target, { method: "GET", headers }));
+  return roomStub(env, machineId).fetch(new Request(target2, { method: "GET", headers }));
 }
 __name(socketGet, "socketGet");
 var index_default = {

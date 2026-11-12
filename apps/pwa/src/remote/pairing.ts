@@ -10,6 +10,7 @@ export interface PairInput {
   qr: string
   token?: string
   deviceName: string
+  onRoute?: (route: 'lan' | 'relay') => void
 }
 
 export interface PairFlow {
@@ -26,6 +27,7 @@ export class PairError extends Error {
 
 interface Candidate {
   url: string
+  route: 'lan' | 'relay'
   budgetMs: number
 }
 
@@ -35,14 +37,15 @@ export function lanEndpoints(view: QrView, defaultPort: number): Array<{ host: s
 }
 
 export function pairCandidates(view: QrView, input: Pick<PairInput, 'token'>, lanBudgetMs: number, relayBudgetMs: number, defaultPort: number): Candidate[] {
-  const out: Candidate[] = lanEndpoints(view, defaultPort).map((a) => ({ url: lanUrl(a.host, a.port), budgetMs: lanBudgetMs }))
-  if (view.relay && view.pt) out.push({ url: relayPairUrl(view.relay, view.machine, view.pt), budgetMs: relayBudgetMs })
-  else if (view.relay && input.token) out.push({ url: relayPhoneUrl(view.relay, view.machine, input.token), budgetMs: relayBudgetMs })
+  const out: Candidate[] = lanEndpoints(view, defaultPort).map((a) => ({ url: lanUrl(a.host, a.port), route: 'lan' as const, budgetMs: lanBudgetMs }))
+  if (view.relay && view.pt) out.push({ url: relayPairUrl(view.relay, view.machine, view.pt), route: 'relay', budgetMs: relayBudgetMs })
+  else if (view.relay && input.token) out.push({ url: relayPhoneUrl(view.relay, view.machine, input.token), route: 'relay', budgetMs: relayBudgetMs })
   return out
 }
 
-async function openFirst(deps: ConnectionDeps, candidates: Candidate[]): Promise<WireSocket> {
+async function openFirst(deps: ConnectionDeps, candidates: Candidate[], onRoute?: (route: 'lan' | 'relay') => void): Promise<WireSocket> {
   for (const candidate of candidates) {
+    onRoute?.(candidate.route)
     try {
       return await deps.connector(candidate.url, candidate.budgetMs)
     } catch {
@@ -60,8 +63,8 @@ export function createPairFlow(deps: ConnectionDeps): PairFlow {
       const candidates = pairCandidates(view, input, config.lanBudgetMs, config.relayConnectTimeoutMs, config.lanPort)
       if (candidates.length === 0) throw new PairError('noRoute')
       const identity = await deps.keys.load()
-      const socket = await openFirst(deps, candidates)
-      const pairing = noise.pairFromQr(identity.privateKey, input.qr, identity.deviceId, input.deviceName, Math.floor(deps.now() / 1000))
+      const socket = await openFirst(deps, candidates, input.onRoute)
+      const pairing = noise.pairFromQr(identity.privateKey, input.qr, identity.deviceId, input.deviceName, Math.floor(deps.now() / 1000), config.platform)
       try {
         socket.sendBinary(pairing.msg1)
         const msg2 = await socket.next(config.handshakeTimeoutMs)

@@ -1,9 +1,13 @@
 import { createPinia } from 'pinia'
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import App from './App.vue'
-import { createAppI18n, detectLocale } from './i18n'
+import { createAppI18n } from './i18n'
+import { applyTheme, resolveLocale } from './lib/appearance'
 import { createRuntime } from './runtime'
+import { startRouter } from './router'
 import { useHubStore } from './stores/hub'
+import { useLockStore } from './stores/lock'
+import { usePrefsStore } from './stores/prefs'
 import { useUpdateStore } from './stores/update'
 import { DEFAULT_CONFIG } from './remote/types'
 import { registerServiceWorker } from './update/serviceWorker'
@@ -11,19 +15,32 @@ import { UpdateChecker } from './update/version'
 import './styles/tokens.css'
 import './styles/base.css'
 
-const locale = detectLocale(navigator.languages?.length ? navigator.languages : [navigator.language])
-document.documentElement.lang = locale
-
 const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
-app.use(createAppI18n(locale))
+const prefs = usePrefsStore(pinia)
+const languages = (): readonly string[] => (navigator.languages?.length ? navigator.languages : [navigator.language])
+const i18n = createAppI18n(resolveLocale(prefs.local.language, languages()))
+app.use(i18n)
+
+function applyLanguage(): void {
+  const locale = resolveLocale(prefs.local.language, languages())
+  i18n.global.locale.value = locale
+  document.documentElement.lang = locale
+}
+
+applyLanguage()
+applyTheme(prefs.local.theme)
+watch(() => prefs.local.language, applyLanguage)
+watch(() => prefs.local.theme, (theme) => applyTheme(theme))
+startRouter()
 app.mount('#app')
 
 if (__DEV_TOOLS__) void import('./dev/devtools').then((m) => m.startDevtools())
 
 async function boot(): Promise<void> {
   const hub = useHubStore()
+  const lock = useLockStore()
   const update = useUpdateStore()
   const checker = new UpdateChecker(`${import.meta.env.BASE_URL}version.json`, DEFAULT_CONFIG.proto)
   const sw = !__DEV_TOOLS__
@@ -33,18 +50,31 @@ async function boot(): Promise<void> {
   void update.check()
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      hub.foreground()
+      const locked = lock.onVisible(Date.now())
+      if (!locked || !prefs.local.lockClose) hub.foreground()
       void update.check()
     } else {
+      lock.onHidden(Date.now())
       hub.background()
     }
   })
   window.addEventListener('pageshow', (event) => {
-    if (event.persisted) hub.foreground()
+    if (event.persisted && !lock.locked) hub.foreground()
   })
-  window.addEventListener('online', () => hub.foreground())
+  window.addEventListener('online', () => {
+    if (!lock.locked) hub.foreground()
+  })
+  watch(
+    () => lock.locked,
+    (locked) => {
+      if (!locked && hub.ready) hub.foreground()
+    },
+  )
   try {
-    await hub.start(await createRuntime())
+    const runtime = await createRuntime()
+    await prefs.attach(runtime.db)
+    await lock.whenUnlocked()
+    await hub.start(runtime)
   } catch (error) {
     hub.bootError = error instanceof Error ? error.message : String(error)
   }

@@ -12,6 +12,7 @@
   --ccm-accent: #bd5128;
   --ccm-accent-ink: #b04a24;
   --ccm-on-accent: #ffffff;
+  --ccm-selection: #f6dccf;
   --ccm-focus: #bd5128;
   --ccm-working: #b02f00;
   --ccm-waiting: #7f5500;
@@ -21,8 +22,12 @@
   --ccm-warning: #b02f00;
   --ccm-info: #0b5cad;
   --ccm-agent-claude: #c15f3c;
-  --radius-card: 16px;
-  --radius-control: 10px;
+  --ccm-agent-codex: #6a4fc9;
+  --ccm-agent-shell: #0f7f78;
+  --ccm-scanner: #101014;
+  --radius-card: 10px;
+  --radius-control: 8px;
+  --radius-inner: 4px;
   --radius-chip: 999px;
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
@@ -31,16 +36,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --ccm-canvas: #131315;
-    --ccm-surface: #1b1b1f;
-    --ccm-raised: #232329;
-    --ccm-control: #26262d;
+    --ccm-canvas: #000000;
+    --ccm-surface: #08080a;
+    --ccm-raised: #0d0d10;
+    --ccm-control: #16161a;
     --ccm-ink: #ececf1;
-    --ccm-ink-muted: #9b9ba7;
-    --ccm-ink-faint: #8e8e9a;
+    --ccm-ink-muted: #a6a6b0;
+    --ccm-ink-faint: #85858f;
     --ccm-accent: #e8835d;
     --ccm-accent-ink: #f0946f;
     --ccm-on-accent: #1a110d;
+    --ccm-selection: #35261f;
     --ccm-focus: #f0946f;
     --ccm-working: #f5a524;
     --ccm-waiting: #f7d046;
@@ -50,20 +56,24 @@
     --ccm-warning: #f5a524;
     --ccm-info: #6ea8fe;
     --ccm-agent-claude: #d97757;
+    --ccm-agent-codex: #9d8cf8;
+    --ccm-agent-shell: #4cc2b8;
   }
 }
 
 :root[data-theme='dark'] {
-  --ccm-canvas: #131315;
-  --ccm-surface: #1b1b1f;
-  --ccm-raised: #232329;
-  --ccm-control: #26262d;
+  color-scheme: dark;
+  --ccm-canvas: #000000;
+  --ccm-surface: #08080a;
+  --ccm-raised: #0d0d10;
+  --ccm-control: #16161a;
   --ccm-ink: #ececf1;
-  --ccm-ink-muted: #9b9ba7;
-  --ccm-ink-faint: #8e8e9a;
+  --ccm-ink-muted: #a6a6b0;
+  --ccm-ink-faint: #85858f;
   --ccm-accent: #e8835d;
   --ccm-accent-ink: #f0946f;
   --ccm-on-accent: #1a110d;
+  --ccm-selection: #35261f;
   --ccm-focus: #f0946f;
   --ccm-working: #f5a524;
   --ccm-waiting: #f7d046;
@@ -73,4 +83,10 @@
   --ccm-warning: #f5a524;
   --ccm-info: #6ea8fe;
   --ccm-agent-claude: #d97757;
+  --ccm-agent-codex: #9d8cf8;
+  --ccm-agent-shell: #4cc2b8;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }

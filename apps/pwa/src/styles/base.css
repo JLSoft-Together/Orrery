@@ -10,12 +10,18 @@ body,
   height: 100%;
 }
 
+@supports (font: -apple-system-body) {
+  html {
+    font: -apple-system-body;
+  }
+}
+
 body {
   margin: 0;
   background: var(--ccm-canvas);
   color: var(--ccm-ink);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.4;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
@@ -51,7 +57,7 @@ button {
 
 .label {
   font-family: var(--ccm-label-font);
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ccm-ink-faint);

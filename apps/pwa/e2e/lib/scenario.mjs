@@ -1,116 +1,35 @@
 import { join } from 'node:path'
+import { idbCounts, makeCtx, PHONE, wait } from './ctx.mjs'
+import { lockStep } from './lock-step.mjs'
 import { startPeer } from './procs.mjs'
+import { screenshotSteps } from './shots.mjs'
+import { uiSteps } from './ui-steps.mjs'
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms))
-const PHONE = { width: 390, height: 844 }
-const IPAD = { width: 820, height: 1180 }
-
-async function idbCounts(page) {
-  return page.evaluate(
-    () =>
-      new Promise((resolve, reject) => {
-        const open = indexedDB.open('orrery-pwa')
-        open.onerror = () => reject(open.error)
-        open.onsuccess = () => {
-          const db = open.result
-          const out = {}
-          const tx = db.transaction(['machines', 'snapshots'])
-          let left = 2
-          for (const store of ['machines', 'snapshots']) {
-            const q = tx.objectStore(store).count()
-            q.onsuccess = () => {
-              out[store] = q.result
-              if (--left === 0) resolve(out)
-            }
-          }
-        }
-      }),
-  )
-}
+export const STEPS_PER_BROWSER = 19
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
   const browser = await launch(browserName)
-  const peers = []
-  const errors = []
-  const step = async (name, fn) => {
-    const started = Date.now()
-    try {
-      await fn()
-      record({ browser: browserName, name, ok: true, ms: Date.now() - started })
-    } catch (error) {
-      record({ browser: browserName, name, ok: false, error: String(error?.message ?? error).split('\n')[0] })
-      throw error
-    }
-  }
-  const newPage = async (viewport, scheme = 'light') => {
-    const context = await browser.newContext({ viewport, deviceScaleFactor: 2, isMobile: viewport.width < 600, hasTouch: true, locale: 'vi-VN', colorScheme: scheme })
-    const page = await context.newPage()
-    await page.addInitScript(() => {
-      window.__csp = []
-      document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`))
-    })
-    page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
-    page.on('pageerror', (e) => errors.push(String(e)))
-    return { context, page }
-  }
-  const byId = (page, id) => page.locator(`[data-testid="${id}"]`)
-  const ready = (page) => page.waitForSelector('.shell[data-ready="1"]', { timeout: 15000 })
-  const open = async (page) => {
-    await page.goto(`${env.base}/app/`)
-    await byId(page, 'machines-view').waitFor({ timeout: 15000 })
-    await ready(page)
-  }
-  const reload = async (page) => {
-    await page.reload()
-    await byId(page, 'machines-view').waitFor({ timeout: 15000 })
-    await ready(page)
-  }
-  const pair = async (page, peer) => {
-    await byId(page, 'tab-debug').click()
-    await byId(page, 'pair-qr').fill(peer.info.qr)
-    await byId(page, 'pair-go').click()
-    try {
-      await page.waitForFunction(() => document.querySelector('[data-testid="debug-message"]')?.textContent?.includes('Orrery Desk'), null, { timeout: 15000 })
-    } catch (error) {
-      const message = await byId(page, 'debug-message').textContent().catch(() => '(none)')
-      throw new Error(`pairing did not finish: ${message} | peer: ${peer.log.slice(-6).join(' ; ')} | page: ${errors.slice(-8).join(' ; ')}`)
-    }
-    await byId(page, 'tab-machines').click()
-  }
-  const status = (page, id) => byId(page, `machine-${id}`).locator('[data-testid="link-chip"]')
-  const expectStatus = async (page, id, value, timeout = 15000) => {
-    await page.waitForFunction(([sel, v]) => document.querySelector(sel)?.getAttribute('data-status') === v, [`[data-testid="machine-${id}"] [data-testid="link-chip"]`, value], { timeout })
-  }
-  const shoot = async (page, file) => {
-    const before = { csp: (await page.evaluate(() => window.__csp.length)), errors: errors.length }
-    await page.screenshot({ caret: 'initial', path: file })
-    await wait(250)
-    const after = await page.evaluate(() => window.__csp.length)
-    const added = errors.splice(before.errors).filter((e) => !/Refused to apply a stylesheet/.test(e))
-    errors.push(...added)
-    if (after - before.csp <= 1) await page.evaluate((n) => window.__csp.splice(n), before.csp)
-  }
-  const text = async (locator) => (await locator.textContent())?.replace(/\s+/g, ' ').trim() ?? ''
-  const expectText = async (page, selector, pattern, timeout = 10000) => {
-    await page.waitForFunction(([sel, src]) => new RegExp(src).test(document.querySelector(sel)?.textContent ?? ''), [selector, pattern.source], { timeout })
-  }
+  const c = makeCtx({ browser, browserName, env, record, videoPath: env.videoPath })
+  const { step, byId, open, reload, home, pairPaste, pairScan, status, expectStatus, shoot, text, expectText, errors, peers } = c
 
   try {
     const peer = await startPeer(env.peerExe, env.relayHttp)
     peers.push(peer)
     const id = peer.info.machine
-    const { page, context } = await newPage(PHONE)
+    const { page, context } = await c.newPage(PHONE)
 
     await step('boots empty with the wasm core, no CSP violation, no horizontal scroll', async () => {
-      await open(page)
-      await byId(page, 'machines-empty').waitFor()
+      await page.goto(`${env.base}/app/`)
+      await byId(page, 'machines-empty').waitFor({ timeout: 15000 })
+      await c.ready(page)
       const csp = await page.evaluate(() => window.__csp)
       if (csp.length) throw new Error(`CSP violations: ${csp.join(' | ')}`)
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-      if (overflow > 0) throw new Error(`horizontal overflow ${overflow}`)
+      await c.noOverflow(page, 'empty home')
       if ((await page.locator('link[rel="manifest"]').count()) !== 1) throw new Error('manifest link missing')
       if (await byId(page, 'boot-error').count()) throw new Error('boot error shown')
+      await wait(300)
+      await shoot(page, join(env.qaDir, `empty-phone-light-${browserName}.png`))
     })
 
     await step('service worker installs, takes control and precaches the build', async () => {
@@ -125,8 +44,33 @@ export async function runScenario({ browserName, launch, env, record }) {
       if (cached.n !== 1 || !cached.files.includes('/app/') || !cached.files.some((f) => f.endsWith('.wasm'))) throw new Error(`bad precache ${JSON.stringify(cached)}`)
     })
 
-    await step('pairs with the QR ticket through the relay', async () => {
-      await pair(page, peer)
+    await step('pairing screen: camera area starts or falls back; a wrong pasted code shows the error and the way out', async () => {
+      await byId(page, 'empty-pair').click()
+      await byId(page, 'pair-view').waitFor()
+      await byId(page, 'qr-scanner').waitFor()
+      await page.waitForFunction(() => document.querySelector('[data-testid="qr-scanner"]')?.getAttribute('data-state') !== 'starting', null, { timeout: 10000 })
+      const state = await byId(page, 'qr-scanner').getAttribute('data-state')
+      if (browserName === 'chromium' && state !== 'live') throw new Error(`camera state ${state}`)
+      if (!['live', 'denied', 'unsupported'].includes(state)) throw new Error(`camera state ${state}`)
+      await shoot(page, join(env.qaDir, `pair-scan-phone-light-${browserName}.png`))
+      await byId(page, 'pair-tab-paste').click()
+      await byId(page, 'pair-code').fill('not a code!')
+      await byId(page, 'pair-submit').click()
+      await byId(page, 'pair-paste-error').waitFor()
+      await byId(page, 'pair-code').fill('abc')
+      await byId(page, 'pair-submit').click()
+      await byId(page, 'pair-error').waitFor({ timeout: 8000 })
+      if ((await byId(page, 'pair-error').getAttribute('data-code')) !== 'badCode') throw new Error('wrong error kind')
+      await shoot(page, join(env.qaDir, `pair-error-phone-light-${browserName}.png`))
+      await byId(page, 'pair-other').click()
+      await byId(page, 'pair-tab-scan').waitFor()
+      await byId(page, 'back').click()
+      await byId(page, 'machines-empty').waitFor()
+    })
+
+    await step(browserName === 'chromium' ? 'pairs by scanning the QR from the camera (fake video), through the relay' : 'pairs by pasting the code through the relay', async () => {
+      if (browserName === 'chromium') await pairScan(page, peer)
+      else await pairPaste(page, peer)
       await byId(page, `machine-${id}`).waitFor({ timeout: 10000 })
     })
 
@@ -146,6 +90,8 @@ export async function runScenario({ browserName, launch, env, record }) {
       if (!(await text(byId(page, `machine-${id}`))).includes('Orrery 2.3.0')) throw new Error('version missing')
     })
 
+    await uiSteps(c, page, peer)
+
     await step('route policy select: LAN-only without a LAN address goes offline, automatic reconnects', async () => {
       await byId(page, `machine-${id}`).locator('[data-testid="route-select"]').selectOption('lan')
       await expectStatus(page, id, 'offline')
@@ -157,30 +103,15 @@ export async function runScenario({ browserName, launch, env, record }) {
       peer.send('events')
       await expectText(page, `[data-testid="machine-${id}"] [data-testid="machine-counts"]`, /1 đang chạy/)
       peer.send('patch')
-      await byId(page, 'tab-debug').click()
+      await byId(page, 'home-settings').click()
+      await byId(page, 'open-debug').click()
       await expectText(page, `[data-testid="debug-machine-${id}"]`, /seq 2 · ws rev 2 · 1 tab · 4 terminal · mới/)
-      await byId(page, 'tab-machines').click()
+      await home(page)
     })
 
-    await step('screenshots: Machines, light and dark, phone and iPad', async () => {
-      await wait(400)
-      for (const [form, viewport] of [['phone', PHONE], ['ipad', IPAD]]) {
-        for (const scheme of ['light', 'dark']) {
-          await page.setViewportSize(viewport)
-          await page.emulateMedia({ colorScheme: scheme })
-          await wait(250)
-          const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-          if (overflow > 0) throw new Error(`${form} overflow ${overflow}`)
-          const detail = await byId(page, 'detail-pane').isVisible()
-          if (detail !== (form === 'ipad')) throw new Error(`detail pane visibility ${detail} on ${form}`)
-          await shoot(page, join(env.qaDir, `machines-${form}-${scheme}-${browserName}.png`))
-        }
-      }
-      await page.setViewportSize(PHONE)
-      await page.emulateMedia({ colorScheme: 'light' })
-    })
+    await screenshotSteps(c, page, peer)
 
-    await step('desktop gone: card turns stale, reload shows the saved snapshot from IndexedDB at once', async () => {
+    await step('desktop gone: card turns stale, reload shows the saved snapshot from IndexedDB at once, Monitor shows the offline banner', async () => {
       peer.stop()
       await expectStatus(page, id, 'reconnecting', 20000)
       await wait(500)
@@ -189,10 +120,13 @@ export async function runScenario({ browserName, launch, env, record }) {
       const stale = await byId(page, `machine-${id}`).locator('[data-testid="machine-freshness"]').getAttribute('data-stale')
       if (stale !== '1') throw new Error('cached view not marked stale')
       if ((await status(page, id).getAttribute('data-status')) === 'ready') throw new Error('unexpectedly ready')
-      await byId(page, 'tab-debug').click()
-      await expectText(page, `[data-testid="debug-machine-${id}"]`, /seq 2 · ws rev 2 · 1 tab · 4 terminal · cũ/, 5000)
-      await shoot(page, join(env.qaDir, `machines-stale-phone-light-${browserName}.png`))
-      await byId(page, 'tab-machines').click()
+      await shoot(page, join(env.qaDir, `home-stale-phone-light-${browserName}.png`))
+      await byId(page, `machine-${id}`).locator('[data-testid="machine-open"]').click()
+      await byId(page, 'monitor-offline').waitFor({ timeout: 5000 })
+      if ((await page.locator('[data-testid="monitor-list"] > button').count()) !== 4) throw new Error('cached sessions missing')
+      await shoot(page, join(env.qaDir, `monitor-offline-phone-light-${browserName}.png`))
+      await byId(page, 'back').click()
+      await byId(page, 'machines-view').waitFor()
     })
 
     await step('new web build on the server shows the update bar; Reload clears it', async () => {
@@ -212,11 +146,11 @@ export async function runScenario({ browserName, launch, env, record }) {
     const second = await startPeer(env.peerExe, env.relayHttp)
     peers.push(second)
     const id2 = second.info.machine
-    const fresh = await newPage(PHONE)
+    const fresh = await c.newPage(PHONE)
 
     await step('revoked device (close 4401): machine data wiped from the UI and IndexedDB, notice shown, stays wiped after reload', async () => {
       await open(fresh.page)
-      await pair(fresh.page, second)
+      await pairPaste(fresh.page, second)
       await expectStatus(fresh.page, id2, 'ready')
       await expectText(fresh.page, `[data-testid="machine-${id2}"] [data-testid="machine-counts"]`, /2 đang chạy/)
       await wait(2300)
@@ -234,6 +168,8 @@ export async function runScenario({ browserName, launch, env, record }) {
       const again = await idbCounts(fresh.page)
       if (again.machines !== 0 || again.snapshots !== 0) throw new Error(`came back ${JSON.stringify(again)}`)
     })
+
+    await lockStep(c)
 
     await step('no CSP violation and no unexpected console error across the whole run', async () => {
       const csp = await fresh.page.evaluate(() => window.__csp)

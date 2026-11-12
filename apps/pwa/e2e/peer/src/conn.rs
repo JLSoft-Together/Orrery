@@ -9,15 +9,31 @@ use crate::{now, Desk, NAME};
 
 fn terminals(desk: &Desk) -> Value {
     json!([
-        {"id": "t1", "status": desk.t1, "title": "api"},
-        {"id": "t2", "status": "working", "title": "web"},
-        {"id": "t3", "status": "waiting", "title": "docs"},
-        {"id": "t4", "status": "idle", "title": "infra"}
+        {"id": "t1", "status": desk.t1, "title": "api", "provider": "claude", "gitBranch": "feat/api", "cwd": "D:/Code/api", "statusSince": "2026-01-01T10:00:00.000Z"},
+        {"id": "t2", "status": "working", "title": "web", "provider": "codex", "gitBranch": "main", "cwd": "D:/Code/web", "statusSince": "2026-01-01T10:00:00.000Z"},
+        {"id": "t3", "status": "waiting", "title": "docs", "provider": "claude", "gitBranch": "docs", "cwd": "D:/Code/docs", "waitingFor": "npm test"},
+        {"id": "t4", "status": "idle", "title": "infra", "provider": "shell", "gitBranch": "infra", "cwd": "D:/Code/infra"}
+    ])
+}
+
+fn agents() -> Value {
+    json!([
+        {"id": "a2", "terminalId": "t2", "role": "main", "currentTool": "Edit", "currentToolSummary": "src/app.ts"},
+        {"id": "a2s1", "terminalId": "t2", "role": "subagent", "parentId": "a2", "status": "working", "description": "Build the shell"},
+        {"id": "a2s2", "terminalId": "t2", "role": "subagent", "parentId": "a2", "status": "completed", "description": "Read tokens"}
+    ])
+}
+
+fn activity() -> Value {
+    json!([
+        {"id": "e1", "terminalId": "t2", "kind": "tool.started", "at": "2026-01-01T10:00:00.000Z", "data": {"tool": "Read"}},
+        {"id": "e2", "terminalId": "t2", "kind": "tool.started", "at": "2026-01-01T10:01:00.000Z", "data": {"tool": "Edit"}},
+        {"id": "e3", "terminalId": "t2", "kind": "tool.failed", "at": "2026-01-01T10:02:00.000Z", "data": {"tool": "Bash", "error": "exit 1"}}
     ])
 }
 
 fn snapshot_event(desk: &Desk) -> Value {
-    json!({"t": "snapshot", "seq": desk.seq, "data": {"terminals": terminals(desk), "agents": [], "activity": []}})
+    json!({"t": "snapshot", "seq": desk.seq, "data": {"terminals": terminals(desk), "agents": agents(), "activity": activity()}})
 }
 
 fn ws_snapshot(desk: &Desk) -> Value {

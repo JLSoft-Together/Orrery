@@ -37,7 +37,7 @@ export interface NoiseSuite {
   generatePrivateKey(): Uint8Array
   decodeQr(text: string): QrView
   sessionStart(privateKey: Uint8Array, desktopStatic: Uint8Array, deviceId: string): SessionStart
-  pairFromQr(privateKey: Uint8Array, qr: string, deviceId: string, name: string, nowSeconds: number): PairStart
+  pairFromQr(privateKey: Uint8Array, qr: string, deviceId: string, name: string, nowSeconds: number, platform?: string): PairStart
 }
 
 export interface QrView {
@@ -152,8 +152,10 @@ export function createWasmSuite(): NoiseSuite {
         },
       }
     },
-    pairFromQr(privateKey, qr, deviceId, name, nowSeconds) {
-      const pairing = withIdentity(privateKey, (identity) => guard(() => wasm.Pairing.fromQr(identity, qr, deviceId, name, nowSeconds)))
+    pairFromQr(privateKey, qr, deviceId, name, nowSeconds, platform) {
+      const pairing = withIdentity(privateKey, (identity) =>
+        guard(() => (platform ? wasm.Pairing.fromQrOn(identity, qr, deviceId, name, platform, nowSeconds) : wasm.Pairing.fromQr(identity, qr, deviceId, name, nowSeconds))),
+      )
       return {
         msg1: pairing.msg1,
         finish: (msg2) => guard(() => pairing.finish(msg2)),

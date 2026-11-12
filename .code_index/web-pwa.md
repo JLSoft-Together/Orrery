@@ -6,3 +6,10 @@
 - `src/storage/`: `idb.ts` (Db), `keyStore.ts` (AES-GCM wrapped key, `Unlocker` hook for WebAuthn), `repos.ts` (MachineRepo, IdbSnapshotCache; tombstones stop late saves after forget).
 - `src/stores/`: Pinia `hub` (mirrors hub events), `update`. `src/update/`: version.json check, SW registration.
 - E2E: `npm run e2e -w @ccm/pwa` (`e2e/run.mjs`, `e2e/peer` Rust fake desktop copied from the spike peer + snapshot/events/patch/revoke stdin commands).
+
+## WP-55a (screens)
+- `src/router.ts`: hand-written history router (`parsePath`/`toPath`, `navigate`, `back`, `routeDirection`); routes `/`, `/pair`, `/m/:id`, `/m/:id/s/:terminal`, `/m/:id/ws`, `/m/:id/p/:pane` (WP-55b slot, now `views/WorkspaceStub.vue`), `/settings`, `/settings/debug`. `App.vue`: master (380 px at >= 768) + detail pane (`SessionView embedded`), `TabBar` (Monitor / Workspace / Settings) on machine and settings routes.
+- Views: `HomeView` (cards, duplicates + clean, FAB, empty), `PairView` (+ `components/QrScanner.vue`, jsQR via `lib/qrDecode.ts`, paste via `lib/qrInput.ts`), `MonitorView` (A cards + filters, B groups, `prefs.monitorMode`), `SessionView`, `SettingsView` (+ `SettingsMachines`, `Toggle`), `LockView`, `DebugView` (log only).
+- Pure logic `src/lib/`: `machineGroups`, `monitorModel` (parse snapshot, filter, group, activity), `qrInput`, `lockPolicy`, `appearance`, `confirm`.
+- Prefs: `storage/localPrefs.ts` (localStorage: language, theme, monitor mode, lock, credential id, last machine), `storage/notifyPrefs.ts` (IndexedDB kv: 3 groups + content + bells; `stores/prefs.ts` emits `events` bell / notify for WP-56). Lock: `security/webauthn.ts`, `stores/lock.ts`; `main.ts` delays `hub.start` until unlocked so the IndexedDB snapshot cache is not read while locked.
+- E2E: `e2e/lib/{ctx,ui-steps,shots,lock-step,y4m}.mjs`; 19 steps per browser; Chromium scans a QR from a fake y4m camera and uses a CDP virtual authenticator.

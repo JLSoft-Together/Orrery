@@ -79,9 +79,9 @@ export const useHubStore = defineStore('hub', () => {
     return runtime
   }
 
-  async function pair(qr: string, token: string | undefined, deviceName: string): Promise<Machine> {
+  async function pair(qr: string, token: string | undefined, deviceName: string, onRoute?: (route: 'lan' | 'relay') => void): Promise<Machine> {
     const rt = need()
-    const machine = await rt.pair.pair({ qr, token, deviceName })
+    const machine = await rt.pair.pair({ qr, token, deviceName, onRoute })
     await rt.hub.addMachine(machine)
     return machine
   }
@@ -101,6 +101,20 @@ export const useHubStore = defineStore('hub', () => {
     await rt.db.clearAll()
   }
 
+  async function rename(id: string, alias: string): Promise<void> {
+    await need().hub.rename(id, alias.trim() || undefined)
+  }
+
+  async function refresh(id: string): Promise<void> {
+    const rt = need()
+    rt.hub.connect(id)
+    try {
+      await rt.hub.session(id)?.request('resync')
+    } catch {
+      return
+    }
+  }
+
   function foreground(): void {
     runtime?.hub.foreground()
   }
@@ -117,5 +131,5 @@ export const useHubStore = defineStore('hub', () => {
     runtime?.hub.note(text)
   }
 
-  return { ready, bootError, machines, links, views, rtt, log, notices, linkOf, viewOf, start, pair, setPolicy, forget, wipeAll, foreground, background, dismiss, note }
+  return { ready, bootError, machines, links, views, rtt, log, notices, linkOf, viewOf, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
 })

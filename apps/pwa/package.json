@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ccm/shared": "*",
+    "jsqr": "^1.4.0",
     "lucide-vue-next": "^0.544.0",
     "pinia": "^3.0.3",
     "vue": "^3.5.22",
@@ -24,6 +25,7 @@
     "fake-indexeddb": "6.2.5",
     "happy-dom": "^20.0.0",
     "playwright": "1.65.0",
+    "qrcode": "^1.5.4",
     "vite": "^7.1.9",
     "vitest": "^5.0.3",
     "vue-tsc": "^3.1.1"

@@ -5,7 +5,8 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, webkit } from 'playwright'
 import { cleanup, killTree, startRelay, waitHealth } from './lib/procs.mjs'
-import { runScenario } from './lib/scenario.mjs'
+import { runScenario, STEPS_PER_BROWSER } from './lib/scenario.mjs'
+import { writeBlankVideo } from './lib/y4m.mjs'
 import { startStatic } from './lib/server.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -23,8 +24,9 @@ const inspectorPort = Number(flags.inspectorPort ?? 9331)
 const relayHttp = `http://127.0.0.1:${relayPort}`
 const exe = process.platform === 'win32' ? 'pwa-e2e-peer.exe' : 'pwa-e2e-peer'
 const peerExe = join(root, 'apps/core/target/debug', exe)
-const qaDir = join(root, 'docs/qa/v98/WP-54')
+const qaDir = join(root, 'docs/qa/v98/WP-55a')
 const results = []
+const videoPath = join(tmpdir(), 'orrery-pwa-fake-camera.y4m')
 
 function sh(cmd, args, options = {}) {
   const r = spawnSync(cmd, args, { stdio: 'inherit', ...options })
@@ -51,15 +53,17 @@ async function build() {
 
 async function launch(name) {
   if (name === 'webkit') return webkit.launch()
+  const args = ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${videoPath}`]
   try {
-    return await chromium.launch({ channel: 'chrome' })
+    return await chromium.launch({ channel: 'chrome', args })
   } catch {
-    return chromium.launch()
+    return chromium.launch({ args })
   }
 }
 
 async function main() {
   mkdirSync(qaDir, { recursive: true })
+  writeBlankVideo(videoPath)
   if (!flags['no-build']) await build()
   const persist = mkdtempSync(join(tmpdir(), 'orrery-pwa-relay-'))
   const relay = startRelay({ relayDir: join(root, 'apps/relay'), port: relayPort, inspectorPort, persist })
@@ -68,7 +72,7 @@ async function main() {
     await waitHealth(relayHttp, 90_000).catch((e) => {
       throw new Error(`${e.message}\n${relay.log.join('')}`)
     })
-    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, webHash: stat.state.web }
+    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, videoPath, webHash: stat.state.web }
     for (const browserName of browsers) {
       try {
         await runScenario({ browserName, launch, env, record: (r) => results.push(r) })
@@ -90,7 +94,7 @@ async function main() {
   for (const r of results) console.log(`${r.ok ? 'PASS' : 'FAIL'} [${r.browser}] ${r.name}${r.ok ? ` (${r.ms} ms)` : ` -> ${r.error}`}`)
   const pass = results.filter((r) => r.ok).length
   const fail = results.length - pass
-  const expected = browsers.length * 12
+  const expected = browsers.length * STEPS_PER_BROWSER
   console.log(`e2e: ${pass} pass, ${fail} fail, ${results.length}/${expected} steps ran`)
   process.exitCode = fail === 0 && results.length === expected ? 0 : 1
 }

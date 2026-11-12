@@ -1,20 +1,80 @@
 <script setup lang="ts">
 import { TriangleAlert, X } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ConfirmHost from './components/ConfirmHost.vue'
 import TabBar, { type TabId } from './components/TabBar.vue'
 import UpdateBar from './components/UpdateBar.vue'
+import { isWaiting, parseSessions } from './lib/monitorModel'
+import { useWide } from './lib/useWide'
+import { navigate, route, routeDirection, type Route } from './router'
 import { useHubStore } from './stores/hub'
+import { useLockStore } from './stores/lock'
+import { usePrefsStore } from './stores/prefs'
 import DebugView from './views/DebugView.vue'
-import MachinesView from './views/MachinesView.vue'
+import HomeView from './views/HomeView.vue'
+import LockView from './views/LockView.vue'
+import MonitorView from './views/MonitorView.vue'
+import PairView from './views/PairView.vue'
+import SessionView from './views/SessionView.vue'
+import SettingsView from './views/SettingsView.vue'
+import WorkspaceStub from './views/WorkspaceStub.vue'
 
 const { t } = useI18n()
 const hub = useHubStore()
-const tab = ref<TabId>('machines')
+const lock = useLockStore()
+const prefs = usePrefsStore()
+const wide = useWide()
+
+const master = computed<Route>(() => {
+  const r = route.value
+  return wide.value && r.name === 'session' ? { name: 'monitor', machine: r.machine } : r
+})
+const viewKey = computed(() => JSON.stringify(master.value))
+const selectedTerminal = computed(() => (route.value.name === 'session' ? route.value.terminal : undefined))
+const sessionRoute = computed(() => (route.value.name === 'session' ? route.value : null))
+const renderReady = computed(() => hub.ready || hub.bootError !== null)
+
+const tabMachine = computed(() => {
+  const r = master.value
+  if (r.name === 'monitor' || r.name === 'workspace') return r.machine
+  const last = prefs.local.lastMachine
+  return last && hub.machines.some((m) => m.id === last) ? last : (hub.machines[0]?.id ?? null)
+})
+const activeTab = computed<TabId | null>(() => {
+  switch (master.value.name) {
+    case 'monitor':
+      return 'monitor'
+    case 'workspace':
+      return 'workspace'
+    case 'settings':
+      return 'settings'
+    default:
+      return null
+  }
+})
+const showTabs = computed(() => activeTab.value !== null && (activeTab.value === 'settings' ? tabMachine.value !== null : true))
+const badge = computed(() => (tabMachine.value ? parseSessions(hub.viewOf(tabMachine.value).snapshot).filter((s) => isWaiting(s.rail)).length : 0))
+
+function selectTab(tab: TabId): void {
+  const machine = tabMachine.value
+  if (tab === 'settings') navigate({ name: 'settings' }, { replace: true })
+  else if (machine) navigate(tab === 'monitor' ? { name: 'monitor', machine } : { name: 'workspace', machine }, { replace: true })
+}
+
+watch(
+  route,
+  (r) => {
+    if (r.name === 'notfound') navigate({ name: 'home' }, { replace: true })
+    if ('machine' in r) prefs.setLastMachine(r.machine)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
-  <div class="shell" :data-ready="hub.ready ? '1' : '0'">
+  <LockView v-if="lock.locked" />
+  <div v-else class="shell" :data-ready="hub.ready ? '1' : '0'">
     <UpdateBar />
     <div class="notices">
       <div v-if="hub.bootError" class="notice" role="alert" data-testid="boot-error">
@@ -30,15 +90,24 @@ const tab = ref<TabId>('machines')
     <div class="body">
       <div class="master">
         <main class="scroll">
-          <MachinesView v-if="tab === 'machines'" />
-          <DebugView v-else />
+          <div v-if="renderReady" :key="viewKey" class="view" :class="routeDirection">
+            <HomeView v-if="master.name === 'home'" />
+            <PairView v-else-if="master.name === 'pair'" />
+            <MonitorView v-else-if="master.name === 'monitor'" :machine="master.machine" :selected="selectedTerminal" />
+            <SessionView v-else-if="master.name === 'session'" :machine="master.machine" :terminal="master.terminal" />
+            <WorkspaceStub v-else-if="master.name === 'workspace'" :machine="master.machine" :pane="master.pane" />
+            <SettingsView v-else-if="master.name === 'settings'" />
+            <DebugView v-else-if="master.name === 'debug'" />
+          </div>
         </main>
-        <TabBar :active="tab" @select="tab = $event" />
+        <TabBar v-if="showTabs" :active="activeTab" :badge="badge" @select="selectTab" />
       </div>
-      <aside class="detail" data-testid="detail-pane" aria-hidden="true">
-        <p>{{ t('machines.detailEmpty') }}</p>
+      <aside v-if="wide" class="detail" data-testid="detail-pane">
+        <SessionView v-if="sessionRoute" :key="sessionRoute.terminal" :machine="sessionRoute.machine" :terminal="sessionRoute.terminal" embedded />
+        <p v-else class="placeholder">{{ t('machines.detailEmpty') }}</p>
       </aside>
     </div>
+    <ConfirmHost />
   </div>
 </template>
 
@@ -103,8 +172,30 @@ const tab = ref<TabId>('machines')
   overflow-x: hidden;
 }
 
-.detail {
-  display: none;
+.view {
+  min-height: 100%;
+}
+
+.view.push {
+  animation: push 300ms var(--ease-out);
+}
+
+.view.pop {
+  animation: pop 210ms var(--ease-out);
+}
+
+@keyframes push {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
 }
 
 @media (min-width: 768px) {
@@ -115,10 +206,18 @@ const tab = ref<TabId>('machines')
 
   .detail {
     flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .placeholder {
     display: grid;
     place-items: center;
-    color: var(--ccm-ink-faint);
+    height: 100%;
+    margin: 0;
     padding: 24px;
+    color: var(--ccm-ink-faint);
     text-align: center;
   }
 }

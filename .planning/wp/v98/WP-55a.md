@@ -32,3 +32,6 @@
 
 ### Báo cáo
 `.planning/wp/v98/WP-55a-report.md`: màn đã làm (file + symbol), test chạy thật (số pass / fail, lệnh), ảnh, khác mockup ở đâu + lý do, việc dở (gồm việc cần shell / desktop làm), rủi ro, hợp đồng cho WP-55b (router, layout, chỗ cắm Workspace).
+
+### Nhật ký
+- Đã làm xong: router, Home, Ghép (camera + dán mã), Monitor A/B, chi tiết, khoá WebAuthn, Cài đặt, iPad master/detail. Typecheck sạch, 129 test pass, E2E 38/38 (webkit 19 + chromium 19). Báo cáo: `.planning/wp/v98/WP-55a-report.md`.

@@ -2,6 +2,7 @@
 import { Trash2 } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PageBar from '../components/PageBar.vue'
 import { useHubStore } from '../stores/hub'
 import { useUpdateStore } from '../stores/update'
 import { DEFAULT_CONFIG } from '../remote/types'
@@ -9,28 +10,7 @@ import { DEFAULT_CONFIG } from '../remote/types'
 const { t } = useI18n()
 const hub = useHubStore()
 const update = useUpdateStore()
-const qr = ref('')
-const token = ref('')
-const deviceName = ref('Orrery web')
-const busy = ref(false)
 const message = ref('')
-
-async function pair(): Promise<void> {
-  busy.value = true
-  message.value = t('debug.pairing')
-  try {
-    const machine = await hub.pair(qr.value.trim(), token.value.trim() || undefined, deviceName.value.trim() || 'Orrery web')
-    message.value = t('debug.pairOk', { name: machine.name })
-    qr.value = ''
-    token.value = ''
-  } catch (error) {
-    console.error('pair failed', error instanceof Error ? error.stack : error)
-    const code = error instanceof Error ? error.message : String(error)
-    message.value = t('debug.pairFail', { code })
-  } finally {
-    busy.value = false
-  }
-}
 
 async function wipe(): Promise<void> {
   await hub.wipeAll()
@@ -51,7 +31,7 @@ function stamp(at: number): string {
 
 <template>
   <section class="page" data-testid="debug-view">
-    <h1 class="title">{{ t('debug.title') }}</h1>
+    <PageBar :title="t('debug.title')" />
 
     <div class="card block">
       <h2 class="label">{{ t('debug.version') }}</h2>
@@ -62,24 +42,6 @@ function stamp(at: number): string {
         <dd data-testid="debug-proto">{{ DEFAULT_CONFIG.proto }}</dd>
       </dl>
       <button type="button" class="btn" data-testid="debug-check" @click="update.check()">{{ t('debug.check') }}</button>
-    </div>
-
-    <div class="card block">
-      <h2 class="label">{{ t('debug.pairTitle') }}</h2>
-      <label class="field">
-        <span>{{ t('debug.pairQr') }}</span>
-        <textarea v-model="qr" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" data-testid="pair-qr"></textarea>
-      </label>
-      <label class="field">
-        <span>{{ t('debug.pairToken') }}</span>
-        <input v-model="token" type="text" spellcheck="false" autocapitalize="off" autocomplete="off" data-testid="pair-token" />
-      </label>
-      <label class="field">
-        <span>{{ t('debug.pairName') }}</span>
-        <input v-model="deviceName" type="text" data-testid="pair-name" />
-      </label>
-      <button type="button" class="btn btn-primary" :disabled="busy || !qr.trim()" data-testid="pair-go" @click="pair()">{{ t('debug.pairGo') }}</button>
-      <p v-if="message" class="message" role="status" data-testid="debug-message">{{ message }}</p>
     </div>
 
     <div class="card block">
@@ -103,6 +65,7 @@ function stamp(at: number): string {
       </ol>
     </div>
 
+    <p v-if="message" class="message" role="status" data-testid="debug-message">{{ message }}</p>
     <div class="card block">
       <h2 class="label">{{ t('debug.dataTitle') }}</h2>
       <button type="button" class="btn btn-danger" data-testid="debug-wipe" @click="wipe()">
@@ -118,13 +81,7 @@ function stamp(at: number): string {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-}
-
-.title {
-  margin: 8px 0 4px;
-  font-size: 30px;
-  font-weight: 800;
+  padding: 0 16px 16px;
 }
 
 .block {
@@ -154,27 +111,6 @@ function stamp(at: number): string {
   margin: 0;
   font-family: var(--font-mono);
   overflow-wrap: anywhere;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--ccm-ink-muted);
-}
-
-textarea,
-input {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: var(--radius-control);
-  border: 1px solid var(--ccm-line-strong);
-  background: var(--ccm-control);
-  color: var(--ccm-ink);
-  font-family: var(--font-mono);
-  font-size: 14px;
 }
 
 .message,

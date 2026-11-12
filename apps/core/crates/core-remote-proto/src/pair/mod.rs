@@ -59,6 +59,18 @@ impl PairInitiator {
         Self::start_with(local, qr, device_id, device_name, now, None)
     }
 
+    #[cfg(feature = "test-vectors")]
+    pub fn start_fixed(
+        local: &StaticKeypair,
+        qr: &QrPayload,
+        device_id: &str,
+        device_name: &str,
+        now: u64,
+        ephemeral: &[u8; KEY_LEN],
+    ) -> Result<(Self, Vec<u8>)> {
+        Self::start_with(local, qr, device_id, device_name, now, Some(ephemeral))
+    }
+
     pub(crate) fn start_with(
         local: &StaticKeypair,
         qr: &QrPayload,

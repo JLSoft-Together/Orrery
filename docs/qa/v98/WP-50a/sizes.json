@@ -1,0 +1,28 @@
+{
+  "prod": {
+    "profile": "release",
+    "cargoWasm": {
+      "raw": 648426,
+      "gzip": 167946,
+      "brotli": 126078
+    },
+    "bindgenWasm": {
+      "raw": 228278,
+      "gzip": 85900,
+      "brotli": 71105
+    },
+    "glueJs": {
+      "raw": 37390,
+      "gzip": 4737,
+      "brotli": 4234
+    }
+  },
+  "vectors": {
+    "profile": "debug",
+    "bindgenWasm": {
+      "raw": 1841337,
+      "gzip": 491032,
+      "brotli": 341516
+    }
+  }
+}

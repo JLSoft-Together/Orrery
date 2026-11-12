@@ -41,6 +41,16 @@ impl SessionInitiator {
         Self::start_with(local, desktop_static, device_id, None)
     }
 
+    #[cfg(feature = "test-vectors")]
+    pub fn start_fixed(
+        local: &StaticKeypair,
+        desktop_static: &[u8; KEY_LEN],
+        device_id: &str,
+        ephemeral: &[u8; KEY_LEN],
+    ) -> Result<(Self, Vec<u8>)> {
+        Self::start_with(local, desktop_static, device_id, Some(ephemeral))
+    }
+
     pub(crate) fn start_with(
         local: &StaticKeypair,
         desktop_static: &[u8; KEY_LEN],

@@ -1,0 +1,213 @@
+{
+  "at": "2026-11-12T12:59:37.007Z",
+  "iterations": 20,
+  "vectorsNode": "vectors (node v24.18.0): 28 pass, 0 fail",
+  "results": [
+    {
+      "browser": "webkit",
+      "version": "27.2",
+      "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+      "timings": {
+        "wasmLoadMs": 13,
+        "pairWsOpenMs": 37,
+        "pairHandshakeMs": 56,
+        "pairCryptoMs": 2,
+        "ikWsOpenMs": 64,
+        "ikHandshakeMs": 28,
+        "ikCryptoMs": 2,
+        "helloRoundTripMs": 31,
+        "jsonEchoMs": 32,
+        "pingRoundTripMs": 32,
+        "sealMiBps": 234.39788818359375
+      },
+      "checks": [
+        {
+          "name": "qr carries relay + mkey",
+          "ok": true,
+          "detail": "http://127.0.0.1:8787"
+        },
+        {
+          "name": "pair msg1 = 50 B",
+          "ok": true,
+          "detail": 50
+        },
+        {
+          "name": "pair.ok + relayToken",
+          "ok": true,
+          "detail": "pair.ok"
+        },
+        {
+          "name": "desktop static = QR mkey",
+          "ok": true
+        },
+        {
+          "name": "IK welcome",
+          "ok": true,
+          "detail": {
+            "locale": "vi",
+            "machine": "spike-73d4c70ccfd260471bb3afe8",
+            "minProto": 1,
+            "name": "Spike PC",
+            "ok": true,
+            "re": "h1",
+            "version": "spike"
+          }
+        },
+        {
+          "name": "json echo",
+          "ok": true
+        },
+        {
+          "name": "pty 64 KiB echo x20 intact",
+          "ok": true
+        },
+        {
+          "name": "ping answered",
+          "ok": true
+        },
+        {
+          "name": "transport open",
+          "ok": true
+        },
+        {
+          "name": "unknown device key closed 4401 via relay",
+          "ok": true,
+          "detail": "closed 4401 device"
+        },
+        {
+          "name": "vectors in page",
+          "ok": true,
+          "detail": {
+            "pass": 28,
+            "fail": []
+          }
+        }
+      ],
+      "rtt64k": {
+        "n": 20,
+        "min": 31,
+        "median": 47,
+        "p95": 62,
+        "max": 62
+      },
+      "vectors": {
+        "pass": 28,
+        "fail": []
+      },
+      "errors": [],
+      "peerLog": [
+        "peer: conn 1 Open",
+        "peer: paired phone-4b4a265fc1af91b0 (webkit spike)",
+        "peer: conn 1 Close",
+        "peer: conn 2 Open",
+        "peer: session up for phone-4b4a265fc1af91b0",
+        "peer: conn 2 Close",
+        "peer: conn 3 Open",
+        "peer: session msg1 rejected: device is not paired\npeer: close conn 3 code 4401"
+      ]
+    },
+    {
+      "browser": "chromium",
+      "version": "157.0.8103.39",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "timings": {
+        "wasmLoadMs": 3.599999999627471,
+        "pairWsOpenMs": 8.300000000745058,
+        "pairHandshakeMs": 9.5,
+        "pairCryptoMs": 3.400000000372529,
+        "ikWsOpenMs": 7.900000000372529,
+        "ikHandshakeMs": 4.5,
+        "ikCryptoMs": 1.299999998882413,
+        "helloRoundTripMs": 2.199999999254942,
+        "jsonEchoMs": 2.300000000745058,
+        "pingRoundTripMs": 3.199999999254942,
+        "sealMiBps": 224.57282698721676
+      },
+      "checks": [
+        {
+          "name": "qr carries relay + mkey",
+          "ok": true,
+          "detail": "http://127.0.0.1:8787"
+        },
+        {
+          "name": "pair msg1 = 50 B",
+          "ok": true,
+          "detail": 50
+        },
+        {
+          "name": "pair.ok + relayToken",
+          "ok": true,
+          "detail": "pair.ok"
+        },
+        {
+          "name": "desktop static = QR mkey",
+          "ok": true
+        },
+        {
+          "name": "IK welcome",
+          "ok": true,
+          "detail": {
+            "locale": "vi",
+            "machine": "spike-e2dc2672521470d0a8ace45e",
+            "minProto": 1,
+            "name": "Spike PC",
+            "ok": true,
+            "re": "h1",
+            "version": "spike"
+          }
+        },
+        {
+          "name": "json echo",
+          "ok": true
+        },
+        {
+          "name": "pty 64 KiB echo x20 intact",
+          "ok": true
+        },
+        {
+          "name": "ping answered",
+          "ok": true
+        },
+        {
+          "name": "transport open",
+          "ok": true
+        },
+        {
+          "name": "unknown device key closed 4401 via relay",
+          "ok": true,
+          "detail": "closed 4401 device"
+        },
+        {
+          "name": "vectors in page",
+          "ok": true,
+          "detail": {
+            "pass": 28,
+            "fail": []
+          }
+        }
+      ],
+      "rtt64k": {
+        "n": 20,
+        "min": 17.899999998509884,
+        "median": 18.300000000745058,
+        "p95": 20.700000001117587,
+        "max": 20.700000001117587
+      },
+      "vectors": {
+        "pass": 28,
+        "fail": []
+      },
+      "errors": [],
+      "peerLog": [
+        "peer: conn 1 Open",
+        "peer: paired phone-dd06b57a74fa3b4f (chromium spike)",
+        "peer: conn 1 Close",
+        "peer: conn 2 Open",
+        "peer: session up for phone-dd06b57a74fa3b4f",
+        "peer: conn 2 Close",
+        "peer: conn 3 Open",
+        "peer: session msg1 rejected: device is not paired\npeer: close conn 3 code 4401"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "orrery-spike-wasm",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "vectors": "node vectors-node.mjs",
+    "spike": "node run.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.0"
+  }
+}

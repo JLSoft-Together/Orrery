@@ -1,0 +1,170 @@
+use core_remote_proto::frame::{Chunker, Frame, Kind, Message, Reassembler};
+use core_remote_proto::pair::PairResponder;
+use core_remote_proto::relay::issue_token;
+use core_remote_proto::session::accept;
+use core_remote_proto::{Error, Transport, PROTO};
+use serde_json::{json, Value};
+
+use crate::{now, Desk, NAME};
+
+const PAIR_MSG1_LEN: usize = 50;
+const TOKEN_TTL: u64 = 30 * 24 * 3600;
+const CLOSE_HANDSHAKE: u16 = 4400;
+const CLOSE_DEVICE: u16 = 4401;
+const CLOSE_PROTO: u16 = 4426;
+
+pub enum Out {
+    Send(Vec<u8>),
+    Close(u16),
+}
+
+pub struct Live {
+    transport: Transport,
+    reassembler: Reassembler,
+    device: String,
+}
+
+pub enum Conn {
+    New,
+    Pairing(Box<PairResponder>),
+    Live(Box<Live>),
+    Done,
+}
+
+fn sealed(transport: &mut Transport, kind: Kind, stream: u32, payload: &[u8]) -> Vec<Out> {
+    let Ok(chunks) = Chunker::new(kind, stream, payload) else {
+        return vec![Out::Close(CLOSE_HANDSHAKE)];
+    };
+    let mut outs = Vec::new();
+    for frame in chunks {
+        match frame.encode().and_then(|bytes| transport.seal(&bytes)) {
+            Ok(ct) => outs.push(Out::Send(ct)),
+            Err(_) => return vec![Out::Close(CLOSE_HANDSHAKE)],
+        }
+    }
+    outs
+}
+
+fn json_out(transport: &mut Transport, value: &Value) -> Vec<Out> {
+    sealed(transport, Kind::Json, 0, value.to_string().as_bytes())
+}
+
+fn close_code(e: &Error) -> u16 {
+    match e {
+        Error::Unauthorized => CLOSE_DEVICE,
+        Error::ProtoTooOld { .. } | Error::ProtoTooNew { .. } => CLOSE_PROTO,
+        _ => CLOSE_HANDSHAKE,
+    }
+}
+
+impl Conn {
+    pub fn on_data(&mut self, desk: &mut Desk, data: &[u8]) -> Vec<Out> {
+        match std::mem::replace(self, Conn::Done) {
+            Conn::New if data.len() == PAIR_MSG1_LEN => self.pair_start(desk, data),
+            Conn::New => self.session_start(desk, data),
+            Conn::Pairing(responder) => pair_finish(desk, *responder, data),
+            Conn::Live(mut live) => {
+                let outs = live.on_data(desk, data);
+                if !outs.iter().any(|o| matches!(o, Out::Close(_))) {
+                    *self = Conn::Live(live);
+                }
+                outs
+            }
+            Conn::Done => Vec::new(),
+        }
+    }
+
+    fn pair_start(&mut self, desk: &Desk, data: &[u8]) -> Vec<Out> {
+        match PairResponder::start(&desk.noise, &desk.code, &desk.machine, data) {
+            Ok((responder, msg2)) => {
+                *self = Conn::Pairing(Box::new(responder));
+                vec![Out::Send(msg2)]
+            }
+            Err(e) => {
+                eprintln!("peer: pair msg1 rejected: {e}");
+                vec![Out::Close(close_code(&e))]
+            }
+        }
+    }
+
+    fn session_start(&mut self, desk: &Desk, data: &[u8]) -> Vec<Out> {
+        let devices = &desk.devices;
+        match accept(&desk.noise, data, |id, key| devices.get(id) == Some(key)) {
+            Ok((accepted, msg2)) => {
+                eprintln!("peer: session up for {}", accepted.device_id);
+                *self = Conn::Live(Box::new(Live {
+                    transport: accepted.transport,
+                    reassembler: Reassembler::new(),
+                    device: accepted.device_id,
+                }));
+                vec![Out::Send(msg2)]
+            }
+            Err(e) => {
+                eprintln!("peer: session msg1 rejected: {e}");
+                vec![Out::Close(close_code(&e))]
+            }
+        }
+    }
+}
+
+fn pair_finish(desk: &mut Desk, responder: PairResponder, data: &[u8]) -> Vec<Out> {
+    let mut paired = match responder.finish(data) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("peer: pair msg3 rejected: {e}");
+            return vec![Out::Close(close_code(&e))];
+        }
+    };
+    eprintln!("peer: paired {} ({})", paired.device_id, paired.name);
+    desk.devices.insert(paired.device_id.clone(), paired.device_static);
+    let token = match issue_token(&desk.relay_key, &desk.machine, &paired.device_id, now() + TOKEN_TTL) {
+        Ok(t) => t,
+        Err(_) => return vec![Out::Close(CLOSE_HANDSHAKE)],
+    };
+    let reply = json!({
+        "t": "pair.ok",
+        "machine": desk.machine,
+        "name": NAME,
+        "relay": desk.relay_url,
+        "relayToken": token,
+    });
+    json_out(&mut paired.transport, &reply)
+}
+
+impl Live {
+    fn on_data(&mut self, desk: &Desk, data: &[u8]) -> Vec<Out> {
+        let Ok(plain) = self.transport.open(data) else {
+            eprintln!("peer: decrypt failed for {}", self.device);
+            return vec![Out::Close(CLOSE_HANDSHAKE)];
+        };
+        let message = match Frame::decode(&plain).and_then(|f| self.reassembler.push(f)) {
+            Ok(Some(m)) => m,
+            Ok(None) => return Vec::new(),
+            Err(_) => return vec![Out::Close(CLOSE_HANDSHAKE)],
+        };
+        self.respond(desk, message)
+    }
+
+    fn respond(&mut self, desk: &Desk, message: Message) -> Vec<Out> {
+        match message.kind {
+            Kind::Json => {
+                let Ok(value) = serde_json::from_slice::<Value>(&message.payload) else {
+                    return Vec::new();
+                };
+                let id = value.get("id").cloned().unwrap_or(Value::Null);
+                let reply = match value.get("t").and_then(Value::as_str) {
+                    Some("hello") => json!({
+                        "re": id, "ok": true, "machine": desk.machine, "name": NAME,
+                        "version": "spike", "minProto": PROTO, "locale": "vi",
+                    }),
+                    Some("echo") => json!({ "re": id, "ok": true, "data": value.get("data") }),
+                    _ => json!({ "re": id, "ok": false, "error": "invalid" }),
+                };
+                json_out(&mut self.transport, &reply)
+            }
+            Kind::PtyIn => sealed(&mut self.transport, Kind::PtyOut, message.stream, &message.payload),
+            Kind::Ping => sealed(&mut self.transport, Kind::Ping, 0, &[]),
+            Kind::PtyOut => Vec::new(),
+        }
+    }
+}

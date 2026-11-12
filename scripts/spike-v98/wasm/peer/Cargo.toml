@@ -1,0 +1,15 @@
+[package]
+name = "spike-peer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+base64 = "0.23"
+core-remote-proto = { path = "../../../../apps/core/crates/core-remote-proto" }
+ed25519-dalek = "2"
+getrandom = "0.4"
+serde_json = "1"
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }

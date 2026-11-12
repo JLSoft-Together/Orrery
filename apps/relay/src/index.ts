@@ -1,5 +1,7 @@
+import { serveApp } from "./app";
 import { appleSiteAssociation, assetLinks, bouncePage } from "./bounce";
 import type { Env } from "./env";
+import { WEB } from "./web-assets.generated";
 import { validMachineId, validPaneKey } from "./ids";
 
 export { Room } from "./room";
@@ -51,6 +53,8 @@ export default {
     const url = new URL(request.url);
     const parts = url.pathname.split("/").filter(Boolean);
     const method = request.method;
+
+    if (url.pathname === "/app" || url.pathname.startsWith("/app/")) return serveApp(request, WEB);
 
     if (url.pathname === "/health" && method === "GET") return plain(200, "ok");
     if (url.pathname === "/register" && method === "POST") return adminPost(request, env, "reg");

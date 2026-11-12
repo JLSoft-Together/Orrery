@@ -1,3 +1,5 @@
+import { gzipSync } from "node:zlib"
+import { buildWebModule, STUB } from "./relay-web.mjs"
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -7,6 +9,10 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RELAY = path.join(ROOT, 'apps', 'relay')
+const GENERATED = path.join(RELAY, "src", "web-assets.generated.ts")
+const DIST = path.resolve(process.env.CCM_PWA_DIST ?? path.join(ROOT, "apps", "pwa", "dist"))
+const LIMIT = 64 * 1024 * 1024
+const SAFE = Math.floor(LIMIT * 0.8)
 const OUT = path.join(ROOT, 'apps', 'shell', 'resources', 'relay')
 const stripJsonc = (text) => {
   let out = ''
@@ -30,6 +36,8 @@ const config = JSON.parse(stripJsonc(readFileSync(path.join(RELAY, 'wrangler.jso
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'relay-bundle-'))
 try {
+  const web = buildWebModule(DIST)
+  writeFileSync(GENERATED, web ? web.source : STUB)
   const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: config.account_id }
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
   execFileSync(npx, ['wrangler', 'deploy', '--dry-run', '--outdir', tmp], { cwd: RELAY, env, stdio: 'inherit', shell: process.platform === 'win32' })
@@ -51,7 +59,12 @@ try {
   mkdirSync(OUT, { recursive: true })
   writeFileSync(path.join(OUT, 'worker.js'), worker)
   writeFileSync(path.join(OUT, 'worker.json'), JSON.stringify({ hash, ...meta }, null, 2) + '\n')
+  const gz = gzipSync(worker).length
+  if (Buffer.byteLength(worker) > SAFE) throw new Error(`worker.js ${Buffer.byteLength(worker)} bytes exceeds 80% of the ${LIMIT} byte limit`)
+  console.log(web ? `web app ${web.hash}: ${web.count} files, ${web.raw} bytes raw from ${path.relative(ROOT, DIST)}` : `web app: none (${path.relative(ROOT, DIST)} missing), /app/ returns 404`)
+  console.log(`worker.js raw ${Buffer.byteLength(worker)} bytes, gzip ${gz} bytes`)
   console.log(`relay bundle ${hash} (${worker.length} bytes) -> ${path.relative(ROOT, OUT)}`)
 } finally {
+  writeFileSync(GENERATED, STUB)
   rmSync(tmp, { recursive: true, force: true })
 }

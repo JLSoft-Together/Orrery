@@ -21,6 +21,7 @@ Package riêng, cài cục bộ: `npm install --workspaces=false --include-works
 | `GET /o/<machineId>/<paneKey>` | không | trang bounce vi/en, nút `orrery-remote://m/<machine>/p/<pane>`; Android thêm `intent://` |
 | `GET /.well-known/assetlinks.json` | không | 404 nếu `ANDROID_CERT_SHA256` trống (nhiều fingerprint cách nhau bằng dấu phẩy) |
 | `GET /.well-known/apple-app-site-association` | không | `appIDs` từ `APPLE_APP_ID` (`TEAMID.bundle`), trống thì `details: []` |
+| `GET /app/*` (+ `HEAD`) | không | web app iPhone nhúng trong worker (`/app` → `/app/`, SPA fallback, CSP + HSTS, `/app/version.json`); 404 nếu bản dựng không có `apps/pwa/dist`. Chi tiết: `docs/remote-integration.md` §7.5 |
 | `GET /health` | không | `200 ok` |
 
 Chữ ký (WebCrypto Ed25519, `ts` = unix giây, lệch ≤ 120 s, UTF-8 nối thẳng không phân cách):
@@ -53,4 +54,4 @@ Token phone (khớp byte với `core-remote-proto/src/relay.rs`, test bằng `ve
 
 ## Bundle cho desktop tự dựng relay
 
-Desktop deploy relay lên Cloudflare của người dùng qua API (không wrangler). Bundle nằm ở `apps/shell/resources/relay/{worker.js,worker.json}`, commit vào git, Rust `include_str!`. Đổi code `src/` hoặc `wrangler.jsonc` (bindings, vars, migrations, compatibility_date) → chạy lại từ root: `node scripts/relay-bundle.mjs` (chạy `wrangler deploy --dry-run --outdir`, không cần mạng) rồi commit cả 2 file; hash đổi thì bản desktop hiện "Cập nhật relay". Chi tiết API: `docs/remote-integration.md` §7.3.
+Desktop deploy relay lên Cloudflare của người dùng qua API (không wrangler). Bundle nằm ở `apps/shell/resources/relay/{worker.js,worker.json}`, commit vào git, Rust `include_str!`. Đổi code `src/` hoặc `wrangler.jsonc` (bindings, vars, migrations, compatibility_date) → chạy lại từ root: `node scripts/relay-bundle.mjs` (chạy `wrangler deploy --dry-run --outdir`, không cần mạng) rồi commit cả 2 file; hash đổi thì bản desktop hiện "Cập nhật relay". Chi tiết API: `docs/remote-integration.md` §7.3. Web app: đặt `CCM_PWA_DIST` (mặc định `apps/pwa/dist`) rồi chạy cùng lệnh, bundle nhúng cả thư mục (§7.5).

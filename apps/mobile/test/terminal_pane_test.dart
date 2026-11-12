@@ -55,6 +55,7 @@ Future<Harness> mount(
 }
 
 void main() {
+  flowTests();
   testWidgets('attaches when shown and detaches when removed', (tester) async {
     final h = await mount(tester);
     expect(h.api.attached, ['a']);
@@ -322,5 +323,31 @@ void main() {
     );
     expect(find.textContaining('Bash · npm test · '), findsOneWidget);
     expect(find.text('Running'), findsOneWidget);
+  });
+}
+
+void flowTests() {
+  testWidgets('3000 lines streamed in chunks while scrolling all arrive', (
+    tester,
+  ) async {
+    final h = await mount(tester);
+    final handle = h.api.handles.single;
+    final view = find.byType(TerminalView);
+    for (var start = 1; start <= 3000; start += 30) {
+      final chunk = StringBuffer();
+      for (var n = start; n < start + 30; n++) {
+        chunk.write('line $n\r\n');
+      }
+      handle.out.add(bytes(chunk.toString()));
+      if (start % 300 == 1) {
+        await tester.drag(view, const Offset(0, 200));
+      }
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.pump();
+    final text = screen(tester);
+    for (var n = 1; n <= 3000; n++) {
+      expect(text.contains('line $n\n'), isTrue, reason: 'line $n');
+    }
   });
 }

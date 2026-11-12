@@ -189,8 +189,15 @@ export function installRemotePhone(): void {
     return { ok: true }
   }
 
+  function logged(call: { device: string; alias: string }): PhoneResult {
+    const alias = call.alias.trim()
+    log(call.device, alias ? 'alias' : 'aliasClear', { name: alias })
+    return { ok: true }
+  }
+
   const recent = new Map<string, { at: number; out: Promise<PhoneResult> }>()
   handleOrrery('remote.typed', (call) => typed(call.sessionId))
+  handleOrrery('remote.logged', (call) => logged(call))
   handleOrrery('ws.open', (call) => onceByRid(recent, call.rid, () => open(call)))
   handleOrrery('ws.close', (call) => onceByRid(recent, call.rid, () => close(call)))
   handleOrrery('ws.rename', (call) => onceByRid(recent, call.rid, () => rename(call)))

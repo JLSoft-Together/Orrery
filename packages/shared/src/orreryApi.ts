@@ -250,6 +250,12 @@ export const ORRERY_ACTIONS = {
     const id = o?.sessionId
     return typeof id === 'string' && id.length > 0 && id.length <= 64 ? { sessionId: id } : null
   }),
+  'remote.logged': spec('page', ['phone'], (a) => {
+    const o = a && typeof a === 'object' && !Array.isArray(a) ? (a as Record<string, unknown>) : null
+    if (!o || o.kind !== 'alias' || typeof o.device !== 'string' || !o.device || o.device.length > 64) return null
+    const alias = typeof o.alias === 'string' ? o.alias.slice(0, 200) : ''
+    return { kind: 'alias' as const, device: o.device, alias }
+  }),
   'ws.open': fromPhone('ws.open'),
   'ws.close': fromPhone('ws.close'),
   'ws.rename': fromPhone('ws.rename'),

@@ -57,6 +57,16 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await run('pty-sh', 'mcp')).toMatchObject({ ok: false })
   })
 
+  it('a session rename sent from the phone lands in the remote log', async () => {
+    const run = (args: unknown, source = 'phone') => orreryApi.runOrrery('remote.logged', args, { source }) as Promise<Record<string, unknown>>
+    expect(await run({ kind: 'alias', device: 'Pixel', alias: 'API work' })).toMatchObject({ ok: true })
+    expect(remote.log[0]?.text).toContain('API work')
+    expect(await run({ kind: 'alias', device: 'Pixel', alias: '' })).toMatchObject({ ok: true })
+    expect(remote.log).toHaveLength(2)
+    expect(await run({ kind: 'alias', device: 'Pixel', alias: 'x' }, 'mcp')).toMatchObject({ ok: false })
+    expect(await run({ kind: 'other', device: 'Pixel' })).toMatchObject({ ok: false })
+  })
+
   it('open docks into the project tab, keeps the desktop focus and the view, and only submits on request', async () => {
     const a = pane('claude', 'C:\\work\\A', 'a')
     const b = pane('shell', 'C:\\work\\B', 'b')

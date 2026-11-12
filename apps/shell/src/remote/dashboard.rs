@@ -318,10 +318,24 @@ impl Phone {
         });
         match sent {
             Ok(None) if expects_reply(t) => true,
-            Ok(_) => self.sec.json(&json!({ "re": id, "ok": true })).await,
+            Ok(_) => {
+                self.logged(t, v);
+                self.sec.json(&json!({ "re": id, "ok": true })).await
+            }
             Err(TapError::Denied) => self.sec.json(&error(Value::from(id), "denied")).await,
             Err(TapError::Invalid) => self.sec.json(&error(Value::from(id), "invalid")).await,
         }
+    }
+
+    fn logged(&self, t: &str, v: &Value) {
+        if t != "terminal.alias" {
+            return;
+        }
+        let args = json!({ "device": self.device, "kind": "alias", "terminalId": v.get("terminalId").cloned().unwrap_or(Value::Null), "alias": v.get("alias").cloned().unwrap_or(Value::Null) });
+        let host = self.ctx.host.clone();
+        tokio::task::spawn_blocking(move || {
+            host.ask("remote.logged", args);
+        });
     }
 
     async fn forward(&mut self, first: Arc<str>) -> bool {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
 
@@ -45,6 +46,8 @@ class TerminalPane extends ConsumerStatefulWidget {
 class _TerminalPaneState extends ConsumerState<TerminalPane> {
   final Terminal _terminal = Terminal(maxLines: 5000);
   final TerminalController _controller = TerminalController();
+  final StringBuffer _pendingOut = StringBuffer();
+  bool _flushScheduled = false;
   PtyHandle? _handle;
   StreamSubscription<String>? _outSub;
   StreamSubscription<JsonMap>? _evSub;
@@ -97,6 +100,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     if (handle != null) {
       unawaited(_api.detach(handle).catchError((Object _) {}));
     }
+    _pendingOut.clear();
     _terminal.write('\x1b[0m\x1b[3J\x1b[2J\x1b[H');
     _exitCode = null;
     _exited = false;
@@ -107,6 +111,17 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   }
 
   void _write(String data) {
+    _pendingOut.write(data);
+    if (_flushScheduled) return;
+    _flushScheduled = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) => _flushOut());
+  }
+
+  void _flushOut() {
+    _flushScheduled = false;
+    if (!mounted || _pendingOut.isEmpty) return;
+    final data = _pendingOut.toString();
+    _pendingOut.clear();
     _writing = true;
     try {
       _terminal.write(data);
@@ -169,6 +184,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   void _onEvent(JsonMap event) {
     switch (event['t']) {
       case 'pty.ready':
+        _flushOut();
         _terminal.write('\x1b[0m\x1b[3J\x1b[2J\x1b[H');
         _applyDesk(event);
         if (_exited || _error != null) {
@@ -182,6 +198,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         _applyDesk(event);
         if (_claimed && !_typing) setState(() => _claimed = false);
       case 'pty.exit':
+        _flushOut();
         final code = event['code'];
         setState(() {
           _exited = true;

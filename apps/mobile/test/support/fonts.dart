@@ -14,6 +14,7 @@ Future<void> loadFonts() async {
     ..addFont(bytes('$dir/Roboto-Bold.ttf'));
   await roboto.load();
   for (final (family, file) in [
+    ('OrreryMono', 'CascadiaMono-Terminal.ttf'),
     ('OrreryTerminalSymbols', 'NotoSansSymbols-Terminal.ttf'),
     ('OrreryTerminalSymbols2', 'NotoSansSymbols2-Terminal.ttf'),
   ]) {

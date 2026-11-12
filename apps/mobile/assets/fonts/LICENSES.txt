@@ -93,3 +93,10 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
+
+----------------------------------------------------------------------
+
+CascadiaMono-Terminal.ttf  (subset of Cascadia Mono 2102.025, wght pinned to 400)
+  Primary terminal font: Latin, Vietnamese, punctuation, arrows, box drawing, block elements, braille.
+  Copyright (c) 2019 Microsoft Corporation. License: SIL Open Font License, Version 1.1 (https://scripts.sil.org/OFL); text as above.
+  Source: https://github.com/microsoft/cascadia-code

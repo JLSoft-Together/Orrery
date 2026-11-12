@@ -1,5 +1,9 @@
 import 'package:xterm/xterm.dart';
 
+const String terminalPrimaryFont = 'OrreryMono';
+
+const double terminalLineHeight = 2380 / 2048;
+
 const List<String> terminalFallbackFonts = [
   'OrreryTerminalSymbols2',
   'OrreryTerminalSymbols',
@@ -21,5 +25,7 @@ const List<String> terminalFallbackFonts = [
 
 TerminalStyle orreryTerminalStyle(double fontSize) => TerminalStyle(
   fontSize: fontSize,
+  height: terminalLineHeight,
+  fontFamily: terminalPrimaryFont,
   fontFamilyFallback: terminalFallbackFonts,
 );

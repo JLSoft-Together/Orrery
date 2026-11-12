@@ -9,6 +9,7 @@ import '../push/push_service.dart';
 import '../push/remote_host_push.dart';
 import '../remote/connection.dart';
 import '../remote/crypto_rust.dart';
+import '../remote/device_name.dart';
 import '../remote/discovery.dart';
 import '../remote/keys.dart';
 import '../remote/machines.dart';
@@ -59,7 +60,7 @@ Future<RemoteHost> buildRemoteHost() async {
     cacheDirectory: Directory(
       '${cache.path}${Platform.pathSeparator}remote_cache',
     ),
-    deviceName: Platform.isIOS ? 'iPhone' : 'Android phone',
+    deviceName: await loadDeviceName(),
   );
   await host.init();
   return host;

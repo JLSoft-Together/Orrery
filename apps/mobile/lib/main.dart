@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,11 @@ import 'package:orrery_remote/app/home_page.dart';
 import 'package:orrery_remote/app/link_source.dart';
 import 'package:orrery_remote/push/push_providers.dart';
 import 'package:orrery_remote/push/push_service.dart';
+import 'package:orrery_remote/security/app_lock.dart';
+import 'package:orrery_remote/security/device_auth.dart';
+import 'package:orrery_remote/security/lock_gate.dart';
+import 'package:orrery_remote/security/privacy_screen.dart';
+import 'package:orrery_remote/remote/secure_kv.dart';
 import 'package:orrery_remote/l10n/app_localizations.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
@@ -24,6 +30,15 @@ Future<void> main() async {
   final version = protoVersion();
   final echoed = echo(bytes: utf8.encode('Tiếng Việt ⬛'));
   final host = await buildRemoteHost();
+  final lock = AppLock(
+    auth: LocalDeviceAuth(),
+    kv: FlutterSecureKv(),
+    elapsedRealtime: const PrivacyScreen().elapsedRealtime,
+    reason: () =>
+        lookupAppLocalizations(PlatformDispatcher.instance.locale).lockReason,
+  );
+  await lock.load();
+  await host.setLocked(lock.locked);
   final push = await buildPushService(host);
   await host.startAll();
   runApp(
@@ -36,6 +51,7 @@ Future<void> main() async {
         rustStatus: 'proto_version = $version, echo = ${echoed.length} bytes',
         host: host,
         push: push,
+        lock: lock,
         linkSource: MergedLinkSource([const AppLinksSource(), ?push]),
       ),
     ),
@@ -49,6 +65,7 @@ class OrreryRemoteApp extends StatefulWidget {
     this.terminal,
     this.host,
     this.push,
+    this.lock,
     this.linkSource = const AppLinksSource(),
   });
 
@@ -56,6 +73,7 @@ class OrreryRemoteApp extends StatefulWidget {
   final Terminal? terminal;
   final RemoteHost? host;
   final PushService? push;
+  final AppLock? lock;
   final LinkSource linkSource;
 
   @override
@@ -70,10 +88,17 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.lock?.addListener(_onLockChanged);
+  }
+
+  void _onLockChanged() {
+    final lock = widget.lock;
+    if (lock != null) widget.host?.setLocked(lock.enabled && lock.locked);
   }
 
   @override
   void dispose() {
+    widget.lock?.removeListener(_onLockChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -84,11 +109,13 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
     if (host == null) return;
     switch (state) {
       case AppLifecycleState.resumed:
+        widget.lock?.appResumed();
         host.setForeground(true);
         widget.push?.refreshPermission();
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
+        widget.lock?.appPaused();
         host.setForeground(false);
       case AppLifecycleState.inactive:
     }
@@ -131,12 +158,19 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          builder: (context, child) => DeepLinkHost(
-            navigatorKey: _navigator,
-            source: widget.linkSource,
-            child: child ?? const SizedBox.shrink(),
-          ),
-          home: HomePage(onOpenSpike: _openSpike),
+          builder: (context, child) {
+            final content = DeepLinkHost(
+              navigatorKey: _navigator,
+              source: widget.linkSource,
+              lock: widget.lock,
+              child: child ?? const SizedBox.shrink(),
+            );
+            final lock = widget.lock;
+            return lock == null
+                ? content
+                : LockGate(lock: lock, child: content);
+          },
+          home: HomePage(onOpenSpike: _openSpike, lock: widget.lock),
         );
       },
     );

@@ -87,6 +87,8 @@
 	<array>
 		<string>_orrery._tcp</string>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID unlocks Orrery Remote so only you can open your sessions and terminals.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera scans the pairing QR code shown by Orrery on your computer.</string>
 	<key>NSAppTransportSecurity</key>

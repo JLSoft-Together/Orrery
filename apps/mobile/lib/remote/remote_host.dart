@@ -31,6 +31,10 @@ class RemoteHost {
   final StreamController<MachineConnection> _created =
       StreamController.broadcast();
   bool _foreground = true;
+  bool _locked = false;
+  Future<void> _lockOp = Future.value();
+
+  bool get locked => _locked;
 
   MachineRepository get machines => deps.machines;
 
@@ -70,7 +74,7 @@ class RemoteHost {
   Future<void> start(String machineId) async {
     final entry = bundle(machineId);
     await entry.store.restoreFromCache();
-    if (_foreground) await entry.connection.connect();
+    if (_foreground && !_locked) await entry.connection.connect();
   }
 
   Future<void> startAll() async {
@@ -114,6 +118,7 @@ class RemoteHost {
   Future<void> setForeground(bool foreground) async {
     if (_foreground == foreground) return;
     _foreground = foreground;
+    if (_locked) return;
     for (final entry in _bundles.values) {
       if (foreground) {
         await entry.connection.goForeground();
@@ -121,6 +126,25 @@ class RemoteHost {
       } else {
         await entry.pty.suspendAll();
         entry.connection.goBackground();
+      }
+    }
+  }
+
+  Future<void> setLocked(bool locked) {
+    if (_locked == locked) return _lockOp;
+    _locked = locked;
+    return _lockOp = _lockOp.then((_) => _applyLock(locked));
+  }
+
+  Future<void> _applyLock(bool locked) async {
+    for (final entry in _bundles.values.toList()) {
+      if (locked != _locked) return;
+      if (locked) {
+        await entry.connection.disconnect();
+        await entry.pty.suspendAll();
+      } else if (_foreground) {
+        await entry.connection.connect();
+        await entry.pty.resumeAll();
       }
     }
   }

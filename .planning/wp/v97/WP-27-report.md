@@ -1,0 +1,35 @@
+## WP-27 — DONE (code + test + ảnh headless; CHƯA chạy trên máy thật)
+- Đã đổi:
+  - apps/mobile/pubspec.yaml + pubspec.lock: thêm `local_auth ^3.0.2`.
+  - apps/mobile/lib/security/ (mới, 617 dòng / 5 file): `device_auth.dart` (LocalDeviceAuth, AuthOutcome), `app_lock.dart` (AppLock: bật mặc định, 1 giờ mặc định, Timer khoá ngay lúc đang dùng, mốc mở khoá chỉ trong RAM = Stopwatch + wall clock lấy số lớn hơn), `lock_gate.dart` (LockGate + LockScreen), `lock_settings_page.dart`, `privacy_screen.dart` (MethodChannel FLAG_SECURE + mở Security settings).
+  - lib/remote/remote_host.dart: `setLocked` (khoá = disconnect + pty.suspendAll mọi máy; `start` / `setForeground(true)` không nối khi khoá; mở khoá = connect + resumeAll).
+  - lib/main.dart: AppLock.load + `host.setLocked` TRƯỚC `startAll`, observer vòng đời gọi appPaused / appResumed, LockGate trong MaterialApp.builder. lib/app/deep_link_host.dart: giữ link khi khoá, mở sau unlock. lib/app/home_page.dart: nút khoá ở AppBar mở LockSettingsPage.
+  - l10n vi + en: tool/arb_lock.mjs (19 khoá `lock*`) gộp vào tool/gen_arb.mjs, sinh lại arb + localizations.
+  - Android: MainActivity -> FlutterFragmentActivity + channel `dev.ccm.orrery.remote/privacy`, USE_BIOMETRIC, styles.xml (values + values-night) parent AppCompat; iOS Info.plist NSFaceIDUsageDescription.
+  - Docs: docs/orrery-remote.md §14, apps/mobile/.code_index/mobile.md mục WP-27.
+- Tiêu chí: 4/4 (xem dưới)
+  - Test đủ ý: lần đầu khoá; unlock mở; quá 1 giờ khoá (fake clock, cả lúc đang dùng và lúc resume); everyOpen khoá khi pause + hỏi lại khi resume; 15 phút / 4 giờ; đổi / tắt cài đặt cần xác thực (huỷ / lỗi thì giữ nguyên); khi khoá RemoteHost không mở kết nối nào (net.calls rỗng, kể cả setForeground), khoá lại thì đóng; huỷ / lỗi / notAvailable vẫn khoá; kv hỏng -> mặc định bật; restart = khoá lại; deep link giữ tới khi unlock.
+  - analyze sạch, test pass, ảnh có, vi + en, không comment, file <= 233 dòng, index cập nhật.
+- Audit / Review:
+  - Lỗi tự bắt: LockScreen nằm trên Navigator (builder) nên `showDialog` ném lỗi -> đổi thành xác nhận inline.
+  - Chống vòng lặp hỏi: `appResumed` chỉ tự prompt sau `appPaused` thật; prompt đang chạy (`_busy`) thì `appPaused` bỏ qua (BiometricPrompt / device credential có thể pause activity) nên không tự khoá giữa lúc xác thực.
+  - Frame bị tắt khi `hidden` nên cover chỉ vẽ được ở `inactive`: cover bật trên iOS; Android dựa FLAG_SECURE (tránh nháy khi kéo notification shade).
+  - Khác brief: mốc mở khoá KHÔNG ghi SecureKv (brief cũng nói process chết = khoá lại; lưu đĩa chỉ thêm đường tấn công). SecureKv chỉ lưu cài đặt.
+  - Máy không có khoá màn hình: màn khoá báo + nút mở Security settings (Android) + "Tắt khoá app" có cảnh báo, chỉ hiện ở trạng thái notAvailable; trong cài đặt app, nếu xác thực trả notAvailable thì tắt được sau hộp cảnh báo (bật / đổi thời hạn thì không).
+  - Review opus (bảo mật) chưa chạy, nên giao main nếu cần.
+- Test: `flutter analyze` -> No issues found; `flutter test --concurrency=4` (toàn bộ apps/mobile) -> 223 pass, 27 skip (shots / integration), 0 fail; riêng app_lock_test 11, lock_ui_test 8.
+- Nhìn: docs/qa/v97/WP-27/ 10 ảnh (01-lock-cancelled, 02-lock-no-screen-lock, 03-lock-turn-off-warn, 04-settings-default, 05-settings-15min x light en / dark vi), đã xem 3 ảnh: bố cục ổn, chữ vi đủ dấu. CHƯA NHÌN: BiometricPrompt thật / recent apps FLAG_SECURE / theme AppCompat trên Android (không build APK theo luật; cần QA máy thật sau WP-26).
+- CHƯA KIỂM: (1) wall clock chỉnh lùi / tiến trên máy thật (logic max(mono, wall) có, test chỉ phủ fake clock chung); (2) Gradle resolve appcompat qua local_auth_android + theme mới; (3) Android < 9 luồng device credential.
+- Ngoài phạm vi cần main xử lý: không đụng pty_stream.dart / ui/terminal. Khi lock bật, FLAG_SECURE chặn adb screencap / chụp màn hình -> QA máy thật hãy tắt khoá trong cài đặt hoặc chấp nhận ảnh đen. docs/orrery-remote.md: file chung, mục §14 mới ở cuối.
+- Commit message đề xuất: feat(mobile): lock the phone app behind biometrics or the device screen lock, with a 1 hour default window, connections closed while locked, and a settings page
+
+## Vòng 2 (review opus: CẦN SỬA) — DONE
+- 1: app_lock.dart `appPaused` luôn đặt `_foreground=false`, `_away=true`; khi prompt đang chạy đặt `_pausedWhileBusy`; `_ask` xong mà `everyOpen` hoặc app chưa resume thì `lock()` (kể cả prompt success). `appResumed` lúc busy chỉ đặt `_foreground`, xét lại sau prompt. Test cũ (khẳng định hành vi sai) bỏ, thay 4 test trong test/app_lock_rules_test.dart.
+- 2: device_auth.dart bỏ `isDeviceSupported`; `notAvailable` chỉ khi native `KeyguardManager.isDeviceSecure == false` (MainActivity method `isDeviceSecure`, iOS không có channel -> dựa lỗi noCredentialsSet); noBiometricsEnrolled / noBiometricHardware / noCredentialsSet trên máy secure = failed. `DeviceAuth.isDeviceInsecure()`; `AppLock.turnOffWithoutAuth()` kiểm lại lúc bấm; lock_gate (`_askTurnOff` + `_turnOff`) và lock_settings_page dùng nó.
+- 3: deep_link_host `_onUri` gọi `lock.lock()` khi `lock.expired` rồi mới xét `_shut`.
+- 4: remote_host `_applyLock` kiểm `_locked` mỗi vòng.
+- 5: lock_gate `ExcludeFocus(excluding: shut || cover)` + unfocus sau frame khi shut.
+- 6: AppLock nhận `elapsedRealtime` (MainActivity `SystemClock.elapsedRealtime` qua channel privacy, `PrivacyScreen.elapsedRealtime`); mốc = max(Stopwatch, wall, native), lấy mẫu native lúc resume và lúc timer chạy; native lỗi thì dùng 2 mốc kia.
+- 7: iOS che màn (cover ở `inactive`) CHƯA KIỂM máy thật; iOS `isDeviceSecure` không có channel nên nhánh notAvailable dựa vào lỗi noCredentialsSet, CHƯA KIỂM.
+- Test thêm: pause lúc xác thực rồi huỷ / thành công / còn ở nền; sleep qua elapsedRealtime; native lỗi; lùi và tiến wall clock; `expired` đồng bộ; pairWithQr lúc khoá (không mở kết nối); setLocked đua; LocalDeviceAuth (PIN không sinh trắc -> failed + không tắt được; không có khoá màn hình -> tắt được; cancel / success / lỗi plugin); UI: nút tắt bị từ chối khi máy thực ra có khoá.
+- Test: `flutter analyze` sạch; `flutter test --concurrency=4` -> 237 pass (+1 lock_ui mới), 27 skip, 0 fail.

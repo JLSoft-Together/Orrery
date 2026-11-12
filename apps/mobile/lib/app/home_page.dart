@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../push/push_providers.dart';
+import '../security/app_lock.dart';
+import '../security/lock_settings_page.dart';
 import '../remote/machines.dart';
 import '../remote/providers.dart';
 import '../ui/theme/orrery_theme.dart';
@@ -13,9 +15,10 @@ import '../ui/workspace/workspace_page.dart';
 import 'pair_page.dart';
 
 class HomePage extends ConsumerWidget {
-  const HomePage({super.key, this.onOpenSpike});
+  const HomePage({super.key, this.onOpenSpike, this.lock});
 
   final VoidCallback? onOpenSpike;
+  final AppLock? lock;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,6 +28,17 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: Text(l.appTitle),
         actions: [
+          if (lock case final lock?)
+            IconButton(
+              key: const ValueKey('open-lock-settings'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => LockSettingsPage(lock: lock),
+                ),
+              ),
+              icon: const Icon(Icons.lock_outline_rounded),
+              tooltip: l.lockSettingsTitle,
+            ),
           if (onOpenSpike != null)
             IconButton(
               onPressed: onOpenSpike,

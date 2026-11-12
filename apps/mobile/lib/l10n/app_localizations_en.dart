@@ -845,4 +845,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vRunNoLog => 'No log yet';
+
+  @override
+  String get lockReason => 'Unlock Orrery Remote';
+
+  @override
+  String get lockTitle => 'Orrery Remote is locked';
+
+  @override
+  String get lockBody =>
+      'Verify with fingerprint, face or your phone\'s screen lock to continue.';
+
+  @override
+  String get lockUnlock => 'Unlock';
+
+  @override
+  String get lockCancelled => 'Verification was cancelled.';
+
+  @override
+  String get lockFailed => 'Verification failed. Try again.';
+
+  @override
+  String get lockNoCredentials =>
+      'This phone has no screen lock. Set a PIN, pattern, password or fingerprint in the system settings.';
+
+  @override
+  String get lockOpenSecurity => 'Open security settings';
+
+  @override
+  String get lockTurnOff => 'Turn off app lock';
+
+  @override
+  String get lockTurnOffTitle => 'Turn off app lock?';
+
+  @override
+  String get lockTurnOffWarn =>
+      'Anyone who holds this phone can then open your sessions and terminals.';
+
+  @override
+  String get lockSettingsTitle => 'App lock';
+
+  @override
+  String get lockSwitch => 'Require verification';
+
+  @override
+  String get lockSwitchHint => 'Fingerprint, face or the phone screen lock.';
+
+  @override
+  String get lockAfter => 'Ask again after';
+
+  @override
+  String get lockEveryOpen => 'Every time the app opens';
+
+  @override
+  String get lockMinutes15 => '15 minutes';
+
+  @override
+  String get lockHour1 => '1 hour (default)';
+
+  @override
+  String get lockHours4 => '4 hours';
+
+  @override
+  String get lockSaveFailed => 'Could not save the setting.';
 }

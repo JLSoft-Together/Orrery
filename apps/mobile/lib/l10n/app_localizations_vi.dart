@@ -809,4 +809,67 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get vRunNoLog => 'Chưa có log';
+
+  @override
+  String get lockReason => 'Mở khoá Orrery Remote';
+
+  @override
+  String get lockTitle => 'Orrery Remote đang khoá';
+
+  @override
+  String get lockBody =>
+      'Xác thực bằng vân tay, khuôn mặt hoặc khoá màn hình của máy để tiếp tục.';
+
+  @override
+  String get lockUnlock => 'Mở khoá';
+
+  @override
+  String get lockCancelled => 'Đã huỷ xác thực.';
+
+  @override
+  String get lockFailed => 'Xác thực lỗi, thử lại.';
+
+  @override
+  String get lockNoCredentials =>
+      'Máy chưa đặt khoá màn hình. Đặt PIN, mẫu hình, mật khẩu hoặc vân tay trong cài đặt hệ thống.';
+
+  @override
+  String get lockOpenSecurity => 'Mở cài đặt bảo mật';
+
+  @override
+  String get lockTurnOff => 'Tắt khoá app';
+
+  @override
+  String get lockTurnOffTitle => 'Tắt khoá app?';
+
+  @override
+  String get lockTurnOffWarn =>
+      'Bất kỳ ai cầm điện thoại này sẽ mở được session và terminal của bạn.';
+
+  @override
+  String get lockSettingsTitle => 'Khoá app';
+
+  @override
+  String get lockSwitch => 'Yêu cầu xác thực';
+
+  @override
+  String get lockSwitchHint => 'Vân tay, khuôn mặt hoặc khoá màn hình của máy.';
+
+  @override
+  String get lockAfter => 'Hỏi lại sau';
+
+  @override
+  String get lockEveryOpen => 'Mỗi lần mở app';
+
+  @override
+  String get lockMinutes15 => '15 phút';
+
+  @override
+  String get lockHour1 => '1 giờ (mặc định)';
+
+  @override
+  String get lockHours4 => '4 giờ';
+
+  @override
+  String get lockSaveFailed => 'Không lưu được cài đặt.';
 }

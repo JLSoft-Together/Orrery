@@ -1561,6 +1561,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No log yet'**
   String get vRunNoLog;
+
+  /// No description provided for @lockReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Orrery Remote'**
+  String get lockReason;
+
+  /// No description provided for @lockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orrery Remote is locked'**
+  String get lockTitle;
+
+  /// No description provided for @lockBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify with fingerprint, face or your phone\'s screen lock to continue.'**
+  String get lockBody;
+
+  /// No description provided for @lockUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get lockUnlock;
+
+  /// No description provided for @lockCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification was cancelled.'**
+  String get lockCancelled;
+
+  /// No description provided for @lockFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification failed. Try again.'**
+  String get lockFailed;
+
+  /// No description provided for @lockNoCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone has no screen lock. Set a PIN, pattern, password or fingerprint in the system settings.'**
+  String get lockNoCredentials;
+
+  /// No description provided for @lockOpenSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Open security settings'**
+  String get lockOpenSecurity;
+
+  /// No description provided for @lockTurnOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off app lock'**
+  String get lockTurnOff;
+
+  /// No description provided for @lockTurnOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off app lock?'**
+  String get lockTurnOffTitle;
+
+  /// No description provided for @lockTurnOffWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who holds this phone can then open your sessions and terminals.'**
+  String get lockTurnOffWarn;
+
+  /// No description provided for @lockSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock'**
+  String get lockSettingsTitle;
+
+  /// No description provided for @lockSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Require verification'**
+  String get lockSwitch;
+
+  /// No description provided for @lockSwitchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprint, face or the phone screen lock.'**
+  String get lockSwitchHint;
+
+  /// No description provided for @lockAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask again after'**
+  String get lockAfter;
+
+  /// No description provided for @lockEveryOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Every time the app opens'**
+  String get lockEveryOpen;
+
+  /// No description provided for @lockMinutes15.
+  ///
+  /// In en, this message translates to:
+  /// **'15 minutes'**
+  String get lockMinutes15;
+
+  /// No description provided for @lockHour1.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour (default)'**
+  String get lockHour1;
+
+  /// No description provided for @lockHours4.
+  ///
+  /// In en, this message translates to:
+  /// **'4 hours'**
+  String get lockHours4;
+
+  /// No description provided for @lockSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the setting.'**
+  String get lockSaveFailed;
 }
 
 class _AppLocalizationsDelegate

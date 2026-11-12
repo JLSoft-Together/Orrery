@@ -1,0 +1,76 @@
+:root {
+  color-scheme: light dark;
+  --ccm-canvas: #f3f3f6;
+  --ccm-surface: #ffffff;
+  --ccm-raised: #ececf1;
+  --ccm-control: #ffffff;
+  --ccm-ink: #17171c;
+  --ccm-ink-muted: #55555f;
+  --ccm-ink-faint: #61616c;
+  --ccm-line: color-mix(in srgb, var(--ccm-ink) 9%, transparent);
+  --ccm-line-strong: color-mix(in srgb, var(--ccm-ink) 18%, transparent);
+  --ccm-accent: #bd5128;
+  --ccm-accent-ink: #b04a24;
+  --ccm-on-accent: #ffffff;
+  --ccm-focus: #bd5128;
+  --ccm-working: #b02f00;
+  --ccm-waiting: #7f5500;
+  --ccm-idle: #61616c;
+  --ccm-done: #1b6f30;
+  --ccm-error: #c4001a;
+  --ccm-warning: #b02f00;
+  --ccm-info: #0b5cad;
+  --ccm-agent-claude: #c15f3c;
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --radius-chip: 999px;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --ccm-label-font: var(--font-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ccm-canvas: #131315;
+    --ccm-surface: #1b1b1f;
+    --ccm-raised: #232329;
+    --ccm-control: #26262d;
+    --ccm-ink: #ececf1;
+    --ccm-ink-muted: #9b9ba7;
+    --ccm-ink-faint: #8e8e9a;
+    --ccm-accent: #e8835d;
+    --ccm-accent-ink: #f0946f;
+    --ccm-on-accent: #1a110d;
+    --ccm-focus: #f0946f;
+    --ccm-working: #f5a524;
+    --ccm-waiting: #f7d046;
+    --ccm-idle: #8e8e9a;
+    --ccm-done: #4cc38a;
+    --ccm-error: #ff6b6b;
+    --ccm-warning: #f5a524;
+    --ccm-info: #6ea8fe;
+    --ccm-agent-claude: #d97757;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ccm-canvas: #131315;
+  --ccm-surface: #1b1b1f;
+  --ccm-raised: #232329;
+  --ccm-control: #26262d;
+  --ccm-ink: #ececf1;
+  --ccm-ink-muted: #9b9ba7;
+  --ccm-ink-faint: #8e8e9a;
+  --ccm-accent: #e8835d;
+  --ccm-accent-ink: #f0946f;
+  --ccm-on-accent: #1a110d;
+  --ccm-focus: #f0946f;
+  --ccm-working: #f5a524;
+  --ccm-waiting: #f7d046;
+  --ccm-idle: #8e8e9a;
+  --ccm-done: #4cc38a;
+  --ccm-error: #ff6b6b;
+  --ccm-warning: #f5a524;
+  --ccm-info: #6ea8fe;
+  --ccm-agent-claude: #d97757;
+}

@@ -1,0 +1,3 @@
+src/gen/
+e2e/peer/Cargo.lock
+e2e/.out/

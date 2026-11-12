@@ -97,7 +97,7 @@ fn the_relay_socket_is_signed_and_two_conn_ids_get_separate_sessions() {
             ws.send(Message::Binary(encode_data(conn, &seal_json(t, &hello)).unwrap().into())).await.unwrap();
         }
         let mut got: std::collections::HashMap<u16, Vec<Value>> = std::collections::HashMap::new();
-        while got.values().map(Vec::len).sum::<usize>() < 4 {
+        while got.values().map(Vec::len).sum::<usize>() < 6 {
             let (conn, bytes) = recv_env(&mut ws).await;
             let reply = open_reply(transports.get_mut(&conn).unwrap(), &bytes);
             got.entry(conn).or_default().push(reply);

@@ -119,6 +119,8 @@ fn pair_then_ik_session_with_snapshot_and_pty_echo() {
     assert_eq!(reply["ok"], true);
     assert_eq!(read_json(&mut ws, &channel)["t"], "snapshot");
     assert_eq!(read_json(&mut ws, &channel)["t"], "ws.snapshot");
+    let config = read_json(&mut ws, &channel);
+    assert_eq!((config["t"].as_str(), config["projectId"].as_str()), (Some("push.config"), Some("fake-project")));
 
     send_command(
         &mut ws,
@@ -210,7 +212,7 @@ fn ready_session(gateway: &Gateway) -> (SecureChannel, Ws) {
     pair(gateway, &key, &gateway.qr(None));
     let (channel, mut ws) = open_session(gateway, &key).unwrap();
     send_command(&mut ws, &channel, json!({"id": "h", "t": "hello", "proto": 1}));
-    for _ in 0..3 {
+    for _ in 0..4 {
         read_json(&mut ws, &channel);
     }
     (channel, ws)
@@ -248,6 +250,23 @@ fn claim_bit_is_set_only_when_the_caller_asks_and_only_on_pty_input() {
     assert_eq!(read_json(&mut ws, &channel)["re"], "g");
     let flagged = channel.seal(0, 0, b"{}".to_vec(), true).unwrap();
     assert_eq!(flagged.len(), 1);
+}
+
+#[test]
+fn push_register_stores_a_plain_token_and_unregister_clears_it() {
+    let gateway = start(300);
+    let (channel, mut ws) = ready_session(&gateway);
+    let token = "fcm-token-aaaaaaaaaaaaaaaa:APA91b";
+    send_command(&mut ws, &channel, json!({"id": "r1", "t": "push.register", "token": token, "platform": "android", "locale": "vi"}));
+    let reply = read_json(&mut ws, &channel);
+    assert_eq!((reply["re"].as_str(), reply["ok"].as_bool(), reply["stored"].as_str()), (Some("r1"), Some(true), Some(token)));
+    send_command(&mut ws, &channel, json!({"id": "r2", "t": "push.register", "token": "bad token", "platform": "android", "locale": "vi"}));
+    assert_eq!(read_json(&mut ws, &channel)["error"], "invalid");
+    send_command(&mut ws, &channel, json!({"id": "r3", "t": "push.register", "token": token, "platform": "web", "locale": "vi"}));
+    assert_eq!(read_json(&mut ws, &channel)["error"], "invalid");
+    send_command(&mut ws, &channel, json!({"id": "u1", "t": "push.unregister"}));
+    let cleared = read_json(&mut ws, &channel);
+    assert_eq!((cleared["ok"].as_bool(), cleared["stored"].is_null()), (Some(true), true));
 }
 
 #[test]

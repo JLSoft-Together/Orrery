@@ -22,6 +22,10 @@ pub struct Device {
     pub last_seen: u64,
     #[serde(default)]
     pub token_exp: u64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub push_token: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub push_locale: String,
 }
 
 impl Device {
@@ -34,6 +38,8 @@ impl Device {
             paired_at: now,
             last_seen: now,
             token_exp: 0,
+            push_token: String::new(),
+            push_locale: String::new(),
         }
     }
 
@@ -137,6 +143,58 @@ impl Devices {
             d.token_exp = exp;
             self.save();
         }
+    }
+
+    pub fn set_push(&mut self, id: &str, token: &str, locale: &str) -> bool {
+        if self.find(id).is_none() {
+            return false;
+        }
+        for d in self.list.iter_mut().filter(|d| d.device_id != id && d.push_token == token) {
+            d.push_token.clear();
+            d.push_locale.clear();
+        }
+        if let Some(d) = self.list.iter_mut().find(|d| d.device_id == id) {
+            d.push_token = token.to_owned();
+            d.push_locale = locale.to_owned();
+        }
+        self.save();
+        true
+    }
+
+    pub fn clear_push(&mut self, id: &str) {
+        if let Some(d) = self.list.iter_mut().find(|d| d.device_id == id && !d.push_token.is_empty()) {
+            d.push_token.clear();
+            d.push_locale.clear();
+            self.save();
+        }
+    }
+
+    pub fn clear_all_push(&mut self) {
+        let mut changed = false;
+        for d in self.list.iter_mut().filter(|d| !d.push_token.is_empty()) {
+            d.push_token.clear();
+            d.push_locale.clear();
+            changed = true;
+        }
+        if changed {
+            self.save();
+        }
+    }
+
+    pub fn clear_push_token(&mut self, token: &str) -> bool {
+        if token.is_empty() {
+            return false;
+        }
+        let mut changed = false;
+        for d in self.list.iter_mut().filter(|d| d.push_token == token) {
+            d.push_token.clear();
+            d.push_locale.clear();
+            changed = true;
+        }
+        if changed {
+            self.save();
+        }
+        changed
     }
 
     pub fn expired(&self, now: u64) -> Vec<String> {

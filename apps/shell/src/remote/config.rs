@@ -6,15 +6,14 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_PORT: u16 = 4320;
-pub const DEFAULT_RELAY: &str = "https://orrery-relay.jinvu.workers.dev";
 pub const CONFIG_FILE: &str = "config.json";
 pub const DEVICES_FILE: &str = "devices.json";
 const MACHINE_ID_LEN: usize = 16;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RelayConfig {
-    #[serde(default = "default_relay")]
+    #[serde(default)]
     pub url: String,
     #[serde(default)]
     pub registered: bool,
@@ -24,11 +23,32 @@ pub struct RelayConfig {
     pub machine_ts: u64,
     #[serde(default)]
     pub pending_revoke: Vec<String>,
+    #[serde(default)]
+    pub account_id: String,
+    #[serde(default)]
+    pub account_name: String,
+    #[serde(default)]
+    pub deployed_hash: String,
 }
 
-impl Default for RelayConfig {
-    fn default() -> Self {
-        RelayConfig { url: default_relay(), registered: false, admin_ts: 0, machine_ts: 0, pending_revoke: Vec::new() }
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirebaseConfig {
+    #[serde(default)]
+    pub project_id: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub app_id: String,
+    #[serde(default)]
+    pub sender_id: String,
+    #[serde(default)]
+    pub client_email: String,
+}
+
+impl FirebaseConfig {
+    pub fn is_set(&self) -> bool {
+        !self.project_id.is_empty() && !self.api_key.is_empty() && !self.app_id.is_empty() && !self.sender_id.is_empty()
     }
 }
 
@@ -45,16 +65,14 @@ pub struct Config {
     pub keep_awake: bool,
     #[serde(default)]
     pub relay: RelayConfig,
+    #[serde(default)]
+    pub firebase: FirebaseConfig,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { machine_id: String::new(), enabled: false, port: DEFAULT_PORT, keep_awake: true, relay: RelayConfig::default() }
+        Config { machine_id: String::new(), enabled: false, port: DEFAULT_PORT, keep_awake: true, relay: RelayConfig::default(), firebase: FirebaseConfig::default() }
     }
-}
-
-fn default_relay() -> String {
-    DEFAULT_RELAY.to_owned()
 }
 
 fn default_port() -> u16 {

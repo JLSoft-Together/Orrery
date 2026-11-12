@@ -6,7 +6,7 @@ use core_remote_proto::frame::{Frame, Kind, Reassembler};
 use core_remote_proto::MIN_PROTO;
 use core_serve::{TapError, TapGuard};
 use serde_json::{json, Value};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 
 use super::config::now_secs;
 use super::ctx::{Control, Ctx};
@@ -101,6 +101,7 @@ pub struct Phone {
     rate: Rate,
     direct_tx: mpsc::Sender<(String, Arc<str>)>,
     direct_rx: mpsc::Receiver<(String, Arc<str>)>,
+    push_rx: watch::Receiver<Value>,
     pub(super) x: Extra,
 }
 
@@ -115,7 +116,8 @@ impl Phone {
     pub fn new(ctx: Arc<Ctx>, sec: Secure, device: String) -> Phone {
         let (direct_tx, direct_rx) = mpsc::channel(32);
         let x = Extra::new(ctx.board.subscribe(), &device);
-        Phone { ctx, sec, device, reasm: Reassembler::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, x }
+        let push_rx = ctx.push_cfg.subscribe();
+        Phone { ctx, sec, device, reasm: Reassembler::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x }
     }
 
     pub fn first_hello(&mut self, msg: &[u8]) -> Option<(String, Value)> {
@@ -171,6 +173,12 @@ impl Phone {
                 }
                 event = next_ws(&mut self.x.ws_rx, self.hello) => {
                     if !self.on_ws(event).await {
+                        break;
+                    }
+                }
+                Ok(()) = self.push_rx.changed(), if self.hello => {
+                    let event = self.push_rx.borrow_and_update().clone();
+                    if !self.sec.json(&event).await {
                         break;
                     }
                 }
@@ -256,6 +264,10 @@ impl Phone {
             if !self.sec.json(&event).await {
                 return false;
             }
+        }
+        let push = self.push_rx.borrow_and_update().clone();
+        if !self.sec.json(&push).await {
+            return false;
         }
         if self.feed.is_some() {
             return self.resync_event().await;

@@ -72,11 +72,19 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
     _open(link);
   }
 
-  void _open(PaneLink link) {
+  void _open(PaneLink link, {bool retried = false}) {
     _stopWaiting();
     final nav = widget.navigatorKey.currentState;
     final context = widget.navigatorKey.currentContext;
-    if (nav == null || context == null) return;
+    if (nav == null || context == null) {
+      if (!retried) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _open(link, retried: true);
+        });
+        WidgetsBinding.instance.ensureVisualUpdate();
+      }
+      return;
+    }
     final known = ref.read(machinesProvider).any((m) => m.id == link.machineId);
     if (!known) {
       toast(context, AppLocalizations.of(context).linkUnknownMachine);

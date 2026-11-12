@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="attention_channel_name">Cần chú ý</string>
+    <string name="attention_channel_description">Một pane cần bạn: agent đã xong, đang hỏi hoặc cần cấp quyền.</string>
+</resources>

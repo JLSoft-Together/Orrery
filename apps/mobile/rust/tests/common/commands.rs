@@ -19,6 +19,7 @@ pub struct Session {
     pub fs_text: String,
     pub fs_mtime: u64,
     pub fs_watching: bool,
+    pub push_token: Option<String>,
 }
 
 impl Session {
@@ -33,6 +34,7 @@ impl Session {
 ".into(),
             fs_mtime: 1000,
             fs_watching: false,
+            push_token: None,
         }
     }
 }
@@ -108,6 +110,22 @@ pub fn run(ws: &mut Ws, tr: &mut Transport, session: &mut Session, command: &Val
             ok(ws, tr, id);
         }
         "pty.resize" => ok(ws, tr, id),
+        "push.register" => {
+            let token = command["token"].as_str().unwrap_or("");
+            let plain = (16..=512).contains(&token.len())
+                && token.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b':' | b'_' | b'.' | b'-'));
+            let locale = command["locale"].as_str().unwrap_or("");
+            if !plain || !matches!(locale, "vi" | "en") || !matches!(command["platform"].as_str(), Some("android" | "ios")) {
+                fail(ws, tr, id, "invalid");
+                return true;
+            }
+            session.push_token = Some(token.to_owned());
+            send_json(ws, tr, &json!({"re": id, "ok": true, "stored": token}));
+        }
+        "push.unregister" => {
+            session.push_token = None;
+            send_json(ws, tr, &json!({"re": id, "ok": true, "stored": null}));
+        }
         "ws.get" => {
             ok(ws, tr, id);
             send_json(ws, tr, &workspace_snapshot(session.rev));

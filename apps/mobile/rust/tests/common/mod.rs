@@ -220,6 +220,11 @@ impl Gateway {
                     }),
                 );
                 self.snapshot_events(ws, transport, session);
+                send_json(
+                    ws,
+                    transport,
+                    &json!({"t": "push.config", "apiKey": "fake-api-key", "appId": "1:123456789:android:fake", "senderId": "123456789", "projectId": "fake-project"}),
+                );
             }
             "resync" => {
                 ok(ws, transport, &id);

@@ -1,7 +1,11 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../push/push_gateway.dart';
+import '../push/push_service.dart';
+import '../push/remote_host_push.dart';
 import '../remote/connection.dart';
 import '../remote/crypto_rust.dart';
 import '../remote/discovery.dart';
@@ -11,6 +15,22 @@ import '../remote/network_watcher.dart';
 import '../remote/remote_host.dart';
 import '../remote/secure_kv.dart';
 import '../remote/wire.dart';
+
+Future<PushService?> buildPushService(RemoteHost host) async {
+  try {
+    final service = PushService(
+      gateway: FirebasePushGateway(),
+      kv: FlutterSecureKv(),
+      host: RemoteHostPush(host),
+      platform: Platform.isIOS ? 'ios' : 'android',
+      localeCode: () => PlatformDispatcher.instance.locale.languageCode,
+    );
+    await service.init();
+    return service;
+  } on Object {
+    return null;
+  }
+}
 
 Future<RemoteHost> buildRemoteHost() async {
   final support = await getApplicationSupportDirectory();

@@ -878,6 +878,36 @@ abstract class AppLocalizations {
   /// **'Pairing...'**
   String get pairing;
 
+  /// No description provided for @pushTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get pushTitle;
+
+  /// No description provided for @pushHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert me when a pane needs me while the app is closed.'**
+  String get pushHint;
+
+  /// No description provided for @pushNotSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.'**
+  String get pushNotSetUp;
+
+  /// No description provided for @pushDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission was refused. Allow it in the system settings.'**
+  String get pushDenied;
+
+  /// No description provided for @pushUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are not available in this build.'**
+  String get pushUnavailable;
+
   /// No description provided for @pairScanHint.
   ///
   /// In en, this message translates to:

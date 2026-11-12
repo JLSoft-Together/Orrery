@@ -21,6 +21,9 @@ pub enum Read {
 pub trait KeyStore: Send + Sync {
     fn read(&self, name: &str) -> Read;
     fn write(&self, name: &str, value: &str) -> bool;
+    fn delete(&self, name: &str) -> bool {
+        self.write(name, "-")
+    }
 }
 
 pub struct OsKeyring {
@@ -39,6 +42,13 @@ impl KeyStore for OsKeyring {
 
     fn write(&self, name: &str, value: &str) -> bool {
         keyring::Entry::new(&self.service, name).and_then(|e| e.set_password(value)).is_ok()
+    }
+
+    fn delete(&self, name: &str) -> bool {
+        match keyring::Entry::new(&self.service, name).map(|e| e.delete_credential()) {
+            Ok(Ok(())) | Ok(Err(keyring::Error::NoEntry)) => true,
+            _ => false,
+        }
     }
 }
 

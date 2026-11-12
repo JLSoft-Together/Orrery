@@ -50,3 +50,7 @@ Token phone (khớp byte với `core-remote-proto/src/relay.rs`, test bằng `ve
 - Chữ ký register / revoke không phủ phần thân (`relayKey`, `deviceIds`) theo đúng hợp đồng; bảo vệ dựa vào HTTPS + `ts` tăng dần.
 - `wrangler deploy` ghi đè `vars` (`ANDROID_CERT_SHA256`, `APPLE_APP_ID`) bằng giá trị trong `wrangler.jsonc`; điền thật vào file đó trước khi deploy bản chính thức.
 - Chưa kiểm bằng test tự động: hibernation thật (`evictDurableObject` treo trong pool test), ping không đánh thức handler.
+
+## Bundle cho desktop tự dựng relay
+
+Desktop deploy relay lên Cloudflare của người dùng qua API (không wrangler). Bundle nằm ở `apps/shell/resources/relay/{worker.js,worker.json}`, commit vào git, Rust `include_str!`. Đổi code `src/` hoặc `wrangler.jsonc` (bindings, vars, migrations, compatibility_date) → chạy lại từ root: `node scripts/relay-bundle.mjs` (chạy `wrangler deploy --dry-run --outdir`, không cần mạng) rồi commit cả 2 file; hash đổi thì bản desktop hiện "Cập nhật relay". Chi tiết API: `docs/remote-integration.md` §7.3.

@@ -457,6 +457,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pairing => 'Pairing...';
 
   @override
+  String get pushTitle => 'Notifications';
+
+  @override
+  String get pushHint =>
+      'Alert me when a pane needs me while the app is closed.';
+
+  @override
+  String get pushNotSetUp =>
+      'Not set up on the desktop. Add a Firebase project in Orrery Settings > Remote.';
+
+  @override
+  String get pushDenied =>
+      'Notification permission was refused. Allow it in the system settings.';
+
+  @override
+  String get pushUnavailable =>
+      'Notifications are not available in this build.';
+
+  @override
   String get pairScanHint => 'Scan the QR code in Orrery Settings';
 
   @override

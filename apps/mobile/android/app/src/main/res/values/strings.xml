@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="attention_channel_name">Needs attention</string>
+    <string name="attention_channel_description">A pane needs you: the agent finished, asked a question or needs permission.</string>
+</resources>

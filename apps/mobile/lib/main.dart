@@ -6,6 +6,7 @@ import 'package:orrery_remote/app/bootstrap.dart';
 import 'package:orrery_remote/app/deep_link_host.dart';
 import 'package:orrery_remote/app/home_page.dart';
 import 'package:orrery_remote/app/link_source.dart';
+import 'package:orrery_remote/push/push_providers.dart';
 import 'package:orrery_remote/l10n/app_localizations.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
@@ -22,13 +23,21 @@ Future<void> main() async {
   final version = protoVersion();
   final echoed = echo(bytes: utf8.encode('Tiếng Việt ⬛'));
   final host = await buildRemoteHost();
+  final push = await buildPushService(host);
   await host.startAll();
   runApp(
     ProviderScope(
-      overrides: [remoteHostProvider.overrideWithValue(host)],
+      overrides: [
+        remoteHostProvider.overrideWithValue(host),
+        pushServiceProvider.overrideWithValue(push),
+      ],
       child: OrreryRemoteApp(
         rustStatus: 'proto_version = $version, echo = ${echoed.length} bytes',
         host: host,
+        linkSource: MergedLinkSource([
+          const AppLinksSource(),
+          ?push,
+        ]),
       ),
     ),
   );

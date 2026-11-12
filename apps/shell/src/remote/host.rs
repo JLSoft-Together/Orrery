@@ -104,6 +104,18 @@ pub fn install(app: &AppHandle) {
     let secrets = Box::new(super::keys::OsKeyring { service: crate::legacy::keyring_service() });
     let remote = Remote::new(host, secrets, dir, Options { mdns: true, ..Options::default() });
     let wanted = remote.wants_on();
+    {
+        let handle = app.clone();
+        remote.set_delete_confirm(Box::new(move || {
+            let vi = crate::hosts::locale(&handle).starts_with("vi");
+            let (title, detail, ok, cancel) = if vi {
+                ("Xoá relay trên Cloudflare?", "Worker orrery-relay sẽ bị xoá khỏi tài khoản Cloudflare của bạn. Điện thoại đã ghép chỉ còn nối được qua LAN.", "Xoá Worker", "Huỷ")
+            } else {
+                ("Delete the relay on Cloudflare?", "The orrery-relay Worker will be deleted from your Cloudflare account. Paired phones can then only connect over LAN.", "Delete Worker", "Cancel")
+            };
+            crate::hosts::confirm(&handle, title, detail, ok, cancel)
+        }));
+    }
     app.manage(remote);
     if wanted {
         let handle = app.clone();
@@ -111,10 +123,6 @@ pub fn install(app: &AppHandle) {
             handle.state::<Remote>().enable(true);
         });
     }
-}
-
-pub fn dispatch(app: &AppHandle, channel: &str, args: &[Value]) -> Result<Value, String> {
-    app.try_state::<Remote>().ok_or("remote unavailable")?.call(channel, args)
 }
 
 pub fn shutdown(app: &AppHandle) {

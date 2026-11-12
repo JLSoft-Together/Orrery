@@ -12,7 +12,7 @@ Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bả
 | Relay Cloudflare (`https://orrery-relay.jinvu.workers.dev`) | Có, đã deploy; bản có "đóng đúng 1 điện thoại" chưa deploy |
 | App Android | Có, build APK được; chạy được trên 1 máy thật (Galaxy A21s) |
 | App iOS | **Chưa build**, chưa chạy thử (cần Mac + TestFlight) |
-| Push thông báo native (APNs / FCM) | **Chưa có** (chờ Firebase project). Dùng Telegram / ntfy |
+| Push thông báo native (APNs / FCM) | Phía điện thoại có (switch trong danh sách máy, Firebase do người dùng tự thiết lập trên máy tính, options gửi qua `push.config`); chạm thông báo mở thẳng pane. iOS chưa có APNs. Chưa kiểm trên máy thật. Dùng thêm Telegram / ntfy |
 | Quét QR bằng camera thật, mDNS thật, hiệu năng terminal trên máy thật | Chưa kiểm xong |
 
 ## 2. Bật và ghép điện thoại

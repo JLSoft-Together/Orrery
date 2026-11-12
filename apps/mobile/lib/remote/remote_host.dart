@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'cache.dart';
@@ -27,9 +28,17 @@ class RemoteHost {
   final String deviceName;
   final MachineCache cache;
   final Map<String, MachineBundle> _bundles = {};
+  final StreamController<MachineConnection> _created =
+      StreamController.broadcast();
   bool _foreground = true;
 
   MachineRepository get machines => deps.machines;
+
+  Stream<MachineConnection> get connectionCreated => _created.stream;
+
+  List<MachineConnection> get connections => [
+    for (final bundle in _bundles.values) bundle.connection,
+  ];
 
   Future<List<Machine>> init() => machines.load();
 
@@ -54,6 +63,7 @@ class RemoteHost {
     connection.states.listen(store.onLink);
     final created = MachineBundle(connection, store, pty);
     _bundles[machineId] = created;
+    if (!_created.isClosed) _created.add(connection);
     return created;
   }
 
@@ -87,6 +97,12 @@ class RemoteHost {
   Future<void> forget(String machineId) async {
     final entry = _bundles.remove(machineId);
     if (entry != null) {
+      final session = entry.connection.session;
+      if (session != null && !session.isClosed) {
+        await session
+            .request('push.unregister')
+            .then<void>((_) {}, onError: (Object _) {});
+      }
       await entry.pty.dispose();
       await entry.connection.dispose();
       await entry.store.dispose();
@@ -116,5 +132,6 @@ class RemoteHost {
       await entry.store.dispose();
     }
     _bundles.clear();
+    await _created.close();
   }
 }

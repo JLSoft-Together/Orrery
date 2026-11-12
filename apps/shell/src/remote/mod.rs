@@ -1,9 +1,14 @@
 pub mod awake;
+mod cf_api;
+mod cf_http;
 mod config;
 mod confirm;
 mod ctx;
 mod dashboard;
 mod devices;
+mod fcm;
+mod fcm_files;
+mod fcm_jwt;
 pub mod host;
 mod keys;
 mod lan;
@@ -14,11 +19,15 @@ mod pair;
 pub mod pane_link;
 mod patch;
 mod phone_pty;
+mod push;
+mod push_setup;
+mod push_watch;
 mod phone_ws;
 pub mod pty_bridge;
 mod rebind;
 pub mod scope;
 mod relay;
+mod relay_setup;
 mod session;
 mod status;
 mod text;
@@ -45,6 +54,16 @@ mod viewer_tests;
 mod viewer_guard_tests;
 #[cfg(test)]
 mod pty_tests;
+#[cfg(test)]
+mod push_tests;
+#[cfg(test)]
+mod fcm_tests;
+#[cfg(test)]
+mod push_setup_tests;
+#[cfg(test)]
+mod push_watch_tests;
+#[cfg(test)]
+mod relay_setup_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -68,7 +87,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 8] = [
+pub const CHANNELS: [&str; 16] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -77,7 +96,16 @@ pub const CHANNELS: [&str; 8] = [
     "ccm:remote-revoke",
     "ccm:remote-revoke-all",
     "ccm:remote-keep-awake",
+    "ccm:remote-relay-status",
+    "ccm:remote-relay-token",
+    "ccm:remote-relay-deploy",
+    "ccm:remote-relay-remove",
+    "ccm:remote-push-status",
+    "ccm:remote-push-setup",
+    "ccm:remote-push-test",
+    "ccm:remote-push-remove",
 ];
+pub const RELAY_PROGRESS: &str = "ccm:remote-relay-progress";
 const SWEEP_EVERY: Duration = Duration::from_secs(3600);
 const DRAIN: Duration = Duration::from_millis(400);
 
@@ -102,6 +130,7 @@ pub struct Remote {
     ctx: Mutex<Option<Arc<Ctx>>>,
     running: Mutex<Option<Running>>,
     error: Mutex<Option<&'static str>>,
+    setup: relay_setup::Setup,
 }
 
 async fn sweep(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
@@ -116,7 +145,7 @@ async fn sweep(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
 
 impl Remote {
     pub fn new(host: Arc<dyn Host>, secrets: Box<dyn KeyStore>, dir: PathBuf, opts: Options) -> Remote {
-        Remote { host, secrets, dir, opts, ctx: Mutex::new(None), running: Mutex::new(None), error: Mutex::new(None) }
+        Remote { host, secrets, dir, opts, ctx: Mutex::new(None), running: Mutex::new(None), error: Mutex::new(None), setup: relay_setup::Setup::default() }
     }
 
     fn ctx(&self) -> Result<Arc<Ctx>, &'static str> {
@@ -127,6 +156,7 @@ impl Remote {
         let keys = Keys::load_or_create(self.secrets.as_ref()).ok_or("keyring")?;
         let name = self.opts.name.clone().unwrap_or_else(config::machine_name);
         let c = Arc::new(Ctx::new(self.host.clone(), self.dir.clone(), keys, name));
+        c.fcm.set_account(self.saved_account());
         *slot = Some(c.clone());
         Ok(c)
     }
@@ -210,6 +240,8 @@ impl Remote {
         if !cfg.relay.url.is_empty() {
             rt.spawn(relay::run(ctx.clone(), stop_rx.clone()));
         }
+        rt.spawn(push::run(ctx.clone(), stop_rx.clone()));
+        rt.spawn(push_watch::run(ctx.clone(), stop_rx.clone()));
         rt.spawn(sweep(ctx.clone(), stop_rx));
         if cfg.keep_awake {
             self.host.awake(true);
@@ -340,6 +372,10 @@ impl Remote {
     }
 
     pub fn call(&self, channel: &str, args: &[Value]) -> Result<Value, String> {
+        self.call_with(channel, args, &|_| {})
+    }
+
+    pub fn call_with(&self, channel: &str, args: &[Value], progress: &dyn Fn(&str)) -> Result<Value, String> {
         let arg = args.first().unwrap_or(&Value::Null);
         match channel {
             "ccm:remote-status" => Ok(self.status()),
@@ -353,9 +389,21 @@ impl Remote {
             "ccm:remote-revoke-all" => Ok(self.revoke_all().unwrap_or(json!(false))),
             "ccm:remote-publish" => Ok(json!(self.publish(arg))),
             "ccm:remote-keep-awake" => Ok(self.keep_awake(arg.as_bool().unwrap_or(true))),
+            "ccm:remote-relay-status" => Ok(self.relay_status()),
+            "ccm:remote-relay-token" => Ok(self.relay_token(arg)),
+            "ccm:remote-relay-deploy" => Ok(self.relay_deploy(arg, progress)),
+            "ccm:remote-relay-remove" => Ok(self.relay_remove(arg)),
+            "ccm:remote-push-status" => Ok(self.push_status()),
+            "ccm:remote-push-setup" => Ok(self.push_setup(arg)),
+            "ccm:remote-push-test" => Ok(self.push_test(arg)),
+            "ccm:remote-push-remove" => Ok(self.push_remove()),
             _ => Err("unknown channel".into()),
         }
     }
+}
+
+pub fn dispatch_with(app: &tauri::AppHandle, channel: &str, args: &[Value], progress: &dyn Fn(&str)) -> Result<Value, String> {
+    tauri::Manager::try_state::<Remote>(app).ok_or("remote unavailable")?.call_with(channel, args, progress)
 }
 
 pub fn handles(channel: &str) -> bool {

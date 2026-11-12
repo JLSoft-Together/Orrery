@@ -16,6 +16,8 @@ export const REMOTE_SUMMARY_DEBOUNCE_MS = 200
 export type RemoteErrorCode =
   | 'denied'
   | 'busy'
+  | 'cancelled'
+  | 'migration'
   | 'limit'
   | 'notFound'
   | 'invalid'
@@ -91,6 +93,29 @@ export type RemoteCommand =
   | { t: 'ws.compact'; paneKey: string }
   | { t: 'ws.send'; paneKey: string; text: string }
   | { t: 'ws.keys'; paneKey: string; keys: string; since: number }
+  | { t: 'push.register'; token: string; platform: RemotePushPlatform; locale: RemotePushLocale }
+  | { t: 'push.unregister' }
+
+export type RemotePushPlatform = 'android' | 'ios'
+export type RemotePushLocale = 'vi' | 'en'
+export const REMOTE_PUSH_TOKEN_RE = /^[A-Za-z0-9:_.-]{16,512}$/
+export const REMOTE_PUSH_KINDS = ['done', 'question', 'permission', 'attention'] as const
+export type RemotePushKind = (typeof REMOTE_PUSH_KINDS)[number]
+
+export interface RemotePushConfig {
+  apiKey: string
+  appId: string
+  senderId: string
+  projectId: string
+}
+
+export type RemotePushConfigEvent = { t: 'push.config' } | ({ t: 'push.config' } & RemotePushConfig)
+
+export interface RemotePushData {
+  m: string
+  p: string
+  k: RemotePushKind
+}
 
 export type RemoteCommandName = RemoteCommand['t']
 
@@ -169,6 +194,14 @@ export function parseRemoteCommand(raw: unknown, name: RemoteCommandName): Remot
       return ident(raw.paneKey, KEY_ID_MAX) && parseRemoteKeys(raw.keys) && typeof raw.since === 'number' && Number.isFinite(raw.since)
         ? { t: 'ws.keys', paneKey: raw.paneKey, keys: raw.keys as string, since: raw.since }
         : null
+    case 'push.register': {
+      if (typeof raw.token !== 'string' || !REMOTE_PUSH_TOKEN_RE.test(raw.token)) return null
+      if (raw.platform !== 'android' && raw.platform !== 'ios') return null
+      if (raw.locale !== 'vi' && raw.locale !== 'en') return null
+      return { t: 'push.register', token: raw.token, platform: raw.platform, locale: raw.locale }
+    }
+    case 'push.unregister':
+      return { t: 'push.unregister' }
     default:
       return null
   }
@@ -203,4 +236,60 @@ export interface RemoteStatus {
   relay: 'off' | 'connecting' | 'online' | 'error'
   keepAwake: boolean
   devices: RemoteDevice[]
+}
+
+export type RelaySetupState = 'none' | 'ready' | 'deploying' | 'error'
+
+export type RelaySetupError =
+  | 'token_invalid'
+  | 'token_scope'
+  | 'rate_limited'
+  | 'no_account'
+  | 'no_token'
+  | 'keyring'
+  | 'offline'
+  | 'subdomain'
+  | 'upload'
+  | 'enable'
+  | 'health'
+  | 'bundle'
+  | 'busy'
+  | 'rejected'
+
+export type RelayDeployStep = 'verify' | 'subdomain' | 'upload' | 'enable' | 'health' | 'done'
+
+export interface RelaySetupStatus {
+  state: RelaySetupState
+  url?: string
+  account?: string
+  updateAvailable: boolean
+  hasToken: boolean
+  error?: RelaySetupError
+  warning?: 'health'
+}
+
+export interface RelayAccount {
+  id: string
+  name: string
+}
+
+export type RelayTokenResult = { ok: true; accounts: RelayAccount[] } | { ok: false; error: RelaySetupError }
+export type RelayDeployResult = { ok: true; url: string; warning?: 'health' } | { ok: false; error: RelaySetupError }
+export type RelayRemoveResult = { ok: true; workerDeleted: boolean } | { ok: false; error: RelaySetupError; workerDeleted?: boolean }
+
+export type PushSetupError = 'bad_json' | 'bad_service_account' | 'mismatch_project' | 'no_android_client' | 'keyring'
+export type PushTestError = 'not_configured' | 'no_device' | 'unregistered' | 'auth' | 'denied' | 'rejected' | 'quota' | 'unavailable' | 'offline' | 'keyring'
+
+export interface PushStatus {
+  configured: boolean
+  projectId?: string
+  tokens: number
+  error?: PushTestError
+}
+
+export type PushSetupResult = { ok: true; projectId: string } | { ok: false; error: PushSetupError }
+export type PushTestResult = { ok: true; sent: number } | { ok: false; error: PushTestError }
+
+export interface RelayDeployProgress {
+  step: RelayDeployStep
 }

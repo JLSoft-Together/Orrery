@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../push/push_providers.dart';
 import '../remote/machines.dart';
 import '../remote/providers.dart';
 import '../ui/theme/orrery_theme.dart';
@@ -38,13 +39,15 @@ class HomePage extends ConsumerWidget {
             : ListView.separated(
                 key: const ValueKey('list'),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                itemCount: machines.length,
+                itemCount: machines.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, index) => Appear(
-                  key: ValueKey(machines[index].id),
-                  delay: index * 40,
-                  child: _MachineCard(machine: machines[index]),
-                ),
+                itemBuilder: (context, index) => index == machines.length
+                    ? const PushTile()
+                    : Appear(
+                        key: ValueKey(machines[index].id),
+                        delay: index * 40,
+                        child: _MachineCard(machine: machines[index]),
+                      ),
               ),
       ),
       floatingActionButton: machines.isEmpty

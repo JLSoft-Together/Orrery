@@ -310,6 +310,21 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-revoke', deviceId) : Promise.resolve(false),
   remoteRevokeAll: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-revoke-all'),
   remotePublish: (summary: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:remote-publish', summary),
+  remoteRelayStatus: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-relay-status'),
+  remoteRelayToken: (token: string): Promise<unknown> =>
+    typeof token === 'string' && token.length <= 512 ? ipcRenderer.invoke('ccm:remote-relay-token', token) : Promise.resolve({ ok: false, error: 'token_invalid' }),
+  remoteRelayDeploy: (accountId: string): Promise<unknown> =>
+    typeof accountId === 'string' && accountId.length <= 64 ? ipcRenderer.invoke('ccm:remote-relay-deploy', accountId) : Promise.resolve({ ok: false, error: 'no_account' }),
+  remoteRelayRemove: (deleteWorker: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:remote-relay-remove', { deleteWorker: deleteWorker === true }),
+  remotePushStatus: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-push-status'),
+  remotePushSetup: (googleServices: string, serviceAccount: string): Promise<unknown> =>
+    typeof googleServices === 'string' && typeof serviceAccount === 'string' && googleServices.length <= 102400 && serviceAccount.length <= 102400
+      ? ipcRenderer.invoke('ccm:remote-push-setup', { googleServices, serviceAccount })
+      : Promise.resolve({ ok: false, error: 'bad_json' }),
+  remotePushTest: (deviceId?: string): Promise<unknown> =>
+    ipcRenderer.invoke('ccm:remote-push-test', typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? { deviceId } : {}),
+  remotePushRemove: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-push-remove'),
+  onRemoteRelayProgress: (handler: (progress: unknown) => void): (() => void) => subscribe('ccm:remote-relay-progress', handler),
   captureGet: (): Promise<unknown> => ipcRenderer.invoke('ccm:capture-get'),
   capturePick: (): Promise<unknown> => ipcRenderer.invoke('ccm:capture-pick'),
   captureSet: (patch: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:capture-set', patch),

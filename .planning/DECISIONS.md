@@ -42,3 +42,7 @@
 - 2026-11-12 · Chạy liên tục qua đêm: xong lượt → commit + handoff + tự làm lượt tiếp; push branch `feat/v97-mobile` cuối mỗi lượt
 - 2026-11-12 · Cổng duyệt cảm quan (terminal sau WP-1, UI sau WP-11): con tự chọn theo số đo, ảnh gom `docs/qa/v97/` chủ nhân xem sau
 - 2026-11-12 · Relay: code + test local (miniflare) rồi deploy; chủ nhân đã `wrangler login` (2026-11-12, wrangler 4.160.1)
+- 2026-11-12 · Relay + push do người dùng tự dựng (mỗi người server riêng): Settings → Điều khiển từ xa có mục dựng relay (dán Cloudflare API token, Orrery tự deploy relay đóng gói sẵn qua Cloudflare API, không Node / wrangler) và mục thông báo đẩy (kéo thả `google-services.json` + service account JSON)
+- 2026-11-12 · Push do desktop gửi thẳng FCM HTTP v1 (service account khoá bằng keychain trên máy); relay không giữ secret Firebase (đã xoá secret `FCM_SERVICE_ACCOUNT` khỏi relay jinvu); điện thoại nhận `FirebaseOptions` qua phiên Noise, init Firebase lúc chạy
+- 2026-11-12 · Điện thoại chỉ init 1 Firebase (plugin chỉ hỗ trợ app mặc định): dùng project của máy đầu tiên gửi `push.config`; máy khác cùng projectId vẫn nhận push, khác projectId ⇒ hiện "Máy này dùng Firebase khác, không nhận thông báo" (con tự quyết, đa số người dùng 1 project)
+- 2026-11-12 · Chưa dựng relay ⇒ chỉ LAN; relay `orrery-relay.jinvu.workers.dev` là relay riêng của chủ nhân, không phải mặc định chung

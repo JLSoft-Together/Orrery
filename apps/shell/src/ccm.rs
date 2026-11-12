@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 24] = [
+const LOCAL: [&str; 32] = [
     "ccm:pty-endpoint",
     "ccm:pick-folder",
     "ccm:open-external",
@@ -37,6 +37,14 @@ const LOCAL: [&str; 24] = [
     "ccm:remote-revoke",
     "ccm:remote-revoke-all",
     "ccm:remote-publish",
+    "ccm:remote-relay-status",
+    "ccm:remote-relay-token",
+    "ccm:remote-relay-deploy",
+    "ccm:remote-relay-remove",
+    "ccm:remote-push-status",
+    "ccm:remote-push-setup",
+    "ccm:remote-push-test",
+    "ccm:remote-push-remove",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -188,7 +196,12 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         }
         c if crate::remote::handles(c) => {
             let (handle, channel) = (app.clone(), c.to_owned());
-            blocking(move || crate::remote::host::dispatch(&handle, &channel, &args)).await?
+            blocking(move || {
+                let sink = handle.clone();
+                let progress = move |step: &str| desk::emit_app(&sink, crate::remote::RELAY_PROGRESS, json!({ "step": step }));
+                crate::remote::dispatch_with(&handle, &channel, &args, &progress)
+            })
+            .await?
         }
         c if crate::preview_ipc::handles(c) => {
             let (handle, owner, channel) = (app.clone(), webview.label().to_owned(), c.to_owned());

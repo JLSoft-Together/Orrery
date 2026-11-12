@@ -95,6 +95,7 @@ fn hello_gets_the_welcome_then_the_ws_snapshot_then_live_events() {
         assert_eq!(welcome["theme"]["mode"], "dark");
         assert_eq!(welcome["locale"], "en");
         assert!(welcome.get("relayToken").is_none());
+        assert_eq!(recv_json(&mut ws, &mut t).await.unwrap()["t"], "push.config");
         let snap = recv_json(&mut ws, &mut t).await.unwrap();
         let ws_snapshot: Value = serde_json::from_str(&tap.snapshot()).unwrap();
         assert_eq!(snap["t"], "snapshot");
@@ -169,6 +170,7 @@ fn revoking_a_live_device_sends_device_revoked_and_closes_with_4401() {
     rt.block_on(async {
         let (mut ws, mut t) = session(rig.addr(), &desktop, &phone).await.unwrap();
         hello(&mut ws, &mut t).await;
+        assert_eq!(recv_json(&mut ws, &mut t).await.unwrap()["t"], "push.config");
         assert_eq!(rig.remote.revoke(&["p".to_owned()]).unwrap(), serde_json::json!(true));
         assert_eq!(recv_json(&mut ws, &mut t).await.unwrap()["t"], "device.revoked");
         assert_eq!(close_code(&mut ws).await, Some(CLOSE_DEVICE));
@@ -188,6 +190,7 @@ fn turning_the_gateway_off_tells_live_phones_remote_off() {
     let (mut ws, mut t) = rt.block_on(async {
         let (mut ws, mut t) = session(rig.addr(), &desktop, &phone).await.unwrap();
         hello(&mut ws, &mut t).await;
+        assert_eq!(recv_json(&mut ws, &mut t).await.unwrap()["t"], "push.config");
         (ws, t)
     });
     rig.remote.enable(false);

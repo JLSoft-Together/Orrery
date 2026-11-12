@@ -438,6 +438,23 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pairing => 'Đang ghép...';
 
   @override
+  String get pushTitle => 'Thông báo';
+
+  @override
+  String get pushHint => 'Báo khi có pane cần bạn lúc app đang đóng.';
+
+  @override
+  String get pushNotSetUp =>
+      'Chưa thiết lập trên máy tính. Thêm dự án Firebase trong Settings > Remote của Orrery.';
+
+  @override
+  String get pushDenied =>
+      'Quyền thông báo bị từ chối. Cho phép trong cài đặt hệ thống.';
+
+  @override
+  String get pushUnavailable => 'Bản này chưa dùng được thông báo.';
+
+  @override
   String get pairScanHint => 'Quét mã QR trong Settings của Orrery';
 
   @override

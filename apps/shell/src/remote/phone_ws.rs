@@ -143,6 +143,8 @@ impl Phone {
             "pty.attach" => self.pty_attach(id, v).await,
             "pty.detach" => self.pty_detach(id, v).await,
             "pty.resize" => self.pty_resize(id, v).await,
+            "push.register" => self.push_register(id, v).await,
+            "push.unregister" => self.push_unregister(id).await,
             "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" => {
                 if !self.ctx.board.take_rate(&self.device, Instant::now()) {
                     return self.sec.json(&error(Value::from(id), "rate")).await;

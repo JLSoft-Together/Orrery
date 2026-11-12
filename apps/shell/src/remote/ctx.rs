@@ -9,13 +9,15 @@ use core_remote_proto::relay::issue_token;
 use core_remote_proto::{MIN_PROTO, PROTO};
 use core_serve::StoreTap;
 use serde_json::{json, Value};
-use tokio::sync::{mpsc, Notify};
+use tokio::sync::{mpsc, watch, Notify};
 
 use super::config::Config;
 use super::devices::{Devices, EXPIRE_SECS};
 use super::keys::Keys;
 use super::limits::{Gate, MAX_SESSIONS};
 use super::pair::Pairing;
+use super::fcm::Fcm;
+use super::push::{config_event, PushState};
 use super::status::Shape;
 use super::viewer_events::Hub;
 use super::workspace::Board;
@@ -94,12 +96,17 @@ pub struct Ctx {
     pair_tries: Mutex<HashMap<String, Vec<Instant>>>,
     pub board: Board,
     pub viewer: Hub,
+    pub push: Mutex<PushState>,
+    pub push_wake: Notify,
+    pub push_cfg: watch::Sender<Value>,
+    pub fcm: Fcm,
 }
 
 impl Ctx {
     pub fn new(host: Arc<dyn Host>, dir: PathBuf, keys: Keys, name: String) -> Ctx {
         let config = Config::load(&dir);
         let devices = Devices::load(&dir);
+        let push_event = config_event(&config.firebase);
         Ctx {
             host,
             dir,
@@ -119,7 +126,15 @@ impl Ctx {
             pair_tries: Mutex::new(HashMap::new()),
             board: Board::default(),
             viewer: Hub::default(),
+            push: Mutex::new(PushState::default()),
+            push_wake: Notify::new(),
+            push_cfg: watch::channel(push_event).0,
+            fcm: Fcm::default(),
         }
+    }
+
+    pub fn is_live(&self, device: &str) -> bool {
+        lock(&self.live).values().any(|l| l.device == device)
     }
 
     pub fn machine_id(&self) -> String {

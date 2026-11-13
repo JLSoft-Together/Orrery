@@ -567,15 +567,21 @@ function cssVar(name: string): string {
 
 const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'] as const
 
+function skyWell(): boolean {
+  const sky = cssVar('--ccm-sky-pane')
+  return sky !== '' && sky !== 'none'
+}
+
 function theme(): Terminal['options']['theme'] {
   const ansi: Record<string, string> = {}
   ANSI.forEach((name, i) => {
     ansi[name] = cssVar(`--ccm-ansi-${i}`)
     ansi[`bright${name.charAt(0).toUpperCase()}${name.slice(1)}`] = cssVar(`--ccm-ansi-${i + 8}`)
   })
+  const well = cssVar('--ccm-well')
   return {
     ...ansi,
-    background: cssVar('--ccm-well'),
+    background: skyWell() && /^#[0-9a-f]{6}$/i.test(well) ? `${well}00` : well,
     foreground: cssVar('--ccm-well-ink'),
     cursor: cssVar('--ccm-accent'),
     cursorAccent: cssVar('--ccm-well'),
@@ -974,6 +980,7 @@ onMounted(() => {
     minimumContrastRatio: 4.5,
     // Apps that track the mouse (full-screen TUIs) get drags; Shift-drag (xterm default) / Option-drag on macOS still selects.
     macOptionClickForcesSelection: true,
+    allowTransparency: skyWell(),
     theme: theme(),
     // OSC 8 links (Claude Code prints sign-in URLs this way): xterm's default handler opens about:blank, which the app denies.
     linkHandler: {
@@ -1136,10 +1143,12 @@ watch(
 )
 
 watch(
-  () => settings.theme,
+  () => [settings.theme, settings.stars, settings.starsPanels] as const,
   async () => {
     await nextTick()
-    if (term) term.options.theme = theme()
+    if (!term) return
+    term.options.allowTransparency = skyWell()
+    term.options.theme = theme()
   },
 )
 
@@ -1410,7 +1419,7 @@ onBeforeUnmount(() => {
     <ContextMeter v-if="meterOn" :tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
     <div class="flex min-h-0 flex-1 gap-1.5" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
-      class="ccm-pane-ring relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
+      class="ccm-pane-ring ccm-sky-well relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
       :class="multi && focused ? 'ccm-pane-active' : ''"
     >
       <!-- Dimmed when the process has ended; the well fades, the terminal text itself never animates. -->

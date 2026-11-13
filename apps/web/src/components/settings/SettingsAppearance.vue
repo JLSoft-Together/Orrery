@@ -70,6 +70,14 @@ const fileIconStyles = computed(() => [
         class="px-3"
         data-setting-row="stars"
       />
+      <ToggleSwitch
+        v-model="settings.starsPanels"
+        :label="t('themeV95.starsPanels')"
+        :hint="starsAvailable && settings.stars ? t('themeV95.starsPanelsHint') : t('themeV95.starsPanelsOff')"
+        :disabled="!starsAvailable || !settings.stars"
+        class="px-3"
+        data-setting-row="starsPanels"
+      />
     </SettingSection>
 
     <SettingSection id="text" :title="t('fonts.section')">

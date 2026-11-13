@@ -257,6 +257,7 @@
   --ccm-sky: none;
   --ccm-sky-size: auto;
   --ccm-sky-display: none;
+  --ccm-sky-pane: none;
   --ccm-chrome-fill: var(--ccm-material);
   --ccm-sky-fill: var(--ccm-canvas);
   --ccm-wordmark-font: var(--font-sans);
@@ -612,7 +613,16 @@ body {
 
   .ccm-panel {
     background: var(--ccm-panel-bg);
+    background-image: var(--ccm-sky-pane);
+    background-size: var(--ccm-sky-size);
+    background-attachment: fixed;
     box-shadow: var(--ccm-panel-edge);
+  }
+
+  .ccm-sky-well {
+    background-image: var(--ccm-sky-pane);
+    background-size: var(--ccm-sky-size);
+    background-attachment: fixed;
   }
 
   .ccm-chrome-edge {
@@ -1866,4 +1876,30 @@ body {
   .ccm-boot-arm {
     animation: none;
   }
+}
+
+.ccm-sky-well .xterm .xterm-viewport {
+  background-color: transparent;
+}
+
+.ccm-sky-well .xterm .xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.ccm-sky-well .xterm .xterm-viewport::-webkit-scrollbar-button {
+  display: none;
+}
+
+.ccm-sky-well .xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ccm-sky-well .xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ccm-ink-faint) 45%, transparent) padding-box;
+}
+
+.ccm-sky-well .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ccm-ink-faint) 75%, transparent) padding-box;
 }

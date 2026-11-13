@@ -104,6 +104,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const dustEffect = ref(read('ccm.dust') === '1')
   const officeEnabled = ref(read('ccm.office') === '1')
   const stars = ref(read('ccm.stars') !== '0')
+  const starsPanels = ref(read('ccm.starsPanels') !== '0')
   const fileIcons = ref<FileIconStyle>(isFileIconStyle(read('ccm.fileIcons')) ? (read('ccm.fileIcons') as FileIconStyle) : 'atom')
   const worktreeCopy = ref<string[]>(readWorktreeCopy())
   const pinned = ref<Set<string>>(readPinned())
@@ -143,6 +144,8 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(officeEnabled, (value) => persist('ccm.office', value ? '1' : '0'))
   watch(stars, (value) => persist('ccm.stars', value ? '1' : '0'))
   watch(stars, (value) => document.documentElement.setAttribute('data-stars', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
+  watch(starsPanels, (value) => persist('ccm.starsPanels', value ? '1' : '0'))
+  watch(starsPanels, (value) => document.documentElement.setAttribute('data-stars-panels', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
   watch(fileIcons, (value) => persist('ccm.fileIcons', value))
   watch(worktreeCopy, (value) => persist('ccm.worktreeCopy', JSON.stringify(value)))
   watch(pinned, (value) => persist('ccm.pinned', JSON.stringify([...value])))
@@ -301,6 +304,7 @@ export const useSettingsStore = defineStore('settings', () => {
     dustEffect,
     officeEnabled,
     stars,
+    starsPanels,
     fileIcons,
     pinned,
     activityPageSize,

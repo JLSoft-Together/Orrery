@@ -18,6 +18,14 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.4',
+    date: '2026-11-13',
+    items: [
+      { en: 'Galaxy theme: stars inside Workspace panels and terminals, switch in Appearance', vi: 'Theme Ngân hà: sao trong panel Workspace và terminal, bật/tắt ở Giao diện' },
+      { en: 'Galaxy: brighter stars, thin terminal scrollbar', vi: 'Ngân hà: sao sáng hơn, scrollbar terminal mảnh' },
+    ],
+  },
+  {
     version: '4.0.3',
     date: '2026-11-12',
     items: [

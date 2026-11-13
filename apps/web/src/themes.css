@@ -1239,18 +1239,18 @@
   --ccm-label-tracking: 0.04em;
   --ccm-gap-shell: 6px;
   --ccm-sky:
-    radial-gradient(circle at 23px 41px, rgb(255 255 255 / 0.55) 0 0.7px, transparent 1.4px),
-    radial-gradient(circle at 97px 188px, rgb(190 210 255 / 0.4) 0 0.6px, transparent 1.3px),
-    radial-gradient(circle at 151px 63px, rgb(255 255 255 / 0.3) 0 0.6px, transparent 1.3px),
-    radial-gradient(circle at 214px 132px, rgb(255 238 200 / 0.45) 0 0.7px, transparent 1.4px),
-    radial-gradient(circle at 260px 22px, rgb(255 255 255 / 0.35) 0 0.6px, transparent 1.3px),
-    radial-gradient(circle at 58px 236px, rgb(190 210 255 / 0.3) 0 0.6px, transparent 1.3px),
-    radial-gradient(circle at 188px 244px, rgb(255 255 255 / 0.5) 0 0.7px, transparent 1.4px),
-    radial-gradient(circle at 17px 23px, rgb(255 255 255 / 0.3) 0 0.5px, transparent 1.2px),
-    radial-gradient(circle at 81px 67px, rgb(255 238 200 / 0.28) 0 0.5px, transparent 1.2px),
-    radial-gradient(circle at 49px 96px, rgb(255 255 255 / 0.22) 0 0.5px, transparent 1.2px),
-    radial-gradient(circle at 108px 12px, rgb(190 210 255 / 0.25) 0 0.5px, transparent 1.2px),
-    radial-gradient(circle at 66px 41px, rgb(255 255 255 / 0.2) 0 0.5px, transparent 1.2px);
+    radial-gradient(circle at 23px 41px, rgb(255 255 255 / 0.85) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 97px 188px, rgb(190 210 255 / 0.7) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 151px 63px, rgb(255 255 255 / 0.6) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 214px 132px, rgb(255 238 200 / 0.75) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 260px 22px, rgb(255 255 255 / 0.65) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 58px 236px, rgb(190 210 255 / 0.6) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 188px 244px, rgb(255 255 255 / 0.8) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 17px 23px, rgb(255 255 255 / 0.5) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 81px 67px, rgb(255 238 200 / 0.48) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 49px 96px, rgb(255 255 255 / 0.42) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 108px 12px, rgb(190 210 255 / 0.45) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 66px 41px, rgb(255 255 255 / 0.4) 0 0.5px, transparent 1.2px);
   --ccm-sky-size:
     280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px,
     120px 110px, 120px 110px, 120px 110px, 120px 110px, 120px 110px;
@@ -1263,6 +1263,14 @@
   --ccm-sky: none;
   --ccm-sky-size: auto;
   --ccm-sky-display: none;
+  --ccm-sky-pane: none;
   --ccm-chrome-fill: var(--ccm-material);
   --ccm-sky-fill: var(--ccm-canvas);
+}
+
+:root[data-theme='galaxy']:not([data-stars='off']):not([data-stars-panels='off']) {
+  --ccm-sky-pane: var(--ccm-sky);
+  --ccm-panel-bg: var(--ccm-canvas);
+  --ccm-well: var(--ccm-canvas);
+  --ccm-panel-edge: inset 0 0 0 1px var(--ccm-line);
 }

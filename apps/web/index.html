@@ -38,6 +38,7 @@
           if (t !== 'light' && t !== 'dark') r.setAttribute('data-theme', t)
           try {
             if (localStorage.getItem('ccm.stars') === '0') r.setAttribute('data-stars', 'off')
+            if (localStorage.getItem('ccm.starsPanels') === '0') r.setAttribute('data-stars-panels', 'off')
           } catch (e) {}
           try {
             var l = localStorage.getItem('ccm.locale')

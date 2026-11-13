@@ -14,6 +14,7 @@ const HELP = `node scripts/qa-fast.mjs [options]
   --e2e=a,b         chạy thêm các E2E này (tên file trong apps/desktop/e2e, bỏ .cjs)
   --no-e2e          bỏ E2E
   --no-cargo        bỏ cargo test
+  --clippy          chạy thêm cargo clippy -D warnings cho crate đang đổi
   --all-e2e-map     in bảng map file → E2E rồi thoát
   --electron        E2E chạy Electron (mặc định Tauri)
   --jobs=<n>        số E2E chạy song song (mặc định 3)
@@ -124,6 +125,8 @@ for (const [w, files] of Object.entries(relatedBy)) checks.push(() => run(`vites
 if (!flag('no-cargo')) {
   if (crates.size) checks.push(() => run(`cargo test ${[...crates].join(' ')}`, 'cargo', ['test', '-j', String(threads), ...[...crates].flatMap((c) => ['-p', c])], { cwd: path.join(REPO, 'apps/core') }))
   if (shell) checks.push(() => run('cargo test shell', 'cargo', ['test', '-j', String(threads)], { cwd: path.join(REPO, 'apps/shell') }))
+  if (flag('clippy') && crates.size) checks.push(() => run(`cargo clippy ${[...crates].join(' ')}`, 'cargo', ['clippy', '-j', String(threads), ...[...crates].flatMap((c) => ['-p', c]), '--', '-D', 'warnings'], { cwd: path.join(REPO, 'apps/core') }))
+  if (flag('clippy') && shell) checks.push(() => run('cargo clippy shell', 'cargo', ['clippy', '-j', String(threads), '--', '-D', 'warnings'], { cwd: path.join(REPO, 'apps/shell') }))
 }
 if (e2e.size && webChanged) checks.push(() => run('vite build web', npx, ['vite', 'build'], { cwd: path.join(REPO, 'apps/web') }))
 if (needShellBuild) checks.push(() => run('cargo build shell', 'cargo', ['build', '-j', String(threads)], { cwd: path.join(REPO, 'apps/shell') }))

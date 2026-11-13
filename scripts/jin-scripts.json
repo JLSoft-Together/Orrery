@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scripts": [
+    {
+      "name": "qa-fast",
+      "file": "scripts/qa-fast.mjs",
+      "run": "node scripts/qa-fast.mjs",
+      "desc": "Theo file đang đổi: typecheck workspace bị chạm → vitest related → cargo test crate bị chạm (+ clippy khi --clippy) → E2E map sẵn; in PASS/FAIL từng bước + dòng lỗi",
+      "when": "Sau khi sửa code TS/Vue/Rust, trước khi báo xong; thay cho chạy rời npm run typecheck / npm test / cargo test / cargo clippy",
+      "flags": "--clippy · --no-e2e · --no-cargo · --e2e=a,b · --base=<ref> · --electron · --jobs=<n> · --dry",
+      "covers": ["npm run typecheck", "npm test", "cargo test", "cargo clippy"],
+      "created": "2026-11-13",
+      "estSaveTokens": 100000
+    }
+  ]
+}

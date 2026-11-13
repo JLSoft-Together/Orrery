@@ -39,6 +39,7 @@ const roots = computed(() => {
     const dir = tabProject(tab, (k) => workspace.panes.find((p) => p.key === k))
     if (dir && !seen.has(dirKey(dir))) seen.set(dirKey(dir), dir)
   }
+  for (const p of workspace.panes) if (p.project && !seen.has(dirKey(p.project))) seen.set(dirKey(p.project), p.project)
   return [...seen.values()]
 })
 const pkgOrNull = computed(() => (isPackageName(pkg.value.trim()) ? pkg.value.trim() : null))

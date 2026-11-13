@@ -106,8 +106,10 @@ export interface RowMenuCtx {
   telegramOpen?: boolean
 }
 
-const splitKids = (dir: 'row' | 'col', deepseek: boolean, t: T): MenuEntry[] =>
-  newChoices(deepseek).map((c) => ({ id: `split:${dir}:${c}`, label: t(c === 'browser' ? 'workspace.open.browser' : `workspace.preset.${c}`) }))
+const splitKids = (dir: 'row' | 'col', deepseek: boolean, t: T): MenuEntry[] => [
+  ...newChoices(deepseek).map((c) => ({ id: `split:${dir}:${c}`, label: t(c === 'browser' ? 'workspace.open.browser' : `workspace.preset.${c}`) })),
+  { id: `split:${dir}:project`, label: t('splitV97.otherProject') },
+]
 
 /** Session / pane row menu; split ids `split:<row|col>:<choice>`. */
 export function rowMenu(ctx: RowMenuCtx, t: T): MenuEntry[] {

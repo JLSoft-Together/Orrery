@@ -34,6 +34,9 @@ import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
 import paneV92 from './pane-v92'
+import splitV97 from './split-v97'
+import railSelectV98 from './rail-select-v98'
+import groupsV99 from './groups-v99'
 import explorerV93 from './explorer-v93'
 import paneV93 from './pane-v93'
 import boardV95 from './board-v95'
@@ -111,6 +114,9 @@ export default {
   ...monitorV53.en,
   ...sessionV53.en,
   ...paneV92.en,
+  ...splitV97.en,
+  ...railSelectV98.en,
+  ...groupsV99.en,
   ...explorerV93.en,
   ...paneV93.en,
   ...boardV95.en,
@@ -739,6 +745,9 @@ export default {
       wsNavBack: 'Back to the previous location',
       wsNavForward: 'Forward to the next location',
       wsNotes: 'Project notes',
+      wsGroupAdd: 'Add another project as a group',
+      wsGroupFocus: 'Focus the project group beside it',
+      wsGroupMove: 'Move the project group left / right',
       wsProjects: 'Go to project',
       wsDropTerm: 'Drop-down terminal',
       wsExplorer: 'Show the file explorer',

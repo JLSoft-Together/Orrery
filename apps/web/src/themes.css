@@ -1254,6 +1254,15 @@
   --ccm-sky-size:
     280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px,
     120px 110px, 120px 110px, 120px 110px, 120px 110px, 120px 110px;
+  --ccm-sky-twinkle:
+    radial-gradient(circle at 92px 71px, rgb(255 255 255 / 1) 0 1.8px, rgb(255 255 255 / 0.35) 3px, transparent 6.5px),
+    radial-gradient(circle at 301px 238px, rgb(205 222 255 / 1) 0 2px, rgb(190 210 255 / 0.32) 3.2px, transparent 7px),
+    radial-gradient(circle at 224px 34px, rgb(255 236 196 / 0.95) 0 1.5px, rgb(255 236 196 / 0.28) 2.6px, transparent 5.5px),
+    radial-gradient(circle at 40px 281px, rgb(255 255 255 / 0.95) 0 1.3px, rgb(255 255 255 / 0.22) 2.2px, transparent 4.5px),
+    radial-gradient(circle at 172px 163px, rgb(200 218 255 / 0.95) 0 1.2px, transparent 3.4px),
+    radial-gradient(circle at 348px 110px, rgb(255 255 255 / 0.9) 0 1.1px, transparent 3.2px),
+    radial-gradient(circle at 260px 316px, rgb(255 238 200 / 0.9) 0 1.1px, transparent 3.2px);
+  --ccm-sky-twinkle-size: 380px 340px;
   --ccm-sky-display: block;
   --ccm-chrome-fill: transparent;
   --ccm-sky-fill: transparent;
@@ -1261,6 +1270,7 @@
 
 :root[data-stars='off'] {
   --ccm-sky: none;
+  --ccm-sky-twinkle: none;
   --ccm-sky-size: auto;
   --ccm-sky-display: none;
   --ccm-sky-pane: none;
@@ -1270,6 +1280,9 @@
 
 :root[data-theme='galaxy']:not([data-stars='off']):not([data-stars-panels='off']) {
   --ccm-sky-pane: var(--ccm-sky);
+  --ccm-sky-twinkle-pane: var(--ccm-sky-twinkle);
+  --ccm-meteor-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='80'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23c8dcff' stop-opacity='0'/%3E%3Cstop offset='0.6' stop-color='%23c8dcff' stop-opacity='0.5'/%3E%3Cstop offset='1' stop-color='white'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cline x1='6' y1='3' x2='228' y2='75' stroke='url(%23g)' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='228' cy='75' r='5' fill='%23c8dcff' fill-opacity='0.3'/%3E%3Ccircle cx='228' cy='75' r='2' fill='white'/%3E%3C/svg%3E");
+  --ccm-sky-pane-display: block;
   --ccm-panel-bg: var(--ccm-canvas);
   --ccm-well: var(--ccm-canvas);
   --ccm-panel-edge: inset 0 0 0 1px var(--ccm-line);

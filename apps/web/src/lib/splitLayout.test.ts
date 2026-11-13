@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxes, dividers, dockSpot, dockTree, dropTargetAt, edgeAt, isLayout, leaves, movePane, neighbor, removeLeaf, setRatio, splitLeaf, swapPanes, type LayoutNode, type Rect } from './splitLayout'
+import { boxes, cleanGroups, dividers, dockGroup, dockSpot, dockTree, dropTargetAt, edgeAt, foldedKeys, foldLayout, GROUP_NAME_MAX, groupBoxes, groupOf, groupsOf, hasGroups, isLayout, metaOf, neighborGroup, setGroupMeta, leaves, moveGroup, movePane, neighbor, removeLeaf, setRatio, settleGroups, splitLeaf, swapPanes, takeGroup, ungrouped, type LayoutNode, type Rect } from './splitLayout'
 
 // a | (b / c)
 const tree: LayoutNode = splitLeaf(splitLeaf({ pane: 'a' }, 'a', 'b', 'row'), 'b', 'c', 'col')
@@ -113,5 +113,124 @@ describe('dock spot', () => {
     expect(dockSpot(tree, 'c', { w: 500, h: 300 })).toEqual({ key: 'a', dir: 'col' })
     expect(dockSpot({ pane: 'a' }, 'a', { w: 300, h: 600 })).toEqual({ key: 'a', dir: 'col' })
     expect(dockSpot({ pane: 'a' }, 'a', { w: 400, h: 250 })).toBeNull()
+  })
+})
+
+describe('project groups', () => {
+  const A = 'C:/a'
+  const B = 'D:/b'
+  const proj: Record<string, string> = { a1: A, a2: A, b1: B, b2: B, c1: 'E:/c' }
+  const of = (k: string): string => proj[k]!
+
+  it('keeps a single-project tree plain and names its project', () => {
+    const t = splitLeaf({ pane: 'a1' }, 'a1', 'a2', 'row')
+    const res = settleGroups(t, of)
+    expect(res.root).toBe(t)
+    expect(res.project).toBe(A)
+    expect(hasGroups(res.root)).toBe(false)
+  })
+
+  it('turns scattered panes of two projects into one group each, keeping their order', () => {
+    const t: LayoutNode = { dir: 'row', ratio: 0.5, a: { dir: 'col', ratio: 0.5, a: { pane: 'a1' }, b: { pane: 'b1' } }, b: { dir: 'col', ratio: 0.5, a: { pane: 'a2' }, b: { pane: 'b2' } } }
+    const { root, project } = settleGroups(t, of)
+    expect(project).toBeUndefined()
+    expect(groupsOf(root)).toEqual([
+      { project: A, keys: ['a1', 'a2'] },
+      { project: B, keys: ['b1', 'b2'] },
+    ])
+    expect(leaves(root)).toHaveLength(4)
+  })
+
+  it('unwraps the last group left and drops empty groups', () => {
+    const t = dockGroup(splitLeaf({ pane: 'a1' }, 'a1', 'a2', 'col'), A, 'a1', B, { pane: 'b1' }, 'right')
+    expect(groupsOf(t).map((g) => g.project)).toEqual([A, B])
+    const gone = removeLeaf(t, 'b1')!
+    expect(groupsOf(gone).map((g) => g.project)).toEqual([A])
+    const res = settleGroups(gone, of)
+    expect(hasGroups(res.root)).toBe(false)
+    expect(res.project).toBe(A)
+    expect(removeLeaf({ group: A, node: { pane: 'a1' } }, 'a1')).toBeNull()
+  })
+
+  it('docks a new group beside the group of the near pane, or into the project group already there', () => {
+    let t = dockGroup({ pane: 'a1' }, A, 'a1', B, { pane: 'b1' }, 'left')
+    expect(groupsOf(t).map((g) => g.project)).toEqual([B, A])
+    t = dockGroup(t, A, 'a1', B, { pane: 'b2' }, 'right')
+    expect(groupsOf(t)).toEqual([
+      { project: B, keys: ['b1', 'b2'] },
+      { project: A, keys: ['a1'] },
+    ])
+    t = dockGroup(t, A, 'a1', 'E:/c', { pane: 'c1' }, 'bottom')
+    expect(groupOf(t, 'c1')).toBe('E:/c')
+    expect(groupBoxes(t).get('E:/c')).toEqual({ x: 0.5, y: 0.5, w: 0.5, h: 0.5 })
+  })
+
+  it('splits inside a group, tags its dividers and reaches its ratios by path', () => {
+    let t = dockGroup({ pane: 'a1' }, A, 'a1', B, { pane: 'b1' }, 'right')
+    t = splitLeaf(t, 'b1', 'b2', 'col')
+    expect(groupOf(t, 'b2')).toBe(B)
+    const d = dividers(t)
+    expect(d.map((x) => [x.path, x.group])).toEqual([
+      ['', undefined],
+      ['b', B],
+    ])
+    t = setRatio(t, 'b', 0.3)
+    expect(boxes(t).get('b1')!.h).toBeCloseTo(0.3)
+    expect(isLayout(t)).toBe(true)
+    expect(isLayout({ group: A, node: { nope: 1 } })).toBe(false)
+  })
+
+  it('moves and takes whole groups', () => {
+    let t = dockGroup({ pane: 'a1' }, A, 'a1', B, { pane: 'b1' }, 'right')
+    t = dockGroup(t, A, 'b1', 'E:/c', { pane: 'c1' }, 'right')
+    expect(groupsOf(moveGroup(t, 'E:/c', A, 'left')).map((g) => g.project)).toEqual(['E:/c', A, B])
+    expect(moveGroup(t, B, B, 'left')).toBe(t)
+    const took = takeGroup(t, B)!
+    expect(leaves(took.node)).toEqual(['b1'])
+    expect(groupsOf(took.rest!).map((g) => g.project)).toEqual([A, 'E:/c'])
+    expect(leaves(ungrouped(t))).toEqual(['a1', 'b1', 'c1'])
+    expect(hasGroups(ungrouped(t))).toBe(false)
+  })
+
+  it('merges a second group of the same project into the first', () => {
+    const t: LayoutNode = { dir: 'row', ratio: 0.5, a: { group: A, node: { pane: 'a1' } }, b: { dir: 'row', ratio: 0.5, a: { group: B, node: { pane: 'b1' } }, b: { group: A, node: { pane: 'a2' } } } }
+    const { root } = settleGroups(t, of)
+    expect(groupsOf(root)).toEqual([
+      { project: A, keys: ['a1', 'a2'] },
+      { project: B, keys: ['b1'] },
+    ])
+  })
+})
+
+describe('project group options', () => {
+  const row = (): LayoutNode => dockGroup(dockGroup({ pane: 'a1' }, 'A', 'a1', 'B', { pane: 'b1' }, 'right'), 'A', 'b1', 'C', { pane: 'c1' }, 'right')
+
+  it('keeps name, colour and fold through settle and leaf moves, and cleans bad values', () => {
+    let t = setGroupMeta(row(), 'B', { name: '  API  ', tone: 3, folded: true })
+    expect(groupsOf(t).find((g) => g.project === 'B')).toMatchObject({ name: 'API', tone: 3, folded: true })
+    t = splitLeaf(t, 'b1', 'b2', 'col')
+    t = settleGroups(t, () => 'x').root
+    expect(groupsOf(t).find((g) => g.project === 'B')).toMatchObject({ name: 'API', tone: 3, folded: true })
+    t = setGroupMeta(t, 'B', { tone: undefined, folded: false })
+    expect(groupsOf(t).find((g) => g.project === 'B')).toEqual({ project: 'B', keys: ['b1', 'b2'], name: 'API' })
+    expect(metaOf({ name: 'x'.repeat(80), tone: 99, folded: false })).toEqual({ name: 'x'.repeat(GROUP_NAME_MAX) })
+    expect(groupsOf(cleanGroups({ dir: 'row', ratio: 0.5, a: { group: 'A', node: { pane: 'a1' }, tone: -1 } as LayoutNode, b: { group: 'B', node: { pane: 'b1' } } })).map((g) => g.tone)).toEqual([undefined, undefined])
+  })
+
+  it('collapses a group to a fixed strip and locks its divider', () => {
+    const t = setGroupMeta(row(), 'A', { folded: true })
+    const { root, locked } = foldLayout(t, { w: 1000, h: 600 }, { w: 36, h: 34 })
+    expect(locked).toEqual([''])
+    expect(groupBoxes(root).get('A')!.w).toBeCloseTo(0.036)
+    expect(foldedKeys(t)).toEqual(new Set(['a1']))
+    expect(foldLayout(t, { w: 0, h: 0 }, { w: 36, h: 34 }).root).toBe(t)
+  })
+
+  it('finds the neighbour group left and right', () => {
+    const t = row()
+    expect(neighborGroup(t, 'B', 'right')).toBe('C')
+    expect(neighborGroup(t, 'B', 'left')).toBe('A')
+    expect(neighborGroup(t, 'A', 'left')).toBeNull()
+    expect(neighborGroup({ pane: 'a1' }, 'A', 'left')).toBeNull()
   })
 })

@@ -55,6 +55,8 @@ function readWorktreeCopy(): string[] {
 
 export type FileIconStyle = 'atom' | 'simple'
 const isFileIconStyle = (value: unknown): value is FileIconStyle => value === 'atom' || value === 'simple'
+export type StarsFx = 'off' | 'twinkle' | 'meteors'
+const isStarsFx = (value: unknown): value is StarsFx => value === 'off' || value === 'twinkle' || value === 'meteors'
 export const ACTIVITY_PAGE_SIZES = [50, 100, 200, 500]
 
 function readPinned(): Set<string> {
@@ -105,6 +107,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const officeEnabled = ref(read('ccm.office') === '1')
   const stars = ref(read('ccm.stars') !== '0')
   const starsPanels = ref(read('ccm.starsPanels') !== '0')
+  const starsFx = ref<StarsFx>(isStarsFx(read('ccm.starsFx')) ? (read('ccm.starsFx') as StarsFx) : 'twinkle')
   const fileIcons = ref<FileIconStyle>(isFileIconStyle(read('ccm.fileIcons')) ? (read('ccm.fileIcons') as FileIconStyle) : 'atom')
   const worktreeCopy = ref<string[]>(readWorktreeCopy())
   const pinned = ref<Set<string>>(readPinned())
@@ -146,6 +149,8 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(stars, (value) => document.documentElement.setAttribute('data-stars', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
   watch(starsPanels, (value) => persist('ccm.starsPanels', value ? '1' : '0'))
   watch(starsPanels, (value) => document.documentElement.setAttribute('data-stars-panels', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
+  watch(starsFx, (value) => persist('ccm.starsFx', value))
+  watch(starsFx, (value) => document.documentElement.setAttribute('data-stars-fx', value), { flush: 'sync', immediate: true })
   watch(fileIcons, (value) => persist('ccm.fileIcons', value))
   watch(worktreeCopy, (value) => persist('ccm.worktreeCopy', JSON.stringify(value)))
   watch(pinned, (value) => persist('ccm.pinned', JSON.stringify([...value])))
@@ -305,6 +310,7 @@ export const useSettingsStore = defineStore('settings', () => {
     officeEnabled,
     stars,
     starsPanels,
+    starsFx,
     fileIcons,
     pinned,
     activityPageSize,

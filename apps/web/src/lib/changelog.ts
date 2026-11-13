@@ -18,6 +18,19 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.5',
+    date: '2026-11-13',
+    items: [
+      { en: 'Workspace: Chrome-style project groups, several projects side by side in one tab', vi: 'Workspace: nhóm project kiểu Chrome, nhiều project cạnh nhau trong một tab' },
+      { en: 'Project groups: header menu, colours, collapse, Ctrl+Alt+G, saved layouts', vi: 'Nhóm project: menu header, màu, thu gọn, Ctrl+Alt+G, lưu layout' },
+      { en: 'Sidebar: Ctrl/Shift+click several sessions, then Group / Ungroup / Close', vi: 'Sidebar: Ctrl/Shift+click chọn nhiều session rồi Group / Ungroup / Đóng' },
+      { en: 'Drag a project from the sidebar onto a pane to put it beside', vi: 'Kéo project từ sidebar thả vào pane để mở cạnh bên' },
+      { en: 'Galaxy: bigger twinkling stars and meteors, Star effect in Appearance', vi: 'Ngân hà: sao to nhấp nháy và sao băng, chọn ở Giao diện → Hiệu ứng sao' },
+      { en: 'Fix: in-app notifications were blocked on Windows', vi: 'Sửa: thông báo trong app bị chặn trên Windows' },
+      { en: 'Fix: pasted images had no preview in Attachments', vi: 'Sửa: ảnh paste không có preview trong Attachments' },
+    ],
+  },
+  {
     version: '4.0.4',
     date: '2026-11-13',
     items: [

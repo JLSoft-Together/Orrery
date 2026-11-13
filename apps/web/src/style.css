@@ -258,6 +258,13 @@
   --ccm-sky-size: auto;
   --ccm-sky-display: none;
   --ccm-sky-pane: none;
+  --ccm-sky-twinkle: none;
+  --ccm-sky-twinkle-size: auto;
+  --ccm-sky-twinkle-pane: none;
+  --ccm-sky-pane-display: none;
+  --ccm-meteor-pane: none;
+  --ccm-sky-pos: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  --ccm-sky-rep: repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat;
   --ccm-chrome-fill: var(--ccm-material);
   --ccm-sky-fill: var(--ccm-canvas);
   --ccm-wordmark-font: var(--font-sans);
@@ -377,6 +384,139 @@ html::before {
   display: var(--ccm-sky-display);
   background-image: var(--ccm-sky);
   background-size: var(--ccm-sky-size);
+}
+
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  display: var(--ccm-sky-display);
+  background-image: var(--ccm-sky-twinkle);
+  background-size: var(--ccm-sky-twinkle-size);
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  display: none;
+  width: 220px;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, rgb(190 210 255 / 0.45) 50%, rgb(255 255 255));
+  box-shadow: 0 0 6px 1px rgb(200 220 255 / 0.55);
+  opacity: 0;
+  rotate: 18deg;
+}
+
+body::before {
+  top: 9vh;
+  left: 6vw;
+}
+
+body::after {
+  top: 34vh;
+  left: 38vw;
+  rotate: 24deg;
+  width: 170px;
+}
+
+:root:not([data-stars-fx='off'])::after {
+  animation: ccm-twinkle 3.4s ease-in-out infinite;
+  will-change: opacity;
+}
+
+:root[data-stars-fx='meteors'] body::before,
+:root[data-stars-fx='meteors'] body::after {
+  display: var(--ccm-sky-display);
+  will-change: translate, opacity;
+}
+
+:root[data-stars-fx='meteors'] body::before {
+  animation: ccm-meteor-a 7s linear 1s infinite;
+}
+
+:root[data-stars-fx='meteors'] body::after {
+  animation: ccm-meteor-b 11s linear 4s infinite;
+}
+
+@keyframes ccm-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.04;
+  }
+}
+
+@keyframes ccm-meteor-pane {
+  0% {
+    background-position: 10vw 6vh, var(--ccm-sky-pos);
+  }
+  13% {
+    background-position: calc(10vw + 1000px) calc(6vh + 324px), var(--ccm-sky-pos);
+  }
+  13.1%,
+  100% {
+    background-position: -9999px -9999px, var(--ccm-sky-pos);
+  }
+}
+
+@keyframes ccm-meteor-a {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  16% {
+    translate: 900px 292px;
+    opacity: 0;
+  }
+  100% {
+    translate: 900px 292px;
+    opacity: 0;
+  }
+}
+
+@keyframes ccm-meteor-b {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  12% {
+    translate: 760px 338px;
+    opacity: 0;
+  }
+  100% {
+    translate: 760px 338px;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root::after,
+  body::before,
+  body::after,
+  .ccm-panel,
+  .ccm-sky-well,
+  .ccm-panel::before,
+  .ccm-sky-well::before {
+    animation: none !important;
+  }
+  body::before,
+  body::after {
+    display: none !important;
+  }
 }
 
 body {
@@ -613,16 +753,56 @@ body {
 
   .ccm-panel {
     background: var(--ccm-panel-bg);
-    background-image: var(--ccm-sky-pane);
-    background-size: var(--ccm-sky-size);
+    background-image: var(--ccm-meteor-pane), var(--ccm-sky-pane);
+    background-size: 240px 80px, var(--ccm-sky-size);
+    background-repeat: no-repeat, var(--ccm-sky-rep);
+    background-position: -9999px -9999px, var(--ccm-sky-pos);
     background-attachment: fixed;
     box-shadow: var(--ccm-panel-edge);
   }
 
   .ccm-sky-well {
-    background-image: var(--ccm-sky-pane);
-    background-size: var(--ccm-sky-size);
+    background-image: var(--ccm-meteor-pane), var(--ccm-sky-pane);
+    background-size: 240px 80px, var(--ccm-sky-size);
+    background-repeat: no-repeat, var(--ccm-sky-rep);
+    background-position: -9999px -9999px, var(--ccm-sky-pos);
     background-attachment: fixed;
+  }
+
+  :root[data-stars-fx='meteors'] :is(.ccm-panel, .ccm-sky-well) {
+    animation: ccm-meteor-pane 9s linear 2.5s infinite;
+  }
+
+  :root[data-theme='galaxy']:not([data-stars='off']):not([data-stars-panels='off']) .ccm-panel {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .ccm-panel::before,
+  .ccm-sky-well::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    display: var(--ccm-sky-pane-display);
+    border-radius: inherit;
+    pointer-events: none;
+    background-image: var(--ccm-sky-twinkle-pane);
+    background-size: var(--ccm-sky-twinkle-size);
+    background-attachment: fixed;
+  }
+
+  .ccm-panel::before {
+    z-index: -1;
+  }
+
+  :root:not([data-stars-fx='off']) .ccm-panel::before {
+    animation: ccm-twinkle 4.1s ease-in-out -1.3s infinite;
+    will-change: opacity;
+  }
+
+  :root:not([data-stars-fx='off']) .ccm-sky-well::before {
+    animation: ccm-twinkle 4.7s ease-in-out -2.6s infinite;
+    will-change: opacity;
   }
 
   .ccm-chrome-edge {

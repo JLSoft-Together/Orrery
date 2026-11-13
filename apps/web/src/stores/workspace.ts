@@ -20,11 +20,28 @@ import {
   type TerminalSession,
 } from '@ccm/shared'
 import {
+  dockGroup,
   dockSpot,
   dockTree,
+  findGroup,
+  GROUP_CHROME,
+  groupBoxes,
+  groupNodes,
+  groupOf,
+  groupsOf,
+  isGroup,
   isLayout,
   isLeaf,
   leaves,
+  mapLeaves,
+  moveGroup as moveGroupNode,
+  neighborGroup,
+  setGroupMeta as setGroupLayoutMeta,
+  cleanGroups,
+  type GroupMeta,
+  settleGroups,
+  takeGroup,
+  ungrouped,
   movePane as moveLeaf,
   neighbor,
   removeLeaf,
@@ -57,7 +74,7 @@ export type PaneSpec =
   | { kind: 'run' }
 
 /** Split menu entries. */
-export type SplitChoice = PtyPreset | 'browser'
+export type SplitChoice = PtyPreset | 'browser' | 'project'
 
 export interface Pane {
   key: string
@@ -82,6 +99,7 @@ export interface Pane {
   /** Last time this pane took focus: picks the agent a browser pane sends to. */
   focusedAt?: number
   cwd?: string
+  project?: string
   /** Shell's current folder reported via OSC 7 / 9;9 after `cd`; runtime only, `cwd` stays the starting folder. */
   liveCwd?: string
   /** PTY host session id once spawned; lets a reload re-attach instead of starting over. */
@@ -151,6 +169,7 @@ export interface ClosedPane {
   kind?: PaneKind
   preset: PtyPreset
   cwd?: string
+  project?: string
   resume?: string
   url?: string
   path?: string
@@ -165,6 +184,7 @@ export interface ClosedAnchor {
   dir: SplitDir
   side: 'a' | 'b'
   ratio: number
+  outer?: boolean
 }
 
 export interface ClosedTab {
@@ -191,29 +211,35 @@ export interface ClosedEntry {
 
 export const closedPanes = (e: ClosedEntry): ClosedPane[] => [...e.tabs.flatMap((t) => t.panes), ...e.loose.map((l) => l.pane)]
 
-const copyTree = (n: LayoutNode): LayoutNode => (isLeaf(n) ? { pane: n.pane } : { dir: n.dir, ratio: n.ratio, a: copyTree(n.a), b: copyTree(n.b) })
+const copyTree = (n: LayoutNode): LayoutNode => mapLeaves(n, (k) => k)
 
-const remapTree = (n: LayoutNode, map: ReadonlyMap<string, string>): LayoutNode =>
-  isLeaf(n) ? { pane: map.get(n.pane) ?? n.pane } : { dir: n.dir, ratio: n.ratio, a: remapTree(n.a, map), b: remapTree(n.b, map) }
+const remapTree = (n: LayoutNode, map: ReadonlyMap<string, string>): LayoutNode => mapLeaves(n, (k) => map.get(k) ?? k)
 
 export function anchorOf(root: LayoutNode, key: string): ClosedAnchor | null {
   if (isLeaf(root)) return null
+  if (isGroup(root)) return anchorOf(root.node, key)
   for (const side of ['a', 'b'] as const) {
     const child = root[side]
-    if (!isLeaf(child) || child.pane !== key) continue
+    const solo = isLeaf(child) ? child.pane : isGroup(child) && isLeaf(child.node) ? child.node.pane : null
+    if (solo !== key) continue
     const group = leaves(root[side === 'a' ? 'b' : 'a'])
-    return { siblingKey: side === 'a' ? group[0]! : group[group.length - 1]!, group, dir: root.dir, side, ratio: root.ratio }
+    const anchor: ClosedAnchor = { siblingKey: side === 'a' ? group[0]! : group[group.length - 1]!, group, dir: root.dir, side, ratio: root.ratio }
+    return isGroup(child) ? { ...anchor, outer: true } : anchor
   }
   return anchorOf(root.a, key) ?? anchorOf(root.b, key)
 }
 
-function wrapGroup(n: LayoutNode, want: ReadonlySet<string>, wrap: (n: LayoutNode) => LayoutNode): LayoutNode | null {
+function wrapGroup(n: LayoutNode, want: ReadonlySet<string>, wrap: (n: LayoutNode) => LayoutNode, outer = false): LayoutNode | null {
   const keys = leaves(n)
+  if (isGroup(n) && !outer) {
+    const inner = wrapGroup(n.node, want, wrap, outer)
+    if (inner) return { ...n, node: inner }
+  }
   if (keys.length === want.size && keys.every((k) => want.has(k))) return wrap(n)
-  if (isLeaf(n) || !keys.some((k) => want.has(k))) return null
-  const a = wrapGroup(n.a, want, wrap)
+  if (isLeaf(n) || isGroup(n) || !keys.some((k) => want.has(k))) return null
+  const a = wrapGroup(n.a, want, wrap, outer)
   if (a) return { ...n, a }
-  const b = wrapGroup(n.b, want, wrap)
+  const b = wrapGroup(n.b, want, wrap, outer)
   return b ? { ...n, b } : null
 }
 
@@ -224,6 +250,8 @@ const tabExtras = (t: Partial<Tab>): Pick<Tab, 'name' | 'folded'> => ({ name: cl
 
 export function tabTitle(tab: Tab, paneOf: (key: string) => Pane | undefined, titleOf: (pane: Pane) => string): string {
   if (tab.name) return tab.name
+  const groups = groupsOf(tab.root)
+  if (groups.length > 1) return groups.map((g) => g.name || baseOf(g.project)).join(' + ')
   const primary = paneOf(primaryPaneKey(tab.root, paneOf))
   return primary ? titleOf(primary) : ''
 }
@@ -249,6 +277,7 @@ interface LastPane extends ViewFields {
   cwd?: string
   /** The pane's starting folder when `cwd` is where its shell had moved to; used when that folder is gone. */
   home?: string
+  project?: string
   resume?: string
 }
 
@@ -288,6 +317,31 @@ export function tabProject(tab: Tab, paneOf: (key: string) => Pick<Pane, 'kind' 
   return tab.project ?? paneOf(primaryPaneKey(tab.root, paneOf))?.cwd
 }
 
+export function paneProjectOf(tab: Tab | undefined, pane: Pick<Pane, 'project' | 'cwd'> & { key?: string }, paneOf: (key: string) => Pick<Pane, 'kind' | 'cwd'> | undefined): string | undefined {
+  const group = tab && pane.key ? groupOf(tab.root, pane.key) : undefined
+  return group || (pane.project ?? (tab ? tabProject(tab, paneOf) : undefined) ?? pane.cwd)
+}
+
+export const sameProject = (a: string, b: string): boolean => (!a || !b ? a === b : dirKey(a) === dirKey(b))
+
+export function tabGroups(tab: Tab): Array<GroupMeta & { project: string; keys: string[] }> {
+  return groupsOf(tab.root)
+}
+
+const nestedIn = (dir: string, root: string): boolean => dirKey(dir) === dirKey(root) || dirKey(dir).startsWith(dirKey(root) + '\\')
+const related = (a: string, b: string): boolean => nestedIn(a, b) || nestedIn(b, a)
+
+export function foreignProject(tab: Tab, dir: string | undefined, paneOf: (key: string) => Pick<Pane, 'kind' | 'cwd' | 'project'> | undefined): string | undefined {
+  if (!dir) return undefined
+  const home = tabProject(tab, paneOf)
+  if (home && related(dir, home)) return undefined
+  for (const k of leaves(tab.root)) {
+    const own = paneOf(k)?.project
+    if (own && related(dir, own)) return own
+  }
+  return dir
+}
+
 const isAbs = (p: unknown): p is string => typeof p === 'string' && (/^[A-Za-z]:[\\/]/.test(p) || p.startsWith('/') || p.startsWith('\\\\'))
 const isWeb = (u: unknown): u is string => typeof u === 'string' && /^https?:\/\//i.test(u)
 
@@ -317,7 +371,7 @@ function cleanPane<T extends ViewFields & { key: string; preset: unknown; cwd?: 
   const view = viewFields(p)
   if (!view) return null
   if ((view.kind === 'changes' || view.kind === 'log' || view.kind === 'run') && !isAbs(p.cwd)) return null
-  return { ...p, kind: undefined, url: undefined, path: undefined, line: undefined, ...view }
+  return { ...p, kind: undefined, url: undefined, path: undefined, line: undefined, ...view, project: isAbs((p as { project?: unknown }).project) ? (p as { project?: string }).project : undefined }
 }
 
 function viewOf(p: ViewFields): ViewFields {
@@ -371,7 +425,7 @@ function loadLast(): LastWorkspace | null {
       .filter((t) => t && isLayout(t.root) && leaves(t.root).every((k) => known.has(k)))
       .map((t) => {
         const zoom = zoomOf(t, t.root)
-        return { key: String(t.key), root: t.root, focus: zoom ?? String(t.focus), project: isAbs(t.project) ? t.project : undefined, ...tabExtras(t), zoom }
+        return { key: String(t.key), root: cleanGroups(t.root), focus: zoom ?? String(t.focus), project: isAbs(t.project) ? t.project : undefined, ...tabExtras(t), zoom }
       })
     return tabs.length ? { at: String(raw.at ?? ''), panes, tabs } : null
   } catch {
@@ -408,6 +462,7 @@ interface SavedPane extends ViewFields {
   key: string
   preset: PtyPreset
   cwd?: string
+  project?: string
   /** Terms only. */
   sessionId?: string
   resume?: string
@@ -453,7 +508,7 @@ function loadSaved(): Saved {
     const tabs: Tab[] = []
     for (const tab of rawTabs) {
       if (!tab || typeof tab.key !== 'string' || !isLayout(tab.root)) continue
-      let root: LayoutNode | null = tab.root
+      let root: LayoutNode | null = cleanGroups(tab.root)
       for (const key of leaves(tab.root)) if (!known.has(key)) root = root && removeLeaf(root, key)
       if (!root) continue
       const left = leaves(root)
@@ -520,7 +575,7 @@ export function reopenAs(p: Pick<Pane, 'kind' | 'preset' | 'agent' | 'agentSessi
 
 function closedPane(p: Pane, name: string): ClosedPane {
   const { preset, cwd, resume } = reopenAs(p)
-  return { key: p.key, ...viewOf(p), preset, cwd, resume, name, ...(p.openedBy ? { openedBy: p.openedBy } : {}) }
+  return { key: p.key, ...viewOf(p), preset, cwd, resume, name, ...(p.openedBy ? { openedBy: p.openedBy } : {}), ...(p.project ? { project: p.project } : {}) }
 }
 
 export type InsertRequest = { id: number; paneKey: string; text: string; image?: undefined } | { id: number; paneKey: string; image: true; text?: undefined }
@@ -570,6 +625,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         key: p.key,
         preset: p.preset,
         cwd: p.cwd,
+        project: p.project,
         sessionId: p.sessionId,
         resume: p.resume,
         agentSessionId: p.agentSessionId,
@@ -596,7 +652,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       panes: panes.value.map((p) => {
         // As closedPane: a resumed agent must start where its session lives; a shell comes back where it was.
         const { preset: kind, cwd, resume } = reopenAs(p)
-        return { key: p.key, preset: kind, cwd, home: cwd !== p.cwd ? p.cwd : undefined, resume, ...viewOf(p) }
+        return { key: p.key, preset: kind, cwd, home: cwd !== p.cwd ? p.cwd : undefined, project: p.project, resume, ...viewOf(p) }
       }),
       tabs: tabs.value,
     }
@@ -658,6 +714,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const tab = split ? tabOf(split.key) : undefined
     if (tab && split) {
       tab.root = splitLeaf(tab.root, split.key, pane.key, split.dir)
+      settle(tab)
       tab.focus = pane.key
       unzoom(tab)
     } else tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project: pane.cwd })
@@ -778,6 +835,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   /** The tab working on `cwd`'s project: the active tab when it is one, else the one focused last. Home tabs match no folder. */
   function projectTab(cwd?: string): Tab | undefined {
     const matches = (t: Tab): boolean => {
+      const groups = groupsOf(t.root)
+      if (cwd && groups.length) return groups.some((g) => !!g.project && within(cwd, g.project))
       const project = tabProject(t, paneOf)
       return cwd ? !!project && within(cwd, project) : !project
     }
@@ -804,9 +863,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
    */
   function joinProject(pane: Pane, opts: { tab?: boolean } = {}): Pane {
     const tab = opts.tab ? undefined : projectTab(pane.cwd)
-    const spot = tab ? dockSpot(tab.root, tab.focus, canvasSize.value) : null
-    if (tab && spot) {
-      tab.root = splitLeaf(tab.root, spot.key, pane.key, spot.dir)
+    if (tab && dockNear(tab, pane.key, tab.focus, pane.cwd)) {
       tab.focus = pane.key
       unzoom(tab)
     } else tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project: pane.cwd })
@@ -870,7 +927,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const size = canvasSize.value
     const spot = size.w && size.h ? dockSpot(fromTab.root, from.key, size) : null
     if (spot) {
-      fromTab.root = splitLeaf(fromTab.root, spot.key, pane.key, spot.dir)
+      if (!dockNear(fromTab, pane.key, from.key, cwd)) attach(fromTab, { pane: pane.key }, cwd ?? '', from.key, spot.dir === 'col' ? 'bottom' : 'right')
       unzoom(fromTab)
     } else tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project: tabProject(fromTab, paneOf) ?? cwd })
     return { ok: true, paneKey: pane.key }
@@ -892,7 +949,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     // `root` is the host's real path of the same pane's folder (a project opened through a junction differs from `cwd`).
     if (!caller?.cwd || !(within(spec.path, caller.cwd) || (!!spec.root && within(spec.path, spec.root)))) return 'caller'
     const callerTab = tabOf(caller.key)
-    const project = (callerTab && tabProject(callerTab, paneOf)) ?? caller.cwd
+    const project = paneProjectOf(callerTab, caller, paneOf)
     const existing = spec.diff
       ? panes.value.find((p) => p.kind === 'changes' && !!project && (sameDir(p.root, project) || sameDir(p.cwd, project)))
       : panes.value.find((p) => p.kind === 'file' && sameDir(p.path, spec.path))
@@ -916,11 +973,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (spec.diff) pane.select = spec.path
     else pane.openedBy = caller.key
     const size = canvasSize.value
-    const spot = callerTab && size.w && size.h ? dockSpot(callerTab.root, caller.key, size) : null
-    if (callerTab && spot) {
-      callerTab.root = splitLeaf(callerTab.root, spot.key, pane.key, spot.dir)
-      unzoom(callerTab)
-    } else tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project })
+    if (callerTab && size.w && size.h && dockNear(callerTab, pane.key, caller.key, undefined)) unzoom(callerTab)
+    else tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project })
     return { paneKey: pane.key, reused: false }
   }
 
@@ -1052,14 +1106,27 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   )
 
   /** Same folder as the target, next to it; same agent unless one is picked (Windows Terminal's "duplicate" split). */
-  function split(targetKey: string, dir: SplitDir, spec?: PaneSpec): Pane | null {
+  function split(targetKey: string, dir: SplitDir, spec?: PaneSpec, opts: { cwd?: string; resume?: string } = {}): Pane | null {
     const tab = tabOf(targetKey)
     const target = panes.value.find((p) => p.key === targetKey)
     if (!tab || !target) return null
     const chosen: PaneSpec = spec ?? { kind: 'term', preset: isTerm(target) ? target.preset : preset.value }
     if (chosen.kind === 'term' && (!presetEnabled(chosen.preset, hasDeepSeek) || useDeepSeekStore().gate(chosen.preset))) return null
-    const pane = addSpec(chosen, workCwd(target))
-    tab.root = splitLeaf(tab.root, targetKey, pane.key, dir)
+    if (opts.resume) {
+      const running = panes.value.find((p) => holdsSession(p, opts.resume!))
+      if (running) {
+        activate(running.key)
+        return running
+      }
+    }
+    const cwd = opts.cwd ?? workCwd(target)
+    const pane = chosen.kind === 'term' && opts.resume ? addPane(chosen.preset, cwd, opts.resume) : addSpec(chosen, cwd)
+    if (opts.cwd) remember(opts.cwd)
+    const group = groupOf(tab.root, targetKey) ?? homeOf(tab)
+    if (!opts.cwd || (!!group && within(opts.cwd, group))) {
+      tab.root = splitLeaf(tab.root, targetKey, pane.key, dir)
+      settle(tab)
+    } else attach(tab, { pane: pane.key }, opts.cwd, targetKey, dir === 'row' ? 'right' : 'bottom')
     tab.focus = pane.key
     unzoom(tab)
     activate(pane.key)
@@ -1122,10 +1189,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         keys.set(id, pane.key)
       }
       if (!root) continue
-      const remap = (n: LayoutNode): LayoutNode => ('pane' in n ? { pane: keys.get(n.pane)! } : { ...n, a: remap(n.a), b: remap(n.b) })
-      const mapped = remap(root)
+      const mapped = ungrouped(mapLeaves(root, (k) => keys.get(k)!))
       const focus = (tab.focus && keys.get(tab.focus)) || leaves(mapped)[0]!
-      tabs.value.push({ key: newKey('t'), root: mapped, focus, project: layout.project ?? panes.value.find((p) => p.key === leaves(mapped)[0])?.cwd })
+      const made: Tab = { key: newKey('t'), root: mapped, focus, project: layout.project ?? panes.value.find((p) => p.key === leaves(mapped)[0])?.cwd }
+      for (const k of leaves(mapped)) {
+        const p = paneOf(k)
+        if (p && !p.project) p.project = foreignProject(made, p.kind === 'changes' || p.kind === 'log' ? (p.root ?? p.cwd) : p.cwd, paneOf)
+      }
+      tabs.value.push(made)
+      const added = tabs.value[tabs.value.length - 1]!
+      settle(added)
+      for (const meta of tab.groups ?? []) {
+        const own = groupsOf(added.root).find((g) => !!g.project && (sameProject(g.project, meta.project) || within(g.project, meta.project)))
+        if (own) added.root = setGroupLayoutMeta(added.root, own.project, { name: meta.name, tone: meta.tone, folded: meta.folded })
+      }
       first ??= focus
     }
     const target = first ?? reused
@@ -1154,14 +1231,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const keys = new Map<string, string>()
     for (const p of snap.panes) {
       if (!isTerm(p)) {
-        keys.set(p.key, addView(viewOf(p), p.cwd).key)
+        const view = addView(viewOf(p), p.cwd)
+        if (p.project) view.project = p.project
+        keys.set(p.key, view.key)
         continue
       }
       const pane = addPane(p.preset, p.home && p.cwd && gone?.has(p.cwd) ? p.home : p.cwd, p.resume)
+      if (p.project) pane.project = p.project
       if (sleeping.has(p.key)) update(pane.key, { state: 'parked' })
       keys.set(p.key, pane.key)
     }
-    const remap = (n: LayoutNode): LayoutNode => ('pane' in n ? { pane: keys.get(n.pane)! } : { ...n, a: remap(n.a), b: remap(n.b) })
+    const remap = (n: LayoutNode): LayoutNode => mapLeaves(n, (k) => keys.get(k)!)
+    const fresh = tabs.value.length
     for (const tab of snap.tabs) {
       const zoom = tab.zoom ? keys.get(tab.zoom) : undefined
       tabs.value.push({
@@ -1173,6 +1254,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         zoom,
       })
     }
+    for (const tab of tabs.value.slice(fresh)) settle(tab)
     activeKey.value = tabs.value[0]?.focus ?? null
   }
 
@@ -1205,7 +1287,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const root = removeLeaf(tab.root, key)
     if (root) {
       tab.root = root
-      if (tab.focus === key) tab.focus = leaves(root)[0]!
+      settle(tab)
+      if (tab.focus === key) tab.focus = leaves(tab.root)[0]!
       if (activeKey.value === key) activeKey.value = tab.focus
       return
     }
@@ -1222,6 +1305,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const tab = tabOf(key)
     if (!tab) return
     if (tab.zoom !== key) unzoom(tab)
+    const folded = groupNodes(tab.root).find((g) => g.folded && leaves(g.node).includes(key))
+    if (folded) tab.root = setGroupLayoutMeta(tab.root, folded.group, { folded: false })
     tab.focus = key
     activeKey.value = key
     const pane = panes.value.find((p) => p.key === key)
@@ -1335,6 +1420,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const make = (c: ClosedPane): Pane | null => {
       if (c.resume && panes.value.some((p) => p.agentSessionId === c.resume && (p.state === 'running' || p.state === 'starting'))) return null
       const pane = isTerm(c) ? addPane(c.preset, c.cwd, c.resume, c.openedBy ? { openedBy: c.openedBy } : {}) : addView(viewOf(c), c.cwd)
+      if (c.project) pane.project = c.project
       map.set(c.key, pane.key)
       from.push(c.key)
       return pane
@@ -1347,14 +1433,30 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       if (!root) continue
       const mapped = remapTree(root, map)
       const first = map.get(tab.focus) ?? leaves(mapped)[0]!
-      tabs.value.splice(Math.min(tab.index, tabs.value.length), 0, { key: newKey('t'), root: mapped, focus: first, project: tab.project, name: tab.name })
+      const at = Math.min(tab.index, tabs.value.length)
+      tabs.value.splice(at, 0, { key: newKey('t'), root: mapped, focus: first, project: tab.project, name: tab.name })
+      settle(tabs.value[at]!)
       focus ??= first
     }
     for (const item of [...entry.loose].reverse()) {
       const pane = make(item.pane)
       if (!pane) continue
-      if (!item.anchor || !placeBack(pane.key, item.anchor, map))
-        tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project: item.project ?? pane.cwd })
+      if (!item.anchor || !placeBack(pane.key, item.anchor, map)) {
+        tabs.value.push({ key: newKey('t'), root: { pane: pane.key }, focus: pane.key, project: pane.project ?? item.project ?? pane.cwd })
+        pane.project = undefined
+      } else {
+        const host = tabOf(pane.key)!
+        const want = pane.project ?? item.project ?? ''
+        const now = groupOf(host.root, pane.key)
+        if (now !== undefined && !sameProject(now, want)) {
+          const near = leaves(host.root).find((k) => k !== pane.key)!
+          host.root = removeLeaf(host.root, pane.key)!
+          attach(host, { pane: pane.key }, want, near, 'right')
+        } else {
+          pane.project = foreignProject(host, want || undefined, paneOf)
+          settle(host)
+        }
+      }
       focus = pane.key
     }
     for (const p of panes.value) if (p.openedBy && map.has(p.openedBy)) p.openedBy = map.get(p.openedBy)
@@ -1437,7 +1539,125 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     else {
       tab.root = root
       if (tab.focus === key) tab.focus = leaves(root)[0]!
+      settle(tab)
     }
+    return true
+  }
+
+  const homeOf = (tab: Tab): string => tabProject(tab, paneOf) ?? ''
+
+  function settle(tab: Tab): void {
+    const home = homeOf(tab)
+    const res = settleGroups(tab.root, (k) => paneOf(k)?.project ?? home, sameProject)
+    if (res.root !== tab.root) tab.root = res.root
+    const groups = groupsOf(tab.root)
+    if (res.project !== undefined) {
+      if (res.project && !sameProject(res.project, home)) tab.project = res.project
+    } else if (!groups.some((g) => sameProject(g.project, home)) && groups[0]?.project) tab.project = groups[0].project
+    const own = tab.project ?? home
+    const want = (project: string | undefined): string | undefined => (project && !sameProject(project, own) ? project : undefined)
+    const parts = groups.length ? groups : [{ project: undefined, keys: leaves(tab.root) }]
+    for (const g of parts)
+      for (const k of g.keys) {
+        const p = paneOf(k)
+        const v = want(g.project)
+        if (p && p.project !== v) p.project = v
+      }
+    if (tab.zoom && !leaves(tab.root).includes(tab.zoom)) tab.zoom = undefined
+  }
+
+  const fitsGroup = (group: string, dir: string | undefined): boolean => (group ? !!dir && within(dir, group) : !dir)
+
+  function dockNear(tab: Tab, key: string, prefer: string | undefined, project: string | undefined): boolean {
+    const size = canvasSize.value
+    const groups = groupsOf(tab.root)
+    if (!groups.length) {
+      const home = homeOf(tab)
+      if (project && !(home && within(project, home))) return false
+      const spot = dockSpot(tab.root, prefer ?? tab.focus, size)
+      if (!spot) return false
+      tab.root = splitLeaf(tab.root, spot.key, key, spot.dir)
+      settle(tab)
+      return true
+    }
+    const pick = project !== undefined ? groups.find((g) => fitsGroup(g.project, project)) : (groups.find((g) => !!prefer && g.keys.includes(prefer)) ?? groups.find((g) => g.keys.includes(tab.focus)) ?? groups[0])
+    if (!pick) return false
+    const node = findGroup(tab.root, pick.project)!.node
+    const box = groupBoxes(tab.root).get(pick.project)!
+    const room = { w: Math.max(0, size.w * box.w - 2 * GROUP_CHROME.pad), h: Math.max(0, size.h * box.h - GROUP_CHROME.head - GROUP_CHROME.pad) }
+    const spot = dockSpot(node, prefer && pick.keys.includes(prefer) ? prefer : undefined, size.w && size.h ? room : size)
+    if (!spot) return false
+    tab.root = splitLeaf(tab.root, spot.key, key, spot.dir)
+    settle(tab)
+    return true
+  }
+
+  function attach(tab: Tab, sub: LayoutNode, project: string, near: string, edge: Edge): void {
+    const home = homeOf(tab)
+    const at = groupOf(tab.root, near) ?? home
+    const flat = ungrouped(sub)
+    if (fitsGroup(at, project || undefined)) {
+      const v = at && !sameProject(at, tab.project ?? home) ? at : undefined
+      for (const k of leaves(flat)) {
+        const p = paneOf(k)
+        if (p) p.project = v
+      }
+      tab.root = dockTree(tab.root, near, flat, edge)
+    } else {
+      const own = groupsOf(tab.root).find((g) => fitsGroup(g.project, project || undefined))?.project ?? (home && project && within(project, home) ? home : undefined)
+      tab.root = dockGroup(tab.root, home, near, own ?? project, flat, edge, sameProject)
+    }
+    settle(tab)
+  }
+
+  /** False when `src` would leave its project group for another one it cannot join. */
+  function canDock(src: string, target: string): boolean {
+    return src !== target && !!tabOf(src) && !!tabOf(target)
+  }
+
+  function setGroupMeta(tabKey: string, project: string, patch: GroupMeta): boolean {
+    const tab = tabs.value.find((t) => t.key === tabKey)
+    const list = tab ? groupsOf(tab.root) : []
+    const own = list.find((g) => g.project === project)
+    if (!tab || !own) return false
+    if (patch.folded && list.filter((g) => !g.folded && g.project !== project).length === 0) return false
+    tab.root = setGroupLayoutMeta(tab.root, project, patch)
+    if (patch.folded) {
+      unzoom(tab)
+      const shown = groupsOf(tab.root).filter((g) => !g.folded)
+      if (own.keys.includes(tab.focus) || (activeKey.value && own.keys.includes(activeKey.value))) {
+        const next = lastFocused(shown.flatMap((g) => g.keys))
+        if (next) {
+          if (activeTab.value === tab) activate(next)
+          else tab.focus = next
+        }
+      }
+    }
+    return true
+  }
+
+  const lastFocused = (keys: readonly string[]): string | undefined =>
+    [...keys].sort((a, b) => (paneOf(b)?.focusedAt ?? 0) - (paneOf(a)?.focusedAt ?? 0))[0]
+
+  function focusGroup(dir: 'left' | 'right'): boolean {
+    const tab = activeTab.value
+    const key = activeKey.value
+    const from = tab && key ? groupOf(tab.root, key) : undefined
+    const to = tab && from !== undefined ? neighborGroup(tab.root, from, dir) : null
+    if (!tab || to === null) return false
+    const keys = groupsOf(tab.root).find((g) => g.project === to)?.keys ?? []
+    const next = lastFocused(keys)
+    if (next) activate(next)
+    return !!next
+  }
+
+  function shiftGroup(dir: 'left' | 'right'): boolean {
+    const tab = activeTab.value
+    const key = activeKey.value
+    const from = tab && key ? groupOf(tab.root, key) : undefined
+    const to = tab && from !== undefined ? neighborGroup(tab.root, from, dir) : null
+    if (!tab || from === undefined || to === null) return false
+    moveGroup(tab.key, from, to, dir)
     return true
   }
 
@@ -1445,13 +1665,24 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function movePane(src: string, target: string, edge: Edge): void {
     const to = tabOf(target)
     const from = tabOf(src)
-    if (!to || !from || src === target) return
+    if (!to || !from || src === target || !canDock(src, target)) return
     unzoom(from)
     unzoom(to)
-    if (from === to) to.root = moveLeaf(to.root, src, target, edge)
-    else {
+    if (from === to) {
+      const a = groupOf(to.root, src)
+      const b = groupOf(to.root, target)
+      if (a === b) to.root = moveLeaf(to.root, src, target, edge)
+      else if (groupsOf(to.root).find((g) => g.project === a)?.keys.length === 1) to.root = moveGroupNode(to.root, a!, b!, edge)
+      else {
+        to.root = removeLeaf(to.root, src)!
+        attach(to, { pane: src }, a ?? '', target, edge)
+      }
+      settle(to)
+    } else {
+      const pane = paneOf(src)
+      const project = pane ? (paneProjectOf(from, pane, paneOf) ?? '') : ''
       unplace(src)
-      to.root = dockTree(to.root, target, { pane: src }, edge)
+      attach(to, { pane: src }, project, target, edge)
     }
     activate(src)
   }
@@ -1459,7 +1690,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   /** Two panes of one tab trade places. */
   function swapPanes(a: string, b: string): void {
     const tab = tabOf(a)
-    if (!tab || tab !== tabOf(b)) return
+    if (!tab || tab !== tabOf(b) || groupOf(tab.root, a) !== groupOf(tab.root, b)) return
     unzoom(tab)
     tab.root = swapLeaves(tab.root, a, b)
     activate(a)
@@ -1472,9 +1703,46 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const to = tabOf(target)
     if (!src || !to || src === to) return
     unzoom(to)
-    to.root = dockTree(to.root, target, src.root, edge)
+    const nodes = groupNodes(src.root)
+    const parts = nodes.length ? nodes.map((g) => ({ project: g.group, node: g.node })) : [{ project: homeOf(src), node: src.root }]
     tabs.value.splice(i, 1)
+    for (const p of edge === 'right' || edge === 'bottom' ? [...parts].reverse() : parts) attach(to, p.node, p.project, target, edge)
     activate(src.focus)
+  }
+
+  /** A project group leaves its tab for a tab of its own, right after it. */
+  function groupToTab(tabKey: string, project: string): string | null {
+    const tab = tabs.value.find((t) => t.key === tabKey)
+    const took = tab ? takeGroup(tab.root, project) : null
+    if (!tab || !took?.rest) return null
+    unzoom(tab)
+    const keys = leaves(took.node)
+    tab.root = took.rest
+    if (keys.includes(tab.focus)) tab.focus = leaves(took.rest)[0]!
+    for (const k of keys) {
+      const p = paneOf(k)
+      if (p) p.project = undefined
+    }
+    settle(tab)
+    const focus = activeKey.value && keys.includes(activeKey.value) ? activeKey.value : keys[0]!
+    const made: Tab = { key: newKey('t'), root: took.node, focus, project: project || undefined }
+    tabs.value.splice(tabs.value.indexOf(tab) + 1, 0, made)
+    activate(focus)
+    return made.key
+  }
+
+  /** Group `project` docks onto `edge` of group `near` in the same tab. */
+  function moveGroup(tabKey: string, project: string, near: string, edge: Edge): void {
+    const tab = tabs.value.find((t) => t.key === tabKey)
+    if (!tab) return
+    unzoom(tab)
+    tab.root = moveGroupNode(tab.root, project, near, edge)
+    settle(tab)
+  }
+
+  function groupKeys(tabKey: string, project: string): string[] {
+    const tab = tabs.value.find((t) => t.key === tabKey)
+    return (tab && groupsOf(tab.root).find((g) => g.project === project)?.keys) ?? []
   }
 
   /** A pane of a split tab gets a tab of its own, right after the one it left. */
@@ -1482,9 +1750,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const from = tabOf(key)
     const pane = panes.value.find((p) => p.key === key)
     if (!from || !pane || leaves(from.root).length < 2) return
+    const project = pane.project ?? from.project ?? pane.cwd
     unplace(key)
+    pane.project = undefined
     const at = tabs.value.indexOf(from)
-    tabs.value.splice(at + 1, 0, { key: newKey('t'), root: { pane: key }, focus: key, project: from.project ?? pane.cwd })
+    tabs.value.splice(at + 1, 0, { key: newKey('t'), root: { pane: key }, focus: key, project })
     activate(key)
   }
 
@@ -1523,6 +1793,51 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     movePane(paneKey, spot?.key ?? target.focus, spot?.dir === 'col' ? 'bottom' : 'right')
   }
 
+  function groupPanes(keys: readonly string[]): string | null {
+    const live = [...new Set(keys)].filter((k) => !!tabOf(k))
+    const counts = new Map<Tab, number>()
+    for (const k of live) counts.set(tabOf(k)!, (counts.get(tabOf(k)!) ?? 0) + 1)
+    if (live.length < 2 || counts.size < 2) return null
+    let to = tabOf(live[0]!)!
+    for (const [tab, n] of counts) if (n > counts.get(to)!) to = tab
+    for (const k of live) if (tabOf(k) !== to) movePaneToTab(k, to.key)
+    activate(live[0]!)
+    return to.key
+  }
+
+  function ungroupPanes(keys: readonly string[]): number {
+    const keep = activeKey.value
+    let n = 0
+    for (const k of [...new Set(keys)].reverse()) {
+      const tab = tabOf(k)
+      if (!tab || leaves(tab.root).length < 2) continue
+      detachPane(k)
+      n++
+    }
+    if (keep && tabOf(keep)) activate(keep)
+    return n
+  }
+
+  function bringProject(tabKeys: readonly string[], dir: string | null, target: string, edge: Edge): 'merged' | 'opened' | null {
+    const to = tabOf(target)
+    if (!to) return null
+    const own = tabKeys.filter((k) => k !== to.key && tabs.value.some((t) => t.key === k))
+    if (own.length) {
+      for (const k of [...own].reverse()) mergeTab(k, target, edge)
+      return 'merged'
+    }
+    if (!dir) return null
+    const kind = preset.value
+    if (!presetEnabled(kind, hasDeepSeek) || useDeepSeekStore().gate(kind)) return null
+    const pane = addPane(kind, dir)
+    remember(dir)
+    unzoom(to)
+    attach(to, { pane: pane.key }, dir, target, edge)
+    to.focus = pane.key
+    activate(pane.key)
+    return 'opened'
+  }
+
   /** The focused pane trades places with its neighbour on that side and keeps focus. */
   function swapWith(dir: FocusDir): void {
     const tab = activeTab.value
@@ -1547,6 +1862,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     recentDirs.value = recentDirs.value.filter((d) => dirKey(d) !== key)
     writeLocal(RECENT_KEY, JSON.stringify(recentDirs.value))
   }
+
+  for (const tab of tabs.value) settle(tab)
 
   return {
     persistNow,
@@ -1633,6 +1950,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     setFolded,
     ungroup,
     movePaneToTab,
+    groupPanes,
+    ungroupPanes,
+    bringProject,
+    canDock,
+    setGroupMeta,
+    focusGroup,
+    shiftGroup,
+    groupToTab,
+    moveGroup,
+    groupKeys,
     setRatio,
     remember,
     forget,

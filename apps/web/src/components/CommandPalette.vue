@@ -48,6 +48,7 @@ import {
   SlidersHorizontal,
   Star,
   Focus,
+  FolderPlus,
 } from 'lucide-vue-next'
 import { DEV_TOOLS } from '../lib/devTools'
 import { retireOverlay, withViewTransition } from '../lib/motion'
@@ -286,6 +287,17 @@ const items = computed<Item[]>(() => {
             run: () => {
               ui.setView('workspace')
               ui.projectSwitcher = true
+            },
+          },
+          {
+            id: 'c:addGroup',
+            group: 'actions' as const,
+            label: t('groupsV99.palette'),
+            sub: isMac ? '⌃⌥G' : 'Ctrl+Alt+G',
+            icon: FolderPlus,
+            run: () => {
+              ui.setView('workspace')
+              ui.addGroupAsk++
             },
           },
           {

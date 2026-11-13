@@ -27,18 +27,23 @@ export function useClusterDrag(list: Ref<HTMLElement | null>, onDrop: (from: num
       document.body.append(line)
     }
     const sections = heads().map((h) => (h.closest('section') ?? h).getBoundingClientRect())
-    if (!sections.length) return
+    const box = list.value.getBoundingClientRect()
+    if (!sections.length || e.clientX < box.left || e.clientX > box.right) {
+      slot = -1
+      line!.hidden = true
+      return
+    }
+    line!.hidden = false
     slot = sections.findIndex((r) => e.clientY < r.top + r.height / 2)
     if (slot < 0) slot = sections.length
     const edge = slot < sections.length ? sections[slot]!.top - 3 : sections.at(-1)!.bottom + 3
-    const box = list.value.getBoundingClientRect()
     Object.assign(line!.style, { top: `${edge}px`, left: `${box.left + 8}px`, width: `${box.width - 16}px` })
   }
 
   function finish(commit: boolean): void {
     if (dragging && commit && start) {
       const to = slot > start.from ? slot - 1 : slot
-      if (to !== start.from) onDrop(start.from, to)
+      if (slot >= 0 && to !== start.from) onDrop(start.from, to)
       // The pointerup turns into a click on the header (toggle): swallow that one.
       const swallow = (ev: Event): void => ev.stopPropagation()
       window.addEventListener('click', swallow, { capture: true, once: true })

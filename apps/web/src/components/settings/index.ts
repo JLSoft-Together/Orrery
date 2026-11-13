@@ -92,6 +92,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'appearance', id: 'theme', labelKey: 'settings.theme' },
   { page: 'appearance', id: 'stars', labelKey: 'themeV95.stars', hintKey: 'themeV95.starsHint' },
   { page: 'appearance', id: 'starsPanels', labelKey: 'themeV95.starsPanels', hintKey: 'themeV95.starsPanelsHint' },
+  { page: 'appearance', id: 'starsFx', labelKey: 'themeV95.starsFx', hintKey: 'themeV95.starsFxHint' },
   { page: 'appearance', id: 'uiFont', labelKey: 'fonts.ui', hintKey: 'fonts.uiHint' },
   { page: 'appearance', id: 'codeFont', labelKey: 'fonts.code', hintKey: 'fonts.codeHint' },
   { page: 'appearance', id: 'codesize', labelKey: 'fonts.size', hintKey: mac ? 'fonts.sizeHintMac' : 'fonts.sizeHint' },

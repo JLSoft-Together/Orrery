@@ -35,7 +35,10 @@ function boundaries(spots: readonly RailDropSpot[]): number[] {
 export function dropTarget(src: RailDragSource, y: number, clusters: readonly RailClusterBox[], spots: readonly RailDropSpot[]): RailDropAim {
   const box = clusters.find((c) => y >= c.top && y <= c.bottom)
   if (!box) return null
-  if (box.key !== src.cluster) return { type: 'blocked' }
+  if (box.key !== src.cluster) {
+    const other = spots.find((s) => s.cluster === box.key && s.bottom - s.top >= 2 && y >= s.top && y <= s.bottom)
+    return other ? { type: 'merge', tabKey: other.tabKey } : { type: 'blocked' }
+  }
   const mine = spots.filter((s) => s.cluster === box.key && s.bottom - s.top >= 2).sort((a, b) => a.top - b.top)
   const edges = boundaries(mine)
   const spot = mine.find((s) => y >= s.top && y <= s.bottom)

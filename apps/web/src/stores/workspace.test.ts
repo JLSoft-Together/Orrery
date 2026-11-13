@@ -3,11 +3,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import en from '../i18n/en'
 import vi from '../i18n/vi'
-import { boxes, leaves } from '../lib/splitLayout'
+import { boxes, foldedKeys, groupBoxes, groupOf, groupsOf, hasGroups, leaves } from '../lib/splitLayout'
+import { captureLayout } from '../lib/layouts'
+import { buildRail, railItems } from '../lib/rail/railModel'
 import { PANE_LIVE_MAX, type PaneOpenResult, type PtyPreset, type TerminalSession } from '@ccm/shared'
 import { openedLinkId, usePeersStore } from './peers'
 import { useTerminalsStore } from './terminals'
-import { agentNow, presetOf, primaryPaneKey, reopenAs, sessionLinkPatch, tabProject, useWorkspaceStore, workCwd } from './workspace'
+import { agentNow, paneProjectOf, presetOf, primaryPaneKey, reopenAs, sessionLinkPatch, tabProject, useWorkspaceStore, workCwd } from './workspace'
 
 function keysOf(o: unknown, prefix = ''): string[] {
   if (!o || typeof o !== 'object') return [prefix]
@@ -1083,5 +1085,504 @@ describe('openSession', () => {
     ws.persistNow()
     expect(lastResume()).toBe(id)
     expect(sessionLinkPatch(pane, id, true)).toBeNull()
+  })
+})
+
+describe('split with another project', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  const paneOfIn = (ws: ReturnType<typeof useWorkspaceStore>) => (k: string) => ws.panes.find((p) => p.key === k)
+
+  it('opens the picked folder beside the target and marks it as its own project', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'claude' }, { cwd: 'D:/code/beta' })!
+    const tab = ws.tabOf(a.key)!
+    expect(ws.tabOf(b.key)).toBe(tab)
+    expect(leaves(tab.root)).toEqual([a.key, b.key])
+    expect(b.cwd).toBe('D:/code/beta')
+    expect(b.project).toBe('D:/code/beta')
+    expect(ws.panes.find((p) => p.key === a.key)!.project).toBeUndefined()
+    expect(tabProject(tab, paneOfIn(ws))).toBe('C:/work/alpha')
+    expect(paneProjectOf(tab, b, paneOfIn(ws))).toBe('D:/code/beta')
+    expect(paneProjectOf(tab, ws.panes.find((p) => p.key === a.key)!, paneOfIn(ws))).toBe('C:/work/alpha')
+    expect(ws.activeKey).toBe(b.key)
+    expect(ws.recentDirs[0]).toBe('D:/code/beta')
+  })
+
+  it('keeps a folder of the same project unmarked and a split of a foreign pane in its project', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const sub = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'C:/work/alpha/web' })!
+    expect(sub.project).toBeUndefined()
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'claude' }, { cwd: 'D:/code/beta' })!
+    const twin = ws.split(b.key, 'col')!
+    expect(twin.cwd).toBe('D:/code/beta')
+    expect(twin.project).toBe('D:/code/beta')
+    const inner = ws.split(a.key, 'col', { kind: 'term', preset: 'shell' }, { cwd: 'D:/code/beta/app' })!
+    expect(inner.project).toBe('D:/code/beta')
+  })
+
+  it('resumes a session in the split and focuses a pane that already runs it', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const id = '11111111-2222-4333-8444-555555555555'
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'claude' }, { cwd: 'D:/code/beta', resume: id })!
+    expect(b.resume).toBe(id)
+    expect(b.project).toBe('D:/code/beta')
+  })
+
+  it('persists each pane project through reload and the last workspace', async () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'D:/code/beta' })!
+    ws.update(a.key, { sessionId: 's1' })
+    ws.update(b.key, { sessionId: 's2' })
+    await nextTick()
+    ws.persistNow()
+    const saved = JSON.parse(sessionStorage.getItem('ccm.workspace.panes')!)
+    expect(saved.panes.map((p: { project?: string }) => p.project)).toEqual([undefined, 'D:/code/beta'])
+
+    setActivePinia(createPinia())
+    const reloaded = useWorkspaceStore()
+    expect(reloaded.panes.map((p) => p.project)).toEqual([undefined, 'D:/code/beta'])
+
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+    const next = useWorkspaceStore()
+    next.restoreLast()
+    expect(next.tabs).toHaveLength(1)
+    expect(next.tabs[0]!.project).toBe('C:/work/alpha')
+    expect(next.panes.map((p) => [p.cwd, p.project])).toEqual([
+      ['C:/work/alpha', undefined],
+      ['D:/code/beta', 'D:/code/beta'],
+    ])
+  })
+
+  it('brings a closed foreign pane back with its project', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'D:/code/beta' })!
+    ws.requestClose([b.key], () => false)
+    ws.reopenClosed()
+    const back = ws.panes.find((p) => p.cwd === 'D:/code/beta')!
+    expect(back.project).toBe('D:/code/beta')
+    expect(ws.tabOf(back.key)).toBe(ws.tabOf(a.key))
+  })
+
+  it('hands the tab to the other project once its own panes are gone', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'D:/code/beta' })!
+    ws.remove(a.key)
+    const tab = ws.tabOf(b.key)!
+    expect(tab.project).toBe('D:/code/beta')
+    expect(ws.panes.find((p) => p.key === b.key)!.project).toBeUndefined()
+  })
+
+  it('moves and merges across projects, and a detached pane takes its project as the tab', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.open('claude', 'D:/code/beta', undefined, { tab: true })
+    expect(ws.tabOf(b.key)).not.toBe(ws.tabOf(a.key))
+    ws.movePaneToTab(b.key, ws.tabOf(a.key)!.key)
+    expect(ws.tabOf(b.key)).toBe(ws.tabOf(a.key))
+    expect(ws.panes.find((p) => p.key === b.key)!.project).toBe('D:/code/beta')
+    ws.detachPane(b.key)
+    const own = ws.tabOf(b.key)!
+    expect(own.project).toBe('D:/code/beta')
+    expect(ws.panes.find((p) => p.key === b.key)!.project).toBeUndefined()
+    ws.mergeTab(own.key, a.key, 'right')
+    expect(ws.tabOf(b.key)).toBe(ws.tabOf(a.key))
+    expect(ws.panes.find((p) => p.key === b.key)!.project).toBe('D:/code/beta')
+  })
+
+  it('leaves single-project splits unmarked', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row')!
+    const v = ws.split(a.key, 'col', { kind: 'browser', url: '' })!
+    expect([b.project, v.project]).toEqual([undefined, undefined])
+  })
+})
+
+describe('rail multi-select and project drop', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  const projectOf = (ws: ReturnType<typeof useWorkspaceStore>, key: string) => ws.panes.find((p) => p.key === key)!.project
+
+  it('groups selected panes of several tabs and projects into the tab holding most of them', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const a2 = ws.split(a.key, 'row')!
+    const b = ws.open('claude', 'D:/code/beta', undefined, { tab: true })
+    const c = ws.open('shell', 'C:/work/alpha', undefined, { tab: true })
+    const into = ws.groupPanes([b.key, a.key, a2.key, c.key])
+    const tab = ws.tabOf(a.key)!
+    expect(into).toBe(tab.key)
+    expect(leaves(tab.root).sort()).toEqual([a.key, a2.key, b.key, c.key].sort())
+    expect(ws.tabs).toHaveLength(1)
+    expect(projectOf(ws, b.key)).toBe('D:/code/beta')
+    expect(projectOf(ws, c.key)).toBeUndefined()
+    expect(ws.activeKey).toBe(b.key)
+  })
+
+  it('does nothing when the selection already shares one tab', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const a2 = ws.split(a.key, 'row')!
+    expect(ws.groupPanes([a.key, a2.key])).toBeNull()
+    expect(ws.groupPanes([a.key])).toBeNull()
+  })
+
+  it('ungroups selected panes into tabs of their own in order, keeping focus', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row')!
+    const c = ws.split(b.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'D:/code/beta' })!
+    ws.activate(a.key)
+    expect(ws.ungroupPanes([a.key, b.key, c.key])).toBe(2)
+    expect(ws.tabs.map((t) => leaves(t.root))).toEqual([[a.key], [b.key], [c.key]])
+    expect(ws.tabs[2]!.project).toBe('D:/code/beta')
+    expect(ws.activeKey).toBe(a.key)
+    expect(ws.ungroupPanes([a.key])).toBe(0)
+  })
+
+  it('brings a project tab beside the target pane, keeping each pane project', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.open('claude', 'D:/code/beta', undefined, { tab: true })
+    const bTab = ws.tabOf(b.key)!.key
+    expect(ws.bringProject([bTab], 'D:/code/beta', a.key, 'left')).toBe('merged')
+    const tab = ws.tabOf(a.key)!
+    expect(leaves(tab.root)).toEqual([b.key, a.key])
+    expect(projectOf(ws, b.key)).toBe('D:/code/beta')
+    expect(ws.tabs).toHaveLength(1)
+  })
+
+  it('opens a new agent pane in a project without open panes, on the dropped edge', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    expect(ws.bringProject([], 'D:/code/beta', a.key, 'top')).toBe('opened')
+    const tab = ws.tabOf(a.key)!
+    const keys = leaves(tab.root)
+    expect(keys).toHaveLength(2)
+    expect(keys[1]).toBe(a.key)
+    const fresh = ws.panes.find((p) => p.key === keys[0])!
+    expect(fresh.cwd).toBe('D:/code/beta')
+    expect(fresh.project).toBe('D:/code/beta')
+    expect(ws.bringProject([], null, a.key, 'right')).toBeNull()
+  })
+
+  it('opens beside when the only project tab is the target tab', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    expect(ws.bringProject([ws.tabOf(a.key)!.key], 'C:/work/alpha', a.key, 'right')).toBe('opened')
+    expect(leaves(ws.tabOf(a.key)!.root)).toHaveLength(2)
+  })
+})
+
+describe('project groups in one tab', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  const A = 'C:/work/alpha'
+  const B = 'D:/code/beta'
+  const groups = (ws: ReturnType<typeof useWorkspaceStore>, key: string) => groupsOf(ws.tabOf(key)!.root).map((g) => [g.project, g.keys.length])
+
+  it('adds another project as a group beside the current group and keeps splits inside their group', () => {
+    const ws = useWorkspaceStore()
+    ws.canvasSize = { w: 3440, h: 1300 }
+    const a = ws.open('claude', A)
+    const a2 = ws.split(a.key, 'col')!
+    expect(hasGroups(ws.tabOf(a.key)!.root)).toBe(false)
+    const b = ws.split(a2.key, 'row', { kind: 'term', preset: 'claude' }, { cwd: B })!
+    const tab = ws.tabOf(a.key)!
+    expect(groups(ws, a.key)).toEqual([
+      [A, 2],
+      [B, 1],
+    ])
+    expect(groupBoxes(tab.root).get(A)).toEqual({ x: 0, y: 0, w: 0.5, h: 1 })
+    const b2 = ws.split(b.key, 'col')!
+    expect(groupOf(tab.root, b2.key)).toBe(B)
+    expect(b2.cwd).toBe(B)
+    const b3 = ws.open('shell', B + '/app')
+    expect(groupOf(ws.tabOf(b3.key)!.root, b3.key)).toBe(B)
+    expect(ws.tabOf(b3.key)).toBe(tab)
+    const a3 = ws.open('shell', A)
+    expect(groupOf(tab.root, a3.key)).toBe(A)
+    expect(groups(ws, a.key)).toEqual([
+      [A, 3],
+      [B, 3],
+    ])
+    expect(paneProjectOf(tab, ws.panes.find((p) => p.key === b3.key)!, (k) => ws.panes.find((p) => p.key === k))).toBe(B)
+  })
+
+  it('keeps panes from leaking into another group: a drop into another project joins its own group, swaps are refused', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const a2 = ws.split(a.key, 'col')!
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    expect(ws.canDock(a2.key, b.key)).toBe(true)
+    ws.movePane(a2.key, b.key, 'left')
+    expect(groupOf(ws.tabOf(a.key)!.root, a2.key)).toBe(A)
+    expect(groups(ws, a.key)).toEqual([
+      [A, 2],
+      [B, 1],
+    ])
+    const x = ws.open('shell', A, undefined, { tab: true })
+    ws.movePane(x.key, b.key, 'right')
+    expect(ws.tabOf(x.key)).toBe(ws.tabOf(a.key))
+    expect(groupOf(ws.tabOf(a.key)!.root, x.key)).toBe(A)
+    ws.remove(x.key)
+    ws.swapPanes(a.key, b.key)
+    expect(groupOf(ws.tabOf(a.key)!.root, a.key)).toBe(A)
+    expect(ws.canDock(b.key, a.key)).toBe(true)
+    ws.movePane(b.key, a.key, 'left')
+    expect(groups(ws, a.key)).toEqual([
+      [B, 1],
+      [A, 2],
+    ])
+  })
+
+  it('reorders groups, moves one to its own tab and back to a plain tab when one project is left', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    const tabKey = ws.tabOf(a.key)!.key
+    ws.moveGroup(tabKey, B, A, 'left')
+    expect(groups(ws, a.key).map((g) => g[0])).toEqual([B, A])
+    expect(ws.groupKeys(tabKey, B)).toEqual([b.key])
+    const made = ws.groupToTab(tabKey, B)!
+    const own = ws.tabs.find((t) => t.key === made)!
+    expect(own.project).toBe(B)
+    expect(ws.tabs.indexOf(own)).toBe(1)
+    expect(hasGroups(ws.tabOf(a.key)!.root)).toBe(false)
+    expect(ws.panes.find((p) => p.key === b.key)!.project).toBeUndefined()
+    expect(ws.groupToTab(made, B)).toBeNull()
+  })
+
+  it('closing a group with undo brings it back as a group', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    const b2 = ws.split(b.key, 'col')!
+    ws.requestClose(ws.groupKeys(ws.tabOf(a.key)!.key, B), () => false)
+    expect(hasGroups(ws.tabOf(a.key)!.root)).toBe(false)
+    expect(ws.tabOf(a.key)!.project).toBe(A)
+    ws.reopenClosed()
+    const tab = ws.tabOf(a.key)!
+    expect(groups(ws, a.key)).toEqual([
+      [A, 1],
+      [B, 2],
+    ])
+    expect(leaves(tab.root)).not.toContain(b2.key)
+  })
+
+  it('a tab left with only another project group becomes that project tab', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    ws.remove(a.key)
+    const tab = ws.tabOf(b.key)!
+    expect(hasGroups(tab.root)).toBe(false)
+    expect(tab.project).toBe(B)
+  })
+
+  it('groups a multi-project selection into one tab with one group per project', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const b = ws.open('claude', B, undefined, { tab: true })
+    const c = ws.open('codex', 'E:/gamma', undefined, { tab: true })
+    const b2 = ws.open('shell', B, undefined, { tab: true })
+    ws.groupPanes([a.key, b.key, c.key, b2.key])
+    expect(ws.tabs).toHaveLength(1)
+    expect(groups(ws, a.key).map((g) => g[0]).sort()).toEqual([A, B, 'E:/gamma'].sort())
+    expect(groups(ws, a.key).find((g) => g[0] === B)![1]).toBe(2)
+  })
+
+  it('merging a grouped tab keeps each project in its group, matching groups join', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    const x = ws.open('claude', B, undefined, { tab: true })
+    const y = ws.split(x.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'E:/gamma' })!
+    ws.mergeTab(ws.tabOf(x.key)!.key, b.key, 'right')
+    expect(ws.tabOf(y.key)).toBe(ws.tabOf(a.key))
+    expect(groups(ws, a.key).map((g) => g[0])).toEqual([A, B, 'E:/gamma'])
+    expect(groupOf(ws.tabOf(a.key)!.root, x.key)).toBe(B)
+  })
+
+  it('persists groups through reload and loads scattered v97 panes as groups', async () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    ws.update(a.key, { sessionId: 's1' })
+    ws.update(b.key, { sessionId: 's2' })
+    await nextTick()
+    ws.persistNow()
+    setActivePinia(createPinia())
+    const back = useWorkspaceStore()
+    expect(groupsOf(back.tabs[0]!.root).map((g) => g.project)).toEqual([A, B])
+
+    sessionStorage.setItem(
+      'ccm.workspace.panes',
+      JSON.stringify({
+        panes: [
+          { key: 'p1', preset: 'claude', cwd: A, sessionId: 's1' },
+          { key: 'p2', preset: 'shell', cwd: B, project: B, sessionId: 's2' },
+          { key: 'p3', preset: 'shell', cwd: A, sessionId: 's3' },
+        ],
+        tabs: [{ key: 't1', root: { dir: 'row', ratio: 0.5, a: { dir: 'col', ratio: 0.5, a: { pane: 'p1' }, b: { pane: 'p2' } }, b: { pane: 'p3' } }, focus: 'p1', project: A }],
+        active: 'p1',
+      }),
+    )
+    setActivePinia(createPinia())
+    const old = useWorkspaceStore()
+    expect(groupsOf(old.tabs[0]!.root)).toEqual([
+      { project: A, keys: ['p1', 'p3'] },
+      { project: B, keys: ['p2'] },
+    ])
+
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+    const next = useWorkspaceStore()
+    next.restoreLast()
+    expect(groupsOf(next.tabs[0]!.root).map((g) => g.project)).toEqual([A, B])
+  })
+})
+
+describe('project group options', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  const A = 'C:/work/alpha'
+  const B = 'D:/code/beta'
+  const C = 'E:/gamma'
+
+  function three() {
+    const ws = useWorkspaceStore()
+    ws.canvasSize = { w: 3440, h: 1300 }
+    const a = ws.open('claude', A)
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })!
+    const c = ws.split(b.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: C })!
+    return { ws, a, b, c, tabKey: ws.tabOf(a.key)!.key }
+  }
+
+  it('renames, recolours and collapses a group; the colour and name survive a reload', async () => {
+    const { ws, a, b, tabKey } = three()
+    expect(ws.setGroupMeta(tabKey, B, { name: 'API', tone: 5 })).toBe(true)
+    let g = groupsOf(ws.tabOf(a.key)!.root).find((x) => x.project === B)!
+    expect([g.name, g.tone]).toEqual(['API', 5])
+    ws.setGroupMeta(tabKey, B, { tone: undefined })
+    g = groupsOf(ws.tabOf(a.key)!.root).find((x) => x.project === B)!
+    expect([g.name, g.tone]).toEqual(['API', undefined])
+    ws.activate(b.key)
+    expect(ws.setGroupMeta(tabKey, B, { folded: true })).toBe(true)
+    expect(ws.activeKey).not.toBe(b.key)
+    expect(foldedKeys(ws.tabOf(a.key)!.root).has(b.key)).toBe(true)
+    ws.activate(b.key)
+    expect(foldedKeys(ws.tabOf(a.key)!.root).has(b.key)).toBe(false)
+    ws.update(a.key, { sessionId: 's1' })
+    ws.update(b.key, { sessionId: 's2' })
+    await nextTick()
+    ws.persistNow()
+    setActivePinia(createPinia())
+    const back = useWorkspaceStore()
+    expect(groupsOf(back.tabs[0]!.root).find((x) => x.project === B)?.name).toBe('API')
+  })
+
+  it('never collapses the last open group', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', A)
+    ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: B })
+    const tabKey = ws.tabOf(a.key)!.key
+    expect(ws.setGroupMeta(tabKey, A, { folded: true })).toBe(true)
+    expect(ws.setGroupMeta(tabKey, B, { folded: true })).toBe(false)
+  })
+
+  it('focuses and reorders the neighbour group from the keyboard actions', () => {
+    const { ws, a, b, c, tabKey } = three()
+    ws.activate(b.key)
+    expect(ws.focusGroup('right')).toBe(true)
+    expect(ws.activeKey).toBe(c.key)
+    expect(ws.focusGroup('right')).toBe(false)
+    ws.activate(a.key)
+    expect(ws.shiftGroup('right')).toBe(true)
+    expect(groupsOf(ws.tabs.find((t) => t.key === tabKey)!.root).map((g) => g.project)).toEqual([B, A, C])
+  })
+
+  it('a new session for the focused group project lands in that group', () => {
+    const { ws, b, tabKey } = three()
+    ws.activate(b.key)
+    const fresh = ws.launch('shell', B)!
+    expect(ws.tabOf(fresh.key)!.key).toBe(tabKey)
+    expect(groupOf(ws.tabOf(fresh.key)!.root, fresh.key)).toBe(B)
+  })
+
+  it('saves a multi-group tab as a layout and reopens every project as its group', () => {
+    const { ws, a, tabKey } = three()
+    ws.setGroupMeta(tabKey, C, { name: 'Docs', folded: true })
+    const draft = captureLayout(ws.tabs, ws.panes, (p) => (p.cwd ?? '') === B, { project: B, name: 'A + B dual', resume: false })!
+    expect(draft.tabs).toHaveLength(1)
+    expect(draft.tabs[0]!.groups?.map((g) => g.project)).toEqual([A, B, C])
+    expect(hasGroups(draft.tabs[0]!.root)).toBe(false)
+    ws.closeTab(ws.tabOf(a.key)!.key)
+    ws.openLayout({ ...draft, project: A })
+    const tab = ws.tabs.at(-1)!
+    const back = groupsOf(tab.root)
+    expect(back.map((g) => g.project)).toEqual([A, B, C])
+    expect(back.find((g) => g.project === C)).toMatchObject({ name: 'Docs', folded: true })
+  })
+})
+
+describe('rail entry for a multi-project tab', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('shows one group named A + B with a subgroup per project, not one entry per project', () => {
+    const ws = useWorkspaceStore()
+    const a = ws.open('claude', 'C:/work/alpha')
+    const b = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' }, { cwd: 'D:/code/beta' })!
+    ws.split(b.key, 'col')
+    const clusters = buildRail({
+      tabs: ws.tabs,
+      panes: ws.panes,
+      activeKey: ws.activeKey,
+      sessionOf: () => undefined,
+      factsOf: () => undefined,
+      labelOf: (p) => p.preset,
+      agentLabel: (p) => p,
+      history: [],
+      order: [],
+    })
+    expect(clusters).toHaveLength(1)
+    const k = clusters[0]!.checkouts[0]!
+    expect(k.groups).toHaveLength(1)
+    expect(k.groups[0]!.title).toBe('alpha + beta')
+    expect(k.groups[0]!.projects?.map((p) => [p.name, p.count])).toEqual([
+      ['alpha', 1],
+      ['beta', 2],
+    ])
+    const items = railItems(k)
+    expect(items.map((i) => i.kind)).toEqual(['group', 'sub', 'row', 'sub', 'row', 'row'])
+    expect(k.rows.every((r) => r.project === undefined)).toBe(true)
   })
 })

@@ -52,6 +52,12 @@ const steppers = computed(() => [
     : []),
 ])
 
+const starsFxOptions = computed(() => [
+  { value: 'off' as const, label: t('themeV95.starsFxOff') },
+  { value: 'twinkle' as const, label: t('themeV95.starsFxTwinkle') },
+  { value: 'meteors' as const, label: t('themeV95.starsFxMeteors') },
+])
+
 const fileIconStyles = computed(() => [
   { value: 'atom' as const, label: t('settings.fileIconsAtom') },
   { value: 'simple' as const, label: t('settings.fileIconsSimple') },
@@ -78,6 +84,19 @@ const fileIconStyles = computed(() => [
         class="px-3"
         data-setting-row="starsPanels"
       />
+      <SettingRow
+        :label="t('themeV95.starsFx')"
+        :info="starsAvailable && settings.stars ? t('themeV95.starsFxHint') : t('themeV95.starsPanelsOff')"
+        data-setting-row="starsFx"
+      >
+        <SegmentedControl
+          v-model="settings.starsFx"
+          :options="starsFxOptions"
+          :label="t('themeV95.starsFx')"
+          :disabled="!starsAvailable || !settings.stars"
+          data-setting="stars-fx"
+        />
+      </SettingRow>
     </SettingSection>
 
     <SettingSection id="text" :title="t('fonts.section')">

@@ -7,6 +7,11 @@ const en = {
     starsPanels: 'Stars in panels',
     starsPanelsHint: 'Stars also show through the project sidebar, panels and terminals. Off: panels stay solid.',
     starsPanelsOff: 'Needs the Galaxy theme with stars on.',
+    starsFx: 'Star effect',
+    starsFxHint: 'Some stars twinkle; Meteors also sends a shooting star across the background now and then. Off: stars stay still. Reduce Motion turns it off.',
+    starsFxOff: 'Off',
+    starsFxTwinkle: 'Twinkle',
+    starsFxMeteors: 'Twinkle + meteors',
   },
 }
 
@@ -19,6 +24,11 @@ const vi: typeof en = {
     starsPanels: 'Sao trong panel',
     starsPanelsHint: 'Sao hiện cả trong panel project, các panel và terminal. Tắt: panel giữ nền đặc như cũ.',
     starsPanelsOff: 'Cần theme Ngân hà và đang bật Hiện sao.',
+    starsFx: 'Hiệu ứng sao',
+    starsFxHint: 'Một số sao nhấp nháy; Sao băng thêm thỉnh thoảng một vệt sao băng chạy qua nền. Tắt: sao đứng yên. Bật Reduce Motion của hệ thống cũng tắt hiệu ứng.',
+    starsFxOff: 'Tắt',
+    starsFxTwinkle: 'Nhấp nháy',
+    starsFxMeteors: 'Nhấp nháy + sao băng',
   },
 }
 

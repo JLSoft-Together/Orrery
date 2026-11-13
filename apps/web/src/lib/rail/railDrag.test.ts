@@ -30,8 +30,9 @@ describe('rail drop target', () => {
     expect(dropTarget(pane({ kind: 'tab', paneKey: null, detachable: false }), 56, clusters, spots)).toBeNull()
   })
 
-  it('blocks another project and ignores the space outside any project', () => {
-    expect(dropTarget(pane(), 340, clusters, spots)).toEqual({ type: 'blocked' })
+  it('merges onto a tab of another project, blocks the rest of it and ignores the space outside any project', () => {
+    expect(dropTarget(pane(), 340, clusters, spots)).toEqual({ type: 'merge', tabKey: 't4' })
+    expect(dropTarget(pane(), 390, clusters, spots)).toEqual({ type: 'blocked' })
     expect(dropTarget(pane(), 305, clusters, spots)).toBeNull()
   })
 

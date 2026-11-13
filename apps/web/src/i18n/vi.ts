@@ -35,6 +35,9 @@ import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
 import paneV92 from './pane-v92'
+import splitV97 from './split-v97'
+import railSelectV98 from './rail-select-v98'
+import groupsV99 from './groups-v99'
 import explorerV93 from './explorer-v93'
 import paneV93 from './pane-v93'
 import boardV95 from './board-v95'
@@ -112,6 +115,9 @@ const vi: typeof en = {
   ...monitorV53.vi,
   ...sessionV53.vi,
   ...paneV92.vi,
+  ...splitV97.vi,
+  ...railSelectV98.vi,
+  ...groupsV99.vi,
   ...explorerV93.vi,
   ...paneV93.vi,
   ...boardV95.vi,
@@ -740,6 +746,9 @@ const vi: typeof en = {
       wsNavBack: 'Quay lại vị trí trước',
       wsNavForward: 'Tới vị trí sau',
       wsNotes: 'Ghi chú dự án',
+      wsGroupAdd: 'Thêm project khác thành nhóm',
+      wsGroupFocus: 'Chuyển focus sang nhóm project bên cạnh',
+      wsGroupMove: 'Chuyển nhóm project sang trái / phải',
       wsProjects: 'Chuyển tới dự án',
       wsDropTerm: 'Terminal thả xuống',
       wsExplorer: 'Hiện cây thư mục (Explorer)',

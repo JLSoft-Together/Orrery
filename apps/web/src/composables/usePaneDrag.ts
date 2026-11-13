@@ -2,7 +2,11 @@ import { onBeforeUnmount, ref, shallowRef, type Ref } from 'vue'
 import { dropTargetAt, type Edge, type Rect } from '../lib/splitLayout'
 import { caretAt, slotMoves, stripSlot, type StripItem } from '../lib/tabStrip'
 
-export type PaneDragSource = { kind: 'pane'; key: string } | { kind: 'tab'; key: string }
+export type PaneDragSource =
+  | { kind: 'pane'; key: string }
+  | { kind: 'tab'; key: string }
+  | { kind: 'project'; key: string; dir: string | null; name: string }
+  | { kind: 'group'; key: string; tab: string; name: string }
 export type PaneDropAction = { kind: 'dock'; key: string; edge: Edge } | { kind: 'swap'; key: string } | { kind: 'newTab' } | { kind: 'reorder'; slot: number }
 
 /** Drop preview in canvas pixels; a swap (no `edge`) covers the whole target pane. */
@@ -22,6 +26,7 @@ interface Options {
   /** Source under a pointerdown target, or null when it must not start a drag. */
   sourceAt(target: HTMLElement): PaneDragSource | null
   canDock?(source: PaneDragSource): boolean
+  canDockOn?(source: PaneDragSource, key: string, swap: boolean): boolean
   /** Hold to swap instead of dock (Ctrl, ⌘ on macOS). */
   swapKey(e: { ctrlKey: boolean; metaKey: boolean }): boolean
   onDrop(source: PaneDragSource, action: PaneDropAction): void
@@ -56,7 +61,16 @@ export function usePaneDrag(opts: Options) {
     if (control && !control.matches('[data-tab], [data-pane-grip]')) return
     const src = opts.sourceAt(target)
     if (!src) return
-    start = { x: e.clientX, y: e.clientY, id: e.pointerId, src, el: e.currentTarget as HTMLElement }
+    track(e, src, e.currentTarget as HTMLElement)
+  }
+
+  function startFrom(e: PointerEvent, src: PaneDragSource, el: HTMLElement): void {
+    if (e.button !== 0 || start) return
+    track(e, src, el)
+  }
+
+  function track(e: PointerEvent, src: PaneDragSource, el: HTMLElement): void {
+    start = { x: e.clientX, y: e.clientY, id: e.pointerId, src, el }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onCancel)
@@ -67,9 +81,10 @@ export function usePaneDrag(opts: Options) {
   /** Visible panes only: hidden ones (other tabs) have an empty box. */
   function measure(): void {
     rects = new Map()
-    for (const el of opts.canvas.value?.querySelectorAll<HTMLElement>('[data-pane]') ?? []) {
+    const group = source.value?.kind === 'group'
+    for (const el of opts.canvas.value?.querySelectorAll<HTMLElement>(group ? '[data-group-frame]' : '[data-pane]') ?? []) {
       const r = el.getBoundingClientRect()
-      if (r.width > 0 && r.height > 0) rects.set(el.dataset.pane!, r)
+      if (r.width > 0 && r.height > 0) rects.set(group ? el.dataset.groupFrame! : el.dataset.pane!, r)
     }
   }
 
@@ -112,7 +127,7 @@ export function usePaneDrag(opts: Options) {
     caret.value = null
     if (!src || !box) return
     const strip = opts.strip.value?.getBoundingClientRect()
-    if (src.kind === 'pane' && strip && x >= strip.left && x <= strip.right && y >= strip.top && y <= strip.bottom) {
+    if ((src.kind === 'pane' || src.kind === 'group') && strip && x >= strip.left && x <= strip.right && y >= strip.top && y <= strip.bottom) {
       action = { kind: 'newTab' }
       toStrip.value = true
       return
@@ -122,10 +137,11 @@ export function usePaneDrag(opts: Options) {
       return
     }
     if (opts.canDock && !opts.canDock(src)) return
-    const hit = dropTargetAt(rects, x, y, src.kind === 'pane' ? src.key : null)
+    const hit = dropTargetAt(rects, x, y, src.kind === 'pane' || src.kind === 'group' ? src.key : null)
     if (!hit) return
     const r = rects.get(hit.key)!
     const swap = src.kind === 'pane' && swapping.value
+    if (opts.canDockOn && !opts.canDockOn(src, hit.key, swap)) return
     action = swap ? { kind: 'swap', key: hit.key } : { kind: 'dock', key: hit.key, edge: hit.edge }
     let left = r.left - box.left
     let top = r.top - box.top
@@ -140,10 +156,16 @@ export function usePaneDrag(opts: Options) {
     preview.value = { left, top, width, height, edge: swap ? undefined : hit.edge }
   }
 
+  function overCanvas(x: number, y: number): boolean {
+    const box = opts.canvas.value?.getBoundingClientRect()
+    return !!box && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+  }
+
   function onMove(e: PointerEvent): void {
     if (!start || e.pointerId !== start.id) return
     if (!source.value) {
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return
+      if (start.src.kind === 'project' && !overCanvas(e.clientX, e.clientY)) return
       begin()
     }
     swapping.value = opts.swapKey(e)
@@ -204,5 +226,5 @@ export function usePaneDrag(opts: Options) {
   }
 
   onBeforeUnmount(() => finish(false))
-  return { source, preview, toStrip, pointer, swapping, caret, onDown }
+  return { source, preview, toStrip, pointer, swapping, caret, onDown, startFrom }
 }

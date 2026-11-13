@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Blocks, Columns2, FileText, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, FileText, FolderOpen, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -14,6 +14,7 @@ import { DevServerDetector, devUrlLabel, rememberDevUrl } from '../../lib/devSer
 import { createFileLinkProvider, inLinks, joinWrappedLinks, oscLinkUri, selectionText, type LinkOpenOptions, type LinkTarget } from '../../lib/fileLinks'
 import { fontEntry, termFontStack } from '../../lib/fonts'
 import { duration, now, shortPath } from '../../lib/format'
+import { folderName } from '../../lib/sidebarRows'
 import type { MenuEntry } from '../../lib/menu'
 import { newlineFor } from '../../lib/termKeys'
 import { installReplacementIme } from '../../lib/termIme'
@@ -72,7 +73,7 @@ import { useResumeScheduleStore } from '../../stores/resumeSchedule'
 import { useShellMarks } from '../../composables/useShellMarks'
 import ContextMenu from '../ui/ContextMenu.vue'
 
-const props = defineProps<{ pane: Pane; visible: boolean; focused: boolean; multi: boolean; zoomed: boolean; hiddenCount: number; dim: boolean }>()
+const props = defineProps<{ pane: Pane; visible: boolean; focused: boolean; multi: boolean; zoomed: boolean; hiddenCount: number; dim: boolean; grouped?: boolean }>()
 const emit = defineEmits<{ split: [choice: SplitChoice]; close: []; openLink: [target: LinkTarget, opts: Partial<LinkOpenOptions>]; scripts: []; zoom: [] }>()
 
 const { t } = useI18n()
@@ -406,6 +407,7 @@ function pickMore(id: string): void {
 }
 
 const cwd = computed(() => workCwd(props.pane))
+const ownProject = computed(() => (props.pane.project && !props.grouped ? folderName(props.pane.project) : null))
 // What runs in the pane now (a shell can be running `claude`); spawn and restart keep `pane.preset`.
 const preset = computed(() => presetOf(props.pane))
 let reportedCwd: string | null = null
@@ -702,6 +704,11 @@ const att = usePaneAttachments({
   screen: readScreen,
   appCursorKeys: () => !!term?.modes.applicationCursorKeysMode,
   win: isWin,
+  clipboardPixels: async () => {
+    const blob = await clipboardImageBlob()
+    const img = blob ? await imageData(blob) : null
+    return img && { thumb: img.thumb, view: img.view }
+  },
 })
 
 watch(
@@ -766,9 +773,9 @@ async function paste(textOnly: boolean): Promise<void> {
   const key = textOnly ? null : imagePasteKey(preset.value, isWin)
   const blob = key ? await clipboardImageBlob() : null
   if (key && blob) {
-    conn?.write(key)
     const img = await imageData(blob)
     att.notePaste({ kind: 'image', name: t('attach.clipboard'), source: 'paste', thumb: img?.thumb, view: img?.view })
+    conn?.write(key)
     return
   }
   try {
@@ -1209,6 +1216,15 @@ onBeforeUnmount(() => {
           >{{ t(`workspace.preset.${preset}`) }}</span
         >
       </template>
+      <span
+        v-if="ownProject"
+        class="inline-flex min-w-0 shrink items-center gap-1 text-2xs font-medium text-accent-ink @max-[360px]:hidden"
+        :title="`${t('splitV97.paneProject', { name: ownProject })}\n${pane.project}`"
+        data-pane-project
+        data-pane-chip
+      >
+        <FolderOpen :size="11" class="shrink-0" aria-hidden="true" /><span class="truncate">{{ ownProject }}</span>
+      </span>
       <Transition name="ccm-fade">
         <span
           v-if="diff"

@@ -282,9 +282,9 @@ const HEAD_BTN =
           v-for="item in entries"
           :key="item.key"
           role="none"
-          :class="item.kind === 'row' && item.group ? 'ccm-rail-fold' : ''"
-          :data-folded="item.kind === 'row' && item.group?.folded ? '' : undefined"
-          :inert="item.kind === 'row' && !!item.group?.folded"
+          :class="(item.kind === 'row' && item.group) || item.kind === 'sub' ? 'ccm-rail-fold' : ''"
+          :data-folded="(item.kind === 'row' || item.kind === 'sub') && item.group?.folded ? '' : undefined"
+          :inert="(item.kind === 'row' || item.kind === 'sub') && !!item.group?.folded"
           :style="item.kind === 'row' && item.group ? { '--fold-i': foldIndex.get(item.key) ?? 0 } : undefined"
           :data-leave-pane="item.kind === 'row' ? item.row.paneKey : undefined"
           :data-leave-tab="item.kind === 'group' ? item.group.tabKey : undefined"
@@ -319,6 +319,16 @@ const HEAD_BTN =
             @renamed="(k, saved) => emit('renamed', k, saved)"
             @menu="(g, e) => emit('contextGroup', g, e)"
           />
+          <div
+            v-else-if="item.kind === 'sub'"
+            class="flex h-5 min-w-0 items-center gap-1.5 pr-1.5 pl-9 text-2xs font-semibold text-ink-muted"
+            :title="item.project.key"
+            data-rail-subgroup
+          >
+            <span class="ccm-mono ccm-mono-sm" :data-tone="item.project.tone" aria-hidden="true">{{ monogram(item.project.name) }}</span>
+            <span class="min-w-0 truncate">{{ item.project.name || t('groupsV99.home') }}</span>
+            <span class="ml-auto shrink-0 font-normal tabular-nums text-ink-faint">{{ item.project.count }}</span>
+          </div>
           <div v-else>
             <RailRow
               :row="item.row"
@@ -360,6 +370,11 @@ const HEAD_BTN =
 .ccm-mono[data-tone='5'] { --mono: var(--ccm-peer); }
 .ccm-mono[data-tone='6'] { --mono: var(--ccm-warning); }
 .ccm-mono[data-tone='7'] { --mono: var(--ccm-accent); }
+.ccm-mono-sm {
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+}
 .ccm-mono-off {
   background: transparent;
   color: var(--ccm-ink-muted);

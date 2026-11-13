@@ -3,7 +3,8 @@ import { dirKey } from '../../stores/favorites'
 import { isTerm, presetOf, primaryPaneKey, tabProject, tabTitle, workCwd, type Pane, type Tab } from '../../stores/workspace'
 import type { RunBadge } from '../runUi'
 import { folderName, projectOf } from '../sidebarRows'
-import { leaves } from '../splitLayout'
+import { groupsOf, leaves } from '../splitLayout'
+import { projectTone } from './projectRow'
 import { applyOrder } from './railOrder'
 import type { RepoFacts } from './repo'
 
@@ -66,6 +67,15 @@ export interface RailRow {
   group: string | null
   twin?: string
   peer?: RailPeer
+  project?: string
+  sub?: string
+}
+
+export interface RailGroupProject {
+  key: string
+  name: string
+  tone: number
+  count: number
 }
 
 export interface RailGroup {
@@ -82,9 +92,13 @@ export interface RailGroup {
   paneKeys: string[]
   lead: string | null
   peer?: RailPeer
+  projects?: RailGroupProject[]
 }
 
-export type RailItem = { kind: 'group'; key: string; group: RailGroup } | { kind: 'row'; key: string; row: RailRow; group: RailGroup | null }
+export type RailItem =
+  | { kind: 'group'; key: string; group: RailGroup }
+  | { kind: 'sub'; key: string; project: RailGroupProject; group: RailGroup }
+  | { kind: 'row'; key: string; row: RailRow; group: RailGroup | null }
 
 export interface RailCheckout {
   key: string
@@ -165,10 +179,17 @@ export function railItems(checkout: Pick<RailCheckout, 'rows' | 'groups'>): Rail
   const groups = new Map(checkout.groups.map((g) => [g.key, g]))
   const items: RailItem[] = []
   let open: string | null = null
+  let sub: string | null = null
   for (const row of checkout.rows) {
     const group = (row.group && groups.get(row.group)) || null
-    if (group && open !== group.key) items.push({ kind: 'group', key: group.key, group })
+    if (group && open !== group.key) {
+      items.push({ kind: 'group', key: group.key, group })
+      sub = null
+    }
     open = group?.key ?? null
+    const project = group && row.sub !== undefined ? group.projects?.find((p) => p.key === row.sub) : undefined
+    if (group && project && sub !== project.key) items.push({ kind: 'sub', key: `${group.key}|${project.key}`, project, group })
+    sub = project?.key ?? null
     items.push({ kind: 'row', key: row.key, row, group })
   }
   return items
@@ -186,9 +207,10 @@ function plainLines(row: Pick<RailRow, 'kind' | 'agent' | 'task' | 'ordinal'>, w
 }
 
 /** Visible lines of a row; `word` is the translated state word (or wait label). */
-export function rowLines(row: Pick<RailRow, 'kind' | 'agent' | 'task' | 'ordinal' | 'twin'>, word: string): { first: string; second: string } {
+export function rowLines(row: Pick<RailRow, 'kind' | 'agent' | 'task' | 'ordinal' | 'twin' | 'project'>, word: string): { first: string; second: string } {
   const lines = plainLines(row, word)
-  return row.twin ? { first: `${lines.first} ${row.twin}`, second: lines.second } : lines
+  const second = row.project ? `${row.project} · ${lines.second}` : lines.second
+  return { first: row.twin ? `${lines.first} ${row.twin}` : lines.first, second }
 }
 
 /** A lone checkout needs no line of its own: its branch rides on the project header, and a remembered project opens from the header. */
@@ -220,7 +242,7 @@ export function treeIds(clusters: readonly RailCluster[], collapsed: (clusterKey
       if (lines && k.path) ids.push(checkoutId(c.key, k.key))
       for (const item of railItems(k)) {
         if (item.kind === 'group') ids.push(item.key)
-        else if (!item.group?.folded) ids.push(rowId(item.key))
+        else if (item.kind === 'row' && !item.group?.folded) ids.push(rowId(item.key))
       }
     }
   }
@@ -307,6 +329,10 @@ function placeOf(dir: string | undefined, factsOf: RailInput['factsOf']): Place 
   return { clusterKey: facts.key, alias, name: folderName(root), root, checkout: facts.top, facts }
 }
 
+export function groupTone(dir: string, factsOf: RailInput['factsOf'], tone?: number): number {
+  return tone ?? projectTone(dir ? placeOf(dir, factsOf).clusterKey : 'home')
+}
+
 function tagOf(place: Place): RailCheckout['tag'] {
   const f = place.facts
   if (!place.checkout || !f) return null
@@ -348,15 +374,19 @@ export function buildRail(input: RailInput): RailCluster[] {
       return w
     }
     const keys = leaves(tab.root)
+    const layoutGroups = groupsOf(tab.root)
+    const mixed = layoutGroups.length > 1
+    const subOf = new Map(layoutGroups.flatMap((g) => g.keys.map((k) => [k, g.project] as const)))
     const members = keys.map(paneOf).filter((p): p is Pane => !!p && (isTerm(p) || p.kind === 'run'))
-    const grouped = members.length >= 2
+    const grouped = members.length >= 2 || (mixed && members.length > 0)
     const group = grouped ? `group:${tab.key}` : null
     const shown = grouped ? members : members.filter((p) => p.kind === 'run' || presetOf(p) !== 'shell')
     const named = !grouped && shown.length === 1 ? tab.name : undefined
     const titleOf = (): string => (input.tabTitleOf ? input.tabTitleOf(tab) : tabTitle(tab, paneOf, input.labelOf))
-    const peerOf = (pane: Pane): Pick<RailRow, 'peer'> => {
+    const peerOf = (pane: Pane): Pick<RailRow, 'peer' | 'project' | 'sub'> => {
       const peer = isTerm(pane) ? input.peerOf?.(pane) : undefined
-      return peer ? { peer } : {}
+      const sub = mixed ? subOf.get(pane.key) : undefined
+      return { ...(peer ? { peer } : {}), ...(sub !== undefined ? { sub } : pane.project ? { project: folderName(pane.project) } : {}) }
     }
     const first = checkout.rows.length
     for (const pane of shown) {
@@ -366,7 +396,7 @@ export function buildRail(input: RailInput): RailCluster[] {
         const label = named ?? input.labelOf(pane)
         checkout.rows.push({
           key: pane.key, paneKey: pane.key, tabKey: tab.key, kind: 'other', pane, preset: pane.preset, agent: label, task: null,
-          ordinal: label, state: runState(run), subagents: 0, run, since: pane.focusedAt ?? 0, focused, tabActive, group,
+          ordinal: label, state: runState(run), subagents: 0, run, since: pane.focusedAt ?? 0, focused, tabActive, group, ...peerOf(pane),
         })
         continue
       }
@@ -394,8 +424,13 @@ export function buildRail(input: RailInput): RailCluster[] {
       const rows = checkout.rows.slice(first)
       const state = groupState(rows.map((r) => r.state))
       const peer = rows.some((r) => needsUser(r.state)) ? undefined : latestPeer(rows)
+      const projects: RailGroupProject[] | undefined = mixed
+        ? layoutGroups.map((g) => ({ key: g.project, name: g.name || (g.project ? folderName(g.project) : ''), tone: groupTone(g.project, input.factsOf, g.tone), count: rows.filter((r) => r.sub === g.project).length }))
+        : undefined
+      if (projects) rows.sort((a, b) => layoutGroups.findIndex((g) => g.project === a.sub) - layoutGroups.findIndex((g) => g.project === b.sub))
+      if (projects) checkout.rows.splice(first, rows.length, ...rows)
       checkout.groups.push({
-        key: group, tabKey: tab.key, title: titleOf(), named: !!tab.name, count: rows.length, state,
+        key: group, tabKey: tab.key, title: tab.name ?? (projects ? projects.map((p) => p.name).join(' + ') : titleOf()), named: !!tab.name, count: rows.length, state, ...(projects ? { projects } : {}),
         subagents: rows.reduce((n, r) => n + r.subagents, 0), folded: !!tab.folded, tabActive,
         focused: tabActive && !!input.activeKey && keys.includes(input.activeKey), paneKeys: rows.map((r) => r.paneKey), lead: leadOf(rows, state),
         ...(peer ? { peer } : {}),

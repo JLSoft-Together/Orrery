@@ -37,6 +37,7 @@ interface Options {
   /** xterm DECCKM: the app asked for application cursor keys (ESC O D) instead of ESC [ D. */
   appCursorKeys: () => boolean
   win: boolean
+  clipboardPixels?: () => Promise<{ thumb: string; view: string } | null>
 }
 
 /**
@@ -76,6 +77,7 @@ export function usePaneAttachments(o: Options) {
   let scanLast = 0
   let busy = false
   let disposed = false
+  let sawPrompt = false
   /**
    * Inserts and erases share one queue: each erase starts from a fresh screen read after everything before it
    * finished, so neither two quick clicks nor an in-flight paste leave it typing at stale positions.
@@ -110,17 +112,28 @@ export function usePaneAttachments(o: Options) {
     const s = read()
     if (!s) return
     const result = scanPrompt(s.rows)
+    const watched = sawPrompt
     lastScreen.value = s
     lastScan.value = result
     if (!result.found) return
+    sawPrompt = true
     if (pendingPaste && Date.now() - pendingPaste.at > PASTE_MS) pendingPaste = null
-    const { boundPaste } = store.reconcile(o.paneKey(), result, submitted, pendingPaste?.item ?? null, cursorToken(s.rows, s.cursor))
+    const { boundPaste, blind } = store.reconcile(o.paneKey(), result, submitted, pendingPaste?.item ?? null, cursorToken(s.rows, s.cursor))
     if (boundPaste) pendingPaste = null
+    const last = blind[blind.length - 1]
+    if (watched && last) void fillPixels(last)
     submitted = false
     // An image whose paste key went out but never showed up: say so instead of waiting forever.
     for (const a of store.list(o.paneKey())) {
       if (a.awaiting && !a.token && Date.now() - a.awaiting > AWAIT_MS) store.patch(o.paneKey(), a.id, { state: 'failed', error: 'timeout', awaiting: undefined })
     }
+  }
+
+  async function fillPixels(id: string): Promise<void> {
+    const px = o.clipboardPixels ? await o.clipboardPixels().catch(() => null) : null
+    if (!px || disposed) return
+    const now = store.list(o.paneKey()).find((a) => a.id === id)
+    if (now && !now.thumb && !now.view) store.patch(o.paneKey(), id, { thumb: px.thumb, view: px.view })
   }
 
   function tick(): void {

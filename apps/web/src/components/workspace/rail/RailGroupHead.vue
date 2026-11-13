@@ -118,7 +118,12 @@ watch(
       <TabRenameInput :tab-key="group.tabKey" :initial="group.title" @done="(saved) => emit('renamed', group.tabKey, saved)" />
     </span>
     <span v-else class="pointer-events-none flex min-w-0 flex-col">
-      <span :key="titleKey" class="block truncate rounded-[4px] text-xs font-medium" :class="titleKey ? 'ccm-highlight' : ''" data-rail-group-title>{{ group.title }}</span>
+      <span class="flex min-w-0 items-center gap-1">
+        <span v-if="group.projects" class="flex shrink-0 items-center gap-0.5" aria-hidden="true" data-rail-group-dots>
+          <span v-for="p in group.projects" :key="p.key" class="ccm-group-dot" :data-tone="p.tone" />
+        </span>
+        <span :key="titleKey" class="block truncate rounded-[4px] text-xs font-medium" :class="titleKey ? 'ccm-highlight' : ''" data-rail-group-title>{{ group.title }}</span>
+      </span>
       <span v-if="attention" class="relative flex h-4 min-w-0 items-center overflow-hidden text-2xs font-normal" :class="TONE[group.state]">
         <Transition name="ccm-rail-word" @before-leave="unstamp">
           <span :key="line" class="block min-w-0 truncate" data-rail-group-line>{{ line }}</span>
@@ -171,3 +176,20 @@ watch(
     </span>
   </div>
 </template>
+
+<style scoped>
+.ccm-group-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--dot, var(--ccm-accent));
+}
+.ccm-group-dot[data-tone='0'] { --dot: var(--ccm-agent-claude); }
+.ccm-group-dot[data-tone='1'] { --dot: var(--ccm-agent-codex); }
+.ccm-group-dot[data-tone='2'] { --dot: var(--ccm-agent-browser); }
+.ccm-group-dot[data-tone='3'] { --dot: var(--ccm-agent-file); }
+.ccm-group-dot[data-tone='4'] { --dot: var(--ccm-success); }
+.ccm-group-dot[data-tone='5'] { --dot: var(--ccm-peer); }
+.ccm-group-dot[data-tone='6'] { --dot: var(--ccm-warning); }
+.ccm-group-dot[data-tone='7'] { --dot: var(--ccm-accent); }
+</style>

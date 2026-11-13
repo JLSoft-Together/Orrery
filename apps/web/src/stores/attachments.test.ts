@@ -39,6 +39,16 @@ describe('attachments store', () => {
     ])
   })
 
+  it('reports image rows that arrived without pixels (pasted in the terminal, screenshot hand-off)', () => {
+    const s = useAttachmentsStore()
+    const first = s.reconcile(P, scan([1, 2]), false, { kind: 'image', name: 'Clipboard image', source: 'paste', thumb: 'data:t', view: 'data:v' })
+    const rows = s.list(P)
+    expect(first.blind).toEqual([rows[1]!.id])
+    const second = s.reconcile(P, scan([1, 2, 3]), false, { kind: 'image', name: 'Screenshot', source: 'paste' })
+    expect(second.blind).toEqual([s.list(P)[2]!.id])
+    expect(s.reconcile(P, scan([1, 2, 3]), false, null).blind).toEqual([])
+  })
+
   it('removed in the terminal → gone; submitted → last sent, replaced by the next send', () => {
     const s = useAttachmentsStore()
     s.reconcile(P, scan([1, 2]), false, null)

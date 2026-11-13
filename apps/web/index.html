@@ -39,6 +39,8 @@
           try {
             if (localStorage.getItem('ccm.stars') === '0') r.setAttribute('data-stars', 'off')
             if (localStorage.getItem('ccm.starsPanels') === '0') r.setAttribute('data-stars-panels', 'off')
+            var fx = localStorage.getItem('ccm.starsFx')
+            r.setAttribute('data-stars-fx', fx === 'off' || fx === 'meteors' ? fx : 'twinkle')
           } catch (e) {}
           try {
             var l = localStorage.getItem('ccm.locale')

@@ -1,5 +1,5 @@
 import type { PtyPreset } from '@ccm/shared'
-import type { LayoutNode } from './splitLayout'
+import { metaOf, type GroupMeta, type LayoutNode } from './splitLayout'
 
 /** Mirrors `apps/desktop/src/preview/scripts.ts`. */
 export type ScriptSource = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'make' | 'just' | 'cargo' | 'python'
@@ -39,8 +39,10 @@ export interface SavedLayout {
   updatedAt: string
   openOnStart?: boolean
   panes: Record<string, LayoutPane>
-  tabs: { root: LayoutNode; focus?: string }[]
+  tabs: { root: LayoutNode; focus?: string; groups?: LayoutGroup[] }[]
 }
+
+export type LayoutGroup = GroupMeta & { project: string }
 
 export type LayoutDraft = Omit<SavedLayout, 'id' | 'updatedAt'> & { id?: string }
 export type SaveLayoutResult = { ok: true; layout: SavedLayout } | { ok: false; error: 'invalid' | 'limit' | 'unavailable' }
@@ -78,12 +80,56 @@ export async function projectRootInfo(dir: string, remembered = false): Promise<
 
 export const projectRoot = async (dir: string): Promise<string | null> => (await projectRootInfo(dir))?.root ?? null
 export const scriptsIn = (dir: string): Promise<ScriptsResult | null> => bridge?.scripts?.(dir) ?? Promise.resolve(null)
-export const listLayouts = (project: string): Promise<SavedLayout[]> => bridge?.layoutsList?.(project) ?? Promise.resolve([])
+const GROUPS_KEY = 'ccm.layoutGroups'
+
+function readGroups(): Record<string, Array<LayoutGroup[] | null>> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GROUPS_KEY) ?? '{}') as unknown
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, Array<LayoutGroup[] | null>>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeGroups(all: Record<string, Array<LayoutGroup[] | null>>): void {
+  try {
+    localStorage.setItem(GROUPS_KEY, JSON.stringify(all))
+  } catch {
+    return
+  }
+}
+
+const cleanLayoutGroups = (v: unknown): LayoutGroup[] | undefined =>
+  Array.isArray(v)
+    ? v.filter((g): g is LayoutGroup => !!g && typeof g === 'object' && typeof (g as LayoutGroup).project === 'string').map((g) => ({ ...metaOf(g), project: g.project }))
+    : undefined
+
+export function withLayoutGroups(layout: SavedLayout, all = readGroups()): SavedLayout {
+  const meta = all[layout.id]
+  if (!Array.isArray(meta)) return layout
+  return { ...layout, tabs: layout.tabs.map((t, i) => (meta[i] ? { ...t, groups: cleanLayoutGroups(meta[i]) } : t)) }
+}
+
+export async function listLayouts(project: string): Promise<SavedLayout[]> {
+  const list = (await (bridge?.layoutsList?.(project) ?? Promise.resolve([]))) ?? []
+  const all = readGroups()
+  return list.map((l) => withLayoutGroups(l, all))
+}
 /** Plain JSON copy: split trees come from reactive store state, and IPC cannot clone a Proxy. */
 export async function saveLayout(layout: LayoutDraft): Promise<SaveLayoutResult> {
   if (!bridge?.layoutsSave) return { ok: false, error: 'unavailable' }
   try {
-    return await bridge.layoutsSave(JSON.parse(JSON.stringify(layout)) as LayoutDraft)
+    const groups = layout.tabs.map((t) => (t.groups?.length ? t.groups : null))
+    const sent = JSON.parse(JSON.stringify({ ...layout, tabs: layout.tabs.map(({ root, focus }) => ({ root, focus })) })) as LayoutDraft
+    const res = await bridge.layoutsSave(sent)
+    if (res.ok) {
+      const all = readGroups()
+      if (groups.some(Boolean)) all[res.layout.id] = JSON.parse(JSON.stringify(groups)) as Array<LayoutGroup[] | null>
+      else delete all[res.layout.id]
+      writeGroups(all)
+      return { ok: true, layout: withLayoutGroups(res.layout, all) }
+    }
+    return res
   } catch {
     return { ok: false, error: 'invalid' }
   }

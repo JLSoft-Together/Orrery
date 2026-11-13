@@ -128,3 +128,19 @@ describe('workspaceAction', () => {
     expect(workspaceAction(key('ArrowLeft', { altKey: true, shiftKey: true }), false, false)).toBeNull()
   })
 })
+
+describe('project group chords', () => {
+  const cad = { ctrlKey: true, altKey: true }
+  it('Ctrl+Alt+←/→ focuses the neighbour group only in a multi-group tab, else stays back / forward', () => {
+    expect(workspaceAction(key('ArrowRight', cad), false, true, true)).toEqual({ t: 'groupFocus', dir: 'right' })
+    expect(workspaceAction(key('ArrowLeft', cad), true, true, true)).toEqual({ t: 'groupFocus', dir: 'left' })
+    expect(workspaceAction(key('ArrowLeft', cad), false, true, false)).toEqual({ t: 'navBack' })
+    expect(workspaceAction(key('ArrowLeft', { ...cad, shiftKey: true }), false, true, true)).toEqual({ t: 'groupMove', dir: 'left' })
+    expect(workspaceAction(key('ArrowLeft', cad, true), false, true, true)).toEqual(null)
+  })
+  it('Ctrl+Alt+G (⌃⌥G) adds another project as a group', () => {
+    expect(workspaceAction(key('KeyG', cad), false, false)).toEqual({ t: 'addGroup' })
+    expect(workspaceAction(key('KeyG', cad), true, false)).toEqual({ t: 'addGroup' })
+    expect(workspaceAction(key('KeyG', cad, true), false, false)).toBeNull()
+  })
+})

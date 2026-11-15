@@ -11,13 +11,15 @@ use std::time::{Duration, Instant};
 const MB: f64 = 1024.0 * 1024.0;
 
 fn usage_text() -> &'static str {
-    "usage: orrery-core disk [serve]\n       orrery-core disk bench <path> [--level light|balanced|max] [--hardlinks] [--exclude <name>] [--data <dir>]"
+    "usage: orrery-core disk [serve]\n       orrery-core disk bench <path> [--level light|balanced|max] [--hardlinks] [--exclude <name>] [--data <dir>]
+       orrery-core disk bench-dupes <path> [--level light|balanced|max] [--min-mb N] [--exclude <name>]"
 }
 
 pub fn run(args: &[String]) -> i32 {
     match args.first().map(String::as_str) {
         None | Some("serve") => crate::serve::run(),
         Some("bench") => bench(&args[1..]),
+        Some("bench-dupes") => bench_dupes(&args[1..]),
         Some("mft-helper") => crate::mft::helper_main(&args[1..]),
         Some("mft-fixture") => crate::mft::fixture_main(&args[1..]),
         _ => {
@@ -136,5 +138,92 @@ fn bench(args: &[String]) -> i32 {
         }
         Err(e) => println!("save        failed: {e}"),
     }
+    0
+}
+
+fn bench_dupes(args: &[String]) -> i32 {
+    let mut path = None;
+    let mut opts = ScanOptions::new(Vec::new());
+    let mut dopts = crate::dupes::Options::new(Vec::new());
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--level" => {
+                opts.level = Level::parse(it.next().map(String::as_str).unwrap_or("balanced"));
+                dopts.level = opts.level;
+            }
+            "--min-mb" => dopts.min_size = (it.next().and_then(|v| v.parse::<f64>().ok()).unwrap_or(1.0) * MB) as u64,
+            "--exclude" => {
+                let e = it.next().cloned();
+                opts.excludes.extend(e.clone());
+                dopts.excludes.extend(e);
+            }
+            p if path.is_none() => path = Some(p.to_string()),
+            _ => {
+                eprintln!("{}", usage_text());
+                return 2;
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("{}", usage_text());
+        return 2;
+    };
+    opts.roots = vec![path.clone()];
+    dopts.under = vec![path.clone()];
+    let ix = match scan(&opts, &Control::default(), &Progress::default()) {
+        Ok(ix) => ix,
+        Err(e) => {
+            eprintln!("scan failed: {e}");
+            return 1;
+        }
+    };
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1) as f64;
+    let control = Control::default();
+    let progress = Arc::new(crate::dupes::DupeProgress::default());
+    let before = usage();
+    let t = Instant::now();
+    let done = Arc::new(AtomicBool::new(false));
+    let sampler = {
+        let done = done.clone();
+        std::thread::spawn(move || {
+            let mut peak = 0f64;
+            let mut last = (Instant::now(), usage().cpu_ms);
+            while !done.load(Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_millis(500));
+                let now = (Instant::now(), usage().cpu_ms);
+                let wall = now.0.duration_since(last.0).as_millis().max(1) as f64;
+                peak = peak.max((now.1 - last.1) as f64 / wall);
+                last = now;
+            }
+            peak
+        })
+    };
+    let r = crate::dupes::find(&ix, &dopts, &control, &progress);
+    let wall = t.elapsed();
+    done.store(true, Ordering::SeqCst);
+    let peak_cores = sampler.join().unwrap_or(0.0);
+    let after = usage();
+    let out = match r {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("dupes failed: {e}");
+            return 1;
+        }
+    };
+    let cpu = (after.cpu_ms - before.cpu_ms) as f64;
+    let wall_ms = wall.as_millis().max(1) as f64;
+    println!("path        {path}");
+    println!("level       {} ({} threads of {})", dopts.level.name(), dopts.level.threads(), cores);
+    println!("index       {} files", ix.stats.files);
+    println!("min size    {:.1} MB", dopts.min_size as f64 / MB);
+    println!("candidates  {}", out.candidates);
+    println!("hashed      {} files, {:.2} GB read", out.hashed_files, out.hashed_bytes as f64 / MB / 1024.0);
+    println!("time        {:.2} s", wall.as_secs_f64());
+    println!("rate        {:.0} MB/s", out.hashed_bytes as f64 / MB / wall.as_secs_f64().max(0.001));
+    println!("cpu         avg {:.1}% of machine ({:.2} cores), peak {:.1}% ({:.2} cores)", cpu / wall_ms / cores * 100.0, cpu / wall_ms, peak_cores / cores * 100.0, peak_cores);
+    println!("groups      {} (wasted {:.2} GB)", out.total_groups, out.wasted as f64 / MB / 1024.0);
+    println!("skipped     {} (stale {}, cloud {}, locked {}, changed {}, gone {})", out.skipped.total(), out.skipped.stale, out.skipped.cloud, out.skipped.locked, out.skipped.changed, out.skipped.gone);
+    println!("process     peak rss {:.1} MB", after.peak_rss as f64 / MB);
     0
 }

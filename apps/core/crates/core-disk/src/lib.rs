@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod dupes;
 pub mod fold;
 pub mod index;
 pub mod mft;

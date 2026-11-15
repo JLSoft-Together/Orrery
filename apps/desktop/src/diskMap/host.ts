@@ -207,7 +207,7 @@ export class DiskMapHost {
       return
     }
     if (line.kind === 'event') {
-      if (line.event === 'disk:done') this.scanning = false
+      if (line.event === 'disk:done' || line.event === 'disk:dupes-done') this.scanning = false
       this.opts.onEvent?.(line.event, line.payload)
       return
     }

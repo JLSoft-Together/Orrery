@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { DISK_KINDS, DISK_SCAN_LEVELS, DISK_SORTS, type DiskChildren, type DiskFastScanRequest, type DiskChildrenRequest, type DiskDone, type DiskEntry, type DiskProgress, type DiskScanRequest, type DiskSearchQuery, type DiskSearchResult, type DiskSizes, type DiskSort, type DiskStatus, type DiskVolume } from '@ccm/shared'
+import { DISK_KINDS, DISK_SCAN_LEVELS, DISK_SORTS, type DiskChildren, type DiskFastScanRequest, type DiskChildrenRequest, type DiskDone, type DiskDupeGroup, type DiskDupesDone, type DiskDupesProgress, type DiskDupesRequest, type DiskDupesStage, type DiskEntry, type DiskProgress, type DiskScanRequest, type DiskSearchQuery, type DiskSearchResult, type DiskSizes, type DiskSort, type DiskStatus, type DiskVolume } from '@ccm/shared'
 
 export const MAX_PATH_CHARS = 32_000
 export const MAX_ROOTS = 32
@@ -161,4 +161,89 @@ export function toSizes(v: unknown): DiskSizes | null {
   const out: Record<string, number | null> = {}
   for (const [k, n] of Object.entries(sizes)) out[k] = typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null
   return { version: o.version, sizes: out }
+}
+
+export const MIN_DUPES_SIZE = 1024
+export const MAX_DUPE_GROUPS = 5_000
+export const MAX_DUPE_FILES = 60_000
+
+const DUPE_STAGES: readonly DiskDupesStage[] = ['idle', 'size', 'quick', 'full']
+
+export function cleanDupes(v: unknown, platform: NodeJS.Platform = process.platform): DiskDupesRequest | null {
+  const o = obj(v) ?? {}
+  const out: DiskDupesRequest = {}
+  if (o.under !== undefined) {
+    if (!Array.isArray(o.under) || o.under.length > MAX_ROOTS || !o.under.every((p) => isAbsolutePath(p, platform))) return null
+    if (o.under.length) out.under = [...new Set(o.under as string[])]
+  }
+  if (o.minSize !== undefined) {
+    if (typeof o.minSize !== 'number' || !Number.isFinite(o.minSize) || o.minSize < 0) return null
+    out.minSize = Math.max(MIN_DUPES_SIZE, Math.floor(o.minSize))
+  }
+  if (o.excludes !== undefined) {
+    const ex = o.excludes
+    if (!Array.isArray(ex) || ex.length > MAX_EXCLUDES || !ex.every((e) => typeof e === 'string' && e.length > 0 && e.length <= 1024 && !e.includes('\0'))) return null
+    out.excludes = ex as string[]
+  }
+  if (typeof o.level === 'string' && (DISK_SCAN_LEVELS as readonly string[]).includes(o.level)) out.level = o.level as DiskDupesRequest['level']
+  return out
+}
+
+export function toDupesProgress(v: unknown): DiskDupesProgress {
+  const o = obj(v)
+  const stage = DUPE_STAGES.find((s) => s === o?.stage) ?? 'idle'
+  return {
+    stage,
+    candidates: num(o?.candidates),
+    files: num(o?.files),
+    filesDone: num(o?.filesDone),
+    bytes: num(o?.bytes),
+    bytesRead: num(o?.bytesRead),
+    groups: num(o?.groups),
+    skipped: num(o?.skipped),
+    current: str(o?.current),
+    elapsedMs: num(o?.elapsedMs),
+    paused: o?.paused === true,
+  }
+}
+
+function toDupeGroup(v: unknown): DiskDupeGroup | null {
+  const o = obj(v)
+  if (!o || !Array.isArray(o.files)) return null
+  const files = o.files.flatMap((f) => {
+    const x = obj(f)
+    return x && typeof x.path === 'string' ? [{ path: x.path, mtime: num(x.mtime) }] : []
+  })
+  if (files.length < 2) return null
+  return { size: num(o.size), hash: str(o.hash), count: Math.max(files.length, num(o.count, files.length)), files }
+}
+
+export function toDupesDone(v: unknown): DiskDupesDone {
+  const o = obj(v)
+  const sk = obj(o?.skipped)
+  const done: DiskDupesDone = {
+    ok: o?.ok === true,
+    groups: [],
+    totalGroups: num(o?.totalGroups),
+    wasted: num(o?.wasted),
+    candidates: num(o?.candidates),
+    hashedFiles: num(o?.hashedFiles),
+    hashedBytes: num(o?.hashedBytes),
+    skipped: { stale: num(sk?.stale), cloud: num(sk?.cloud), locked: num(sk?.locked), changed: num(sk?.changed), gone: num(sk?.gone) },
+    ms: num(o?.ms),
+  }
+  if (o?.cancelled === true) done.cancelled = true
+  if (typeof o?.error === 'string') done.error = o.error.slice(0, 300)
+  if (Array.isArray(o?.groups)) {
+    let budget = MAX_DUPE_FILES
+    for (const g of o.groups) {
+      if (done.groups.length >= MAX_DUPE_GROUPS || budget < 2) break
+      const group = toDupeGroup(g)
+      if (!group) continue
+      if (group.files.length > budget) group.files = group.files.slice(0, budget)
+      budget -= group.files.length
+      done.groups.push(group)
+    }
+  }
+  return done
 }

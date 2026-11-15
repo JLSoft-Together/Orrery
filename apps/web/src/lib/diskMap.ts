@@ -1,9 +1,10 @@
 import { DISK_KINDS, DISK_SORTS } from '@ccm/shared'
 export { DISK_KINDS, DISK_SORTS }
-import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSizes, DiskSort } from '@ccm/shared'
+import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskDupesDone, DiskDupesProgress, DiskDupesRequest, DiskDupesStart, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSizes, DiskSort } from '@ccm/shared'
 import { desktop } from './desktop'
 
 export type { DiskSizes } from '@ccm/shared'
+export type { DiskDupeFile, DiskDupeGroup, DiskDupesDone, DiskDupesProgress, DiskDupesRequest, DiskDupesStage, DiskDupesStart } from '@ccm/shared'
 export type { DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult } from '@ccm/shared'
 export type { DiskSort }
 export type DiskLevel = DiskScanLevel
@@ -23,6 +24,10 @@ interface DiskMapBridge {
   diskMapHistory?: (req: { limit: number }) => Promise<DiskHistoryEntry[]>
   diskMapFastScan?: (req: { drive: string }) => Promise<DiskFastScanResult>
   diskMapSizes?: (req: { paths: string[] }) => Promise<DiskSizes | null>
+  diskMapDupes?: (req: DiskDupesRequest) => Promise<DiskDupesStart>
+  diskMapDupesCancel?: () => Promise<boolean>
+  onDiskMapDupesProgress?: (cb: (p: DiskDupesProgress) => void) => () => void
+  onDiskMapDupesDone?: (cb: (d: DiskDupesDone | null) => void) => () => void
   onDiskMapProgress?: (cb: (p: DiskProgress) => void) => () => void
   onDiskMapDone?: (cb: (d: DiskDone | null) => void) => () => void
 }
@@ -31,6 +36,7 @@ const bridge = desktop as unknown as DiskMapBridge | undefined
 
 export const hasDiskMap = typeof bridge?.diskMapScan === 'function' && typeof bridge?.diskMapChildren === 'function'
 export const hasDiskSizes = hasDiskMap && typeof bridge?.diskMapSizes === 'function'
+export const hasDiskDupes = hasDiskMap && typeof bridge?.diskMapDupes === 'function' && typeof bridge?.onDiskMapDupesDone === 'function'
 export const hasFastScan = hasDiskMap && typeof bridge?.diskMapFastScan === 'function'
 
 async function call<T>(fn: (() => Promise<T>) | undefined, fallback: T): Promise<T> {
@@ -62,6 +68,11 @@ export const diskMapHistory = (limit = 50): Promise<DiskHistoryEntry[]> => call(
 export const onDiskMapProgress = (cb: (p: DiskProgress) => void): (() => void) => bridge?.onDiskMapProgress?.(cb) ?? (() => {})
 export const diskMapFastScan = (drive: string): Promise<DiskFastScanResult> =>
   call<DiskFastScanResult>(bridge?.diskMapFastScan && (async () => (await bridge.diskMapFastScan!({ drive })) ?? { started: false, error: 'failed' }), { started: false, error: 'unavailable' })
+export const diskMapDupes = (req: DiskDupesRequest): Promise<DiskDupesStart> =>
+  call<DiskDupesStart>(bridge?.diskMapDupes && (async () => (await bridge.diskMapDupes!(req)) ?? { started: false, error: 'failed' }), { started: false, error: 'unavailable' })
+export const diskMapDupesCancel = (): Promise<boolean> => call(bridge?.diskMapDupesCancel && (() => bridge.diskMapDupesCancel!()), false)
+export const onDiskMapDupesProgress = (cb: (p: DiskDupesProgress) => void): (() => void) => bridge?.onDiskMapDupesProgress?.(cb) ?? (() => {})
+export const onDiskMapDupesDone = (cb: (d: DiskDupesDone | null) => void): (() => void) => bridge?.onDiskMapDupesDone?.(cb) ?? (() => {})
 export const onDiskMapDone = (cb: (d: DiskDone | null) => void): (() => void) => bridge?.onDiskMapDone?.(cb) ?? (() => {})
 
 export const DISK_LEVELS: DiskLevel[] = ['light', 'balanced', 'max']

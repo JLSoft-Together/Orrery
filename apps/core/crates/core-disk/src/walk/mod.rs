@@ -159,7 +159,7 @@ impl Control {
         *self.paused.lock().unwrap()
     }
 
-    fn wait_if_paused(&self) {
+    pub fn wait_if_paused(&self) {
         let mut p = self.paused.lock().unwrap();
         while *p && !self.is_cancelled() {
             p = self.cv.wait(p).unwrap();
@@ -190,13 +190,13 @@ impl Progress {
     }
 }
 
-struct Excludes {
+pub(crate) struct Excludes {
     names: Vec<Vec<u8>>,
     paths: Vec<String>,
 }
 
 impl Excludes {
-    fn new(list: &[String]) -> Self {
+    pub(crate) fn new(list: &[String]) -> Self {
         let mut names = Vec::new();
         let mut paths = Vec::new();
         for e in list.iter().map(|e| e.trim()).filter(|e| !e.is_empty()) {
@@ -209,11 +209,15 @@ impl Excludes {
         Excludes { names, paths }
     }
 
-    fn name(&self, name: &[u8]) -> bool {
+    pub(crate) fn has_paths(&self) -> bool {
+        !self.paths.is_empty()
+    }
+
+    pub(crate) fn name(&self, name: &[u8]) -> bool {
         self.names.iter().any(|p| if cfg!(any(windows, target_os = "macos")) { glob_ci(name, p) } else { glob_exact(name, p) })
     }
 
-    fn path(&self, display: &str) -> bool {
+    pub(crate) fn path(&self, display: &str) -> bool {
         self.paths.iter().any(|p| under(display, p))
     }
 }

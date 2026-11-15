@@ -1,18 +1,21 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { DiskChildren, DiskDeleteResult, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskSizes, DiskStatus, DiskVolume } from '@ccm/shared'
+import type { DiskChildren, DiskDeleteResult, DiskDupesStart, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskSizes, DiskStatus, DiskVolume } from '@ccm/shared'
 import { measureRest, runDelete, type DeleteAsk } from './delete'
 import { DiskHistory } from './history'
 import { DiskMapHost, type DiskMapSpawner } from './host'
-import { cleanChildren, cleanFastScan, cleanHistoryLimit, cleanScan, cleanSearch, cleanSizes, isAbsolutePath, MAX_DELETE, toChildren, toDone, toProgress, toSearch, toSizes, toStatus, toVolumes } from './map'
+import { cleanChildren, cleanDupes, cleanFastScan, cleanHistoryLimit, cleanScan, cleanSearch, cleanSizes, isAbsolutePath, MAX_DELETE, toChildren, toDone, toDupesDone, toDupesProgress, toProgress, toSearch, toSizes, toStatus, toVolumes } from './map'
 
 export const DISKMAP_CHANNELS = [
   'ccm:diskmap-volumes', 'ccm:diskmap-status', 'ccm:diskmap-scan', 'ccm:diskmap-pause', 'ccm:diskmap-resume', 'ccm:diskmap-cancel',
   'ccm:diskmap-children', 'ccm:diskmap-search', 'ccm:diskmap-delete', 'ccm:diskmap-reveal', 'ccm:diskmap-history', 'ccm:diskmap-fastscan', 'ccm:diskmap-sizes',
+  'ccm:diskmap-dupes', 'ccm:diskmap-dupes-cancel',
 ] as const
 export const DISKMAP_PROGRESS = 'ccm:diskmap-progress'
 export const DISKMAP_DONE = 'ccm:diskmap-done'
+export const DISKMAP_DUPES_PROGRESS = 'ccm:diskmap-dupes-progress'
+export const DISKMAP_DUPES_DONE = 'ccm:diskmap-dupes-done'
 
 export interface DiskMapOptions {
   ipcMain: Pick<IpcMain, 'handle' | 'removeHandler'>
@@ -46,6 +49,7 @@ const EMPTY_SEARCH: DiskSearchResult = { total: 0, ms: 0, items: [] }
 export class DiskMapService {
   private loaded: Promise<void> | null = null
   private deleting = false
+  dupesRunning = false
   readonly history: DiskHistory
 
   constructor(readonly host: DiskMapHost, private readonly opts: Omit<DiskMapOptions, 'ipcMain' | 'isAppFrame' | 'bin' | 'env' | 'spawner' | 'exists'>) {
@@ -100,6 +104,37 @@ export class DiskMapService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       return { started: false, error: ['unsupported', 'busy'].includes(msg) ? msg : 'failed' }
+    }
+  }
+
+  async dupes(req: unknown): Promise<DiskDupesStart> {
+    const clean = cleanDupes(req, this.opts.platform)
+    if (!clean) return { started: false, error: 'invalid' }
+    await this.ensureLoaded()
+    const base = { minSize: clean.minSize, excludes: clean.excludes ?? [], level: clean.level }
+    const attempt = async (under: string[]): Promise<void> => {
+      await this.host.call('disk.dupes', { ...base, under })
+    }
+    this.dupesRunning = true
+    this.host.markScanning(true)
+    try {
+      if (clean.under) await attempt(clean.under)
+      else {
+        try {
+          await attempt([this.opts.home])
+        } catch (err) {
+          if (!(err instanceof Error) || !err.message.startsWith('not in index')) throw err
+          const roots = toStatus(await this.host.call('disk.status')).roots
+          if (!roots.length) throw err
+          await attempt(roots)
+        }
+      }
+      return { started: true }
+    } catch (err) {
+      this.dupesRunning = false
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg !== 'busy') this.host.markScanning(false)
+      return { started: false, error: msg.startsWith('not in index') ? 'not-indexed' : msg === 'busy' ? 'busy' : 'failed' }
     }
   }
 
@@ -181,10 +216,18 @@ export function createDiskMap(opts: DiskMapOptions): DiskMap {
     onEvent: (event, payload) => {
       if (event === 'disk:progress') opts.broadcast(DISKMAP_PROGRESS, toProgress(payload))
       else if (event === 'disk:done') opts.broadcast(DISKMAP_DONE, toDone(payload))
+      else if (event === 'disk:dupes-progress') opts.broadcast(DISKMAP_DUPES_PROGRESS, toDupesProgress(payload))
+      else if (event === 'disk:dupes-done') {
+        if (service) service.dupesRunning = false
+        opts.broadcast(DISKMAP_DUPES_DONE, toDupesDone(payload))
+      }
     },
     onExit: (_code, busy) => {
       service?.onExit()
-      if (busy) opts.broadcast(DISKMAP_DONE, { ok: false, error: host.lastError ?? 'exited' })
+      if (service?.dupesRunning) {
+        service.dupesRunning = false
+        if (busy) opts.broadcast(DISKMAP_DUPES_DONE, toDupesDone({ ok: false, error: host.lastError ?? 'exited' }))
+      } else if (busy) opts.broadcast(DISKMAP_DONE, { ok: false, error: host.lastError ?? 'exited' })
     },
   })
   service = new DiskMapService(host, opts)
@@ -211,6 +254,8 @@ export function createDiskMap(opts: DiskMapOptions): DiskMap {
   ipcMain.handle('ccm:diskmap-reveal', guard<void>(undefined, (_e, p) => svc.reveal(p)))
   ipcMain.handle('ccm:diskmap-fastscan', guard<DiskFastScanResult>({ started: false, error: 'failed' }, (_e, req) => svc.fastScan(req)))
   ipcMain.handle('ccm:diskmap-sizes', guard<DiskSizes | null>(null, (_e, req) => svc.sizes(req)))
+  ipcMain.handle('ccm:diskmap-dupes', guard<DiskDupesStart>({ started: false, error: 'failed' }, (_e, req) => svc.dupes(req)))
+  ipcMain.handle('ccm:diskmap-dupes-cancel', guard(false, () => svc.control('cancel')))
   ipcMain.handle('ccm:diskmap-history', guard<DiskHistoryEntry[]>([], (_e, req) => svc.historyRead(req)))
   return {
     host,

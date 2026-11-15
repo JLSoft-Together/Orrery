@@ -1,4 +1,5 @@
 use crate::fold::{group_id, GROUP_NAMES};
+use crate::dupes::{self, DupeProgress};
 use crate::index::{flag, Index, Sort};
 use crate::mft::{self, MftError};
 use crate::search::{search, Only, Query};
@@ -12,9 +13,11 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-pub const CHANNELS: [&str; 14] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft", "disk.sizes"];
+pub const CHANNELS: [&str; 15] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft", "disk.sizes", "disk.dupes"];
 pub const EVENT_PROGRESS: &str = "disk:progress";
 pub const EVENT_DONE: &str = "disk:done";
+pub const EVENT_DUPES_PROGRESS: &str = "disk:dupes-progress";
+pub const EVENT_DUPES_DONE: &str = "disk:dupes-done";
 const TICK: Duration = Duration::from_millis(100);
 const LIMIT_MAX: usize = 10_000;
 const SIZES_MAX: usize = 2_000;
@@ -198,6 +201,7 @@ impl Engine {
             "disk.forget" => self.forget(&a),
             "disk.sizes" => self.sizes(&a),
             "disk.mft" => self.start_mft(&a),
+            "disk.dupes" => self.start_dupes(&a),
             "disk.volumes" => Ok(Value::Array(volumes::list().iter().map(|v| v.to_json()).collect())),
             _ => Err(format!("unknown channel {channel}")),
         }
@@ -285,7 +289,8 @@ impl Engine {
     fn scan_payload(&self, opts: &ScanOptions, control: &Arc<Control>, merge: bool, save: bool) -> Value {
         let progress = Arc::new(Progress::default());
         let started = Instant::now();
-        let reporter = Reporter::start(progress.clone(), control.clone(), self.emit.clone(), started);
+        let snap = progress.clone();
+        let reporter = Reporter::start(Box::new(move || snap.snapshot()), control.clone(), self.emit.clone(), started, EVENT_PROGRESS);
         let r = scan_with(opts, control, &progress, self.lister);
         drop(reporter);
         match r {
@@ -312,6 +317,54 @@ impl Engine {
         }
         self.set_index(Some(ix));
         v
+    }
+
+    fn start_dupes(self: &Arc<Self>, a: &Value) -> Result<Value, String> {
+        let ix = self.index().ok_or("no index")?;
+        let mut opts = dupes::Options::new(strings(a, "under"));
+        if opts.under.is_empty() {
+            opts.under = ix.root_paths();
+        }
+        opts.min_size = u(a, "minSize").unwrap_or(dupes::DEFAULT_MIN).max(1);
+        opts.excludes = strings(a, "excludes");
+        opts.level = Level::parse(s(a, "level").unwrap_or("balanced"));
+        if !opts.under.iter().any(|p| ix.find(p).is_some()) {
+            return Err(format!("not in index: {}", opts.under.first().cloned().unwrap_or_default()));
+        }
+        let control = Arc::new(Control::default());
+        {
+            let mut slot = self.scan.lock().unwrap();
+            if slot.is_some() {
+                return Err("busy".into());
+            }
+            *slot = Some(control.clone());
+        }
+        let threads = opts.level.threads();
+        let level = opts.level.name();
+        let me = self.clone();
+        std::thread::spawn(move || me.run_dupes(ix, opts, control));
+        Ok(json!({"started": true, "threads": threads, "level": level}))
+    }
+
+    fn run_dupes(self: Arc<Self>, ix: Arc<Index>, opts: dupes::Options, control: Arc<Control>) {
+        let progress = Arc::new(DupeProgress::default());
+        let started = Instant::now();
+        let snap = progress.clone();
+        let reporter = Reporter::start(Box::new(move || snap.snapshot()), control.clone(), self.emit.clone(), started, EVENT_DUPES_PROGRESS);
+        let r = catch_unwind(AssertUnwindSafe(|| dupes::find(&ix, &opts, &control, &progress)));
+        drop(reporter);
+        let payload = match r {
+            Ok(Ok(out)) => {
+                let mut v = out.to_json();
+                v["ok"] = json!(true);
+                v
+            }
+            Ok(Err(dupes::Error::Cancelled)) => json!({"ok": false, "cancelled": true}),
+            Ok(Err(e)) => json!({"ok": false, "error": e.to_string()}),
+            Err(_) => json!({"ok": false, "error": "dupes panicked"}),
+        };
+        *self.scan.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        (self.emit)(EVENT_DUPES_DONE, payload);
     }
 
     fn start_mft(self: &Arc<Self>, a: &Value) -> Result<Value, String> {
@@ -367,7 +420,7 @@ struct Reporter {
 }
 
 impl Reporter {
-    fn start(progress: Arc<Progress>, control: Arc<Control>, emit: Emit, started: Instant) -> Reporter {
+    fn start(snapshot: Box<dyn Fn() -> Value + Send>, control: Arc<Control>, emit: Emit, started: Instant, event: &'static str) -> Reporter {
         let done = Arc::new(AtomicBool::new(false));
         let flag = done.clone();
         let handle = std::thread::spawn(move || loop {
@@ -378,10 +431,10 @@ impl Reporter {
             if flag.load(Ordering::SeqCst) {
                 break;
             }
-            let mut v = progress.snapshot();
+            let mut v = snapshot();
             v["paused"] = json!(control.is_paused());
             v["elapsedMs"] = json!(started.elapsed().as_millis() as u64);
-            emit(EVENT_PROGRESS, v);
+            emit(event, v);
         });
         Reporter { done, handle: Some(handle) }
     }

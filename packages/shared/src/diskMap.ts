@@ -129,3 +129,65 @@ export interface DiskSizes {
   version: string
   sizes: Record<string, number | null>
 }
+
+export type DiskDupesStage = 'idle' | 'size' | 'quick' | 'full'
+
+export interface DiskDupesRequest {
+  under?: string[]
+  minSize?: number
+  excludes?: string[]
+  level?: DiskScanLevel
+}
+
+export interface DiskDupesProgress {
+  stage: DiskDupesStage
+  candidates: number
+  files: number
+  filesDone: number
+  bytes: number
+  bytesRead: number
+  groups: number
+  skipped: number
+  current: string
+  elapsedMs: number
+  paused: boolean
+}
+
+export interface DiskDupeFile {
+  path: string
+  mtime: number
+}
+
+export interface DiskDupeGroup {
+  size: number
+  hash: string
+  count: number
+  files: DiskDupeFile[]
+}
+
+export interface DiskDupesSkipped {
+  stale: number
+  cloud: number
+  locked: number
+  changed: number
+  gone: number
+}
+
+export interface DiskDupesDone {
+  ok: boolean
+  cancelled?: boolean
+  error?: string
+  groups: DiskDupeGroup[]
+  totalGroups: number
+  wasted: number
+  candidates: number
+  hashedFiles: number
+  hashedBytes: number
+  skipped: DiskDupesSkipped
+  ms: number
+}
+
+export interface DiskDupesStart {
+  started: boolean
+  error?: string
+}

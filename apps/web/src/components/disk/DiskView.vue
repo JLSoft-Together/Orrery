@@ -7,6 +7,14 @@ import { useDiskMapStore } from '../../stores/diskMap'
 import { useDiskCleanStore } from '../../stores/diskClean'
 import { hasDiskClean } from '../../lib/diskClean'
 import DiskClean from './clean/DiskClean.vue'
+import { Copy as DupesIcon } from 'lucide-vue-next'
+import { hasDiskDupes } from '../../lib/diskMap'
+import { useDiskDupesStore } from '../../stores/diskDupes'
+import DiskDupes from './dupes/DiskDupes.vue'
+import { FolderInput as OrganizeIcon } from 'lucide-vue-next'
+import { hasOrganize } from '../../lib/organize'
+import { useOrganizeStore } from '../../stores/organize'
+import OrganizeTab from './organize/OrganizeTab.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskActions from './DiskActions.vue'
 import DiskHistory from './DiskHistory.vue'
@@ -30,12 +38,31 @@ const MODE_ICON = { browse: FolderTree, search: Search, big: Weight, old: Hourgl
 const modes = computed(() => [
   ...DISK_MODES.map((m) => ({ value: m as DiskMode | 'clean', label: t(`diskMap.mode.${m}`), icon: MODE_ICON[m] })),
   ...(hasDiskClean ? [{ value: 'clean' as const, label: t('diskClean.tab'), icon: Eraser }] : []),
+  ...dupesTab.value,
+  ...organizeTab.value,
 ])
-const cleanMode = computed(() => hasDiskClean && clean.active)
-const searchMode = computed(() => store.mode !== 'browse' && !cleanMode.value)
-const tab = computed<DiskMode | 'clean'>(() => (cleanMode.value ? 'clean' : store.mode))
+const dupes = useDiskDupesStore()
+const dupesTab = computed(() => (hasDiskDupes ? [{ value: 'dupes' as const, label: t('diskDupes.tab'), icon: DupesIcon }] : []))
+const dupesMode = computed(() => hasDiskDupes && dupes.active)
+const cleanMode = computed(() => hasDiskClean && clean.active && !dupesMode.value)
+const organize = useOrganizeStore()
+const organizeTab = computed(() => (hasOrganize ? [{ value: 'organize' as const, label: t('diskOrganize.tab'), icon: OrganizeIcon }] : []))
+const organizeMode = computed(() => hasOrganize && organize.active && !clean.active && !dupes.active)
+const searchMode = computed(() => store.mode !== 'browse' && !cleanMode.value && !dupesMode.value && !organizeMode.value)
+const tab = computed<DiskMode | 'clean' | 'dupes' | 'organize'>(() => (organizeMode.value ? 'organize' : dupesMode.value ? 'dupes' : cleanMode.value ? 'clean' : store.mode))
 
-function setTab(m: DiskMode | 'clean'): void {
+function setTab(m: DiskMode | 'clean' | 'dupes' | 'organize'): void {
+  organize.active = m === 'organize'
+  if (m === 'organize') {
+    clean.active = false
+    dupes.active = false
+    return
+  }
+  if (m === 'dupes') {
+    clean.active = false
+    return dupes.open()
+  }
+  dupes.active = false
   if (m === 'clean') return clean.openFor(clean.project)
   clean.active = false
   store.setMode(m)
@@ -63,7 +90,7 @@ onBeforeUnmount(() => store.dispose())
         <h2 class="text-2xl font-semibold tracking-tight">{{ t('diskMap.title') }}</h2>
         <p class="mt-1 max-w-[80ch] text-sm text-ink-muted">{{ t('diskMap.subtitle') }}</p>
       </div>
-      <SegmentedControl v-if="!searchMode && !cleanMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
+      <SegmentedControl v-if="!searchMode && !cleanMode && !dupesMode && !organizeMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
     </div>
 
     <div v-if="!store.supported" class="mt-5 flex items-start gap-3 rounded-card bg-warning-soft px-4 py-3" role="alert" data-disk-unsupported>
@@ -78,7 +105,9 @@ onBeforeUnmount(() => store.dispose())
         <SegmentedControl :model-value="tab" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="setTab" />
       </div>
 
-      <DiskClean v-if="cleanMode" />
+      <OrganizeTab v-if="organizeMode" />
+      <DiskDupes v-else-if="dupesMode" />
+      <DiskClean v-else-if="cleanMode" />
       <DiskSearch v-else-if="searchMode" @action="onAction" />
 
       <section v-else-if="store.path" class="mt-4">

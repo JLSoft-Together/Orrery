@@ -1,7 +1,10 @@
-import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskHistoryEntry } from '@ccm/shared'
+import { DISK_KINDS, DISK_SORTS } from '@ccm/shared'
+export { DISK_KINDS, DISK_SORTS }
+import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSort } from '@ccm/shared'
 import { desktop } from './desktop'
 
-export type { DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskHistoryEntry } from '@ccm/shared'
+export type { DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult } from '@ccm/shared'
+export type { DiskSort }
 export type DiskLevel = DiskScanLevel
 export type DiskChart = 'treemap' | 'sunburst'
 
@@ -13,6 +16,7 @@ interface DiskMapBridge {
   diskMapResume?: () => Promise<boolean>
   diskMapCancel?: () => Promise<boolean>
   diskMapChildren?: (req: { path: string; sort: 'size' | 'name' | 'mtime'; limit: number }) => Promise<DiskChildren | null>
+  diskMapSearch?: (q: DiskSearchQuery) => Promise<DiskSearchResult | null>
   diskMapDelete?: (req: { paths: string[]; permanent: boolean }) => Promise<DiskDeleteResult>
   diskMapReveal?: (path: string) => Promise<void>
   diskMapHistory?: (req: { limit: number }) => Promise<DiskHistoryEntry[]>
@@ -42,6 +46,8 @@ export const diskMapResume = (): Promise<boolean> => call(bridge?.diskMapResume 
 export const diskMapCancel = (): Promise<boolean> => call(bridge?.diskMapCancel && (() => bridge.diskMapCancel!()), false)
 export const diskMapChildren = (path: string, limit = 2000): Promise<DiskChildren | null> =>
   call<DiskChildren | null>(bridge?.diskMapChildren && (() => bridge.diskMapChildren!({ path, sort: 'size', limit })), null)
+export const diskMapSearch = (q: DiskSearchQuery): Promise<DiskSearchResult | null> =>
+  call<DiskSearchResult | null>(bridge?.diskMapSearch && (() => bridge.diskMapSearch!(q)), null)
 export const diskMapDelete = (paths: string[], permanent: boolean): Promise<DiskDeleteResult | null> =>
   call<DiskDeleteResult | null>(bridge?.diskMapDelete && (() => bridge.diskMapDelete!({ paths, permanent })), null)
 export const diskMapReveal = (path: string): Promise<void> => call<void>(bridge?.diskMapReveal && (() => bridge.diskMapReveal!(path)), undefined)
@@ -233,4 +239,98 @@ export function isUnder(path: string, root: string): boolean {
 export function volumeUsedPct(v: Pick<DiskVolume, 'total' | 'free'>): number {
   if (!(v.total > 0)) return 0
   return Math.min(100, Math.max(0, ((v.total - v.free) / v.total) * 100))
+}
+
+export type DiskMode = 'browse' | 'search' | 'big' | 'old'
+export type DiskKindFilter = '' | (typeof DISK_KINDS)[number]
+
+export interface DiskFilters {
+  text: string
+  kind: DiskKindFilter
+  minSize: number | null
+  maxSize: number | null
+  after: number | null
+  before: number | null
+  only: '' | 'file' | 'dir'
+  scoped: boolean
+  sort: DiskSort
+}
+
+export const DISK_MODES: DiskMode[] = ['browse', 'search', 'big', 'old']
+export const SIZE_PRESETS = [100 * 1024 ** 2, 1024 ** 3, 10 * 1024 ** 3]
+export const OLD_MONTHS = [3, 6, 12, 24]
+export const BIG_MIN_DEFAULT = SIZE_PRESETS[0]!
+export const SEARCH_LIMIT = 500
+export const SEARCH_DEBOUNCE_MS = 120
+const DAY = 86_400_000
+
+export function defaultFilters(): DiskFilters {
+  return { text: '', kind: '', minSize: null, maxSize: null, after: null, before: null, only: '', scoped: false, sort: 'size' }
+}
+
+export function monthsAgo(now: number, months: number): number {
+  const d = new Date(now)
+  d.setMonth(d.getMonth() - months)
+  return d.getTime()
+}
+
+export function hasCriteria(f: DiskFilters): boolean {
+  return !!(f.text.trim() || f.kind || f.minSize || f.maxSize || f.after || f.before || f.only)
+}
+
+export function buildSearchQuery(mode: DiskMode, f: DiskFilters, ctx: { now: number; path: string; oldMonths: number }): DiskSearchQuery | null {
+  if (mode === 'browse') return null
+  if (mode === 'search' && !hasCriteria(f)) return null
+  const q: DiskSearchQuery = { limit: SEARCH_LIMIT }
+  const text = f.text.trim()
+  if (text) q.query = text
+  if (f.kind) q.kind = f.kind
+  if (f.maxSize && f.maxSize > 0) q.maxSize = f.maxSize
+  if (f.scoped && ctx.path) q.under = ctx.path
+  if (mode === 'big') {
+    q.only = 'file'
+    q.sort = 'size'
+    q.minSize = f.minSize && f.minSize > 0 ? f.minSize : BIG_MIN_DEFAULT
+    return q
+  }
+  if (mode === 'old') {
+    q.only = 'file'
+    q.sort = 'size'
+    q.before = monthsAgo(ctx.now, ctx.oldMonths)
+    if (f.minSize && f.minSize > 0) q.minSize = f.minSize
+    return q
+  }
+  if (f.minSize && f.minSize > 0) q.minSize = f.minSize
+  if (f.after) q.after = f.after
+  if (f.before) q.before = f.before
+  if (f.only) q.only = f.only
+  q.sort = f.sort
+  return q
+}
+
+export function dateToMs(value: string, endOfDay = false): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!m) return null
+  const ms = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime()
+  if (!Number.isFinite(ms)) return null
+  return endOfDay ? ms + DAY : ms
+}
+
+export function msToDate(ms: number | null, endOfDay = false): string {
+  if (!ms) return ''
+  const d = new Date(endOfDay ? ms - DAY : ms)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
+export function mbToBytes(mb: number): number | null {
+  return Number.isFinite(mb) && mb > 0 ? Math.round(mb * 1024 ** 2) : null
+}
+
+export function shortPath(p: string, max = 56): string {
+  if (p.length <= max) return p
+  const keep = max - 3
+  const head = Math.ceil(keep * 0.4)
+  return `${p.slice(0, head)}...${p.slice(p.length - (keep - head))}`
 }

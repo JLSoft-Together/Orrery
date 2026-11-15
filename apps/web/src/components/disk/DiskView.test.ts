@@ -17,6 +17,7 @@ const api = vi.hoisted(() => ({
   del: vi.fn(),
   history: vi.fn(),
   reveal: vi.fn(),
+  search: vi.fn(),
 }))
 
 vi.mock('../../lib/diskMap', async (orig) => ({
@@ -34,6 +35,7 @@ vi.mock('../../lib/diskMap', async (orig) => ({
   diskMapDelete: (...a: unknown[]) => api.del(...a),
   diskMapHistory: () => api.history(),
   diskMapReveal: (p: string) => api.reveal(p),
+  diskMapSearch: (...a: unknown[]) => api.search(...a),
   onDiskMapProgress: () => () => {},
   onDiskMapDone: () => () => {},
 }))
@@ -187,5 +189,52 @@ describe('DiskView', () => {
   it('shows an empty history message', async () => {
     const w = await mountView()
     expect(w.find('[data-disk-history-empty]').exists()).toBe(true)
+  })
+})
+
+describe('DiskView search', () => {
+  it('opens the search tab, finds files and deletes a selected result', async () => {
+    api.search.mockResolvedValue({ total: 2, ms: 4, items: [{ ...entry('movie.mp4', 5000), kind: 'video' }, entry('movie2.mp4', 900)] })
+    const w = await mountView()
+    await w.find('[data-disk-mode] [role=radio]:nth-child(2)').trigger('click')
+    expect(w.find('[data-disk-search]').exists()).toBe(true)
+    expect(w.find('[data-disk-treemap]').exists()).toBe(false)
+    expect(w.find('[data-disk-search-idle]').exists()).toBe(true)
+    await w.find('[data-disk-query]').setValue('*.mp4')
+    await new Promise((r) => setTimeout(r, 200))
+    await flushPromises()
+    expect(api.search.mock.calls[0]![0]).toMatchObject({ query: '*.mp4', limit: 500 })
+    expect(w.findAll('[data-disk-result]')).toHaveLength(2)
+    expect(w.find('[data-disk-matches]').text()).toBe('2 matches')
+    expect(w.find('[data-disk-ms]').text()).toBe('4 ms')
+    await w.find('[data-disk-result] input[type=checkbox]').trigger('click')
+    expect(w.find('[data-disk-selection]').text()).toContain('1')
+    api.del.mockResolvedValue({ done: [{ path: 'C:\\r\\movie.mp4', size: 5000 }], failed: [], freed: 5000, permanent: false })
+    api.search.mockResolvedValue({ total: 1, ms: 2, items: [entry('movie2.mp4', 900)] })
+    await w.find('[data-disk-trash]').trigger('click')
+    await flushPromises()
+    expect(api.del).toHaveBeenCalledWith(['C:\\r\\movie.mp4'], false)
+    expect(w.findAll('[data-disk-result]')).toHaveLength(1)
+  })
+
+  it('big files tab searches at once and shows the capped note', async () => {
+    api.search.mockResolvedValue({ total: 9000, ms: 12, items: [entry('huge.bin', 9e9)] })
+    const w = await mountView()
+    await w.find('[data-disk-mode] [role=radio]:nth-child(3)').trigger('click')
+    await flushPromises()
+    expect(api.search.mock.calls[0]![0]).toMatchObject({ only: 'file', sort: 'size', minSize: 100 * 1024 ** 2 })
+    expect(w.find('[data-disk-capped]').exists()).toBe(true)
+  })
+
+  it('old files tab offers 3, 6, 12 and 24 months', async () => {
+    api.search.mockResolvedValue({ total: 0, ms: 1, items: [] })
+    const w = await mountView()
+    await w.find('[data-disk-mode] [role=radio]:nth-child(4)').trigger('click')
+    await flushPromises()
+    expect(w.findAll('[data-disk-months] [role=radio]')).toHaveLength(4)
+    await w.find('[data-disk-months] [role=radio]:first-child').trigger('click')
+    await flushPromises()
+    expect(api.search).toHaveBeenCalledTimes(2)
+    expect(w.find('[data-disk-results-empty]').exists()).toBe(true)
   })
 })

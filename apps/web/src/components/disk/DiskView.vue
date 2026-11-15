@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUp, ChartPie, CircleAlert, LayoutGrid, RefreshCw } from 'lucide-vue-next'
-import { breadcrumbs, DISK_CHARTS, DISK_GROUPS, formatSize, GROUP_VAR, isUnder, type DiskChart } from '../../lib/diskMap'
+import { ArrowUp, ChartPie, CircleAlert, FolderTree, Hourglass, LayoutGrid, RefreshCw, Search, Weight } from 'lucide-vue-next'
+import { breadcrumbs, DISK_CHARTS, DISK_GROUPS, DISK_MODES, formatSize, GROUP_VAR, isUnder, type DiskChart, type DiskMode } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskActions from './DiskActions.vue'
 import DiskHistory from './DiskHistory.vue'
 import DiskScanBar from './DiskScanBar.vue'
+import DiskSearch from './DiskSearch.vue'
 import DiskSunburst from './DiskSunburst.vue'
 import DiskTree from './DiskTree.vue'
 import DiskTreemap from './DiskTreemap.vue'
@@ -21,6 +22,9 @@ const enterable = (p: string): boolean => rootsKnown.value.length === 0 || roots
 const total = computed(() => store.children?.size ?? store.items.reduce((s, i) => s + i.size, 0))
 const empty = computed(() => !!store.children && !store.items.some((i) => i.size > 0))
 const charts = computed(() => DISK_CHARTS.map((c) => ({ value: c, label: t(`diskMap.chart.${c}`), icon: c === 'treemap' ? LayoutGrid : ChartPie })))
+const MODE_ICON = { browse: FolderTree, search: Search, big: Weight, old: Hourglass }
+const modes = computed(() => DISK_MODES.map((m) => ({ value: m, label: t(`diskMap.mode.${m}`), icon: MODE_ICON[m] })))
+const searchMode = computed(() => store.mode !== 'browse')
 const currentName = computed(() => crumbs.value[crumbs.value.length - 1]?.label ?? '')
 
 function onPick(path: string, range: boolean): void {
@@ -44,7 +48,7 @@ onBeforeUnmount(() => store.dispose())
         <h2 class="text-2xl font-semibold tracking-tight">{{ t('diskMap.title') }}</h2>
         <p class="mt-1 max-w-[80ch] text-sm text-ink-muted">{{ t('diskMap.subtitle') }}</p>
       </div>
-      <SegmentedControl :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
+      <SegmentedControl v-if="!searchMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
     </div>
 
     <div v-if="!store.supported" class="mt-5 flex items-start gap-3 rounded-card bg-warning-soft px-4 py-3" role="alert" data-disk-unsupported>
@@ -55,7 +59,13 @@ onBeforeUnmount(() => store.dispose())
     <template v-else>
       <section class="mt-5 rounded-card border border-line p-3"><DiskScanBar /></section>
 
-      <section v-if="store.path" class="mt-4">
+      <div v-if="store.indexed || searchMode" class="mt-4">
+        <SegmentedControl :model-value="store.mode" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="(m: DiskMode) => store.setMode(m)" />
+      </div>
+
+      <DiskSearch v-if="searchMode" @action="onAction" />
+
+      <section v-else-if="store.path" class="mt-4">
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="ccm-btn" :disabled="!store.canUp || store.loading" :aria-label="t('diskMap.up')" :title="t('diskMap.up')" data-disk-up @click="store.up()">
             <ArrowUp :size="14" aria-hidden="true" />{{ t('diskMap.up') }}

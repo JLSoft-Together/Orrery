@@ -9,9 +9,13 @@ import {
   diskMapResume,
   diskMapReveal,
   diskMapScan,
+  diskMapSearch,
   diskMapStatus,
   diskMapVolumes,
+  buildSearchQuery,
+  defaultFilters,
   hasDiskMap,
+  SEARCH_DEBOUNCE_MS,
   isUnder,
   loadChart,
   loadLevel,
@@ -24,7 +28,10 @@ import {
   type DiskChildren,
   type DiskDeleteResult,
   type DiskEntry,
+  type DiskFilters,
   type DiskHistoryEntry,
+  type DiskMode,
+  type DiskSearchResult,
   type DiskLevel,
   type DiskProgress,
   type DiskStatus,
@@ -57,7 +64,15 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   const supported = hasDiskMap
   let started = false
   let offs: (() => void)[] = []
+  const mode = ref<DiskMode>('browse')
+  const filters = ref<DiskFilters>(defaultFilters())
+  const oldMonths = ref(12)
+  const results = shallowRef<DiskSearchResult | null>(null)
+  const searching = ref(false)
+  const searchFailed = ref(false)
   let navToken = 0
+  let searchSeq = 0
+  let searchTimer: ReturnType<typeof setTimeout> | null = null
 
   const items = computed(() => children.value?.items ?? [])
   const scanning = computed(() => !!status.value?.scanning)
@@ -70,7 +85,8 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     const rs = status.value?.roots ?? []
     return rs.length === 0 || rs.some((r) => isUnder(p, r))
   })
-  const selectedItems = computed(() => items.value.filter((i) => selected.value.has(i.path)))
+  const listed = computed(() => (mode.value === 'browse' ? items.value : (results.value?.items ?? [])))
+  const selectedItems = computed(() => listed.value.filter((i) => selected.value.has(i.path)))
   const selectedSize = computed(() => selectedItems.value.reduce((s, i) => s + i.size, 0))
   const totalFreed = computed(() => history.value.reduce((s, h) => s + h.freed, 0))
 
@@ -118,6 +134,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
             await loadVolumes()
             if (!path.value && status.value?.roots[0]) await open(status.value.roots[0])
             else await reload()
+            if (mode.value !== 'browse') await runSearch()
           })
         }),
       )
@@ -128,6 +145,8 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   }
 
   function dispose(): void {
+    clearSearchTimer()
+    searchSeq++
     for (const off of offs) off()
     offs = []
     started = false
@@ -143,7 +162,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   async function scan(): Promise<boolean> {
     if (!roots.value.length || scanning.value) return false
     progress.value = { files: 0, bytes: 0, current: '', elapsedMs: 0 }
-    const ok = await diskMapScan(roots.value, level.value)
+    const ok = await diskMapScan([...roots.value], level.value)
     if (!ok) {
       progress.value = null
       return false
@@ -174,6 +193,71 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     if (p && canUp.value) await open(p)
   }
 
+  function clearSearchTimer(): void {
+    if (searchTimer) clearTimeout(searchTimer)
+    searchTimer = null
+  }
+
+  async function runSearch(): Promise<void> {
+    clearSearchTimer()
+    const q = buildSearchQuery(mode.value, filters.value, { now: Date.now(), path: path.value, oldMonths: oldMonths.value })
+    const seq = ++searchSeq
+    if (!q) {
+      results.value = null
+      searching.value = false
+      searchFailed.value = false
+      return
+    }
+    searching.value = true
+    const res = await diskMapSearch(q)
+    if (seq !== searchSeq) return
+    searching.value = false
+    searchFailed.value = res === null
+    results.value = res
+    if (selected.value.size) {
+      const present = new Set((res?.items ?? []).map((i) => i.path))
+      const next = new Set([...selected.value].filter((p) => present.has(p)))
+      if (next.size !== selected.value.size) selected.value = next
+    }
+  }
+
+  function scheduleSearch(immediate = false): void {
+    clearSearchTimer()
+    if (mode.value === 'browse') return
+    searchSeq++
+    if (immediate) return void runSearch()
+    searching.value = true
+    searchTimer = setTimeout(() => void runSearch(), SEARCH_DEBOUNCE_MS)
+  }
+
+  function setMode(next: DiskMode): void {
+    if (next === mode.value) return
+    clearSearchTimer()
+    searchSeq++
+    mode.value = next
+    selected.value = new Set()
+    anchor.value = null
+    results.value = null
+    searching.value = false
+    searchFailed.value = false
+    if (next !== 'browse') scheduleSearch(true)
+  }
+
+  function patchFilters(patch: Partial<DiskFilters>): void {
+    filters.value = { ...filters.value, ...patch }
+    scheduleSearch()
+  }
+
+  function resetFilters(): void {
+    filters.value = defaultFilters()
+    scheduleSearch(true)
+  }
+
+  function setOldMonths(n: number): void {
+    oldMonths.value = n
+    scheduleSearch(true)
+  }
+
   function setLevel(next: DiskLevel): void {
     level.value = next
     saveLevel(next)
@@ -187,7 +271,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   function toggle(p: string, range = false): void {
     const next = new Set(selected.value)
     if (range && anchor.value) {
-      const list = items.value
+      const list = listed.value
       const a = list.findIndex((i) => i.path === anchor.value)
       const b = list.findIndex((i) => i.path === p)
       if (a >= 0 && b >= 0) {
@@ -214,7 +298,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   }
 
   function selectAll(): void {
-    selected.value = new Set(items.value.map((i) => i.path))
+    selected.value = new Set(listed.value.map((i) => i.path))
   }
 
   async function remove(paths: string[], permanent: boolean): Promise<DiskDeleteResult | null> {
@@ -235,7 +319,8 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     report.value = { freed: res.freed, done: res.done.length, failed: res.failed, permanent: res.permanent }
     const keep = new Set(res.failed.map((f) => f.path))
     await Promise.all([reload(), loadVolumes(), loadHistory(), refreshStatus()])
-    selected.value = new Set(items.value.filter((i) => keep.has(i.path)).map((i) => i.path))
+    if (mode.value !== 'browse') await runSearch()
+    selected.value = new Set(listed.value.filter((i) => keep.has(i.path)).map((i) => i.path))
     return res
   }
 
@@ -277,6 +362,13 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     history,
     sub,
     supported,
+    mode,
+    filters,
+    oldMonths,
+    results,
+    searching,
+    searchFailed,
+    listed,
     items,
     scanning,
     paused,
@@ -309,5 +401,10 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     dismissReport,
     reveal,
     loadSub,
+    setMode,
+    patchFilters,
+    resetFilters,
+    setOldMonths,
+    runSearch,
   }
 })

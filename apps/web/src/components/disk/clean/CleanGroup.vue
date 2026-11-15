@@ -6,8 +6,8 @@ import { formatSize } from '../../../lib/diskMap'
 import { pickable, type CleanCategory, type CleanItem } from '../../../lib/diskClean'
 import CleanRow from './CleanRow.vue'
 
-const props = defineProps<{ category: CleanCategory; items: CleanItem[]; selected: Set<string>; open: string[]; days: number; now: number; busy: boolean; pending?: boolean; canMeasure?: boolean; deleting?: boolean }>()
-const emit = defineEmits<{ toggle: [path: string]; all: [id: string]; reveal: [path: string]; measure: [id: string]; emptyBin: [] }>()
+const props = defineProps<{ category: CleanCategory; items: CleanItem[]; selected: Set<string>; open: string[]; days: number; now: number; busy: boolean; pending?: boolean; canMeasure?: boolean; deleting?: boolean; note?: string; canMove?: boolean }>()
+const emit = defineEmits<{ toggle: [path: string]; all: [id: string]; reveal: [path: string]; measure: [id: string]; emptyBin: []; command: [path: string]; move: [path: string] }>()
 
 const { t, locale } = useI18n()
 
@@ -44,6 +44,7 @@ const title = computed(() => t(props.category.titleKey))
       <span class="min-w-0 flex-1">{{ t('diskClean.notMeasured') }}</span>
       <button type="button" class="ccm-btn shrink-0" :disabled="!canMeasure" data-clean-measure @click="emit('measure', category.id)">{{ t('diskClean.measure') }}</button>
     </div>
+    <p v-else-if="note && !items.length && !busy" class="px-3 py-3 text-center text-xs text-ink-muted" :data-clean-note="note">{{ t(`diskClean.note.${note}`) }}</p>
     <p v-else-if="!items.length && !busy" class="px-3 py-3 text-center text-xs text-ink-muted">{{ t('diskClean.empty') }}</p>
     <ul v-if="items.length" class="max-h-[28rem] divide-y divide-line overflow-y-auto overflow-x-hidden">
       <CleanRow
@@ -55,7 +56,10 @@ const title = computed(() => t(props.category.titleKey))
         :days="days"
         :now="now"
         :busy="deleting"
+        :can-move="canMove"
         @empty-bin="emit('emptyBin')"
+        @command="emit('command', $event)"
+        @move="emit('move', $event)"
         @toggle="emit('toggle', $event)"
         @reveal="emit('reveal', $event)"
       />

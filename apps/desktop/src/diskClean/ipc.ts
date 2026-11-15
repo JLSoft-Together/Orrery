@@ -1,13 +1,13 @@
 import type { IpcMain, IpcMainInvokeEvent, MessageBoxOptions } from 'electron'
-import { parseCleanDelete, parseCleanScan, type CleanBinResult, type CleanCategory, type CleanScanResult, type DiskDeleteResult } from '@ccm/shared'
+import { parseCleanCommand, parseCleanDelete, parseCleanScan, type CleanBinResult, type CleanCommandResult, type CleanCategory, type CleanScanResult, type DiskDeleteResult } from '@ccm/shared'
 import type { DeleteAsk } from '../diskMap/delete'
-import { binBoxOptions, oneTapBoxOptions, oneTapChoice } from './dialog'
+import { binBoxOptions, commandBoxOptions, oneTapBoxOptions, oneTapChoice } from './dialog'
 import { DiskCleanService, type DiskCleanDeps } from './service'
 
-export const DISKCLEAN_CHANNELS = ['ccm:diskclean-categories', 'ccm:diskclean-scan', 'ccm:diskclean-cancel', 'ccm:diskclean-delete', 'ccm:diskclean-empty-bin'] as const
+export const DISKCLEAN_CHANNELS = ['ccm:diskclean-categories', 'ccm:diskclean-scan', 'ccm:diskclean-cancel', 'ccm:diskclean-delete', 'ccm:diskclean-empty-bin', 'ccm:diskclean-command'] as const
 export const DISKCLEAN_PROGRESS = 'ccm:diskclean-progress'
 
-export interface DiskCleanIpcOptions extends Omit<DiskCleanDeps, 'confirm' | 'emit' | 'askOneTap' | 'askBin'> {
+export interface DiskCleanIpcOptions extends Omit<DiskCleanDeps, 'confirm' | 'emit' | 'askOneTap' | 'askBin' | 'askCommand'> {
   ipcMain: Pick<IpcMain, 'handle' | 'removeHandler'>
   isAppFrame: (event: IpcMainInvokeEvent) => boolean
   broadcast: (channel: string, payload: unknown) => void
@@ -37,6 +37,11 @@ export function createDiskClean(opts: DiskCleanIpcOptions): DiskClean {
       if (opts.autoConfirm) return true
       if (!current || !opts.ask) return false
       return (await opts.ask(current, binBoxOptions(ask, opts.locale?.() ?? 'en', opts.platform === 'darwin'))) === 0
+    },
+    askCommand: async (ask) => {
+      if (opts.autoConfirm) return true
+      if (!current || !opts.ask) return false
+      return (await opts.ask(current, commandBoxOptions(ask, opts.locale?.() ?? 'en'))) === 0
     },
   })
   const { ipcMain, isAppFrame } = opts
@@ -77,6 +82,19 @@ export function createDiskClean(opts: DiskCleanIpcOptions): DiskClean {
       current = event
       try {
         return await service.emptyBin()
+      } finally {
+        current = null
+      }
+    }),
+  )
+  ipcMain.handle(
+    'ccm:diskclean-command',
+    guard<CleanCommandResult>({ done: false, freed: 0, cancelled: true }, async (event, raw) => {
+      const req = parseCleanCommand(raw)
+      if (!req) return { done: false, freed: 0, error: 'invalid' }
+      current = event
+      try {
+        return await service.runCommand(req.path)
       } finally {
         current = null
       }

@@ -1,6 +1,6 @@
 export type CleanGroup = 'dev' | 'system'
 export type CleanLock = 'open' | 'run' | 'server' | 'self' | 'admin' | 'browser' | 'app' | 'denied'
-export type CleanAction = 'files' | 'bin'
+export type CleanAction = 'files' | 'bin' | 'command'
 
 export interface CleanCategory {
   id: string
@@ -25,7 +25,11 @@ export interface CleanItem {
   files?: number
   detail?: string
   unknown?: boolean
+  hold?: boolean
+  warn?: boolean
 }
+
+export type CleanNote = 'noCli' | 'noDaemon' | 'timeout' | 'noSdk'
 
 export interface CleanScanRequest {
   ids: string[]
@@ -39,12 +43,27 @@ export interface CleanProgress {
   items?: CleanItem[]
   count: number
   bytes: number
+  note?: CleanNote
 }
 
 export interface CleanScanResult {
   items: CleanItem[]
   cancelled?: boolean
   busy?: boolean
+  notes?: Record<string, CleanNote>
+}
+
+export interface CleanCommandResult {
+  done: boolean
+  freed: number
+  cancelled?: boolean
+  error?: string
+}
+
+export function parseCleanCommand(raw: unknown): { path: string } | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const p = (raw as Record<string, unknown>).path
+  return typeof p === 'string' && p.length > 0 && p.length <= 4096 && !/[\u0000-\u001f]/.test(p) ? { path: p } : null
 }
 
 export interface CleanDeleteRequest {

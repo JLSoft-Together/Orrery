@@ -324,3 +324,8 @@ Invariants:
 
 - `lib/organize.ts` bridge `organize*` + `organizeDelete` (= `diskMapDelete`, Thùng rác), `junkPreselect` (không tick `unknown`), `ruleValid`; tạm `mergeLocaleMessage` `i18n/disk-organize-v101.ts` (namespace `diskOrganize`) cho tới khi main gộp import vào en/vi.
 - `stores/organize.ts`: `active` (tab trong `DiskView`, ưu tiên khi `clean` / `dupes` không active), `state`, `plan` + `off` (id bỏ tick), `run` gửi `plan.id` + `off`, `undo(id)`, junk `scanJunk` / `toggleJunk` / `removeJunk`. UI `components/disk/organize/OrganizeTab.vue` (nguồn, Loại / Tháng, chọn loại, `OrganizeRules.vue`, công tắc tự động, bảng xem trước), `OrganizeHistory.vue` (lịch sử + Undo), `OrganizeJunk.vue`. Test `stores/organize.test.ts`.
+
+## v101 SDK / Docker / Chuyển ổ (WP-4a-sdk-move)
+
+- `lib/diskClean.ts`: `SDK_IDS`, `pickable` bỏ `action: command`, preselect bỏ `hold` và nhóm SDK không xét tuổi; `diskCleanCommand`. Store `diskClean`: `notes` (lý do nhóm rỗng), `runCommand`. `CleanRow`: nhãn `sdkKind` / `dockerKind`, nút Chạy lệnh, chip Mất dữ liệu (`warn`), nút chuyển ổ (cache, AVD) -> `diskMove.fromClean`. `CleanGroup` hiện `diskClean.note.*`.
+- `lib/diskMove.ts` bridge `diskMove*`, `errorKey`, `percent`; `stores/diskMove.ts` candidates / moves / pending, `choose` (chọn ổ đầu tiên ok), `makePlan`, `run`, `back`, `recover`; `components/disk/move/DiskMove.vue` gắn cuối tab Dọn dẹp (ẩn khi lọc project). i18n `diskMove.*` nằm trong `i18n/disk-clean-v101.ts` (không cần import thêm ở en/vi).

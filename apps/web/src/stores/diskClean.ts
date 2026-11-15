@@ -4,6 +4,7 @@ import type { DiskDeleteResult } from '@ccm/shared'
 import {
   CLEAN_ONE_TAP,
   clampDays,
+  diskCleanCommand,
   diskCleanEmptyBin,
   diskCleanCancel,
   diskCleanCategories,
@@ -24,6 +25,7 @@ import {
   under,
   type CleanCategory,
   type CleanItem,
+  type CleanNote,
   type CleanProgress,
   type CleanScanResult,
 } from '../lib/diskClean'
@@ -54,6 +56,7 @@ export const useDiskCleanStore = defineStore('diskClean', () => {
   const tap = ref<'idle' | 'scanning' | 'ready'>('idle')
   const tapOff = ref<Set<string>>(new Set())
   const tapNow = ref(Date.now())
+  const notes = shallowRef<Record<string, CleanNote>>({})
   let off: (() => void) | null = null
   let seq = 0
 
@@ -87,6 +90,7 @@ export const useDiskCleanStore = defineStore('diskClean', () => {
       off = onDiskCleanProgress((p) => {
         if (!scanning.value) return
         progress.value = { ...progress.value, [p.category]: p }
+        if (p.note) notes.value = { ...notes.value, [p.category]: p.note }
         if (p.state === 'items' && p.items?.length) items.value = [...items.value, ...p.items]
       })
     }
@@ -114,6 +118,7 @@ export const useDiskCleanStore = defineStore('diskClean', () => {
     const forProject = project.value
     setOpen(openNow)
     const kept = items.value.filter((i) => !ids.includes(i.category))
+    notes.value = Object.fromEntries(Object.entries(notes.value).filter(([k]) => !ids.includes(k)))
     scanning.value = true
     progress.value = {}
     items.value = kept
@@ -123,6 +128,7 @@ export const useDiskCleanStore = defineStore('diskClean', () => {
       const res = await diskCleanScan(ids, roots, openNow)
       if (token !== seq || forProject !== project.value) return null
       items.value = [...kept, ...res.items]
+      if (res.notes) notes.value = { ...notes.value, ...res.notes }
       const picked = preselect(res.items, categories.value, days.value, Date.now(), open.value)
       selected.value = fresh ? picked : new Set([...selected.value, ...picked])
       return res
@@ -282,6 +288,19 @@ export const useDiskCleanStore = defineStore('diskClean', () => {
     }
   }
 
+  async function runCommand(path: string): Promise<void> {
+    if (deleting.value) return
+    deleting.value = true
+    try {
+      const res = await diskCleanCommand(path)
+      if (!res || res.cancelled) return
+      if (res.done) items.value = items.value.map((i) => (i.path === path ? { ...i, size: Math.max(0, i.size - res.freed), files: 0 } : i))
+      report.value = { done: res.done ? 1 : 0, freed: res.freed, failed: res.done ? [] : [{ path, reason: res.error ?? 'failed' }], permanent: true }
+    } finally {
+      deleting.value = false
+    }
+  }
+
   function addFolder(dir: string): void {
     if (!dir || folders.value.some((f) => under(f, dir) && under(dir, f))) return
     folders.value = [...folders.value, dir]
@@ -343,5 +362,7 @@ export const useDiskCleanStore = defineStore('diskClean', () => {
     closeOneTap,
     runOneTap,
     emptyBin,
+    notes,
+    runCommand,
   }
 })

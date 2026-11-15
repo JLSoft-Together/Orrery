@@ -321,6 +321,6 @@ describe('ipc', () => {
     expect(((await handlers.get('ccm:diskclean-categories')!('app')) as unknown[]).length).toBeGreaterThan(1)
     expect(await handlers.get('ccm:diskclean-delete')!('app', { paths: 'x' })).toMatchObject({ cancelled: true })
     dc.dispose()
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(5)
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(6)
   })
 })

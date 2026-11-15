@@ -4,7 +4,7 @@ import path from 'node:path'
 import type { CleanItem, CleanLock } from '@ccm/shared'
 import { coreRows } from '../../../collector/src/procSource'
 import { Cancelled } from '../agentData/fsTree'
-import { isUnder } from '../diskMap/guard'
+import { isUnder, macTempTree } from '../diskMap/guard'
 import type { CleanCtx, CleanProvider } from './providers'
 
 export interface SysRoots {
@@ -602,4 +602,15 @@ export function systemDeps(input: SystemDepsInput): SystemDeps {
   }
   const bin = roots.bin ? dirBin(roots.bin) : platform === 'win32' ? winBin(roots.windir) : macBin(roots.home)
   return { roots, procs, apps, bin, busy: platform === 'win32' ? busyWin : async () => false }
+}
+
+export async function macTempAllow(roots: SysRoots, real: (p: string) => Promise<string> = (p) => fs.realpath(p)): Promise<string[]> {
+  if (roots.platform !== 'darwin' || !roots.macTmp) return []
+  const t = roots.macTmp.replace(/\/+$/, '')
+  const out: string[] = []
+  for (const p of [t, path.posix.join(path.posix.dirname(t), 'C')]) {
+    const r = macTempTree(await real(p).catch(() => null))
+    if (r) out.push(r)
+  }
+  return out
 }

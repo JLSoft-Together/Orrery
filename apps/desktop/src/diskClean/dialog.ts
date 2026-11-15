@@ -75,3 +75,35 @@ export function binBoxOptions(ask: { bytes: number; count: number }, locale: str
     noLink: true,
   }
 }
+
+const COMMAND_TEXT = {
+  en: {
+    title: (what: string) => `Run the official clean up for ${what}?`,
+    detail: (cmd: string, size: string, n: number) => `Orrery runs: ${cmd}\nAbout ${size} can be freed (${n} items).`,
+    warn: 'Data in these volumes is lost for good. Back up anything you still need first.',
+    ok: 'Run',
+    cancel: 'Cancel',
+    what: { images: 'unused Docker images', containers: 'stopped Docker containers', volumes: 'unused Docker volumes', buildCache: 'the Docker build cache', simUnavailable: 'unavailable iOS simulators' } as Record<string, string>,
+  },
+  vi: {
+    title: (what: string) => `Chạy lệnh dọn chính thức cho ${what}?`,
+    detail: (cmd: string, size: string, n: number) => `Orrery chạy: ${cmd}\nGiải phóng khoảng ${size} (${n} mục).`,
+    warn: 'Dữ liệu trong các volume này mất hẳn. Sao lưu phần còn cần trước.',
+    ok: 'Chạy',
+    cancel: 'Huỷ',
+    what: { images: 'image Docker không dùng', containers: 'container Docker đã dừng', volumes: 'volume Docker không dùng', buildCache: 'build cache của Docker', simUnavailable: 'simulator iOS không còn dùng được' } as Record<string, string>,
+  },
+}
+
+export function commandBoxOptions(ask: { kind: string; bytes: number; count: number; command: string; warn: boolean }, locale: string): MessageBoxOptions {
+  const t = locale.toLowerCase().startsWith('vi') ? COMMAND_TEXT.vi : COMMAND_TEXT.en
+  return {
+    type: 'warning',
+    message: t.title(t.what[ask.kind] ?? ask.kind),
+    detail: [t.detail(ask.command, formatBytes(ask.bytes), ask.count), ask.warn ? t.warn : ''].filter(Boolean).join('\n\n'),
+    buttons: [t.ok, t.cancel],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  }
+}

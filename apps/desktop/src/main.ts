@@ -46,6 +46,10 @@ import { createOrganize, e2ePath as organizeE2ePath, e2eStableMs as organizeStab
 import { rawItems as organizeRawItems } from './organize/junk'
 import { systemDeps as diskCleanSystem } from './diskClean/system'
 import { toChildren, toStatus } from './diskMap/map'
+import { macTempAllow } from './diskClean/system'
+import { runFile, sdkDeps as diskCleanSdk } from './diskClean/sdk'
+import { createDiskMove, type DiskMove } from './diskMove/ipc'
+import { fakeDev as moveFakeDev, fakeMoveSuggestions, fakePick as moveFakePick, fakeProcs as moveFakeProcs, fakeVolumes as moveFakeVolumes, moveSuggestions, toolProcs } from './diskMove/procs'
 import { isUnder as isUnderPath } from './diskMap/guard'
 import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
@@ -235,6 +239,7 @@ let diskCtl: DiskControl | null = null
 let diskMap: DiskMap | null = null
 let diskClean: DiskClean | null = null
 let organize: Organize | null = null
+let diskMove: DiskMove | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -389,6 +394,8 @@ function stopPreview(): Promise<void> {
   diskClean = null
   organize?.dispose()
   organize = null
+  diskMove?.dispose()
+  diskMove = null
   disposeDisk?.()
   disposeDisk = null
   disposeAgentStatus?.()
@@ -1696,22 +1703,25 @@ function setupDiskClean(): void {
     platform: process.platform,
     home: os.homedir(),
     env: process.env,
-    self: () => [app.getAppPath(), path.dirname(process.execPath), ...(app.isPackaged ? [] : [REPO])],
-    running: () => [
-      ...(runManager?.live() ?? []).filter((r) => r.cwd).map((r) => ({ cwd: r.cwd, lock: 'run' as const })),
-      ...(resReport?.servers ?? []).filter((s) => s.cwd && s.kind !== 'daemon').map((s) => ({ cwd: s.cwd!, lock: 'server' as const })),
-    ],
     system: diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, downloads: dir('downloads'), tmpdir: os.tmpdir(), fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SYS || null }),
     openNow: () => paneRoots(true),
     ask: async (event, opts) => {
       const win = BrowserWindow.fromWebContents(event.sender)
       return (win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)).response
+    sdk: diskCleanSdk({ platform: process.platform, home: os.homedir(), env: process.env, procs: toolProcs, fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SDK || null }),
+    docker: { run: !app.isPackaged && process.env.CCM_E2E_DOCKER ? runFile(process.execPath, [process.env.CCM_E2E_DOCKER], { ...process.env, ELECTRON_RUN_AS_NODE: '1' }) : runFile('docker') },
+    allowTree: () => macTempAllow(diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, tmpdir: os.tmpdir() }).roots),
     },
     locale: () => saved().locale ?? 'vi',
     keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
     broadcast: (channel, payload) => {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
     },
+    self: () => [app.getAppPath(), path.dirname(process.execPath), ...(app.isPackaged ? [] : [REPO])],
+    running: () => [
+      ...(runManager?.live() ?? []).filter((r) => r.cwd).map((r) => ({ cwd: r.cwd, lock: 'run' as const })),
+      ...(resReport?.servers ?? []).filter((s) => s.cwd && s.kind !== 'daemon').map((s) => ({ cwd: s.cwd!, lock: 'server' as const })),
+    ],
     confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
     autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
     trash: (p) => shell.trashItem(p),
@@ -1735,6 +1745,53 @@ function setupOrganize(): void {
   const dir = (name: Parameters<typeof app.getPath>[0]): string => {
     try {
       return app.getPath(name)
+function setupDiskMove(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  const fake = app.isPackaged ? null : process.env.CCM_E2E_DISKMOVE || null
+  const sdk = diskCleanSdk({ platform: process.platform, home: os.homedir(), env: process.env, procs: toolProcs })
+  diskMove = createDiskMove({
+    ipcMain,
+    isAppFrame,
+    platform: process.platform,
+    home: os.homedir(),
+    dataDir: DATA_DIR,
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    self: () => [app.getAppPath(), path.dirname(process.execPath), dir('userData'), DATA_DIR, ...(app.isPackaged ? [] : [REPO])],
+    volumes: async () => (fake ? moveFakeVolumes(fake) : ((await diskMap?.service.volumes()) ?? [])),
+    suggest: () => (fake ? fakeMoveSuggestions(fake) : moveSuggestions({ platform: process.platform, home: os.homedir(), env: process.env, sdkRoot: sdk.sdkRoot, avdHome: sdk.avdHome })),
+    holders: () => (fake ? moveFakeProcs(fake) : toolProcs()),
+    ...(fake ? { devOf: moveFakeDev(fake) } : {}),
+    trash: (p) => shell.trashItem(p),
+    record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),
+    cleanKnown: (p) => {
+      const it = diskClean?.service.known(p)
+      return it && !it.action && !it.file ? it.path : null
+    },
+    pickFolder: async (event) => {
+      if (fake) return moveFakePick(fake)
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const opts: Electron.OpenDialogOptions = { properties: ['openDirectory'] }
+      const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+      return res.canceled ? null : (res.filePaths[0] ?? null)
+    },
+    ask: async (event, opts) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      return (win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)).response
+    },
+    locale: () => saved().locale ?? 'vi',
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
+  })
+}
+
     } catch {
       return ''
     }
@@ -1850,6 +1907,7 @@ async function ready(): Promise<void> {
       attention?.clear()
       // A restarting collector re-sends its counts; until then nothing is known to work.
       void awakeCtl?.setBusy(0, 0)
+  setupDiskMove()
     },
   })
   if (!IS_MAC && process.env.CCM_TOAST !== '0') serveToasts = createServeToasts((m) => host.post(m))

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, CircleCheck, FolderPlus, RefreshCw, Sparkles, Trash2, TriangleAlert, X } from 'lucide-vue-next'
 import { isRunLive } from '@ccm/shared'
@@ -16,6 +16,9 @@ import { useTerminalsStore } from '../../../stores/terminals'
 import { isTerm, useWorkspaceStore, workCwd } from '../../../stores/workspace'
 import CleanGroup from './CleanGroup.vue'
 import CleanOneTap from './CleanOneTap.vue'
+import DiskMove from '../move/DiskMove.vue'
+import { hasDiskMove } from '../../../lib/diskMove'
+import { useDiskMoveStore } from '../../../stores/diskMove'
 
 const { t, locale } = useI18n()
 const store = useDiskCleanStore()
@@ -92,6 +95,19 @@ async function remove(permanent: boolean): Promise<void> {
   detail.value = false
   await store.removeSelected(permanent, currentOpen())
   await diskMap.loadHistory()
+}
+
+const mover = useDiskMoveStore()
+
+async function runCommand(path: string): Promise<void> {
+  await store.runCommand(path)
+  await diskMap.loadHistory()
+}
+
+async function moveFromClean(path: string): Promise<void> {
+  if (!(await mover.fromClean(path))) return
+  await nextTick()
+  document.querySelector('[data-move-panel], [data-move-notice]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
 }
 
 async function addFolder(): Promise<void> {
@@ -215,6 +231,10 @@ onBeforeUnmount(() => store.dispose())
           :pending="ON_DEMAND.includes(g.category.id) && !store.measured.has(g.category.id)"
           :can-measure="!store.scanning"
           :deleting="store.deleting"
+          :note="store.notes[g.category.id]"
+          :can-move="hasDiskMove && !store.project"
+          @command="runCommand"
+          @move="moveFromClean"
           @measure="store.measure($event, currentOpen())"
           @toggle="store.toggle"
           @all="store.toggleCategory"
@@ -223,6 +243,8 @@ onBeforeUnmount(() => store.dispose())
         />
       </template>
     </template>
+
+    <DiskMove v-if="hasDiskMove && !store.project" />
 
     <div
       v-if="store.selectedItems.length"

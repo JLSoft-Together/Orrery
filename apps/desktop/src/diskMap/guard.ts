@@ -11,6 +11,7 @@ export interface GuardContext {
   roots: string[]
   keepTree?: string[]
   volumes?: string[]
+  allowTree?: string[]
 }
 
 export interface CanonicalIo {
@@ -147,10 +148,26 @@ function isProtected(n: string, ctx: GuardContext): boolean {
   return false
 }
 
+const MAC_TMP = /^\/private\/var\/folders\/[^/]+\/[^/]+\/[TC]$/
+
+export function macTempTree(real: string | null | undefined): string | null {
+  if (!real) return null
+  const n = normalizePath(real, 'darwin')
+  return MAC_TMP.test(n) ? n : null
+}
+
+function allowed(n: string, ctx: GuardContext): boolean {
+  if (ctx.platform !== 'darwin') return false
+  return (ctx.allowTree ?? []).some((a) => {
+    const base = macTempTree(a)
+    return !!base && keyOf(base, ctx.platform) !== keyOf(n, ctx.platform) && isUnder(n, base, ctx.platform)
+  })
+}
+
 function verdict(n: string, ctx: GuardContext, needRoot: boolean): GuardReason | null {
   for (const a of aliasesOf(n, ctx.platform)) {
     if (isVolumeRoot(a, ctx.platform)) return 'root'
-    if (systemReason(a, ctx.platform)) return 'system'
+    if (systemReason(a, ctx.platform) && !allowed(a, ctx)) return 'system'
     if (isProtected(a, ctx)) return 'protected'
   }
   if (needRoot && !(ctx.roots ?? []).some((r) => isUnder(n, r, ctx.platform))) return 'outside'

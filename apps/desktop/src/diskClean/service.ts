@@ -5,9 +5,11 @@ import {
   CLEAN_PERMANENT_OK,
   type CleanBinResult,
   type CleanCategory,
+  type CleanCommandResult,
   type CleanDeleteRequest,
   type CleanItem,
   type CleanLock,
+  type CleanNote,
   type CleanProgress,
   type CleanScanRequest,
   type CleanScanResult,
@@ -21,6 +23,8 @@ import { canonicalOf, isUnder, normalizePath, topLevel } from '../diskMap/guard'
 import { findJunk, type JunkHit } from './projects'
 import { dirSize } from './size'
 import { DEV_PROVIDERS, type CleanCtx, type CleanProvider } from './providers'
+import { DOCKER_KINDS, DOCKER_PRUNE, DOCKER_PRUNE_MS, dockerProvider, dockerRows, type DockerDeps, type DockerKind } from './docker'
+import { avdBusy, SDK_PROVIDERS, type SdkDeps } from './sdk'
 import { appCacheLock, browserSpots, isForbidden, runningApps, runningBrowsers, SYSTEM_PROVIDERS, type Member, type SystemDeps } from './system'
 
 export interface RunningHolder {
@@ -39,12 +43,24 @@ export interface OneTapAsk {
 
 export type OneTapChoice = 'clean' | 'trash' | 'cancel'
 
+export interface CommandAsk {
+  kind: string
+  bytes: number
+  count: number
+  command: string
+  warn: boolean
+}
+
 export interface DiskCleanDeps {
   platform: NodeJS.Platform
   home: string
   env: NodeJS.ProcessEnv
   providers?: CleanProvider[]
   system?: SystemDeps
+  sdk?: SdkDeps
+  docker?: DockerDeps
+  askCommand?: (ask: CommandAsk) => Promise<boolean>
+  allowTree?: () => Promise<string[]>
   self: () => string[]
   running: () => RunningHolder[]
   openNow?: () => Promise<string[]>
@@ -85,7 +101,8 @@ export class DiskCleanService {
   private readonly providers: CleanProvider[]
 
   constructor(private readonly deps: DiskCleanDeps) {
-    this.providers = (deps.providers ?? (deps.system ? [...DEV_PROVIDERS, ...SYSTEM_PROVIDERS] : DEV_PROVIDERS)).filter((p) => !p.platforms || p.platforms.includes(deps.platform))
+    const base = deps.providers ?? [...DEV_PROVIDERS, ...(deps.sdk ? SDK_PROVIDERS : []), ...(deps.docker ? [dockerProvider] : []), ...(deps.system ? SYSTEM_PROVIDERS : [])]
+    this.providers = base.filter((p) => !p.platforms || p.platforms.includes(deps.platform))
   }
 
   private key(p: string): string {
@@ -138,6 +155,7 @@ export class DiskCleanService {
     this.abort = abort
     const signal = abort.signal
     const items: CleanItem[] = []
+    const notes: Record<string, CleanNote> = {}
     const attached = new Map<string, Member[]>()
     try {
       const roots = await this.cleanRoots(req.roots)
@@ -146,7 +164,7 @@ export class DiskCleanService {
       const open = await this.openList(req.open)
       const keep = this.deps.keep()
       const lock = (it: CleanItem): CleanItem => {
-        const l = it.action === 'files' || it.action === 'bin' ? undefined : lockOf(it, open, running, self, this.deps.platform)
+        const l = it.action === 'files' || it.action === 'bin' || it.action === 'command' ? undefined : lockOf(it, open, running, self, this.deps.platform)
         const { locked: own, ...rest } = it
         const final = l ?? own
         return final ? { ...rest, locked: final } : rest
@@ -169,6 +187,11 @@ export class DiskCleanService {
           keep,
           now: this.now(),
           ...(this.deps.system ? { system: this.deps.system } : {}),
+          ...(this.deps.sdk ? { sdk: this.deps.sdk } : {}),
+          ...(this.deps.docker ? { docker: this.deps.docker } : {}),
+          note: (n) => {
+            notes[id] = n
+          },
           attach: (p, list) => attached.set(this.key(p), list),
           keepMember: (p) => !lockOf({ path: p }, open, running, self, this.deps.platform),
           junk: () => (junk ??= (async () => (await Promise.all(roots.map((r) => findJunk(r, signal)))).flat())()),
@@ -191,7 +214,7 @@ export class DiskCleanService {
         }
         await provider.scan(ctx)
         if (signal.aborted) throw new Cancelled()
-        this.deps.emit({ category: id, state: 'done', count, bytes })
+        this.deps.emit({ category: id, state: 'done', count, bytes, ...(notes[id] ? { note: notes[id] } : {}) })
       }
       for (const [k, v] of this.last) {
         if (req.ids.includes(v.category)) {
@@ -205,7 +228,7 @@ export class DiskCleanService {
         const m = attached.get(k)
         if (m && it.action === 'files') this.members.set(k, m)
       }
-      return { items }
+      return { items, ...(Object.keys(notes).length ? { notes } : {}) }
     } catch (err) {
       if (err instanceof Cancelled || signal.aborted) return { items, cancelled: true }
       throw err
@@ -223,6 +246,7 @@ export class DiskCleanService {
   }
 
   private async liveLock(item: CleanItem): Promise<CleanLock | undefined> {
+    if (item.category === 'avd' && this.deps.sdk) return (await avdBusy(item, this.deps.sdk)) ? 'app' : undefined
     const sys = this.deps.system
     if (!sys) return undefined
     if (item.category === 'browser') {
@@ -257,7 +281,7 @@ export class DiskCleanService {
       const open = await this.openList(req.open)
       for (const p of req.paths) {
         const item = this.known(p)
-        if (!item || item.action === 'bin' || (req.oneTap && !CLEAN_ONE_TAP.includes(item.category))) {
+        if (!item || item.action === 'bin' || item.action === 'command' || (req.oneTap && !CLEAN_ONE_TAP.includes(item.category))) {
           failed.push({ path: p, reason: 'invalid' })
           continue
         }
@@ -361,7 +385,8 @@ export class DiskCleanService {
         }
         if (items.size) await this.deps.forget?.([...items])
       }
-      const guard = (paths: string[]) => async () => ({ platform: this.deps.platform, home: this.deps.home, keep: this.deps.keep(), roots: paths })
+      const allowTree = (await this.deps.allowTree?.().catch(() => [] as string[])) ?? []
+      const guard = (paths: string[]) => async () => ({ platform: this.deps.platform, home: this.deps.home, keep: this.deps.keep(), roots: paths, ...(allowTree.length ? { allowTree } : {}) })
       const yes = async (): Promise<boolean> => {
         await refresh()
         return true
@@ -428,6 +453,41 @@ export class DiskCleanService {
     const extra = [...fails.values()].map((f) => ({ path: f.path, reason: f.n ? `some:${f.n}:${f.reason}` : f.reason }))
     const res: DiskDeleteResult = { done: [...done.values()], failed: [...failed, ...extra], freed, permanent: permanent || anyPermanent }
     return cancelled && !res.done.length ? { ...res, cancelled: true } : res
+  }
+
+  commandOf(item: CleanItem): { tool: 'docker' | 'xcrun'; args: readonly string[] } | null {
+    if (item.action !== 'command') return null
+    if (item.category === 'docker' && (DOCKER_KINDS as readonly string[]).includes(item.kind ?? '')) return { tool: 'docker', args: DOCKER_PRUNE[item.kind as DockerKind] }
+    if (item.category === 'ios' && item.kind === 'simUnavailable') return { tool: 'xcrun', args: ['simctl', 'delete', 'unavailable'] }
+    return null
+  }
+
+  async runCommand(p: string): Promise<CleanCommandResult> {
+    if (this.deleting || this.abort) return { done: false, freed: 0, error: 'busy' }
+    const item = this.known(p)
+    const cmd = item ? this.commandOf(item) : null
+    if (!item || !cmd) return { done: false, freed: 0, error: 'invalid' }
+    const run = cmd.tool === 'docker' ? this.deps.docker?.run : this.deps.sdk?.simctl ? async (args: string[]): Promise<{ ok: boolean; code?: string; stdout: string }> => ({ ok: (await this.deps.sdk!.simctl!(args)) !== null, stdout: '' }) : undefined
+    if (!run) return { done: false, freed: 0, error: 'invalid' }
+    this.deleting = true
+    try {
+      const ask: CommandAsk = { kind: item.kind ?? '', bytes: item.size, count: item.files ?? 0, command: `${cmd.tool} ${cmd.args.join(' ')}`, warn: item.warn === true }
+      if (!this.deps.askCommand || !(await this.deps.askCommand(ask))) return { done: false, freed: 0, cancelled: true }
+      const res = await run([...cmd.args], DOCKER_PRUNE_MS)
+      if (!res.ok) return { done: false, freed: 0, error: res.code ?? 'failed' }
+      let freed = item.size
+      if (cmd.tool === 'docker' && this.deps.docker) {
+        const after = (await dockerRows(this.deps.docker).catch(() => null))?.find((r) => r.kind === item.kind)
+        if (after) {
+          freed = Math.max(0, item.size - after.reclaimable)
+          this.last.set(this.key(item.path), { ...item, size: after.reclaimable, files: Math.max(0, after.total - after.active), detail: `${after.total}/${after.active}` })
+        }
+      } else this.last.set(this.key(item.path), { ...item, size: 0, files: 0 })
+      await this.deps.record({ at: this.now(), action: 'delete', count: item.files ?? 1, freed, paths: [item.path], failed: 0 }).catch(() => undefined)
+      return { done: true, freed }
+    } finally {
+      this.deleting = false
+    }
   }
 
   async emptyBin(): Promise<CleanBinResult> {

@@ -1,9 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import type { CleanGroup, CleanItem } from '@ccm/shared'
+import type { CleanGroup, CleanItem, CleanNote } from '@ccm/shared'
 import { checkDeletable, isUnder } from '../diskMap/guard'
 import { cacheSpots, realDir } from './caches'
+import { ARCHIVE_KEEP_MS } from './sdk'
 import { projectOf, projectTouched, restoreOf, type JunkHit } from './projects'
+import type { DockerDeps } from './docker'
+import type { SdkDeps } from './sdk'
 import type { Member, SystemDeps } from './system'
 
 export interface CleanCtx {
@@ -18,6 +21,9 @@ export interface CleanCtx {
   keep: string[]
   now: number
   system?: SystemDeps
+  sdk?: SdkDeps
+  docker?: DockerDeps
+  note?: (n: CleanNote) => void
   attach: (item: string, members: Member[]) => void
   keepMember: (p: string) => boolean
 }
@@ -75,15 +81,15 @@ export const xcodeProvider: CleanProvider = {
   scan: async (ctx) => {
     const base = path.join(ctx.home, 'Library', 'Developer', 'Xcode')
     const out: CleanItem[] = []
-    const push = async (p: string, mtime: number, kind: string, restore?: string): Promise<void> => {
+    const push = async (p: string, mtime: number, kind: string, restore?: string, hold?: boolean): Promise<void> => {
       if (ctx.signal.aborted) return
-      const item: CleanItem = { path: p, size: await ctx.size(p), group: 'dev', category: 'xcode', kind, lastTouched: mtime, ...(restore ? { restore } : {}) }
+      const item: CleanItem = { path: p, size: await ctx.size(p), group: 'dev', category: 'xcode', kind, lastTouched: mtime, ...(restore ? { restore } : {}), ...(hold ? { hold: true } : {}) }
       out.push(item)
       ctx.emit([item])
     }
     for (const d of await subdirs(path.join(base, 'DerivedData'))) await push(d.path, d.mtime, 'derived', 'xcodebuild')
     for (const day of await subdirs(path.join(base, 'Archives'))) {
-      for (const a of await subdirs(day.path)) if (a.path.endsWith('.xcarchive')) await push(a.path, a.mtime, 'archive')
+      for (const a of await subdirs(day.path)) if (a.path.endsWith('.xcarchive')) await push(a.path, a.mtime, 'archive', undefined, ctx.now - a.mtime < ARCHIVE_KEEP_MS)
     }
     return out
   },

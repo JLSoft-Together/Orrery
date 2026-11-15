@@ -220,6 +220,19 @@ impl Registry {
         self.spawn_cv.notify_all();
     }
 
+    pub fn reset(&self) {
+        let mut st = self.lock();
+        for p in st.panes.values() {
+            if let Some(n) = &p.notes {
+                n.dispose();
+            }
+        }
+        st.panes.clear();
+        st.tokens.clear();
+        st.tickets.clear();
+        self.spawn_cv.notify_all();
+    }
+
     pub(super) fn wait_spawn(&self, ticket: &str, ms: u64) -> Option<String> {
         let deadline = std::time::Instant::now() + Duration::from_millis(ms);
         let mut st = self.lock();
@@ -240,5 +253,40 @@ impl Registry {
             }
             st = self.spawn_cv.wait_timeout(st, left).unwrap_or_else(|e| e.into_inner()).0;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Quiet;
+
+    impl Bridge for Quiet {
+        fn ask(&self, _: &str, _: Value, _: &str, _: u64) -> Value {
+            Value::Null
+        }
+        fn desk(&self, _: &str, _: Value) -> Value {
+            Value::Null
+        }
+        fn note(&self, _: Value) {}
+    }
+
+    #[test]
+    fn reset_drops_every_pane_and_token_but_keeps_the_registry_usable() {
+        let reg = Registry::new(Arc::new(Quiet), false, String::new(), Arc::new(|| 1_000.0));
+        let t1 = reg.add("a", "claude", "/p", None, None);
+        let t2 = reg.add("b", "shell", "/p", None, None);
+        reg.spawned("a", 10);
+        assert_eq!(reg.live_count(), 2);
+        reg.reset();
+        assert_eq!(reg.live_count(), 0);
+        let st = reg.lock();
+        assert!(st.panes.is_empty() && st.tokens.is_empty() && st.tickets.is_empty());
+        assert!(!st.tokens.contains_key(&t1) && !st.tokens.contains_key(&t2));
+        assert!(!st.disposed);
+        drop(st);
+        reg.add("c", "claude", "/p", None, None);
+        assert_eq!(reg.live_count(), 1);
     }
 }

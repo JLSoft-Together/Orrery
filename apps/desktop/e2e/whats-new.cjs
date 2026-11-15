@@ -43,8 +43,8 @@ const expandedOf = (v) => `${header(v)}?.getAttribute('aria-expanded')`
         await sleep(250)
       }
     }
-    check('fresh install: only the guide shows, What\'s new waits for the next start', order.includes('tour') && !order.includes('whatsNew'), order.join(' → '))
-    check('fresh install: What\'s new stays unseen for next time', await evaluate(`localStorage.getItem('ccm.whatsNew.seen') === null`))
+    check('fresh install: only the guide shows, no What\'s new', order.includes('tour') && !order.includes('whatsNew'), order.join(' → '))
+    check('fresh install: this version is marked seen, What\'s new waits for the next update', (await evaluate(`localStorage.getItem('ccm.whatsNew.seen')`)) === VERSION, String(await evaluate(`localStorage.getItem('ccm.whatsNew.seen')`)))
     check('fresh install: never two dialogs at once', maxVisible <= 1, `max ${maxVisible}`)
     await esc()
     await waitFor(`!${DLG}`, 5000, 'closed after fresh install').catch(() => {})

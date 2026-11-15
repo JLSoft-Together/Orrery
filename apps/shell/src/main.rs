@@ -145,6 +145,7 @@ fn main() {
         .manage(shell)
         .manage(desk)
         .manage(guest::Guests::default())
+        .manage(links::LinkGate::default())
         .invoke_handler(tauri::generate_handler![ccm::ccm, guest_ipc::guest])
         .on_window_event(window::on_window_event)
         .setup(move |app| {
@@ -172,6 +173,8 @@ fn main() {
         RunEvent::ExitRequested { api, code, .. } => {
             if code.is_none() && !app.state::<Shell>().quitting.load(std::sync::atomic::Ordering::SeqCst) {
                 api.prevent_exit();
+                #[cfg(target_os = "macos")]
+                tray::quit(app);
             }
         }
         RunEvent::Exit => app.state::<Shell>().shutdown(),

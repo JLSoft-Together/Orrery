@@ -34,3 +34,11 @@ Chủ nhân chốt: làm hết, test trên mac, xong chủ nhân test máy Windo
     2. `layout-speed` fit mode: frame đầu render 1080 px thay vì đúng cỡ đang hiện. Rust giữ nguyên `scale`; nghi `box.width` = 0 lúc render đầu trên WebView2 (`LayoutPreview.vue` `wantScale`), watch chỉ render lại khi cần nét hơn. Chưa probe.
     3. `v73` pane PowerShell exit 3 không có dấu ✗: gap OSC 633 trên Tauri (đã biết từ 4.0.0).
 - 2026-11-11 ~04:20 app Orrery 4.0.1 tự tắt (pty.log `shutdown`, mở lại 04:21:09) trong lúc chạy E2E Electron so sánh `agent-map` → phiên Claude chết theo. Chạy lại 5 script Electron sau đó không bị tắt; chưa rõ nguyên nhân.
+
+## QA Windows (2026-11-15)
+- Worktree sạch  (HEAD + fix ). Build web OK,  OK,  shell OK.  shell: 196 pass, 0 fail. Worktree thiếu : phải build  ở  và đặt , không thì mọi script có pane fail 'timeout: shell running' (pane báo 'Terminals run only in the Orrery desktop app').
+- E2E  (CCM_CORE_BIN set): 1063 PASS / 33 FAIL.  không có  / . , , , ,  (trừ ✗ PowerShell) chạy qua.
+- FAIL Electron-only (patch dialog qua inspector): v74, v75, v76b, v77a, v76 'block next time', v49-open (spawn Electron second instance).
+- FAIL cũ ở Electron: p5, v67-ide, agent-map, v25 main agent node, v76 resources / sensitive / keep awake, v79-shots.
+- Lỗi Tauri thật đã biết: v73 PowerShell exit 3 không có ✗.
+- FAIL mới so với 11-11, ổn định khi chạy lại, chưa chạy trên Electron để đối chiếu (nghi script lệch UI 4.0.5): p6 'sidebar groups by project', browser 'split menu' (menu có thêm 'Other project…'), tier2 'active project group outlined', whats-new 'stays unseen', shell-agent x3 (header icon là x-icon), v70-tools x3 (timeout editor README.md / color.ts / notes.txt; 11-11 chỉ chập chờn nên cần xem thêm).

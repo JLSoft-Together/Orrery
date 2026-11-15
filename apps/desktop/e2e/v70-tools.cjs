@@ -86,6 +86,7 @@ async function main() {
     await waitFor(`!!${filePane(name)}`, 15000, `${name} pane`)
   }
   const startEdit = async (name) => {
+    await waitFor(`!!${filePane(name)}.querySelector('[data-file-edit]')`, 15000, `${name} edit button`)
     await evaluate(`${filePane(name)}.querySelector('[data-file-edit]')?.click()`)
     await waitFor(`!!${filePane(name)}.querySelector('.cm-editor .cm-content')`, 15000, `${name} editor`)
   }

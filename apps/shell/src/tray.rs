@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -46,7 +46,23 @@ pub fn refresh(app: &AppHandle) {
     }
 }
 
+static CONFIRMING: AtomicBool = AtomicBool::new(false);
+
 pub fn quit(app: &AppHandle) {
+    if app.state::<Shell>().quitting.load(Ordering::SeqCst) || CONFIRMING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        let ok = crate::lifecycle::confirm_quit(&handle);
+        CONFIRMING.store(false, Ordering::SeqCst);
+        if ok {
+            exit_now(&handle);
+        }
+    });
+}
+
+fn exit_now(app: &AppHandle) {
     let shell = app.state::<Shell>();
     if shell.quitting.swap(true, Ordering::SeqCst) {
         return;
@@ -54,11 +70,8 @@ pub fn quit(app: &AppHandle) {
     if let Some(w) = app.get_window(crate::state::MAIN) {
         crate::window::save_bounds(&w);
     }
-    let handle = app.clone();
-    std::thread::spawn(move || {
-        handle.state::<Shell>().shutdown();
-        handle.exit(0);
-    });
+    shell.shutdown();
+    app.exit(0);
 }
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {

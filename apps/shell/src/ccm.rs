@@ -6,14 +6,16 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::appearance::{is_hex, next_zoom, parse_look, zoom_percent};
 use crate::shot;
-use crate::state::{lock, Shell};
+use crate::state::{lock, Shell, MAIN};
 use crate::{desk, guest};
 use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 17] = [
+const LOCAL: [&str; 19] = [
     "ccm:pty-endpoint",
+    "ccm:editor-dirty",
+    "ccm:editor-save-reply",
     "ccm:pick-folder",
     "ccm:open-external",
     "ccm:zoom",
@@ -77,13 +79,37 @@ fn appearance(app: &AppHandle, raw: &Value) -> Value {
     json!(true)
 }
 
+pub fn endpoint_reply(ep: Result<crate::pty::Endpoint, String>) -> Value {
+    match ep {
+        Ok(ep) => json!({ "url": ep.url, "protocol": ep.protocol }),
+        Err(e) => {
+            eprintln!("[shell] pty endpoint: {e}");
+            Value::Null
+        }
+    }
+}
+
+pub fn answers_asks(label: &str) -> bool {
+    label == MAIN
+}
+
 pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec<Value>) -> Result<Value, String> {
     let shell = app.state::<Shell>();
     match channel {
         "ccm:pty-endpoint" => {
             let handle = app.clone();
-            let ep = blocking(move || handle.state::<Shell>().pty.endpoint()).await??;
-            Ok(json!({ "url": ep.url, "protocol": ep.protocol }))
+            Ok(endpoint_reply(blocking(move || handle.state::<Shell>().pty.endpoint()).await?))
+        }
+        "ccm:editor-dirty" => {
+            let (handle, label, files, auto) = (app.clone(), webview.label().to_owned(), arg(&args, 0).clone(), arg(&args, 1).clone());
+            blocking(move || crate::lifecycle::editor_dirty(&handle, &label, &files, &auto)).await?;
+            Ok(Value::Null)
+        }
+        "ccm:editor-save-reply" => {
+            if let Some(id) = arg(&args, 0).as_u64() {
+                shell.reply(&crate::lifecycle::save_reply_key(webview.label(), id), json!(arg(&args, 1) == &Value::Bool(true)));
+            }
+            Ok(Value::Null)
         }
         "ccm:pick-folder" => {
             let near = start_dir(arg(&args, 0));
@@ -140,13 +166,15 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             })
         }
         "ccm:orrery-reply" => {
-            if let Some(id) = arg(&args, 0).as_str() {
+            if let (true, Some(id)) = (answers_asks(webview.label()), arg(&args, 0).as_str()) {
                 shell.reply(id, arg(&args, 1).clone());
             }
             Ok(Value::Null)
         }
         "ccm:focus-reply" => {
-            shell.reply("focus", json!(arg(&args, 0) == &Value::Bool(true)));
+            if answers_asks(webview.label()) {
+                shell.reply("focus", json!(arg(&args, 0) == &Value::Bool(true)));
+            }
             Ok(Value::Null)
         }
         "shell:window" => {
@@ -204,6 +232,20 @@ pub async fn ccm(app: AppHandle, webview: Webview, channel: String, args: Option
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_main_window_answers_orrery_asks() {
+        assert!(answers_asks(MAIN));
+        assert!(!answers_asks(crate::window::COMPACT));
+        assert!(!answers_asks("guest-1"));
+    }
+
+    #[test]
+    fn a_failed_pty_endpoint_answers_null() {
+        assert_eq!(endpoint_reply(Err("pty host stopped".into())), Value::Null);
+        let ep = crate::pty::Endpoint { url: "ws://127.0.0.1:1/pty".into(), protocol: "ccm.pty.x".into() };
+        assert_eq!(endpoint_reply(Ok(ep)), json!({ "url": "ws://127.0.0.1:1/pty", "protocol": "ccm.pty.x" }));
+    }
 
     #[test]
     fn the_start_dir_must_be_an_existing_absolute_folder() {

@@ -67,7 +67,7 @@ async function open(app) {
   return S
 }
 
-const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.stringify(labels)}; const el = [...document.querySelectorAll('[data-disk-mode] [role=radio]')].find((e) => want.includes(e.textContent.trim())); if (!el) return false; el.click(); return true })()`)
+const tabBy = (app, value) => app.evaluate(`(() => { const el = document.querySelector('[data-disk-mode] [role=radio][data-value="' + ${JSON.stringify(value)} + '"]'); if (!el) return false; el.click(); return true })()`)
 
 ;(async () => {
   let app = null
@@ -80,7 +80,7 @@ const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.string
   try {
     app = await launch({ env: {} })
     let S = await open(app)
-    check('App tab is in the mode bar', await tabBy(app, ['App', 'Apps']))
+    check('App tab is in the mode bar', await tabBy(app, 'apps'))
     await app.waitFor(`${S}.get('diskApps').result !== null && !${S}.get('diskApps').loading`, 60000, 'real list')
     const real = await app.evaluate(`(() => { const r = ${S}.get('diskApps').result; return { ok: r.ok, n: r.apps.length, hidden: r.apps.some((a) => /^(Security )?Update for /i.test(a.name)) } })()`)
     check('real installed apps are listed (read only)', real.ok && real.n > 0, JSON.stringify(real))
@@ -94,7 +94,7 @@ const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.string
     const forgedLeft = await app.evaluate(`${D}.diskAppsDelete({ id: 'nope', paths: [${JSON.stringify(os.homedir())}] })`)
     check('IPC refuses leftovers that were not scanned', forgedLeft.done.length === 0, JSON.stringify(forgedLeft))
 
-    check('RAM tab is in the mode bar', await tabBy(app, ['RAM']))
+    check('RAM tab is in the mode bar', await tabBy(app, 'ram'))
     await app.waitFor(`${S}.get('diskRam').snap?.ok === true`, 30000, 'ram snapshot')
     const ram = await app.evaluate(`(() => { const s = ${S}.get('diskRam').snap; return { n: s.procs.length, self: s.procs.filter((p) => p.tag === 'self').map((p) => [p.pid, p.start, p.lock]), total: s.totalMem } })()`)
     check('RAM lists processes with Orrery marked', ram.n > 10 && ram.self.length > 0 && ram.self.every((p) => p[2] === 'self'), `${ram.n} procs, ${ram.self.length} self`)
@@ -108,7 +108,7 @@ const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.string
     check('RAM refreshes while the tab is open', t1 > t0, `${t0} -> ${t1}`)
     await app.waitFor(`document.querySelector('[data-ram-row] [data-ram-lock]') !== null`, 5000, 'lock icon')
     await shotTo('ram-real')
-    await tabBy(app, ['Dọn dẹp', 'Clean up'])
+    await tabBy(app, 'clean')
     await sleep(4500)
     const t2 = await app.evaluate(`${S}.get('diskRam').snap.at`)
     await sleep(4500)
@@ -119,7 +119,7 @@ const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.string
 
     app = await launch({ env: { CCM_E2E_DISKAPPS_REG: regDir, CCM_E2E_DISKAPPS_ROOTS: roots, CCM_E2E_DISKAPPS_CONFIRM: '1', CCM_E2E_DISKRAM_CONFIRM: '1' } })
     S = await open(app)
-    await tabBy(app, ['App', 'Apps'])
+    await tabBy(app, 'apps')
     await app.waitFor(`${S}.get('diskApps').result?.ok === true`, 30000, 'fixture list')
     const names = await app.evaluate(`${S}.get('diskApps').apps.map((a) => a.name)`)
     check('fixture registry is listed, system component hidden', JSON.stringify(names.sort()) === JSON.stringify(['Orrery E2E Bad App', 'Orrery E2E Fake App']), JSON.stringify(names))
@@ -163,7 +163,7 @@ const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.string
     const control = spawnIdle()
     let victimExit = false
     victim.on('exit', () => (victimExit = true))
-    await tabBy(app, ['RAM'])
+    await tabBy(app, 'ram')
     await app.waitFor(`${S}.get('diskRam').snap?.procs.some((p) => p.pid === ${victim.pid})`, 20000, 'victim listed')
     await app.evaluate(`(() => { const s = ${S}.get('diskRam'); s.view = 'procs'; s.query = 'node'; return true })()`)
     await app.waitFor(`document.querySelector('[data-ram-key="p:${victim.pid}"] [data-ram-kill]') !== null`, 10000, 'victim row')
@@ -192,7 +192,7 @@ const tabBy = (app, labels) => app.evaluate(`(() => { const want = ${JSON.string
     const [sw1, cw1] = await app.evaluate('[document.documentElement.scrollWidth, document.documentElement.clientWidth]')
     check('RAM: no horizontal scroll at 760px', sw1 <= cw1, `${sw1} <= ${cw1}`)
     await shotTo('ram-760')
-    await tabBy(app, ['App', 'Apps'])
+    await tabBy(app, 'apps')
     await sleep(800)
     const [sw2, cw2] = await app.evaluate('[document.documentElement.scrollWidth, document.documentElement.clientWidth]')
     check('Apps: no horizontal scroll at 760px', sw2 <= cw2, `${sw2} <= ${cw2}`)

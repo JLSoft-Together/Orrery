@@ -26,6 +26,7 @@ export type ExplorerAction =
   | 'lib-updates'
   | 'disk-open'
   | 'disk-clean'
+  | 'disk-move'
 
 export interface ExplorerMenuCtx {
   mac: boolean
@@ -43,7 +44,7 @@ export interface ExplorerMenuCtx {
   strings?: boolean
   /** Registry lookups exist (desktop `libsCheck`): Check for updates on dependency files. */
   libs?: boolean
-  disk?: { open: boolean; clean: boolean }
+  disk?: { open: boolean; clean: boolean; move?: boolean }
 }
 
 const M = 'workspace.explorer.menu.'
@@ -90,10 +91,11 @@ export function explorerMenu(row: TreeRow, ctx: ExplorerMenuCtx, t: (key: string
   if (ctx.apk && !row.directory && /\.(apk|aab)$/i.test(row.name)) entries.push({ id: 'apk-size', label: t('apkSize.menu') })
   if (ctx.strings && !row.outOfRoot && isStringsPath(row.name, row.directory)) entries.push({ id: 'strings', label: t('stringsTable.menu') })
   if (ctx.libs && !row.directory && !row.outOfRoot && depFileKind(row.name)) entries.push({ id: 'lib-updates', label: t('libUpdates.menu') })
-  if (ctx.disk && row.directory && !row.outOfRoot && (ctx.disk.open || ctx.disk.clean)) {
+  if (ctx.disk && row.directory && !row.outOfRoot && (ctx.disk.open || ctx.disk.clean || (ctx.disk.move && !isRoot))) {
     entries.push({ separator: true })
     if (ctx.disk.open) entries.push({ id: 'disk-open', label: t('diskSizes.menuOpen') })
     if (ctx.disk.clean) entries.push({ id: 'disk-clean', label: t('diskSizes.menuClean') })
+    if (ctx.disk.move && !isRoot) entries.push({ id: 'disk-move', label: t('diskSizes.menuMove') })
   }
   if (ctx.compare && !row.directory) {
     const { selected, self } = ctx.compare

@@ -86,9 +86,9 @@ const purge = (paths) => {
     const st = await evaluate(`${D}.diskMapStatus()`)
     check('scan covered only the temp folder', st.roots.length === 1 && path.resolve(st.roots[0]) === path.resolve(root), JSON.stringify(st.roots))
 
-    const tabs = await evaluate(`[...document.querySelectorAll('[data-disk-mode] [role=radio]')].map((e) => e.textContent.trim())`)
-    check('Disk modes include the duplicates tab', tabs.some((t) => /trùng|Duplicates/i.test(t)), tabs.join(','))
-    await evaluate(`(() => { const el = [...document.querySelectorAll('[data-disk-mode] [role=radio]')].find((e) => /trùng|Duplicates/i.test(e.textContent)); el?.click(); return !!el })()`)
+    const tabs = await evaluate(`[...document.querySelectorAll('[data-disk-mode] [role=radio]')].map((e) => e.dataset.value)`)
+    check('Disk modes include the duplicates tab', tabs.includes('dupes'), tabs.join(','))
+    await evaluate(`(() => { const el = document.querySelector('[data-disk-mode] [role=radio][data-value="dupes"]'); el?.click(); return !!el })()`)
     await waitFor(q('[data-dupes]'), 8000, 'dupes panel')
     check('start button is enabled once the index exists', await evaluate(`!${q('[data-dupes-start]')}.disabled`))
     await shotTo('01-before-search')

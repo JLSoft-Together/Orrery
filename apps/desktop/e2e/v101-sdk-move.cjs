@@ -145,7 +145,7 @@ const purge = (paths) => {
 
     await evaluate(`(() => { ${S}.get('ui').setView('disk'); return true })()`)
     await waitFor(q('[data-disk-mode]'), 15000, 'disk tabs')
-    await evaluate(`(() => { const r = [...document.querySelectorAll('[data-disk-mode] [role=radio]')]; const c = r.find((x) => /Dọn dẹp|Clean up/.test(x.textContent)); c.click(); return !!c })()`)
+    await evaluate(`(() => { const c = document.querySelector('[data-disk-mode] [role=radio][data-value="clean"]'); if (c) c.click(); return !!c })()`)
     await waitFor(q('[data-disk-clean]'), 15000, 'clean tab')
     await waitFor(`!${S}.get('diskClean').scanning`, 120000, 'first scan settles')
     await evaluate(`(() => { const s = ${S}.get('diskClean'); s.folders = []; s.addFolder(${JSON.stringify(PROJ)}); return true })()`)
@@ -219,6 +219,7 @@ const purge = (paths) => {
     check('no .orrery-moving left, old copy in the Recycle Bin', !fs.existsSync(GRADLE + '.orrery-moving') && (process.platform !== 'win32' || binByOrigin(HOME).length >= 1))
     const hist = await evaluate(`${D}.diskMapHistory({ limit: 5 })`)
     check('history has the old copy row', hist.some((h) => h.paths.some((p) => p.endsWith('.gradle.orrery-moving'))), JSON.stringify(hist.map((h) => h.paths)))
+    check('history has its own move row (source and target)', hist.some((h) => h.action === 'move' && h.paths.length === 2 && h.paths[0] === GRADLE && h.paths[1] === TARGET), JSON.stringify(hist.map((h) => [h.action, h.paths])))
     await waitFor(q(`[data-move-record]`), 10000, 'record row')
     await evaluate(`${q('[data-move-done]')}?.scrollIntoView({ block: 'center' })`)
     await shotTo('move-done')

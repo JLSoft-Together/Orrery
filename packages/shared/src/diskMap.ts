@@ -114,7 +114,7 @@ export interface DiskDone {
 
 export interface DiskHistoryEntry {
   at: number
-  action: 'trash' | 'delete'
+  action: 'trash' | 'delete' | 'move'
   count: number
   freed: number
   paths: string[]

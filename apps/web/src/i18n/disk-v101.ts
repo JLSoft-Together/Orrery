@@ -72,6 +72,7 @@ const en = {
       empty: 'Nothing cleaned yet.',
       trash: '{n} items moved to the Recycle Bin',
       delete: '{n} items deleted permanently',
+      move: '{n} folder moved to another drive',
     },
     mode: { label: 'View', browse: 'Browse', search: 'Search', big: 'Big files', old: 'Old files' },
     kind: { image: 'Image', video: 'Video', audio: 'Audio', doc: 'Document', archive: 'Archive', installer: 'Installer', code: 'Code' },
@@ -170,6 +171,7 @@ const en = {
   diskSizes: {
     menuOpen: 'Open in Disk',
     menuClean: 'Clean up this project',
+    menuMove: 'Move to another drive',
     tipSize: 'Size {size}',
     tipJunk: 'Cleanable {size}',
   },
@@ -282,6 +284,7 @@ const vi: typeof en = {
       empty: 'Chưa dọn lần nào.',
       trash: '{n} mục vào Thùng rác',
       delete: '{n} mục xoá hẳn',
+      move: '{n} thư mục chuyển sang ổ khác',
     },
     mode: { label: 'Chế độ xem', browse: 'Duyệt', search: 'Tìm kiếm', big: 'File lớn', old: 'File cũ' },
     kind: { image: 'Ảnh', video: 'Video', audio: 'Âm thanh', doc: 'Tài liệu', archive: 'File nén', installer: 'Bộ cài', code: 'Code' },
@@ -380,6 +383,7 @@ const vi: typeof en = {
   diskSizes: {
     menuOpen: 'Mở trong Ổ đĩa',
     menuClean: 'Dọn dẹp project này',
+    menuMove: 'Chuyển sang ổ khác',
     tipSize: 'Dung lượng {size}',
     tipJunk: 'Rác dọn được {size}',
   },

@@ -344,6 +344,35 @@ export function msToDate(ms: number | null, endOfDay = false): string {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
+const isVi = (locale: string): boolean => locale.toLowerCase().startsWith('vi')
+
+export function datePattern(locale: string): string {
+  return isVi(locale) ? 'dd/mm/yyyy' : 'yyyy-mm-dd'
+}
+
+export function formatDateInput(ms: number | null, locale: string, endOfDay = false): string {
+  const iso = msToDate(ms, endOfDay)
+  if (!iso || !isVi(locale)) return iso
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+export function parseDateInput(value: string, locale: string, endOfDay = false): number | null {
+  const raw = value.trim()
+  const slash = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(raw)
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(raw)
+  let y: number
+  let m: number
+  let d: number
+  if (iso) [y, m, d] = [Number(iso[1]), Number(iso[2]), Number(iso[3])]
+  else if (slash) [y, m, d] = [Number(slash[3]), isVi(locale) ? Number(slash[2]) : Number(slash[1]), isVi(locale) ? Number(slash[1]) : Number(slash[2])]
+  else return null
+  const at = new Date(y, m - 1, d)
+  if (at.getFullYear() !== y || at.getMonth() !== m - 1 || at.getDate() !== d) return null
+  const ms = at.getTime()
+  return endOfDay ? ms + DAY : ms
+}
+
 export function mbToBytes(mb: number): number | null {
   return Number.isFinite(mb) && mb > 0 ? Math.round(mb * 1024 ** 2) : null
 }

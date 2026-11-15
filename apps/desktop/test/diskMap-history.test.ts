@@ -54,6 +54,7 @@ describe('DiskHistory', () => {
     expect(cleanHistoryEntry({ at: 1, action: 'nuke', count: 1, freed: 1, paths: [], failed: 0 })).toBeNull()
     expect(cleanHistoryEntry({ at: -1, action: 'trash', count: 1, freed: 1, paths: [], failed: 0 })).toBeNull()
     expect(cleanHistoryEntry([1])).toBeNull()
+    expect(cleanHistoryEntry({ at: 1, action: 'move', count: 1, freed: 9, paths: ['C:\a', 'D:\a'], failed: 0 })?.action).toBe('move')
     expect(cleanHistoryEntry({ at: 1, action: 'trash', count: 1, freed: 1, paths: [1, 'a'], failed: 0 })?.paths).toEqual(['a'])
   })
 })

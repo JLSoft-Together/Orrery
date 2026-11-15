@@ -33,7 +33,8 @@ const call = async <T>(fn: (() => Promise<unknown>) | undefined, fallback: T): P
 const bad: MoveResult = { ok: false, error: 'invalid' }
 export const diskMoveList = (): Promise<MoveCandidate[]> => call(bridge?.diskMoveList && (() => bridge.diskMoveList!()), [])
 export const diskMovePick = (): Promise<MoveCandidate | null> => call<MoveCandidate | null>(bridge?.diskMovePick && (() => bridge.diskMovePick!()), null)
-export const diskMoveFromClean = (path: string): Promise<MoveCandidate | null> => call<MoveCandidate | null>(bridge?.diskMoveFromClean && (() => bridge.diskMoveFromClean!({ path })), null)
+export const diskMoveFromClean = (path: string, open = false): Promise<MoveCandidate | null> =>
+  call<MoveCandidate | null>(bridge?.diskMoveFromClean && (() => bridge.diskMoveFromClean!(open ? { path, open: true } : { path })), null)
 export const diskMoveVolumes = (candidate: string): Promise<MoveVolume[]> => call(bridge?.diskMoveVolumes && (() => bridge.diskMoveVolumes!({ candidate })), [])
 export const diskMovePlan = (candidate: string, volume: string): Promise<MovePlanResult> => call<MovePlanResult>(bridge?.diskMovePlan && (() => bridge.diskMovePlan!({ candidate, volume })), { error: 'invalid' })
 export const diskMoveRun = (plan: string): Promise<MoveResult> => call(bridge?.diskMoveRun && (() => bridge.diskMoveRun!({ plan })), bad)

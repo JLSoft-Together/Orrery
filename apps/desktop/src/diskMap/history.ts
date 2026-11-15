@@ -16,7 +16,7 @@ export function cleanHistoryEntry(v: unknown): DiskHistoryEntry | null {
   const freed = n(o.freed)
   const failed = n(o.failed)
   if (at === null || count === null || freed === null || failed === null) return null
-  if (o.action !== 'trash' && o.action !== 'delete') return null
+  if (o.action !== 'trash' && o.action !== 'delete' && o.action !== 'move') return null
   const paths = Array.isArray(o.paths) ? o.paths.filter((p): p is string => typeof p === 'string').slice(0, MAX_PATHS) : []
   return { at, action: o.action, count, freed, paths, failed }
 }

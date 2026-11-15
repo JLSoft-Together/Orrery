@@ -193,6 +193,15 @@ describe('DiskView', () => {
 })
 
 describe('DiskView search', () => {
+  it('marks every mode with its value and lets the mode bar wrap', async () => {
+    const w = await mountView()
+    const bar = w.find('[data-disk-mode]')
+    expect(bar.classes()).toEqual(expect.arrayContaining(['flex-wrap', 'max-w-full']))
+    const values = w.findAll('[data-disk-mode] [role=radio]').map((r) => r.attributes('data-value'))
+    expect(values.slice(0, 4)).toEqual(['browse', 'search', 'big', 'old'])
+    expect(new Set(values).size).toBe(values.length)
+  })
+
   it('opens the search tab, finds files and deletes a selected result', async () => {
     api.search.mockResolvedValue({ total: 2, ms: 4, items: [{ ...entry('movie.mp4', 5000), kind: 'video' }, entry('movie2.mp4', 900)] })
     const w = await mountView()

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, Search, X } from 'lucide-vue-next'
-import { breadcrumbs, dateToMs, DISK_KINDS, DISK_SORTS, formatSize, mbToBytes, msToDate, OLD_MONTHS, SIZE_PRESETS, type DiskKindFilter, type DiskSort } from '../../lib/diskMap'
+import { breadcrumbs, datePattern, DISK_KINDS, DISK_SORTS, formatDateInput, formatSize, mbToBytes, OLD_MONTHS, parseDateInput, SIZE_PRESETS, type DiskKindFilter, type DiskSort } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskResults from './DiskResults.vue'
@@ -35,8 +35,18 @@ function onNum(key: 'minSize' | 'maxSize', e: Event): void {
 }
 
 function onDate(key: 'after' | 'before', e: Event): void {
-  const raw = (e.target as HTMLInputElement).value
-  store.patchFilters({ [key]: dateToMs(raw, key === 'before') })
+  const el = e.target as HTMLInputElement
+  const before = key === 'before'
+  const raw = el.value.trim()
+  const ms = raw === '' ? null : parseDateInput(raw, locale.value, before)
+  if (raw !== '' && ms === null) {
+    el.value = formatDateInput(f.value[key], locale.value, before)
+    el.setAttribute('aria-invalid', 'true')
+    return
+  }
+  el.removeAttribute('aria-invalid')
+  store.patchFilters({ [key]: ms })
+  el.value = formatDateInput(ms, locale.value, before)
 }
 
 function onPick(path: string, range: boolean): void {
@@ -116,9 +126,9 @@ function onPick(path: string, range: boolean): void {
 
       <div v-if="isSearch" class="flex flex-wrap items-center gap-1.5" role="group" :aria-label="t('diskMap.search.date')">
         <span class="text-ink-muted">{{ t('diskMap.search.after') }}</span>
-        <input :value="msToDate(f.after)" type="date" class="ccm-field" :aria-label="t('diskMap.search.after')" data-disk-after @change="onDate('after', $event)" />
+        <input :value="formatDateInput(f.after, locale)" type="text" inputmode="numeric" autocomplete="off" :placeholder="datePattern(locale)" class="ccm-field w-28 tabular-nums" :aria-label="t('diskMap.search.after')" data-disk-after @change="onDate('after', $event)" />
         <span class="text-ink-muted">{{ t('diskMap.search.before') }}</span>
-        <input :value="msToDate(f.before, true)" type="date" class="ccm-field" :aria-label="t('diskMap.search.before')" data-disk-before @change="onDate('before', $event)" />
+        <input :value="formatDateInput(f.before, locale, true)" type="text" inputmode="numeric" autocomplete="off" :placeholder="datePattern(locale)" class="ccm-field w-28 tabular-nums" :aria-label="t('diskMap.search.before')" data-disk-before @change="onDate('before', $event)" />
       </div>
 
       <div v-if="isOld" class="flex flex-wrap items-center gap-1.5">

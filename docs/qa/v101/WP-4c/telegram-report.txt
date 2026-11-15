@@ -6,9 +6,9 @@ Quét nền ổ đĩa xong
 Ổ Z: còn trống 80 GB / 96 MB, giảm 10 GB so với lần quét ngày 15/11/2026.
 
 Phình nhiều nhất:
-1. ~\...\ccm-snap-e2e-IdvO1j\a  +2 MB (7,5 MB)
+1. ~\...\ccm-snap-e2e-VamvCn\a  +2 MB (7,5 MB)
 
 Lớn nhất:
-1. ~\...\ccm-snap-e2e-IdvO1j\a  7,5 MB
-2. ~\...\ccm-snap-e2e-IdvO1j\b  2 MB
-3. ~\...\ccm-snap-e2e-IdvO1j\d  2 MB
+1. ~\...\ccm-snap-e2e-VamvCn\a  7,5 MB
+2. ~\...\ccm-snap-e2e-VamvCn\b  2 MB
+3. ~\...\ccm-snap-e2e-VamvCn\d  2 MB

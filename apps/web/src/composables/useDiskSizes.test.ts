@@ -177,4 +177,16 @@ describe('junkOf', () => {
     expect(m.junkOf('C:/p', { scanned: true, project: 'c:/p/', items })).toBe(75)
     expect(m.junkOf('C:/z', { scanned: true, project: null, items })).toBeNull()
   })
+
+  it('leaves out items locked by an open session or flagged locked', async () => {
+    const m = await load(true)
+    const items = [
+      { path: 'C:/p/node_modules', size: 50, project: 'C:/p' },
+      { path: 'C:/p/build', size: 25, project: 'C:/p', locked: 'open' },
+      { path: 'C:/p/.gradle', size: 10, project: 'C:/p' },
+    ] as never
+    expect(m.junkOf('C:/p', { scanned: true, project: null, items })).toBe(60)
+    expect(m.junkOf('C:/p', { scanned: true, project: null, items, open: ['C:/p/src'] })).toBeNull()
+    expect(m.junkOf('C:/p', { scanned: true, project: null, items, open: ['C:/other'] })).toBe(60)
+  })
 })

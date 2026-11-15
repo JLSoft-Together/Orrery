@@ -1,9 +1,14 @@
-import { computed, getCurrentScope, onScopeDispose, ref, watch, type ComputedRef } from 'vue'
+import { computed, getCurrentScope, nextTick, onScopeDispose, ref, watch, type ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { diskMapSizes, formatSize, hasDiskSizes, onDiskMapDone } from '../lib/diskMap'
-import { inProject, type CleanItem } from '../lib/diskClean'
+import { inProject, lockReason, type CleanItem } from '../lib/diskClean'
 import { useDiskCleanStore } from '../stores/diskClean'
 import { useDiskMapStore } from '../stores/diskMap'
+import { useDiskMoveStore } from '../stores/diskMove'
+import { useDiskDupesStore } from '../stores/diskDupes'
+import { useDiskAppsStore } from '../stores/diskApps'
+import { useDiskRamStore } from '../stores/diskRam'
+import { useOrganizeStore } from '../stores/organize'
 import { useUiStore } from '../stores/ui'
 
 export const SIZES_CHUNK = 500
@@ -106,17 +111,20 @@ export function useDiskSizes(paths: () => readonly string[]): { sizeOf: (path: s
   }
 }
 
-export function junkOf(dir: string, clean: { scanned: boolean; project: string | null; items: readonly CleanItem[] }): number | null {
+export function junkOf(dir: string, clean: { scanned: boolean; project: string | null; items: readonly CleanItem[]; open?: readonly string[] }): number | null {
   if (!clean.scanned) return null
   if (clean.project && sizeKey(clean.project) !== sizeKey(dir)) return null
-  const sum = clean.items.reduce((s, i) => (inProject(i, dir) ? s + i.size : s), 0)
+  const open = clean.open ?? []
+  const sum = clean.items.reduce((s, i) => (inProject(i, dir) && !lockReason(i, open) ? s + i.size : s), 0)
   return sum > 0 ? sum : null
 }
 
-export function useDiskNav(): { openInDisk: (path: string) => Promise<void>; cleanProject: (dir: string) => void } {
+export function useDiskNav(): { openInDisk: (path: string) => Promise<void>; cleanProject: (dir: string) => void; moveFolder: (path: string) => Promise<void> } {
   const ui = useUiStore()
   const map = useDiskMapStore()
   const clean = useDiskCleanStore()
+  const mover = useDiskMoveStore()
+  const others = { dupes: useDiskDupesStore(), organize: useOrganizeStore(), apps: useDiskAppsStore(), ram: useDiskRamStore() }
   return {
     openInDisk: async (path) => {
       clean.active = false
@@ -127,6 +135,18 @@ export function useDiskNav(): { openInDisk: (path: string) => Promise<void>; cle
     cleanProject: (dir) => {
       clean.openFor(dir)
       ui.setView('disk')
+    },
+    moveFolder: async (path) => {
+      others.dupes.active = false
+      others.organize.active = false
+      others.apps.active = false
+      others.ram.active = false
+      clean.openFor(null)
+      ui.setView('disk')
+      await nextTick()
+      if (!(await mover.fromClean(path, true))) return
+      await nextTick()
+      document.querySelector('[data-move-panel], [data-move-notice]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     },
   }
 }

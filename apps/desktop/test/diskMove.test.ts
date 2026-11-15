@@ -115,6 +115,7 @@ describe('move to another drive', () => {
     expect(existsSync(at('outside', 'keep.txt'))).toBe(true)
     expect(d.asks.map((a) => a.kind)).toEqual(['move'])
     expect(d.history[0]).toMatchObject({ action: 'trash', paths: [src + MOVE_SUFFIX] })
+    expect(d.history[1]).toMatchObject({ action: 'move', count: 1, freed: plan.bytes, paths: [src, plan.target] })
     expect(journal().map((e) => e.stage)).toEqual(['copying', 'renamed', 'linked', 'done'])
     expect(d.progress.some((p) => p.phase === 'verify') && d.progress.at(-1)?.phase).toBe('done')
     const st = await svc.state()
@@ -345,6 +346,9 @@ describe('ipc', () => {
     const g = list.find((c) => c.kind === 'gradle')!
     expect(await handlers.get('ccm:diskmove-run')!('app', { plan: 'nope' })).toEqual({ ok: false, error: 'invalid' })
     expect(await handlers.get('ccm:diskmove-from-clean')!('app', { path: at('home', '.gradle') })).toBeNull()
+    expect(await handlers.get('ccm:diskmove-from-clean')!('app', { path: 'relative/dir', open: true })).toBeNull()
+    expect(await handlers.get('ccm:diskmove-from-clean')!('evil', { path: at('home', '.gradle'), open: true })).toBeNull()
+    expect(await handlers.get('ccm:diskmove-from-clean')!('app', { path: at('home', '.gradle'), open: true })).toMatchObject({ path: at('home', '.gradle') })
     const plan = (await handlers.get('ccm:diskmove-plan')!('app', { candidate: g.id, volume: at('vols', 'A') })) as { plan: { id: string } }
     expect(await handlers.get('ccm:diskmove-run')!('app', { plan: plan.plan.id })).toEqual({ ok: false, cancelled: true })
     expect(lstatSync(at('home', '.gradle')).isSymbolicLink()).toBe(false)

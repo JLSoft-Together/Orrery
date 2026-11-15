@@ -264,6 +264,9 @@ async function onAction(id: ExplorerAction, row: TreeRow): Promise<void> {
     case 'disk-clean':
       diskNav.cleanProject(root)
       break
+    case 'disk-move':
+      void diskNav.moveFolder(row.path)
+      break
     case 'show-diff':
       if (changes.status.value?.ok) emit('openDiff', changes.status.value.root, row.path)
       break

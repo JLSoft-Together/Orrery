@@ -187,8 +187,8 @@ export class DiskMoveService {
     return this.view(await this.addCandidate('picked', p))
   }
 
-  async fromClean(p: string): Promise<MoveCandidate | null> {
-    const known = this.deps.cleanKnown?.(p)
+  async fromClean(p: string, open = false): Promise<MoveCandidate | null> {
+    const known = open ? (this.lib.isAbsolute(p) ? p : null) : this.deps.cleanKnown?.(p)
     if (!known) return null
     return this.view(await this.addCandidate('clean', known))
   }
@@ -361,6 +361,7 @@ export class DiskMoveService {
       const leftover = await this.dropOld(source, moving, plan.bytes)
       await this.log({ id, stage: 'done', at: this.now(), ...(leftover ? { leftover } : {}) })
       this.emit(id, 'done', plan.bytes, plan.bytes, plan.files)
+      await this.deps.record({ at: this.now(), action: 'move', count: 1, freed: plan.bytes, paths: [source, target], failed: 0 }).catch(() => undefined)
       const record: DiskMoveRecord = { id, source, target, at: this.now(), bytes: plan.bytes, files: plan.files, state: 'moved', ...(leftover ? { leftover } : {}) }
       return { ok: true, record, ...(leftover ? { leftover } : {}) }
     } catch (err) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BIG_MIN_DEFAULT, buildSearchQuery, dateToMs, defaultFilters, hasCriteria, mbToBytes, monthsAgo, msToDate, SEARCH_LIMIT, shortPath } from './diskMap'
+import { BIG_MIN_DEFAULT, buildSearchQuery, dateToMs, datePattern, defaultFilters, formatDateInput, hasCriteria, mbToBytes, monthsAgo, msToDate, parseDateInput, SEARCH_LIMIT, shortPath } from './diskMap'
 
 const now = new Date(2026, 10, 15, 12, 0, 0).getTime()
 const ctx = { now, path: 'C:\\r\\sub', oldMonths: 12 }
@@ -64,6 +64,24 @@ describe('filter helpers', () => {
     expect(msToDate(end, true)).toBe('2026-03-09')
     expect(dateToMs('nope')).toBeNull()
     expect(msToDate(null)).toBe('')
+  })
+
+  it('date input follows the app locale', () => {
+    const start = dateToMs('2026-03-09')!
+    expect(datePattern('vi')).toBe('dd/mm/yyyy')
+    expect(datePattern('en')).toBe('yyyy-mm-dd')
+    expect(formatDateInput(start, 'vi')).toBe('09/03/2026')
+    expect(formatDateInput(start, 'en')).toBe('2026-03-09')
+    expect(formatDateInput(null, 'vi')).toBe('')
+    expect(parseDateInput('09/03/2026', 'vi')).toBe(start)
+    expect(parseDateInput('9/3/2026', 'vi')).toBe(start)
+    expect(parseDateInput('2026-03-09', 'vi')).toBe(start)
+    expect(parseDateInput('2026-03-09', 'en')).toBe(start)
+    expect(parseDateInput('09/03/2026', 'en')).not.toBe(start)
+    expect(parseDateInput('09/03/2026', 'vi', true)! - start).toBe(86_400_000)
+    expect(formatDateInput(parseDateInput('09/03/2026', 'vi', true), 'vi', true)).toBe('09/03/2026')
+    expect(parseDateInput('31/02/2026', 'vi')).toBeNull()
+    expect(parseDateInput('nope', 'vi')).toBeNull()
   })
 
   it('mbToBytes', () => {

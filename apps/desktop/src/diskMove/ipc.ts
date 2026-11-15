@@ -65,7 +65,7 @@ export function createDiskMove(opts: DiskMoveIpcOptions): DiskMove {
     'ccm:diskmove-from-clean',
     guard<MoveCandidate | null>(null, (raw) => {
       const req = parseMoveFromClean(raw)
-      return req ? service.fromClean(req.path) : null
+      return req ? service.fromClean(req.path, req.open) : null
     }),
   )
   ipcMain.handle(

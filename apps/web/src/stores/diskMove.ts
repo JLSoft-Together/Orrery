@@ -97,8 +97,8 @@ export const useDiskMoveStore = defineStore('diskMove', () => {
     if (!c.block) await choose(c.id)
   }
 
-  async function fromClean(path: string): Promise<boolean> {
-    const c = await diskMoveFromClean(path)
+  async function fromClean(path: string, open = false): Promise<boolean> {
+    const c = await diskMoveFromClean(path, open)
     if (!c) return false
     addCandidate(c)
     if (c.block) notice.value = { ok: false, kind: 'plan', error: c.block }

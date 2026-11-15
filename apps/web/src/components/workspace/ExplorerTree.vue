@@ -40,6 +40,7 @@ import { hasI18nScan, hasPreview } from '../../lib/preview'
 import { hasLibsCheck } from '../../lib/libVersions'
 import { formatSize, hasDiskMap, hasDiskSizes } from '../../lib/diskMap'
 import { hasDiskClean } from '../../lib/diskClean'
+import { hasDiskMove } from '../../lib/diskMove'
 import { useDiskSizes } from '../../composables/useDiskSizes'
 import { useDiskCleanStore } from '../../stores/diskClean'
 import { useDiskMapStore } from '../../stores/diskMap'
@@ -210,11 +211,12 @@ const MENU_ICONS: Partial<Record<string, typeof File>> = {
   'lib-updates': PackageSearch,
   'disk-open': HardDrive,
   'disk-clean': Eraser,
+  'disk-move': HardDrive,
 }
 const withIcons = (list: MenuEntry[]): MenuEntry[] => list.map((e) => (isSeparator(e) ? e : { ...e, icon: MENU_ICONS[e.id], children: e.children && withIcons(e.children) }))
 const compareCtx = (row: TreeRow) => (hasPreview ? { selected: props.compareSel ?? null, self: !!props.compareSel && samePath(props.compareSel.path, row.path) } : undefined)
 const menuFor = (row: TreeRow): MenuEntry[] =>
-  withIcons(explorerMenu(row, { mac: isMac, repo: !!props.repo, changed: !!gitKind(row), run: hasRun, compare: compareCtx(row), apk: hasApkSize, strings: hasI18nScan, libs: hasLibsCheck, disk: { open: hasDiskSizes && diskSizes.sizeOf(row.path) !== null, clean: hasDiskClean && hasDiskMap } }, (k, p) => t(k, p ?? {})))
+  withIcons(explorerMenu(row, { mac: isMac, repo: !!props.repo, changed: !!gitKind(row), run: hasRun, compare: compareCtx(row), apk: hasApkSize, strings: hasI18nScan, libs: hasLibsCheck, disk: { open: hasDiskSizes && diskSizes.sizeOf(row.path) !== null, clean: hasDiskClean && hasDiskMap, move: hasDiskMove && hasDiskMap } }, (k, p) => t(k, p ?? {})))
 
 const menu = ref<{ at: DOMRect; row: TreeRow; trigger: HTMLElement | null } | null>(null)
 

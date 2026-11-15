@@ -101,7 +101,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   const listed = computed(() => (mode.value === 'browse' ? items.value : (results.value?.items ?? [])))
   const selectedItems = computed(() => listed.value.filter((i) => selected.value.has(i.path)))
   const selectedSize = computed(() => selectedItems.value.reduce((s, i) => s + i.size, 0))
-  const totalFreed = computed(() => history.value.reduce((s, h) => s + h.freed, 0))
+  const totalFreed = computed(() => history.value.reduce((s, h) => (h.action === 'move' ? s : s + h.freed), 0))
   const fastDrive = computed(() => {
     if (!hasFastScan || roots.value.length !== 1) return null
     const v = volumes.value.find((x) => x.mount === roots.value[0])

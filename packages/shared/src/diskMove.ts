@@ -115,9 +115,9 @@ export function parseMoveRecover(raw: unknown): { pending: string; action: 'rest
   return { pending: o.pending, action: o.action }
 }
 
-export function parseMoveFromClean(raw: unknown): { path: string } | null {
+export function parseMoveFromClean(raw: unknown): { path: string; open: boolean } | null {
   const o = obj(raw)
-  return o && textOk(o.path) ? { path: o.path } : null
+  return o && textOk(o.path) ? { path: o.path, open: o.open === true } : null
 }
 
 export function moveNeed(bytes: number): number {

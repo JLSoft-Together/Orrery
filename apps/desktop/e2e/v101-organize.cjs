@@ -80,7 +80,7 @@ const purge = (paths) => {
     fs.mkdirSync(SHOTS, { recursive: true })
     fs.copyFileSync(path.join(OUT, name + '.png'), path.join(SHOTS, name + '.png'))
   }
-  const tabByValue = (label) => evaluate(`(() => { const el = [...document.querySelectorAll('[data-disk-mode] [role=radio]')].find((e) => e.textContent.trim() === ${JSON.stringify(label)}); if (!el) return false; el.click(); return true })()`)
+  const tabByValue = (value) => evaluate(`(() => { const el = document.querySelector('[data-disk-mode] [role=radio][data-value=' + JSON.stringify(${JSON.stringify(value)}) + ']'); if (!el) return false; el.click(); return true })()`)
   const waitFs = async (pred, label, ms = 15000) => {
     const end = Date.now() + ms
     while (Date.now() < end) {
@@ -107,8 +107,7 @@ const purge = (paths) => {
     const st0 = await evaluate(`${D}.organizeState()`)
     check('default source is the fake Downloads, never the real one', st0.settings.sources.length === 1 && path.resolve(st0.settings.sources[0]) === path.resolve(dl), JSON.stringify(st0.settings.sources))
     check('auto is off by default', st0.settings.auto === false)
-    const label = await evaluate(`${S}.get('organize') ? (document.documentElement.lang === 'en' ? 'Organize' : 'Sắp xếp') : ''`)
-    check('Organize tab is in the mode bar', await tabByValue(label || 'Sắp xếp'))
+    check('Organize tab is in the mode bar', await tabByValue('organize'))
     await waitFor(q('[data-organize]'), 8000, 'organize tab')
     await waitFor(q('[data-organize-source="downloads"]'), 8000, 'downloads chip')
 
@@ -174,7 +173,7 @@ const purge = (paths) => {
     await sleep(300)
     await click('[data-disk-scan]')
     await waitFor(`${S}.get('diskMap').indexed && !${S}.get('diskMap').scanning`, 40000, 'index scan')
-    await tabByValue(label || 'Sắp xếp')
+    await tabByValue('organize')
     await waitFor(q('[data-organize-junk-scan]'), 8000, 'junk section')
     await click('[data-organize-junk-scan]')
     await waitFor(`${S}.get('organize').junkScanned && !${S}.get('organize').junkScanning`, 20000, 'junk scan')

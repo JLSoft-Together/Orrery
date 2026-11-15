@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { ArrowUp, ChartPie, CircleAlert, Eraser, FolderTree, Hourglass, LayoutGrid, RefreshCw, Search, Weight } from 'lucide-vue-next'
 import { breadcrumbs, DISK_CHARTS, DISK_GROUPS, DISK_MODES, formatSize, GROUP_VAR, isUnder, type DiskChart, type DiskMode } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
+import { useDiskNav } from '../../composables/useDiskSizes'
 import { useDiskCleanStore } from '../../stores/diskClean'
 import { hasDiskClean } from '../../lib/diskClean'
 import DiskClean from './clean/DiskClean.vue'
@@ -90,8 +91,11 @@ function onPick(path: string, range: boolean): void {
   store.toggle(path, range)
 }
 
-function onAction(id: 'reveal' | 'trash' | 'delete', path: string): void {
+const nav = useDiskNav()
+
+function onAction(id: 'reveal' | 'trash' | 'delete' | 'move', path: string): void {
   if (id === 'reveal') return void store.reveal(path)
+  if (id === 'move') return void nav.moveFolder(path)
   if (!store.selected.has(path)) store.selectOnly(path)
   void store.removeSelected(id === 'delete')
 }
@@ -119,7 +123,7 @@ onBeforeUnmount(() => store.dispose())
       <section class="mt-5 rounded-card border border-line p-3"><DiskScanBar /></section>
 
       <div v-if="store.indexed || searchMode || hasDiskClean" class="mt-4">
-        <SegmentedControl :model-value="tab" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="setTab" />
+        <SegmentedControl class="max-w-full flex-wrap gap-y-0.5" :model-value="tab" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="setTab" />
       </div>
 
       <DiskApps v-if="extraMode === 'apps'" />

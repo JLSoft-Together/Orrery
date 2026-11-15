@@ -67,7 +67,8 @@ const purge = (paths) => {
     throw new Error(`${label}: ${JSON.stringify(last)}`)
   }
   const radio = (sel, i) => evaluate(`(() => { const el = document.querySelectorAll(${JSON.stringify(sel + ' [role=radio]')})[${i - 1}]; if (!el) return false; el.click(); return true })()`)
-  const mode = (i) => radio('[data-disk-mode]', i)
+  const MODE_VALUES = ['browse', 'search', 'big', 'old']
+  const mode = (i) => evaluate(`(() => { const el = document.querySelector('[data-disk-mode] [role=radio][data-value="${MODE_VALUES[i - 1]}"]'); if (!el) return false; el.click(); return true })()`)
   const shotTo = async (name) => {
     await shot(name)
     fs.mkdirSync(SHOTS, { recursive: true })

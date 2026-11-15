@@ -126,7 +126,7 @@ const purge = (paths) => {
     await sleep(800)
     await evaluate(`(() => { ${S}.get('ui').setView('disk'); return true })()`)
     await waitFor(q('[data-disk-mode]'), 15000, 'disk tabs')
-    await evaluate(`(() => { const r = [...document.querySelectorAll('[data-disk-mode] [role=radio]')]; r[r.length - 1].click(); return r.length })()`)
+    await evaluate(`(() => { const c = document.querySelector('[data-disk-mode] [role=radio][data-value="clean"]'); if (c) c.click(); return !!c })()`)
     await waitFor(q('[data-disk-clean]'), 15000, 'clean tab')
     await waitFor(`!${S}.get('diskClean').scanning`, 120000, 'first scan settles')
     await evaluate(`(() => { const s = ${S}.get('diskClean'); s.folders = []; s.addFolder(${JSON.stringify(fake)}); return true })()`)

@@ -37,6 +37,14 @@ describe('explorerMenu', () => {
     expect(onlyClean).not.toContain('disk-open')
     expect(ids(explorerMenu(row({ directory: true }), { ...ctx, disk: { open: false, clean: false } }, t))).toEqual(ids(explorerMenu(row({ directory: true }), ctx, t)))
   })
+  it('offers Move to another drive on non-root folders inside the project', () => {
+    const ctxMove = { ...ctx, disk: { open: false, clean: false, move: true } }
+    expect(ids(explorerMenu(row({ directory: true }), ctxMove, t))).toContain('disk-move')
+    expect(ids(explorerMenu(row({ directory: true, depth: 0 }), ctxMove, t))).not.toContain('disk-move')
+    expect(ids(explorerMenu(row({}), ctxMove, t))).not.toContain('disk-move')
+    expect(ids(explorerMenu(row({ directory: true, outOfRoot: true }), ctxMove, t))).not.toContain('disk-move')
+    expect(ids(explorerMenu(row({ directory: true }), { ...ctx, disk: { open: true, clean: true } }, t))).not.toContain('disk-move')
+  })
   it('offers Run… on folders and project files only when the Run pane exists', () => {
     const run = { ...ctx, run: true }
     expect(ids(explorerMenu(row({ name: 'pubspec.yaml', path: 'C:\\r\\pubspec.yaml' }), run, t))).toContain('run')

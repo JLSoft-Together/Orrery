@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDown, ArrowUp, ChevronsUpDown, CloudOff, File, Folder, FolderOpen, TrendingUp, Trash2, TriangleAlert } from 'lucide-vue-next'
+import { ArrowDown, ArrowUp, ChevronsUpDown, CloudOff, File, Folder, FolderOpen, HardDrive, TrendingUp, Trash2, TriangleAlert } from 'lucide-vue-next'
 import type { MenuEntry, Rect } from '../../lib/menu'
 import { formatPercent, formatSize, percent, type DiskEntry } from '../../lib/diskMap'
+import { hasDiskMove } from '../../lib/diskMove'
 import { snapshotLabel, type DiskDiffRow } from '../../lib/diskSnap'
 import { useDiskMapStore } from '../../stores/diskMap'
 import { useDiskSnapStore } from '../../stores/diskSnap'
@@ -18,7 +19,7 @@ const emit = defineEmits<{
   toggle: [path: string, range: boolean]
   only: [path: string]
   all: []
-  action: [id: 'reveal' | 'trash' | 'delete', path: string]
+  action: [id: 'reveal' | 'trash' | 'delete' | 'move', path: string]
 }>()
 
 const { t, locale } = useI18n()
@@ -93,10 +94,13 @@ function onScroll(): void {
 
 const entries = computed<MenuEntry[]>(() => [
   { id: 'reveal', label: t('diskMap.action.reveal'), icon: FolderOpen },
+  ...(hasDiskMove && menuDir.value ? [{ id: 'move', label: t('diskSizes.menuMove'), icon: HardDrive }] : []),
   { separator: true },
   { id: 'trash', label: t('diskMap.action.trash'), icon: Trash2 },
   { id: 'delete', label: t('diskMap.action.delete'), icon: TriangleAlert },
 ])
+
+const menuDir = computed(() => !!menu.value && !!props.items.find((i) => i.path === menu.value?.path)?.dir)
 
 function onContext(e: MouseEvent, path: string): void {
   e.preventDefault()
@@ -107,7 +111,7 @@ function onContext(e: MouseEvent, path: string): void {
 function pick(id: string): void {
   const m = menu.value
   menu.value = null
-  if (m && (id === 'reveal' || id === 'trash' || id === 'delete')) emit('action', id, m.path)
+  if (m && (id === 'reveal' || id === 'trash' || id === 'delete' || id === 'move')) emit('action', id, m.path)
 }
 
 function check(e: MouseEvent, path: string): void {

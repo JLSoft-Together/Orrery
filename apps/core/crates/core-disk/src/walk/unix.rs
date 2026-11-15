@@ -1,5 +1,7 @@
-use super::{DirCtx, Kind, Level, ListError, Raw};
+use super::{DirCtx, Kind, Level, ListError, Raw, NO_ALT};
 use crate::index::flag;
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 
@@ -23,14 +25,30 @@ fn st_flags(_m: &std::fs::Metadata) -> u32 {
     0
 }
 
-pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>) -> Result<(), ListError> {
+fn check_not_link(dir: &Path) -> Result<(), ListError> {
+    let c = std::ffi::CString::new(dir.as_os_str().as_bytes()).map_err(|_| ListError::Other)?;
+    let fd = unsafe { libc::open(c.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC) };
+    if fd < 0 {
+        return Err(match std::io::Error::last_os_error().raw_os_error().unwrap_or(0) {
+            libc::EACCES | libc::EPERM => ListError::Denied,
+            libc::ENOENT => ListError::Missing,
+            _ => ListError::Other,
+        });
+    }
+    unsafe { libc::close(fd) };
+    Ok(())
+}
+
+pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>, alts: &mut Vec<OsString>) -> Result<(), ListError> {
     #[cfg(target_os = "macos")]
     {
-        if let Some(r) = super::mac::list_bulk(dir, names, out) {
+        if let Some(r) = super::mac::list_bulk(dir, ctx, names, out, alts) {
             return r;
         }
     }
-    let _ = ctx;
+    if !ctx.root {
+        check_not_link(dir)?;
+    }
     let rd = std::fs::read_dir(dir).map_err(|e| err_kind(&e))?;
     let mut failed = false;
     for e in rd {
@@ -53,13 +71,21 @@ pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>) ->
         };
         let cloud = st_flags(&meta) & SF_DATALESS != 0;
         let mut flags = if cloud { flag::CLOUD } else { 0 };
-        let name = name.to_string_lossy();
-        if name.starts_with('.') {
+        let mut alt = NO_ALT;
+        let text = match name.to_str() {
+            Some(t) => std::borrow::Cow::Borrowed(t),
+            None => {
+                alt = alts.len() as u32;
+                alts.push(name.clone());
+                name.to_string_lossy()
+            }
+        };
+        if text.starts_with('.') {
             flags |= flag::HIDDEN;
         }
         let file = kind == Kind::File;
         let name_start = names.len() as u32;
-        names.push_str(&name);
+        names.push_str(&text);
         out.push(Raw {
             name_start,
             name_len: names.len() as u32 - name_start,
@@ -71,6 +97,7 @@ pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>) ->
             dev: meta.dev(),
             ino: meta.ino(),
             nlink: meta.nlink() as u32,
+            alt,
         });
     }
     if failed {

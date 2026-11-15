@@ -27,19 +27,22 @@ Rust crate `apps/core/crates/core-disk`: quét ổ / thư mục, giữ index tro
 - Root node có `name` = đường dẫn hiển thị đầy đủ (`C:\Users\x`, không `\\?\`); `path(i)` ghép tên theo chuỗi `parent`.
 - `flags`: DIR, LINK, CLOUD, DENIED, HARDLINK (bản lặp, size 0), HIDDEN, SYSTEM, MOUNT (thư mục khác ổ, không vào), ERROR.
 - Đo thật: 71-74 B/entry tính cả pool (2.5 triệu entry = 180 MB). Lúc dựng có thêm listing tạm nên peak RSS khoảng 1.8 lần index.
-- Scan mới mặc định `merge`: root cũ không chồng lấn root mới thì giữ (copy subtree qua `Builder::append_tree`), root trùng / lồng nhau thì thay.
+- Scan mới mặc định `merge`: root cũ không chồng lấn root mới thì giữ (copy subtree qua `Builder::append_tree`); root mới nằm trong root cũ thì chỉ thay subtree đó (`append_grafted`, size / len các thư mục cha điều chỉnh theo chênh lệch, root cũ giữ nguyên tên); root mới chứa hoặc trùng root cũ thì root cũ bị thay. Root mới nằm trong root cũ nhưng path không có trong index cũ (bị exclude / mới tạo) thì rơi về thay cả root cũ (`merge_replace`).
+- Giới hạn index: `Builder` dừng khi node >= u32::MAX - 1 hoặc pool > u32::MAX byte (`overflowed()`), scan trả `ScanError::TooLarge`; `Index::can_merge` kiểm tổng old + new, vượt thì `disk:done {ok:false, error}` và giữ index cũ.
 
 ## Invariant
 
 - **Không follow link**: Windows mọi thư mục có reparse point (junction, mount point, symlink...) trừ tag cloud (`tag & 0xFFFF0FFF == 0x9000001A`, OneDrive) đều ghi LINK, size 0, không vào. File reparse thuộc tag link (symlink, AppExecLink, LX symlink, AF_UNIX) cũng LINK; tag khác (dedup...) vẫn là file thường. macOS / Linux dùng `lstat` / objtype `VLNK`.
 - **Không qua ổ khác**: Unix so `dev` của thư mục con với `dev` của root, khác thì cờ MOUNT, trừ khi `crossMounts`. Windows mount point là reparse nên đã bị chặn bởi luật trên.
-- **Không mở file cloud-only**: Windows `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` / `RECALL_ON_OPEN` / `OFFLINE`, macOS `SF_DATALESS` thì cờ CLOUD, size trên đĩa 0, không gọi `CreateFileW` / `GetCompressedFileSizeW` (chỉ đọc attribute có sẵn trong entry thư mục).
+- **Không mở file cloud-only**: Windows `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` / `RECALL_ON_OPEN` / `OFFLINE`, macOS `SF_DATALESS` thì cờ CLOUD, size trên đĩa 0, không gọi `CreateFileW` / `GetCompressedFileSizeW` (chỉ đọc attribute có sẵn trong entry thư mục). Reparse tag cloud (`is_cloud_tag`) cũng tính là CLOUD dù thiếu bit attribute. Thư mục CLOUD vẫn nằm trong index nhưng **không đi vào** (không tải listing qua mạng), không gắn MOUNT. `win::classify(attrs, tag)` gom luật này.
 - **Size trên đĩa**: Windows làm tròn lên cluster của volume; file COMPRESSED / SPARSE mới gọi `GetCompressedFileSizeW` (đắt, nên chỉ khi cần). File nhỏ nằm trong MFT bị tính dư 1 cluster, chấp nhận. macOS `ATTR_FILE_ALLOCSIZE` / `st_blocks * 512`.
 - **Hardlink tính 1 lần** theo `(dev, ino)` khi `nlink > 1`. Unix bật mặc định (miễn phí); Windows tắt mặc định vì phải mở handle mỗi file (`FILE_READ_ATTRIBUTES` + `OPEN_REPARSE_POINT`, không đọc nội dung), bật bằng `hardlinks: true`. Bản nào được tính là bản quét tới trước (không cố định).
-- Lỗi quyền / path mất / lỗi khác: đếm (`denied`, `errors`), gắn cờ lên node thư mục, quét tiếp. Path Windows luôn có `\\?\` nên > 260 ký tự vẫn đi được. Tên UTF-16 lẻ surrogate đổi lossy nên đi vào thư mục đó sẽ lỗi và bị đếm vào `errors`.
+- Lỗi quyền / path mất / lỗi khác: đếm (`denied`, `errors`), gắn cờ lên node thư mục, quét tiếp. Path Windows luôn có `\\?\` nên > 260 ký tự vẫn đi được. Tên không hợp lệ (UTF-16 lẻ surrogate trên Windows, byte không phải UTF-8 trên Unix): index lưu bản lossy, tên gốc giữ trong `alts: Vec<OsString>` của listing (`Raw.alt` = chỉ số, `NO_ALT` = không có) để dựng path con đi vào đúng thư mục.
+- Thư mục con không được là link tại lúc mở: Unix `O_NOFOLLOW` (mac bulk mở với cờ này, fallback `read_dir` kiểm bằng open `O_NOFOLLOW` trước, còn khe hở nhỏ giữa open và `read_dir`); Windows `GetFileAttributesW` kiểm lại reparse trước khi list (`DirCtx.root` = true thì bỏ qua). Bị link giữa chừng thì đếm `errors`.
+- Panic: `WorkerGuard` trả `busy` + đặt `done` khi worker panic, scan trả `ScanError::Panicked` thay vì treo. `Engine::run_scan` bọc `catch_unwind`: panic thì vẫn trả slot scan, gửi `disk:done {ok:false, error}`; `Reporter` có `Drop` nên thread progress luôn dừng.
 - Cancel: worker kiểm trước mỗi job, scan trả `ScanError::Cancelled` và giữ nguyên index cũ. Pause chặn worker trước job kế (job đang chạy làm nốt 1 thư mục).
 - Progress: reporter thread gửi `disk:progress` cách nhau >= 100 ms (max 10 lần/giây), dừng ngay khi scan xong.
-- Exclude: chuỗi không có `/` `\` = luật tên (glob `*` `?`, không phân biệt hoa thường trên Windows / macOS), có dấu phân cách = luật path (áp cho thư mục). Mục bị loại không có trong index.
+- Exclude: chuỗi không có `/` `\` = luật tên (glob `*` `?`, không phân biệt hoa thường trên Windows / macOS), có dấu phân cách = luật path (áp cho cả thư mục lẫn file). Mục bị loại không có trong index.
 - Ổ mạng trong `disk.volumes`: không gọi `GetVolumeInformationW` / `GetDiskFreeSpaceExW` vì có thể treo khi mạng chập chờn, total / free = 0.
 
 ## Tìm kiếm
@@ -56,11 +59,11 @@ Rust crate `apps/core/crates/core-disk`: quét ổ / thư mục, giữ index tro
 
 ## Lưu đĩa
 
-`<dir>/index.bin`: `ORRDISK\0` + version u32 (=1) + zstd level 3 của: 7 x u64 stats, roots, số node, độ dài pool, node 43 B little-endian, pool. `decode` kiểm UTF-8, biên ký tự, `parent < i`, `first > i`, khoảng con trong mảng, root hợp lệ. Ghi file tạm rồi rename. `dir` mặc định `CCM_DATA_DIR/disk`, truyền `dir` để đổi.
+`<dir>/index.bin`: `ORRDISK\0` + version u32 (=1) + zstd level 3 của: 7 x u64 stats, roots, số node, độ dài pool, node 43 B little-endian, pool. `decode` kiểm UTF-8, biên ký tự, `parent < i`, `first > i`, khoảng con trong mảng, root hợp lệ. `load` giải nén streaming max 4 GiB (`MAX_DECODED`), vượt thì lỗi `too large`. Ghi file tạm riêng mỗi lần (`index.bin.<pid>.<seq>.tmp`), khoá save toàn tiến trình, `sync_all` rồi rename, lỗi thì xoá tmp. `dir` mặc định `CCM_DATA_DIR/disk`, truyền `dir` để đổi.
 
 ## Ops (`orrery-core disk`, NDJSON giống `core-desk::stdio`)
 
-Vào: `{"id","channel","args"}` (`args` là mảng thì lấy phần tử đầu), `{"type":"shutdown"}`. Ra: dòng đầu `{"ready":true,"pid","channels"}`, trả lời `{"id","ok":true,"value"}` / `{"id","ok":false,"error"}`, sự kiện `{"event","payload"}`. Mỗi request chạy thread riêng (pause / cancel không bị scan chặn).
+Vào: `{"id","channel","args"}` (`args` là mảng thì lấy phần tử đầu), `{"type":"shutdown"}`. Ra: dòng đầu `{"ready":true,"pid","channels"}`, trả lời `{"id","ok":true,"value"}` / `{"id","ok":false,"error"}`, sự kiện `{"event","payload"}`. Mỗi request chạy thread riêng (pause / cancel không bị scan chặn), panic trong request trả `{ok:false, error:"internal error"}`. Đọc dòng bằng `read_until` + `from_utf8_lossy` nên byte lỗi không làm chết serve; dòng không phải object bị bỏ, dòng có `id` mà `id` không phải u64 hoặc thiếu `channel` string thì trả `{id, ok:false, error}` (id gốc được echo). Hết input / `shutdown`: cancel scan rồi đợi tối đa 3 s cho request + scan đang chạy gửi nốt reply / `disk:done`.
 
 | Channel | Args | Value |
 |---|---|---|
@@ -90,4 +93,4 @@ Save 32 MB / 1.3 s, load 0.3 s. `THREAD_MODE_BACKGROUND_BEGIN` hạ IO priority 
 
 ## Chưa kiểm
 
-- macOS (`getattrlistbulk`, `setiopolicy_np`, `getmntinfo`) và Linux: chưa compile được trên máy này (không có target Apple / cross C compiler cho zstd-sys).
+- macOS (`getattrlistbulk`, `setiopolicy_np`, `getmntinfo`) và Linux: chưa compile được trên máy này (không có target Apple / cross C compiler cho zstd-sys). Phần mới chưa kiểm trên macOS: buffer bulk thread_local dùng lại, `failed` khi entry sai, `checked_add` offset, `O_NOFOLLOW`, `alts` cho tên không phải UTF-8.

@@ -14,7 +14,8 @@ use crate::fold::glob_ci;
 use crate::index::{clean_path, flag, under, Builder, Index, Stats, NONE};
 use serde_json::{json, Value};
 use std::collections::{HashSet, VecDeque};
-use std::path::PathBuf;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::time::Instant;
@@ -72,7 +73,10 @@ pub struct Raw {
     pub dev: u64,
     pub ino: u64,
     pub nlink: u32,
+    pub alt: u32,
 }
+
+pub const NO_ALT: u32 = u32::MAX;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ListError {
@@ -84,7 +88,10 @@ pub enum ListError {
 pub struct DirCtx {
     pub hardlinks: bool,
     pub cluster: u64,
+    pub root: bool,
 }
+
+pub type Lister = fn(&Path, &DirCtx, &mut String, &mut Vec<Raw>, &mut Vec<OsString>) -> Result<(), ListError>;
 
 #[derive(Debug, Clone)]
 pub struct ScanOptions {
@@ -106,6 +113,8 @@ impl ScanOptions {
 pub enum ScanError {
     Cancelled,
     NoRoots,
+    Panicked,
+    TooLarge,
 }
 
 impl std::fmt::Display for ScanError {
@@ -113,6 +122,8 @@ impl std::fmt::Display for ScanError {
         f.write_str(match self {
             ScanError::Cancelled => "cancelled",
             ScanError::NoRoots => "no readable root",
+            ScanError::Panicked => "scan worker panicked",
+            ScanError::TooLarge => "index too large",
         })
     }
 }
@@ -236,6 +247,7 @@ struct Job {
     path: PathBuf,
     dev: u64,
     cluster: u64,
+    root: bool,
 }
 
 struct Queue {
@@ -251,6 +263,7 @@ struct Shared<'a> {
     seen: Mutex<HashSet<(u64, u64)>>,
     excludes: Excludes,
     threads: usize,
+    lister: Lister,
     opts: &'a ScanOptions,
     control: &'a Control,
     progress: &'a Progress,
@@ -277,10 +290,31 @@ fn pick_roots(list: &[String]) -> Vec<Root> {
     out
 }
 
+struct WorkerGuard<'a, 'b> {
+    sh: &'a Shared<'b>,
+    busy: bool,
+}
+
+impl Drop for WorkerGuard<'_, '_> {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            let mut q = self.sh.q.lock().unwrap_or_else(|e| e.into_inner());
+            if self.busy {
+                q.busy = q.busy.saturating_sub(1);
+            }
+            q.done = true;
+            self.sh.cv.notify_all();
+        }
+    }
+}
+
 fn worker(sh: &Shared) -> Vec<Listing> {
     sys::lower_priority(sh.opts.level);
+    let mut guard = WorkerGuard { sh, busy: false };
     let mut out = Vec::new();
     let mut raw: Vec<Raw> = Vec::new();
+    let mut alts: Vec<OsString> = Vec::new();
+    let has_paths = !sh.excludes.paths.is_empty();
     let mut tick = 0u32;
     loop {
         sh.control.wait_if_paused();
@@ -294,6 +328,7 @@ fn worker(sh: &Shared) -> Vec<Listing> {
                 }
                 if let Some(j) = q.jobs.pop() {
                     q.busy += 1;
+                    guard.busy = true;
                     break j;
                 }
                 if q.busy == 0 {
@@ -306,8 +341,9 @@ fn worker(sh: &Shared) -> Vec<Listing> {
         };
         let mut listing = Listing { id: job.id, names: String::new(), items: Vec::new(), flags: 0 };
         raw.clear();
-        let ctx = DirCtx { hardlinks: sh.opts.hardlinks, cluster: job.cluster };
-        if let Err(e) = sys::list(&job.path, &ctx, &mut listing.names, &mut raw) {
+        alts.clear();
+        let ctx = DirCtx { hardlinks: sh.opts.hardlinks, cluster: job.cluster, root: job.root };
+        if let Err(e) = (sh.lister)(&job.path, &ctx, &mut listing.names, &mut raw, &mut alts) {
             match e {
                 ListError::Denied => {
                     listing.flags = flag::DENIED;
@@ -333,6 +369,14 @@ fn worker(sh: &Shared) -> Vec<Listing> {
             if sh.excludes.name(name.as_bytes()) {
                 continue;
             }
+            let child = if r.kind == Kind::Dir || has_paths {
+                Some(if r.alt != NO_ALT { job.path.join(&alts[r.alt as usize]) } else { job.path.join(name) })
+            } else {
+                None
+            };
+            if has_paths && child.as_ref().is_some_and(|p| sh.excludes.path(&sys::display(p))) {
+                continue;
+            }
             let mut flags = r.flags;
             let mut alloc = r.alloc;
             let mut dir_id = NONE;
@@ -346,13 +390,10 @@ fn worker(sh: &Shared) -> Vec<Listing> {
                 }
                 Kind::Dir => {
                     flags |= flag::DIR;
-                    let path = job.path.join(name);
-                    if !sh.excludes.paths.is_empty() && sh.excludes.path(&sys::display(&path)) {
-                        continue;
-                    }
-                    if sh.opts.cross_mounts || r.dev == job.dev {
+                    if flags & flag::CLOUD != 0 {
+                    } else if sh.opts.cross_mounts || r.dev == job.dev {
                         dir_id = sh.next_id.fetch_add(1, Ordering::Relaxed);
-                        children.push(Job { id: dir_id, path, dev: if sh.opts.cross_mounts { r.dev } else { job.dev }, cluster: job.cluster });
+                        children.push(Job { id: dir_id, path: child.unwrap_or_default(), dev: if sh.opts.cross_mounts { r.dev } else { job.dev }, cluster: job.cluster, root: false });
                     } else {
                         flags |= flag::MOUNT;
                     }
@@ -375,6 +416,7 @@ fn worker(sh: &Shared) -> Vec<Listing> {
         out.push(listing);
         let mut q = sh.q.lock().unwrap();
         q.busy -= 1;
+        guard.busy = false;
         let n = children.len();
         q.jobs.extend(children);
         if q.busy == 0 && q.jobs.is_empty() {
@@ -392,12 +434,16 @@ fn now_ms() -> u64 {
 }
 
 pub fn scan(opts: &ScanOptions, control: &Control, progress: &Progress) -> Result<Index, ScanError> {
+    scan_with(opts, control, progress, sys::list)
+}
+
+pub fn scan_with(opts: &ScanOptions, control: &Control, progress: &Progress, lister: Lister) -> Result<Index, ScanError> {
     let started = Instant::now();
     let roots = pick_roots(&opts.roots);
     if roots.is_empty() {
         return Err(ScanError::NoRoots);
     }
-    let jobs: Vec<Job> = roots.iter().enumerate().map(|(i, r)| Job { id: i as u32, path: r.path.clone(), dev: r.dev, cluster: sys::cluster_size(&r.path) }).collect();
+    let jobs: Vec<Job> = roots.iter().enumerate().map(|(i, r)| Job { id: i as u32, path: r.path.clone(), dev: r.dev, cluster: sys::cluster_size(&r.path), root: true }).collect();
     let threads = opts.threads.unwrap_or_else(|| opts.level.threads()).max(1);
     let sh = Shared {
         q: Mutex::new(Queue { jobs, busy: 0, done: false }),
@@ -406,25 +452,37 @@ pub fn scan(opts: &ScanOptions, control: &Control, progress: &Progress) -> Resul
         seen: Mutex::new(HashSet::new()),
         excludes: Excludes::new(&opts.excludes),
         threads,
+        lister,
         opts,
         control,
         progress,
     };
-    let listings: Vec<Listing> = std::thread::scope(|s| {
+    let (listings, panicked): (Vec<Listing>, bool) = std::thread::scope(|s| {
         let handles: Vec<_> = (0..threads).map(|_| s.spawn(|| worker(&sh))).collect();
-        handles.into_iter().flat_map(|h| h.join().unwrap_or_default()).collect()
+        let mut all = Vec::new();
+        let mut panicked = false;
+        for h in handles {
+            match h.join() {
+                Ok(l) => all.extend(l),
+                Err(_) => panicked = true,
+            }
+        }
+        (all, panicked)
     });
+    if panicked {
+        return Err(ScanError::Panicked);
+    }
     if control.is_cancelled() {
         return Err(ScanError::Cancelled);
     }
     let total = sh.next_id.load(Ordering::Relaxed) as usize;
-    let mut ix = build(&roots, listings, total);
+    let mut ix = build(&roots, listings, total)?;
     ix.stats.elapsed_ms = started.elapsed().as_millis() as u64;
     ix.stats.scanned_at = now_ms();
     Ok(ix)
 }
 
-fn build(roots: &[Root], listings: Vec<Listing>, total: usize) -> Index {
+fn build(roots: &[Root], listings: Vec<Listing>, total: usize) -> Result<Index, ScanError> {
     let entries: usize = listings.iter().map(|l| l.items.len()).sum();
     let names: usize = listings.iter().map(|l| l.names.len()).sum();
     let mut slots: Vec<Option<Listing>> = (0..total).map(|_| None).collect();
@@ -441,6 +499,9 @@ fn build(roots: &[Root], listings: Vec<Listing>, total: usize) -> Index {
         queue.push_back((n, i));
     }
     while let Some((node, id)) = queue.pop_front() {
+        if b.overflowed() {
+            return Err(ScanError::TooLarge);
+        }
         let Some(l) = slots[id].take() else { continue };
         b.nodes[node as usize].flags |= l.flags;
         let first = b.nodes.len() as u32;
@@ -455,8 +516,11 @@ fn build(roots: &[Root], listings: Vec<Listing>, total: usize) -> Index {
         n.first = first;
         n.count = l.items.len() as u32;
     }
+    if b.overflowed() {
+        return Err(ScanError::TooLarge);
+    }
     let mut ix = b.finish(root_ids, Stats::default());
     ix.sum_sizes();
     ix.recount();
-    ix
+    Ok(ix)
 }

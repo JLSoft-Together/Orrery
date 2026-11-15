@@ -1,11 +1,17 @@
 use crate::index::{Index, Node, Stats, NONE};
-use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 
 pub const FILE: &str = "index.bin";
 pub const MAGIC: &[u8; 8] = b"ORRDISK\0";
 pub const VERSION: u32 = 1;
 const NODE_BYTES: usize = 43;
+pub const MAX_DECODED: u64 = 4 << 30;
+
+static SAVE_LOCK: Mutex<()> = Mutex::new(());
+static SAVE_SEQ: AtomicU64 = AtomicU64::new(0);
 
 pub fn file_in(dir: &Path) -> PathBuf {
     dir.join(FILE)
@@ -134,9 +140,19 @@ pub fn save(ix: &Index, dir: &Path) -> Result<(PathBuf, u64), Error> {
     out.extend_from_slice(&VERSION.to_le_bytes());
     out.extend_from_slice(&body);
     let file = file_in(dir);
-    let tmp = dir.join(format!("{FILE}.tmp"));
-    std::fs::write(&tmp, &out)?;
-    std::fs::rename(&tmp, &file)?;
+    let _guard = SAVE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let tmp = dir.join(format!("{FILE}.{}.{}.tmp", std::process::id(), SAVE_SEQ.fetch_add(1, Ordering::Relaxed)));
+    let written = (|| {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(&out)?;
+        f.sync_all()?;
+        drop(f);
+        std::fs::rename(&tmp, &file)
+    })();
+    if let Err(e) = written {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e);
+    }
     Ok((file, out.len() as u64))
 }
 
@@ -154,6 +170,46 @@ pub fn load(dir: &Path) -> Result<Option<Index>, Error> {
     if version != VERSION {
         return Err(bad("version"));
     }
-    let body = zstd::stream::decode_all(&raw[12..])?;
+    let body = inflate(&raw[12..], MAX_DECODED)?;
     decode(&body).map(Some)
+}
+
+pub fn inflate(body: &[u8], limit: u64) -> Result<Vec<u8>, Error> {
+    let mut out = Vec::new();
+    zstd::stream::read::Decoder::new(body)?.take(limit.saturating_add(1)).read_to_end(&mut out)?;
+    if out.len() as u64 > limit {
+        return Err(bad("too large"));
+    }
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inflate_respects_limit() {
+        let body = zstd::stream::encode_all(&vec![0u8; 100_000][..], 3).unwrap();
+        assert_eq!(inflate(&body, 100_000).unwrap().len(), 100_000);
+        assert!(inflate(&body, 99_999).is_err());
+        assert!(inflate(&body, 10).is_err());
+    }
+
+    #[test]
+    fn concurrent_saves_stay_readable() {
+        let dir = std::env::temp_dir().join(format!("core-disk-store-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let ix = Index::default();
+        let hs: Vec<_> = (0..8).map(|_| {
+            let (d, i) = (dir.clone(), ix.clone());
+            std::thread::spawn(move || save(&i, &d).unwrap())
+        }).collect();
+        for h in hs {
+            h.join().unwrap();
+        }
+        assert!(load(&dir).unwrap().is_some());
+        let leftovers = std::fs::read_dir(&dir).unwrap().filter(|e| e.as_ref().unwrap().file_name().to_string_lossy().ends_with(".tmp")).count();
+        assert_eq!(leftovers, 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

@@ -115,6 +115,9 @@ pub struct Builder {
     pub nodes: Vec<Node>,
     pub pool: Vec<u8>,
     scratch: String,
+    max_nodes: usize,
+    max_pool: usize,
+    overflow: bool,
 }
 
 impl Default for Builder {
@@ -125,23 +128,39 @@ impl Default for Builder {
 
 impl Builder {
     pub fn new() -> Self {
-        Builder { nodes: Vec::new(), pool: Vec::new(), scratch: String::new() }
+        Builder { nodes: Vec::new(), pool: Vec::new(), scratch: String::new(), max_nodes: NONE as usize, max_pool: u32::MAX as usize, overflow: false }
+    }
+
+    pub fn with_limits(max_nodes: usize, max_pool: usize) -> Self {
+        Builder { max_nodes: max_nodes.min(NONE as usize), max_pool: max_pool.min(u32::MAX as usize), ..Self::new() }
+    }
+
+    pub fn overflowed(&self) -> bool {
+        self.overflow
     }
 
     pub fn with_capacity(nodes: usize, pool: usize) -> Self {
-        Builder { nodes: Vec::with_capacity(nodes), pool: Vec::with_capacity(pool), scratch: String::new() }
+        Builder { nodes: Vec::with_capacity(nodes), pool: Vec::with_capacity(pool), ..Self::new() }
     }
 
     pub fn push(&mut self, parent: u32, name: &str, flags: u16, size: u64, len: u64, mtime: u32) -> u32 {
         let name = if name.len() > u16::MAX as usize { &name[..name.floor_char_boundary(u16::MAX as usize)] } else { name };
-        let name_off = self.pool.len() as u32;
-        self.pool.extend_from_slice(name.as_bytes());
+        if self.overflow {
+            return 0;
+        }
         let mut fold_len = 0u16;
         if !name.is_ascii() {
             fold_into(name, &mut self.scratch);
-            let f = &self.scratch[..self.scratch.floor_char_boundary(u16::MAX as usize)];
-            self.pool.extend_from_slice(f.as_bytes());
-            fold_len = f.len() as u16;
+            fold_len = self.scratch.floor_char_boundary(u16::MAX as usize) as u16;
+        }
+        if self.nodes.len() + 1 >= self.max_nodes || self.pool.len() + name.len() + fold_len as usize > self.max_pool {
+            self.overflow = true;
+            return 0;
+        }
+        let name_off = self.pool.len() as u32;
+        self.pool.extend_from_slice(name.as_bytes());
+        if fold_len > 0 {
+            self.pool.extend_from_slice(&self.scratch.as_bytes()[..fold_len as usize]);
         }
         let group = if flags & flag::DIR == 0 { group_of(name) } else { 0 };
         self.nodes.push(Node { parent, name_off, name_len: name.len() as u16, fold_len, flags, group, first: 0, count: 0, size, len, mtime });
@@ -203,6 +222,50 @@ impl Builder {
                 count += 1;
                 if src.nodes[c as usize].count > 0 {
                     queue.push_back((c, nc));
+                }
+            }
+            let dn = &mut self.nodes[d as usize];
+            dn.first = if count > 0 { first } else { 0 };
+            dn.count = count;
+        }
+        top
+    }
+
+    fn append_grafted(&mut self, src: &Index, root: u32, graft: &HashMap<u32, u32>, delta: &HashMap<u32, [u64; 4]>, new: &Index) -> u32 {
+        let adjust = |b: &mut Builder, s: u32, d: u32| {
+            if let Some([os, ol, ns, nl]) = delta.get(&s) {
+                let n = &mut b.nodes[d as usize];
+                n.size = n.size.saturating_sub(*os).saturating_add(*ns);
+                n.len = n.len.saturating_sub(*ol).saturating_add(*nl);
+            }
+        };
+        let top = self.copy_from(src, root, NONE);
+        adjust(self, root, top);
+        let mut queue = VecDeque::from([(src, root, top)]);
+        while let Some((from, s, d)) = queue.pop_front() {
+            let first = self.nodes.len() as u32;
+            let mut count = 0u32;
+            for c in from.children(s) {
+                let nc = self.copy_from(from, c, d);
+                count += 1;
+                let in_old = std::ptr::eq(from, src);
+                if let Some(&k) = graft.get(&c).filter(|_| in_old) {
+                    let nr = new.roots[k as usize];
+                    let nn = new.nodes[nr as usize];
+                    let n = &mut self.nodes[nc as usize];
+                    n.flags = nn.flags;
+                    n.size = nn.size;
+                    n.len = nn.len;
+                    n.mtime = nn.mtime;
+                    n.group = nn.group;
+                    queue.push_back((new, nr, nc));
+                    continue;
+                }
+                if in_old {
+                    adjust(self, c, nc);
+                }
+                if from.nodes[c as usize].count > 0 {
+                    queue.push_back((from, c, nc));
                 }
             }
             let dn = &mut self.nodes[d as usize];
@@ -372,7 +435,63 @@ impl Index {
         Some((b.finish(roots, self.stats), top))
     }
 
+    pub fn can_merge(old: &Index, new: &Index) -> bool {
+        old.nodes.len() as u64 + new.nodes.len() as u64 + 1 < NONE as u64 && old.pool.len() as u64 + new.pool.len() as u64 <= u32::MAX as u64
+    }
+
     pub fn merge(old: &Index, new: Index) -> Index {
+        let new_roots = new.root_paths();
+        let mut kept: Vec<u32> = Vec::new();
+        let mut graft: HashMap<u32, u32> = HashMap::new();
+        for &r in &old.roots {
+            let p = old.name(r);
+            if new_roots.iter().any(|n| under(p, n)) {
+                continue;
+            }
+            for (k, &nr) in new.roots.iter().enumerate() {
+                let n = new.name(nr);
+                if n.len() > p.len() && under(n, p) {
+                    if let Some(at) = old.find(n) {
+                        graft.insert(at, k as u32);
+                    } else {
+                        return Self::merge_replace(old, new);
+                    }
+                }
+            }
+            kept.push(r);
+        }
+        if kept.is_empty() {
+            return new;
+        }
+        let grafted: HashSet<u32> = graft.values().copied().collect();
+        let mut delta: HashMap<u32, [u64; 4]> = HashMap::new();
+        for (&at, &k) in &graft {
+            let o = old.nodes[at as usize];
+            let nn = new.nodes[new.roots[k as usize] as usize];
+            let mut up = o.parent;
+            while up != NONE {
+                let e = delta.entry(up).or_default();
+                e[0] += o.size;
+                e[1] += o.len;
+                e[2] += nn.size;
+                e[3] += nn.len;
+                up = old.nodes[up as usize].parent;
+            }
+        }
+        let mut b = Builder::with_capacity(old.nodes.len() + new.nodes.len(), old.pool.len() + new.pool.len());
+        let mut roots = Vec::new();
+        for r in kept {
+            roots.push(b.append_grafted(old, r, &graft, &delta, &new));
+        }
+        for (k, r) in new.roots.iter().enumerate() {
+            if !grafted.contains(&(k as u32)) {
+                roots.push(b.append_tree(&new, *r));
+            }
+        }
+        b.finish(roots, new.stats)
+    }
+
+    fn merge_replace(old: &Index, new: Index) -> Index {
         let new_roots = new.root_paths();
         let kept: Vec<u32> = old.roots.iter().copied().filter(|r| {
             let p = old.name(*r);

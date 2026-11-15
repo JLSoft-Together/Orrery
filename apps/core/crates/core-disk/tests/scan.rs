@@ -408,3 +408,192 @@ fn engine_forget_updates_index() {
     assert_eq!(all["entries"], json!(0));
     assert_eq!(engine.dispatch("disk.children", &json!({})).unwrap()["total"], json!(0));
 }
+
+#[derive(Clone, Default)]
+struct Buf(Arc<Mutex<Vec<u8>>>);
+
+impl std::io::Write for Buf {
+    fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(b);
+        Ok(b.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn serve_bytes(input: Vec<u8>) -> String {
+    let buf = Buf::default();
+    let out = Arc::new(core_disk::serve::Out::new(Box::new(buf.clone())));
+    let engine = Engine::new(None, Arc::new(|_, _| {}));
+    core_disk::serve::serve(engine, std::io::Cursor::new(input), out);
+    let text = String::from_utf8(buf.0.lock().unwrap().clone()).unwrap();
+    text
+}
+
+#[test]
+fn serve_survives_invalid_utf8() {
+    let mut input = b"\xff\xfe{broken\n".to_vec();
+    input.extend_from_slice(b"{\"id\":7,\"channel\":\"disk.status\",\"args\":[]}\n");
+    let text = serve_bytes(input);
+    assert!(text.contains("\"id\":7,\"ok\":true"), "{text}");
+}
+
+#[test]
+fn serve_answers_malformed_requests() {
+    let text = serve_bytes(
+        b"[1,2]\n{\"id\":3}\n{\"id\":\"x\",\"channel\":\"disk.status\"}\n{\"id\":4,\"channel\":5}\n{\"id\":-1,\"channel\":\"disk.status\"}\n{\"channel\":\"disk.status\"}\n{\"id\":5,\"channel\":\"disk.status\"}\n".to_vec(),
+    );
+    let lines: Vec<Value> = text.lines().skip(1).map(|l| serde_json::from_str(l).unwrap()).collect();
+    assert_eq!(lines.len(), 5, "{text}");
+    for id in [json!(3), json!("x"), json!(4), json!(-1)] {
+        let r = lines.iter().find(|l| l["id"] == id).unwrap_or_else(|| panic!("{id} {text}"));
+        assert_eq!(r["ok"], json!(false));
+        assert!(r["error"].is_string());
+    }
+    let ok = lines.iter().find(|l| l["id"] == json!(5)).unwrap();
+    assert_eq!(ok["ok"], json!(true));
+}
+
+#[test]
+fn serve_drains_scan_before_returning() {
+    let t = tree();
+    let buf = Buf::default();
+    let out = Arc::new(core_disk::serve::Out::new(Box::new(buf.clone())));
+    let sink = out.clone();
+    let engine = Engine::new(None, Arc::new(move |e, p| sink.send(&json!({"event": e, "payload": p}))));
+    let req = json!({"id": 1, "channel": "disk.scan", "args": [{"roots": [t.0.to_string_lossy()], "level": "light"}]});
+    core_disk::serve::serve(engine, std::io::Cursor::new(format!("{req}\n")), out);
+    let text = String::from_utf8(buf.0.lock().unwrap().clone()).unwrap();
+    assert!(text.contains("\"id\":1,\"ok\":true"), "{text}");
+    assert!(text.contains("disk:done"), "{text}");
+}
+
+fn panic_in_media(dir: &Path, ctx: &core_disk::walk::DirCtx, names: &mut String, out: &mut Vec<core_disk::walk::Raw>, alts: &mut Vec<std::ffi::OsString>) -> Result<(), core_disk::walk::ListError> {
+    if dir.file_name().is_some_and(|n| n == "media") {
+        panic!("boom");
+    }
+    core_disk::walk::sys::list(dir, ctx, names, out, alts)
+}
+
+#[test]
+fn worker_panic_ends_scan_with_error() {
+    let t = tree();
+    let (tx, rx) = std::sync::mpsc::channel();
+    let root = t.0.to_string_lossy().to_string();
+    std::thread::spawn(move || {
+        let mut o = ScanOptions::new(vec![root]);
+        o.threads = Some(3);
+        let r = core_disk::walk::scan_with(&o, &Control::default(), &Progress::default(), panic_in_media);
+        tx.send(r.err()).unwrap();
+    });
+    assert_eq!(rx.recv_timeout(Duration::from_secs(20)).expect("scan hung"), Some(ScanError::Panicked));
+}
+
+#[test]
+fn engine_recovers_after_scan_panic() {
+    let t = tree();
+    let events = Arc::new(Mutex::new(Vec::<(String, Value)>::new()));
+    let sink = events.clone();
+    let engine = Engine::with_lister(None, Arc::new(move |e, p| sink.lock().unwrap().push((e.to_string(), p))), panic_in_media);
+    let args = json!({"roots": [t.0.to_string_lossy()], "level": "light"});
+    assert_eq!(engine.dispatch("disk.scan", &args).unwrap()["started"], json!(true));
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    loop {
+        let done = events.lock().unwrap().iter().find(|(e, _)| e == "disk:done").map(|(_, p)| p.clone());
+        if let Some(p) = done {
+            assert_eq!(p["ok"], json!(false));
+            assert!(p["error"].as_str().unwrap().contains("panicked"), "{p}");
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "no disk:done");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(!engine.scanning());
+    assert!(engine.dispatch("disk.scan", &args).is_ok());
+}
+
+#[test]
+fn builder_stops_at_limits() {
+    let mut b = core_disk::index::Builder::with_limits(4, 1000);
+    let r = b.push(core_disk::NONE, "root", flag::DIR, 0, 0, 0);
+    b.push(r, "a", 0, 1, 1, 0);
+    b.push(r, "b", 0, 1, 1, 0);
+    assert!(!b.overflowed());
+    b.push(r, "c", 0, 1, 1, 0);
+    assert!(b.overflowed());
+    let mut p = core_disk::index::Builder::with_limits(100, 10);
+    p.push(core_disk::NONE, "0123456789abc", flag::DIR, 0, 0, 0);
+    assert!(p.overflowed());
+}
+
+#[test]
+fn merge_rescan_of_subdir_replaces_only_subtree() {
+    let t = tree();
+    let old = run(&t.0, |_| {});
+    write(&t.0.join("media").join("photos").join("new.png"), 7000);
+    fs::remove_file(t.0.join("media").join("clip.mkv")).unwrap();
+    let sub = t.0.join("media");
+    let fresh = run(&sub, |_| {});
+    let old_total = old.nodes[old.roots[0] as usize].size;
+    let merged = Index::merge(&old, fresh);
+    assert_eq!(merged.roots.len(), 1);
+    assert_eq!(merged.root_paths(), old.root_paths());
+    check_sums(&merged);
+    let p = |rel: &[&str]| rel.iter().fold(t.0.clone(), |a, r| a.join(r)).to_string_lossy().to_string();
+    assert!(merged.find(&p(&["a.txt"])).is_some());
+    assert!(merged.find(&p(&["docs", "notes.md"])).is_some());
+    assert!(merged.find(&p(&["media", "photos", "new.png"])).is_some());
+    assert!(merged.find(&p(&["media", "clip.mkv"])).is_none());
+    let old_clip = old.nodes[old.find(&p(&["media", "clip.mkv"])).unwrap() as usize].size;
+    let new_png = merged.nodes[merged.find(&p(&["media", "photos", "new.png"])).unwrap() as usize].size;
+    assert_eq!(merged.nodes[merged.roots[0] as usize].size, old_total - old_clip + new_png);
+    assert_eq!(merged.stats.bytes, merged.nodes[merged.roots[0] as usize].size);
+    assert_eq!(merged.stats.files, old.stats.files);
+}
+
+#[test]
+fn merge_rescan_of_parent_replaces_child_root() {
+    let t = tree();
+    let child = run(&t.0.join("media"), |_| {});
+    let parent = run(&t.0, |_| {});
+    let merged = Index::merge(&child, parent);
+    assert_eq!(merged.roots.len(), 1);
+    assert_eq!(merged.root_paths(), vec![t.0.to_string_lossy().to_string()]);
+}
+
+#[test]
+fn exclude_path_applies_to_files() {
+    let t = tree();
+    let file = t.0.join("a.txt").to_string_lossy().to_string();
+    let ix = run(&t.0, |o| o.excludes = vec![file.clone()]);
+    assert!(ix.find(&file).is_none());
+    assert!(ix.find(&t.0.join("docs").join("notes.md").to_string_lossy()).is_some());
+}
+
+#[cfg(windows)]
+#[test]
+fn ill_formed_utf16_names_are_still_walked() {
+    use std::os::windows::ffi::OsStringExt;
+    let t = tmp("badname");
+    let bad = std::ffi::OsString::from_wide(&[b'b' as u16, 0xD800, b'd' as u16]);
+    let dir = t.0.join(&bad);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("inner.txt"), vec![1u8; 100]).unwrap();
+    let ix = run(&t.0, |_| {});
+    assert_eq!(ix.stats.errors, 0);
+    assert_eq!(ix.stats.files, 1);
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_names_are_still_walked() {
+    use std::os::unix::ffi::OsStrExt;
+    let t = tmp("badname");
+    let dir = t.0.join(std::ffi::OsStr::from_bytes(b"b\xffd"));
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("inner.txt"), vec![1u8; 100]).unwrap();
+    let ix = run(&t.0, |_| {});
+    assert_eq!(ix.stats.errors, 0);
+    assert_eq!(ix.stats.files, 1);
+}

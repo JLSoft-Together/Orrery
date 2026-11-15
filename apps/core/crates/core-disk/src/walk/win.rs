@@ -1,11 +1,12 @@
-use super::{DirCtx, Kind, Level, ListError, Raw};
+use super::{DirCtx, Kind, Level, ListError, Raw, NO_ALT};
 use crate::index::flag;
 use std::ffi::c_void;
-use std::os::windows::ffi::OsStrExt;
+use std::ffi::OsString;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
 use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_ACCESS_DENIED, ERROR_FILE_NOT_FOUND, ERROR_NO_MORE_FILES, ERROR_PATH_NOT_FOUND, FILETIME, HANDLE, INVALID_HANDLE_VALUE, NO_ERROR};
 use windows_sys::Win32::Storage::FileSystem::{
-    CreateFileW, FindClose, FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW, GetCompressedFileSizeW, GetDiskFreeSpaceW, GetFileInformationByHandle, GetVolumePathNameW, BY_HANDLE_FILE_INFORMATION, FILE_FLAG_BACKUP_SEMANTICS,
+    CreateFileW, FindClose, FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW, GetCompressedFileSizeW, GetDiskFreeSpaceW, GetFileAttributesW, GetFileInformationByHandle, GetVolumePathNameW, BY_HANDLE_FILE_INFORMATION, FILE_FLAG_BACKUP_SEMANTICS,
     FILE_FLAG_OPEN_REPARSE_POINT, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FIND_FIRST_EX_LARGE_FETCH, INVALID_FILE_SIZE, OPEN_EXISTING, WIN32_FIND_DATAW,
 };
 use windows_sys::Win32::System::Threading::{GetCurrentThread, SetThreadPriority, THREAD_MODE_BACKGROUND_BEGIN, THREAD_PRIORITY_BELOW_NORMAL};
@@ -98,7 +99,31 @@ fn round_up(len: u64, cluster: u64) -> u64 {
     }
 }
 
-pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>) -> Result<(), ListError> {
+pub fn classify(attrs: u32, tag: u32) -> (Kind, bool) {
+    let reparse = attrs & ATTR_REPARSE != 0;
+    let cloud = attrs & CLOUD_ATTRS != 0 || (reparse && is_cloud_tag(tag));
+    let is_dir = attrs & ATTR_DIRECTORY != 0;
+    let kind = if reparse && !is_cloud_tag(tag) && (is_dir || LINK_TAGS.contains(&tag)) {
+        Kind::Link
+    } else if is_dir {
+        Kind::Dir
+    } else {
+        Kind::File
+    };
+    (kind, cloud)
+}
+
+pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>, alts: &mut Vec<OsString>) -> Result<(), ListError> {
+    if !ctx.root {
+        let w = wide(dir);
+        let a = unsafe { GetFileAttributesW(w.as_ptr()) };
+        if a == u32::MAX {
+            return Err(ListError::Missing);
+        }
+        if a & ATTR_REPARSE != 0 && a & CLOUD_ATTRS == 0 {
+            return Err(ListError::Other);
+        }
+    }
     let base: Vec<u16> = dir.as_os_str().encode_wide().collect();
     let mut pattern = base.clone();
     if pattern.last() != Some(&(b'\\' as u16)) {
@@ -117,14 +142,14 @@ pub fn list(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>) ->
     }
     let find = Find(h);
     loop {
-        push(&base, &data, ctx, names, out);
+        push(&base, &data, ctx, names, out, alts);
         if unsafe { FindNextFileW(find.0, &mut data) } == 0 {
             return if unsafe { GetLastError() } == ERROR_NO_MORE_FILES { Ok(()) } else { Err(ListError::Other) };
         }
     }
 }
 
-fn push(base: &[u16], d: &WIN32_FIND_DATAW, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>) {
+fn push(base: &[u16], d: &WIN32_FIND_DATAW, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>, alts: &mut Vec<OsString>) {
     let wname = file_name(d);
     if wname == [b'.' as u16] || wname == [b'.' as u16, b'.' as u16] {
         return;
@@ -132,15 +157,7 @@ fn push(base: &[u16], d: &WIN32_FIND_DATAW, ctx: &DirCtx, names: &mut String, ou
     let attrs = d.dwFileAttributes;
     let reparse = attrs & ATTR_REPARSE != 0;
     let tag = if reparse { d.dwReserved0 } else { 0 };
-    let is_dir = attrs & ATTR_DIRECTORY != 0;
-    let cloud = attrs & CLOUD_ATTRS != 0;
-    let kind = if reparse && !is_cloud_tag(tag) && (is_dir || LINK_TAGS.contains(&tag)) {
-        Kind::Link
-    } else if is_dir {
-        Kind::Dir
-    } else {
-        Kind::File
-    };
+    let (kind, cloud) = classify(attrs, tag);
     let mut flags = 0u16;
     if attrs & ATTR_HIDDEN != 0 {
         flags |= flag::HIDDEN;
@@ -170,8 +187,16 @@ fn push(base: &[u16], d: &WIN32_FIND_DATAW, ctx: &DirCtx, names: &mut String, ou
         }
     };
     let name_start = names.len() as u32;
-    names.push_str(&String::from_utf16_lossy(wname));
-    out.push(Raw { name_start, name_len: names.len() as u32 - name_start, kind, flags, len, alloc, mtime: unix_secs(d.ftLastWriteTime), dev, ino, nlink });
+    let mut alt = NO_ALT;
+    match String::from_utf16(wname) {
+        Ok(n) => names.push_str(&n),
+        Err(_) => {
+            names.push_str(&String::from_utf16_lossy(wname));
+            alt = alts.len() as u32;
+            alts.push(OsString::from_wide(wname));
+        }
+    }
+    out.push(Raw { name_start, name_len: names.len() as u32 - name_start, kind, flags, len, alloc, mtime: unix_secs(d.ftLastWriteTime), dev, ino, nlink, alt });
 }
 
 pub fn normalize_root(input: &str) -> Option<(String, PathBuf)> {
@@ -220,4 +245,20 @@ pub fn lower_priority(level: Level) -> bool {
         _ => THREAD_MODE_BACKGROUND_BEGIN,
     };
     unsafe { SetThreadPriority(GetCurrentThread(), mode) != 0 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cloud_classification() {
+        let tag = 0x9000_001A;
+        assert_eq!(classify(ATTR_DIRECTORY | ATTR_REPARSE, tag), (Kind::Dir, true));
+        assert_eq!(classify(ATTR_DIRECTORY | ATTR_RECALL_ON_DATA_ACCESS, 0), (Kind::Dir, true));
+        assert_eq!(classify(ATTR_DIRECTORY | ATTR_RECALL_ON_OPEN, 0), (Kind::Dir, true));
+        assert_eq!(classify(ATTR_REPARSE, tag | 0x7000), (Kind::File, true));
+        assert_eq!(classify(0, 0), (Kind::File, false));
+        assert_eq!(classify(ATTR_DIRECTORY | ATTR_REPARSE, 0xA000_000C), (Kind::Link, false));
+    }
 }

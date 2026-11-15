@@ -1,7 +1,9 @@
 use super::unix::SF_DATALESS;
-use super::{Kind, ListError, Raw};
+use super::{DirCtx, Kind, ListError, Raw, NO_ALT};
 use crate::index::flag;
-use std::os::unix::ffi::OsStrExt;
+use std::cell::RefCell;
+use std::ffi::OsString;
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::Path;
 
 const ATTR_CMN_ERROR: u32 = 0x2000_0000;
@@ -9,6 +11,10 @@ const VREG: u32 = 1;
 const VDIR: u32 = 2;
 const VLNK: u32 = 5;
 const BUF: usize = 256 * 1024;
+
+thread_local! {
+    static BULK: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+}
 
 struct Fd(libc::c_int);
 
@@ -23,15 +29,26 @@ fn errno() -> libc::c_int {
 }
 
 fn rd<T: Copy>(buf: &[u8], at: usize) -> Option<T> {
-    if at + std::mem::size_of::<T>() > buf.len() {
+    if at.checked_add(std::mem::size_of::<T>())? > buf.len() {
         return None;
     }
     Some(unsafe { std::ptr::read_unaligned(buf.as_ptr().add(at) as *const T) })
 }
 
-pub fn list_bulk(dir: &Path, names: &mut String, out: &mut Vec<Raw>) -> Option<Result<(), ListError>> {
+pub fn list_bulk(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>, alts: &mut Vec<OsString>) -> Option<Result<(), ListError>> {
+    BULK.with(|b| {
+        let mut buf = b.borrow_mut();
+        if buf.len() != BUF {
+            buf.resize(BUF, 0);
+        }
+        list_with(dir, ctx, names, out, alts, &mut buf)
+    })
+}
+
+fn list_with(dir: &Path, ctx: &DirCtx, names: &mut String, out: &mut Vec<Raw>, alts: &mut Vec<OsString>, buf: &mut [u8]) -> Option<Result<(), ListError>> {
     let c = std::ffi::CString::new(dir.as_os_str().as_bytes()).ok()?;
-    let fd = unsafe { libc::open(c.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC) };
+    let nofollow = if ctx.root { 0 } else { libc::O_NOFOLLOW };
+    let fd = unsafe { libc::open(c.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | nofollow) };
     if fd < 0 {
         return Some(Err(match errno() {
             libc::EACCES | libc::EPERM => ListError::Denied,
@@ -44,7 +61,6 @@ pub fn list_bulk(dir: &Path, names: &mut String, out: &mut Vec<Raw>) -> Option<R
     al.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
     al.commonattr = libc::ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_ERROR | libc::ATTR_CMN_NAME | libc::ATTR_CMN_DEVID | libc::ATTR_CMN_OBJTYPE | libc::ATTR_CMN_MODTIME | libc::ATTR_CMN_FLAGS | libc::ATTR_CMN_FILEID;
     al.fileattr = libc::ATTR_FILE_LINKCOUNT | libc::ATTR_FILE_ALLOCSIZE | libc::ATTR_FILE_DATALENGTH;
-    let mut buf = vec![0u8; BUF];
     let start = out.len();
     let mut failed = false;
     loop {
@@ -61,22 +77,26 @@ pub fn list_bulk(dir: &Path, names: &mut String, out: &mut Vec<Raw>) -> Option<R
         }
         let mut at = 0usize;
         for _ in 0..n {
-            let Some(len) = rd::<u32>(&buf, at) else { break };
-            let len = len as usize;
-            if len == 0 || at + len > buf.len() {
+            let Some(len) = rd::<u32>(buf, at) else {
+                failed = true;
                 break;
-            }
-            let entry = &buf[at..at + len];
-            if parse(entry, names, out).is_none() {
+            };
+            let len = len as usize;
+            let Some(end) = at.checked_add(len).filter(|e| len != 0 && *e <= buf.len()) else {
+                failed = true;
+                break;
+            };
+            let entry = &buf[at..end];
+            if parse(entry, names, out, alts).is_none() {
                 failed = true;
             }
-            at += len;
+            at = end;
         }
     }
     Some(if failed { Err(ListError::Other) } else { Ok(()) })
 }
 
-fn parse(e: &[u8], names: &mut String, out: &mut Vec<Raw>) -> Option<()> {
+fn parse(e: &[u8], names: &mut String, out: &mut Vec<Raw>, alts: &mut Vec<OsString>) -> Option<()> {
     let ret: libc::attribute_set_t = rd(e, 4)?;
     let mut f = 4 + std::mem::size_of::<libc::attribute_set_t>();
     let c = ret.commonattr;
@@ -90,9 +110,9 @@ fn parse(e: &[u8], names: &mut String, out: &mut Vec<Raw>) -> Option<()> {
     let mut name: &[u8] = &[];
     if c & libc::ATTR_CMN_NAME != 0 {
         let r: libc::attrreference_t = rd(e, f)?;
-        let s = (f as i64 + r.attr_dataoffset as i64) as usize;
+        let s = usize::try_from(f as i64 + r.attr_dataoffset as i64).ok()?;
         let l = (r.attr_length as usize).saturating_sub(1);
-        name = e.get(s..s + l)?;
+        name = e.get(s..s.checked_add(l)?)?;
         f += 8;
     }
     let mut dev = 0u64;
@@ -149,7 +169,15 @@ fn parse(e: &[u8], names: &mut String, out: &mut Vec<Raw>) -> Option<()> {
     }
     let file = kind == Kind::File;
     let name_start = names.len() as u32;
-    names.push_str(&String::from_utf8_lossy(name));
+    let mut alt = NO_ALT;
+    match std::str::from_utf8(name) {
+        Ok(t) => names.push_str(t),
+        Err(_) => {
+            names.push_str(&String::from_utf8_lossy(name));
+            alt = alts.len() as u32;
+            alts.push(OsString::from_vec(name.to_vec()));
+        }
+    }
     out.push(Raw {
         name_start,
         name_len: names.len() as u32 - name_start,
@@ -161,6 +189,7 @@ fn parse(e: &[u8], names: &mut String, out: &mut Vec<Raw>) -> Option<()> {
         dev,
         ino,
         nlink,
+        alt,
     });
     Some(())
 }

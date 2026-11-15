@@ -1,12 +1,13 @@
 use crate::fold::{group_id, GROUP_NAMES};
 use crate::index::{flag, Index, Sort};
 use crate::search::{search, Only, Query};
-use crate::walk::{scan, Control, Level, Progress, ScanError, ScanOptions};
+use crate::walk::{scan_with, Control, Level, Lister, Progress, ScanError, ScanOptions};
 use crate::{store, volumes};
 use serde_json::{json, Map, Value};
 use std::io::{BufRead, Write};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
@@ -15,6 +16,7 @@ pub const EVENT_PROGRESS: &str = "disk:progress";
 pub const EVENT_DONE: &str = "disk:done";
 const TICK: Duration = Duration::from_millis(100);
 const LIMIT_MAX: usize = 10_000;
+const DRAIN: Duration = Duration::from_secs(3);
 
 pub type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
@@ -23,6 +25,7 @@ pub struct Engine {
     scan: Mutex<Option<Arc<Control>>>,
     data_dir: Option<PathBuf>,
     emit: Emit,
+    lister: Lister,
 }
 
 fn s<'a>(a: &'a Value, k: &str) -> Option<&'a str> {
@@ -95,7 +98,11 @@ pub fn parse_query(a: &Value, ix: &Index) -> Result<Query, String> {
 
 impl Engine {
     pub fn new(data_dir: Option<PathBuf>, emit: Emit) -> Arc<Self> {
-        Arc::new(Engine { index: RwLock::new(None), scan: Mutex::new(None), data_dir, emit })
+        Self::with_lister(data_dir, emit, crate::walk::sys::list)
+    }
+
+    pub fn with_lister(data_dir: Option<PathBuf>, emit: Emit, lister: Lister) -> Arc<Self> {
+        Arc::new(Engine { index: RwLock::new(None), scan: Mutex::new(None), data_dir, emit, lister })
     }
 
     pub fn from_env(emit: Emit) -> Arc<Self> {
@@ -246,32 +253,21 @@ impl Engine {
     }
 
     fn run_scan(self: Arc<Self>, opts: ScanOptions, control: Arc<Control>, merge: bool, save: bool) {
+        let payload = catch_unwind(AssertUnwindSafe(|| self.scan_payload(&opts, &control, merge, save))).unwrap_or_else(|_| json!({"ok": false, "error": "scan panicked"}));
+        *self.scan.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        (self.emit)(EVENT_DONE, payload);
+    }
+
+    fn scan_payload(&self, opts: &ScanOptions, control: &Arc<Control>, merge: bool, save: bool) -> Value {
         let progress = Arc::new(Progress::default());
-        let done = Arc::new(AtomicBool::new(false));
         let started = Instant::now();
-        let reporter = {
-            let (progress, done, control, emit) = (progress.clone(), done.clone(), control.clone(), self.emit.clone());
-            std::thread::spawn(move || loop {
-                let tick = Instant::now();
-                while tick.elapsed() < TICK && !done.load(Ordering::SeqCst) {
-                    std::thread::park_timeout(TICK.saturating_sub(tick.elapsed()));
-                }
-                if done.load(Ordering::SeqCst) {
-                    break;
-                }
-                let mut v = progress.snapshot();
-                v["paused"] = json!(control.is_paused());
-                v["elapsedMs"] = json!(started.elapsed().as_millis() as u64);
-                emit(EVENT_PROGRESS, v);
-            })
-        };
-        let r = scan(&opts, &control, &progress);
-        done.store(true, Ordering::SeqCst);
-        reporter.thread().unpark();
-        let _ = reporter.join();
-        let payload = match r {
+        let reporter = Reporter::start(progress.clone(), control.clone(), self.emit.clone(), started);
+        let r = scan_with(opts, control, &progress, self.lister);
+        drop(reporter);
+        match r {
             Ok(ix) => {
                 let ix = match (merge, self.index()) {
+                    (true, Some(old)) if !Index::can_merge(&old, &ix) => return json!({"ok": false, "error": "index too large to merge"}),
                     (true, Some(old)) => Index::merge(&old, ix),
                     _ => ix,
                 };
@@ -289,9 +285,43 @@ impl Engine {
             }
             Err(ScanError::Cancelled) => json!({"ok": false, "cancelled": true}),
             Err(e) => json!({"ok": false, "error": e.to_string()}),
-        };
-        *self.scan.lock().unwrap() = None;
-        (self.emit)(EVENT_DONE, payload);
+        }
+    }
+}
+
+struct Reporter {
+    done: Arc<AtomicBool>,
+    handle: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Reporter {
+    fn start(progress: Arc<Progress>, control: Arc<Control>, emit: Emit, started: Instant) -> Reporter {
+        let done = Arc::new(AtomicBool::new(false));
+        let flag = done.clone();
+        let handle = std::thread::spawn(move || loop {
+            let tick = Instant::now();
+            while tick.elapsed() < TICK && !flag.load(Ordering::SeqCst) {
+                std::thread::park_timeout(TICK.saturating_sub(tick.elapsed()));
+            }
+            if flag.load(Ordering::SeqCst) {
+                break;
+            }
+            let mut v = progress.snapshot();
+            v["paused"] = json!(control.is_paused());
+            v["elapsedMs"] = json!(started.elapsed().as_millis() as u64);
+            emit(EVENT_PROGRESS, v);
+        });
+        Reporter { done, handle: Some(handle) }
+    }
+}
+
+impl Drop for Reporter {
+    fn drop(&mut self) {
+        self.done.store(true, Ordering::SeqCst);
+        if let Some(h) = self.handle.take() {
+            h.thread().unpark();
+            let _ = h.join();
+        }
     }
 }
 
@@ -310,27 +340,55 @@ impl Out {
     }
 }
 
-pub fn serve(engine: Arc<Engine>, input: impl BufRead, out: Arc<Out>) -> i32 {
+struct Inflight(Arc<AtomicUsize>);
+
+impl Drop for Inflight {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+fn read_line(input: &mut impl BufRead, buf: &mut Vec<u8>) -> bool {
+    buf.clear();
+    matches!(input.read_until(b'\n', buf), Ok(n) if n > 0)
+}
+
+pub fn serve(engine: Arc<Engine>, mut input: impl BufRead, out: Arc<Out>) -> i32 {
     out.send(&json!({"ready": true, "pid": std::process::id(), "channels": CHANNELS}));
-    for line in input.lines() {
-        let Ok(line) = line else { break };
+    let inflight = Arc::new(AtomicUsize::new(0));
+    let mut buf = Vec::new();
+    while read_line(&mut input, &mut buf) {
+        let line = String::from_utf8_lossy(&buf);
         let Ok(Value::Object(m)) = serde_json::from_str::<Value>(&line) else { continue };
         if m.get("type").and_then(Value::as_str) == Some("shutdown") {
             break;
         }
-        let (Some(id), Some(channel)) = (m.get("id").and_then(Value::as_u64), m.get("channel").and_then(Value::as_str)) else { continue };
+        let Some(raw_id) = m.get("id").filter(|v| !v.is_null()) else { continue };
+        let (Some(id), Some(channel)) = (raw_id.as_u64(), m.get("channel").and_then(Value::as_str)) else {
+            let why = if raw_id.as_u64().is_none() { "id must be an unsigned integer" } else { "channel required" };
+            out.send(&json!({"id": raw_id, "ok": false, "error": why}));
+            continue;
+        };
         let args = m.get("args").cloned().unwrap_or(Value::Null);
         let (engine, out, channel) = (engine.clone(), out.clone(), channel.to_string());
+        inflight.fetch_add(1, Ordering::SeqCst);
+        let ticket = Inflight(inflight.clone());
         std::thread::spawn(move || {
-            let msg = match engine.dispatch(&channel, &args) {
-                Ok(value) => json!({"id": id, "ok": true, "value": value}),
-                Err(e) => json!({"id": id, "ok": false, "error": e}),
+            let _ticket = ticket;
+            let msg = match catch_unwind(AssertUnwindSafe(|| engine.dispatch(&channel, &args))) {
+                Ok(Ok(value)) => json!({"id": id, "ok": true, "value": value}),
+                Ok(Err(e)) => json!({"id": id, "ok": false, "error": e}),
+                Err(_) => json!({"id": id, "ok": false, "error": "internal error"}),
             };
             out.send(&msg);
         });
     }
     if let Some(c) = engine.control() {
         c.cancel();
+    }
+    let deadline = Instant::now() + DRAIN;
+    while (inflight.load(Ordering::SeqCst) > 0 || engine.scanning()) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(5));
     }
     0
 }

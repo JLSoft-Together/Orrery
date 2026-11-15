@@ -9,3 +9,5 @@
 - 2026-11-09 · Office (Habblaud) mặc định TẮT, bật trong Settings · chủ nhân hầu như không dùng; tắt thì collector không chạy OfficeHub/timelapse (tiết kiệm CPU/disk), web không load Habblaud.
 - 2026-11-09 · PLAN-v87 lõi Rust: đồng ý cài Rust + CI macOS; bỏ blur trên toolbar/sidebar (GPU); chuyển MCP orrery từ PTY host sang Electron main ở bước 2; giảm cả size cài đặt (bước 1b, mạnh nhất ở bước 6 Tauri).
 - 2026-11-09 · Tauri không Node sidecar, port hết sang Rust rồi mới bỏ Electron · chủ nhân muốn size bộ cài nhỏ nhất (~20–35 MB) · .planning/PLAN-v87-tauri-options.md
+
+- 2026-11-15 - Test app của v100/v101 chỉ chạy bản dev tách biệt (cổng riêng, userData/CCM_DATA_DIR/APPDATA tạm), không ảnh hưởng Orrery đang chạy - chủ nhân yêu cầu; công thức trong PROGRESS-2026-11-15-click-disk.md.

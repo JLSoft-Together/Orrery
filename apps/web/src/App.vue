@@ -31,6 +31,8 @@ import HistoryView from './components/history/HistoryView.vue'
 import { desktop, hasDeepSeek, hasExtensions, hasTerminals } from './lib/desktop'
 import { hasDevices } from './lib/devices'
 import { hasDiskMap } from './lib/diskMap'
+import { hasDiskClean } from './lib/diskClean'
+import { useDiskCleanStore } from './stores/diskClean'
 import { useRevealInWorkspace } from './composables/useRevealInWorkspace'
 import { handleOrrery, installOrreryApi } from './composables/useOrreryApi'
 import { useTurnCheckpoints } from './composables/useTurnCheckpoints'
@@ -86,6 +88,16 @@ const showWorkspace = computed(() => hasTerminals && !ui.compact && ui.view === 
 const showFooter = computed(() => showWorkspace.value || (!ui.compact && ui.view === 'monitor'))
 const workspaceOpened = ref(false)
 watch(showWorkspace, (shown) => shown && (workspaceOpened.value = true), { immediate: true })
+const diskCleanOn = hasDiskClean && hasDiskMap
+watch(
+  () => ui.buildClean,
+  (req) => {
+    if (!req || !diskCleanOn) return
+    useDiskCleanStore().openFor(req.dir)
+    ui.buildClean = null
+    ui.setView('disk')
+  },
+)
 
 const workspace = useWorkspaceStore()
 const deepseek = useDeepSeekStore()
@@ -194,7 +206,7 @@ onBeforeUnmount(() => {
     <DevToolsDialog v-if="ui.devTools" :tool="ui.devTools" @close="ui.devTools = null" />
     <component :is="diagnostics.Comp" v-if="diagnostics.mounted.value" />
     <component :is="resourcesDialog.Comp" v-if="resourcesDialog.mounted.value" />
-    <BuildCleanDialog v-if="ui.buildClean && hasBuildClean" :dir="ui.buildClean.dir" @close="ui.buildClean = null" />
+    <BuildCleanDialog v-if="ui.buildClean && hasBuildClean && !diskCleanOn":dir="ui.buildClean.dir" @close="ui.buildClean = null" />
     <SessionToolsSheet v-if="ui.sessionTools" :key="`${ui.sessionTools.dir}|${ui.sessionTools.paneKey ?? ''}`" :dir="ui.sessionTools.dir" :pane-key="ui.sessionTools.paneKey" @close="ui.sessionTools = null" />
     <QuickSetup />
     <OnboardingTour />

@@ -40,6 +40,9 @@ import { DeviceHistory, DEVICES_FILE } from './devices/history'
 import { registerDevicesIpc } from './devices/ipc'
 import { createDiskMap, type DiskMap } from './diskMap/ipc'
 import { deleteBoxOptions } from './diskMap/dialog'
+import { createDiskClean, type DiskClean } from './diskClean/ipc'
+import { toChildren, toStatus } from './diskMap/map'
+import { isUnder as isUnderPath } from './diskMap/guard'
 import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
 import { registerApkIpc } from './apk/ipc'
@@ -170,8 +173,8 @@ Object.assign(process.env, CORE_PROCS_ENV)
 let t: Strings
 let host: SwitchingHost
 let serveToasts: ServeToasts | null = null
-let ptys: PtySupervisor | null = null
 let menuToasts: MenuToasts | null = null
+let ptys: PtySupervisor | null = null
 const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 let ptyFellBack = false
 const coreFellBack = new Map<string, string>()
@@ -226,6 +229,7 @@ let disposeAgentStatus: (() => void) | null = null
 let disk: DiskWatch | null = null
 let diskCtl: DiskControl | null = null
 let diskMap: DiskMap | null = null
+let diskClean: DiskClean | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -376,6 +380,8 @@ function stopPreview(): Promise<void> {
   disposeAgentData = null
   disposeBuildClean?.()
   disposeBuildClean = null
+  diskClean?.dispose()
+  diskClean = null
   disposeDisk?.()
   disposeDisk = null
   disposeAgentStatus?.()
@@ -1061,11 +1067,11 @@ async function openLink(raw: string): Promise<void> {
   }
   if (url.protocol !== `${LINK_SCHEME}:` || !host?.ownsPort) return
   if (url.hostname === 'open') return openFromLink(raw)
+  if (url.hostname === 'menu') return handleMenuLink(raw)
   const k = url.searchParams.get('k') ?? ''
   const terminalId = url.searchParams.get('t')
   if (url.hostname === 'snooze') {
     await collectorFetch(`/snooze?${url.searchParams}`).catch(() => undefined)
-  if (url.hostname === 'menu') return handleMenuLink(raw)
     return
   }
   // Every real toast link carries the key; a keyless one can only come from another app.
@@ -1293,10 +1299,6 @@ function setupCaptureAndAwake(): void {
   })
 }
 
-function setupAgentStatus(): void {
-  disposeAgentStatus = registerAgentStatusIpc({
-    ipcMain,
-    isAppFrame,
 function appFocused(): boolean {
   const w = mainWindow
   return !!w && !w.isDestroyed() && w.isVisible() && !w.isMinimized() && w.isFocused()
@@ -1338,6 +1340,10 @@ function setupMenuToast(): void {
   app.on('browser-window-focus', () => menuToasts?.settle())
 }
 
+function setupAgentStatus(): void {
+  disposeAgentStatus = registerAgentStatusIpc({
+    ipcMain,
+    isAppFrame,
     send: (event) => {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:agent-status', event)
     },
@@ -1669,6 +1675,48 @@ function setupDiskMap(): void {
   })
 }
 
+function setupDiskClean(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  diskClean = createDiskClean({
+    ipcMain,
+    isAppFrame,
+    platform: process.platform,
+    home: os.homedir(),
+    env: process.env,
+    self: () => [app.getAppPath(), path.dirname(process.execPath), ...(app.isPackaged ? [] : [REPO])],
+    running: () => [
+      ...(runManager?.live() ?? []).filter((r) => r.cwd).map((r) => ({ cwd: r.cwd, lock: 'run' as const })),
+      ...(resReport?.servers ?? []).filter((s) => s.cwd && s.kind !== 'daemon').map((s) => ({ cwd: s.cwd!, lock: 'server' as const })),
+    ],
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
+    autoConfirm: process.env.CCM_E2E_DISKMAP_CONFIRM === '1',
+    trash: (p) => shell.trashItem(p),
+    remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
+    record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),
+    indexSize: async (p) => {
+      if (!diskMap?.host.running) return null
+      const st = toStatus(await diskMap.host.call('disk.status'))
+      if (!st.indexed || st.scanning || !st.roots.some((r) => isUnderPath(p, r, process.platform))) return null
+      return toChildren(await diskMap.host.call('disk.children', { path: p, limit: 0 }))?.size ?? null
+    },
+    forget: async (paths) => {
+      if (!diskMap?.host.running) return
+      await diskMap.host.call('disk.forget', { paths }).catch(() => undefined)
+      void diskMap.host.call('disk.save').catch(() => undefined)
+    },
+  })
+}
+
 async function ready(): Promise<void> {
   t = stringsFor(saved().locale ?? 'vi')
   if (IS_MAC) {
@@ -1698,7 +1746,9 @@ async function ready(): Promise<void> {
   setupBuildClean()
   setupDisk()
   setupDiskMap()
+  setupDiskClean()
   setupAgentStatus()
+  setupMenuToast()
   host = createMonitorHost({
     mode: coreServeMode(process.env),
     bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
@@ -1740,7 +1790,6 @@ async function ready(): Promise<void> {
   })
   earlyStart.catch(() => undefined)
   ipcMain.on('ccm:core-serve', (event) => {
-  setupMenuToast()
     event.returnValue = isAppFrame(event) ? host.mode : null
   })
   const unpacked = (file: string): string => path.join(__dirname, file).replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)

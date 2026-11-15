@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUp, ChartPie, CircleAlert, FolderTree, Hourglass, LayoutGrid, RefreshCw, Search, Weight } from 'lucide-vue-next'
+import { ArrowUp, ChartPie, CircleAlert, Eraser, FolderTree, Hourglass, LayoutGrid, RefreshCw, Search, Weight } from 'lucide-vue-next'
 import { breadcrumbs, DISK_CHARTS, DISK_GROUPS, DISK_MODES, formatSize, GROUP_VAR, isUnder, type DiskChart, type DiskMode } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
+import { useDiskCleanStore } from '../../stores/diskClean'
+import { hasDiskClean } from '../../lib/diskClean'
+import DiskClean from './clean/DiskClean.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskActions from './DiskActions.vue'
 import DiskHistory from './DiskHistory.vue'
@@ -15,6 +18,7 @@ import DiskTreemap from './DiskTreemap.vue'
 
 const { t, locale } = useI18n()
 const store = useDiskMapStore()
+const clean = useDiskCleanStore()
 
 const crumbs = computed(() => breadcrumbs(store.path))
 const rootsKnown = computed(() => store.status?.roots ?? [])
@@ -23,8 +27,19 @@ const total = computed(() => store.children?.size ?? store.items.reduce((s, i) =
 const empty = computed(() => !!store.children && !store.items.some((i) => i.size > 0))
 const charts = computed(() => DISK_CHARTS.map((c) => ({ value: c, label: t(`diskMap.chart.${c}`), icon: c === 'treemap' ? LayoutGrid : ChartPie })))
 const MODE_ICON = { browse: FolderTree, search: Search, big: Weight, old: Hourglass }
-const modes = computed(() => DISK_MODES.map((m) => ({ value: m, label: t(`diskMap.mode.${m}`), icon: MODE_ICON[m] })))
-const searchMode = computed(() => store.mode !== 'browse')
+const modes = computed(() => [
+  ...DISK_MODES.map((m) => ({ value: m as DiskMode | 'clean', label: t(`diskMap.mode.${m}`), icon: MODE_ICON[m] })),
+  ...(hasDiskClean ? [{ value: 'clean' as const, label: t('diskClean.tab'), icon: Eraser }] : []),
+])
+const cleanMode = computed(() => hasDiskClean && clean.active)
+const searchMode = computed(() => store.mode !== 'browse' && !cleanMode.value)
+const tab = computed<DiskMode | 'clean'>(() => (cleanMode.value ? 'clean' : store.mode))
+
+function setTab(m: DiskMode | 'clean'): void {
+  if (m === 'clean') return clean.openFor(clean.project)
+  clean.active = false
+  store.setMode(m)
+}
 const currentName = computed(() => crumbs.value[crumbs.value.length - 1]?.label ?? '')
 
 function onPick(path: string, range: boolean): void {
@@ -48,7 +63,7 @@ onBeforeUnmount(() => store.dispose())
         <h2 class="text-2xl font-semibold tracking-tight">{{ t('diskMap.title') }}</h2>
         <p class="mt-1 max-w-[80ch] text-sm text-ink-muted">{{ t('diskMap.subtitle') }}</p>
       </div>
-      <SegmentedControl v-if="!searchMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
+      <SegmentedControl v-if="!searchMode && !cleanMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
     </div>
 
     <div v-if="!store.supported" class="mt-5 flex items-start gap-3 rounded-card bg-warning-soft px-4 py-3" role="alert" data-disk-unsupported>
@@ -59,11 +74,12 @@ onBeforeUnmount(() => store.dispose())
     <template v-else>
       <section class="mt-5 rounded-card border border-line p-3"><DiskScanBar /></section>
 
-      <div v-if="store.indexed || searchMode" class="mt-4">
-        <SegmentedControl :model-value="store.mode" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="(m: DiskMode) => store.setMode(m)" />
+      <div v-if="store.indexed || searchMode || hasDiskClean" class="mt-4">
+        <SegmentedControl :model-value="tab" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="setTab" />
       </div>
 
-      <DiskSearch v-if="searchMode" @action="onAction" />
+      <DiskClean v-if="cleanMode" />
+      <DiskSearch v-else-if="searchMode" @action="onAction" />
 
       <section v-else-if="store.path" class="mt-4">
         <div class="flex flex-wrap items-center gap-2">

@@ -99,11 +99,13 @@ import sessionToolsV89 from './session-tools-v89'
 import bugReportV90 from './bug-report-v90'
 import clickMenuV100 from './click-menu-v100'
 import diskV101 from './disk-v101'
+import diskCleanV101 from './disk-clean-v101'
 
 const vi: typeof en = {
   ...v25.vi,
   ...clickMenuV100.vi,
   ...diskV101.vi,
+  ...diskCleanV101.vi,
   ...themeV95.vi,
   ...themeV96.vi,
   ...footerV92.vi,

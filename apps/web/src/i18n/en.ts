@@ -98,11 +98,13 @@ import sessionToolsV89 from './session-tools-v89'
 import bugReportV90 from './bug-report-v90'
 import clickMenuV100 from './click-menu-v100'
 import diskV101 from './disk-v101'
+import diskCleanV101 from './disk-clean-v101'
 
 export default {
   ...v25.en,
   ...clickMenuV100.en,
   ...diskV101.en,
+  ...diskCleanV101.en,
   ...themeV95.en,
   ...themeV96.en,
   ...footerV92.en,

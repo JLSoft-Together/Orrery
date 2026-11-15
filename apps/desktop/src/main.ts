@@ -42,6 +42,8 @@ import { createDiskMap, type DiskMap } from './diskMap/ipc'
 import { e2eAutoConfirm } from './diskMap/delete'
 import { deleteBoxOptions } from './diskMap/dialog'
 import { createDiskClean, type DiskClean } from './diskClean/ipc'
+import { createOrganize, e2ePath as organizeE2ePath, e2eStableMs as organizeStableMs, type Organize } from './organize/ipc'
+import { rawItems as organizeRawItems } from './organize/junk'
 import { systemDeps as diskCleanSystem } from './diskClean/system'
 import { toChildren, toStatus } from './diskMap/map'
 import { isUnder as isUnderPath } from './diskMap/guard'
@@ -232,6 +234,7 @@ let disk: DiskWatch | null = null
 let diskCtl: DiskControl | null = null
 let diskMap: DiskMap | null = null
 let diskClean: DiskClean | null = null
+let organize: Organize | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -384,6 +387,8 @@ function stopPreview(): Promise<void> {
   disposeBuildClean = null
   diskClean?.dispose()
   diskClean = null
+  organize?.dispose()
+  organize = null
   disposeDisk?.()
   disposeDisk = null
   disposeAgentStatus?.()
@@ -1726,6 +1731,59 @@ function setupDiskClean(): void {
   })
 }
 
+function setupOrganize(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  const packaged = app.isPackaged
+  organize = createOrganize({
+    ipcMain,
+    isAppFrame,
+    dataDir: DATA_DIR,
+    platform: process.platform,
+    home: os.homedir(),
+    downloads: organizeE2ePath(process.env, packaged, 'DOWNLOADS') ?? dir('downloads'),
+    desktop: organizeE2ePath(process.env, packaged, 'DESKTOP') ?? dir('desktop'),
+    appDirs: [dir('userData'), DATA_DIR, path.dirname(process.execPath), app.getAppPath()],
+    locale: () => saved().locale ?? 'vi',
+    stableMs: organizeStableMs(process.env, packaged),
+    pickFolder: async (event) => {
+      const fake = organizeE2ePath(process.env, packaged, 'PICK')
+      if (fake) return fake
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const opts: Electron.OpenDialogOptions = { properties: ['openDirectory'] }
+      const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+      return res.canceled ? null : (res.filePaths[0] ?? null)
+    },
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    junkAllow: [os.tmpdir()],
+    junk: {
+      guard: async () => {
+        if (!diskMap) return null
+        const st = await diskMap.service.status().catch(() => null)
+        if (!st?.indexed || st.scanning) return null
+        const keep = [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)]
+        return { platform: process.platform, home: os.homedir(), keep, roots: st.roots, volumes: (await diskMap.service.volumes()).map((v) => v.mount).filter(Boolean) }
+      },
+      search: async (q) => (diskMap?.host.running ? organizeRawItems(await diskMap.host.call('disk.search', q).catch(() => null)) : null),
+      readShortcut: (p) => {
+        try {
+          return shell.readShortcutLink(p).target || null
+        } catch {
+          return null
+        }
+      },
+      volumes: async () => ((await diskMap?.service.volumes()) ?? []).map((v) => ({ mount: v.mount, network: v.network })),
+    },
+  })
+}
+
 async function ready(): Promise<void> {
   t = stringsFor(saved().locale ?? 'vi')
   if (IS_MAC) {
@@ -1756,6 +1814,7 @@ async function ready(): Promise<void> {
   setupDisk()
   setupDiskMap()
   setupDiskClean()
+  setupOrganize()
   setupAgentStatus()
   setupMenuToast()
   host = createMonitorHost({

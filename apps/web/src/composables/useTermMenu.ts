@@ -1,6 +1,6 @@
 import { shallowRef } from 'vue'
 import { parseTermMenu, type TermMenu, type TermMenuItem } from '../lib/termMenu'
-import { KEY_ENTER, menuLayoutKey, menuStateKey, planMenuKeys } from '../lib/termMenuKeys'
+import { KEY_ENTER, menuLayoutKey, menuStateKey, planConfirmKeys, planHighlightKeys, planMenuKeys } from '../lib/termMenuKeys'
 
 export interface MenuTerm {
   rows: number
@@ -28,6 +28,7 @@ export interface TermMenuOptions {
 export const MENU_THROTTLE_MS = 100
 const SUBMIT_POLL_MS = 80
 const SUBMIT_POLL_MAX = 8
+export const CLICK_PREDICT_MS = 500
 
 export function useTermMenu(opts: TermMenuOptions) {
   const menu = shallowRef<TermMenu | null>(null)
@@ -36,6 +37,7 @@ export function useTermMenu(opts: TermMenuOptions) {
   let subs: { dispose(): void }[] = []
   let shownKey = ''
   let disposed = false
+  let predicted: { stateKey: string; index: number; at: number } | null = null
 
   function read(): TermMenu | null {
     const term = opts.term()
@@ -114,10 +116,39 @@ export function useTermMenu(opts: TermMenuOptions) {
     }
   }
 
+  function click(item: TermMenuItem, detail: number): void {
+    if (busy.value || !menu.value) return
+    const fresh = read()
+    if (!fresh || menuLayoutKey(fresh) !== menuLayoutKey(menu.value)) {
+      apply(fresh)
+      return
+    }
+    const target = fresh.items.find((i) => i.row === item.row && i.index === item.index && i.label === item.label)
+    if (!target) return
+    if (fresh.kind === 'ask-multi' || target.isSubmit || target.isOther) {
+      if (detail <= 1) void pick(target)
+      return
+    }
+    const key = menuStateKey(fresh)
+    const now = Date.now()
+    const live = predicted && predicted.stateKey === key && now - predicted.at < CLICK_PREDICT_MS ? predicted.index : undefined
+    if (detail >= 2) {
+      const plan = planConfirmKeys(fresh, target, live)
+      predicted = null
+      if (plan?.keys) opts.send(plan.keys)
+      return
+    }
+    const keys = planHighlightKeys(fresh, target, live)
+    if (keys === null) return
+    if (keys) opts.send(keys)
+    predicted = { stateKey: key, index: fresh.items.indexOf(target), at: now }
+    schedule()
+  }
+
   function dispose(): void {
     detach()
     disposed = true
   }
 
-  return { menu, busy, attach, detach, refresh, schedule, pick, dispose }
+  return { menu, busy, attach, detach, refresh, schedule, pick, click, dispose }
 }

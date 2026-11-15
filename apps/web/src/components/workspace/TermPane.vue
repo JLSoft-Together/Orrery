@@ -54,6 +54,7 @@ import { statusMeta } from '../../lib/status'
 import { usePaneInfo, usePeerSweep } from '../../composables/usePaneInfo'
 import { useCompact } from '../../composables/useCompact'
 import { useTermMenu } from '../../composables/useTermMenu'
+import { useTermMenuMouse } from '../../composables/useTermMenuMouse'
 import { needsUser } from '../../lib/rail/railModel'
 import { leaves } from '../../lib/splitLayout'
 import PaneMore from './PaneMore.vue'
@@ -427,7 +428,17 @@ watch(
   () => [settings.clickMenu, props.visible, props.pane.state, preset.value] as const,
   () => termMenu.refresh(),
 )
-onBeforeUnmount(termMenu.dispose)
+const menuMouse = useTermMenuMouse({
+  host: () => host.value ?? null,
+  term: () => term,
+  menu: () => termMenu.menu.value,
+  click: termMenu.click,
+})
+watch(() => termMenu.menu.value, menuMouse.sync)
+onBeforeUnmount(() => {
+  menuMouse.dispose()
+  termMenu.dispose()
+})
 const checks = useChecksStore()
 const scanNotice = ref<string | null>(null)
 let scanTimer: ReturnType<typeof setTimeout> | null = null
@@ -1024,6 +1035,7 @@ onMounted(() => {
   installReplacementIme(term)
   term.onWriteParsed(() => att.schedule())
   termMenu.attach(term)
+  menuMouse.install()
   term.parser.registerOscHandler(7, (data) => (onShellCwd(parseOsc7(data)), true))
   // Not consumed (false): xterm still turns the sequence into a link.
   term.parser.registerOscHandler(8, (data) => (rememberLink(oscLinkUri(data)), false))
@@ -1456,8 +1468,9 @@ onBeforeUnmount(() => {
     >
       <!-- Dimmed when the process has ended; the well fades, the terminal text itself never animates. -->
       <!-- Shell command marks sit in the left padding, outside the cell grid. -->
-      <div class="min-h-0 w-full flex-1 overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
+      <div class="relative min-h-0 w-full flex-1 overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
         <div ref="host" class="size-full" data-code-zoom :title="linkHint" />
+        <div v-if="menuMouse.hover.value" class="pointer-events-none absolute rounded-inner bg-accent/20" :style="{ left: menuMouse.hover.value.left + 'px', top: menuMouse.hover.value.top + 'px', width: menuMouse.hover.value.width + 'px', height: menuMouse.hover.value.height + 'px' }" data-term-menu-hover />
       </div>
       <TermMenuBar v-if="termMenu.menu.value" :menu="termMenu.menu.value" :busy="termMenu.busy.value" @pick="termMenu.pick" />
       <Transition name="ccm-fade">

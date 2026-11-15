@@ -227,4 +227,112 @@ describe('useTermMenu', () => {
     await done
     expect(m.sent.filter((k) => k === '\r')).toEqual([])
   })
+
+  it('click only moves the highlight, never presses a number', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const from = m.menu.value!.items.findIndex((i) => i.selected)
+    m.click(m.menu.value!.items[2]!, 1)
+    expect(m.sent).toEqual(['\x1b[B'.repeat(2 - from)])
+  })
+
+  it('click on the highlighted row sends nothing', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const cur = m.menu.value!.items.find((i) => i.selected)!
+    m.click(cur, 1)
+    expect(m.sent).toEqual([])
+  })
+
+  it('click then double click before the screen redraws sends arrows once then the number', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const blue = m.menu.value!.items[2]!
+    m.click(blue, 1)
+    m.click(blue, 2)
+    expect(m.sent.length).toBe(2)
+    expect(m.sent[1]).toBe('3')
+  })
+
+  it('double click on an unnumbered menu after the redraw sends only Enter', async () => {
+    const m = setup('claude-trust-nonum')
+    await tick()
+    const last = m.menu.value!.items.at(-1)!
+    m.click(last, 1)
+    const downs = m.sent[0]!
+    expect(downs.startsWith('\x1b[B')).toBe(true)
+    m.click(last, 2)
+    expect(m.sent[1]).toBe('\r')
+  })
+
+  it('multiSelect click ticks once and the second click of a double click is ignored', async () => {
+    const m = setup('claude-ask-multi')
+    await tick()
+    const second = m.menu.value!.items[1]!
+    m.click(second, 1)
+    m.click(second, 2)
+    expect(m.sent).toEqual(['2'])
+  })
+
+  it('Other click moves the highlight and focuses the terminal, double click does nothing more', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const other = m.menu.value!.items.find((i) => i.isOther)!
+    m.click(other, 1)
+    m.click(other, 2)
+    expect(m.sent).toEqual(['\x1b[B\x1b[B\x1b[B'])
+    await vi.advanceTimersByTimeAsync(10)
+    expect(m.focus).toHaveBeenCalledOnce()
+  })
+
+  it('Submit click follows the bar logic', async () => {
+    const m = setup('claude-ask-multi')
+    await tick()
+    const submit = m.menu.value!.items.find((i) => i.isSubmit)!
+    m.click(submit, 1)
+    await vi.advanceTimersByTimeAsync(80)
+    expect(m.sent[0]!.startsWith('\x1b[B')).toBe(true)
+    m.show('claude-ask-multi-submit-row')
+    await vi.advanceTimersByTimeAsync(160)
+    expect(m.sent.at(-1)).toBe('\r')
+  })
+
+  it('click sends nothing when the menu left the screen between hover and click', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const item = m.menu.value!.items[2]!
+    m.show('neg-claude-home')
+    m.click(item, 1)
+    m.click(item, 2)
+    expect(m.sent).toEqual([])
+    expect(m.menu.value).toBeNull()
+  })
+
+  it('click sends nothing when the layout changed', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const item = m.menu.value!.items[2]!
+    m.show('claude-model')
+    m.click(item, 1)
+    expect(m.sent).toEqual([])
+  })
+
+  it('click sends nothing while scrolled into the scrollback', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const item = m.menu.value!.items[2]!
+    m.state.baseY = 10
+    m.state.viewportY = 3
+    m.click(item, 1)
+    expect(m.sent).toEqual([])
+  })
+
+  it('click sends nothing once the switch is off', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const item = m.menu.value!.items[2]!
+    m.flags.enabled = false
+    m.click(item, 1)
+    expect(m.sent).toEqual([])
+  })
 })

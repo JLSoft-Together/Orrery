@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parseTermMenu, type TermCursor, type TermMenu } from './termMenu'
-import { KEY_DOWN, KEY_ENTER, KEY_SPACE, KEY_UP, menuLayoutKey, menuStateKey, planMenuKeys } from './termMenuKeys'
+import { KEY_DOWN, KEY_ENTER, KEY_SPACE, KEY_UP, menuLayoutKey, menuStateKey, planConfirmKeys, planHighlightKeys, planMenuKeys } from './termMenuKeys'
 
 const DIR = join(__dirname, '__fixtures__', 'term-menu')
 
@@ -88,7 +88,7 @@ describe('planMenuKeys', () => {
   })
 
   it('answers a Codex approval with its number', () => {
-    const m = menuOf('codex-approval-synthetic')
+    const m = menuOf('codex-approval')
     expect(m.kind).toBe('codex-approval')
     expect(planMenuKeys(m, m.items[0]!)).toEqual({ keys: String(m.items[0]!.index), after: 'none' })
   })
@@ -113,5 +113,47 @@ describe('menu keys', () => {
     const b = menuOf('claude-ask-other-highlight')
     expect(menuStateKey(a)).not.toBe(menuStateKey(b))
     expect(menuLayoutKey(a)).toBe(menuLayoutKey(a))
+  })
+})
+
+describe('planHighlightKeys / planConfirmKeys', () => {
+  const at = (m: TermMenu, label: string) => m.items.find((i) => i.label === label)!
+
+  it('click moves the highlight with arrows, even on a numbered menu', () => {
+    const m = menuOf('claude-ask-single')
+    const from = m.items.findIndex((i) => i.selected)
+    const to = m.items.indexOf(at(m, 'Blue'))
+    expect(planHighlightKeys(m, at(m, 'Blue'))).toBe((to > from ? KEY_DOWN : KEY_UP).repeat(Math.abs(to - from)))
+    expect(planHighlightKeys(m, m.items[from]!)).toBe('')
+  })
+
+  it('uses the predicted highlight when given', () => {
+    const m = menuOf('claude-ask-single')
+    expect(planHighlightKeys(m, at(m, 'Blue'), m.items.indexOf(at(m, 'Blue')))).toBe('')
+    expect(planHighlightKeys(m, at(m, 'Red'), m.items.indexOf(at(m, 'Blue')))).toBe(KEY_UP.repeat(2))
+  })
+
+  it('double click sends the number on a numbered menu', () => {
+    const m = menuOf('claude-ask-single')
+    expect(planConfirmKeys(m, at(m, 'Blue'))).toEqual({ keys: '3', after: 'none' })
+  })
+
+  it('double click on an unnumbered menu is arrows then Enter, or only Enter once on the row', () => {
+    const m = menuOf('claude-trust-nonum')
+    const last = m.items[m.items.length - 1]!
+    const from = m.items.findIndex((i) => i.selected)
+    const n = m.items.length - 1 - from
+    expect(planConfirmKeys(m, last)).toEqual({ keys: KEY_DOWN.repeat(n) + KEY_ENTER, after: 'none' })
+    expect(planConfirmKeys(m, last, m.items.length - 1)).toEqual({ keys: KEY_ENTER, after: 'none' })
+  })
+
+  it('double click does nothing on multiSelect, Submit and Other', () => {
+    const m = menuOf('claude-ask-multi')
+    for (const i of m.items) expect(planConfirmKeys(m, i)).toBeNull()
+  })
+
+  it('Codex numbered menu confirms with the number', () => {
+    const m = menuOf('codex-permissions')
+    expect(planConfirmKeys(m, m.items[1]!)).toEqual({ keys: '2', after: 'none' })
   })
 })

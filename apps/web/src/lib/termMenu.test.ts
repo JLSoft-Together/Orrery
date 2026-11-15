@@ -116,29 +116,31 @@ describe('parseTermMenu, real captures', () => {
   })
 })
 
-describe('parseTermMenu, synthetic samples', () => {
+describe('parseTermMenu, real approval samples', () => {
   it('reads a Claude tool permission prompt', () => {
-    const m = parse('claude-permission-synthetic')!
+    const m = parse('claude-permission')!
     expect(m.kind).toBe('permission')
-    expect(m.items.map((i) => i.index)).toEqual([1, 2, 3])
-    expect(m.items[0]!.label).toBe('Yes')
-    expect(m.items[2]!.label).toContain('No, and tell Claude')
+    expect(m.agent).toBe('claude')
+    expect(m.items.map((i) => i.label)).toEqual(['Yes', 'No'])
     expect(m.highlighted).toBe(1)
     expect(m.confident).toBe(true)
   })
 
   it('reads a plan approval and ignores the numbered plan steps', () => {
-    const m = parse('claude-plan-synthetic')!
+    const m = parse('claude-plan')!
     expect(m.kind).toBe('plan')
-    expect(m.items.map((i) => i.label)).toEqual(['Yes, auto-accept edits', 'Yes, manually approve edits', 'No, keep planning'])
+    expect(m.items.map((i) => i.label)).toEqual(['Yes, and use auto mode', 'Yes, manually approve edits', 'Tell Claude what to change'])
+    expect(m.highlighted).toBe(1)
+    expect(m.confident).toBe(true)
   })
 
   it('reads a Codex approval overlay', () => {
-    const m = parse('codex-approval-synthetic')!
+    const m = parse('codex-approval')!
     expect(m.kind).toBe('codex-approval')
     expect(m.agent).toBe('codex')
     expect(m.items).toHaveLength(3)
     expect(m.highlighted).toBe(1)
+    expect(m.confident).toBe(true)
   })
 })
 

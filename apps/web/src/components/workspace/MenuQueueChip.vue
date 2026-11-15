@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MessageCircleQuestion } from 'lucide-vue-next'
+import { useMenuToast } from '../../composables/useMenuToast'
 import { usePaneInfo } from '../../composables/usePaneInfo'
 import { now } from '../../lib/format'
 import { shortAge, folderName } from '../../lib/sidebarRows'
@@ -53,6 +54,8 @@ const rows = computed<Row[]>(() =>
     }
   }),
 )
+
+useMenuToast(() => rows.value.map((r) => ({ paneKey: r.entry.paneKey, menu: r.entry.menu, question: r.entry.question, title: r.title, place: r.place })))
 
 const tip = computed(() => t('menuQueue.chipTip', { keys: askedShortcutText(isMac) }))
 

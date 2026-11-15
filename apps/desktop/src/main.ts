@@ -14,7 +14,8 @@ import { maskSecrets } from '@ccm/shared'
 import { BUG_REPORT_LIMIT, clampErrors, localFileStamp, gatherCandidates, previewItems, selectEntries, writeZipFile, zipItems, type Roots as BugRoots } from './bugReport'
 import { FatalError, type FatalReason } from './collector-host'
 import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-serve-host'
-import { createServeToasts, type ServeToasts } from './serve-toast'
+import { createServeToasts, windowsToasts, type ServeToasts } from './serve-toast'
+import { createMenuToasts, electronMenuDrawer, windowsMenuDrawer, type MenuToastDrawer, type MenuToasts } from './menuToast'
 import { adoptLoginShellPath, offerMoveToApplications, setMacMenu } from './mac'
 import { errorPage, INTRO_MS, LEAVE_MS, LEAVE_SCRIPT, loadingPage, RETRY_URL } from './pages'
 import { pickStartDir } from './pick-start'
@@ -170,6 +171,7 @@ let t: Strings
 let host: SwitchingHost
 let serveToasts: ServeToasts | null = null
 let ptys: PtySupervisor | null = null
+let menuToasts: MenuToasts | null = null
 const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 let ptyFellBack = false
 const coreFellBack = new Map<string, string>()
@@ -1063,6 +1065,7 @@ async function openLink(raw: string): Promise<void> {
   const terminalId = url.searchParams.get('t')
   if (url.hostname === 'snooze') {
     await collectorFetch(`/snooze?${url.searchParams}`).catch(() => undefined)
+  if (url.hostname === 'menu') return handleMenuLink(raw)
     return
   }
   // Every real toast link carries the key; a keyless one can only come from another app.
@@ -1294,6 +1297,47 @@ function setupAgentStatus(): void {
   disposeAgentStatus = registerAgentStatusIpc({
     ipcMain,
     isAppFrame,
+function appFocused(): boolean {
+  const w = mainWindow
+  return !!w && !w.isDestroyed() && w.isVisible() && !w.isMinimized() && w.isFocused()
+}
+
+function handleMenuLink(raw: string): void {
+  const action = menuToasts?.activate(raw)
+  const contents = mainWindow?.webContents
+  if (!action || !contents || contents.isDestroyed() || showingError) return
+  if (action.type === 'open') showMain()
+  contents.send('ccm:menu-toast', action)
+}
+
+function setupMenuToast(): void {
+  const e2eLog = process.env.CCM_E2E_MENU_TOAST_LOG
+  if (process.env.CCM_TOAST === '0' && !e2eLog) return
+  let real: MenuToastDrawer | null = null
+  if (process.env.CCM_TOAST !== '0' || process.env.CCM_E2E_MENU_TOAST_REAL === '1') {
+    if (!IS_MAC) real = windowsMenuDrawer(windowsToasts)
+    else if (Notification.isSupported()) real = electronMenuDrawer((o) => new Notification(o), (url) => void openLink(url))
+  }
+  const drawer: MenuToastDrawer = e2eLog
+    ? {
+        show: (c) => {
+          appendFileSync(e2eLog, `${JSON.stringify({ op: 'show', ...c })}\n`)
+          return real ? real.show(c) : Promise.resolve(true)
+        },
+        hide: (tag) => {
+          appendFileSync(e2eLog, `${JSON.stringify({ op: 'hide', tag })}\n`)
+          return real ? real.hide(tag) : Promise.resolve(true)
+        },
+      }
+    : (real ?? { show: () => Promise.resolve(false), hide: () => Promise.resolve(false) })
+  const grace = Number(process.env.CCM_E2E_MENU_TOAST_GRACE_MS)
+  menuToasts = createMenuToasts({ drawer, key: randomBytes(16).toString('hex'), scheme: LINK_SCHEME, focused: appFocused, ...(e2eLog && grace > 0 ? { graceMs: grace } : {}) })
+  ipcMain.on('ccm:menu-toast-sync', (event, data: unknown) => {
+    if (isAppFrame(event)) menuToasts?.sync(data)
+  })
+  app.on('browser-window-focus', () => menuToasts?.settle())
+}
+
     send: (event) => {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send('ccm:agent-status', event)
     },
@@ -1696,6 +1740,7 @@ async function ready(): Promise<void> {
   })
   earlyStart.catch(() => undefined)
   ipcMain.on('ccm:core-serve', (event) => {
+  setupMenuToast()
     event.returnValue = isAppFrame(event) ? host.mode : null
   })
   const unpacked = (file: string): string => path.join(__dirname, file).replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)

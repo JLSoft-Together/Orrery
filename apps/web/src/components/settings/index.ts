@@ -106,6 +106,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'editor', id: 'shell', labelKey: 'shellMarks.setting', hintKey: 'shellMarks.settingHint', needs: 'terminals' },
   { page: 'editor', id: 'compactAuto', labelKey: 'workspace.compact.auto.setting', hintKey: 'workspace.compact.auto.settingHint', needs: 'terminals' },
   { page: 'editor', id: 'clickMenu', labelKey: 'clickMenu.setting', hintKey: 'clickMenu.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'menuToast', labelKey: 'clickMenu.toast', hintKey: 'clickMenu.toastHint', needs: 'terminals' },
   { page: 'editor', id: 'agentShim', labelKey: 'shellMarks.agentShim', hintKey: 'shellMarks.agentShimHint', needs: 'terminals' },
 
   { page: 'notify', id: 'toast', labelKey: 'settings.toast', hintKey: mac ? 'settings.toastHintMac' : 'settings.toastHint', needs: 'toast' },

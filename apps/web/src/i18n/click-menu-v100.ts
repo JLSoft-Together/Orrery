@@ -6,6 +6,12 @@ const en = {
     otherTitle: '{label} (moves the highlight here, then type in the terminal)',
     setting: 'Click bar for agent menus',
     settingHint: 'When Claude or Codex shows a choice menu, a bar under the pane lists the options; click one to send its key.',
+    toast: 'Answer buttons on the notification',
+    toastHint: 'When Orrery is not focused and an agent shows a menu with up to 3 options, the system notification gets one button per option. Needs notifications on.',
+  },
+  menuToast: {
+    open: 'Open',
+    dismiss: 'Dismiss',
   },
   menuQueue: {
     chip: 'Waiting for answer {n}',
@@ -33,6 +39,12 @@ const vi: typeof en = {
     otherTitle: '{label} (chuyển highlight tới đây, rồi gõ trong terminal)',
     setting: 'Thanh nút cho menu của agent',
     settingHint: 'Khi Claude hoặc Codex hiện menu chọn, dưới pane có thanh liệt kê đáp án; bấm một nút để gửi phím tương ứng.',
+    toast: 'Toast có nút đáp án',
+    toastHint: 'Khi Orrery không focus và agent hiện menu có tối đa 3 đáp án, toast hệ thống có một nút cho mỗi đáp án. Cần bật thông báo.',
+  },
+  menuToast: {
+    open: 'Mở',
+    dismiss: 'Bỏ qua',
   },
   menuQueue: {
     chip: 'Chờ trả lời {n}',

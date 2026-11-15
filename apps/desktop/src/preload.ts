@@ -76,6 +76,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
       if (typeof terminalId === 'string') handler(terminalId)
     })
   },
+  menuToastSync: (payload: unknown): void => ipcRenderer.send('ccm:menu-toast-sync', payload),
+  onMenuToast: (handler: (action: unknown) => void): (() => void) => subscribe('ccm:menu-toast', handler),
   /** Orrery API (`ccm:orrery`): one executor on the page; the last handler set wins, none answers `unavailable`. */
   onOrrery: (() => {
     let current: ((action: unknown, args: unknown, caller: unknown) => unknown) | null = null

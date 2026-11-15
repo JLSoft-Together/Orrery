@@ -153,6 +153,8 @@ interface DesktopBridge {
   bugReportSave?: (req: { page: string; errors: string; dumps: boolean }) => Promise<BugReportSaveResult | null>
   onFocus?: (handler: (terminalId: string) => boolean) => void
   onSelect?: (handler: (terminalId: string) => void) => void
+  menuToastSync?: (payload: unknown) => void
+  onMenuToast?: (handler: (action: unknown) => void) => () => void
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */
   onOrrery?: (handler: (action: unknown, args: unknown, caller: unknown) => unknown) => void
   captureRect?: (rect: { x: number; y: number; width: number; height: number }) => Promise<Uint8Array | null>

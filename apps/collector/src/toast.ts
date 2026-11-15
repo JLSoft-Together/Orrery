@@ -54,6 +54,7 @@ export interface ToastContent {
   persistent: boolean
   snoozeUrl?: string
   snoozeLabel?: string
+  answers?: { label: string; url: string }[]
 }
 
 export interface ToastDeps {
@@ -85,7 +86,9 @@ function Run($r) {
   $url = Esc $r.url
   $snooze = if ($r.snoozeUrl) { "<action content='$(Esc $r.snoozeLabel)' arguments='$(Esc $r.snoozeUrl)' activationType='protocol'/>" } else { '' }
   $scenario = if ($r.persist -eq '1') { " scenario='reminder'" } else { '' }
-  $xml = "<toast$scenario activationType='protocol' launch='$url'><visual><binding template='ToastGeneric'><text>$(Esc $r.title)</text><text>$(Esc $r.body)</text></binding></visual><actions><action content='$(Esc $r.open)' arguments='$url' activationType='protocol'/>$snooze<action content='$(Esc $r.dismiss)' arguments='dismiss' activationType='system'/></actions></toast>"
+  $answers = ''
+  if ($r.answers) { foreach ($a in @($r.answers | ConvertFrom-Json)) { $answers += "<action content='$(Esc $a.label)' arguments='$(Esc $a.url)' activationType='protocol'/>" } }
+  $xml = "<toast$scenario activationType='protocol' launch='$url'><visual><binding template='ToastGeneric'><text>$(Esc $r.title)</text><text>$(Esc $r.body)</text></binding></visual><actions>$answers<action content='$(Esc $r.open)' arguments='$url' activationType='protocol'/>$snooze<action content='$(Esc $r.dismiss)' arguments='dismiss' activationType='system'/></actions></toast>"
   $doc = [Windows.Data.Xml.Dom.XmlDocument]::new()
   $doc.LoadXml($xml)
   $toast = [Windows.UI.Notifications.ToastNotification]::new($doc)
@@ -129,6 +132,7 @@ export function showToast(c: ToastContent): Promise<boolean> {
     persist: c.persistent ? '1' : '0',
     snoozeUrl: c.snoozeUrl ?? '',
     snoozeLabel: c.snoozeLabel ?? '',
+    answers: c.answers?.length ? JSON.stringify(c.answers.slice(0, 3)) : '',
   })
 }
 

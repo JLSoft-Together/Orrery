@@ -99,6 +99,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const autoSaveDelay = ref(AUTO_SAVE_DELAYS.includes(Number(read('ccm.autoSaveDelay'))) ? Number(read('ccm.autoSaveDelay')) : AUTO_SAVE_DELAY_DEFAULT)
   const compactAuto = ref(read('ccm.compactAuto') !== '0')
   const clickMenu = ref(read('ccm.clickMenu') !== '0')
+  const menuToast = ref(read('ccm.menuToast') !== '0')
   const dimInactive = ref(read('ccm.workspace.dim') === '1')
   /** Shell panes started with command marks (OSC 633); read at spawn, so it applies to new shells. */
   const shellIntegration = ref(read('ccm.shellIntegration') !== '0')
@@ -141,6 +142,7 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(autoSaveDelay, (value) => persist('ccm.autoSaveDelay', String(value)))
   watch(compactAuto, (value) => persist('ccm.compactAuto', value ? '1' : '0'))
   watch(clickMenu, (value) => persist('ccm.clickMenu', value ? '1' : '0'))
+  watch(menuToast, (value) => persist('ccm.menuToast', value ? '1' : '0'))
   watch(dimInactive, (value) => persist('ccm.workspace.dim', value ? '1' : '0'))
   watch(shellIntegration, (value) => persist('ccm.shellIntegration', value ? '1' : '0'))
   watch(agentShim, (value) => persist('ccm.agentShim', value ? '1' : '0'))
@@ -309,6 +311,7 @@ export const useSettingsStore = defineStore('settings', () => {
     agentShim,
     compactAuto,
     clickMenu,
+    menuToast,
     dustEffect,
     officeEnabled,
     stars,

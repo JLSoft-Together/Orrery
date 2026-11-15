@@ -7,6 +7,22 @@ const en = {
     setting: 'Click bar for agent menus',
     settingHint: 'When Claude or Codex shows a choice menu, a bar under the pane lists the options; click one to send its key.',
   },
+  menuQueue: {
+    chip: 'Waiting for answer {n}',
+    chipTip: 'Panes showing a choice menu, oldest first ({keys} jumps to the next one)',
+    title: 'Waiting for answer',
+    waited: 'Time waiting',
+    answerLabel: 'Answer: {question}',
+    more: '+{n} more',
+    kind: {
+      ask: 'Question',
+      'ask-multi': 'Multiple choice question',
+      permission: 'Permission request',
+      plan: 'Plan approval',
+      picker: 'Choice',
+      'codex-approval': 'Codex approval',
+    },
+  },
 }
 
 const vi: typeof en = {
@@ -17,6 +33,22 @@ const vi: typeof en = {
     otherTitle: '{label} (chuyển highlight tới đây, rồi gõ trong terminal)',
     setting: 'Thanh nút cho menu của agent',
     settingHint: 'Khi Claude hoặc Codex hiện menu chọn, dưới pane có thanh liệt kê đáp án; bấm một nút để gửi phím tương ứng.',
+  },
+  menuQueue: {
+    chip: 'Chờ trả lời {n}',
+    chipTip: 'Các pane đang hiện menu chọn, cũ nhất trước ({keys} nhảy tới pane kế tiếp)',
+    title: 'Chờ trả lời',
+    waited: 'Thời gian đã chờ',
+    answerLabel: 'Trả lời: {question}',
+    more: '+{n} nữa',
+    kind: {
+      ask: 'Câu hỏi',
+      'ask-multi': 'Câu hỏi chọn nhiều',
+      permission: 'Xin quyền',
+      plan: 'Duyệt plan',
+      picker: 'Lựa chọn',
+      'codex-approval': 'Codex xin duyệt',
+    },
   },
 }
 

@@ -1,5 +1,6 @@
 import { shallowRef } from 'vue'
 import { parseTermMenu, type TermMenu, type TermMenuItem } from '../lib/termMenu'
+import { menuQuestion } from '../lib/termMenuQuestion'
 import { KEY_ENTER, menuLayoutKey, menuStateKey, planConfirmKeys, planHighlightKeys, planMenuKeys } from '../lib/termMenuKeys'
 
 export interface MenuTerm {
@@ -23,31 +24,59 @@ export interface TermMenuOptions {
   enabled: () => boolean
   send: (keys: string) => void
   focus: () => void
+  observe?: () => boolean
+  throttle?: () => number
+}
+
+export interface SeenMenu {
+  menu: TermMenu
+  question: string
 }
 
 export const MENU_THROTTLE_MS = 100
+export const HIDDEN_MENU_THROTTLE_MS = 1000
 const SUBMIT_POLL_MS = 80
 const SUBMIT_POLL_MAX = 8
 export const CLICK_PREDICT_MS = 500
 
 export function useTermMenu(opts: TermMenuOptions) {
   const menu = shallowRef<TermMenu | null>(null)
+  const seen = shallowRef<SeenMenu | null>(null)
   const busy = shallowRef(false)
   let timer: ReturnType<typeof setTimeout> | null = null
   let subs: { dispose(): void }[] = []
   let shownKey = ''
+  let seenKey = ''
   let disposed = false
   let predicted: { stateKey: string; index: number; at: number } | null = null
 
-  function read(): TermMenu | null {
+  function parse(): SeenMenu | null {
     const term = opts.term()
-    if (!term || disposed || !opts.enabled()) return null
+    if (!term || disposed) return null
     const b = term.buffer.active
-    if (b.viewportY !== b.baseY) return null
     const lines: string[] = []
     for (let r = 0; r < term.rows; r++) lines.push(b.getLine(b.baseY + r)?.translateToString(true) ?? '')
     const found = parseTermMenu(lines, { x: b.cursorX, y: b.cursorY })
-    return found && found.confident ? found : null
+    return found && found.confident ? { menu: found, question: menuQuestion(lines, found) } : null
+  }
+
+  function atBottom(): boolean {
+    const term = opts.term()
+    if (!term) return false
+    const b = term.buffer.active
+    return b.viewportY === b.baseY
+  }
+
+  function read(): TermMenu | null {
+    if (disposed || !opts.enabled() || !atBottom()) return null
+    return parse()?.menu ?? null
+  }
+
+  function readAct(): TermMenu | null {
+    if (disposed) return null
+    if (opts.enabled()) return read()
+    if (opts.observe?.()) return parse()?.menu ?? null
+    return null
   }
 
   function apply(next: TermMenu | null): void {
@@ -57,18 +86,38 @@ export function useTermMenu(opts: TermMenuOptions) {
     menu.value = next
   }
 
+  function applySeen(next: SeenMenu | null): void {
+    const key = next ? `${menuStateKey(next.menu)}|${next.question}` : ''
+    if (key === seenKey) return
+    seenKey = key
+    seen.value = next
+  }
+
+  function tick(): void {
+    const watching = !disposed && !!opts.observe?.()
+    const wantBar = !disposed && opts.enabled()
+    if (!watching && !wantBar) {
+      apply(null)
+      applySeen(null)
+      return
+    }
+    const found = parse()
+    applySeen(watching ? found : null)
+    apply(wantBar && atBottom() ? (found?.menu ?? null) : null)
+  }
+
   function refresh(): void {
     if (timer) clearTimeout(timer)
     timer = null
-    apply(read())
+    tick()
   }
 
   function schedule(): void {
     if (disposed || timer) return
     timer = setTimeout(() => {
       timer = null
-      apply(read())
-    }, MENU_THROTTLE_MS)
+      tick()
+    }, opts.throttle?.() ?? MENU_THROTTLE_MS)
   }
 
   function attach(term: MenuTerm): void {
@@ -83,17 +132,18 @@ export function useTermMenu(opts: TermMenuOptions) {
     if (timer) clearTimeout(timer)
     timer = null
     apply(null)
+    applySeen(null)
   }
 
   const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
   async function pick(item: TermMenuItem): Promise<void> {
-    if (busy.value || !menu.value) return
+    const shown = menu.value ?? seen.value?.menu ?? null
+    if (busy.value || !shown) return
     busy.value = true
     try {
-      const shown = menu.value
-      const fresh = read()
-      if (!fresh || menuLayoutKey(fresh) !== menuLayoutKey(shown)) return apply(fresh)
+      const fresh = readAct()
+      if (!fresh || menuLayoutKey(fresh) !== menuLayoutKey(shown)) return tick()
       const target = fresh.items.find((i) => i.row === item.row && i.index === item.index && i.label === item.label)
       const plan = target ? planMenuKeys(fresh, target) : null
       if (!plan) return
@@ -102,7 +152,7 @@ export function useTermMenu(opts: TermMenuOptions) {
       if (plan.after === 'enter-on-submit') {
         for (let n = 0; n < SUBMIT_POLL_MAX; n++) {
           await wait(SUBMIT_POLL_MS)
-          const now = read()
+          const now = readAct()
           if (!now) return
           if (now.items.some((i) => i.isSubmit && i.selected)) {
             opts.send(KEY_ENTER)
@@ -150,5 +200,5 @@ export function useTermMenu(opts: TermMenuOptions) {
     disposed = true
   }
 
-  return { menu, busy, attach, detach, refresh, schedule, pick, click, dispose }
+  return { menu, seen, busy, attach, detach, refresh, schedule, pick, click, dispose }
 }

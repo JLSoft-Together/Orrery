@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Columns2, LoaderCircle, TriangleAlert, X } from 'lucide-vue-next'
+import { Columns2, LoaderCircle, MessageCircleQuestion, TriangleAlert, X } from 'lucide-vue-next'
 import { usePaneInfo, usePeerSweeps, type PanePeer } from '../../../composables/usePaneInfo'
 import type { MissionCard, MissionTile } from '../../../lib/rail/mission'
 import { peerSlot, stateWord, type PeerSlot, type RailState } from '../../../lib/rail/railModel'
@@ -15,6 +15,9 @@ import { isTerm, useWorkspaceStore, workCwd, type Pane } from '../../../stores/w
 import StatusIcon from '../../StatusIcon.vue'
 import PaneIcon from '../PaneIcon.vue'
 import TabRenameInput from '../TabRenameInput.vue'
+import TermMenuBar from '../TermMenuBar.vue'
+import { useMenuQueueStore } from '../../../stores/menuQueue'
+import type { TermMenuItem } from '../../../lib/termMenu'
 import { tailLines, tileRows, type TileMetrics } from './missionLayout'
 import { dur, ease, flipAll, layoutBox } from './missionMotion'
 
@@ -148,6 +151,27 @@ const STATUS_ROW = 16
 const outputs = computed<Record<string, string>>(() =>
   Object.fromEntries(props.card.tiles.map((x) => [x.paneKey, tailLines(props.snaps[x.paneKey] ?? '', tileRows(props.bodyH, x.box.h, statusOf(x.paneKey) ? { ...METRICS, head: METRICS.head + STATUS_ROW } : METRICS, props.rowCap))])),
 )
+
+const menuQueue = useMenuQueueStore()
+const asks = computed(() =>
+  props.card.tiles
+    .map((x) => menuQueue.entryOf(x.paneKey))
+    .filter((e): e is NonNullable<typeof e> => !!e)
+    .sort((a, b) => a.since - b.since),
+)
+const ask = computed(() => asks.value[0] ?? null)
+const askText = computed(() => (ask.value ? ask.value.question || t(`menuQueue.kind.${ask.value.menu.kind}`) : ''))
+const answering = ref(false)
+async function answer(item: TermMenuItem): Promise<void> {
+  const entry = ask.value
+  if (!entry || answering.value) return
+  answering.value = true
+  try {
+    await menuQueue.answer(entry.paneKey, item)
+  } finally {
+    answering.value = false
+  }
+}
 
 const root = ref<HTMLElement | null>(null)
 const tileEls = (): HTMLElement[] => [...(root.value?.querySelectorAll<HTMLElement>('[data-mission-tile]') ?? [])]
@@ -358,6 +382,27 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
           />
         </button>
       </TransitionGroup>
+      <div
+        v-if="ask"
+        class="absolute inset-x-1 bottom-1 z-20 flex max-h-[75%] cursor-default flex-col overflow-hidden rounded-[7px] bg-surface shadow-control ring-1 ring-line-strong"
+        role="group"
+        :aria-label="t('menuQueue.answerLabel', { question: askText })"
+        data-no-drag
+        data-mission-ask
+        :data-pane="ask.paneKey"
+        @click.stop
+        @dblclick.stop
+        @contextmenu.stop
+      >
+        <p class="flex shrink-0 items-center gap-1 px-2 pt-1 text-2xs font-medium text-ink">
+          <MessageCircleQuestion :size="11" class="shrink-0 text-st-waiting" aria-hidden="true" />
+          <span class="min-w-0 flex-1 truncate" :title="askText" data-mission-ask-text>{{ askText }}</span>
+          <span v-if="asks.length > 1" class="shrink-0 text-ink-faint tabular" data-mission-ask-more>{{ t('menuQueue.more', { n: asks.length - 1 }) }}</span>
+        </p>
+        <div class="min-h-0 overflow-y-auto">
+          <TermMenuBar :menu="ask.menu" :busy="answering" @pick="answer" />
+        </div>
+      </div>
     </div>
     <Transition name="ccm-fade">
       <span v-if="drop" class="pointer-events-none absolute inset-0 z-10 rounded-card bg-accent-soft ring-2 ring-accent ring-inset" aria-hidden="true" />

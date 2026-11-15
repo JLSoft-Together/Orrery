@@ -734,6 +734,7 @@ export default {
       wsReopen: 'Reopen the last closed pane or tab',
       wsZoom: 'Zoom the focused pane to fill the tab, or show all panes again',
       wsAttention: 'Jump to the next pane that needs you',
+      wsAsked: 'Jump to the next pane waiting for an answer',
       wsCycle: 'Next tab of this project (add Shift to go back)',
       wsMoveTab: 'Move the tab left / right',
       wsTab: 'Tab 1–9 of this project',

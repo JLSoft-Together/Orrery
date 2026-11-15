@@ -53,7 +53,8 @@ import StatusIcon from '../StatusIcon.vue'
 import { statusMeta } from '../../lib/status'
 import { usePaneInfo, usePeerSweep } from '../../composables/usePaneInfo'
 import { useCompact } from '../../composables/useCompact'
-import { useTermMenu } from '../../composables/useTermMenu'
+import { HIDDEN_MENU_THROTTLE_MS, MENU_THROTTLE_MS, useTermMenu } from '../../composables/useTermMenu'
+import { useMenuQueueStore } from '../../stores/menuQueue'
 import { useTermMenuMouse } from '../../composables/useTermMenuMouse'
 import { needsUser } from '../../lib/rail/railModel'
 import { leaves } from '../../lib/splitLayout'
@@ -423,7 +424,16 @@ const termMenu = useTermMenu({
     if (conn?.isOpen) conn.write(keys)
   },
   focus: () => term?.focus(),
+  observe: () => props.pane.state === 'running' && (preset.value === 'claude' || preset.value === 'codex'),
+  throttle: () => (props.visible ? MENU_THROTTLE_MS : HIDDEN_MENU_THROTTLE_MS),
 })
+const menuQueue = useMenuQueueStore()
+const unregisterMenu = menuQueue.register(props.pane.key, termMenu.pick)
+watch(
+  () => termMenu.seen.value,
+  (seen) => menuQueue.report(props.pane.key, seen),
+  { immediate: true },
+)
 watch(
   () => [settings.clickMenu, props.visible, props.pane.state, preset.value] as const,
   () => termMenu.refresh(),
@@ -438,6 +448,7 @@ watch(() => termMenu.menu.value, menuMouse.sync)
 onBeforeUnmount(() => {
   menuMouse.dispose()
   termMenu.dispose()
+  unregisterMenu()
 })
 const checks = useChecksStore()
 const scanNotice = ref<string | null>(null)

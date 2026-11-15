@@ -84,6 +84,8 @@ import SideResizer from './SideResizer.vue'
 import RailColumn from './rail/RailColumn.vue'
 import MissionControl from './MissionControl.vue'
 import AttentionPopover from './AttentionPopover.vue'
+import MenuQueueChip from './MenuQueueChip.vue'
+import { useMenuQueueStore } from '../../stores/menuQueue'
 import TabRenameInput from './TabRenameInput.vue'
 import { useToastsStore } from '../../stores/toasts'
 import ContextMenu from '../ui/ContextMenu.vue'
@@ -112,6 +114,7 @@ const props = defineProps<{ visible: boolean }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
+const menuQueue = useMenuQueueStore()
 useWorkspaceLinks(() => props.visible)
 installMcpCalls()
 installTelegramInbound()
@@ -1139,6 +1142,11 @@ function onGlobalKey(e: KeyboardEvent): void {
     case 'attention':
       workspace.nextAttention()
       break
+    case 'asked': {
+      const target = menuQueue.next(workspace.activeKey)
+      if (target) workspace.activate(target)
+      break
+    }
     case 'cycleTab':
       workspace.cycleTab(action.step, visibleTabKeys.value)
       break
@@ -1945,6 +1953,7 @@ onBeforeUnmount(() => {
         <BellRing :size="14" aria-hidden="true" />
         <span>{{ t('workspace.attention.chip', { n: chipCount }, chipCount) }}</span>
       </button>
+      <MenuQueueChip />
       <Teleport to="body">
         <Transition name="ccm-menu" @before-leave="retireOverlay">
           <AttentionPopover v-if="needsAnchor" :anchor="needsAnchor" :list="needs" :trigger="attentionChip" @close="closeNeeds" />

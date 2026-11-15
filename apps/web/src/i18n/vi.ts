@@ -735,6 +735,7 @@ const vi: typeof en = {
       wsReopen: 'Mở lại pane hoặc tab vừa đóng',
       wsZoom: 'Phóng to pane đang chọn cho đầy tab, hoặc hiện lại mọi pane',
       wsAttention: 'Tới pane tiếp theo đang cần bạn',
+      wsAsked: 'Tới pane tiếp theo đang chờ trả lời',
       wsCycle: 'Tab kế tiếp của dự án này (thêm Shift để lùi)',
       wsMoveTab: 'Chuyển tab sang trái / phải',
       wsTab: 'Tab 1–9 của dự án này',

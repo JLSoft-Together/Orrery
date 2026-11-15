@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatKeys, keyCombo, SHORTCUTS, shortcutText, viewShortcuts, workspaceShortcuts } from './shortcuts'
+import { askedShortcutText, formatKeys, keyCombo, SHORTCUTS, shortcutText, viewShortcuts, workspaceShortcuts } from './shortcuts'
 
 describe('shortcut labels', () => {
   it('Windows: Mod is Ctrl, modifiers Ctrl Alt Shift, joined with +', () => {
@@ -43,5 +43,12 @@ describe('shortcut labels', () => {
     expect(shortcutText('wsReopen', false)).toBe('Ctrl+Shift+Z')
     expect(formatKeys(workspaceShortcuts(true).find((s) => s.id === 'wsMoveTab')!.keys, true)).toEqual(['⇧', '⌘', 'PgUp', 'PgDn'])
     expect(formatKeys(workspaceShortcuts(false).find((s) => s.id === 'wsMoveTab')!.keys, false)).toEqual(['Ctrl', 'Shift', 'PgUp', 'PgDn'])
+  })
+})
+
+describe('asked chord', () => {
+  it('prints per platform', () => {
+    expect(askedShortcutText(false)).toBe('Ctrl+Alt+Q')
+    expect(askedShortcutText(true)).toBe('⌃⌥Q')
   })
 })

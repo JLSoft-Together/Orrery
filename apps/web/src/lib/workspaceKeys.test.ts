@@ -144,3 +144,16 @@ describe('project group chords', () => {
     expect(workspaceAction(key('KeyG', cad, true), false, false)).toBeNull()
   })
 })
+
+describe('workspaceAction asked', () => {
+  it('Ctrl+Alt+Q jumps to the next pane waiting for an answer on both platforms', () => {
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true }), false, false)).toEqual({ t: 'asked' })
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true }), true, false)).toEqual({ t: 'asked' })
+  })
+
+  it('other modifiers and AltGr do not trigger it', () => {
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true, shiftKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true }, true), false, false)).toBeNull()
+  })
+})

@@ -11,6 +11,7 @@ export type WorkspaceAction =
   | { t: 'swap'; dir: FocusDir }
   /** Jump to the next pane whose agent waits for the user (or finished unseen). */
   | { t: 'attention' }
+  | { t: 'asked' }
   /** ⌘P on macOS, Ctrl+Shift+P elsewhere: Ctrl+P is shell history. */
   | { t: 'quickOpen' }
   /** Sidebar → Explorer (⇧⌘E / Ctrl+Shift+E, as in VS Code). */
@@ -58,6 +59,7 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
   const side = code === 'ArrowLeft' ? 'left' : code === 'ArrowRight' ? 'right' : null
   if (ctrl && alt && !meta && !e.getModifierState?.('AltGraph')) {
     if (code === 'KeyG' && !shift) return { t: 'addGroup' }
+    if (code === 'KeyQ' && !shift) return { t: 'asked' }
     if (side && groups) return shift ? { t: 'groupMove', dir: side } : { t: 'groupFocus', dir: side }
   }
   const digit = /^Digit([1-9])$/.exec(code)

@@ -40,6 +40,7 @@ export function workspaceShortcuts(mac: boolean): Shortcut[] {
       { id: 'wsReopen', keys: ['Mod', 'Shift', 'T'], group },
       { id: 'wsZoom', keys: ['Mod', 'Shift', 'Enter'], group },
       { id: 'wsAttention', keys: ['Mod', 'Shift', 'A'], group },
+      { id: 'wsAsked', keys: ['Ctrl', 'Alt', 'Q'], group },
       { id: 'wsCycle', keys: ['Mod', 'Shift', '[', ']'], group },
       { id: 'wsMoveTab', keys: ['Mod', 'Shift', 'PgUp', 'PgDn'], group },
       { id: 'wsTab', keys: ['Mod', '1', '…', '9'], group },
@@ -78,6 +79,7 @@ export function workspaceShortcuts(mac: boolean): Shortcut[] {
     { id: 'wsReopen', keys: ['Ctrl', 'Shift', 'Z'], group },
     { id: 'wsZoom', keys: ['Ctrl', 'Shift', 'Enter'], group },
     { id: 'wsAttention', keys: ['Ctrl', 'Shift', 'A'], group },
+    { id: 'wsAsked', keys: ['Ctrl', 'Alt', 'Q'], group },
     { id: 'wsCycle', keys: ['Ctrl', 'Tab'], group },
     { id: 'wsMoveTab', keys: ['Ctrl', 'Shift', 'PgUp', 'PgDn'], group },
     { id: 'wsTab', keys: ['Ctrl', 'Alt', '1', '…', '9'], group },
@@ -166,4 +168,10 @@ export function isTyping(target: EventTarget | null): boolean {
   if (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return true
   // Comboboxes and listboxes use letters for typeahead.
   return !!target.closest('[role="combobox"], [role="listbox"]')
+}
+
+export const ASKED_KEYS: readonly string[] = ['Ctrl', 'Alt', 'Q']
+
+export function askedShortcutText(mac: boolean): string {
+  return keyCombo(ASKED_KEYS, mac)
 }

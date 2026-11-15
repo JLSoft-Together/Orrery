@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MENU_THROTTLE_MS, useTermMenu, type MenuTerm } from './useTermMenu'
+import { HIDDEN_MENU_THROTTLE_MS, MENU_THROTTLE_MS, useTermMenu, type MenuTerm } from './useTermMenu'
 
 const DIR = join(__dirname, '..', 'lib', '__fixtures__', 'term-menu')
 
@@ -334,5 +334,108 @@ describe('useTermMenu', () => {
     m.flags.enabled = false
     m.click(item, 1)
     expect(m.sent).toEqual([])
+  })
+})
+
+function hidden(name?: string) {
+  const t = fakeTerm()
+  const flags = { enabled: false, observe: true, visible: false }
+  const sent: string[] = []
+  const api = useTermMenu({
+    term: () => t.term,
+    enabled: () => flags.enabled,
+    observe: () => flags.observe,
+    throttle: () => (flags.visible ? MENU_THROTTLE_MS : HIDDEN_MENU_THROTTLE_MS),
+    send: (k) => sent.push(k),
+    focus: vi.fn(),
+  })
+  api.attach(t.term)
+  if (name) t.show(name)
+  return { ...t, ...api, flags, sent }
+}
+
+describe('useTermMenu observing a hidden pane', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('reports the menu and its question without showing the bar', async () => {
+    const m = hidden('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    expect(m.menu.value).toBeNull()
+    expect(m.seen.value?.menu.items.length).toBeGreaterThan(2)
+    expect(m.seen.value?.question).toMatch(/\?$/)
+  })
+
+  it('reads at most once a second while hidden, burst of writes included', async () => {
+    const m = hidden()
+    const spy = vi.spyOn(m.term.buffer.active, 'getLine')
+    for (let i = 0; i < 50; i++) m.writes.forEach((cb) => cb())
+    await tick(MENU_THROTTLE_MS * 5)
+    expect(spy).not.toHaveBeenCalled()
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    expect(spy.mock.calls.length).toBeLessThanOrEqual(m.term.rows)
+  })
+
+  it('drops the entry when the menu disappears or observing stops', async () => {
+    const m = hidden('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    expect(m.seen.value).not.toBeNull()
+    m.show('neg-claude-home')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    expect(m.seen.value).toBeNull()
+    m.show('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    m.flags.observe = false
+    m.refresh()
+    expect(m.seen.value).toBeNull()
+  })
+
+  it('does not report a menu the parser is unsure about', async () => {
+    const m = hidden('neg-numbered-pick-prose')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    expect(m.seen.value).toBeNull()
+  })
+
+  it('pick answers a hidden pane after re-reading the screen', async () => {
+    const m = hidden('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    const item = m.seen.value!.menu.items[2]!
+    await m.pick(item)
+    expect(m.sent).toEqual(['3'])
+  })
+
+  it('pick sends nothing when the hidden pane moved to another menu', async () => {
+    const m = hidden('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    const item = m.seen.value!.menu.items[2]!
+    m.show('claude-model')
+    await m.pick(item)
+    expect(m.sent).toEqual([])
+  })
+
+  it('pick sends nothing once the menu is gone before the click', async () => {
+    const m = hidden('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    const item = m.seen.value!.menu.items[0]!
+    m.show('neg-claude-home')
+    await m.pick(item)
+    expect(m.sent).toEqual([])
+    expect(m.seen.value).toBeNull()
+  })
+
+  it('a visible pane with the bar on shows both bar and queue entry', async () => {
+    const m = hidden('claude-ask-single')
+    m.flags.enabled = true
+    m.flags.visible = true
+    m.refresh()
+    expect(m.menu.value).not.toBeNull()
+    expect(m.seen.value).not.toBeNull()
+  })
+
+  it('dispose clears the entry', async () => {
+    const m = hidden('claude-ask-single')
+    await tick(HIDDEN_MENU_THROTTLE_MS)
+    m.dispose()
+    expect(m.seen.value).toBeNull()
   })
 })

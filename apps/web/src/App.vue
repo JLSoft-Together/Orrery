@@ -30,6 +30,7 @@ import UsageView from './components/usage/UsageView.vue'
 import HistoryView from './components/history/HistoryView.vue'
 import { desktop, hasDeepSeek, hasExtensions, hasTerminals } from './lib/desktop'
 import { hasDevices } from './lib/devices'
+import { hasDiskMap } from './lib/diskMap'
 import { useRevealInWorkspace } from './composables/useRevealInWorkspace'
 import { handleOrrery, installOrreryApi } from './composables/useOrreryApi'
 import { useTurnCheckpoints } from './composables/useTurnCheckpoints'
@@ -41,6 +42,7 @@ const MonitorView = defineAsyncComponent(() => import('./components/MonitorView.
 const WorkspaceView = defineAsyncComponent(() => import('./components/workspace/WorkspaceView.vue'))
 const ExtensionsView = defineAsyncComponent(() => import('./components/extensions/ExtensionsView.vue'))
 const DevicesView = defineAsyncComponent(() => import('./components/devices/DevicesView.vue'))
+const DiskView = defineAsyncComponent(() => import('./components/disk/DiskView.vue'))
 const DevToolsDialog = defineAsyncComponent(() => import('./components/DevToolsDialog.vue'))
 const SessionToolsSheet = defineAsyncComponent(() => import('./components/workspace/SessionToolsSheet.vue'))
 const BuildCleanDialog = defineAsyncComponent(() => import('./components/BuildCleanDialog.vue'))
@@ -179,6 +181,7 @@ onBeforeUnmount(() => {
         <HistoryView v-else-if="ui.view === 'history'" id="main" key="history" />
         <ExtensionsView v-else-if="ui.view === 'extensions' && hasExtensions" id="main" key="extensions" />
         <DevicesView v-else-if="ui.view === 'devices' && hasDevices" id="main" key="devices" />
+        <DiskView v-else-if="ui.view === 'disk' && hasDiskMap" id="main" key="disk" />
       </Transition>
       <!-- Kept mounted once opened: switching views must not tear down the terminals' xterm state. -->
       <Transition name="ccm-view">

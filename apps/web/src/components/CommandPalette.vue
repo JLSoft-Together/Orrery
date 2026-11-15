@@ -25,6 +25,7 @@ import {
   Moon,
   Search,
   Settings2,
+  HardDrive,
   Smartphone,
   Stethoscope,
   FolderSearch,
@@ -54,6 +55,7 @@ import { DEV_TOOLS } from '../lib/devTools'
 import { retireOverlay, withViewTransition } from '../lib/motion'
 import { desktop, hasExtensions, hasTerminals } from '../lib/desktop'
 import { hasDevices } from '../lib/devices'
+import { hasDiskMap } from '../lib/diskMap'
 import { hasEnvCheck, hasExplorer, hasI18nScan, hasLog } from '../lib/preview'
 import { hasPermAdvisor } from '../lib/permAdvisor'
 import { hasApkSize } from '../lib/apkSize'
@@ -259,6 +261,7 @@ const items = computed<Item[]>(() => {
     },
     ...(hasExtensions ? [{ id: 'c:extensions', group: 'nav' as const, label: t('palette.goExtensions'), icon: Puzzle, run: () => ui.setView('extensions') }] : []),
     ...(hasDevices ? [{ id: 'c:devices', group: 'nav' as const, label: t('palette.goDevices'), icon: Smartphone, run: () => ui.setView('devices') }] : []),
+    ...(hasDiskMap ? [{ id: 'c:disk', group: 'nav' as const, label: t('diskMap.goDisk'), icon: HardDrive, run: () => ui.setView('disk') }] : []),
     ...(hasTerminals && hasLog
       ? [
           {

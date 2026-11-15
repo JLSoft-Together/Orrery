@@ -151,6 +151,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
 
   { page: 'data', id: 'agentData', labelKey: 'agentData.section', needs: 'agentData' },
   { page: 'data', id: 'backup', labelKey: 'backup.section', hintKey: 'backup.autoHint', needs: 'backup' },
+  { page: 'data', id: 'diskMap', labelKey: 'diskMap.settings.title', hintKey: 'diskMap.settings.hint' },
 
   { page: 'about', id: 'update', labelKey: 'update.section', needs: 'updater' },
   { page: 'about', id: 'help-whatsNew', labelKey: 'whatsNew.open' },

@@ -1,6 +1,6 @@
 # RELEASE 4.0.6
 
-Gom cùng v100 click menu + v101 Ổ đĩa + v102 UI mới Sương kính (feat_mist_ui); release khi cả 3 xong.
+Release 2026-11-16 (tag v4.0.6): v100 click menu + v101 Ổ đĩa (cả trên vỏ Tauri) + sửa lỗi Tauri + v102 UI mới Sương kính.
 
 ## Tiếng Việt
 

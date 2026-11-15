@@ -18,6 +18,19 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.6',
+    date: '2026-11-16',
+    items: [
+      { en: 'Try the new Mist glass UI: session rail, Explorer drawer, pane drag compass, 9 palettes', vi: 'Thử giao diện Sương kính: rail session, Explorer ngăn kéo, la bàn kéo pane, 9 bảng màu' },
+      { en: 'New UI: custom theme with a color picker, light and dark made for you', vi: 'Giao diện mới: theme tự chọn với color picker, tự sinh bản sáng và tối' },
+      { en: 'Click or double click a Claude / Codex answer in the pane; Waiting chip, toasts with buttons', vi: 'Click hoặc double click đáp án Claude / Codex trong pane; chip Chờ trả lời, toast có nút' },
+      { en: 'New Disk view: scan, treemap, file search, clean up, duplicates, sort Downloads, uninstall', vi: 'Ổ đĩa mới: quét, treemap, tìm file, dọn rác, file trùng, sắp xếp Downloads, gỡ app' },
+      { en: 'Every dropdown shares one style and works from the keyboard', vi: 'Mọi dropdown dùng chung một kiểu, dùng được bằng bàn phím' },
+      { en: 'Tauri: MCP and Telegram into sessions work while the compact window is open', vi: 'Tauri: MCP và Telegram vào session chạy lại khi mở cửa sổ compact' },
+      { en: 'Tauri: asks before quitting, saves unsaved files; links open when the app is closed', vi: 'Tauri: hỏi trước khi thoát, lưu file chưa lưu; link mở được khi app chưa chạy' },
+    ],
+  },
+  {
     version: '4.0.5',
     date: '2026-11-13',
     items: [

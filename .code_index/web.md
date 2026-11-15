@@ -329,3 +329,7 @@ Invariants:
 
 - `lib/diskClean.ts`: `SDK_IDS`, `pickable` bỏ `action: command`, preselect bỏ `hold` và nhóm SDK không xét tuổi; `diskCleanCommand`. Store `diskClean`: `notes` (lý do nhóm rỗng), `runCommand`. `CleanRow`: nhãn `sdkKind` / `dockerKind`, nút Chạy lệnh, chip Mất dữ liệu (`warn`), nút chuyển ổ (cache, AVD) -> `diskMove.fromClean`. `CleanGroup` hiện `diskClean.note.*`.
 - `lib/diskMove.ts` bridge `diskMove*`, `errorKey`, `percent`; `stores/diskMove.ts` candidates / moves / pending, `choose` (chọn ổ đầu tiên ok), `makePlan`, `run`, `back`, `recover`; `components/disk/move/DiskMove.vue` gắn cuối tab Dọn dẹp (ẩn khi lọc project). i18n `diskMove.*` nằm trong `i18n/disk-clean-v101.ts` (không cần import thêm ở en/vi).
+
+## Ổ đĩa: tab App + RAM (v101 phase 4b)
+
+- `lib/diskApps.ts` (bridge `diskApps*` / `diskRam*`, `filterApps`, `groupRam` (nhóm theo tên exe; nhóm có process self / parent thì không cho kết thúc cả nhóm), `ramShare`, `formatPct`), `stores/diskApps.ts` (`active`, list, uninstall notice, leftovers, picked không tick sẵn), `stores/diskRam.ts` (poll 2 s qua `start`/`stop` theo số component đang mở, bỏ qua khi `document.hidden`). Components `components/disk/apps/{DiskApps,AppRow,AppLeftovers}.vue`, `components/disk/ram/DiskRam.vue`; gắn ở `DiskView.vue` (`extraMode` ưu tiên trên các tab khác, ẩn chart + `DiskActions`). i18n `i18n/disk-apps-v101.ts` (`diskApps.*`, `diskRam.*`), tạm merge qua `components/disk/apps/messages.ts` (`mergeLocaleMessage`) cho tới khi en.ts / vi.ts import.

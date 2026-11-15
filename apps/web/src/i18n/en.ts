@@ -100,6 +100,7 @@ import clickMenuV100 from './click-menu-v100'
 import diskV101 from './disk-v101'
 import diskCleanV101 from './disk-clean-v101'
 import diskOrganizeV101 from './disk-organize-v101'
+import diskAppsV101 from './disk-apps-v101'
 
 export default {
   ...v25.en,
@@ -107,6 +108,7 @@ export default {
   ...diskV101.en,
   ...diskCleanV101.en,
   ...diskOrganizeV101.en,
+  ...diskAppsV101.en,
   ...themeV95.en,
   ...themeV96.en,
   ...footerV92.en,

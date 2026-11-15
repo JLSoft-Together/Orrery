@@ -101,6 +101,7 @@ import clickMenuV100 from './click-menu-v100'
 import diskV101 from './disk-v101'
 import diskCleanV101 from './disk-clean-v101'
 import diskOrganizeV101 from './disk-organize-v101'
+import diskAppsV101 from './disk-apps-v101'
 
 const vi: typeof en = {
   ...v25.vi,
@@ -108,6 +109,7 @@ const vi: typeof en = {
   ...diskV101.vi,
   ...diskCleanV101.vi,
   ...diskOrganizeV101.vi,
+  ...diskAppsV101.vi,
   ...themeV95.vi,
   ...themeV96.vi,
   ...footerV92.vi,

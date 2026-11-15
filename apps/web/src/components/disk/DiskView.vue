@@ -15,6 +15,12 @@ import { FolderInput as OrganizeIcon } from 'lucide-vue-next'
 import { hasOrganize } from '../../lib/organize'
 import { useOrganizeStore } from '../../stores/organize'
 import OrganizeTab from './organize/OrganizeTab.vue'
+import { AppWindow as AppsIcon, MemoryStick as RamIcon } from 'lucide-vue-next'
+import { hasDiskApps, hasDiskRam } from '../../lib/diskApps'
+import { useDiskAppsStore } from '../../stores/diskApps'
+import { useDiskRamStore } from '../../stores/diskRam'
+import DiskApps from './apps/DiskApps.vue'
+import DiskRam from './ram/DiskRam.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskActions from './DiskActions.vue'
 import DiskHistory from './DiskHistory.vue'
@@ -40,6 +46,7 @@ const modes = computed(() => [
   ...(hasDiskClean ? [{ value: 'clean' as const, label: t('diskClean.tab'), icon: Eraser }] : []),
   ...dupesTab.value,
   ...organizeTab.value,
+  ...extraTabs.value,
 ])
 const dupes = useDiskDupesStore()
 const dupesTab = computed(() => (hasDiskDupes ? [{ value: 'dupes' as const, label: t('diskDupes.tab'), icon: DupesIcon }] : []))
@@ -49,9 +56,19 @@ const organize = useOrganizeStore()
 const organizeTab = computed(() => (hasOrganize ? [{ value: 'organize' as const, label: t('diskOrganize.tab'), icon: OrganizeIcon }] : []))
 const organizeMode = computed(() => hasOrganize && organize.active && !clean.active && !dupes.active)
 const searchMode = computed(() => store.mode !== 'browse' && !cleanMode.value && !dupesMode.value && !organizeMode.value)
-const tab = computed<DiskMode | 'clean' | 'dupes' | 'organize'>(() => (organizeMode.value ? 'organize' : dupesMode.value ? 'dupes' : cleanMode.value ? 'clean' : store.mode))
+const appsStore = useDiskAppsStore()
+const ramStore = useDiskRamStore()
+const extraTabs = computed(() => [
+  ...(hasDiskApps ? [{ value: 'apps' as const, label: t('diskApps.tab'), icon: AppsIcon }] : []),
+  ...(hasDiskRam ? [{ value: 'ram' as const, label: t('diskRam.tab'), icon: RamIcon }] : []),
+])
+const extraMode = computed<'apps' | 'ram' | null>(() => (hasDiskApps && appsStore.active ? 'apps' : hasDiskRam && ramStore.active ? 'ram' : null))
+const tab = computed<DiskMode | 'clean' | 'dupes' | 'organize' | 'apps' | 'ram'>(() => extraMode.value ?? (organizeMode.value ? 'organize' : dupesMode.value ? 'dupes' : cleanMode.value ? 'clean' : store.mode))
 
-function setTab(m: DiskMode | 'clean' | 'dupes' | 'organize'): void {
+function setTab(m: DiskMode | 'clean' | 'dupes' | 'organize' | 'apps' | 'ram'): void {
+  appsStore.active = m === 'apps'
+  ramStore.active = m === 'ram'
+  if (m === 'apps' || m === 'ram') return
   organize.active = m === 'organize'
   if (m === 'organize') {
     clean.active = false
@@ -90,7 +107,7 @@ onBeforeUnmount(() => store.dispose())
         <h2 class="text-2xl font-semibold tracking-tight">{{ t('diskMap.title') }}</h2>
         <p class="mt-1 max-w-[80ch] text-sm text-ink-muted">{{ t('diskMap.subtitle') }}</p>
       </div>
-      <SegmentedControl v-if="!searchMode && !cleanMode && !dupesMode && !organizeMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
+      <SegmentedControl v-if="!searchMode && !cleanMode && !dupesMode && !organizeMode && !extraMode" :model-value="store.chart" :options="charts" :label="t('diskMap.chart.label')" data-disk-chart @update:model-value="(c: DiskChart) => store.setChart(c)" />
     </div>
 
     <div v-if="!store.supported" class="mt-5 flex items-start gap-3 rounded-card bg-warning-soft px-4 py-3" role="alert" data-disk-unsupported>
@@ -105,7 +122,9 @@ onBeforeUnmount(() => store.dispose())
         <SegmentedControl :model-value="tab" :options="modes" :label="t('diskMap.mode.label')" data-disk-mode @update:model-value="setTab" />
       </div>
 
-      <OrganizeTab v-if="organizeMode" />
+      <DiskApps v-if="extraMode === 'apps'" />
+      <DiskRam v-else-if="extraMode === 'ram'" />
+      <OrganizeTab v-else-if="organizeMode" />
       <DiskDupes v-else-if="dupesMode" />
       <DiskClean v-else-if="cleanMode" />
       <DiskSearch v-else-if="searchMode" @action="onAction" />
@@ -180,7 +199,7 @@ onBeforeUnmount(() => store.dispose())
         {{ store.indexed ? t('diskMap.pickFolder') : t('diskMap.notIndexed') }}
       </p>
 
-      <DiskActions class="mt-3" />
+      <DiskActions v-if="!extraMode" class="mt-3" />
       <DiskHistory class="mt-4" />
     </template>
   </main>

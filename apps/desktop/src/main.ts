@@ -43,13 +43,14 @@ import { e2eAutoConfirm } from './diskMap/delete'
 import { deleteBoxOptions } from './diskMap/dialog'
 import { createDiskClean, type DiskClean } from './diskClean/ipc'
 import { createOrganize, e2ePath as organizeE2ePath, e2eStableMs as organizeStableMs, type Organize } from './organize/ipc'
+import { setupDiskAppsRam } from './diskApps/wire'
 import { rawItems as organizeRawItems } from './organize/junk'
 import { systemDeps as diskCleanSystem } from './diskClean/system'
-import { toChildren, toStatus } from './diskMap/map'
 import { macTempAllow } from './diskClean/system'
 import { runFile, sdkDeps as diskCleanSdk } from './diskClean/sdk'
 import { createDiskMove, type DiskMove } from './diskMove/ipc'
 import { fakeDev as moveFakeDev, fakeMoveSuggestions, fakePick as moveFakePick, fakeProcs as moveFakeProcs, fakeVolumes as moveFakeVolumes, moveSuggestions, toolProcs } from './diskMove/procs'
+import { toChildren, toStatus } from './diskMap/map'
 import { isUnder as isUnderPath } from './diskMap/guard'
 import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
@@ -238,8 +239,9 @@ let disk: DiskWatch | null = null
 let diskCtl: DiskControl | null = null
 let diskMap: DiskMap | null = null
 let diskClean: DiskClean | null = null
-let organize: Organize | null = null
 let diskMove: DiskMove | null = null
+let organize: Organize | null = null
+let diskAppsRam: { dispose: () => void } | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -392,10 +394,12 @@ function stopPreview(): Promise<void> {
   disposeBuildClean = null
   diskClean?.dispose()
   diskClean = null
-  organize?.dispose()
-  organize = null
   diskMove?.dispose()
   diskMove = null
+  organize?.dispose()
+  organize = null
+  diskAppsRam?.dispose()
+  diskAppsRam = null
   disposeDisk?.()
   disposeDisk = null
   disposeAgentStatus?.()
@@ -1704,24 +1708,24 @@ function setupDiskClean(): void {
     home: os.homedir(),
     env: process.env,
     system: diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, downloads: dir('downloads'), tmpdir: os.tmpdir(), fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SYS || null }),
+    sdk: diskCleanSdk({ platform: process.platform, home: os.homedir(), env: process.env, procs: toolProcs, fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SDK || null }),
+    docker: { run: !app.isPackaged && process.env.CCM_E2E_DOCKER ? runFile(process.execPath, [process.env.CCM_E2E_DOCKER], { ...process.env, ELECTRON_RUN_AS_NODE: '1' }) : runFile('docker') },
+    allowTree: () => macTempAllow(diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, tmpdir: os.tmpdir() }).roots),
     openNow: () => paneRoots(true),
     ask: async (event, opts) => {
       const win = BrowserWindow.fromWebContents(event.sender)
       return (win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)).response
-    sdk: diskCleanSdk({ platform: process.platform, home: os.homedir(), env: process.env, procs: toolProcs, fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SDK || null }),
-    docker: { run: !app.isPackaged && process.env.CCM_E2E_DOCKER ? runFile(process.execPath, [process.env.CCM_E2E_DOCKER], { ...process.env, ELECTRON_RUN_AS_NODE: '1' }) : runFile('docker') },
-    allowTree: () => macTempAllow(diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, tmpdir: os.tmpdir() }).roots),
     },
     locale: () => saved().locale ?? 'vi',
-    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
-    broadcast: (channel, payload) => {
-      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
-    },
     self: () => [app.getAppPath(), path.dirname(process.execPath), ...(app.isPackaged ? [] : [REPO])],
     running: () => [
       ...(runManager?.live() ?? []).filter((r) => r.cwd).map((r) => ({ cwd: r.cwd, lock: 'run' as const })),
       ...(resReport?.servers ?? []).filter((s) => s.cwd && s.kind !== 'daemon').map((s) => ({ cwd: s.cwd!, lock: 'server' as const })),
     ],
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
     confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
     autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
     trash: (p) => shell.trashItem(p),
@@ -1741,10 +1745,6 @@ function setupDiskClean(): void {
   })
 }
 
-function setupOrganize(): void {
-  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
-    try {
-      return app.getPath(name)
 function setupDiskMove(): void {
   const dir = (name: Parameters<typeof app.getPath>[0]): string => {
     try {
@@ -1792,6 +1792,10 @@ function setupDiskMove(): void {
   })
 }
 
+function setupOrganize(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
     } catch {
       return ''
     }
@@ -1841,6 +1845,38 @@ function setupDiskMove(): void {
   })
 }
 
+function setupDiskApps(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  diskAppsRam = setupDiskAppsRam({
+    ipcMain,
+    isAppFrame,
+    packaged: app.isPackaged,
+    env: process.env,
+    platform: process.platform,
+    home: os.homedir(),
+    execPath: process.execPath,
+    confirm: (event, opts) => confirmBox(BrowserWindow.fromWebContents(event.sender), opts),
+    confirmDelete: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    keepTree: () => [dir('userData'), DATA_DIR, path.dirname(process.execPath), app.getAppPath()].filter(Boolean),
+    locale: () => saved().locale ?? 'vi',
+    record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),
+    indexSizes: async (paths) => (await diskMap?.service.sizes({ paths }).catch(() => null))?.sizes ?? null,
+    trash: (p) => shell.trashItem(p),
+    remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
+    openSettings: async () => {
+      await shell.openExternal('ms-settings:appsfeatures')
+      return true
+    },
+  })
+}
+
 async function ready(): Promise<void> {
   t = stringsFor(saved().locale ?? 'vi')
   if (IS_MAC) {
@@ -1871,7 +1907,9 @@ async function ready(): Promise<void> {
   setupDisk()
   setupDiskMap()
   setupDiskClean()
+  setupDiskMove()
   setupOrganize()
+  setupDiskApps()
   setupAgentStatus()
   setupMenuToast()
   host = createMonitorHost({
@@ -1907,7 +1945,6 @@ async function ready(): Promise<void> {
       attention?.clear()
       // A restarting collector re-sends its counts; until then nothing is known to work.
       void awakeCtl?.setBusy(0, 0)
-  setupDiskMove()
     },
   })
   if (!IS_MAC && process.env.CCM_TOAST !== '0') serveToasts = createServeToasts((m) => host.post(m))

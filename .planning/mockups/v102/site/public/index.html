@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orrery Sương kính</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&display=swap">
+<style>
+:root{--bg:#EEF3F6;--ink:#1B2A33;--muted:#53656F;--card:rgb(255 255 255/.7);--line:rgb(28 60 80/.12)}
+@media (prefers-color-scheme:dark){:root{--bg:#0F171D;--ink:#E4EEF2;--muted:#9FB2BB;--card:rgb(255 255 255/.06);--line:rgb(255 255 255/.1)}}
+body{margin:0;background:radial-gradient(55% 45% at 6% 0%,rgb(42 160 140/.25),transparent 72%),radial-gradient(50% 55% at 100% 6%,rgb(90 110 220/.22),transparent 70%),var(--bg);color:var(--ink);font:15px/1.5 Manrope,system-ui,sans-serif;min-height:100vh}
+main{max-width:1200px;margin:0 auto;padding:28px 16px 48px}
+h1{margin:0 0 4px;font-size:26px}
+p{margin:0 0 24px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:18px}
+.card{display:flex;flex-direction:column;border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--line);color:inherit;text-decoration:none}
+.frame{position:relative;overflow:hidden;container-type:inline-size}
+.frame iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none}
+.cap{padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.cap span{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>Orrery Sương kính, UI next gen</h1>
+<p>Mockup v102 từ phân tích UI 15/11/2026. Bấm vào màn để xem cỡ thật, có công tắc sáng / tối và các tuỳ chọn ở thanh trên. Trên điện thoại kéo hai ngón để phóng to.</p>
+<div class="grid">
+<a class="card" href="./workspace"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./workspace" tabindex="-1" title="Workspace 1440" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Workspace 1440</b><span>8 session, 2 cần bạn, 2 pane, click menu, toast</span></div></a>
+<a class="card" href="./compact"><div class="frame" style="aspect-ratio:1280/800"><iframe src="./compact" tabindex="-1" title="Rail thu gọn + Explorer" style="width:1320px;height:900px"></iframe></div><div class="cap"><b>Rail thu gọn + Explorer</b><span>1280px, flyout project, Explorer drawer</span></div></a>
+<a class="card" href="./ctrlk"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./ctrlk" tabindex="-1" title="Ctrl+K" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Ctrl+K</b><span>Nhóm Session, Cần bạn, Đang chạy, Gần đây</span></div></a>
+<a class="card" href="./settings"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./settings" tabindex="-1" title="Settings, Giao diện" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Settings, Giao diện</b><span>Dialog kính, chuyển giao diện, palette, motion</span></div></a>
+<a class="card" href="./drag"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./drag" tabindex="-1" title="Kéo thả pane" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Kéo thả pane</b><span>Góp ý 1, 3, 4, 5, 6: la bàn, đổi chỗ, quá hẹp, sang tab, từ Explorer (đổi ở ô scenario)</span></div></a>
+<a class="card" href="./split"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./split" tabindex="-1" title="Chia pane và bố cục" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Chia pane và bố cục</b><span>Góp ý 2, 7, 8, 9, 10, 11: bố cục dựng sẵn, thanh chia, tỉ lệ, hoàn tác, gợi ý tách tab, phím</span></div></a>
+<a class="card" href="./workspace?style=flat"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./workspace?style=flat" tabindex="-1" title="Workspace 1440 (flat)" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Workspace 1440 (flat)</b><span>Bản flat để so: nền phẳng, không blur, bo góc nhỏ, tab gạch chân</span></div></a>
+<a class="card" href="./settings?style=flat"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./settings?style=flat" tabindex="-1" title="Settings, Giao diện (flat)" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Settings, Giao diện (flat)</b><span>Bản flat để so: nền phẳng, không blur, bo góc nhỏ, tab gạch chân</span></div></a>
+<a class="card" href="./split?style=flat"><div class="frame" style="aspect-ratio:1440/900"><iframe src="./split?style=flat" tabindex="-1" title="Chia pane và bố cục (flat)" style="width:1480px;height:1000px"></iframe></div><div class="cap"><b>Chia pane và bố cục (flat)</b><span>Bản flat để so: nền phẳng, không blur, bo góc nhỏ, tab gạch chân</span></div></a>
+</div>
+</main>
+<script>
+function fit(){document.querySelectorAll('.frame').forEach(f=>{const i=f.querySelector('iframe');const w=parseFloat(i.style.width);const s=f.clientWidth/w;i.style.transform='translate(0,'+(-60*s)+'px) scale('+s+')';});}
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

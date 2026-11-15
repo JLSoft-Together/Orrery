@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Workspace W2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+.app{--canvas:#EEF3F6;--g1:#C9ECE2;--g2:#D3E0FB;--g3:#F6DFD4;--glass:rgb(255 255 255/.55);--glass-pop:rgb(250 252 253/.86);--surface:rgb(255 255 255/.58);--control:rgb(255 255 255/.72);--hover:rgb(27 42 51/.06);--ink:#1B2A33;--muted:#53656F;--faint:#61737B;--line:rgb(28 60 80/.10);--line-strong:rgb(28 60 80/.18);--edge:rgb(255 255 255/.8);--accent:#2A7F9E;--accent-ink:#1D6886;--on-accent:#fff;--accent-soft:rgb(42 127 158/.14);--work:#2563A8;--work-soft:rgb(37 99 168/.12);--wait:#8A6400;--wait-soft:rgb(240 160 40/.18);--err:#BF3647;--err-soft:rgb(220 70 90/.13);--done:#1D7752;--done-soft:rgb(46 170 120/.16);--idle:#687A83;--claude:#C15F3C;--codex:#5E4FC0;--shell:#53656F;--well-solid:#111A20;--well-clear:rgb(17 31 40/.92);--well-ink:#E4EEF2;--well-dim:#8FA3AD;--shadow1:0 8px 24px -16px rgb(20 50 70/.22);--shadow2:0 18px 40px -12px rgb(20 50 70/.35)}
+.app.dark{--canvas:#0F171D;--g1:rgb(40 125 120/.38);--g2:rgb(70 82 170/.34);--g3:rgb(150 80 95/.24);--glass:rgb(255 255 255/.05);--glass-pop:rgb(26 38 46/.88);--surface:rgb(255 255 255/.06);--control:rgb(255 255 255/.07);--hover:rgb(255 255 255/.06);--ink:#E4EEF2;--muted:#9FB2BB;--faint:#7F939C;--line:rgb(255 255 255/.09);--line-strong:rgb(255 255 255/.16);--edge:rgb(255 255 255/.10);--accent:#73C6DC;--accent-ink:#8FD3E5;--on-accent:#08202A;--accent-soft:rgb(115 198 220/.16);--work:#8AB4FF;--work-soft:rgb(138 180 255/.14);--wait:#F2D36B;--wait-soft:rgb(242 211 107/.16);--err:#FF919C;--err-soft:rgb(255 145 156/.14);--done:#6FD6A6;--done-soft:rgb(111 214 166/.14);--idle:#9FB2BB;--claude:#D97757;--codex:#A49CF0;--shell:#9FB2BB;--well-solid:#080D11;--well-clear:rgb(8 13 17/.55);--well-ink:#E4EEF2;--well-dim:#7F939C;--shadow1:0 8px 24px -16px rgb(0 0 0/.55);--shadow2:0 18px 40px -12px rgb(0 0 0/.72)}
+.app{width:1440px;height:900px;box-sizing:border-box;padding:12px;display:grid;grid-template-columns:264px minmax(0,1fr);gap:12px;font-family:Manrope,"Segoe UI",system-ui,sans-serif;color:var(--ink);background:radial-gradient(55% 45% at 6% 0%,var(--g1),transparent 72%),radial-gradient(50% 55% at 100% 6%,var(--g2),transparent 70%),radial-gradient(60% 50% at 55% 104%,var(--g3),transparent 72%),var(--canvas);position:relative;overflow:hidden;font-size:12px}
+.glass{background:var(--glass);backdrop-filter:blur(20px) saturate(1.5);border:1px solid var(--edge);box-shadow:var(--shadow1),inset 0 1px 0 var(--edge)}
+.rail{border-radius:18px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.rhead{height:44px;display:flex;align-items:center;gap:8px;padding:0 10px}
+.logo{width:26px;height:26px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+.seg{display:flex;padding:2px;border-radius:999px;background:var(--hover);flex:1}
+.seg button{flex:1;height:24px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:600 11px Manrope,sans-serif;cursor:pointer}
+.seg button.on{background:var(--control);color:var(--ink);box-shadow:var(--shadow1)}
+.search{margin:0 10px;height:30px;border-radius:10px;background:var(--control);border:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:0 10px;color:var(--faint)}
+.kbd{font:600 10px "JetBrains Mono",monospace;padding:1px 5px;border-radius:5px;border:1px solid var(--line-strong);color:var(--muted)}
+.groupseg{margin:8px 10px 0;display:flex;align-items:center;gap:8px}
+.lbl{font-size:11px;font-weight:600;color:var(--muted)}
+.need{margin:10px 10px 4px;border-radius:14px;background:var(--wait-soft);border:1px solid color-mix(in srgb,var(--wait) 28%,transparent);padding:8px;display:flex;flex-direction:column;gap:6px}
+.needh{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;color:var(--wait)}
+.needh .n{margin-left:auto;font-size:11px;font-weight:600;color:var(--accent-ink)}
+.nitem{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:6px 8px;border-radius:10px;background:var(--surface)}
+.nitem .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nitem .r{grid-column:2;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nitem .e{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.btn-open{grid-row:span 2;align-self:center;height:24px;padding:0 10px;border-radius:8px;border:0;background:var(--accent);color:var(--on-accent);font:700 11px Manrope,sans-serif;cursor:pointer}
+.list{flex:1;min-height:0;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:1px}
+.ph{display:flex;align-items:center;gap:8px;height:30px;padding:0 6px;margin-top:6px;font-weight:700;font-size:12px}
+.mono{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff}
+.ph .br{font:500 10px "JetBrains Mono",monospace;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ph .c{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted)}
+.sec{display:flex;align-items:center;gap:6px;height:28px;padding:0 6px;margin-top:6px;font-size:11px;font-weight:700;color:var(--muted)}
+.sec .c{margin-left:auto}
+.row{display:grid;grid-template-columns:16px minmax(0,1fr) 28px;gap:0 8px;align-items:center;min-height:46px;padding:5px 8px;border-radius:12px;position:relative}
+.row:hover{background:var(--hover)}
+.row.on{background:var(--accent-soft)}
+.row.on::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;border-radius:2px;background:var(--accent)}
+.l1{display:flex;align-items:center;gap:6px;min-width:0}
+.rt{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tm{margin-left:auto;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.l2{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-width:0;margin-top:2px}
+.l2>span{white-space:nowrap}
+.l2 .d{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.search span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag{flex:none;font-size:10px;font-weight:700}
+.ag.claude{color:var(--claude)}.ag.codex{color:var(--codex)}.ag.shell{color:var(--shell)}
+.gauge{width:28px;height:4px;border-radius:2px;background:var(--line-strong);overflow:hidden}
+.gauge i{display:block;height:100%;background:var(--muted);border-radius:2px}
+.gauge.hi i{background:var(--wait)}
+.st{width:14px;height:14px;display:grid;place-items:center}
+.s-wait{color:var(--wait)}.s-work{color:var(--work)}.s-err{color:var(--err)}.s-done{color:var(--done)}.s-idle{color:var(--idle)}
+.row.err .rt{color:var(--err)}
+.rfoot{height:48px;border-top:1px solid var(--line);display:flex;align-items:center;gap:4px;padding:0 8px}
+.ib{height:32px;min-width:32px;border:0;border-radius:10px;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font:600 11px Manrope,sans-serif;position:relative}
+.ib:hover{background:var(--hover);color:var(--ink)}
+.badge{position:absolute;top:3px;right:3px;min-width:14px;height:14px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:9px;font-weight:700;display:grid;place-items:center;padding:0 3px;box-sizing:border-box}
+.quota{display:flex;flex-direction:column;gap:3px;padding:0 6px;margin-right:auto}
+.qrow{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.qbar{width:56px;height:4px;border-radius:2px;background:var(--line-strong);overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--accent)}
+.stage{display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0}
+.tabs{height:36px;border-radius:14px;display:flex;align-items:center;gap:4px;padding:0 4px}
+.tab{height:28px;border-radius:999px;display:flex;align-items:center;gap:6px;padding:0 10px 0 4px;color:var(--muted);font-weight:600;font-size:12px;border:0;background:transparent;font-family:inherit;cursor:pointer}
+.tab:hover{background:var(--hover)}
+.tab.on{background:var(--control);color:var(--ink);box-shadow:var(--shadow1)}
+.tab .mono{width:20px;height:20px;border-radius:999px}
+.chip{height:20px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;padding:0 7px;font-size:11px;font-weight:600;white-space:nowrap}
+.c-wait{background:var(--wait-soft);color:var(--wait)}.c-work{background:var(--work-soft);color:var(--work)}.c-err{background:var(--err-soft);color:var(--err)}.c-done{background:var(--done-soft);color:var(--done)}.c-meta{background:var(--hover);color:var(--muted)}
+.tabs .sp{flex:1}
+.panes{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:8px}
+.pane{border-radius:18px;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow1)}
+.pane.on{box-shadow:0 0 0 2px var(--accent),var(--shadow1);border-color:transparent}
+.phd{height:34px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;flex:none}
+.pane.on .phd{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.pt{font-weight:650;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm{font-size:11px;color:var(--muted);white-space:nowrap}
+.phd .sp{flex:1}
+.mini{width:24px;height:24px;border:0;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.mini:hover{background:var(--hover);color:var(--ink)}
+.well{flex:1;min-height:0;margin:0 6px 6px;border-radius:12px;background:var(--well);color:var(--well-ink);font:12px/18px "JetBrains Mono",ui-monospace,monospace;padding:10px 12px;overflow:hidden;white-space:pre}
+.w-dim{color:var(--well-dim)}.w-acc{color:#73C6DC}.w-ok{color:#6FD6A6}.w-warn{color:#F2D36B}.w-cl{color:#E8835D}.w-cx{color:#B4AAF5}.w-sel{color:#fff;font-weight:600}
+.menubar{margin:0 6px 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px;border-radius:12px;background:var(--wait-soft);border:1px solid color-mix(in srgb,var(--wait) 25%,transparent)}
+.menubar .q{font-size:11px;font-weight:700;color:var(--wait);margin-right:4px}
+.mb{height:28px;border-radius:9px;border:1px solid var(--line-strong);background:var(--control);color:var(--ink);font:600 11px Manrope,sans-serif;padding:0 10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.mb.pri{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.mb .kbd{border-color:currentColor;opacity:.8}
+.toast{position:absolute;right:24px;bottom:24px;width:340px;border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:2px 10px;align-items:center;background:var(--glass-pop);backdrop-filter:blur(24px) saturate(1.6);border:1px solid var(--edge);box-shadow:var(--shadow2)}
+.toast .tt{font-weight:700}
+.toast .td{grid-column:2;font-size:11px;color:var(--muted)}
+.link{border:0;background:transparent;color:var(--accent-ink);font:700 11px Manrope,sans-serif;cursor:pointer;grid-row:span 2}
+
+.app.flat{--g1:transparent;--g2:transparent;--g3:transparent;--canvas:#E9EEF1;--glass:#F6F9FA;--glass-pop:#FFFFFF;--surface:#FFFFFF;--control:#FFFFFF;--edge:#D5DEE3;--line:#E1E8EC;--line-strong:#C9D4DA;--hover:#EDF2F4;--shadow1:none;--shadow2:0 10px 30px -14px rgb(20 50 70/.30);--scrim:rgb(20 40 50/.32)}
+.app.flat.dark{--canvas:#0E151A;--glass:#131D24;--glass-pop:#1A262E;--surface:#16212A;--control:#1D2A33;--edge:#24323B;--line:#22303A;--line-strong:#2E3E48;--hover:#1C2831;--shadow1:none;--shadow2:0 10px 30px -14px rgb(0 0 0/.7);--scrim:rgb(0 0 0/.55)}
+.app.flat *{backdrop-filter:none!important}
+.app.flat .glass,.app.flat .pop{box-shadow:none;border:1px solid var(--edge)}
+.app.flat .rail,.app.flat .col,.app.flat .pane,.app.flat .ghost,.app.flat .ghost-pane,.app.flat .drawer,.app.flat .flyout{border-radius:10px}
+.app.flat .tabs{border-radius:8px}
+.app.flat .tab{border-radius:6px}
+.app.flat .tab.on{box-shadow:inset 0 -2px 0 var(--accent);background:var(--surface)}
+.app.flat .well,.app.flat .ghost-pane i{border-radius:6px}
+.app.flat .need{border-radius:8px;background:var(--surface);border:1px solid var(--line);box-shadow:inset 3px 0 0 var(--wait)}
+.app.flat .nitem{border-radius:6px;background:var(--wait-soft)}
+.app.flat .row,.app.flat .it,.app.flat .tr{border-radius:6px}
+.app.flat .seg,.app.flat .seg button{border-radius:6px}
+.app.flat .seg button.on{box-shadow:none;border:1px solid var(--line-strong)}
+.app.flat .chip{border-radius:4px}
+.app.flat .pane.on{box-shadow:0 0 0 2px var(--accent)}
+.app.flat .menubar{border-radius:6px}
+.app.flat .mb,.app.flat .btn,.app.flat .btn-open{border-radius:6px}
+.app.flat .toast,.app.flat .pal,.app.flat .dlg{border-radius:12px;box-shadow:var(--shadow2)}
+.app.flat .card{border-radius:10px}
+.app.flat .pv{border-radius:6px}
+.app.flat .dtab.on{box-shadow:inset 0 -2px 0 var(--accent);border-radius:0}
+.app.flat .logo,.app.flat .mono{border-radius:6px}
+</style>
+</helmet>
+<div class="app {{themeCls}}" style="--well: {{wellVar}}">
+  <aside class="rail glass" aria-label="Session rail">
+    <div class="rhead">
+      <div class="logo" aria-hidden="true">O</div>
+      <div class="seg" role="tablist" aria-label="Chế độ">
+        <button class="on" role="tab" aria-selected="true">Workspace</button>
+        <button role="tab" aria-selected="false">Giám sát</button>
+      </div>
+    </div>
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <span style="flex: 1">Tìm session, project, model</span>
+      <span class="kbd">Ctrl K</span>
+    </div>
+    <div class="groupseg">
+      <span class="lbl">Nhóm</span>
+      <div class="seg" role="tablist" aria-label="Nhóm rail theo">
+        <button class="{{projCls}}" role="tab" onClick="{{byProject}}">Project</button>
+        <button class="{{statCls}}" role="tab" onClick="{{byStatus}}">Trạng thái</button>
+      </div>
+    </div>
+    <section class="need" aria-label="Cần bạn">
+      <div class="needh">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+        Cần bạn 2
+        <span class="n">Mở kế tiếp <span class="kbd">Ctrl Shift A</span></span>
+      </div>
+      <div class="nitem">
+        <svg class="s-wait" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span class="t">v101 dọn rác hệ thống</span>
+        <button class="btn-open">Mở</button>
+        <span class="r">Duyệt quyền: Bash rm -rf dist, 2m 14s</span>
+      </div>
+      <div class="nitem">
+        <svg class="s-wait" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>
+        <span class="t">Release 1.4.2, cat-loop</span>
+        <button class="btn-open">Mở</button>
+        <span class="r">Trả lời: bump 1.4.2 hay 1.5.0?, 48s</span>
+      </div>
+    </section>
+    <div class="list">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+        <sc-if value="{{g.isProject}}" hint-placeholder-val="{{ true }}">
+          <div class="ph"><span class="mono" style="background: {{g.tone}}">{{g.mono}}</span><span>{{g.name}}</span><span class="br">{{g.branch}}</span><span class="c">{{g.count}}</span></div>
+        </sc-if>
+        <sc-if value="{{g.isSection}}" hint-placeholder-val="{{ false }}">
+          <div class="sec {{g.cls}}">{{g.name}}<span class="c">{{g.count}}</span></div>
+        </sc-if>
+        <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="3">
+          <div class="row {{r.cls}}">
+            <span class="st {{r.sCls}}">
+              <sc-if value="{{r.isWait}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 3 2 20h20Z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg></sc-if>
+              <sc-if value="{{r.isWork}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg></sc-if>
+              <sc-if value="{{r.isErr}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m15 9-6 6M9 9l6 6"></path></svg></sc-if>
+              <sc-if value="{{r.isDone}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg></sc-if>
+              <sc-if value="{{r.isIdle}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="6"></circle></svg></sc-if>
+            </span>
+            <div style="min-width: 0">
+              <div class="l1"><span class="rt">{{r.title}}</span><span class="tm">{{r.time}}</span></div>
+              <div class="l2"><span class="ag {{r.agCls}}">{{r.agent}}</span><span>{{r.model}}</span><span class="d">{{r.detail}}</span></div>
+            </div>
+            <span class="gauge {{r.gCls}}" title="Context {{r.ctx}}"><i style="width: {{r.ctx}}"></i></span>
+          </div>
+        </sc-for>
+      </sc-for>
+    </div>
+    <div class="rfoot">
+      <div class="quota" title="Hạn mức Claude">
+        <div class="qrow"><span style="width: 28px">5h</span><span class="qbar"><i style="width: 42%"></i></span>42%</div>
+        <div class="qrow"><span style="width: 28px">Tuần</span><span class="qbar"><i style="width: 18%"></i></span>18%</div>
+      </div>
+      <button class="ib" aria-label="Inbox, 3 mục"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6Z"></path></svg><span class="badge">3</span></button>
+      <button class="ib" aria-label="Usage và History"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg></button>
+      <button class="ib" aria-label="Cài đặt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"></path></svg></button>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <nav class="tabs glass" aria-label="Tab">
+      <button class="tab on"><span class="mono" style="background: #2A7F9E">Or</span>Dọn rác + file trùng<span class="chip c-wait">1 cần bạn</span></button>
+      <button class="tab"><span class="mono" style="background: #2A7F9E">Or</span>UI Sương kính</button>
+      <button class="tab"><span class="mono" style="background: #6A4FC9">Jt</span>jin-tools<span class="chip c-meta">2</span></button>
+      <button class="tab"><span class="mono" style="background: #C15F3C">Cl</span>cat-loop<span class="chip c-err">1 lỗi</span></button>
+      <button class="ib" aria-label="Tab mới"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+      <span class="sp"></span>
+      <span class="chip c-wait">Chờ trả lời 2 <span class="kbd">Ctrl Alt Q</span></span>
+      <button class="ib" aria-label="Mission Control"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg></button>
+      <button class="ib" aria-label="Explorer, Ctrl Shift E"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg>Explorer</button>
+    </nav>
+
+    <div class="panes">
+      <section class="pane on" aria-label="Pane v101 dọn rác hệ thống">
+        <div class="phd">
+          <span class="ag claude">Claude</span>
+          <span class="pt">v101 dọn rác hệ thống</span>
+          <span class="pm">Opus 5.5</span>
+          <span class="chip c-wait">Duyệt quyền 2m 14s</span>
+          <span class="sp"></span>
+          <span class="pm">ctx 68%</span>
+          <button class="mini" aria-label="Chia pane"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M12 4v16"></path></svg></button>
+          <button class="mini" aria-label="Phóng to pane"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button>
+          <button class="mini" aria-label="Thêm"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+        </div>
+<div class="well"><span class="w-dim">&gt; dọn rác hệ thống xong thì build lại web</span>
+
+<span class="w-cl">●</span> Read(apps/desktop/src/diskClean/providers.ts)
+  <span class="w-dim">⎿  Read 214 lines</span>
+
+<span class="w-cl">●</span> Đã thêm nhóm <span class="w-acc">Rác hệ thống</span> (Temp, Prefetch, crash dump).
+  Giờ xoá dist cũ rồi build lại để kiểm.
+
+<span class="w-cl">●</span> Bash(rm -rf apps/web/dist &amp;&amp; npm run build -w @ccm/web)
+  <span class="w-dim">⎿  Waiting for permission…</span>
+
+<span class="w-warn"> Bash command</span>
+   rm -rf apps/web/dist &amp;&amp; npm run build -w @ccm/web
+   <span class="w-dim">Xoá thư mục build cũ rồi build lại web</span>
+
+ Do you want to proceed?
+ <span class="w-sel">❯ 1. Yes</span>
+   2. Yes, and don't ask again for rm -rf in F:\work\web\Orrery
+   3. No, and tell Claude what to do differently <span class="w-dim">(esc)</span></div>
+        <div class="menubar" aria-label="Click menu">
+          <span class="q">Claude hỏi quyền</span>
+          <button class="mb pri"><span class="kbd">1</span>Yes</button>
+          <button class="mb"><span class="kbd">2</span>Yes, không hỏi lại</button>
+          <button class="mb"><span class="kbd">3</span>No, nói lại</button>
+        </div>
+      </section>
+
+      <section class="pane" aria-label="Pane Fix hash file trùng">
+        <div class="phd">
+          <span class="ag codex">Codex</span>
+          <span class="pt">Fix hash file trùng</span>
+          <span class="pm">gpt-5.5</span>
+          <span class="chip c-work">Bash 1m 12s</span>
+          <span class="sp"></span>
+          <span class="pm">ctx 31%</span>
+          <button class="mini" aria-label="Thêm"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+        </div>
+<div class="well"><span class="w-cx">›</span> Fix hash so sánh file trùng, file lớn băm 2 đầu
+
+<span class="w-cx">•</span> Explored
+  <span class="w-dim">└ Read dupes.rs, walk/mod.rs, serve.rs</span>
+
+<span class="w-cx">•</span> Edited apps/core/crates/core-disk/src/dupes.rs <span class="w-ok">(+42</span> <span class="w-warn">-11)</span>
+  <span class="w-dim">  88 │ let head = hash_range(&amp;f, 0, CHUNK)?;</span>
+  <span class="w-dim">  89 │ let tail = hash_range(&amp;f, len - CHUNK, CHUNK)?;</span>
+
+<span class="w-cx">•</span> Ran cargo test -p core-disk dupes
+  <span class="w-dim">└</span> <span class="w-ok">test result: ok. 14 passed; 0 failed</span>
+
+<span class="w-cx">•</span> Running cargo clippy -p core-disk
+
+<span class="w-dim">◦ Working (1m 12s, esc to interrupt)</span></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" role="status">
+    <svg class="s-done" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>
+    <span class="tt">Tauri shell fix xong</span>
+    <button class="link">Xem diff</button>
+    <span class="td">Orrery, Sonnet 5.5, sửa 8 file, chưa xem</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"style":{"editor":"enum","options":["kính","flat"],"default":"kính"},"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"terminal":{"editor":"enum","options":["đặc","trong suốt"],"default":"đặc"},"railGroup":{"editor":"enum","options":["project","status"],"default":"project"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const theme = this.props.theme ?? 'light';
+    const group = (this.state && this.state.group) || this.props.railGroup || 'project';
+    const clear = (this.props.terminal ?? 'đặc') === 'trong suốt';
+    const R = (o) => {
+      const s = o.s;
+      return Object.assign({
+        isWait: s === 'wait', isWork: s === 'work', isErr: s === 'err', isDone: s === 'done', isIdle: s === 'idle',
+        sCls: 's-' + s, agCls: o.agent.toLowerCase(), gCls: parseInt(o.ctx, 10) >= 65 ? 'hi' : '',
+        cls: (o.on ? 'on ' : '') + (s === 'err' ? 'err' : '')
+      }, o);
+    };
+    const rows = {
+      v101: R({ s: 'wait', title: 'v101 dọn rác hệ thống', time: '2m 14s', agent: 'Claude', model: 'Opus 5.5', detail: 'Duyệt quyền Bash', ctx: '68%', on: true }),
+      hash: R({ s: 'work', title: 'Fix hash file trùng', time: '1m 12s', agent: 'Codex', model: 'gpt-5.5', detail: 'cargo clippy', ctx: '31%' }),
+      ui: R({ s: 'work', title: 'Phân tích UI Sương kính', time: '6m 02s', agent: 'Claude', model: 'Opus 5.5', detail: 'Read 01-workspace.md', ctx: '44%' }),
+      tauri: R({ s: 'done', title: 'Tauri shell fix', time: '4 phút', agent: 'Claude', model: 'Sonnet 5.5', detail: 'Xong, 8 file chưa xem', ctx: '52%' }),
+      qa: R({ s: 'work', title: 'theme-qa ảnh mist', time: '1m 37s', agent: 'Claude', model: 'Sonnet 5.5', detail: 'Bash node qa.mjs', ctx: '22%' }),
+      sh: R({ s: 'idle', title: 'shell', time: '', agent: 'Shell', model: 'pwsh', detail: 'F:\\work\\tools\\jin-tools', ctx: '0%' }),
+      vfx: R({ s: 'err', title: 'Booster VFX', time: '9 phút', agent: 'Claude', model: 'Opus 5.5', detail: 'flutter test: 2 fail', ctx: '81%' }),
+      rel: R({ s: 'wait', title: 'Release 1.4.2', time: '48s', agent: 'Claude', model: 'Sonnet 5.5', detail: 'Hỏi: 1.4.2 hay 1.5.0?', ctx: '17%' })
+    };
+    const P = (name, mono, tone, branch, list) => ({ isProject: true, isSection: false, name, mono, tone, branch, count: String(list.length), rows: list });
+    const S = (name, cls, list) => ({ isProject: false, isSection: true, name, cls, count: String(list.length), rows: list });
+    const groups = group === 'status'
+      ? [S('Lỗi', 's-err', [rows.vfx]), S('Đang chạy', 's-work', [rows.hash, rows.ui, rows.qa]), S('Xong chưa xem', 's-done', [rows.tauri]), S('Rảnh', 's-idle', [rows.sh])]
+      : [P('Orrery', 'Or', '#2A7F9E', 'feat_clean_memory', [rows.v101, rows.hash, rows.ui, rows.tauri]), P('jin-tools', 'Jt', '#6A4FC9', 'main', [rows.qa, rows.sh]), P('cat-loop', 'Cl', '#C15F3C', 'dev', [rows.vfx, rows.rel])];
+    return {
+      themeCls: (theme === 'dark' ? 'dark' : '') + ((this.props.style ?? 'kính') === 'flat' ? ' flat' : ''),
+      wellVar: clear ? 'var(--well-clear)' : 'var(--well-solid)',
+      projCls: group === 'project' ? 'on' : '',
+      statCls: group === 'status' ? 'on' : '',
+      byProject: () => this.setState({ group: 'project' }),
+      byStatus: () => this.setState({ group: 'status' }),
+      groups
+    };
+  }
+}
+</script>
+</body>
+</html>

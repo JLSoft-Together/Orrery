@@ -375,3 +375,36 @@ fn stdio_answers_requests() {
         std::thread::sleep(Duration::from_millis(10));
     }
 }
+
+#[test]
+fn engine_forget_updates_index() {
+    let t = tree();
+    let engine = Engine::new(None, Arc::new(|_, _| {}));
+    assert!(engine.dispatch("disk.forget", &json!({"paths": ["x"]})).is_err());
+    let ix = run(&t.0, |_| {});
+    let root = t.0.to_string_lossy().to_string();
+    let media = t.0.join("media").to_string_lossy().to_string();
+    let clip = t.0.join("media").join("clip.mkv").to_string_lossy().to_string();
+    let a = t.0.join("a.txt").to_string_lossy().to_string();
+    let before = ix.nodes[ix.roots[0] as usize].size;
+    let clip_size = ix.nodes[ix.find(&clip).unwrap() as usize].size;
+    let a_size = ix.nodes[ix.find(&a).unwrap() as usize].size;
+    let media_size = ix.nodes[ix.find(&media).unwrap() as usize].size;
+    engine.set_index(Some(ix));
+    let r = engine.dispatch("disk.forget", &json!([{"paths": [clip, a, t.0.join("nope").to_string_lossy()]}])).unwrap();
+    assert_eq!(r["removed"], json!(2));
+    assert_eq!(r["freed"], json!(clip_size + a_size));
+    let ix = engine.index().unwrap();
+    check_sums(&ix);
+    assert_eq!(ix.nodes[ix.roots[0] as usize].size, before - clip_size - a_size);
+    assert_eq!(ix.nodes[ix.find(&media).unwrap() as usize].size, media_size - clip_size);
+    assert_eq!(ix.stats.files, 6);
+    let kids = engine.dispatch("disk.children", &json!({"path": media})).unwrap();
+    assert_eq!(kids["total"], json!(2));
+    assert_eq!(engine.dispatch("disk.search", &json!({"query": "clip"})).unwrap()["total"], json!(0));
+    let again = engine.dispatch("disk.forget", &json!({"paths": [t.0.join("media").join("clip.mkv").to_string_lossy()]})).unwrap();
+    assert_eq!(again["removed"], json!(0));
+    let all = engine.dispatch("disk.forget", &json!({"paths": [root]})).unwrap();
+    assert_eq!(all["entries"], json!(0));
+    assert_eq!(engine.dispatch("disk.children", &json!({})).unwrap()["total"], json!(0));
+}

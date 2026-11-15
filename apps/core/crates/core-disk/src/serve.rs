@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-pub const CHANNELS: [&str; 11] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear"];
+pub const CHANNELS: [&str; 12] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget"];
 pub const EVENT_PROGRESS: &str = "disk:progress";
 pub const EVENT_DONE: &str = "disk:done";
 const TICK: Duration = Duration::from_millis(100);
@@ -176,9 +176,23 @@ impl Engine {
                 self.set_index(None);
                 Ok(json!({"ok": true}))
             }
+            "disk.forget" => self.forget(&a),
             "disk.volumes" => Ok(Value::Array(volumes::list().iter().map(|v| v.to_json()).collect())),
             _ => Err(format!("unknown channel {channel}")),
         }
+    }
+
+    fn forget(&self, a: &Value) -> Result<Value, String> {
+        let paths = strings(a, "paths");
+        let mut slot = self.index.write().unwrap();
+        let ix = slot.clone().ok_or("no index")?;
+        let Some((next, removed)) = ix.forget(&paths) else {
+            return Ok(json!({"removed": 0, "freed": 0, "entries": ix.len()}));
+        };
+        let freed: u64 = removed.iter().map(|i| ix.nodes[*i as usize].size).sum();
+        let entries = next.len();
+        *slot = Some(Arc::new(next));
+        Ok(json!({"removed": removed.len(), "freed": freed, "entries": entries}))
     }
 
     fn children(&self, a: &Value) -> Result<Value, String> {

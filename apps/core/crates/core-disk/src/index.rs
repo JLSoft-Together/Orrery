@@ -1,5 +1,5 @@
 use crate::fold::{cmp_ci, fold_into, group_of};
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub const NONE: u32 = u32::MAX;
 
@@ -180,6 +180,38 @@ impl Builder {
         top
     }
 
+    fn append_pruned(&mut self, src: &Index, root: u32, drop: &HashSet<u32>, delta: &HashMap<u32, (u64, u64)>) -> u32 {
+        let adjust = |b: &mut Builder, s: u32, d: u32| {
+            if let Some((size, len)) = delta.get(&s) {
+                let n = &mut b.nodes[d as usize];
+                n.size = n.size.saturating_sub(*size);
+                n.len = n.len.saturating_sub(*len);
+            }
+        };
+        let top = self.copy_from(src, root, NONE);
+        adjust(self, root, top);
+        let mut queue = VecDeque::from([(root, top)]);
+        while let Some((s, d)) = queue.pop_front() {
+            let first = self.nodes.len() as u32;
+            let mut count = 0u32;
+            for c in src.children(s) {
+                if drop.contains(&c) {
+                    continue;
+                }
+                let nc = self.copy_from(src, c, d);
+                adjust(self, c, nc);
+                count += 1;
+                if src.nodes[c as usize].count > 0 {
+                    queue.push_back((c, nc));
+                }
+            }
+            let dn = &mut self.nodes[d as usize];
+            dn.first = if count > 0 { first } else { 0 };
+            dn.count = count;
+        }
+        top
+    }
+
     pub fn finish(self, roots: Vec<u32>, stats: Stats) -> Index {
         let mut ix = Index { nodes: self.nodes, pool: self.pool, roots, stats };
         ix.recount();
@@ -297,6 +329,49 @@ impl Index {
         }
     }
 
+    pub fn forget(&self, paths: &[String]) -> Option<(Index, Vec<u32>)> {
+        let mut found: Vec<u32> = paths.iter().filter_map(|p| self.find(p)).collect();
+        found.sort_unstable();
+        found.dedup();
+        let set: HashSet<u32> = found.iter().copied().collect();
+        let top: Vec<u32> = found
+            .into_iter()
+            .filter(|&i| {
+                let mut at = self.nodes[i as usize].parent;
+                while at != NONE {
+                    if set.contains(&at) {
+                        return false;
+                    }
+                    at = self.nodes[at as usize].parent;
+                }
+                true
+            })
+            .collect();
+        if top.is_empty() {
+            return None;
+        }
+        let mut delta: HashMap<u32, (u64, u64)> = HashMap::new();
+        for &i in &top {
+            let n = self.nodes[i as usize];
+            let mut at = n.parent;
+            while at != NONE {
+                let e = delta.entry(at).or_default();
+                e.0 += n.size;
+                e.1 += n.len;
+                at = self.nodes[at as usize].parent;
+            }
+        }
+        let drop: HashSet<u32> = top.iter().copied().collect();
+        let mut b = Builder::with_capacity(self.nodes.len(), self.pool.len());
+        let mut roots = Vec::new();
+        for &r in &self.roots {
+            if !drop.contains(&r) {
+                roots.push(b.append_pruned(self, r, &drop, &delta));
+            }
+        }
+        Some((b.finish(roots, self.stats), top))
+    }
+
     pub fn merge(old: &Index, new: Index) -> Index {
         let new_roots = new.root_paths();
         let kept: Vec<u32> = old.roots.iter().copied().filter(|r| {
@@ -362,5 +437,29 @@ mod tests {
         assert_eq!(m.find(&format!("{b}{SEP}Ảnh{SEP}b.jpg")).map(|i| m.nodes[i as usize].size), Some(30));
         let again = Index::merge(&m, sample(a));
         assert_eq!(again.root_paths(), vec![b.to_string(), a.to_string()]);
+    }
+
+    #[test]
+    fn forget_drops_subtrees_and_shrinks_parents() {
+        let (a, b) = if cfg!(windows) { ("C:\\a", "D:\\b") } else { ("/a", "/b") };
+        let m = Index::merge(&sample(a), sample(b));
+        let pic = format!("{a}{SEP}Ảnh{SEP}b.jpg");
+        let dir = format!("{a}{SEP}Ảnh");
+        let gone = format!("{a}{SEP}missing");
+        let (f, removed) = m.forget(&[pic.clone(), dir.clone(), gone]).unwrap();
+        assert_eq!(removed.len(), 1);
+        assert_eq!(m.path(removed[0]), dir);
+        assert_eq!(f.find(&dir), None);
+        assert_eq!(f.find(&pic), None);
+        let ra = f.find(a).unwrap();
+        assert_eq!((f.nodes[ra as usize].size, f.nodes[ra as usize].len, f.nodes[ra as usize].count), (10, 10, 1));
+        assert_eq!(f.find(&format!("{a}{SEP}a.txt")).map(|i| f.nodes[i as usize].size), Some(10));
+        assert_eq!(f.find(&format!("{b}{SEP}Ảnh{SEP}b.jpg")).map(|i| f.nodes[i as usize].size), Some(30));
+        assert_eq!(f.stats.bytes, 50);
+        assert_eq!((f.stats.files, f.stats.dirs, f.len()), (3, 3, 6));
+        assert!(m.forget(&[format!("{a}{SEP}missing")]).is_none());
+        let (r, _) = f.forget(&[a.to_string()]).unwrap();
+        assert_eq!(r.root_paths(), vec![b.to_string()]);
+        assert_eq!(r.stats.bytes, 40);
     }
 }

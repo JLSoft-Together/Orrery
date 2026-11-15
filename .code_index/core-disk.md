@@ -1,6 +1,6 @@
 # core-disk (v101 phase 1a)
 
-Rust crate `apps/core/crates/core-disk`: quét ổ / thư mục, giữ index trong RAM, lưu đĩa nén, tìm kiếm. Chạy bằng `orrery-core disk` (NDJSON stdio) hoặc `orrery-core disk bench <path>`. Chưa nối Electron (phase 1b).
+Rust crate `apps/core/crates/core-disk`: quét ổ / thư mục, giữ index trong RAM, lưu đĩa nén, tìm kiếm. Chạy bằng `orrery-core disk` (NDJSON stdio) hoặc `orrery-core disk bench <path>`. Electron host: `apps/desktop/src/diskMap/` (phase 1b, xem `desktop.md` mục diskMap).
 
 ## File
 
@@ -48,6 +48,12 @@ Rust crate `apps/core/crates/core-disk`: quét ổ / thư mục, giữ index tro
 - Filter: `minSize` / `maxSize` (size trên đĩa, file cloud = 0), `after` / `before` (ms), `kind` (image / video / audio / doc / archive / installer / code), `only` (file / dir), `under` (path trong index: chỉ duyệt subtree), `sort` (size / name / mtime), `limit` (max 10 000). Root không bao giờ là kết quả.
 - Từ 200 000 ứng viên trở lên chạy song song nửa số nhân, chunk 32 768, mỗi luồng giữ top N bằng `select_nth_unstable`, cuối cùng gộp + sort. Trả `total` = tổng số khớp.
 
+## Forget (`Index::forget`)
+
+- Index bất biến sau khi dựng (con là khoảng liên tục, BFS), nên forget dựng lại index mới bằng `Builder::append_pruned`: copy theo BFS, bỏ node trong tập xoá, cộng `count` lại, trừ delta size / len đã tính trước cho từng tổ tiên (`HashMap`). Path lồng nhau chỉ tính path ngoài cùng. O(n), không đọc đĩa.
+- `Engine::forget` giữ write lock của index suốt lúc dựng lại, nên `disk.children` / `disk.search` chờ (vài trăm ms với 2.5 triệu entry). Scan đang chạy đọc index cũ để merge lúc xong: forget xen giữa lúc scan đọc và lúc set index có thể bị mất cho root không trùng (hiếm, quét lại là đúng).
+- Không tự save; host gọi `disk.save` sau forget.
+
 ## Lưu đĩa
 
 `<dir>/index.bin`: `ORRDISK\0` + version u32 (=1) + zstd level 3 của: 7 x u64 stats, roots, số node, độ dài pool, node 43 B little-endian, pool. `decode` kiểm UTF-8, biên ký tự, `parent < i`, `first > i`, khoảng con trong mảng, root hợp lệ. Ghi file tạm rồi rename. `dir` mặc định `CCM_DATA_DIR/disk`, truyền `dir` để đổi.
@@ -65,6 +71,7 @@ Vào: `{"id","channel","args"}` (`args` là mảng thì lấy phần tử đầu
 | `disk.search` | xem mục Tìm kiếm + `query` | `{total, ms, items[]}` |
 | `disk.save` / `disk.load` | `dir?` | `{path, bytes, ms}` / `{loaded, ...summary, loadMs}` |
 | `disk.clear` | - | `{ok}` |
+| `disk.forget` | `paths[]` | `{removed, freed, entries}`: bỏ node (cả cây con) khỏi index, trừ size / len lên mọi thư mục cha, root bị forget thì bỏ root; path không có trong index bị bỏ qua; không có gì để bỏ thì giữ nguyên index (`removed: 0`) |
 | `disk.volumes` | - | `[{mount, label, fs, kind: fixed/removable/network/cdrom/ram/unknown, network, total, free}]` |
 
 Item: `{path, name, dir, size, len, mtime(ms), count, kind, cloud, link, hardlink, denied, mount, hidden}`. Summary: `{entries, files, dirs, bytes, denied, errors, ms, scannedAt, roots[], indexBytes}`.

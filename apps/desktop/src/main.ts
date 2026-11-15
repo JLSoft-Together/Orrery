@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, net, Notification, powerMonitor, powerSaveBlocker, safeStorage, screen, session, shell, Tray, type Rectangle, type WebContents } from 'electron'
@@ -36,6 +37,8 @@ import { registerRunIpc } from './run/ipc'
 import { runStandingHosts } from './run/deskHosts'
 import { DeviceHistory, DEVICES_FILE } from './devices/history'
 import { registerDevicesIpc } from './devices/ipc'
+import { createDiskMap, type DiskMap } from './diskMap/ipc'
+import { deleteBoxOptions } from './diskMap/dialog'
 import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
 import { registerApkIpc } from './apk/ipc'
@@ -220,6 +223,7 @@ let disposeDisk: (() => void) | null = null
 let disposeAgentStatus: (() => void) | null = null
 let disk: DiskWatch | null = null
 let diskCtl: DiskControl | null = null
+let diskMap: DiskMap | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -1593,6 +1597,34 @@ function setupDisk(): void {
   })
 }
 
+function setupDiskMap(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  diskMap = createDiskMap({
+    ipcMain,
+    isAppFrame,
+    bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
+    env: process.env,
+    dataDir: DATA_DIR,
+    platform: process.platform,
+    home: os.homedir(),
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
+    autoConfirm: process.env.CCM_E2E_DISKMAP_CONFIRM === '1',
+    trash: (p) => shell.trashItem(p),
+    remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
+    reveal: (p) => shell.showItemInFolder(p),
+  })
+}
+
 async function ready(): Promise<void> {
   t = stringsFor(saved().locale ?? 'vi')
   if (IS_MAC) {
@@ -1621,6 +1653,7 @@ async function ready(): Promise<void> {
   await setupAgentData()
   setupBuildClean()
   setupDisk()
+  setupDiskMap()
   setupAgentStatus()
   host = createMonitorHost({
     mode: coreServeMode(process.env),
@@ -2454,6 +2487,7 @@ if (!app.requestSingleInstanceLock()) {
         runManager?.killAll()
         layoutIpc?.killNow()
         flutterPreview?.service.killNow()
+        diskMap?.kill()
       }
       return
     }
@@ -2472,7 +2506,7 @@ if (!app.requestSingleInstanceLock()) {
           launchUpdate()
           app.exit(0)
         }, QUIT_DEADLINE_MS)
-        stopping = Promise.allSettled([exportPageStorage(), host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview()]).then(() => {
+        stopping = Promise.allSettled([exportPageStorage(), host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview(), diskMap?.stop()]).then(() => {
           clearTimeout(hardExit)
           stopped = true
           app.quit()

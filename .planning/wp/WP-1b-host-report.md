@@ -1,0 +1,23 @@
+## WP-1b-host - DONE
+
+- Đã đổi:
+  - `apps/core/crates/core-disk/src/index.rs` (`Index::forget`, `Builder::append_pruned`, test), `src/serve.rs` (op `disk.forget {paths}` -> `{removed, freed, entries}`, CHANNELS 12), `tests/scan.rs` (`engine_forget_updates_index`).
+  - `packages/shared/src/diskMap.ts` (mới) + export ở `index.ts`.
+  - `apps/desktop/src/diskMap/` (mới): `host.ts` (DiskMapHost: lazy spawn `orrery-core disk`, NDJSON, khớp id, timeout 120 s, chết thì reject + báo, lần gọi sau spawn lại), `map.ts` (validate + map shape Rust sang contract), `guard.ts` (path cấm), `delete.ts` (runDelete), `dialog.ts` (dialog native, nút mặc định Huỷ), `history.ts` (`CCM_DATA_DIR/disk/history.jsonl`), `ipc.ts` (11 kênh `ccm:diskmap-*`, event progress / done).
+  - `apps/desktop/src/preload.ts` (13 method `diskMap*` / `onDiskMap*`), `main.ts` (`setupDiskMap`, `diskMap?.stop()` lúc quit, `kill()` đường quit gấp, +36 dòng), `strings.ts` (`diskMap` en + vi).
+  - Test: `apps/desktop/test/diskMap-{guard,history,delete,host}.test.ts`; E2E `apps/desktop/e2e/v101-diskmap-host.cjs`.
+  - `.code_index/desktop.md` (mục diskMap), `.code_index/core-disk.md` (op + mục Forget).
+- Tiêu chí: 5/5.
+  - [x] Unit vitest: guard path cấm (win / mac / linux, UNC, Unicode, path > 400 ký tự), parse NDJSON / ghép id, history append + đọc limit + trim, xoá một phần lỗi, double delete -> `busy`, core chết giữa scan -> `done {ok:false}`, thêm 1 test chạy `orrery-core` thật (scan -> children -> delete một phần lỗi -> index giảm -> history).
+  - [x] `cargo test -p core-disk -j 18`: 19 pass (2 test mới forget); clippy 0 warning; `cargo build -p core-bin` và `--release` xong.
+  - [x] `npm run typecheck -w @ccm/shared -w @ccm/desktop`: 0 lỗi. `npm test -w @ccm/desktop -- diskMap appearance agent-status backup`: 9 file / 91 test pass (diskMap: 4 file / 33 test).
+  - [x] E2E `node apps/desktop/e2e/v101-diskmap-host.cjs` (bản dev, cổng 4471, CDP 9471, OUT riêng `%TEMP%/ccm-e2e-v101-diskmap`): 19/19 PASS (volumes, status, scan -> done, index.bin đã lưu, children size đúng, search bỏ dấu, guard, delete vào Thùng rác thật (thấy trong `$Recycle.Bin`), double delete -> busy, index giảm đúng size, history có dòng). Item E2E trong Thùng rác đã dọn; không còn tiến trình E2E; Orrery đang chạy (bản cài) không bị đụng.
+  - [x] Không comment trong code (rg `//`, `/*` trong file mới: 0).
+- Lệch contract / brief:
+  - Shared đặt tên `DiskScanLevel` thay `DiskLevel` (trùng `DiskLevel` ok/warn/danger của v77 trong `disk.ts`, `export *` sẽ lỗi). Web hiện tự khai báo type riêng nên không ảnh hưởng.
+  - Test nằm ở `apps/desktop/test/diskMap-*.test.ts` (vitest config chỉ include `test/**`), lệnh: `npm test -w @ccm/desktop -- diskMap`.
+  - Thêm `DiskDone` (payload `ccm:diskmap-done`: `ok`, `cancelled?`, `error?`, `entries?`, `bytes?`, `roots?`), web đang nhận `() => void` nên tương thích.
+  - Web build (`vue-tsc`) fail do file WIP của agent khác `apps/web/src/zz-disk-harness.ts`; E2E dùng `apps/web/dist` có sẵn (E2E chỉ cần bridge).
+- CHƯA KIỂM: macOS (Trash, guard chạy theo platform nhưng chỉ unit test); file bị khoá thật (unit + core thật dùng lỗi giả EBUSY; Node không tạo được khoá độc quyền dễ dàng); `shell.trashItem` với path > 260 ký tự; dialog native bấm tay (E2E dùng `CCM_E2E_DISKMAP_CONFIRM=1`).
+- Ngoài phạm vi: không. Đánh đổi ghi ở `.code_index/desktop.md` (xoá trong lúc quét, xoá hẳn bị khoá giữa chừng).
+- Commit message đề xuất: `feat(desktop): host orrery-core disk with diskMap bridge, guarded trash/delete, history and disk.forget`

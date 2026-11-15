@@ -53,9 +53,11 @@ import StatusIcon from '../StatusIcon.vue'
 import { statusMeta } from '../../lib/status'
 import { usePaneInfo, usePeerSweep } from '../../composables/usePaneInfo'
 import { useCompact } from '../../composables/useCompact'
+import { useTermMenu } from '../../composables/useTermMenu'
 import { needsUser } from '../../lib/rail/railModel'
 import { leaves } from '../../lib/splitLayout'
 import PaneMore from './PaneMore.vue'
+import TermMenuBar from './TermMenuBar.vue'
 import PresetIcon from './PresetIcon.vue'
 import SplitMenu from './SplitMenu.vue'
 import WorktreeMenu from './WorktreeMenu.vue'
@@ -413,6 +415,19 @@ const preset = computed(() => presetOf(props.pane))
 let reportedCwd: string | null = null
 
 const isShell = computed(() => preset.value === 'shell')
+const termMenu = useTermMenu({
+  term: () => term,
+  enabled: () => settings.clickMenu && props.visible && props.pane.state === 'running' && (preset.value === 'claude' || preset.value === 'codex'),
+  send: (keys) => {
+    if (conn?.isOpen) conn.write(keys)
+  },
+  focus: () => term?.focus(),
+})
+watch(
+  () => [settings.clickMenu, props.visible, props.pane.state, preset.value] as const,
+  () => termMenu.refresh(),
+)
+onBeforeUnmount(termMenu.dispose)
 const checks = useChecksStore()
 const scanNotice = ref<string | null>(null)
 let scanTimer: ReturnType<typeof setTimeout> | null = null
@@ -1008,6 +1023,7 @@ onMounted(() => {
   term.attachCustomKeyEventHandler(onKey)
   installReplacementIme(term)
   term.onWriteParsed(() => att.schedule())
+  termMenu.attach(term)
   term.parser.registerOscHandler(7, (data) => (onShellCwd(parseOsc7(data)), true))
   // Not consumed (false): xterm still turns the sequence into a link.
   term.parser.registerOscHandler(8, (data) => (rememberLink(oscLinkUri(data)), false))
@@ -1435,14 +1451,15 @@ onBeforeUnmount(() => {
     <ContextMeter v-if="meterOn" :tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
     <div class="flex min-h-0 flex-1 gap-1.5" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
-      class="ccm-pane-ring ccm-sky-well relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
+      class="ccm-pane-ring ccm-sky-well relative flex min-h-0 min-w-0 flex-1 flex-col rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
       :class="multi && focused ? 'ccm-pane-active' : ''"
     >
       <!-- Dimmed when the process has ended; the well fades, the terminal text itself never animates. -->
       <!-- Shell command marks sit in the left padding, outside the cell grid. -->
-      <div class="size-full overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
+      <div class="min-h-0 w-full flex-1 overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
         <div ref="host" class="size-full" data-code-zoom :title="linkHint" />
       </div>
+      <TermMenuBar v-if="termMenu.menu.value" :menu="termMenu.menu.value" :busy="termMenu.busy.value" @pick="termMenu.pick" />
       <Transition name="ccm-fade">
         <div v-if="booting" class="absolute inset-0 z-11 flex items-center justify-center rounded-card bg-well p-4" data-pane-boot>
           <div class="flex max-w-80 flex-col items-center gap-3 text-center" role="status" aria-live="polite">

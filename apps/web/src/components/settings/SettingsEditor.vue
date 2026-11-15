@@ -55,6 +55,14 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         data-setting="compact-auto"
         data-setting-row="compactAuto"
       />
+      <ToggleSwitch
+        v-model="settings.clickMenu"
+        :label="t('clickMenu.setting')"
+        :info="t('clickMenu.settingHint')"
+        class="px-3"
+        data-setting="click-menu"
+        data-setting-row="clickMenu"
+      />
     </SettingSection>
   </div>
 </template>

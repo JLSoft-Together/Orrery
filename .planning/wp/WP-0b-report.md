@@ -1,0 +1,23 @@
+## WP-0b: DONE
+
+- Đã đổi:
+  - Mới: `apps/web/src/lib/termMenuKeys.ts` (+test), `apps/web/src/composables/useTermMenu.ts` (+test), `apps/web/src/components/workspace/TermMenuBar.vue` (+test, gồm test công tắc), `apps/web/src/i18n/click-menu-v100.ts`, `apps/desktop/e2e/v100-menu-bar.cjs`, `apps/desktop/e2e/fixtures/menu-screen.cjs`.
+  - Sửa: `TermPane.vue` (gắn `useTermMenu`, bar dưới terminal, well thành flex-col nên pane co lại khi có bar), `stores/settings.ts` (`clickMenu`, `ccm.clickMenu`, mặc định bật), `SettingsEditor.vue` + `settings/index.ts` (công tắc, trang editor = Workspace), `i18n/en.ts` + `vi.ts` (chỉ import + spread, namespace `clickMenu.*` nằm ở file riêng theo kiểu repo), `.code_index/web.md` (1 dòng).
+- Tiêu chí: 6/6.
+- Quyết định kỹ thuật:
+  - Gửi phím qua `conn.write` trực tiếp trong TermPane (không qua `pane.typeKeys`): cần đọc lại màn giữa các bước (Submit) và typeKeys trả `busy` khi đang có phím chờ.
+  - Trước khi gửi, `pick` đọc lại màn; layout menu khác lúc bar vẽ (kind, label, row) thì bỏ, không gửi gì.
+  - Submit: gửi Down, poll tối đa 8 x 80ms, chỉ Enter khi màn hiện Submit đang highlight; pane đóng / ẩn / cuộn lên giữa chừng thì không Enter.
+  - Enabled chỉ khi: `settings.clickMenu`, pane hiện, state running, `presetOf(pane)` là claude hoặc codex (shell pane đang chạy claude / codex cũng tính). Ẩn khi `viewportY != baseY` (đang cuộn scrollback).
+  - Số >= 10 hoặc menu không số: Up / Down theo khoảng cách + Enter (Space nếu multiSelect). Không dùng vòng quay (wrap) của Claude.
+  - Chỉ dùng `ccm-btn` + `ccm-btn-primary`, không thêm CSS/token. Mục highlight có icon chevron + `aria-current`, tick có icon check + `aria-pressed`, Submit / Other có icon riêng; số hiện cạnh label, `title` = label đầy đủ. Bar `max-h-24` cuộn dọc trong bar, không cuộn ngang.
+- Audit / Review / Test:
+  - `npm test -w @ccm/web` -> 245 file, 2177 test pass. `npm run typecheck -w @ccm/web` -> sạch.
+  - Test mới: termMenuKeys 13 (số, không số, multiSelect tick, Submit, Other, Other đã highlight, Codex, Codex approval, số 2 chữ số, không highlight), useTermMenu 17 (hiện / ẩn: không menu, không confident, công tắc tắt, cuộn scrollback, menu biến mất, detach; gộp burst; click gửi số; màn đổi giữa chừng không gửi; Submit chỉ Enter sau khi thấy Submit; không bao giờ Enter nếu không tới Submit; click đôi bị chặn; dispose giữa chừng không Enter), TermMenuBar 7 (render, aria, emit, busy, en/vi cùng key, công tắc mặc định bật + lưu).
+  - Build: `npm run build -w @ccm/web`, `npm run build -w @ccm/desktop` OK. E2E `node apps/desktop/e2e/v100-menu-bar.cjs` (CCM_E2E_PORT=4411, DBG=9411, OUT riêng; không đụng 4317 / 5173, không kill process nào) -> 15/15 PASS: bar 5 nút Claude, click Blue gửi `3`, terminal giữ focus, bar ẩn khi màn hết menu, Other = 3 Down không Enter + focus terminal, multiSelect tick `2`, Submit chỉ gửi Down (không Enter vì màn fixture tĩnh không highlight Submit), menu không số = Down + Enter, Codex gửi `2`, công tắc tắt / bật, shell thường không có bar.
+  - E2E đặt `pane.agent` qua store (`workspace.update(key, { agent })`) để pane shell được coi là Claude / Codex, màn menu do `fixtures/menu-screen.cjs` in từ fixture của WP-0a (cắt theo số cột pane).
+- Nhìn: `docs/qa/v100/WP-0b/01-claude-ask-single.png`, `02-claude-ask-multi.png`, `03-claude-trust-nonum.png`, `04-codex-permissions.png` (chụp sau lần sửa code cuối; đã xem 02 và 04: bar nằm dưới terminal, không che dòng menu).
+- CHƯA KIỂM: Enter thật trên Submit của Claude (E2E dùng màn tĩnh, chỉ kiểm nhánh không-Enter; nhánh Enter kiểm bằng unit test); click ngay khi menu Claude thật đang vẽ lại; menu multiSelect có Submit cùng lúc pane Codex (mouse mode 1003 của Codex: bar là DOM nút ngoài terminal nên không dính, nhưng WP-0c hover trong terminal sẽ dính).
+- Giới hạn đã biết: pane co lại khi bar hiện, terminal nhận resize một lần (Claude vẽ lại menu); menu Claude hỏi quyền / plan thật vẫn chỉ có fixture synthetic.
+- Hot file đụng: `i18n/en.ts`, `i18n/vi.ts`, `stores/settings.ts` (mỗi file 2-3 dòng, không gọi `who_is_editing`, không có tool MCP đó trong phiên này). Ngoài phạm vi: không. `apps/web/src/lib/sunburst.ts`, `treemap.ts` trong working tree là của WP khác.
+- Commit message đề xuất: `feat(web): click bar under agent panes for Claude/Codex choice menus with a Settings switch`

@@ -96,9 +96,11 @@ import devtoolsV75 from './devtools-v75'
 import promptSearchV75 from './promptsearch-v75'
 import sessionToolsV89 from './session-tools-v89'
 import bugReportV90 from './bug-report-v90'
+import clickMenuV100 from './click-menu-v100'
 
 export default {
   ...v25.en,
+  ...clickMenuV100.en,
   ...themeV95.en,
   ...themeV96.en,
   ...footerV92.en,

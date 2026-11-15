@@ -1,0 +1,230 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MENU_THROTTLE_MS, useTermMenu, type MenuTerm } from './useTermMenu'
+
+const DIR = join(__dirname, '..', 'lib', '__fixtures__', 'term-menu')
+
+function fixture(name: string): { lines: string[]; cursor: { x: number; y: number } } {
+  const lines = readFileSync(join(DIR, `${name}.txt`), 'utf8').replace(/\n$/, '').split('\n')
+  let cursor = { x: 0, y: 0 }
+  try {
+    cursor = JSON.parse(readFileSync(join(DIR, `${name}.cursor.json`), 'utf8')) as { x: number; y: number }
+  } catch {
+    cursor = { x: 0, y: lines.length - 1 }
+  }
+  return { lines, cursor }
+}
+
+function fakeTerm() {
+  const state = { rows: 24, lines: [] as string[], baseY: 0, viewportY: 0, cursor: { x: 0, y: 0 } }
+  const writes: (() => void)[] = []
+  const scrolls: (() => void)[] = []
+  const term: MenuTerm = {
+    get rows() {
+      return state.rows
+    },
+    buffer: {
+      active: {
+        get baseY() {
+          return state.baseY
+        },
+        get viewportY() {
+          return state.viewportY
+        },
+        get cursorX() {
+          return state.cursor.x
+        },
+        get cursorY() {
+          return state.cursor.y
+        },
+        getLine: (y) => (y - state.baseY < state.lines.length ? { translateToString: () => state.lines[y - state.baseY]! } : undefined),
+      },
+    },
+    onWriteParsed: (cb) => (writes.push(cb), { dispose: () => writes.splice(writes.indexOf(cb), 1) }),
+    onScroll: (cb) => (scrolls.push(cb), { dispose: () => scrolls.splice(scrolls.indexOf(cb), 1) }),
+    onResize: () => ({ dispose: () => undefined }),
+  }
+  const show = (name: string): void => {
+    const f = fixture(name)
+    state.lines = f.lines
+    state.rows = f.lines.length
+    state.cursor = f.cursor
+    writes.forEach((cb) => cb())
+  }
+  return { term, state, show, writes, scrolls }
+}
+
+function setup(name?: string) {
+  const t = fakeTerm()
+  const flags = { enabled: true }
+  const sent: string[] = []
+  const focus = vi.fn()
+  const api = useTermMenu({ term: () => t.term, enabled: () => flags.enabled, send: (k) => sent.push(k), focus })
+  api.attach(t.term)
+  if (name) t.show(name)
+  return { ...t, ...api, flags, sent, focus }
+}
+
+const tick = (ms = MENU_THROTTLE_MS) => vi.advanceTimersByTimeAsync(ms)
+
+describe('useTermMenu', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('shows the menu of a Claude screen after the throttle', async () => {
+    const m = setup('claude-ask-single')
+    expect(m.menu.value).toBeNull()
+    await tick()
+    expect(m.menu.value?.items.map((i) => i.label)).toEqual(['Red', 'Green', 'Blue', 'Type something.', 'Chat about this'])
+  })
+
+  it('shows a Codex menu', async () => {
+    const m = setup('codex-model')
+    await tick()
+    expect(m.menu.value?.agent).toBe('codex')
+  })
+
+  it('coalesces a burst of writes into one read', async () => {
+    const m = setup()
+    const spy = vi.spyOn(m.term.buffer.active, 'getLine')
+    for (let i = 0; i < 20; i++) m.writes.forEach((cb) => cb())
+    await tick()
+    expect(spy.mock.calls.length).toBeLessThanOrEqual(m.term.rows)
+  })
+
+  it('hides when there is no menu', async () => {
+    const m = setup('neg-claude-home')
+    await tick()
+    expect(m.menu.value).toBeNull()
+  })
+
+  it('hides when the parser is not confident', async () => {
+    const m = setup('neg-numbered-pick-prose')
+    await tick()
+    expect(m.menu.value).toBeNull()
+  })
+
+  it('hides when the switch is off and returns when it is on', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    expect(m.menu.value).not.toBeNull()
+    m.flags.enabled = false
+    m.refresh()
+    expect(m.menu.value).toBeNull()
+    m.flags.enabled = true
+    m.refresh()
+    expect(m.menu.value).not.toBeNull()
+  })
+
+  it('hides while scrolled up into the scrollback', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    m.state.baseY = 10
+    m.state.viewportY = 4
+    m.scrolls.forEach((cb) => cb())
+    await tick()
+    expect(m.menu.value).toBeNull()
+    m.state.viewportY = 10
+    m.scrolls.forEach((cb) => cb())
+    await tick()
+    expect(m.menu.value).not.toBeNull()
+  })
+
+  it('hides when the menu leaves the screen', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    m.show('neg-claude-home')
+    await tick()
+    expect(m.menu.value).toBeNull()
+  })
+
+  it('stops reading after detach', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    m.detach()
+    expect(m.menu.value).toBeNull()
+    expect(m.writes.length).toBe(0)
+  })
+
+  it('sends the number for a click', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    await m.pick(m.menu.value!.items[2]!)
+    expect(m.sent).toEqual(['3'])
+  })
+
+  it('does not send when the screen changed under the bar', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const item = m.menu.value!.items[2]!
+    m.show('claude-model')
+    await m.pick(item)
+    expect(m.sent).toEqual([])
+  })
+
+  it('does not send when the menu is gone', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    const item = m.menu.value!.items[0]!
+    m.show('neg-claude-home')
+    await m.pick(item)
+    expect(m.sent).toEqual([])
+    expect(m.menu.value).toBeNull()
+  })
+
+  it('moves to Other and focuses the terminal', async () => {
+    const m = setup('claude-ask-single')
+    await tick()
+    await m.pick(m.menu.value!.items.find((i) => i.isOther)!)
+    expect(m.sent).toEqual(['\x1b[B\x1b[B\x1b[B'])
+    expect(m.focus).toHaveBeenCalledOnce()
+  })
+
+  it('presses Enter on Submit only after the screen shows Submit highlighted', async () => {
+    const m = setup('claude-ask-multi')
+    await tick()
+    const submit = m.menu.value!.items.find((i) => i.isSubmit)!
+    const done = m.pick(submit)
+    await vi.advanceTimersByTimeAsync(80)
+    expect(m.sent.length).toBe(1)
+    expect(m.sent[0]!.startsWith('\x1b[B')).toBe(true)
+    m.show('claude-ask-multi-submit-row')
+    await vi.advanceTimersByTimeAsync(80)
+    await done
+    expect(m.sent.at(-1)).toBe('\r')
+  })
+
+  it('never presses Enter when Submit is not reached', async () => {
+    const m = setup('claude-ask-multi')
+    await tick()
+    const submit = m.menu.value!.items.find((i) => i.isSubmit)!
+    const done = m.pick(submit)
+    await vi.advanceTimersByTimeAsync(2000)
+    await done
+    expect(m.sent.filter((k) => k === '\r')).toEqual([])
+  })
+
+  it('ignores a second click while one is running', async () => {
+    const m = setup('claude-ask-multi')
+    await tick()
+    const submit = m.menu.value!.items.find((i) => i.isSubmit)!
+    const first = m.pick(submit)
+    await m.pick(m.menu.value!.items[0]!)
+    expect(m.sent.length).toBe(1)
+    await vi.advanceTimersByTimeAsync(2000)
+    await first
+  })
+
+  it('drops the Enter when the pane closes during the wait', async () => {
+    const m = setup('claude-ask-multi')
+    await tick()
+    const submit = m.menu.value!.items.find((i) => i.isSubmit)!
+    const done = m.pick(submit)
+    m.dispose()
+    m.show('claude-ask-multi-submit-row')
+    await vi.advanceTimersByTimeAsync(500)
+    await done
+    expect(m.sent.filter((k) => k === '\r')).toEqual([])
+  })
+})

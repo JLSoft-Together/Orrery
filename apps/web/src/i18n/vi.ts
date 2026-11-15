@@ -97,9 +97,11 @@ import devtoolsV75 from './devtools-v75'
 import promptSearchV75 from './promptsearch-v75'
 import sessionToolsV89 from './session-tools-v89'
 import bugReportV90 from './bug-report-v90'
+import clickMenuV100 from './click-menu-v100'
 
 const vi: typeof en = {
   ...v25.vi,
+  ...clickMenuV100.vi,
   ...themeV95.vi,
   ...themeV96.vi,
   ...footerV92.vi,

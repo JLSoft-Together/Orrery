@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type { DiskChildren, DiskDeleteResult, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskStatus, DiskVolume } from '@ccm/shared'
@@ -134,7 +135,8 @@ export class DiskMapService {
       await this.ensureLoaded()
       const ask = (ask: DeleteAsk, second: boolean): Promise<boolean> => (this.opts.autoConfirm ? Promise.resolve(true) : this.opts.confirm(event, ask, second))
       return await runDelete(paths as string[], permanent, {
-        guard: async () => ({ platform: this.opts.platform, home: this.opts.home, keep: this.opts.keep(), roots: toStatus(await this.host.call('disk.status')).roots }),
+        guard: async () => ({ platform: this.opts.platform, home: this.opts.home, keep: this.opts.keep(), roots: toStatus(await this.host.call('disk.status')).roots, volumes: (await this.volumes()).map((v) => v.mount).filter(Boolean) }),
+        known: async (p) => toChildren(await this.host.call('disk.children', { path: p, limit: 0 }).catch(() => null)) !== null,
         sizeOf: async (p) => toChildren(await this.host.call('disk.children', { path: p, limit: 0 }))?.size ?? null,
         confirm: (a) => ask(a, false),
         confirmPermanent: (a) => ask(a, true),
@@ -144,6 +146,7 @@ export class DiskMapService {
           await this.host.call('disk.forget', { paths: gone })
           void this.host.call('disk.save').catch(() => undefined)
         },
+        measure: measureRest,
         record: (entry) => this.history.append(entry),
       })
     } finally {

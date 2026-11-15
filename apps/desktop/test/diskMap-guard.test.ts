@@ -58,7 +58,7 @@ describe('diskMap guard (windows)', () => {
   })
 
   it('accepts long and unicode paths', () => {
-    const long = `D:\\work\\${'thư mục dài '.repeat(40)}\\file.bin`
+    const long = `D:\\work\\${'thư mục dài '.repeat(40).trim()}\\file.bin`
     expect(long.length).toBeGreaterThan(400)
     expect(checkDeletable(long, win)).toBeNull()
   })
@@ -90,7 +90,8 @@ describe('diskMap guard (macOS / linux)', () => {
     expect(checkDeletable('/etc/passwd', linux)).toBe('system')
     expect(checkDeletable('/home', linux)).toBe('system')
     expect(checkDeletable('/home/dev', linux)).toBe('protected')
-    expect(checkDeletable('/home/Dev', linux)).toBeNull()
+    expect(checkDeletable('/home/Dev', linux)).toBe('protected')
+    expect(checkDeletable('/home/Dev/x', linux)).toBeNull()
     expect(checkDeletable('/home/dev/.cache/pip', linux)).toBeNull()
   })
 })

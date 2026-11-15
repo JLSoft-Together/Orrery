@@ -39,6 +39,7 @@ import { runStandingHosts } from './run/deskHosts'
 import { DeviceHistory, DEVICES_FILE } from './devices/history'
 import { registerDevicesIpc } from './devices/ipc'
 import { createDiskMap, type DiskMap } from './diskMap/ipc'
+import { e2eAutoConfirm } from './diskMap/delete'
 import { deleteBoxOptions } from './diskMap/dialog'
 import { createDiskClean, type DiskClean } from './diskClean/ipc'
 import { toChildren, toStatus } from './diskMap/map'
@@ -1313,10 +1314,10 @@ function handleMenuLink(raw: string): void {
 }
 
 function setupMenuToast(): void {
-  const e2eLog = process.env.CCM_E2E_MENU_TOAST_LOG
+  const e2eLog = app.isPackaged ? undefined : process.env.CCM_E2E_MENU_TOAST_LOG
   if (process.env.CCM_TOAST === '0' && !e2eLog) return
   let real: MenuToastDrawer | null = null
-  if (process.env.CCM_TOAST !== '0' || process.env.CCM_E2E_MENU_TOAST_REAL === '1') {
+  if (process.env.CCM_TOAST !== '0' || (!app.isPackaged && process.env.CCM_E2E_MENU_TOAST_REAL === '1')) {
     if (!IS_MAC) real = windowsMenuDrawer(windowsToasts)
     else if (Notification.isSupported()) real = electronMenuDrawer((o) => new Notification(o), (url) => void openLink(url))
   }
@@ -1668,7 +1669,7 @@ function setupDiskMap(): void {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
     },
     confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
-    autoConfirm: process.env.CCM_E2E_DISKMAP_CONFIRM === '1',
+    autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
     trash: (p) => shell.trashItem(p),
     remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
     reveal: (p) => shell.showItemInFolder(p),
@@ -1699,7 +1700,7 @@ function setupDiskClean(): void {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
     },
     confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
-    autoConfirm: process.env.CCM_E2E_DISKMAP_CONFIRM === '1',
+    autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
     trash: (p) => shell.trashItem(p),
     remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
     record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),

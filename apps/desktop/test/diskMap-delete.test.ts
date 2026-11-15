@@ -2,9 +2,11 @@ import type { DiskHistoryEntry } from '@ccm/shared'
 import { describe, expect, it, vi } from 'vitest'
 import { deleteBoxOptions, formatBytes } from '../src/diskMap/dialog'
 import { mapLimit, reasonOf, runDelete, type DeleteDeps } from '../src/diskMap/delete'
+import type { CanonicalIo } from '../src/diskMap/guard'
 import { stringsFor } from '../src/strings'
 
 const errno = (code: string): NodeJS.ErrnoException => Object.assign(new Error(code), { code })
+const missingIo: CanonicalIo = { lstat: async () => Promise.reject(errno('ENOENT')), realpath: async () => Promise.reject(errno('ENOENT')) }
 
 function deps(over: Partial<DeleteDeps> = {}) {
   const records: DiskHistoryEntry[] = []
@@ -32,6 +34,7 @@ function deps(over: Partial<DeleteDeps> = {}) {
       records.push(e)
     },
     now: () => 1234,
+    io: missingIo,
     ...over,
   }
   return { d, records, forgotten, trashed, removed }
@@ -101,6 +104,84 @@ describe('runDelete', () => {
     const { d } = deps({ forget: async () => Promise.reject(new Error('core gone')), record: async () => Promise.reject(new Error('disk full')) })
     const r = await runDelete(['D:\\work\\a'], false, d)
     expect(r.done).toHaveLength(1)
+  })
+})
+
+describe('runDelete canonical checks', () => {
+  const dirIo = (real: () => Record<string, string>, links: string[] = []): CanonicalIo => ({
+    lstat: async (p) => {
+      if (links.includes(p)) return { isSymbolicLink: () => true }
+      if (p in real()) return { isSymbolicLink: () => false }
+      throw errno('ENOENT')
+    },
+    realpath: async (p) => {
+      const m = real()
+      if (p in m) return m[p]!
+      throw errno('ENOENT')
+    },
+  })
+
+  it('refuses a path that resolves through a link onto home', async () => {
+    const { d, trashed } = deps({ io: dirIo(() => ({ 'D:\\work\\lnk\\me': 'C:\\Users\\dev', 'D:\\work\\ok': 'D:\\work\\ok' })) })
+    const r = await runDelete(['D:\\work\\lnk\\me', 'D:\\work\\ok'], false, d)
+    expect(r.failed).toEqual([{ path: 'D:\\work\\lnk\\me', reason: 'protected' }])
+    expect(trashed).toEqual(['D:\\work\\ok'])
+  })
+
+  it('deletes the resolved long name', async () => {
+    const { d, trashed } = deps({ io: dirIo(() => ({ 'D:\\work\\BIGFOL~1': 'D:\\work\\big folder' })) })
+    const r = await runDelete(['D:\\work\\BIGFOL~1'], false, d)
+    expect(trashed).toEqual(['D:\\work\\big folder'])
+    expect(r.done.map((x) => x.path)).toEqual(['D:\\work\\BIGFOL~1'])
+  })
+
+  it('stops when the parent turns into a link while the dialog is open', async () => {
+    let map: Record<string, string> = { 'D:\\work\\a\\b': 'D:\\work\\a\\b' }
+    const { d, trashed, forgotten } = deps({
+      io: dirIo(() => map),
+      confirm: vi.fn(async () => {
+        map = { 'D:\\work\\a\\b': 'C:\\Users\\dev\\b' }
+        return true
+      }),
+    })
+    const r = await runDelete(['D:\\work\\a\\b'], false, d)
+    expect(trashed).toEqual([])
+    expect(r.failed).toEqual([{ path: 'D:\\work\\a\\b', reason: 'changed' }])
+    expect(forgotten).toEqual([])
+  })
+
+  it('stops when the target turns into a protected path while the dialog is open', async () => {
+    let map: Record<string, string> = { 'D:\\work\\a': 'D:\\work\\a' }
+    const { d, removed } = deps({
+      io: dirIo(() => map),
+      confirmPermanent: vi.fn(async () => {
+        map = { 'D:\\work\\a': 'C:\\Users\\dev\\.ssh' }
+        return true
+      }),
+    })
+    const r = await runDelete(['D:\\work\\a'], true, d)
+    expect(removed).toEqual([])
+    expect(r.failed).toEqual([{ path: 'D:\\work\\a', reason: 'protected' }])
+  })
+
+  it('requires the path to be a node of the index when asked', async () => {
+    const { d, trashed } = deps({ known: async (p) => p !== 'D:\\work\\ghost' })
+    const r = await runDelete(['D:\\work\\ghost', 'D:\\work\\a'], false, d)
+    expect(r.failed).toEqual([{ path: 'D:\\work\\ghost', reason: 'outside' }])
+    expect(trashed).toEqual(['D:\\work\\a'])
+  })
+
+  it('forgets and counts what a permanent delete removed before it stopped', async () => {
+    const remove = async (p: string): Promise<void> => {
+      if (p.endsWith('half')) throw errno('ENOTEMPTY')
+      if (p.endsWith('denied')) throw errno('EPERM')
+    }
+    const { d, forgotten, records } = deps({ remove, sizeOf: async () => 100, measure: async () => 30 })
+    const r = await runDelete(['D:\\work\\half', 'D:\\work\\denied'], true, d)
+    expect(r.failed.map((f) => f.reason).sort()).toEqual(['ENOTEMPTY', 'EPERM'])
+    expect(r.freed).toBe(70)
+    expect(forgotten).toEqual([['D:\\work\\half']])
+    expect(records[0]).toMatchObject({ action: 'delete', count: 0, freed: 70, paths: ['D:\\work\\half'], failed: 2 })
   })
 })
 

@@ -146,7 +146,7 @@ pub fn e2e_idle(raw: Option<String>) -> Option<f64> {
     raw.filter(|v| !v.trim().is_empty()).and_then(|v| v.trim().parse::<f64>().ok()).filter(|n| n.is_finite() && *n >= 0.0)
 }
 
-fn idle_seconds() -> f64 {
+pub fn idle_seconds() -> f64 {
     e2e_idle(std::env::var("CCM_E2E_IDLE_S").ok()).unwrap_or_else(system_idle)
 }
 

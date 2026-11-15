@@ -317,6 +317,7 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
         "buildClean.confirm" => Ok(json!(build_confirm(app, p))),
         "mcpDesk.confirmKill" => Ok(json!(mcp_confirm_kill(app, p))),
         "mcpDesk.confirm" => Ok(json!(mcp_confirm(app, p))),
+        "mcpDesk.disk" => Ok(crate::disk_agent::call(app, p)),
         "agentData.confirm" => Ok(json!(agent_confirm(app, p))),
         "agentData.pickFolder" => Ok(agent_pick(app, p)),
         "agentData.stopCollector" => Ok(crate::collector::stop(app)),

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use core_serve::alerts::Emit;
 use serde_json::{json, Map, Value};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::state::lock;
 
@@ -152,6 +152,14 @@ fn call(app: &AppHandle, channel: &str, args: Value) {
     }
 }
 
+fn disk_alert(app: &AppHandle) {
+    let Some(m) = app.try_state::<crate::disk_map::DiskState>().map(|s| s.0.clone()) else { return };
+    let app = app.clone();
+    spawn("disk-alert-report", move || {
+        m.snap.on_alert(&app, &m);
+    });
+}
+
 fn spawn(name: &str, f: impl FnOnce() + Send + 'static) {
     if let Err(e) = std::thread::Builder::new().name(name.into()).spawn(f) {
         eprintln!("[shell] {name}: {e}");
@@ -174,6 +182,9 @@ pub fn start(app: &AppHandle) {
     let episodes_app = app.clone();
     spawn("episodes", move || {
         for msg in rx {
+            if msg.get("type").and_then(Value::as_str) == Some("phone") && parse_phone(&msg).is_some_and(|p| p["reason"] == "disk") {
+                disk_alert(&episodes_app);
+            }
             for (channel, args) in calls_for(&msg) {
                 if channel == PHONE_CHANNEL {
                     let _ = phone_tx.send(args);

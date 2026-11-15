@@ -8,6 +8,28 @@ mod collector;
 mod config;
 mod desk;
 mod desk_text;
+mod disk_guard;
+mod disk_host;
+mod disk_map;
+mod disk_move;
+mod disk_move_text;
+mod disk_move_tree;
+mod disk_apps;
+mod disk_apps_left;
+mod disk_apps_reg;
+mod disk_agent;
+mod disk_clean;
+mod disk_clean_dev;
+mod disk_clean_sys;
+mod disk_clean_text;
+mod disk_ram;
+mod disk_organize;
+mod disk_organize_fs;
+mod disk_organize_junk;
+mod disk_organize_log;
+mod disk_organize_rules;
+mod disk_snap;
+mod disk_text;
 mod drop_paths;
 mod episodes;
 mod files_ipc;
@@ -131,6 +153,7 @@ fn main() {
         before_stop: Mutex::new(None),
     };
     let hidden = cfg.hidden;
+    let core_bin = cfg.core_bin.clone();
     let first_link = links::link_in(&args);
     let mut builder = tauri::Builder::default();
     if !config::e2e_isolated() {
@@ -152,6 +175,8 @@ fn main() {
             let handle = app.handle().clone();
             capability(&handle, &origin)?;
             desk::wire(&handle);
+            disk_map::manage(&handle, core_bin.clone());
+            disk_organize::start(&handle);
             let stopping = handle.clone();
             *state::lock(&handle.state::<Shell>().before_stop) = Some(Box::new(move || lifecycle::clean(&stopping)));
             window::create_main(&handle, hidden).map_err(std::io::Error::other)?;

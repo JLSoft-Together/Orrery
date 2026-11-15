@@ -336,6 +336,9 @@ pub fn boot(app: &AppHandle) {
 }
 
 pub fn clean(app: &AppHandle) {
+    crate::disk_map::stop(app);
+    crate::disk_organize::stop(app);
+    crate::disk_clean::stop(app);
     for channel in ["desk:run-clean", "desk:tg-stop"] {
         if let Err(e) = crate::desk::call_inside(app, channel, json!([])) {
             eprintln!("[shell] {channel}: {e}");

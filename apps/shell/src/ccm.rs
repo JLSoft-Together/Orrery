@@ -212,6 +212,30 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             let (handle, channel) = (app.clone(), c.to_owned());
             blocking(move || crate::files_ipc::dispatch(&handle, &channel, &args)).await?
         }
+        c if crate::disk_map::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_map::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_move::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_move::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_organize::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_organize::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_apps::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_apps::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_clean::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_clean::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_ram::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_ram::dispatch(&handle, &channel, &args)).await?
+        }
         c if crate::preview_ipc::handles(c) => {
             let (handle, owner, channel) = (app.clone(), webview.label().to_owned(), c.to_owned());
             blocking(move || crate::preview_ipc::dispatch(&handle, &owner, &channel, &args)).await?

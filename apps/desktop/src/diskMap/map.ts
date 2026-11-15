@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { DISK_KINDS, DISK_SCAN_LEVELS, DISK_SORTS, type DiskChildren, type DiskChildrenRequest, type DiskDone, type DiskEntry, type DiskProgress, type DiskScanRequest, type DiskSearchQuery, type DiskSearchResult, type DiskSort, type DiskStatus, type DiskVolume } from '@ccm/shared'
+import { DISK_KINDS, DISK_SCAN_LEVELS, DISK_SORTS, type DiskChildren, type DiskFastScanRequest, type DiskChildrenRequest, type DiskDone, type DiskEntry, type DiskProgress, type DiskScanRequest, type DiskSearchQuery, type DiskSearchResult, type DiskSort, type DiskStatus, type DiskVolume } from '@ccm/shared'
 
 export const MAX_PATH_CHARS = 32_000
 export const MAX_ROOTS = 32
@@ -66,6 +66,7 @@ export function toDone(v: unknown): DiskDone {
   if (typeof o?.entries === 'number') done.entries = o.entries
   if (typeof o?.bytes === 'number') done.bytes = o.bytes
   if (Array.isArray(o?.roots)) done.roots = o.roots.filter((r): r is string => typeof r === 'string')
+  if (o?.mft === true) done.mft = true
   return done
 }
 
@@ -89,6 +90,13 @@ export function cleanScan(v: unknown, platform: NodeJS.Platform = process.platfo
   const ex = o.excludes === undefined ? [] : o.excludes
   if (!Array.isArray(ex) || ex.length > MAX_EXCLUDES || !ex.every((e) => typeof e === 'string' && e.length > 0 && e.length <= 1024 && !e.includes('\0'))) return null
   return { roots: [...new Set(o.roots as string[])], level, excludes: ex as string[] }
+}
+
+export function cleanFastScan(v: unknown, platform: NodeJS.Platform = process.platform): DiskFastScanRequest | null {
+  if (platform !== 'win32') return null
+  const o = obj(v)
+  const m = typeof o?.drive === 'string' ? /^([A-Za-z])(?::[\\/]?)?$/.exec(o.drive) : null
+  return m ? { drive: m[1]!.toUpperCase() } : null
 }
 
 export function cleanChildren(v: unknown, platform: NodeJS.Platform = process.platform): DiskChildrenRequest | null {

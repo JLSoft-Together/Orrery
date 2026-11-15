@@ -4,6 +4,7 @@ import {
   diskMapCancel,
   diskMapChildren,
   diskMapDelete,
+  diskMapFastScan,
   diskMapHistory,
   diskMapPause,
   diskMapResume,
@@ -14,7 +15,10 @@ import {
   diskMapVolumes,
   buildSearchQuery,
   defaultFilters,
+  fastScanDrive,
+  fastScanError,
   hasDiskMap,
+  hasFastScan,
   SEARCH_DEBOUNCE_MS,
   isUnder,
   loadChart,
@@ -36,6 +40,7 @@ import {
   type DiskProgress,
   type DiskStatus,
   type DiskVolume,
+  type FastScanError,
 } from '../lib/diskMap'
 
 export interface DeleteReport {
@@ -70,6 +75,9 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   const results = shallowRef<DiskSearchResult | null>(null)
   const searching = ref(false)
   const searchFailed = ref(false)
+  const fastRunning = ref(false)
+  const fastError = ref<FastScanError | null>(null)
+  const fastDetail = ref('')
   let navToken = 0
   let searchSeq = 0
   let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -89,6 +97,11 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   const selectedItems = computed(() => listed.value.filter((i) => selected.value.has(i.path)))
   const selectedSize = computed(() => selectedItems.value.reduce((s, i) => s + i.size, 0))
   const totalFreed = computed(() => history.value.reduce((s, h) => s + h.freed, 0))
+  const fastDrive = computed(() => {
+    if (!hasFastScan || roots.value.length !== 1) return null
+    const v = volumes.value.find((x) => x.mount === roots.value[0])
+    return v ? fastScanDrive(v) : null
+  })
 
   async function refreshStatus(): Promise<void> {
     const s = await diskMapStatus()
@@ -128,8 +141,15 @@ export const useDiskMapStore = defineStore('diskMap', () => {
         onDiskMapProgress((p) => {
           progress.value = p
         }),
-        onDiskMapDone(() => {
+        onDiskMapDone((d) => {
           progress.value = null
+          if (fastRunning.value || d?.mft) {
+            fastRunning.value = false
+            if (d && !d.ok && !d.cancelled) {
+              fastError.value = fastScanError(d.error)
+              fastDetail.value = d.error ?? ''
+            }
+          }
           void refreshStatus().then(async () => {
             await loadVolumes()
             if (!path.value && status.value?.roots[0]) await open(status.value.roots[0])
@@ -159,8 +179,30 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     roots.value = [...next]
   }
 
+  async function fastScan(): Promise<boolean> {
+    const drive = fastDrive.value
+    if (!drive || scanning.value) return false
+    fastError.value = null
+    fastDetail.value = ''
+    progress.value = { files: 0, bytes: 0, current: `${drive}:\\`, elapsedMs: 0 }
+    const res = await diskMapFastScan(drive)
+    if (!res.started) {
+      progress.value = null
+      fastError.value = fastScanError(res.error)
+      fastDetail.value = res.error ?? ''
+      return false
+    }
+    fastRunning.value = true
+    children.value = null
+    path.value = ''
+    selected.value = new Set()
+    await refreshStatus()
+    return true
+  }
+
   async function scan(): Promise<boolean> {
     if (!roots.value.length || scanning.value) return false
+    fastError.value = null
     progress.value = { files: 0, bytes: 0, current: '', elapsedMs: 0 }
     const ok = await diskMapScan([...roots.value], level.value)
     if (!ok) {
@@ -368,6 +410,10 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     results,
     searching,
     searchFailed,
+    fastRunning,
+    fastError,
+    fastDetail,
+    fastDrive,
     listed,
     items,
     scanning,
@@ -386,6 +432,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     reload,
     toggleRoot,
     scan,
+    fastScan,
     pause,
     resume,
     cancel,

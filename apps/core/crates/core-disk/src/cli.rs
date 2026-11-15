@@ -18,6 +18,8 @@ pub fn run(args: &[String]) -> i32 {
     match args.first().map(String::as_str) {
         None | Some("serve") => crate::serve::run(),
         Some("bench") => bench(&args[1..]),
+        Some("mft-helper") => crate::mft::helper_main(&args[1..]),
+        Some("mft-fixture") => crate::mft::fixture_main(&args[1..]),
         _ => {
             eprintln!("{}", usage_text());
             2

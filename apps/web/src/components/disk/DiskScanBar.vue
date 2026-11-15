@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Pause, Play, ScanSearch, Square } from 'lucide-vue-next'
+import { CircleAlert, Pause, Play, ScanSearch, Square, Zap } from 'lucide-vue-next'
 import { DISK_LEVELS, formatDuration, formatSize } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
 import SegmentedControl from '../ui/SegmentedControl.vue'
@@ -12,6 +12,8 @@ const store = useDiskMapStore()
 
 const levels = computed(() => DISK_LEVELS.map((l) => ({ value: l, label: t(`diskMap.level.${l}`), title: t(`diskMap.level.${l}Hint`) })))
 const busy = computed(() => store.scanning)
+const fastHint = computed(() => (store.fastDrive ? t('diskMap.fast.hint', { drive: `${store.fastDrive}:` }) : ''))
+const fastMessage = computed(() => (store.fastError ? t(`diskMap.fast.${store.fastError}`, { error: store.fastDetail }) : ''))
 </script>
 
 <template>
@@ -35,9 +37,14 @@ const busy = computed(() => store.scanning)
       <button v-if="!busy" type="button" class="ccm-btn ccm-btn-primary" :disabled="!store.roots.length" data-disk-scan @click="store.scan()">
         <ScanSearch :size="14" aria-hidden="true" />{{ store.indexed ? t('diskMap.scan.rescan') : t('diskMap.scan.start') }}
       </button>
-      <template v-else>
-        <button v-if="!store.paused" type="button" class="ccm-btn" data-disk-pause @click="store.pause()"><Pause :size="13" aria-hidden="true" />{{ t('diskMap.scan.pause') }}</button>
-        <button v-else type="button" class="ccm-btn" data-disk-resume @click="store.resume()"><Play :size="13" aria-hidden="true" />{{ t('diskMap.scan.resume') }}</button>
+      <button v-if="!busy && store.fastDrive" type="button" class="ccm-btn" :title="fastHint" aria-describedby="disk-fast-hint" data-disk-fastscan @click="store.fastScan()">
+        <Zap :size="14" aria-hidden="true" />{{ t('diskMap.fast.start') }}
+      </button>
+      <template v-if="busy">
+        <template v-if="!store.fastRunning">
+          <button v-if="!store.paused" type="button" class="ccm-btn" data-disk-pause @click="store.pause()"><Pause :size="13" aria-hidden="true" />{{ t('diskMap.scan.pause') }}</button>
+          <button v-else type="button" class="ccm-btn" data-disk-resume @click="store.resume()"><Play :size="13" aria-hidden="true" />{{ t('diskMap.scan.resume') }}</button>
+        </template>
         <button type="button" class="ccm-btn ccm-btn-danger" data-disk-cancel @click="store.cancel()"><Square :size="12" aria-hidden="true" />{{ t('diskMap.scan.cancel') }}</button>
       </template>
       <p v-if="store.status?.scannedAt && !busy" class="text-2xs text-ink-muted">
@@ -45,10 +52,18 @@ const busy = computed(() => store.scanning)
       </p>
     </div>
 
+    <p v-if="!busy && store.fastDrive" id="disk-fast-hint" class="mt-1.5 text-2xs text-ink-muted" data-disk-fasthint>{{ fastHint }}</p>
+    <p v-if="fastMessage && !busy" class="mt-2 flex items-start gap-1.5 text-xs" role="alert" data-disk-fasterror>
+      <CircleAlert :size="14" class="mt-0.5 shrink-0 text-warning" aria-hidden="true" /><span class="min-w-0 break-words">{{ fastMessage }}</span>
+    </p>
+
     <div v-if="busy && store.progress" class="mt-3 rounded-control bg-fill px-3 py-2" role="status" aria-live="polite" data-disk-progress>
       <p class="text-xs font-medium tabular-nums">
-        {{ store.paused ? t('diskMap.scan.paused') : t('diskMap.scan.running') }}:
-        {{ t('diskMap.scan.files', { n: store.progress.files.toLocaleString(locale) }) }}, {{ formatSize(store.progress.bytes, locale) }}, {{ formatDuration(store.progress.elapsedMs) }}
+        <template v-if="store.fastRunning">{{ t('diskMap.fast.reading', { n: store.progress.files.toLocaleString(locale) }) }}, {{ formatDuration(store.progress.elapsedMs) }}</template>
+        <template v-else>
+          {{ store.paused ? t('diskMap.scan.paused') : t('diskMap.scan.running') }}:
+          {{ t('diskMap.scan.files', { n: store.progress.files.toLocaleString(locale) }) }}, {{ formatSize(store.progress.bytes, locale) }}, {{ formatDuration(store.progress.elapsedMs) }}
+        </template>
       </p>
       <p class="mt-0.5 truncate font-mono text-2xs text-ink-muted" :title="store.progress.current">{{ store.progress.current }}</p>
     </div>

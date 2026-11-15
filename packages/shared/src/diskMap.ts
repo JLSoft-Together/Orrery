@@ -55,6 +55,15 @@ export interface DiskScanRequest {
   excludes: string[]
 }
 
+export interface DiskFastScanRequest {
+  drive: string
+}
+
+export interface DiskFastScanResult {
+  started: boolean
+  error?: string
+}
+
 export interface DiskChildrenRequest {
   path: string
   sort: DiskSort
@@ -100,6 +109,7 @@ export interface DiskDone {
   entries?: number
   bytes?: number
   roots?: string[]
+  mft?: boolean
 }
 
 export interface DiskHistoryEntry {

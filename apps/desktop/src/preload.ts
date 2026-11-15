@@ -356,6 +356,7 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   diskMapDelete: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:diskmap-delete', req),
   diskMapReveal: (path: string): Promise<unknown> => ipcRenderer.invoke('ccm:diskmap-reveal', path),
   diskMapHistory: (req?: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:diskmap-history', req ?? {}),
+  diskMapFastScan: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:diskmap-fastscan', req),
   onDiskMapProgress: (handler: (progress: unknown) => void): (() => void) => subscribe('ccm:diskmap-progress', handler),
   onDiskMapDone: (handler: (done: unknown) => void): (() => void) => subscribe('ccm:diskmap-done', handler),
   appDataList: (id: string, pkg: string): Promise<unknown> => ipcRenderer.invoke('ccm:appdata-list', id, pkg),

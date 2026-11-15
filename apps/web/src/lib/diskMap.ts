@@ -1,9 +1,9 @@
 import { DISK_KINDS, DISK_SORTS } from '@ccm/shared'
 export { DISK_KINDS, DISK_SORTS }
-import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSort } from '@ccm/shared'
+import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSort } from '@ccm/shared'
 import { desktop } from './desktop'
 
-export type { DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult } from '@ccm/shared'
+export type { DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult } from '@ccm/shared'
 export type { DiskSort }
 export type DiskLevel = DiskScanLevel
 export type DiskChart = 'treemap' | 'sunburst'
@@ -20,13 +20,15 @@ interface DiskMapBridge {
   diskMapDelete?: (req: { paths: string[]; permanent: boolean }) => Promise<DiskDeleteResult>
   diskMapReveal?: (path: string) => Promise<void>
   diskMapHistory?: (req: { limit: number }) => Promise<DiskHistoryEntry[]>
+  diskMapFastScan?: (req: { drive: string }) => Promise<DiskFastScanResult>
   onDiskMapProgress?: (cb: (p: DiskProgress) => void) => () => void
-  onDiskMapDone?: (cb: () => void) => () => void
+  onDiskMapDone?: (cb: (d: DiskDone | null) => void) => () => void
 }
 
 const bridge = desktop as unknown as DiskMapBridge | undefined
 
 export const hasDiskMap = typeof bridge?.diskMapScan === 'function' && typeof bridge?.diskMapChildren === 'function'
+export const hasFastScan = hasDiskMap && typeof bridge?.diskMapFastScan === 'function'
 
 async function call<T>(fn: (() => Promise<T>) | undefined, fallback: T): Promise<T> {
   if (!fn) return fallback
@@ -53,7 +55,9 @@ export const diskMapDelete = (paths: string[], permanent: boolean): Promise<Disk
 export const diskMapReveal = (path: string): Promise<void> => call<void>(bridge?.diskMapReveal && (() => bridge.diskMapReveal!(path)), undefined)
 export const diskMapHistory = (limit = 50): Promise<DiskHistoryEntry[]> => call(bridge?.diskMapHistory && (() => bridge.diskMapHistory!({ limit })), [])
 export const onDiskMapProgress = (cb: (p: DiskProgress) => void): (() => void) => bridge?.onDiskMapProgress?.(cb) ?? (() => {})
-export const onDiskMapDone = (cb: () => void): (() => void) => bridge?.onDiskMapDone?.(cb) ?? (() => {})
+export const diskMapFastScan = (drive: string): Promise<DiskFastScanResult> =>
+  call<DiskFastScanResult>(bridge?.diskMapFastScan && (async () => (await bridge.diskMapFastScan!({ drive })) ?? { started: false, error: 'failed' }), { started: false, error: 'unavailable' })
+export const onDiskMapDone = (cb: (d: DiskDone | null) => void): (() => void) => bridge?.onDiskMapDone?.(cb) ?? (() => {})
 
 export const DISK_LEVELS: DiskLevel[] = ['light', 'balanced', 'max']
 export const DISK_CHARTS: DiskChart[] = ['treemap', 'sunburst']
@@ -333,4 +337,19 @@ export function shortPath(p: string, max = 56): string {
   const keep = max - 3
   const head = Math.ceil(keep * 0.4)
   return `${p.slice(0, head)}...${p.slice(p.length - (keep - head))}`
+}
+
+export function fastScanDrive(v: Pick<DiskVolume, 'mount' | 'fs' | 'network' | 'kind'>): string | null {
+  if (v.network || v.fs !== 'NTFS' || (v.kind !== 'fixed' && v.kind !== 'removable')) return null
+  const m = /^([A-Za-z]):[\\/]?$/.exec(v.mount)
+  return m ? m[1]!.toUpperCase() : null
+}
+
+export type FastScanError = 'declined' | 'unsupported' | 'busy' | 'failed'
+
+export function fastScanError(error: string | undefined): FastScanError {
+  if (error === 'elevation-declined') return 'declined'
+  if (error === 'unsupported' || error === 'unavailable') return 'unsupported'
+  if (error === 'busy') return 'busy'
+  return 'failed'
 }

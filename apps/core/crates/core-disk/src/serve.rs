@@ -1,5 +1,6 @@
 use crate::fold::{group_id, GROUP_NAMES};
 use crate::index::{flag, Index, Sort};
+use crate::mft::{self, MftError};
 use crate::search::{search, Only, Query};
 use crate::walk::{scan_with, Control, Level, Lister, Progress, ScanError, ScanOptions};
 use crate::{store, volumes};
@@ -11,7 +12,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-pub const CHANNELS: [&str; 12] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget"];
+pub const CHANNELS: [&str; 13] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft"];
 pub const EVENT_PROGRESS: &str = "disk:progress";
 pub const EVENT_DONE: &str = "disk:done";
 const TICK: Duration = Duration::from_millis(100);
@@ -26,6 +27,7 @@ pub struct Engine {
     data_dir: Option<PathBuf>,
     emit: Emit,
     lister: Lister,
+    mft_fixture: Option<PathBuf>,
 }
 
 fn s<'a>(a: &'a Value, k: &str) -> Option<&'a str> {
@@ -102,12 +104,21 @@ impl Engine {
     }
 
     pub fn with_lister(data_dir: Option<PathBuf>, emit: Emit, lister: Lister) -> Arc<Self> {
-        Arc::new(Engine { index: RwLock::new(None), scan: Mutex::new(None), data_dir, emit, lister })
+        Self::make(data_dir, emit, lister, None)
+    }
+
+    fn make(data_dir: Option<PathBuf>, emit: Emit, lister: Lister, mft_fixture: Option<PathBuf>) -> Arc<Self> {
+        Arc::new(Engine { index: RwLock::new(None), scan: Mutex::new(None), data_dir, emit, lister, mft_fixture })
     }
 
     pub fn from_env(emit: Emit) -> Arc<Self> {
         let dir = std::env::var("CCM_DATA_DIR").ok().filter(|v| !v.is_empty()).map(|d| PathBuf::from(d).join("disk"));
-        Self::new(dir, emit)
+        let fixture = std::env::var_os("CCM_MFT_FIXTURE").filter(|v| !v.is_empty()).map(PathBuf::from);
+        Self::make(dir, emit, crate::walk::sys::list, fixture)
+    }
+
+    pub fn with_mft_fixture(data_dir: Option<PathBuf>, emit: Emit, fixture: PathBuf) -> Arc<Self> {
+        Self::make(data_dir, emit, crate::walk::sys::list, Some(fixture))
     }
 
     pub fn index(&self) -> Option<Arc<Index>> {
@@ -184,6 +195,7 @@ impl Engine {
                 Ok(json!({"ok": true}))
             }
             "disk.forget" => self.forget(&a),
+            "disk.mft" => self.start_mft(&a),
             "disk.volumes" => Ok(Value::Array(volumes::list().iter().map(|v| v.to_json()).collect())),
             _ => Err(format!("unknown channel {channel}")),
         }
@@ -265,26 +277,74 @@ impl Engine {
         let r = scan_with(opts, control, &progress, self.lister);
         drop(reporter);
         match r {
-            Ok(ix) => {
-                let ix = match (merge, self.index()) {
-                    (true, Some(old)) if !Index::can_merge(&old, &ix) => return json!({"ok": false, "error": "index too large to merge"}),
-                    (true, Some(old)) => Index::merge(&old, ix),
-                    _ => ix,
-                };
-                let mut v = summary(&ix);
-                v["ok"] = json!(true);
-                v["scanMs"] = json!(started.elapsed().as_millis() as u64);
-                if save {
-                    match self.dir(&Value::Null).and_then(|d| store::save(&ix, &d).map_err(|e| e.to_string())) {
-                        Ok((file, bytes)) => v["saved"] = json!({"path": file.to_string_lossy(), "bytes": bytes}),
-                        Err(e) => v["saveError"] = json!(e),
-                    }
-                }
-                self.set_index(Some(ix));
-                v
-            }
+            Ok(ix) => self.install(ix, merge, save, started),
             Err(ScanError::Cancelled) => json!({"ok": false, "cancelled": true}),
             Err(e) => json!({"ok": false, "error": e.to_string()}),
+        }
+    }
+
+    fn install(&self, ix: Index, merge: bool, save: bool, started: Instant) -> Value {
+        let ix = match (merge, self.index()) {
+            (true, Some(old)) if !Index::can_merge(&old, &ix) => return json!({"ok": false, "error": "index too large to merge"}),
+            (true, Some(old)) => Index::merge(&old, ix),
+            _ => ix,
+        };
+        let mut v = summary(&ix);
+        v["ok"] = json!(true);
+        v["scanMs"] = json!(started.elapsed().as_millis() as u64);
+        if save {
+            match self.dir(&Value::Null).and_then(|d| store::save(&ix, &d).map_err(|e| e.to_string())) {
+                Ok((file, bytes)) => v["saved"] = json!({"path": file.to_string_lossy(), "bytes": bytes}),
+                Err(e) => v["saveError"] = json!(e),
+            }
+        }
+        self.set_index(Some(ix));
+        v
+    }
+
+    fn start_mft(self: &Arc<Self>, a: &Value) -> Result<Value, String> {
+        let drive = s(a, "drive").and_then(mft::drive_letter).ok_or("drive required")?;
+        let fixture = self.mft_fixture.clone();
+        if fixture.is_none() && !mft::supported(drive) {
+            return Err(MftError::Unsupported.to_string());
+        }
+        let merge = b(a, "merge").unwrap_or(true);
+        let save = b(a, "save").unwrap_or(false);
+        let control = Arc::new(Control::default());
+        {
+            let mut slot = self.scan.lock().unwrap();
+            if slot.is_some() {
+                return Err("busy".into());
+            }
+            *slot = Some(control.clone());
+        }
+        let job = mft::Job { drive, fixture };
+        let me = self.clone();
+        std::thread::spawn(move || {
+            let payload = catch_unwind(AssertUnwindSafe(|| me.mft_payload(&job, &control, merge, save))).unwrap_or_else(|_| json!({"ok": false, "error": "scan panicked"}));
+            *me.scan.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            (me.emit)(EVENT_DONE, payload);
+        });
+        Ok(json!({"started": true, "mft": true, "root": mft::root_name(drive)}))
+    }
+
+    fn mft_payload(&self, job: &mft::Job, control: &Arc<Control>, merge: bool, save: bool) -> Value {
+        let started = Instant::now();
+        let root = mft::root_name(job.drive);
+        let emit = self.emit.clone();
+        let tick = |records: u64, total: u64| {
+            emit(EVENT_PROGRESS, json!({"files": records, "dirs": 0, "bytes": 0, "denied": 0, "errors": 0, "current": root, "paused": false, "elapsedMs": started.elapsed().as_millis() as u64, "phase": "mft", "records": records, "total": total}));
+        };
+        match mft::run(job, control, &tick) {
+            Ok(mut ix) => {
+                ix.stats.elapsed_ms = started.elapsed().as_millis() as u64;
+                ix.stats.scanned_at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
+                let mut v = self.install(ix, merge, save, started);
+                v["mft"] = json!(true);
+                v
+            }
+            Err(MftError::Cancelled) => json!({"ok": false, "cancelled": true, "mft": true}),
+            Err(e) => json!({"ok": false, "error": e.to_string(), "mft": true}),
         }
     }
 }

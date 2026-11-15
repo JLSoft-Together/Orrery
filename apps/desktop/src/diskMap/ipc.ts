@@ -1,14 +1,14 @@
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { DiskChildren, DiskDeleteResult, DiskHistoryEntry, DiskSearchResult, DiskStatus, DiskVolume } from '@ccm/shared'
+import type { DiskChildren, DiskDeleteResult, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskStatus, DiskVolume } from '@ccm/shared'
 import { runDelete, type DeleteAsk } from './delete'
 import { DiskHistory } from './history'
 import { DiskMapHost, type DiskMapSpawner } from './host'
-import { cleanChildren, cleanHistoryLimit, cleanScan, cleanSearch, isAbsolutePath, MAX_DELETE, toChildren, toDone, toProgress, toSearch, toStatus, toVolumes } from './map'
+import { cleanChildren, cleanFastScan, cleanHistoryLimit, cleanScan, cleanSearch, isAbsolutePath, MAX_DELETE, toChildren, toDone, toProgress, toSearch, toStatus, toVolumes } from './map'
 
 export const DISKMAP_CHANNELS = [
   'ccm:diskmap-volumes', 'ccm:diskmap-status', 'ccm:diskmap-scan', 'ccm:diskmap-pause', 'ccm:diskmap-resume', 'ccm:diskmap-cancel',
-  'ccm:diskmap-children', 'ccm:diskmap-search', 'ccm:diskmap-delete', 'ccm:diskmap-reveal', 'ccm:diskmap-history',
+  'ccm:diskmap-children', 'ccm:diskmap-search', 'ccm:diskmap-delete', 'ccm:diskmap-reveal', 'ccm:diskmap-history', 'ccm:diskmap-fastscan',
 ] as const
 export const DISKMAP_PROGRESS = 'ccm:diskmap-progress'
 export const DISKMAP_DONE = 'ccm:diskmap-done'
@@ -85,6 +85,20 @@ export class DiskMapService {
       return { started: true }
     } catch {
       return { started: false }
+    }
+  }
+
+  async fastScan(req: unknown): Promise<DiskFastScanResult> {
+    const clean = cleanFastScan(req, this.opts.platform)
+    if (!clean) return { started: false, error: 'unsupported' }
+    await this.ensureLoaded()
+    try {
+      await this.host.call('disk.mft', { drive: clean.drive, save: true })
+      this.host.markScanning(true)
+      return { started: true }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { started: false, error: ['unsupported', 'busy'].includes(msg) ? msg : 'failed' }
     }
   }
 
@@ -184,6 +198,7 @@ export function createDiskMap(opts: DiskMapOptions): DiskMap {
   ipcMain.handle('ccm:diskmap-search', guard<DiskSearchResult>(EMPTY_SEARCH, (_e, req) => svc.search(req)))
   ipcMain.handle('ccm:diskmap-delete', guard<DiskDeleteResult>({ done: [], failed: [], freed: 0, permanent: false, cancelled: true }, (e, req) => svc.remove(e, req)))
   ipcMain.handle('ccm:diskmap-reveal', guard<void>(undefined, (_e, p) => svc.reveal(p)))
+  ipcMain.handle('ccm:diskmap-fastscan', guard<DiskFastScanResult>({ started: false, error: 'failed' }, (_e, req) => svc.fastScan(req)))
   ipcMain.handle('ccm:diskmap-history', guard<DiskHistoryEntry[]>([], (_e, req) => svc.historyRead(req)))
   return {
     host,

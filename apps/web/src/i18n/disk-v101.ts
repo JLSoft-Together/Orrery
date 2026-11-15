@@ -39,6 +39,15 @@ const en = {
       files: '{n} files',
       last: 'Last scan {when}, {n} entries',
     },
+    fast: {
+      start: 'Fast scan',
+      hint: 'Reads the NTFS file table of {drive} directly. Needs administrator rights: Windows asks once through UAC, the helper quits when done.',
+      reading: 'Reading file table: {n} records',
+      declined: 'Fast scan stopped: administrator rights were not granted.',
+      unsupported: 'Fast scan is not available for this drive.',
+      busy: 'Another scan is running.',
+      failed: 'Fast scan failed: {error}',
+    },
     volume: { usage: '{used} used, {free} free of {total}' },
     tree: {
       label: 'Items in this folder',
@@ -155,6 +164,15 @@ const vi: typeof en = {
       paused: 'Đã tạm dừng',
       files: '{n} file',
       last: 'Lần quét gần nhất {when}, {n} mục',
+    },
+    fast: {
+      start: 'Quét siêu nhanh',
+      hint: 'Đọc thẳng bảng file NTFS của {drive}. Cần quyền admin: Windows hỏi một lần qua UAC, phần đọc tự thoát khi xong.',
+      reading: 'Đang đọc bảng file: {n} bản ghi',
+      declined: 'Đã dừng quét siêu nhanh: không được cấp quyền admin.',
+      unsupported: 'Ổ này không quét siêu nhanh được.',
+      busy: 'Đang có lượt quét khác chạy.',
+      failed: 'Quét siêu nhanh lỗi: {error}',
     },
     volume: { usage: 'Đã dùng {used}, còn trống {free} trên {total}' },
     tree: {

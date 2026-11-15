@@ -75,11 +75,47 @@ Vào: `{"id","channel","args"}` (`args` là mảng thì lấy phần tử đầu
 | `disk.save` / `disk.load` | `dir?` | `{path, bytes, ms}` / `{loaded, ...summary, loadMs}` |
 | `disk.clear` | - | `{ok}` |
 | `disk.forget` | `paths[]` | `{removed, freed, entries}`: bỏ node (cả cây con) khỏi index, trừ size / len lên mọi thư mục cha, root bị forget thì bỏ root; path không có trong index bị bỏ qua; không có gì để bỏ thì giữ nguyên index (`removed: 0`) |
+| `disk.mft` | `drive` (`C`, `c:`, `C:\`), `merge` (true), `save` (false) | `{started, mft, root}` ngay; `unsupported` / `busy` / `drive required`; kết quả qua `disk:done` (xem mục MFT) |
 | `disk.volumes` | - | `[{mount, label, fs, kind: fixed/removable/network/cdrom/ram/unknown, network, total, free}]` |
 
 Item: `{path, name, dir, size, len, mtime(ms), count, kind, cloud, link, hardlink, denied, mount, hidden}`. Summary: `{entries, files, dirs, bytes, denied, errors, ms, scannedAt, roots[], indexBytes}`.
 
 Sự kiện: `disk:progress` `{files, dirs, bytes, denied, errors, current, paused, elapsedMs}`; `disk:done` `{ok:true, ...summary, scanMs, saved?|saveError?}` hoặc `{ok:false, cancelled:true}` / `{ok:false, error}`. Slot scan được trả trước khi gửi `disk:done`, nên nhận `disk:done` xong là quét tiếp được.
+
+## Quét siêu nhanh MFT (WP-1d, Windows NTFS)
+
+| File | Vai trò |
+|---|---|
+| `src/mft/record.rs` | `apply_fixup` (stride 512, kiểm USN từng sector), `parse` / `parse_fixed` -> `Parsed` (in_use, dir, seq, base ref, `$STANDARD_INFORMATION` mtime + attr, `$FILE_NAME` parent ref + seq + namespace, `$DATA` không tên: resident = (0, len), non-resident chỉ lấy extent VCN 0 = (allocated hoặc compressed size khi cờ compressed / sparse, data size), `$REPARSE_POINT` tag, `$ATTRIBUTE_LIST` có / không, vị trí runlist), `data_runs` |
+| `src/mft/tree.rs` | `Table`: mảng theo số record (size, len, mtime, flags, seq, đầu danh sách tên) + danh sách tên liên kết + pool; record extension (base != 0) gộp tên / data vào record gốc; `build(root_name)` -> `Index` |
+| `src/mft/wire.rs` | kiểm tham số helper, HELLO + token, frame `[kind u8][len u32][payload]` (progress 16 B, error max 4096 B, index max 3 GiB) |
+| `src/mft/mod.rs` | `Source` (`MemorySource` cho fixture), `collect`, `produce` (helper: progress mỗi 100 ms, index = zstd level 1 của `store::encode`), `consume` / `accept` (tiến trình thường: inflate max 4 GiB, `store::decode` có kiểm cấu trúc, root phải đúng `X:\`), `drive_letter`, `run` / `supported` |
+| `src/mft/win.rs` | pipe server, launch UAC, client, đọc volume, `retrieval_pointers` |
+| `src/mft/sample.rs` | dựng record FILE đúng format cho test + fixture `tests/fixtures/mft-sample.bin` (31 record) |
+
+Luồng: op `disk.mft {drive, merge?, save?}` (tiến trình thường) -> kiểm `supported` (GetDriveTypeW fixed / removable + GetVolumeInformationW `NTFS`, không thì lỗi `unsupported`; ổ mạng, FAT, exFAT, ReFS, BitLocker đang khoá đều rơi vào đây) -> lấy slot scan (`busy` nếu đang quét) -> trả `{started, mft, root}` ngay -> thread: tạo pipe, `ShellExecuteExW` verb `runas` với `current_exe()` và đúng 3 tham số `disk mft-helper <X> <pipe> <token>` -> nhận stream -> `install` (merge / save giống scan thường) -> `disk:done {..., mft:true}`. Progress `disk:progress {files: records, phase:"mft", records, total, current: "X:\"}`.
+
+Invariant bảo mật:
+- Helper elevated (`cli` `mft-helper`) chỉ nhận đúng 3 tham số: ổ `[A-Z]` (chữ hoa, 1 ký tự), pipe `\\.\pipe\orrery-mft-<32 hex thường>`, token 64 hex thường; sai bất kỳ -> exit 2. Không đọc stdin, không ghi file, không chạy lệnh khác; thread deadline 10 phút gọi `process::exit(4)`.
+- Pipe do tiến trình thường tạo: tên ngẫu nhiên 128 bit + token 256 bit (`BCryptGenRandom`), DACL `D:P(A;;GA;;;<SID user>)`, `FILE_FLAG_FIRST_PIPE_INSTANCE` (tên đã có ai tạo thì lỗi, không launch), 1 instance, `PIPE_REJECT_REMOTE_CLIENTS`, overlapped để mọi chờ có max + cancel.
+- Server: `ConnectNamedPipe` chờ cùng handle tiến trình helper (helper chết trước khi nối -> lỗi `helper exited (code)`), rồi `GetNamedPipeClientProcessId` phải bằng PID tiến trình vừa launch (giữ handle nên PID không bị tái dùng), rồi đọc HELLO + token (max 30 s, so sánh không rẽ nhánh theo byte), sai -> đóng pipe, lỗi `bad token`; đúng mới gửi ACK `0x06`.
+- Client (helper): mở pipe với `SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION` (server không impersonate được token admin), gửi HELLO + token trước, không nhận đúng ACK -> exit 3, không đọc gì khác từ pipe.
+- UAC bấm Không: `ShellExecuteExW` lỗi `ERROR_CANCELLED` -> `disk:done {ok:false, error:"elevation-declined"}`, không thử lại.
+- Cancel: đóng pipe (không TerminateProcess được tiến trình admin), helper ghi lỗi thì thoát. Helper chết giữa chừng: pipe gãy -> `helper exited`. Timeout tổng 10 phút cả hai phía.
+- `mft-fixture <X> <pipe> <token> <file>` cho test / E2E: từ chối chạy khi tiến trình đang elevated (exit 5), file max 256 MiB. Engine chỉ dùng fixture khi env `CCM_MFT_FIXTURE` có giá trị (đặt ở tiến trình main, trang web không đổi được); có fixture thì bỏ qua kiểm NTFS và launch bằng `Command` thường.
+- Record trỏ quá số record của volume (base ref, parent ref >= tổng record theo `MftValidDataLength`) bị bỏ (`Table.skipped`), không resize mảng theo số lạ.
+
+Luật dựng cây:
+- Bỏ record 0..15 trừ root 5 (`$MFT`, `$Extend`... không hiện; con của `$Extend` không đi tới được nên cũng không hiện). Record không in-use bỏ. Fixup sai -> `bad` + bỏ.
+- Tên: bỏ namespace DOS (2) khi có tên khác (Win32 / POSIX / Win32+DOS); tên trùng parent + text bỏ bản lặp. Tên có parent seq khác seq hiện tại của record cha (cha đã bị xoá và tái dùng) bị bỏ.
+- Hardlink (nhiều tên Win32 / POSIX): bản gặp đầu theo BFS giữ size + len, bản sau cờ HARDLINK, size 0, len 0.
+- CLOUD (attr OFFLINE / RECALL_*, hoặc tag cloud): size 0, len giữ. Khác walker thường: thư mục cloud **có** đi vào, vì MFT là dữ liệu local, không tải gì qua mạng.
+- LINK (tag symlink / junction / AppExecLink / LX / AF_UNIX): size 0, thư mục không đi vào. Mỗi thư mục chỉ vào 1 lần (`entered`), nên dữ liệu MFT hỏng có vòng lặp cũng dừng.
+- Size: non-resident = allocated (compressed size khi compressed / sparse); resident = 0 (nằm trong MFT), walker thường làm tròn lên 1 cluster nên tổng MFT nhỏ hơn một chút. Không tính stream có tên (ADS), giống walker. Thư mục size riêng 0.
+- `$MFT` của volume: đọc record 0 tại `MftStartLcn`, runlist của `$DATA`; runlist không phủ hết `MftValidDataLength` (có `$ATTRIBUTE_LIST`, MFT phân mảnh nhiều) -> `FSCTL_GET_RETRIEVAL_POINTERS` trên `X:\$MFT`, vẫn thiếu -> lỗi `fragmented $MFT`. Đọc chunk 4 MiB, độ dài làm tròn lên sector.
+- RAM helper ước tính cho 10 triệu record: ~320 MB bảng + ~160 MB tên + pool + mảng con (~250 MB) + `Index`. Tiến trình thường chỉ giữ blob zstd + `Index` sau decode. Giới hạn u32 record (index `Builder` `TooLarge`).
+
+Test: `tests/mft.rs` (parse, fixup, runlist, cây, tham số, frame, fixture file khớp `sample::image()`, cập nhật bằng `UPDATE_MFT_FIXTURE=1`), `tests/mft_pipe.rs` (`harness = false`: binary test tự làm helper khi nhận `disk ...`, đi đủ pipe + PID + token + nạp index qua `Engine::with_mft_fixture`), unit trong `win.rs` (token sai, PID sai, ACK sai, tên pipe trùng, cancel). Chạy thật có UAC: `node scripts/mft-smoke.mjs [C] [--no-compare] [--level=...]` (chủ nhân chạy tay, in thời gian, số entry, so size với scan thường).
 
 ## Bench (15/11/2026, release, Windows 11, 20 luồng)
 

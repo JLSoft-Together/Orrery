@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod fold;
 pub mod index;
+pub mod mft;
 pub mod procstat;
 pub mod search;
 pub mod serve;

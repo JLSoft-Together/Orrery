@@ -1,0 +1,10 @@
+diff --git a/src/a.ts b/src/a.ts
+index 1234567..89abcde 100644
+--- a/src/a.ts
++++ b/src/a.ts
+@@ -1,5 +1,6 @@
+ import { x } from './x'
+-const a = 1
++const a = 2
++const b = 3
+ export { a }

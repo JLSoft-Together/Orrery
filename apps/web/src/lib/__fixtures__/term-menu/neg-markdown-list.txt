@@ -1,0 +1,12 @@
+● Here are the steps:
+
+  1. Install the dependencies
+  2. Run the build
+  3. Open the app
+
+  Enter to select any of these steps is not needed, just follow them in order.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)

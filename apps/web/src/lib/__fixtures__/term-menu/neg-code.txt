@@ -1,0 +1,9 @@
+  42 │ export function pick(items: string[]): string | null {
+  43 │   if (!items.length) return null
+  44 │   const first = items[0]
+  45 │   return first ?? null
+  46 │ }
+  47 │
+❯ npm test
+  1. run vitest
+  2. run typecheck

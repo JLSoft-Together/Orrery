@@ -1,0 +1,45 @@
+## WP-0a: DONE
+
+- Đã đổi (tất cả file mới):
+  - `apps/web/src/lib/termMenu.ts`: `parseTermMenu(lines, cursor?)` -> `TermMenu | null` (kind ask | ask-multi | permission | plan | picker | codex-approval, agent, items[{index,label,row,selected,checked?,isOther?,isSubmit?}], highlighted, numbered, confident, firstRow, lastRow). Thuần TS, không DOM.
+  - `apps/web/src/lib/termMenu.test.ts`: 27 test.
+  - `apps/web/src/lib/__fixtures__/term-menu/*.txt` + `.cursor.json`: 23 màn.
+  - `scripts/capture-term-menu.mjs`: spawn CLI qua `@lydell/node-pty` (repo dùng bản này, không phải `node-pty`), dump màn bằng `@xterm/headless`, ghi `modes.json` (các DECSET đã thấy). Dep `@xterm/headless` CHƯA có trong repo: script đọc từ `XTERM_HEADLESS_DIR`, fallback `require`.
+- Fixture (23):
+  - THẬT (11 dương + 4 âm): claude-ask-single, claude-ask-other-highlight, claude-ask-multi, claude-ask-multi-ticked, claude-ask-multi-submit-row, claude-model, claude-trust-nonum, claude-mcp-prompt, codex-model, codex-permissions, codex-permissions-down; âm thật: neg-claude-home, neg-claude-resume, neg-claude-config, neg-codex-boot.
+  - SYNTHETIC (3 dương, tên có `-synthetic`): claude-permission, claude-plan, codex-approval. Âm synthetic (5): neg-code, neg-diff, neg-markdown-list, neg-ls, neg-numbered-pick-prose (có `❯` + `1.` nhưng không footer).
+- Tiêu chí: 5/5 đạt.
+  - [x] >= 8 fixture, ghi rõ thật / synthetic (11 dương thật + 3 synthetic, 9 âm).
+  - [x] 14/14 dương đúng, 0 false positive trên 9 âm.
+  - [x] Kết luận phím + mouse bên dưới.
+  - [x] file:line bên dưới.
+  - [x] test + typecheck pass.
+- Kết luận spike (máy này: Claude Code **2.1.318**, Codex **0.162.1**, không phải 2.1.289 / 0.162.0):
+  - Claude, menu có nhãn đánh số (`/model`, AskUserQuestion): phím số **chọn luôn** (không chỉ chuyển highlight). `/model` + `2` = áp ngay và lưu default. AskUserQuestion single + `3` = chọn Blue và nhảy sang tab câu kế.
+  - Claude multiSelect: số `1`-`4` **tick / bỏ tick** (không chọn luôn, không nhảy tab); `Space` cũng toggle tick. Dòng `Type something` là số 4, `Chat about this` là số 5 (nằm dưới đường kẻ). Dòng `Submit` KHÔNG có số: tới bằng Down, rồi Enter. CHƯA KIỂM: Enter trên Submit (không muốn gửi trả lời thật), Tab tại Submit không đổi gì.
+  - Claude menu KHÔNG đánh số (trust folder, MCP server mới): phím số bị bỏ qua; chỉ Up / Down / Enter. Up từ dòng đầu quay vòng xuống cuối.
+  - Claude hỏi quyền tool + duyệt plan: CHƯA KIỂM thật (hết ngân sách prompt), fixture là synthetic; giả định có số 1-3 như `Do you want to proceed?`.
+  - Codex `/model`, `/permissions`: phím số **chọn luôn** (`1` trong /permissions in "Permission selection requested: Ask for approval"). Highlight là `›`, nhãn `N. `. Codex approval thật: CHƯA KIỂM (synthetic).
+  - Mouse mode: **Claude KHÔNG bật** (chỉ thấy `1000l 1002l 1003l 1006l` = tắt; có `1004h` focus, `2004h` paste, `2031h`, `9001h`) nên click của xterm hiện bôi chữ. **Codex BẬT** `1003h` + `1006h` (any-motion + SGR) và alt screen `1049h` ngay lúc mở. Thử gửi click SGR vào dòng 7 của `/model` Codex 2 lần: highlight không đổi, Codex bỏ qua click trong picker. Hệ quả cho 0c: với pane Codex xterm đang gửi mouse vào app, phải chặn / xử lý click trước (Shift+click mới bôi chữ).
+  - Footer dùng làm mỏ neo: Claude ask `Enter to select · Tab/Arrow keys to navigate · Esc to cancel`; model `Enter to set as default · s to use this session only · Esc to cancel`; trust / MCP `Enter to confirm · Esc to cancel`; Codex `enter select · esc back`. Màn `/resume` (`Type to search · Esc to cancel`) và `/config` (`Enter/Space to change`) là list tìm kiếm / toggle: parser trả `null` có chủ đích (không có phím chọn đáp án).
+- Nguồn data câu hỏi (phase 0b):
+  - Claude transcript: `apps/collector/src/transcript.ts:57` `askOf` (gọi ở :183, lưu :343 `openAsks`, đọc :387 `pendingAsk()`), `apps/collector/src/monitor.ts:497` `askOf(terminalId)`. Rust: `apps/core/crates/core-transcript/src/origin.rs:172` `ask_of`, `extract.rs:142`, `state.rs:166` `pending_ask`.
+  - Giới hạn: CHỈ câu hỏi đầu tiên, max 6 option, bỏ description, `TelegramAsk` (`packages/shared/src/telegram.ts:35` `parseTelegramAsk`, kiểu ở :16-22) chỉ tới Telegram, KHÔNG tới page ("never to the page", docs §11an-f). Page chỉ có `TerminalSession.status/waitingFor` (`packages/shared/src/status.ts:28` `waitReason`: permission | question). Thanh nút từ hook cần thêm field / event mới, hoặc dùng parser màn (đủ mọi câu hỏi, có mô tả khi cần).
+  - Codex: không có `ask` cho Codex; `keysReady` cũng chặn Codex cho phím option (`claude` = false).
+- Hàm gửi phím vào pane:
+  - `apps/web/src/composables/useSessionActions.ts:26` `keyOf` (option n -> chuỗi `String(n)`; approve `1`, deny / stop / esc `\x1b`), `:28` `keysReady` (status waiting + waitReason khớp + preset claude), `:97` `keys()` -> `workspace.typeKeys` -> `telegramTyped`.
+  - `apps/web/src/stores/workspace.ts:1030` `typeKeys` (đặt `pane.typeKeys`, trả `busy` nếu đang có), `:1043` `telegramTyped`.
+  - `apps/web/src/components/workspace/TermPane.vue:1127` watch `pane.typeKeys` -> `conn.write(keys)` rồi xoá. Re-export `keyOf, keysReady` ở `useTelegramInbound.ts:18`; `keys()` Telegram ở :66.
+  - Cho click 0b/0c: Up/Down = `\x1b[A` / `\x1b[B`, Space = `' '`, Enter = `\r` đi cùng `conn.write`; `keys()` cần nới `keysReady` (hiện chỉ cho option khi status waiting + claude).
+- Audit / Review / Test:
+  - `npm test -w @ccm/web -- src/lib/termMenu.test.ts` -> 27 passed.
+  - `npm run typecheck -w @ccm/web` -> sạch (vue-tsc không lỗi).
+  - Audit: không comment, không log debug, chỉ file mới trong phạm vi; `git status` thấy file Rust / `.code_index` đã sửa là của WP khác.
+  - Edge: item mô tả xuống dòng bỏ qua; mũi tên cuộn `↓ 10.` và `… +4 models` bỏ qua; box `│ … │` của hỏi quyền được bóc; unnumbered chỉ nhận khi có footer `Enter to confirm|select`; nhiều dòng rác (max 3) giữa item và footer cho phép khi footer mạnh; `confident=false` khi highlight chỉ suy từ cursor, số nhảy, hoặc không có `❯`/`›`.
+  - Giới hạn đã biết: chưa xử lý menu bị cuộn (item đầu nằm ngoài màn); list `1.`-`n.` của hỏi quyền thật có thể khác synthetic; menu nhiều trang (tab) chỉ đọc trang đang hiện.
+- Hot file cần thêm: `package.json` (apps/web hoặc root devDependencies): `"@xterm/headless": "6.0.0"` cho `scripts/capture-term-menu.mjs`. i18n / TermPane / useTelegramInbound: chưa cần ở 0a.
+- Ngoài phạm vi cần main xử lý:
+  - Tôi đã dùng ~5 prompt `claude --model haiku` (vượt 4 một chút do 1-2 lần gõ nhầm vào ô nhập trước khi hiện hộp thoại MCP). Tác dụng phụ trên máy chủ nhân: (1) `/model` bấm `2` đã đổi default thành Opus 5.5 -> `~/.claude/settings.json` `"model": "opus"` (khớp `jin/settings/settings.base.json`, không đổi giá trị thực); (2) `/config` vô tình tắt `autoCompactEnabled`, đã sửa tay `settings.json` về `true`; (3) `~/.claude.json` có thêm trust cho thư mục scratchpad. Chủ nhân nên liếc `autoCompactEnabled` và `model` trong `~/.claude/settings.json`.
+  - `.code_index/web.md` chưa cập nhật (ngoài phạm vi): thêm dòng `lib/termMenu.ts parseTermMenu(lines, cursor)`.
+  - Claude hỏi quyền thật + plan thật + Codex approval thật nên chụp lại ở 0b/0c khi có model chạy (E2E), rồi thay 3 fixture synthetic.
+- Commit message đề xuất: `feat(web): terminal menu parser and real Claude/Codex menu fixtures`

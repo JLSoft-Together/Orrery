@@ -1,0 +1,15 @@
+[package]
+name = "core-disk"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+zstd = { version = "0.13", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Threading", "Win32_System_ProcessStatus"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

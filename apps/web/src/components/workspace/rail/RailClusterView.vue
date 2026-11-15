@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { BellRing, ChevronRight, Ellipsis, Folder, GitBranch, Hand, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
 import { usePaneInfo } from '../../../composables/usePaneInfo'
+import { useProjectDisk } from '../../../composables/useDiskSizes'
 import { useRailTabStop } from '../../../composables/useRail'
 import { onDustLeave } from '../../../lib/dust'
 import { duration, now as clock } from '../../../lib/format'
@@ -74,6 +75,7 @@ const ago = computed(() => {
 })
 const hasSecond = computed(() => !!headBranch.value || counts.value.running > 0 || counts.value.waiting > 0)
 const headDir = computed(() => (props.cluster.checkouts.find((k) => k.active) ?? props.cluster.checkouts[0])?.path ?? props.cluster.root)
+const projectDisk = useProjectDisk(() => (props.cluster.key === 'home' ? null : (props.cluster.root ?? headDir.value)))
 // A lone checkout has no line: its branch sits on the header, and a remembered project opens from the header.
 const showCheckouts = computed(() => showsCheckouts(props.cluster))
 const opener = computed(() => (!props.cluster.live && !showCheckouts.value ? (props.cluster.checkouts.find((k) => k.path) ?? null) : null))
@@ -159,7 +161,7 @@ const HEAD_BTN =
           aria-level="1"
           :aria-expanded="opener || solo ? undefined : !collapsed"
           :tabindex="headStop"
-          :title="[cluster.root, headBranch, t('workspace.rail.moveHint', MOVE_KEYS)].filter(Boolean).join('\n')"
+          :title="[cluster.root, headBranch, ...projectDisk.lines.value, t('workspace.rail.moveHint', MOVE_KEYS)].filter(Boolean).join('\n')"
           @click="onHead"
         >
           <ChevronRight

@@ -1,11 +1,12 @@
 import path from 'node:path'
-import { DISK_KINDS, DISK_SCAN_LEVELS, DISK_SORTS, type DiskChildren, type DiskFastScanRequest, type DiskChildrenRequest, type DiskDone, type DiskEntry, type DiskProgress, type DiskScanRequest, type DiskSearchQuery, type DiskSearchResult, type DiskSort, type DiskStatus, type DiskVolume } from '@ccm/shared'
+import { DISK_KINDS, DISK_SCAN_LEVELS, DISK_SORTS, type DiskChildren, type DiskFastScanRequest, type DiskChildrenRequest, type DiskDone, type DiskEntry, type DiskProgress, type DiskScanRequest, type DiskSearchQuery, type DiskSearchResult, type DiskSizes, type DiskSort, type DiskStatus, type DiskVolume } from '@ccm/shared'
 
 export const MAX_PATH_CHARS = 32_000
 export const MAX_ROOTS = 32
 export const MAX_EXCLUDES = 500
 export const MAX_LIMIT = 10_000
 export const MAX_DELETE = 5_000
+export const MAX_SIZES = 2_000
 
 type Obj = Record<string, unknown>
 
@@ -144,4 +145,20 @@ export function cleanSearch(v: unknown, platform: NodeJS.Platform = process.plat
 export function cleanHistoryLimit(v: unknown): number {
   const n = obj(v)?.limit
   return typeof n === 'number' && Number.isInteger(n) && n > 0 ? Math.min(n, 1000) : 50
+}
+
+export function cleanSizes(v: unknown, platform: NodeJS.Platform = process.platform): string[] | null {
+  const o = obj(v)
+  if (!o || !Array.isArray(o.paths) || o.paths.length < 1 || o.paths.length > MAX_SIZES) return null
+  if (!o.paths.every((p) => isAbsolutePath(p, platform))) return null
+  return [...new Set(o.paths as string[])]
+}
+
+export function toSizes(v: unknown): DiskSizes | null {
+  const o = obj(v)
+  const sizes = obj(o?.sizes)
+  if (!o || !sizes || typeof o.version !== 'string') return null
+  const out: Record<string, number | null> = {}
+  for (const [k, n] of Object.entries(sizes)) out[k] = typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null
+  return { version: o.version, sizes: out }
 }

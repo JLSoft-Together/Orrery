@@ -120,3 +120,12 @@ export interface DiskHistoryEntry {
   paths: string[]
   failed: number
 }
+
+export interface DiskSizesRequest {
+  paths: string[]
+}
+
+export interface DiskSizes {
+  version: string
+  sizes: Record<string, number | null>
+}

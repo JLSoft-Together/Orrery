@@ -122,6 +122,12 @@ const en = {
       unsupported: 'This build cannot read drives yet.',
     },
   },
+  diskSizes: {
+    menuOpen: 'Open in Disk',
+    menuClean: 'Clean up this project',
+    tipSize: 'Size {size}',
+    tipJunk: 'Cleanable {size}',
+  },
 }
 
 const vi: typeof en = {
@@ -247,6 +253,12 @@ const vi: typeof en = {
       levelHint: 'Quét mạnh tay đến đâu. Nhẹ để máy vẫn rảnh, Tối đa là nhanh nhất.',
       unsupported: 'Bản này chưa đọc được ổ đĩa.',
     },
+  },
+  diskSizes: {
+    menuOpen: 'Mở trong Ổ đĩa',
+    menuClean: 'Dọn dẹp project này',
+    tipSize: 'Dung lượng {size}',
+    tipJunk: 'Rác dọn được {size}',
   },
 }
 

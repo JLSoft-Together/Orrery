@@ -12,11 +12,12 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-pub const CHANNELS: [&str; 13] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft"];
+pub const CHANNELS: [&str; 14] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft", "disk.sizes"];
 pub const EVENT_PROGRESS: &str = "disk:progress";
 pub const EVENT_DONE: &str = "disk:done";
 const TICK: Duration = Duration::from_millis(100);
 const LIMIT_MAX: usize = 10_000;
+const SIZES_MAX: usize = 2_000;
 const DRAIN: Duration = Duration::from_secs(3);
 
 pub type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
@@ -195,6 +196,7 @@ impl Engine {
                 Ok(json!({"ok": true}))
             }
             "disk.forget" => self.forget(&a),
+            "disk.sizes" => self.sizes(&a),
             "disk.mft" => self.start_mft(&a),
             "disk.volumes" => Ok(Value::Array(volumes::list().iter().map(|v| v.to_json()).collect())),
             _ => Err(format!("unknown channel {channel}")),
@@ -212,6 +214,16 @@ impl Engine {
         let entries = next.len();
         *slot = Some(Arc::new(next));
         Ok(json!({"removed": removed.len(), "freed": freed, "entries": entries}))
+    }
+
+    fn sizes(&self, a: &Value) -> Result<Value, String> {
+        let ix = self.index().ok_or("no index")?;
+        let mut sizes = serde_json::Map::new();
+        for p in strings(a, "paths").into_iter().take(SIZES_MAX) {
+            let v = ix.find(&p).map_or(Value::Null, |n| json!(ix.nodes[n as usize].size));
+            sizes.insert(p, v);
+        }
+        Ok(json!({"version": format!("{}:{}", ix.stats.scanned_at, ix.len()), "sizes": sizes}))
     }
 
     fn children(&self, a: &Value) -> Result<Value, String> {

@@ -409,6 +409,35 @@ fn engine_forget_updates_index() {
     assert_eq!(engine.dispatch("disk.children", &json!({})).unwrap()["total"], json!(0));
 }
 
+#[test]
+fn engine_sizes_batches_paths() {
+    let t = tree();
+    let engine = Engine::new(None, Arc::new(|_, _| {}));
+    assert!(engine.dispatch("disk.sizes", &json!({"paths": ["x"]})).is_err());
+    let ix = run(&t.0, |_| {});
+    let media = t.0.join("media").to_string_lossy().to_string();
+    let media_size = ix.nodes[ix.find(&media).unwrap() as usize].size;
+    let root = t.0.to_string_lossy().to_string();
+    let root_size = ix.nodes[ix.roots[0] as usize].size;
+    engine.set_index(Some(ix));
+    let upper = media.to_uppercase();
+    let gone = t.0.join("nope").to_string_lossy().to_string();
+    let r = engine.dispatch("disk.sizes", &json!([{"paths": [media, root, upper, gone]}])).unwrap();
+    assert_eq!(r["sizes"][&media], json!(media_size));
+    assert_eq!(r["sizes"][&root], json!(root_size));
+    assert!(r["sizes"][&gone].is_null());
+    if cfg!(windows) {
+        assert_eq!(r["sizes"][&upper], json!(media_size));
+    }
+    let v1 = r["version"].clone();
+    let clip = t.0.join("media").join("clip.mkv").to_string_lossy().to_string();
+    engine.dispatch("disk.forget", &json!({"paths": [clip]})).unwrap();
+    let r2 = engine.dispatch("disk.sizes", &json!({"paths": [media]})).unwrap();
+    assert_ne!(r2["version"], v1);
+    assert!(r2["sizes"][&media].as_u64().unwrap() < media_size);
+    assert_eq!(engine.dispatch("disk.sizes", &json!({})).unwrap()["sizes"], json!({}));
+}
+
 #[derive(Clone, Default)]
 struct Buf(Arc<Mutex<Vec<u8>>>);
 

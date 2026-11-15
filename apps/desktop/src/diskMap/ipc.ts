@@ -1,15 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { DiskChildren, DiskDeleteResult, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskStatus, DiskVolume } from '@ccm/shared'
-import { runDelete, type DeleteAsk } from './delete'
+import type { DiskChildren, DiskDeleteResult, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskSizes, DiskStatus, DiskVolume } from '@ccm/shared'
+import { measureRest, runDelete, type DeleteAsk } from './delete'
 import { DiskHistory } from './history'
 import { DiskMapHost, type DiskMapSpawner } from './host'
-import { cleanChildren, cleanFastScan, cleanHistoryLimit, cleanScan, cleanSearch, isAbsolutePath, MAX_DELETE, toChildren, toDone, toProgress, toSearch, toStatus, toVolumes } from './map'
+import { cleanChildren, cleanFastScan, cleanHistoryLimit, cleanScan, cleanSearch, cleanSizes, isAbsolutePath, MAX_DELETE, toChildren, toDone, toProgress, toSearch, toSizes, toStatus, toVolumes } from './map'
 
 export const DISKMAP_CHANNELS = [
   'ccm:diskmap-volumes', 'ccm:diskmap-status', 'ccm:diskmap-scan', 'ccm:diskmap-pause', 'ccm:diskmap-resume', 'ccm:diskmap-cancel',
-  'ccm:diskmap-children', 'ccm:diskmap-search', 'ccm:diskmap-delete', 'ccm:diskmap-reveal', 'ccm:diskmap-history', 'ccm:diskmap-fastscan',
+  'ccm:diskmap-children', 'ccm:diskmap-search', 'ccm:diskmap-delete', 'ccm:diskmap-reveal', 'ccm:diskmap-history', 'ccm:diskmap-fastscan', 'ccm:diskmap-sizes',
 ] as const
 export const DISKMAP_PROGRESS = 'ccm:diskmap-progress'
 export const DISKMAP_DONE = 'ccm:diskmap-done'
@@ -116,6 +116,14 @@ export class DiskMapService {
     return toChildren(await this.host.call('disk.children', clean).catch(() => null))
   }
 
+  async sizes(req: unknown): Promise<DiskSizes | null> {
+    const paths = cleanSizes(req, this.opts.platform)
+    if (!paths) return null
+    if (!this.host.running && !fs.existsSync(path.join(this.opts.dataDir, 'disk', 'index.bin'))) return null
+    await this.ensureLoaded()
+    return toSizes(await this.host.call('disk.sizes', { paths }).catch(() => null))
+  }
+
   async search(req: unknown): Promise<DiskSearchResult> {
     const q = cleanSearch(req, this.opts.platform)
     if (!q) return EMPTY_SEARCH
@@ -138,6 +146,7 @@ export class DiskMapService {
         guard: async () => ({ platform: this.opts.platform, home: this.opts.home, keep: this.opts.keep(), roots: toStatus(await this.host.call('disk.status')).roots, volumes: (await this.volumes()).map((v) => v.mount).filter(Boolean) }),
         known: async (p) => toChildren(await this.host.call('disk.children', { path: p, limit: 0 }).catch(() => null)) !== null,
         sizeOf: async (p) => toChildren(await this.host.call('disk.children', { path: p, limit: 0 }))?.size ?? null,
+        measure: measureRest,
         confirm: (a) => ask(a, false),
         confirmPermanent: (a) => ask(a, true),
         trash: this.opts.trash,
@@ -146,7 +155,6 @@ export class DiskMapService {
           await this.host.call('disk.forget', { paths: gone })
           void this.host.call('disk.save').catch(() => undefined)
         },
-        measure: measureRest,
         record: (entry) => this.history.append(entry),
       })
     } finally {
@@ -202,6 +210,7 @@ export function createDiskMap(opts: DiskMapOptions): DiskMap {
   ipcMain.handle('ccm:diskmap-delete', guard<DiskDeleteResult>({ done: [], failed: [], freed: 0, permanent: false, cancelled: true }, (e, req) => svc.remove(e, req)))
   ipcMain.handle('ccm:diskmap-reveal', guard<void>(undefined, (_e, p) => svc.reveal(p)))
   ipcMain.handle('ccm:diskmap-fastscan', guard<DiskFastScanResult>({ started: false, error: 'failed' }, (_e, req) => svc.fastScan(req)))
+  ipcMain.handle('ccm:diskmap-sizes', guard<DiskSizes | null>(null, (_e, req) => svc.sizes(req)))
   ipcMain.handle('ccm:diskmap-history', guard<DiskHistoryEntry[]>([], (_e, req) => svc.historyRead(req)))
   return {
     host,

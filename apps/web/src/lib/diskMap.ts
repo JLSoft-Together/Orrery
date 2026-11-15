@@ -1,8 +1,9 @@
 import { DISK_KINDS, DISK_SORTS } from '@ccm/shared'
 export { DISK_KINDS, DISK_SORTS }
-import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSort } from '@ccm/shared'
+import type { DiskScanLevel, DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult, DiskSizes, DiskSort } from '@ccm/shared'
 import { desktop } from './desktop'
 
+export type { DiskSizes } from '@ccm/shared'
 export type { DiskVolume, DiskEntry, DiskChildren, DiskProgress, DiskStatus, DiskDeleteResult, DiskDone, DiskFastScanResult, DiskHistoryEntry, DiskSearchQuery, DiskSearchResult } from '@ccm/shared'
 export type { DiskSort }
 export type DiskLevel = DiskScanLevel
@@ -21,6 +22,7 @@ interface DiskMapBridge {
   diskMapReveal?: (path: string) => Promise<void>
   diskMapHistory?: (req: { limit: number }) => Promise<DiskHistoryEntry[]>
   diskMapFastScan?: (req: { drive: string }) => Promise<DiskFastScanResult>
+  diskMapSizes?: (req: { paths: string[] }) => Promise<DiskSizes | null>
   onDiskMapProgress?: (cb: (p: DiskProgress) => void) => () => void
   onDiskMapDone?: (cb: (d: DiskDone | null) => void) => () => void
 }
@@ -28,6 +30,7 @@ interface DiskMapBridge {
 const bridge = desktop as unknown as DiskMapBridge | undefined
 
 export const hasDiskMap = typeof bridge?.diskMapScan === 'function' && typeof bridge?.diskMapChildren === 'function'
+export const hasDiskSizes = hasDiskMap && typeof bridge?.diskMapSizes === 'function'
 export const hasFastScan = hasDiskMap && typeof bridge?.diskMapFastScan === 'function'
 
 async function call<T>(fn: (() => Promise<T>) | undefined, fallback: T): Promise<T> {
@@ -48,6 +51,8 @@ export const diskMapResume = (): Promise<boolean> => call(bridge?.diskMapResume 
 export const diskMapCancel = (): Promise<boolean> => call(bridge?.diskMapCancel && (() => bridge.diskMapCancel!()), false)
 export const diskMapChildren = (path: string, limit = 2000): Promise<DiskChildren | null> =>
   call<DiskChildren | null>(bridge?.diskMapChildren && (() => bridge.diskMapChildren!({ path, sort: 'size', limit })), null)
+export const diskMapSizes = (paths: string[]): Promise<DiskSizes | null> =>
+  call<DiskSizes | null>(bridge?.diskMapSizes && (() => bridge.diskMapSizes!({ paths })), null)
 export const diskMapSearch = (q: DiskSearchQuery): Promise<DiskSearchResult | null> =>
   call<DiskSearchResult | null>(bridge?.diskMapSearch && (() => bridge.diskMapSearch!(q)), null)
 export const diskMapDelete = (paths: string[], permanent: boolean): Promise<DiskDeleteResult | null> =>

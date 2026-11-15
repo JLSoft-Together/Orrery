@@ -9,6 +9,7 @@ import { isMac } from '../../lib/platform'
 import { baseName, hasChecks, hasExplorer, hasSearch, readFile, revealPath, type SearchQuery } from '../../lib/preview'
 import { grammarFor } from '../../lib/codeView'
 import { useExplorerChanges } from '../../composables/useExplorerChanges'
+import { useDiskNav } from '../../composables/useDiskSizes'
 import { useExplorerStore, type ExplorerView } from '../../stores/explorer'
 import { useUiStore } from '../../stores/ui'
 import CreateEntryDialog from './CreateEntryDialog.vue'
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const explorer = useExplorerStore()
 const ui = useUiStore()
+const diskNav = useDiskNav()
 
 watch(
   () => props.root,
@@ -255,6 +257,12 @@ async function onAction(id: ExplorerAction, row: TreeRow): Promise<void> {
       break
     case 'run':
       emit('run', dir)
+      break
+    case 'disk-open':
+      void diskNav.openInDisk(row.path)
+      break
+    case 'disk-clean':
+      diskNav.cleanProject(root)
       break
     case 'show-diff':
       if (changes.status.value?.ok) emit('openDiff', changes.status.value.root, row.path)

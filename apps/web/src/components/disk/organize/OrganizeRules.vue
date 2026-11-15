@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, X } from 'lucide-vue-next'
+import AppSelect from '../../AppSelect.vue'
 import { emptyRule, ORGANIZE_MAX_RULES, ORGANIZE_RULE_KINDS, ruleValid, type OrganizeRule } from '../../../lib/organize'
 
 const props = defineProps<{ rules: OrganizeRule[] }>()
@@ -15,6 +16,13 @@ watch(
   (r) => (draft.value = r.map((x) => ({ ...x }))),
   { immediate: true },
 )
+
+const kindOptions = computed(() => ORGANIZE_RULE_KINDS.map((k) => ({ value: k as string, label: t(`diskOrganize.rules.kind.${k}`) })))
+
+function setKind(r: OrganizeRule, v: string): void {
+  r.kind = v as OrganizeRule['kind']
+  saved.value = false
+}
 
 const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(props.rules))
 const allValid = computed(() => draft.value.every(ruleValid))
@@ -42,9 +50,7 @@ function save(): void {
     <p class="mt-1 text-2xs text-ink-muted">{{ t('diskOrganize.rules.hint') }}</p>
     <ul class="mt-2 flex flex-col gap-1.5">
       <li v-for="(r, i) in draft" :key="i" class="flex flex-wrap items-center gap-1.5 text-xs" data-organize-rule>
-        <select v-model="r.kind" class="ccm-field w-40" :aria-label="t('diskOrganize.rules.kind.ext')" @change="saved = false">
-          <option v-for="k in ORGANIZE_RULE_KINDS" :key="k" :value="k">{{ t(`diskOrganize.rules.kind.${k}`) }}</option>
-        </select>
+        <AppSelect :model-value="r.kind as string" :options="kindOptions" :label="t('diskOrganize.rules.kind.ext')" size="sm" class="w-40" @update:model-value="(v) => setKind(r, v)" />
         <input
           v-model="r.value"
           :type="r.kind === 'size' ? 'number' : 'text'"

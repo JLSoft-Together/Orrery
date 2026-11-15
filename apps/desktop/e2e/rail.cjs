@@ -3,7 +3,7 @@ const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const NAV = `document.querySelector('nav[aria-label=Projects]')`
@@ -155,11 +155,14 @@ async function run(app) {
   await sleep(300)
 
   // --- Alt+↓ reorders projects from the header ---
-  await evaluate(`${NAV}.querySelector('[data-side-head]').focus()`)
-  await chord('ArrowDown', 'ArrowDown', 40, ALT)
-  const reordered = await evaluate(`[...${NAV}.querySelectorAll('[data-rail-name]')].map((n) => n.textContent.trim())`)
-  check('Alt+↓ on a header moves the project down', JSON.stringify(reordered) === JSON.stringify(['beta', 'alpha']), JSON.stringify(reordered))
-  check('order is remembered', (await evaluate(`localStorage.getItem('ccm.workspace.railOrder')`))?.includes('beta'))
+  if (UI === 'next') console.log('SKIP Alt+↓ / Shift+F10 on the classic sidebar header: hidden in next, the live rail is covered by v102-next.cjs')
+  else {
+    await evaluate(`${NAV}.querySelector('[data-side-head]').focus()`)
+    await chord('ArrowDown', 'ArrowDown', 40, ALT)
+    const reordered = await evaluate(`[...${NAV}.querySelectorAll('[data-rail-name]')].map((n) => n.textContent.trim())`)
+    check('Alt+↓ on a header moves the project down', JSON.stringify(reordered) === JSON.stringify(['beta', 'alpha']), JSON.stringify(reordered))
+    check('order is remembered', (await evaluate(`localStorage.getItem('ccm.workspace.railOrder')`))?.includes('beta'))
+  }
 
   // --- v43 context menus: project header, keyboard, Copy path, row Split right, Close project, empty space ---
   const MENU = `document.querySelector('[data-context-menu]')`
@@ -177,13 +180,15 @@ async function run(app) {
   const status = await evaluate(`${NAV}.querySelector('[data-rail-status]')?.textContent.trim() ?? ''`)
   check('Copy path copies the project folder and says so', status === 'Path copied' && (copied === A || String(copied).startsWith('ERR')), `${status} / ${copied}`)
 
-  await evaluate(`${headOf('alpha')}.focus()`)
-  await chord('F10', 'F10', 121, SHIFT)
-  await waitFor(`!!${MENU}`, 5000, 'menu from keyboard')
-  check('Shift+F10 on a header opens the menu with focus on its first item', await evaluate(`document.activeElement?.getAttribute('role') === 'menuitem' && !!document.activeElement.closest('[data-context-menu]')`))
-  await key('Escape', 'Escape', 27)
-  await waitFor(`!${MENU}`, 3000, 'menu closed by Esc')
-  check('Esc closes the menu and returns focus to the header', await evaluate(`document.activeElement === ${headOf('alpha')}`))
+  if (UI !== 'next') {
+    await evaluate(`${headOf('alpha')}.focus()`)
+    await chord('F10', 'F10', 121, SHIFT)
+    await waitFor(`!!${MENU}`, 5000, 'menu from keyboard')
+    check('Shift+F10 on a header opens the menu with focus on its first item', await evaluate(`document.activeElement?.getAttribute('role') === 'menuitem' && !!document.activeElement.closest('[data-context-menu]')`))
+    await key('Escape', 'Escape', 27)
+    await waitFor(`!${MENU}`, 3000, 'menu closed by Esc')
+    check('Esc closes the menu and returns focus to the header', await evaluate(`document.activeElement === ${headOf('alpha')}`))
+  }
 
   const firstRow = `${NAV}.querySelector('[data-group] [data-side-row]')`
   const rowTab = await evaluate(`(() => { const k = ${firstRow}.dataset.sidePane; return ${W}.tabs.findIndex((t) => JSON.stringify(t.root).includes(k)) })()`)
@@ -219,6 +224,10 @@ async function run(app) {
   await waitFor(`!${MENU}`, 3000, 'empty menu closed')
 
   // --- v98 multi-select: Ctrl+click rows of two projects, Esc clears, right-click → Group ---
+  if (UI === 'next') {
+    console.log('SKIP v98 multi-select, v99 project drag, avatar column: classic sidebar only, hidden in next')
+    return
+  }
   const tabOfPane = (k) => `${W}.tabs.findIndex((t) => JSON.stringify(t.root).includes(${k}))`
   const rowIn = (name) => `${headOf(name)}.closest('[data-group]').querySelector('[data-side-row]')`
   const modClick = (sel) => evaluate(`(() => { const el = ${sel}; el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true })); return true })()`)

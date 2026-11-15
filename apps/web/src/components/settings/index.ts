@@ -1,7 +1,11 @@
 import type { ToastKind } from '@ccm/shared'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about', 'workspace', 'disk'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
+
+export const NEXT_ONLY_PAGES: readonly SettingsPage[] = ['workspace', 'disk']
+
+export const pageAvailable = (page: SettingsPage, env: SettingsEnv, next: boolean): boolean => (next || !NEXT_ONLY_PAGES.includes(page)) && pageVisible(page, env)
 
 export const isSettingsPage = (v: unknown): v is SettingsPage => typeof v === 'string' && (SETTINGS_PAGES as readonly string[]).includes(v)
 
@@ -89,6 +93,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'general', id: 'keyHints', labelKey: 'keys.hints', hintKey: 'keys.hintsHint' },
   { page: 'general', id: 'launch', labelKey: 'settings.launchTerminal', hintKey: 'settings.launchTerminalHint', needs: 'mac' },
 
+  { page: 'appearance', id: 'uiGeneration', labelKey: 'mist.switch.tryNext', hintKey: 'mist.switch.tryNextHint' },
   { page: 'appearance', id: 'theme', labelKey: 'settings.theme' },
   { page: 'appearance', id: 'stars', labelKey: 'themeV95.stars', hintKey: 'themeV95.starsHint' },
   { page: 'appearance', id: 'starsPanels', labelKey: 'themeV95.starsPanels', hintKey: 'themeV95.starsPanelsHint' },
@@ -164,6 +169,29 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'about', id: 'help-fonts', labelKey: 'fonts.licenses', hintKey: 'fonts.licensesHint' },
   { page: 'about', id: 'help-fileIcons', labelKey: 'settings.fileIconsLicense', hintKey: 'settings.fileIconsLicenseHint', needs: 'terminals' },
   { page: 'about', id: 'help-habblaud', labelKey: 'settings.habblaudLicense', hintKey: 'settings.habblaudLicenseHint' },
+]
+
+const NEXT_PAGE_OF: Record<string, SettingsPage> = {
+  clickMenu: 'workspace',
+  menuToast: 'workspace',
+  dim: 'workspace',
+  compactAuto: 'workspace',
+  agentShim: 'workspace',
+  dust: 'workspace',
+  fileIcons: 'workspace',
+  diskMap: 'disk',
+  disk: 'disk',
+}
+
+export const nextEntries = (mac: boolean): SettingsEntry[] => [
+  ...entries(mac)
+    .filter((e) => !(e.page === 'appearance' && ['stars', 'starsPanels', 'starsFx'].includes(e.id)))
+    .map((e): SettingsEntry => ({ ...e, page: NEXT_PAGE_OF[e.id] ?? e.page })),
+  { page: 'appearance', id: 'mode', labelKey: 'mist.settings.mode', hintKey: 'mist.settings.modeHint' },
+  { page: 'appearance', id: 'reduceGlass', labelKey: 'mist.settings.reduceGlass', hintKey: 'mist.settings.reduceGlassHint' },
+  { page: 'appearance', id: 'clearTerm', labelKey: 'mist.settings.clearTerm', hintKey: 'mist.settings.clearTermHint' },
+  { page: 'appearance', id: 'motion', labelKey: 'mist.settings.motion', hintKey: 'mist.settings.motionHint' },
+  { page: 'appearance', id: 'stars', labelKey: 'mist.settings.stars', hintKey: 'mist.settings.starsOnly' },
 ]
 
 const fold = (s: string): string =>

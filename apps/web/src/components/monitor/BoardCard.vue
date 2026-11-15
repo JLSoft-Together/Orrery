@@ -18,6 +18,8 @@ import { useSettingsStore } from '../../stores/settings'
 import { useToolSpansStore } from '../../stores/toolSpans'
 import { useUiStore } from '../../stores/ui'
 import { useWorkspaceStore } from '../../stores/workspace'
+import { useUiGenStore } from '../../stores/uiGen'
+import Chip from '../next/ui/Chip.vue'
 import StatusIcon from '../StatusIcon.vue'
 import PresetIcon from '../workspace/PresetIcon.vue'
 import SubagentOrbit from '../workspace/SubagentOrbit.vue'
@@ -32,6 +34,7 @@ const ui = useUiStore()
 const settings = useSettingsStore()
 const spans = useToolSpansStore()
 const workspace = useWorkspaceStore()
+const uiGen = useUiGenStore()
 
 const provider = computed<Provider>(() => props.terminal.provider ?? 'claude')
 const agentLabel = computed(() => t(`monitorV88.agentLabel.${provider.value}`))
@@ -96,7 +99,7 @@ const line = computed(() => {
   if (needs.value) {
     const w = waitDisplay(term.waitingFor, main.value?.currentTool, t)
     const waited = term.statusSince ? duration(term.statusSince, now.value) : null
-    return [w?.text ?? t(meta.value.labelKey), waited].filter(Boolean).join(' · ')
+    return [w?.text ?? t(meta.value.labelKey), waited].filter(Boolean).join(uiGen.isNext ? ', ' : ' · ')
   }
   const tool = main.value?.currentTool
   if (working.value && tool) {
@@ -112,7 +115,7 @@ const line = computed(() => {
   <article
     role="group"
     tabindex="0"
-    class="ccm-board-card group relative flex min-w-0 flex-col gap-2 rounded-card border bg-surface py-2.5 ps-3.5 pe-3 shadow-card outline-none focus-visible:ring-2 focus-visible:ring-focus"
+    class="ccm-board-card mist-card mist-card-flat group relative flex min-w-0 flex-col gap-2 rounded-card border bg-surface py-2.5 ps-3.5 pe-3 shadow-card outline-none focus-visible:ring-2 focus-visible:ring-focus"
     :class="[`ccm-agent-${provider}`, needs ? 'border-warning' : 'border-transparent', focused ? 'ring-2 ring-focus' : '', ended ? 'text-ink-muted' : '', quiet ? 'ccm-board-quiet' : '']"
     :aria-label="`${agentLabel}: ${title}`"
     :data-board-card="terminal.id"
@@ -134,7 +137,15 @@ const line = computed(() => {
         <SubagentOrbit :agents="subAgents" />
       </span>
     </div>
+    <Chip v-if="uiGen.isNext" :status="terminal.status" :tone="needs ? 'waiting' : undefined" class="self-start" :title="fileText || line" data-board-line>
+      <template #icon>
+        <component :is="file.access === 'edit' ? Pencil : Eye" v-if="file" :size="12" aria-hidden="true" />
+        <StatusIcon v-else :status="terminal.status" :size="12" />
+      </template>
+      {{ fileText || line }}
+    </Chip>
     <p
+      v-else
       class="flex min-w-0 items-center gap-1.5 rounded-inner px-1.5 py-0.5 text-xs tabular-nums"
       :class="needs ? 'ccm-chip ccm-chip-warning font-medium text-warning' : meta.text"
       :title="fileText || line"

@@ -8,6 +8,7 @@ import { fileMention } from '../../lib/promptAttachments'
 import { crashBlocks, crashClock, crashPrompt, fileIndex, frameFile, groupCrashes, type CrashFrame, type CrashGroup, type FileIndex, type OwnFrame } from '../../lib/runCrash'
 import { isErrorLine } from '../../lib/runUi'
 import { inRoot, useRunStore } from '../../stores/run'
+import AppSelect from '../AppSelect.vue'
 
 const props = defineProps<{ session: RunSession | null; kind: RunKind; root: string }>()
 const emit = defineEmits<{ open: [path: string, line: number]; noAgent: [] }>()
@@ -31,6 +32,7 @@ type Tab = 'build' | 'run'
 const tab = ref<Tab>('build')
 const query = ref('')
 const minLevel = ref<LogLevel>('V')
+const levelOptions = computed(() => LEVELS.map((l) => ({ value: l as string, label: `${l} - ${t(`run.log.levels.${l}`)}` })))
 const follow = ref(true)
 const scroller = ref<HTMLElement | null>(null)
 
@@ -200,9 +202,15 @@ function lineClass(l: RunLogLine): string {
         {{ t('runCrash.chip', { time: crashClock(crashes[0]!.block.at) }) }}
         <span v-if="crashTotal > 1" class="tabular">{{ t('runCrash.times', { n: crashTotal }) }}</span>
       </button>
-      <select v-if="hasLevels" v-model="minLevel" class="ccm-field h-7 shrink-0 cursor-pointer pr-1 text-2xs" :aria-label="t('run.log.level')" :title="t('run.log.level')">
-        <option v-for="l in LEVELS" :key="l" :value="l">{{ l }} · {{ t(`run.log.levels.${l}`) }}</option>
-      </select>
+      <AppSelect
+        v-if="hasLevels"
+        :model-value="minLevel as string"
+        :options="levelOptions"
+        :label="t('run.log.level')"
+        size="sm"
+        class="shrink-0"
+        @update:model-value="(v) => (minLevel = v as LogLevel)"
+      />
       <label class="ccm-field ml-auto flex h-7 min-w-0 max-w-56 flex-1 items-center gap-1.5">
         <Search :size="12" class="shrink-0 text-ink-faint" aria-hidden="true" />
         <input v-model="query" type="search" class="min-w-0 flex-1 bg-transparent text-2xs outline-none" :placeholder="t('run.log.search')" :aria-label="t('run.log.search')" spellcheck="false" />

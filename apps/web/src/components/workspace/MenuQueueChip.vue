@@ -7,15 +7,17 @@ import { usePaneInfo } from '../../composables/usePaneInfo'
 import { now } from '../../lib/format'
 import { shortAge, folderName } from '../../lib/sidebarRows'
 import { isMac } from '../../lib/platform'
-import { askedShortcutText } from '../../lib/shortcuts'
+import { askedShortcutText, shortcutText } from '../../lib/shortcuts'
 import { paneProjectOf, useWorkspaceStore } from '../../stores/workspace'
 import { type MenuEntry, useMenuQueueStore } from '../../stores/menuQueue'
 import StatusIcon from '../StatusIcon.vue'
+import { useUiGenStore } from '../../stores/uiGen'
 
 const { t } = useI18n()
 const queue = useMenuQueueStore()
 const workspace = useWorkspaceStore()
 const info = usePaneInfo()
+const uiGen = useUiGenStore()
 
 const WIDTH = 320
 const MARGIN = 8
@@ -155,6 +157,7 @@ onBeforeUnmount(() => {
   >
     <MessageCircleQuestion :size="14" aria-hidden="true" />
     <span>{{ t('menuQueue.chip', { n: rows.length }) }}</span>
+    <kbd v-if="uiGen.isNext" class="ccm-next-kbd" aria-hidden="true">{{ shortcutText('wsAsked', isMac) }}</kbd>
   </button>
   <Teleport to="body">
     <Transition name="ccm-menu">

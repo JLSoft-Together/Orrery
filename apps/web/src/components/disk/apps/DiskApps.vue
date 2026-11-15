@@ -6,12 +6,14 @@ import { formatSize } from '../../../lib/diskMap'
 import { APP_SORTS, type AppSort } from '../../../lib/diskApps'
 import { isMac } from '../../../lib/platform'
 import { useDiskAppsStore } from '../../../stores/diskApps'
+import AppSelect from '../../AppSelect.vue'
 import AppLeftovers from './AppLeftovers.vue'
 import AppRow from './AppRow.vue'
 
 const { t, locale } = useI18n()
 const store = useDiskAppsStore()
 const mac = isMac
+const sortOptions = computed(() => APP_SORTS.map((s) => ({ value: s as string, label: t(`diskApps.sort.${s}`) })))
 
 const notice = computed(() => {
   const n = store.notice
@@ -35,9 +37,7 @@ onMounted(() => store.open())
       </div>
       <label class="flex items-center gap-1.5 text-ink-muted">
         {{ t('diskApps.sort.label') }}
-        <select v-model="store.sort" class="ccm-field" data-app-sort>
-          <option v-for="s in APP_SORTS" :key="s" :value="s as AppSort">{{ t(`diskApps.sort.${s}`) }}</option>
-        </select>
+        <AppSelect :model-value="store.sort as string" :options="sortOptions" :label="t('diskApps.sort.label')" size="sm" data-app-sort @update:model-value="(v) => (store.sort = v as AppSort)" />
       </label>
       <button type="button" class="ccm-btn" :disabled="store.loading" data-app-refresh @click="store.load()">
         <RefreshCw :size="12" :class="store.loading ? 'animate-spin' : ''" aria-hidden="true" />{{ t('diskApps.refresh') }}

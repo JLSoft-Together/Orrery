@@ -1,6 +1,6 @@
 # v102: Giao diện mới Sương kính (UI next gen)
 
-Trạng thái: **plan + spec đã chốt (15/11), chưa code**, còn mở Q1 kính / flat (SPEC mục 10). Chủ nhân đang làm v100 (click menu) + v101 (disk manager) trên `feat_clean_memory`.
+Trạng thái: **plan + spec đã chốt (15/11), chưa code**, Q1 chốt kính, không flat (SPEC mục 10). Chủ nhân đang làm v100 (click menu) + v101 (disk manager) trên `feat_clean_memory`.
 
 ## Tóm tắt
 Thay toàn bộ UI Orrery theo theme Sương kính của jin-tools: kính mờ, nền sương gradient tĩnh, Manrope.

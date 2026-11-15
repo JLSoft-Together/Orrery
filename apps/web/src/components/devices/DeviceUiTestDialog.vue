@@ -9,6 +9,7 @@ import { devLaunch, devManifest, devUiRead, devUiRestore, devUiSet } from '../..
 import { retireOverlay } from '../../lib/motion'
 import { tabProject, useWorkspaceStore } from '../../stores/workspace'
 import { dirKey } from '../../stores/favorites'
+import AppSelect from '../AppSelect.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import ToggleSwitch from '../ToggleSwitch.vue'
 
@@ -53,6 +54,7 @@ const localeOptions = computed(() => {
   if (cur) tags.add(cur)
   return [{ value: '', label: t('deviceTools.uiTest.localeSystem') }, ...[...tags].sort().map((v) => ({ value: v, label: v }))]
 })
+const rootOptions = computed(() => [{ value: '', label: t('deviceTools.uiTest.noProject') }, ...roots.value.map((r) => ({ value: r, label: baseName(r) }))])
 const localeBlocked = computed(() => (!state.value?.locale.supported ? 'deviceTools.uiTest.localeUnsupported' : !pkgOrNull.value ? 'deviceTools.uiTest.localeNeedsPkg' : null))
 
 const errorText = computed(() => {
@@ -260,10 +262,7 @@ watch(
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <label class="flex min-w-0 flex-col gap-1 text-2xs text-ink-muted">
                 {{ t('deviceTools.uiTest.project') }}
-                <select class="ccm-field min-w-0 text-xs" :value="root" data-uitest-root @change="pickRoot(($event.target as HTMLSelectElement).value)">
-                  <option value="">{{ t('deviceTools.uiTest.noProject') }}</option>
-                  <option v-for="r in roots" :key="r" :value="r" :title="r">{{ baseName(r) }}</option>
-                </select>
+                <AppSelect :model-value="root" :options="rootOptions" :label="t('deviceTools.uiTest.project')" size="sm" class="w-full" data-uitest-root @update:model-value="pickRoot" />
               </label>
               <label class="flex min-w-0 flex-col gap-1 text-2xs text-ink-muted">
                 {{ t('deviceTools.uiTest.pkg') }}
@@ -320,16 +319,16 @@ watch(
                     <p class="text-sm text-ink">{{ t('deviceTools.uiTest.locale') }}</p>
                     <p v-if="localeBlocked" class="mt-0.5 text-2xs text-ink-faint">{{ t(localeBlocked) }}</p>
                   </div>
-                  <select
-                    class="ccm-field min-w-28 text-xs"
-                    :value="state.locale.current ?? ''"
+                  <AppSelect
+                    :model-value="state.locale.current ?? ''"
+                    :options="localeOptions"
+                    :label="t('deviceTools.uiTest.locale')"
+                    size="sm"
+                    class="min-w-28"
                     :disabled="!!localeBlocked || !!busy"
-                    :aria-label="t('deviceTools.uiTest.locale')"
                     data-uitest-locale
-                    @change="apply({ key: 'locale', pkg: pkgOrNull!, value: ($event.target as HTMLSelectElement).value }, 'locale')"
-                  >
-                    <option v-for="o in localeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-                  </select>
+                    @update:model-value="(v) => apply({ key: 'locale', pkg: pkgOrNull!, value: v }, 'locale')"
+                  />
                 </div>
               </div>
             </section>

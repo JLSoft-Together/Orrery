@@ -30,7 +30,7 @@ function toggle(id: string): void {
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col rounded-card bg-surface p-4 shadow-card sm:p-5" aria-labelledby="usage-models-title">
+  <section class="mist-card mist-card-blur flex min-w-0 flex-col rounded-card bg-surface p-4 shadow-card sm:p-5" aria-labelledby="usage-models-title">
     <div class="flex min-h-7 items-center">
       <h3 id="usage-models-title" class="min-w-0 truncate text-base font-semibold" :title="heading">{{ heading }}</h3>
     </div>

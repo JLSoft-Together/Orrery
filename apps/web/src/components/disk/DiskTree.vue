@@ -8,6 +8,7 @@ import { hasDiskMove } from '../../lib/diskMove'
 import { snapshotLabel, type DiskDiffRow } from '../../lib/diskSnap'
 import { useDiskMapStore } from '../../stores/diskMap'
 import { useDiskSnapStore } from '../../stores/diskSnap'
+import AppSelect from '../AppSelect.vue'
 import ContextMenu from '../ui/ContextMenu.vue'
 
 const ROW = 32
@@ -55,8 +56,13 @@ watch(
 const growing = computed(() => snap.active && snap.showTop)
 const baseWhen = computed(() => (snap.base ? snapshotLabel(snap.base, locale.value) : ''))
 
-function onBase(e: Event): void {
-  void snap.select((e.target as HTMLSelectElement).value, disk.path)
+const baseOptions = computed(() => [
+  { value: '', label: t('diskSnap.none') },
+  ...snap.snapshots.map((s) => ({ value: s.id as string, label: snapshotLabel(s, locale.value) })),
+])
+
+function onBase(id: string): void {
+  void snap.select(id, disk.path)
 }
 
 interface DeltaCell {
@@ -123,11 +129,17 @@ function check(e: MouseEvent, path: string): void {
 <template>
   <div class="flex min-h-0 flex-1 flex-col" data-disk-tree>
     <div v-if="snap.supported && snap.snapshots.length" class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line px-3 py-1.5 text-2xs text-ink-muted" data-disk-compare>
-      <label for="disk-compare-base" class="shrink-0">{{ t('diskSnap.compare') }}</label>
-      <select id="disk-compare-base" :value="snap.baseId" class="ccm-field min-w-0 max-w-[16rem] cursor-pointer text-2xs" data-disk-compare-base @change="onBase">
-        <option value="">{{ t('diskSnap.none') }}</option>
-        <option v-for="s in snap.snapshots" :key="s.id" :value="s.id">{{ snapshotLabel(s, locale) }}</option>
-      </select>
+      <span class="shrink-0">{{ t('diskSnap.compare') }}</span>
+      <AppSelect
+        id="disk-compare-base"
+        :model-value="snap.baseId as string"
+        :options="baseOptions"
+        :label="t('diskSnap.compare')"
+        size="sm"
+        class="max-w-[16rem]"
+        data-disk-compare-base
+        @update:model-value="onBase"
+      />
       <span v-if="snap.loading" class="text-ink-faint" role="status">{{ t('diskSnap.loading') }}</span>
       <span v-else-if="snap.failed" class="text-warning" role="status" data-disk-compare-failed>{{ t('diskSnap.failed') }}</span>
       <button v-if="snap.active" type="button" class="ccm-btn-plain ml-auto shrink-0 text-2xs" :aria-pressed="snap.showTop" data-disk-growth-toggle @click="snap.showTop = !snap.showTop">

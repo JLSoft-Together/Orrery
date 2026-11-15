@@ -112,3 +112,18 @@ A theme may also change shape, never by component code: tokens with Apple defaul
 Neutral black, no blue tint: canvas `#040405`, panel `#0b0b0d` (`--ccm-panel-bg`), surface/card `#0e0e11`, raised `#18181c`, control `#1f1f24`, lines `#1d1d21` / `#232328`, terminal well `#060607`, ink `#ececf1`, muted `#a6a6b0`, faint `#85858f`. Accent and agent colours equal Orrery dark; shape tokens equal Orrery dark.
 
 Stars are the one exception to "no decoration" (owner, 2026-11-11): token `--ccm-sky` (layered radial-gradients, two tiles 280x260 and 120x110, alpha 0.2-0.55, white / pale blue / pale yellow) with `--ccm-sky-size`; default `none` in `style.css` `:root`. Painted only by `html`, `.ccm-titlebar`, `.ccm-footer` and the utility `.ccm-sky` (canvas colour + sky, fixed attachment so every layer lines up); never behind text-bearing surfaces. `:root[data-stars="off"]` forces `none`. Static, no blur, no animation. Rule 9 contrast is checked on surface / raised, never on the stars.
+
+## v102 UI next gen Sương kính (`data-ui="next"`, owner 2026-11-15)
+Every next token lives under `:root[data-ui='next']` in `apps/web/src/next/tokens.css` (Sương kính light, `.dark` block for dark) and `next/palettes.css` (one block per palette and scheme, `[data-next-theme='<id>']`); `style.css` / `themes.css` never mention `data-ui='next'` (`next/palettes.test.ts`). At next the root drops `data-theme`, so no classic theme block applies.
+
+| Group | Tokens | Notes |
+|---|---|---|
+| Background | `--ccm-canvas`, `--ccm-bg-a/-b/-c`, `--ccm-bg-image` | static radial-gradient mist on `html`, never animated; Ngân hà keeps its stars |
+| Glass (chrome + floating only) | `--ccm-glass`, `--ccm-glass-pop`, `--ccm-glass-edge`, `--ccm-side`, `--ccm-glass-blur` (20px), `--ccm-glass-pop-blur` (24px), `--ccm-material(-pop)` | read by `.glass`, `.glass-pop`, `.glass-side`; panes, terminals and long lists never blur. `data-glass="reduced"` swaps glass for `--ccm-material`, blur `none` |
+| Status | `--ccm-working` (blue, split from waiting amber), `--ccm-waiting`, `--ccm-idle`, `--ccm-done`, `--ccm-error`, `--ccm-stale`, `--ccm-working-soft` (10%) | still icon + text + colour (Chip `chipTone.ts`) |
+| Accent | `--ccm-accent`, `--ccm-accent-ink`, `--ccm-accent-hi`, `--ccm-on-accent`, `--ccm-accent-grad`, `--ccm-shadow-accent`, `--ccm-nav-on` | gradient only on the primary button / active nav, static |
+| Terminal well | `--ccm-well`, `--ccm-well-clear`, `--ccm-well-ink`, `--ccm-well-dim` | well stays solid; `clearTerm` uses `--ccm-well-clear` (no blur) |
+| Shape | `--radius-window` 24, `--radius-card` 18, `--radius-control` 12, `--radius-inner` 8, `--radius-pill`, `--text-2xs` 11px | |
+| Motion | `--ccm-dur-instant/fast/base/slow` 80 / 150 / 220 / 320 ms, `--ccm-ease-*` | `data-motion` full / reduced / off, `data-paused` while hidden; transform + opacity only |
+
+Palettes (`mist`, `nebula`, `aurora`, `graphite`, `dawn`, `galaxy`, `orrery`, `console`): Sương kính (light + dark), Tinh vân, Cực quang, Than chì, Bình minh sương (light + dark each), Ngân hà (dark), Orrery (light + dark), Console (dark): 9 cards in Settings → Appearance. Contrast: `next/palettes.test.ts` checks ink / muted / faint / status on surface, raised, glass and material at the 3 glow centres (WCAG AA 4.5:1).

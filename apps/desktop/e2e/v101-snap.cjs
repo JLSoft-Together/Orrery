@@ -7,7 +7,7 @@ process.env.CCM_E2E_OUT ||= path.join(os.tmpdir(), 'ccm-e2e-v101-snap')
 process.env.CCM_E2E_PORT ||= '4474'
 process.env.CCM_E2E_DBG ||= '9474'
 
-const { launch, sleep, REPO, OUT } = require('./cdp.cjs')
+const { launch, sleep, REPO, OUT, UI, selOptions, selPick } = require('./cdp.cjs')
 
 const results = []
 const check = (name, ok, extra = '') => {
@@ -33,13 +33,15 @@ write('b/x.bin', 2 * MB)
 write('c/y.bin', Math.round(1.5 * MB))
 setFake({ idle: 0, battery: false, free: 100 * GB })
 
-const coreBin = process.env.CCM_CORE_BIN || path.join(REPO, 'apps/core/target-4c/debug', process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core')
-const webDist = process.env.CCM_WEB_DIST || path.join(os.tmpdir(), 'ccm-web-4c')
+const exeName = process.platform === 'win32' ? 'orrery-core.exe' : 'orrery-core'
+const coreBins = ['debug', 'release'].map((p) => path.join(REPO, 'apps', 'core', 'target', p, exeName)).filter((f) => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
+const coreBin = process.env.CCM_CORE_BIN || coreBins[0] || ''
+const webDist = process.env.CCM_WEB_DIST || ''
 
 ;(async () => {
   let app
   try {
-    app = await launch({ env: { CCM_CORE_BIN: coreBin, CCM_WEB_DIST: webDist, CCM_E2E_DISKSNAP_FAKE: fake, CCM_E2E_DISKSNAP_TICK: '500', CCM_E2E_DISKSNAP_TG_SINK: sink, CCM_E2E_DISKMAP_CONFIRM: '1' } })
+    app = await launch({ env: { ...(coreBin ? { CCM_CORE_BIN: coreBin } : {}), ...(webDist ? { CCM_WEB_DIST: webDist } : {}), CCM_E2E_DISKSNAP_FAKE: fake, CCM_E2E_DISKSNAP_TICK: '500', CCM_E2E_DISKSNAP_TG_SINK: sink, CCM_E2E_DISKMAP_CONFIRM: '1' } })
     const { evaluate, waitFor, cmd } = app
     const D = 'window.ccmDesktop'
     const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
@@ -95,11 +97,11 @@ const webDist = process.env.CCM_WEB_DIST || path.join(os.tmpdir(), 'ccm-web-4c')
     await sleep(1500)
     await evaluate(`(() => { const el = ${q('[data-setup-done]')}; el?.click(); return true })()`)
     await sleep(300)
-    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = 'data'; return true })()`)
+    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = '${UI === 'next' ? 'disk' : 'data'}'; return true })()`)
     await waitFor(q('[data-disk-schedule]'), 15000, 'schedule section')
     check('Settings > Data > Disk shows the background scan and the low disk warning together', await evaluate(`!!${q('[data-disk-schedule-freq]')} && !!${q('[data-disk-schedule-telegram]')} && !!${q('[data-setting-row="disk"] [data-disk-threshold]')}`))
     check('the old warning setting is no longer under Notifications', await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsPage = 'notify'; return true })()`) && (await sleep(500), await evaluate(`!document.querySelector('[data-disk-threshold]')`)))
-    await evaluate(`(() => { ${S}.get('ui').settingsPage = 'data'; return true })()`)
+    await evaluate(`(() => { ${S}.get('ui').settingsPage = '${UI === 'next' ? 'disk' : 'data'}'; return true })()`)
     await waitFor(q('[data-disk-schedule]'), 15000, 'schedule section again')
     await evaluate(`${q('[data-disk-schedule]')}.scrollIntoView({ block: 'center' })`)
     await sleep(500)
@@ -117,9 +119,9 @@ const webDist = process.env.CCM_WEB_DIST || path.join(os.tmpdir(), 'ccm-web-4c')
     await evaluate(`(async () => { await ${S}.get('diskMap').open(${JSON.stringify(root)}); return true })()`)
     await waitFor(q('[data-disk-compare-base]'), 15000, 'compare picker')
     await evaluate(`(() => { ${S}.get('ui').tourOpen = false; return true })()`)
-    const optCount = await evaluate(`document.querySelectorAll('[data-disk-compare-base] option').length`)
+    const optCount = (await evaluate(selOptions(q('[data-disk-compare-base]'))))?.length
     check('the picker lists both snapshots plus "no comparison"', optCount === 3, String(optCount))
-    await evaluate(`(() => { const s = ${q('[data-disk-compare-base]')}; s.value = ${JSON.stringify(older)}; s.dispatchEvent(new Event('change')); return true })()`)
+    await evaluate(selPick(q('[data-disk-compare-base]'), `(t, i, v) => v === ${JSON.stringify(String(older))}`))
     await waitFor(q('[data-disk-delta]'), 15000, 'delta cells')
     await sleep(500)
     const cells = await evaluate(`Object.fromEntries([...document.querySelectorAll('[data-disk-row]')].map((r) => [r.dataset.path.split('\\\\').pop(), [r.querySelector('[data-disk-delta]')?.dataset.delta, r.querySelector('[data-disk-delta]')?.textContent.trim()]]))`)
@@ -167,7 +169,7 @@ const webDist = process.env.CCM_WEB_DIST || path.join(os.tmpdir(), 'ccm-web-4c')
     check('report names folders, not files', !/\.bin|big|more|new\.|x\.bin/i.test(text.replace(/ccm-snap-e2e-\w+/g, '')) && /\\a /.test(text.replace(/\\\.\.\\/g, '\\')) , text.replace(/\n/g, ' | '))
     check('report shortens the home folder', /~/.test(text) && !text.includes(os.homedir()), text.split('\n').slice(0, 6).join(' | '))
     fs.writeFileSync(path.join(SHOTS, 'telegram-report.txt'), text)
-    await evaluate(`(() => { ${S}.get('ui').settingsOpen = true; ${S}.get('ui').settingsPage = 'data'; return true })()`)
+    await evaluate(`(() => { ${S}.get('ui').settingsOpen = true; ${S}.get('ui').settingsPage = '${UI === 'next' ? 'disk' : 'data'}'; return true })()`)
     await waitFor(q('[data-disk-schedule-last]'), 15000, 'last text')
     await evaluate(`${q('[data-disk-schedule]')}.scrollIntoView({ block: 'center' })`)
     await sleep(500)

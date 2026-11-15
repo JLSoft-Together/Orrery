@@ -1,0 +1,250 @@
+:root[data-ui='next'][data-next-theme='nebula']:not(.dark) {
+  --ccm-canvas: #f2effa;
+  --ccm-bg-a: #e3d6ff;
+  --ccm-bg-b: #f8d8ec;
+  --ccm-bg-c: #dce6ff;
+  --ccm-material: #f8f6fc;
+  --ccm-material-pop: #fcfbfe;
+  --ccm-ink: #241b3a;
+  --ccm-ink-muted: #594e70;
+  --ccm-ink-faint: #5d5274;
+  --ccm-accent: #6a4fc9;
+  --ccm-accent-ink: #5a3fb8;
+  --ccm-on-accent: #ffffff;
+  --ccm-accent-hi: #7c62d6;
+  --ccm-well: #15111f;
+}
+
+:root[data-ui='next'][data-next-theme='nebula'].dark {
+  --ccm-canvas: #0d0a18;
+  --ccm-bg-a: rgb(120 90 220 / 0.24);
+  --ccm-bg-b: rgb(200 90 160 / 0.18);
+  --ccm-bg-c: rgb(70 90 200 / 0.15);
+  --ccm-material: #18142a;
+  --ccm-material-pop: #1d1832;
+  --ccm-ink: #ece8f7;
+  --ccm-ink-muted: #b3aacb;
+  --ccm-ink-faint: #aaa1c2;
+  --ccm-accent: #b9a3ff;
+  --ccm-accent-ink: #c6b4ff;
+  --ccm-on-accent: #1a1033;
+  --ccm-accent-hi: #cbb9ff;
+  --ccm-well: #08060f;
+}
+
+:root[data-ui='next'][data-next-theme='aurora']:not(.dark) {
+  --ccm-canvas: #edf6f2;
+  --ccm-bg-a: #c4eedc;
+  --ccm-bg-b: #cde8f4;
+  --ccm-bg-c: #f2e6c8;
+  --ccm-material: #f6fbf9;
+  --ccm-material-pop: #fbfdfc;
+  --ccm-ink: #14302a;
+  --ccm-ink-muted: #44615a;
+  --ccm-ink-faint: #4a665f;
+  --ccm-accent: #287e68;
+  --ccm-accent-ink: #1e6b57;
+  --ccm-on-accent: #ffffff;
+  --ccm-accent-hi: #33937a;
+  --ccm-well: #0e1a18;
+}
+
+:root[data-ui='next'][data-next-theme='aurora'].dark {
+  --ccm-canvas: #0c1718;
+  --ccm-bg-a: rgb(40 160 120 / 0.2);
+  --ccm-bg-b: rgb(50 130 190 / 0.18);
+  --ccm-bg-c: rgb(120 90 180 / 0.13);
+  --ccm-material: #15211f;
+  --ccm-material-pop: #1a2826;
+  --ccm-ink: #e3f2ec;
+  --ccm-ink-muted: #a2bdb4;
+  --ccm-ink-faint: #9db8af;
+  --ccm-accent: #7dddb9;
+  --ccm-accent-ink: #8fe6c5;
+  --ccm-on-accent: #062019;
+  --ccm-accent-hi: #97e6c8;
+  --ccm-well: #070f10;
+}
+
+:root[data-ui='next'][data-next-theme='graphite']:not(.dark) {
+  --ccm-canvas: #e8ebef;
+  --ccm-bg-a: #dce1e7;
+  --ccm-bg-b: #e3e6ea;
+  --ccm-bg-c: #e6e2dd;
+  --ccm-material: #f4f5f7;
+  --ccm-material-pop: #fafbfc;
+  --ccm-ink: #1e252c;
+  --ccm-ink-muted: #4e5862;
+  --ccm-ink-faint: #525c66;
+  --ccm-accent: #52677a;
+  --ccm-accent-ink: #465a6c;
+  --ccm-on-accent: #ffffff;
+  --ccm-accent-hi: #62788c;
+  --ccm-well: #111113;
+}
+
+:root[data-ui='next'][data-next-theme='graphite'].dark {
+  --ccm-canvas: #111113;
+  --ccm-bg-a: rgb(120 130 145 / 0.18);
+  --ccm-bg-b: rgb(90 110 140 / 0.16);
+  --ccm-bg-c: rgb(110 100 90 / 0.12);
+  --ccm-material: #1c1c1f;
+  --ccm-material-pop: #222226;
+  --ccm-ink: #e6e8eb;
+  --ccm-ink-muted: #a9aeb5;
+  --ccm-ink-faint: #969ba3;
+  --ccm-accent: #8ab4ff;
+  --ccm-accent-ink: #9ec1ff;
+  --ccm-on-accent: #0b1a33;
+  --ccm-accent-hi: #a3c4ff;
+  --ccm-well: #0a0a0b;
+}
+
+:root[data-ui='next'][data-next-theme='dawn']:not(.dark) {
+  --ccm-canvas: #f7eee9;
+  --ccm-bg-a: #fad9c8;
+  --ccm-bg-b: #f3d9e4;
+  --ccm-bg-c: #f6e5c8;
+  --ccm-material: #fcf8f6;
+  --ccm-material-pop: #fefcfb;
+  --ccm-ink: #33201a;
+  --ccm-ink-muted: #6a5048;
+  --ccm-ink-faint: #6b5149;
+  --ccm-accent: #b4532f;
+  --ccm-accent-ink: #984528;
+  --ccm-on-accent: #ffffff;
+  --ccm-accent-hi: #c4623d;
+  --ccm-well: #1d1412;
+}
+
+:root[data-ui='next'][data-next-theme='dawn'].dark {
+  --ccm-canvas: #211512;
+  --ccm-bg-a: rgb(220 120 80 / 0.18);
+  --ccm-bg-b: rgb(200 90 130 / 0.15);
+  --ccm-bg-c: rgb(230 170 90 / 0.11);
+  --ccm-material: #2a1c18;
+  --ccm-material-pop: #31211d;
+  --ccm-ink: #f5e9e4;
+  --ccm-ink-muted: #c4aea6;
+  --ccm-ink-faint: #bba59d;
+  --ccm-accent: #ffaa85;
+  --ccm-accent-ink: #ffb898;
+  --ccm-on-accent: #2a1209;
+  --ccm-accent-hi: #ffbc9e;
+  --ccm-well: #140c0a;
+}
+
+:root[data-ui='next'][data-next-theme='orrery']:not(.dark) {
+  --ccm-canvas: #f3f3f6;
+  --ccm-bg-a: rgb(232 131 93 / 0.12);
+  --ccm-bg-b: rgb(160 150 220 / 0.1);
+  --ccm-bg-c: transparent;
+  --ccm-material: #fafafc;
+  --ccm-material-pop: #ffffff;
+  --ccm-ink: #1c1c1e;
+  --ccm-ink-muted: #55555b;
+  --ccm-ink-faint: #5a5a61;
+  --ccm-accent: #bd5128;
+  --ccm-accent-ink: #a8461f;
+  --ccm-on-accent: #ffffff;
+  --ccm-accent-hi: #cc6038;
+  --ccm-well: #1a1a1c;
+}
+
+:root[data-ui='next'][data-next-theme='orrery'].dark {
+  --ccm-canvas: #131315;
+  --ccm-bg-a: rgb(232 131 93 / 0.14);
+  --ccm-bg-b: rgb(120 110 200 / 0.12);
+  --ccm-bg-c: transparent;
+  --ccm-material: #1b1b1f;
+  --ccm-material-pop: #212125;
+  --ccm-ink: #ececf1;
+  --ccm-ink-muted: #a6a6b0;
+  --ccm-ink-faint: #a0a0aa;
+  --ccm-accent: #e8835d;
+  --ccm-accent-ink: #f5a27f;
+  --ccm-on-accent: #1a110d;
+  --ccm-accent-hi: #f0946f;
+  --ccm-well: #0b0b0c;
+}
+
+:root[data-ui='next'][data-next-theme='console'].dark {
+  --ccm-canvas: #0c0d10;
+  --ccm-bg-a: rgb(61 214 245 / 0.1);
+  --ccm-bg-b: rgb(61 120 245 / 0.08);
+  --ccm-bg-c: transparent;
+  --ccm-material: #111318;
+  --ccm-material-pop: #16181e;
+  --ccm-ink: #d8e2e6;
+  --ccm-ink-muted: #9daab0;
+  --ccm-ink-faint: #8d9aa0;
+  --ccm-accent: #3dd6f5;
+  --ccm-accent-ink: #5fddf7;
+  --ccm-on-accent: #031a20;
+  --ccm-accent-hi: #6be0f8;
+  --ccm-well: #06070a;
+}
+
+:root[data-ui='next'][data-next-theme='galaxy'].dark {
+  --ccm-canvas: #000000;
+  --ccm-bg-a: transparent;
+  --ccm-bg-b: transparent;
+  --ccm-bg-c: transparent;
+  --ccm-bg-image: none;
+  --ccm-material: #08080a;
+  --ccm-material-pop: #0d0d10;
+  --ccm-ink: #ececf1;
+  --ccm-ink-muted: #a6a6b0;
+  --ccm-ink-faint: #94949e;
+  --ccm-accent: #e8835d;
+  --ccm-accent-ink: #f0946f;
+  --ccm-on-accent: #1a110d;
+  --ccm-accent-hi: #f0946f;
+  --ccm-well: #030304;
+  --ccm-sky-display: block;
+  --ccm-chrome-fill: transparent;
+  --ccm-sky:
+    radial-gradient(circle at 23px 41px, rgb(255 255 255 / 0.85) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 97px 188px, rgb(190 210 255 / 0.7) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 151px 63px, rgb(255 255 255 / 0.6) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 214px 132px, rgb(255 238 200 / 0.75) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 260px 22px, rgb(255 255 255 / 0.65) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 58px 236px, rgb(190 210 255 / 0.6) 0 0.6px, transparent 1.3px),
+    radial-gradient(circle at 188px 244px, rgb(255 255 255 / 0.8) 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 17px 23px, rgb(255 255 255 / 0.5) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 81px 67px, rgb(255 238 200 / 0.48) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 49px 96px, rgb(255 255 255 / 0.42) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 108px 12px, rgb(190 210 255 / 0.45) 0 0.5px, transparent 1.2px),
+    radial-gradient(circle at 66px 41px, rgb(255 255 255 / 0.4) 0 0.5px, transparent 1.2px);
+  --ccm-sky-size:
+    280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px, 280px 260px,
+    120px 110px, 120px 110px, 120px 110px, 120px 110px, 120px 110px;
+  --ccm-sky-twinkle:
+    radial-gradient(circle at 92px 71px, rgb(255 255 255 / 1) 0 1.8px, rgb(255 255 255 / 0.35) 3px, transparent 6.5px),
+    radial-gradient(circle at 301px 238px, rgb(205 222 255 / 1) 0 2px, rgb(190 210 255 / 0.32) 3.2px, transparent 7px),
+    radial-gradient(circle at 224px 34px, rgb(255 236 196 / 0.95) 0 1.5px, rgb(255 236 196 / 0.28) 2.6px, transparent 5.5px),
+    radial-gradient(circle at 40px 281px, rgb(255 255 255 / 0.95) 0 1.3px, rgb(255 255 255 / 0.22) 2.2px, transparent 4.5px),
+    radial-gradient(circle at 172px 163px, rgb(200 218 255 / 0.95) 0 1.2px, transparent 3.4px),
+    radial-gradient(circle at 348px 110px, rgb(255 255 255 / 0.9) 0 1.1px, transparent 3.2px),
+    radial-gradient(circle at 260px 316px, rgb(255 238 200 / 0.9) 0 1.1px, transparent 3.2px);
+  --ccm-sky-twinkle-size: 380px 340px;
+}
+
+:root[data-ui='next'][data-next-theme='galaxy'].dark[data-stars='off'] {
+  --ccm-sky: none;
+  --ccm-sky-twinkle: none;
+  --ccm-sky-display: none;
+  --ccm-sky-pane: none;
+  --ccm-chrome-fill: var(--ccm-side);
+}
+
+:root[data-ui='next'][data-next-theme='galaxy'].dark:not([data-stars='off']):not([data-stars-panels='off']) {
+  --ccm-sky-pane: var(--ccm-sky);
+  --ccm-sky-twinkle-pane: var(--ccm-sky-twinkle);
+  --ccm-sky-pane-display: block;
+}
+
+:root[data-ui='next'][data-next-theme='galaxy'].dark:not([data-stars='off']):not([data-stars-panels='off']) .ccm-panel {
+  position: relative;
+  isolation: isolate;
+}

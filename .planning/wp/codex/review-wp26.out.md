@@ -1,0 +1,1 @@
+Con đã ghi review vào [review-wp26.md](/F:/work/web/Orrery-mist/.planning/wp/codex/review-wp26.md). Kết luận: **CẦN SỬA**. Con không sửa code và không chạy git.

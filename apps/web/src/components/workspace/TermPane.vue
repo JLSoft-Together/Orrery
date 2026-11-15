@@ -16,6 +16,7 @@ import { fontEntry, termFontStack } from '../../lib/fonts'
 import { duration, now, shortPath } from '../../lib/format'
 import { folderName } from '../../lib/sidebarRows'
 import type { MenuEntry } from '../../lib/menu'
+import { PANE_LAYOUT_MENU } from '../../lib/layoutPaneMenu'
 import { newlineFor } from '../../lib/termKeys'
 import { installReplacementIme } from '../../lib/termIme'
 import { headMode, isHeadBlank, processChip, STATE_BADGE, statusWordShown, suggestCompact, zoomKeys } from '../../lib/paneHead'
@@ -36,6 +37,8 @@ import { hasAttachments, pathsForFiles } from '../../lib/preview'
 import { useAgentsStore } from '../../stores/agents'
 import { fromPath, useAttachmentsStore, type NewAttachment } from '../../stores/attachments'
 import { useSettingsStore } from '../../stores/settings'
+import { NEXT_CODE_FONT, useUiGenStore } from '../../stores/uiGen'
+import PaneHeader from '../next/ui/PaneHeader.vue'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useTipsStore } from '../../stores/tips'
 import { useUiStore } from '../../stores/ui'
@@ -83,6 +86,9 @@ const emit = defineEmits<{ split: [choice: SplitChoice]; close: []; openLink: [t
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
+const codeFontId = (): string => (uiGen.isNext && settings.codeFont === 'system' ? NEXT_CODE_FONT : settings.codeFont)
 const terminals = useTerminalsStore()
 const agents = useAgentsStore()
 const tips = useTipsStore()
@@ -360,7 +366,7 @@ const meterOn = computed(() => !isShell.value && props.pane.state === 'running')
 const canMeterCompact = computed(() => compactFlow.stateOf(props.pane) === 'ready')
 
 const barSlot = inject<Ref<HTMLElement | null>>('ccm-pane-bar', ref(null))
-const inBar = computed(() => headMode(props.multi, props.zoomed) === 'bar' && props.visible && !!barSlot.value)
+const inBar = computed(() => !isNext.value && headMode(props.multi, props.zoomed) === 'bar' && props.visible && !!barSlot.value)
 const headTip = computed(() => [cwd.value, activityText.value, session.value ? sessionTitle.value : ''].filter(Boolean).join('\n') || undefined)
 
 const zoomLabel = computed(() => t(props.zoomed ? 'workspace.paneHead.unzoom' : 'workspace.paneHead.zoom', { key: zoomKeys(isMac) }))
@@ -372,6 +378,7 @@ function onHeadDblClick(e: MouseEvent): void {
 }
 
 const more = ref<InstanceType<typeof PaneMore> | null>(null)
+const layoutMenu = inject(PANE_LAYOUT_MENU, null)
 const reconnectable = computed(() => props.pane.state === 'error' && !!props.pane.sessionId)
 const moreEntries = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = []
@@ -389,10 +396,13 @@ const moreEntries = computed<MenuEntry[]>(() => {
   }
   if (preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value) out.push({ id: 'tools', label: t('sessionTools.menu'), icon: Blocks })
   out.push({ id: 'restart', label: t(reconnectable.value ? 'workspace.reconnect' : 'workspace.restart'), icon: RotateCw })
+  const layout = layoutMenu?.entries(props.pane.key) ?? []
+  if (layout.length) out.push({ separator: true }, ...layout)
   return out
 })
 
 function pickMore(id: string): void {
+  if (layoutMenu?.pick(props.pane.key, id)) return
   if (id === 'dev') {
     const url = devUrls.value[devUrls.value.length - 1]
     if (url) emit('openLink', { kind: 'url', url }, {})
@@ -608,6 +618,7 @@ const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'whi
 
 function skyWell(): boolean {
   const sky = cssVar('--ccm-sky-pane')
+  if (uiGen.isNext && uiGen.clearTerm) return true
   return sky !== '' && sky !== 'none'
 }
 
@@ -653,10 +664,11 @@ function dropRenderer(): void {
 
 // xterm measures the cell when the option changes: the face has to be loaded first or it measures the fallback.
 async function applyCodeFont(): Promise<void> {
-  const { codeFont: id, codeFontSize: size } = settings
+  const id = codeFontId()
+  const size = settings.codeFontSize
   const entry = fontEntry('code', id)
   if (entry.family) await document.fonts.load(`${size}px '${entry.family}'`).catch(() => undefined)
-  if (!term || id !== settings.codeFont || size !== settings.codeFontSize) return
+  if (!term || id !== codeFontId() || size !== settings.codeFontSize) return
   const family = termFontStack(entry)
   if (term.options.fontFamily === family && term.options.fontSize === size) return
   term.options.fontFamily = family
@@ -1189,7 +1201,7 @@ watch(
 )
 
 watch(
-  () => [settings.theme, settings.stars, settings.starsPanels] as const,
+  () => [settings.theme, settings.stars, settings.starsPanels, uiGen.isNext, uiGen.clearTerm, uiGen.nextTheme, uiGen.dark, uiGen.customScheme] as const,
   async () => {
     await nextTick()
     if (!term) return
@@ -1198,7 +1210,7 @@ watch(
   },
 )
 
-watch(() => [settings.codeFont, settings.codeFontSize] as const, () => void applyCodeFont())
+watch(() => [settings.codeFont, settings.codeFontSize, uiGen.isNext] as const, () => void applyCodeFont())
 
 // Leaving the view only detaches; a pane gone from the store was closed, so its process goes too.
 onBeforeUnmount(() => {
@@ -1224,17 +1236,20 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-    class="@container flex min-h-0 min-w-0 flex-col gap-1.5 transition-opacity duration-(--ccm-dur-base) ease-out-quint"
-    :class="[`ccm-agent-${preset}`, multi && !focused ? 'ccm-pane-idle' : '']"
+    class="@container flex min-h-0 min-w-0 flex-col transition-opacity duration-(--ccm-dur-base) ease-out-quint"
+    :class="[`ccm-agent-${preset}`, isNext ? 'ccm-next-pane gap-0' : 'gap-1.5', multi && !focused ? 'ccm-pane-idle' : '', isNext ? 'ccm-pane-ring' : '', isNext && multi && focused ? 'ccm-pane-active' : '']"
+    :data-next-pane-card="isNext || undefined"
     :data-pane="pane.key"
     :style="visible ? `view-transition-name: ccm-pane-${pane.key}; view-transition-class: ccm-pane` : undefined"
     :aria-label="t(`workspace.preset.${preset}`)"
     @pointerdown="onPointerDown"
   >
     <Teleport :to="barSlot ?? 'body'" :disabled="!inBar">
-    <header
-      class="relative flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs select-none @max-[420px]:gap-1"
-      :class="[multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', multi && focused ? 'ccm-pane-head-on' : '']"
+    <component
+      :is="isNext ? PaneHeader : 'header'"
+      v-bind="isNext ? { active: multi && focused } : {}"
+      class="relative select-none"
+      :class="[isNext ? 'ccm-next-head' : 'flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs @max-[420px]:gap-1', multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', !isNext && multi && focused ? 'ccm-pane-head-on' : '']"
       :title="multi ? t('workspace.drag.paneHint', { key: isMac ? '⌘' : 'Ctrl' }) : inBar ? headTip : undefined"
       :data-pane-grip="multi || undefined"
       :data-pane-of="pane.key"
@@ -1469,13 +1484,15 @@ onBeforeUnmount(() => {
           <X :size="14" aria-hidden="true" />
         </button>
       </div>
-    </header>
+    </component>
     </Teleport>
     <ContextMeter v-if="meterOn" :tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
-    <div class="flex min-h-0 flex-1 gap-1.5" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+    <div class="flex min-h-0 flex-1 gap-1.5" data-pane-body @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
       class="ccm-pane-ring ccm-sky-well relative flex min-h-0 min-w-0 flex-1 flex-col rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
-      :class="multi && focused ? 'ccm-pane-active' : ''"
+      :class="!isNext && multi && focused ? 'ccm-pane-active' : ''"
+      data-pane-well
+      :data-term-clear="(isNext && uiGen.clearTerm) || undefined"
     >
       <!-- Dimmed when the process has ended; the well fades, the terminal text itself never animates. -->
       <!-- Shell command marks sit in the left padding, outside the cell grid. -->

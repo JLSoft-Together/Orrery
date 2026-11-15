@@ -55,6 +55,9 @@ Open Sans (@fontsource-variable/open-sans): SIL Open Font License 1.1
 Be Vietnam Pro (@fontsource/be-vietnam-pro): SIL Open Font License 1.1
   Copyright 2021 The Be Vietnam Pro Project Authors (https://github.com/bettergui/BeVietnamPro)
 
+Manrope (@fontsource-variable/manrope): SIL Open Font License 1.1
+  Copyright 2019 The Manrope Project Authors (https://github.com/sharanda/manrope)
+
 
 SIL Open Font License 1.1
 -------------------------

@@ -6,6 +6,8 @@ import { installErrorLog } from './lib/errorLog'
 import './style.css'
 import './themes.css'
 import './fonts.css'
+import './next/tokens.css'
+import './next/palettes.css'
 
 installErrorLog()
 

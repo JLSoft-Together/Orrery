@@ -6,6 +6,7 @@ import type { AppDataErrorCode, AppDataFile, AppDbRows, AppDbTable, PrefEntry } 
 import { cellText, isBlob, prefFromInput, prefInput, prefShown, prefValid, ROWS_PAGE, schemaPrompt } from '../../lib/appData'
 import { appDataDbClose, appDataDbOpen, appDataDbQuery, appDataDbRows, appDataList, appDataPrefsRead, appDataPrefsRestore, appDataPrefsWrite } from '../../lib/devices'
 import { isPackageName } from '../../lib/deviceUiTest'
+import AppSelect from '../AppSelect.vue'
 import { relativeTime } from '../../lib/format'
 import { retireOverlay } from '../../lib/motion'
 import { useDeviceHandoff } from '../../composables/useDeviceHandoff'
@@ -35,6 +36,16 @@ const queryResult = ref<Ok<AppDbRows> | null>(null)
 const prefs = ref<{ name: string; entries: PrefEntry[]; hasOriginal: boolean } | null>(null)
 const editing = ref<string | null>(null)
 const draft = ref('')
+const boolOptions = [
+  { value: 'true', label: 'true' },
+  { value: 'false', label: 'false' },
+]
+const tableOptions = computed(() =>
+  (db.value?.tables ?? []).map((tb) => ({
+    value: tb.name,
+    label: `${tb.name}${tb.type === 'view' ? ` (${t('appData.db.view')})` : tb.rows !== null ? ` - ${tb.rows}` : ''}`,
+  })),
+)
 const busy = ref<string | null>(null)
 const error = ref<Failure | null>(null)
 const note = ref<string | null>(null)
@@ -353,9 +364,7 @@ watch(
                 <div class="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2">
                   <label class="flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
                     {{ t('appData.db.table') }}
-                    <select class="ccm-field max-w-64 min-w-0 text-xs" :value="table ?? ''" data-appdata-table @change="pickTable(($event.target as HTMLSelectElement).value)">
-                      <option v-for="tb in db.tables" :key="tb.name" :value="tb.name">{{ tb.name }}{{ tb.type === 'view' ? ` (${t('appData.db.view')})` : tb.rows !== null ? ` · ${tb.rows}` : '' }}</option>
-                    </select>
+                    <AppSelect :model-value="table ?? ''" :options="tableOptions" :label="t('appData.db.table')" size="sm" class="max-w-64" data-appdata-table @update:model-value="pickTable" />
                   </label>
                   <button type="button" class="ccm-btn-plain text-xs" :aria-pressed="showSchema" :disabled="!current" data-appdata-schema @click="showSchema = !showSchema">{{ t('appData.db.schema') }}</button>
                   <button type="button" class="ccm-btn-plain text-xs" :disabled="!current" :title="t('appData.db.fillHint')" data-appdata-fill @click="fillSchema">
@@ -438,10 +447,7 @@ watch(
                         <td class="py-1 text-2xs text-ink-muted">{{ e.type }}</td>
                         <td class="min-w-0 py-1">
                           <form v-if="editing === e.key" class="flex flex-col gap-1" @submit.prevent="savePref">
-                            <select v-if="e.type === 'boolean'" v-model="draft" class="ccm-field w-28 text-xs" data-appdata-draft>
-                              <option value="true">true</option>
-                              <option value="false">false</option>
-                            </select>
+                            <AppSelect v-if="e.type === 'boolean'" v-model="draft" :options="boolOptions" :label="t('appData.pref.value')" size="sm" class="w-28" data-appdata-draft />
                             <textarea v-else-if="e.type === 'string' || e.type === 'set'" v-model="draft" rows="3" class="ccm-field w-full resize-y font-mono text-2xs" spellcheck="false" data-appdata-draft />
                             <input v-else v-model="draft" class="ccm-field w-48 font-mono text-xs" spellcheck="false" inputmode="decimal" data-appdata-draft />
                             <p v-if="e.type === 'set'" class="text-2xs text-ink-faint">{{ t('appData.pref.setHint') }}</p>

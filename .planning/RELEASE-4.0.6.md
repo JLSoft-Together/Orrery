@@ -26,6 +26,20 @@ Gom cùng v100 click menu + v101 Ổ đĩa + v102 UI mới Sương kính (feat_m
 - Chuyển thư mục lớn sang ổ khác và để lại link; so sánh dung lượng giữa các lần quét; quét nền khi máy rảnh; báo Telegram khi ổ sắp đầy.
 - Mọi lần xoá đều hỏi xác nhận, mặc định vào Thùng rác; file chỉ có trên cloud không bị tải về. Agent chỉ đề xuất, bạn duyệt mới xoá.
 
+### Giao diện mới Sương kính (v102, bật thử)
+- Bật ở Settings > Giao diện > Thử giao diện mới (UI next gen) hoặc Ctrl+K; đổi qua lại tức thì, terminal đang chạy không bị mở lại. Giao diện cũ vẫn là mặc định.
+- Rail bên trái hiện mọi session theo project hoặc trạng thái, mục "Cần bạn" ở đầu, limit 5h / tuần ở chân; cửa sổ hẹp thu còn icon.
+- Explorer thành ngăn kéo (Ctrl+Shift+E), ghim được khi màn đủ rộng.
+- Ctrl+K gom session theo trạng thái (Cần bạn, Đang chạy, Xong chưa xem, Gần đây).
+- Kéo pane có la bàn 5 ô, hít 1/3 1/2 2/3, nút Bố cục với các mẫu chia sẵn, toast Hoàn tác sau khi thả.
+- 9 bảng màu (Sương kính, Tinh vân, Cực quang, Than chì, Bình minh sương, Ngân hà, Orrery sáng, Orrery tối, Console), chỉnh chuyển động đầy đủ / giảm / tắt và "Giảm trong suốt" cho máy yếu.
+- Theme tự chọn: thẻ "Tuỳ chỉnh" có color picker kính cho accent, 2 vệt sáng nền, sắc nền và độ trong kính; chọn 1 màu, app tự sinh bản sáng + tối và tự chỉnh để chữ luôn đủ rõ.
+- Hướng dẫn ở giao diện mới gọn thành 1 thẻ mẹo nhỏ góc dưới phải, không che màn hình. Giao diện cũ có thẻ mời thử giao diện mới (hiện 1 lần).
+
+### Chung
+- Mọi dropdown trong app (Ổ đĩa, Thiết bị, Run, Log, Thông báo...) dùng chung một kiểu, có thể dùng bằng bàn phím, không còn danh sách xám của hệ điều hành.
+- Menu chuột phải của pane đủ rộng, không cụt chữ.
+
 ## English
 
 ### Tauri fixes (parity with the old Node host)
@@ -50,8 +64,27 @@ Gom cùng v100 click menu + v101 Ổ đĩa + v102 UI mới Sương kính (feat_m
 - Move a big folder to another drive and leave a link; compare usage between scans; background scan when idle; Telegram alert when a drive is nearly full.
 - Every delete asks first and goes to the Recycle Bin by default; cloud-only files are never downloaded. Agents can only suggest, you approve before anything is deleted.
 
+### New Mist glass UI (v102, opt-in)
+- Turn it on in Settings > Appearance > Try the new UI (UI next gen) or from Ctrl+K; it switches instantly and running terminals are not reopened. The classic UI stays the default.
+- A left rail lists every session by project or by status, with a "Needs you" list on top and the 5h / weekly limits at the bottom; narrow windows shrink it to icons.
+- The Explorer becomes a drawer (Ctrl+Shift+E) that can be pinned when the window is wide enough.
+- Ctrl+K groups sessions by state (Needs you, Running, Done not seen, Recent).
+- Dragging a pane shows a 5-tile compass, snaps to 1/3 1/2 2/3, a Layout button offers ready splits, and an Undo toast follows every drop.
+- 9 palettes (Mist glass, Nebula, Aurora, Graphite, Misty dawn, Galaxy, Orrery light, Orrery dark, Console), motion full / reduced / off and "Reduce transparency" for slower machines.
+- Custom theme: a "Custom" card with a glass color picker for the accent, two background glows, the base tint and glass opacity; pick one color and the app derives light + dark and keeps text readable.
+- The guide in the new UI is a small tips card at the bottom right that never covers the screen. The classic UI shows a one-time card inviting you to try the new UI.
+
+### General
+- Every dropdown in the app (Disk, Devices, Run, Log, Notifications...) uses one style, works from the keyboard, and no longer shows the grey OS list.
+- The pane context menu is wide enough that no label is cut.
+
 ## Changelog chờ (`apps/web/src/lib/changelog.ts`, ≤100 ký tự)
 - Tauri: MCP và Telegram vào session chạy lại khi mở cửa sổ compact
 - Tauri: hỏi trước khi thoát, lưu file chưa lưu; link mở được khi app chưa chạy
 - Click hoặc double click đáp án của Claude / Codex ngay trong pane; chip Chờ trả lời, toast có nút
 - Ổ đĩa mới: quét, treemap, tìm file, dọn rác, file trùng, sắp xếp Downloads, gỡ app
+- Thử giao diện Sương kính: rail session, Explorer ngăn kéo, la bàn kéo pane, 9 bảng màu
+- Giao diện mới: theme tự chọn với color picker, tự sinh bản sáng và tối
+- Mọi dropdown dùng chung một kiểu, dùng được bằng bàn phím
+- Mục "Có gì mới" đề xuất (vi): Giao diện mới Sương kính, bật thử ngay ở thẻ mời góc dưới phải hoặc Cài đặt > Giao diện; quay lại cũ lúc nào cũng được
+- "What's new" proposal (en): New Mist glass UI, try it from the card at the bottom right or Settings > Appearance; go back to the classic UI any time

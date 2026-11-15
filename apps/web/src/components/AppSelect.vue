@@ -16,8 +16,9 @@ const props = withDefaults(
     size?: 'sm' | 'md'
     /** Trigger shows this instead of the selected label (e.g. "25 / page"). */
     display?: string
+    disabled?: boolean
   }>(),
-  { size: 'md', icon: undefined, display: undefined },
+  { size: 'md', icon: undefined, display: undefined, disabled: false },
 )
 const model = defineModel<T>({ required: true })
 // Two roots (trigger + teleported list): Vue drops fallthrough attrs, so hooks like `data-fwp-device` go on the trigger.
@@ -50,7 +51,7 @@ function place(): void {
 }
 
 async function show(index = selectedIndex.value): Promise<void> {
-  if (props.options.length === 0) return
+  if (props.options.length === 0 || props.disabled) return
   place()
   active.value = Math.max(0, index)
   open.value = true
@@ -99,6 +100,7 @@ function typeahead(ch: string): void {
 }
 
 function onKey(e: KeyboardEvent): void {
+  if (props.disabled) return
   if (!open.value) {
     if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
       e.preventDefault()
@@ -153,6 +155,13 @@ const onViewport = (e: Event) => {
   hide(false)
 }
 
+watch(
+  () => props.disabled,
+  (value) => {
+    if (value) hide(false)
+  },
+)
+
 watch(open, (value) => {
   if (value) {
     document.addEventListener('pointerdown', onOutside, true)
@@ -181,13 +190,14 @@ const triggerCls = computed(() =>
 <template>
   <button
     ref="trigger"
+    :title="label"
     v-bind="$attrs"
     type="button"
     role="combobox"
     :aria-label="label"
-    :title="label"
     aria-haspopup="listbox"
     :aria-expanded="open"
+    :disabled="disabled"
     :aria-controls="`${id}-list`"
     :aria-activedescendant="open ? `${id}-opt-${active}` : undefined"
     class="ccm-btn max-w-full min-w-0 justify-start"
@@ -222,6 +232,7 @@ const triggerCls = computed(() =>
           :id="`${id}-opt-${i}`"
           :key="String(o.value)"
           :data-index="i"
+          :data-value="String(o.value)"
           role="option"
           :aria-selected="i === selectedIndex"
           class="flex cursor-pointer items-center gap-2 rounded-[5px] py-1 pr-2.5 pl-1.5"

@@ -104,6 +104,6 @@ Quy ước: **giữ nguyên** = hành vi như 4.0.5; **mới** = chức năng th
 Primitive bắt buộc, thay chỗ lặp: `GlassDialog` (480 / 640 / 880, focus trap chung), `GlassMenu` (220-280, row 32), `GlassTooltip` (450ms, focus hiện ngay), `SegmentedControl` duy nhất, chip h20 duy nhất, `PaneHeader`, 1 context gauge.
 Token màu / chữ / cỡ: `ui-inventory/06-codex-design-proposals.md`, có 2 chỉnh: working = xanh dương (`#2563A8` / `#8AB4FF`) tách khỏi vàng của cần bạn; `text-2xs` = 11px.
 
-## 10. Còn mở
+## 10. Đã chốt thêm
 
-- **Q1 Kính hay flat**: mockup có cả 2 (ô style). Chủ nhân chưa chọn. Phương án con đề xuất: kính mặc định, flat = lựa chọn "Giảm trong suốt" mở rộng (bỏ blur + bo góc nhỏ).
+- **Q1 Kính hay flat** (chủ nhân chốt 15/11): **kính**, không làm bản flat. "Giảm trong suốt" chỉ là tuỳ chọn trợ năng: panel đặc, tắt blur, giữ nguyên bo góc / bóng / bố cục.

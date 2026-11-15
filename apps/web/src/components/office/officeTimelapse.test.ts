@@ -105,13 +105,16 @@ afterEach(() => {
 describe('OfficeTimelapse days', () => {
   it('lists the recorded days with today first, then yesterday, then a weekday date', async () => {
     await mountBar()
-    const opts = w!.findAll('select option')
-    expect(opts.map((o) => o.attributes('value'))).toEqual([today, yesterday, older])
-    expect(opts[0]!.text()).toMatch(/^Today · /)
-    expect(opts[1]!.text()).toMatch(/^Yesterday · /)
+    const trigger = w!.find('[role=combobox]')
+    expect(trigger.text()).toMatch(/^Today · /)
+    await trigger.trigger('click')
+    const opts = [...document.body.querySelectorAll<HTMLElement>('[role=option]')]
+    expect(opts).toHaveLength(3)
+    expect(opts[0]!.textContent).toMatch(/Today · /)
+    expect(opts[1]!.textContent).toMatch(/Yesterday · /)
     const weekday = new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric', month: 'short' }).format(dayStart(older))
-    expect(opts[2]!.text().startsWith(weekday)).toBe(true)
-    expect((w!.find('select').element as HTMLSelectElement).value).toBe(today)
+    expect(opts[2]!.textContent!.trim().startsWith(weekday)).toBe(true)
+    expect(opts.map((o) => o.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false'])
     expect(fetchMock).toHaveBeenCalledWith('/api/timeline/days', expect.anything())
     expect(fetchMock).toHaveBeenCalledWith(`/api/timeline/${today}`, expect.anything())
   })
@@ -119,9 +122,10 @@ describe('OfficeTimelapse days', () => {
   it('labels the days in Vietnamese with the active locale', async () => {
     i18n.global.locale.value = 'vi'
     await mountBar()
-    const opts = w!.findAll('select option')
-    expect(opts[0]!.text()).toMatch(/^Hôm nay · /)
-    expect(opts[1]!.text()).toMatch(/^Hôm qua · /)
+    await w!.find('[role=combobox]').trigger('click')
+    const opts = [...document.body.querySelectorAll<HTMLElement>('[role=option]')]
+    expect(opts[0]!.textContent).toMatch(/Hôm nay · /)
+    expect(opts[1]!.textContent).toMatch(/Hôm qua · /)
   })
 
   it('sorts days newest first and ignores order from the server', () => {
@@ -290,7 +294,9 @@ describe('OfficeTimelapse without history', () => {
     expect(officeFeed.replaying).toBe(false)
 
     routes[`/api/timeline/${yesterday}`] = { status: 200, body: '' }
-    await w!.find('select').setValue(yesterday)
+    await w!.find('[role=combobox]').trigger('click')
+    document.body.querySelectorAll<HTMLElement>('[role=option]')[1]!.click()
+    await flushPromises()
     await flushPromises()
     expect(w!.find('[data-lapse-msg]').text()).toBe(i18n.global.t('officeV60.timelapse.emptyDay'))
     expect(w!.find('[data-lapse-error]').exists()).toBe(false)

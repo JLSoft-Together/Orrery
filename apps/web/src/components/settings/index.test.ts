@@ -6,7 +6,7 @@ import en from '../../i18n/en'
 import vi from '../../i18n/vi'
 import v79 from '../../i18n/ui-v79-settings'
 import { useSettingsStore } from '../../stores/settings'
-import { NOTIFY_ROWS, SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv } from './index'
+import { NEXT_ONLY_PAGES, NOTIFY_ROWS, SETTINGS_PAGES, entries, nextEntries, pageAvailable, isSettingsPage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv } from './index'
 
 const all: SettingsEnv = {
   terminals: true,
@@ -146,5 +146,30 @@ describe('remembered page', () => {
     expect(loadPage()).toBe('general')
     expect(isSettingsPage('data')).toBe(true)
     expect(isSettingsPage('nope')).toBe(false)
+  })
+
+  it('next only pages hide in classic and show in next', () => {
+    for (const p of NEXT_ONLY_PAGES) {
+      expect(pageAvailable(p, all, false)).toBe(false)
+      expect(pageAvailable(p, all, true)).toBe(true)
+    }
+    expect(pageAvailable('general', all, false)).toBe(true)
+  })
+
+  it('next entries move v100 and v101 rows to their own pages with unique ids and resolvable keys', () => {
+    const list = nextEntries(false)
+    const page = (id: string) => list.find((e) => e.id === id)?.page
+    expect(page('clickMenu')).toBe('workspace')
+    expect(page('menuToast')).toBe('workspace')
+    expect(page('diskMap')).toBe('disk')
+    expect(page('disk')).toBe('disk')
+    expect(page('reduceGlass')).toBe('appearance')
+    const ids = list.map((e) => `${e.page}:${e.id}`)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(entries(false).find((e) => e.id === 'clickMenu')?.page).toBe('editor')
+    for (const locale of ['en', 'vi'] as const) {
+      const { te } = translator(locale)
+      expect(list.flatMap((e) => [e.labelKey, e.hintKey].filter((k): k is string => !!k && !te(k)))).toEqual([])
+    }
   })
 })

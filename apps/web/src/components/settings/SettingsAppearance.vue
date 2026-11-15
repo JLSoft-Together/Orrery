@@ -8,15 +8,18 @@ import { isMac } from '../../lib/platform'
 import { hasStars } from '../../lib/themes'
 import { stepCodeSize, zoomApp, zoomHud } from '../../composables/useWheelZoom'
 import { useSettingsStore } from '../../stores/settings'
+import { useUiGenStore } from '../../stores/uiGen'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import FontPicker from '../ui/FontPicker.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import ThemePicker from '../ui/ThemePicker.vue'
+import SettingsMistAppearance from './SettingsMistAppearance.vue'
 import SettingRow from './SettingRow.vue'
 import SettingSection from './SettingSection.vue'
 
 const { t } = useI18n()
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
 const starsAvailable = computed(() => hasStars(settings.theme))
 
 // App zoom lives in the main process (Chromium level); read once per visit, then follow the HUD.
@@ -66,7 +69,19 @@ const fileIconStyles = computed(() => [
 
 <template>
   <div>
-    <SettingSection id="theme" :title="t('settings.theme')">
+    <SettingsMistAppearance v-if="uiGen.isNext" />
+    <SettingSection v-if="!uiGen.isNext" id="uiGeneration" :title="t('mist.switch.title')">
+      <SettingRow
+        :label="uiGen.isNext ? t('mist.switch.backClassic') : t('mist.switch.tryNext')"
+        :info="uiGen.isNext ? t('mist.switch.backClassicHint') : t('mist.switch.tryNextHint')"
+        data-setting-row="uiGeneration"
+      >
+        <button type="button" class="ccm-btn shrink-0" data-setting="ui-generation" @click="uiGen.toggleGeneration()">
+          {{ uiGen.isNext ? t('mist.switch.backClassic') : t('mist.switch.tryNext') }}
+        </button>
+      </SettingRow>
+    </SettingSection>
+    <SettingSection v-if="!uiGen.isNext" id="theme" :title="t('settings.theme')">
       <div class="px-3 py-2" data-setting-row="theme"><ThemePicker /></div>
       <ToggleSwitch
         v-model="settings.stars"
@@ -123,7 +138,7 @@ const fileIconStyles = computed(() => [
       </SettingRow>
     </SettingSection>
 
-    <SettingSection v-if="hasTerminals" id="look">
+    <SettingSection v-if="hasTerminals && !uiGen.isNext" id="look">
       <SettingRow :label="t('settings.fileIcons')" :info="t('settings.fileIconsHint')" data-setting-row="fileIcons">
         <SegmentedControl v-model="settings.fileIcons" :options="fileIconStyles" :label="t('settings.fileIcons')" data-setting="file-icons" />
       </SettingRow>

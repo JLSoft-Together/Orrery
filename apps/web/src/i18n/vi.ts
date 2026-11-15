@@ -25,6 +25,7 @@ import v52 from './workspace-v52'
 import footerV92 from './footer-v92'
 import themeV95 from './theme-v95'
 import themeV96 from './theme-v96'
+import mistV102 from './mist-v102'
 import tabsV93 from './tabs-v93'
 import launcherV93 from './launcher-v93'
 import v52Pane from './workspace-v52-pane'
@@ -112,6 +113,7 @@ const vi: typeof en = {
   ...diskAppsV101.vi,
   ...themeV95.vi,
   ...themeV96.vi,
+  ...mistV102.vi,
   ...footerV92.vi,
   ...tabsV93.vi,
   ...launcherV93.vi,

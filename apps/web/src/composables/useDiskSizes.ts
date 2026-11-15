@@ -151,15 +151,11 @@ export function useDiskNav(): { openInDisk: (path: string) => Promise<void>; cle
   }
 }
 
-export function useProjectDisk(dir: () => string | null): { lines: ComputedRef<string[]> } {
+export function useProjectDisks(dirs: () => readonly string[]): { linesOf: (dir: string | null) => string[] } {
   const { t, locale } = useI18n()
   const clean = useDiskCleanStore()
-  const sizes = useDiskSizes(() => {
-    const d = dir()
-    return d ? [d] : []
-  })
-  const lines = computed(() => {
-    const d = dir()
+  const sizes = useDiskSizes(dirs)
+  const linesOf = (d: string | null): string[] => {
     if (!d) return []
     const out: string[] = []
     const size = sizes.sizeOf(d)
@@ -167,6 +163,15 @@ export function useProjectDisk(dir: () => string | null): { lines: ComputedRef<s
     const junk = junkOf(d, clean)
     if (junk !== null) out.push(t('diskSizes.tipJunk', { size: formatSize(junk, locale.value) }))
     return out
+  }
+  return { linesOf }
+}
+
+export function useProjectDisk(dir: () => string | null): { lines: ComputedRef<string[]> } {
+  const many = useProjectDisks(() => {
+    const d = dir()
+    return d ? [d] : []
   })
+  const lines = computed(() => many.linesOf(dir()))
   return { lines }
 }

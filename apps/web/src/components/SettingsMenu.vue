@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, Info, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, SquareTerminal, Timer, X } from 'lucide-vue-next'
+import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, HardDrive, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, SquareTerminal, Timer, X } from 'lucide-vue-next'
 import { clampDialogSize, readDialogSize, saveDialogSize, type DialogSize } from '../lib/dialogSize'
 import { retireOverlay } from '../lib/motion'
 import { isMac } from '../lib/platform'
@@ -18,6 +18,7 @@ import { hasGrants } from '../lib/preview'
 import { hasUpdater } from '../lib/update'
 import { useExtrasStore } from '../stores/extras'
 import { useSettingsStore } from '../stores/settings'
+import { useUiGenStore } from '../stores/uiGen'
 import { useUiStore } from '../stores/ui'
 import { useUpdateStore } from '../stores/update'
 import LottieArt from './LottieArt.vue'
@@ -27,6 +28,8 @@ import SettingsAbout from './settings/SettingsAbout.vue'
 import SettingsAccess from './settings/SettingsAccess.vue'
 import SettingsAppearance from './settings/SettingsAppearance.vue'
 import SettingsData from './settings/SettingsData.vue'
+import SettingsDisk from './settings/SettingsDisk.vue'
+import SettingsWorkspace from './settings/SettingsWorkspace.vue'
 import SettingsDeepSeek from './settings/SettingsDeepSeek.vue'
 import SettingsEditor from './settings/SettingsEditor.vue'
 import SettingsGeneral from './settings/SettingsGeneral.vue'
@@ -34,12 +37,13 @@ import SettingsIntegrations from './settings/SettingsIntegrations.vue'
 import SettingsNotify from './settings/SettingsNotify.vue'
 import SettingsReminders from './settings/SettingsReminders.vue'
 import SettingEmbed from './settings/SettingEmbed.vue'
-import { SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv, type SettingsPage } from './settings'
+import { SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageAvailable, nextEntries, savePage, searchSettings, type SettingsEnv, type SettingsPage } from './settings'
 
 const { t } = useI18n()
 const settings = useSettingsStore()
 const extras = useExtrasStore()
 const ui = useUiStore()
+const uiGen = useUiGenStore()
 const update = useUpdateStore()
 
 const panel = ref<HTMLElement | null>(null)
@@ -123,6 +127,8 @@ const pageIcons: Record<SettingsPage, Component> = {
   access: ShieldCheck,
   data: Database,
   about: Info,
+  workspace: LayoutPanelLeft,
+  disk: HardDrive,
 }
 
 const env = computed<SettingsEnv>(() => ({
@@ -148,8 +154,8 @@ const env = computed<SettingsEnv>(() => ({
   xmlPreview: hasXmlInstall,
   bugReport: Boolean(desktop?.bugReportSave),
 }))
-const pages = computed(() => SETTINGS_PAGES.filter((p) => pageVisible(p, env.value)))
-const allEntries = computed(() => entries(isMac))
+const pages = computed(() => SETTINGS_PAGES.filter((p) => pageAvailable(p, env.value, uiGen.isNext)))
+const allEntries = computed(() => (uiGen.isNext ? nextEntries(isMac) : entries(isMac)))
 const hits = computed(() => searchSettings(query.value, allEntries.value, env.value, (k) => t(k)))
 const searching = computed(() => query.value.trim() !== '')
 const pageLabel = (p: SettingsPage): string => t(`settingsV79.pages.${p}`)
@@ -163,7 +169,7 @@ function close(): void {
 }
 
 function show(next: SettingsPage): void {
-  page.value = pageVisible(next, env.value) ? next : 'general'
+  page.value = pageAvailable(next, env.value, uiGen.isNext) ? next : 'general'
   savePage(page.value)
   query.value = ''
   if (content.value) content.value.scrollTop = 0
@@ -235,7 +241,7 @@ watch(
     if (open) {
       restoreFocus = document.activeElement as HTMLElement | null
       query.value = ''
-      page.value = pageVisible(loadPage(), env.value) ? loadPage() : 'general'
+      page.value = pageAvailable(loadPage(), env.value, uiGen.isNext) ? loadPage() : 'general'
       takeRequestedPage()
       await nextTick()
       panel.value?.querySelector<HTMLElement>('[aria-current="page"]')?.focus()
@@ -299,8 +305,8 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
           role="dialog"
           aria-modal="true"
           aria-labelledby="settings-title"
-          class="ccm-sheet relative flex flex-col overflow-hidden bg-canvas"
-          :class="resizing ? '' : 'transition-[width,height] duration-(--ccm-dur-base) ease-out-quint'"
+          class="ccm-sheet relative flex flex-col overflow-hidden"
+          :class="[uiGen.isNext ? 'mist-settings' : 'bg-canvas', resizing ? '' : 'transition-[width,height] duration-(--ccm-dur-base) ease-out-quint']"
           :style="panelStyle"
           data-settings-dialog
           @keydown="onKey"
@@ -309,6 +315,7 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
           <div class="@container flex min-h-0 flex-1 flex-col">
           <div class="flex min-h-0 flex-1 flex-col @[720px]:flex-row">
             <div class="flex shrink-0 flex-col gap-2 border-b border-line bg-fill p-3 @[720px]:w-56 @[720px]:border-r @[720px]:border-b-0">
+              <p v-if="uiGen.isNext" class="px-1 text-base font-semibold text-ink" data-settings-nav-title>{{ t('settings.title') }}</p>
               <label class="relative block">
                 <span class="sr-only">{{ t('settingsV79.searchLabel') }}</span>
                 <Search :size="14" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-faint" aria-hidden="true" />
@@ -384,6 +391,8 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                   <SettingsAccess v-else-if="page === 'access'" />
                   <SettingsData v-else-if="page === 'data'" />
                   <SettingsAbout v-else-if="page === 'about'" />
+                  <SettingsWorkspace v-else-if="page === 'workspace'" />
+                  <SettingsDisk v-else-if="page === 'disk'" />
                 </template>
               </div>
             </div>

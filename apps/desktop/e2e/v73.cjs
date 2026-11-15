@@ -8,7 +8,7 @@ const crypto = require('node:crypto')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT, REPO } = require('./cdp.cjs')
+const { launch, OUT, REPO, selOptions } = require('./cdp.cjs')
 const { apk, appDb, PREFS } = require('./fixtures/v73-fixtures.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -269,8 +269,8 @@ async function main() {
       await evaluate(`document.querySelector('[data-appdata-file="app.db"]').click()`)
       await waitFor(`!!document.querySelector('[data-appdata-grid] tbody tr')`, 20000, 'rows').catch(() => {})
       const err = await evaluate(`document.querySelector('[data-appdata-message]')?.textContent ?? ''`)
-      const tables = await evaluate(`[...document.querySelectorAll('[data-appdata-table] option')].map((o) => o.textContent.trim())`)
-      check('sql.js opens the pulled copy: tables with row counts + the view', JSON.stringify(tables) === JSON.stringify(['items · 450', 'notes · 2', 'cheap (view)']), JSON.stringify(tables) + ' ' + err)
+      const tables = ((await evaluate(selOptions(`document.querySelector('[data-appdata-table]')`))) ?? []).map((o) => o.text)
+      check('sql.js opens the pulled copy: tables with row counts + the view', JSON.stringify(tables) === JSON.stringify(['items - 450', 'notes - 2', 'cheap (view)']), JSON.stringify(tables) + ' ' + err)
       const pageText = () => evaluate(`document.querySelector('${appData}').textContent.match(/Rows [\\d,–]+( of [\\d,]+)?/)?.[0] ?? ''`)
       check('first page: rows 1–200 of 450', (await pageText()) === 'Rows 1–200 of 450', await pageText())
       const next = `document.querySelector('${appData} [aria-label="Next page"]')`
@@ -319,6 +319,9 @@ async function main() {
         await type(text)
         await key('Enter', 'Enter', 13)
       }
+      await run('Clear-Host')
+      await waitFor(`[...document.querySelectorAll('${pane} [data-shell-mark]')].length === 0`, 5000, 'cleared').catch(() => {})
+      await sleep(800)
       await run('cmd /c exit 3')
       const failed = await waitFor(`[...document.querySelectorAll('${pane} [data-shell-mark]')].some((m) => m.dataset.mark === 'fail')`, 30000, 'fail mark').catch(() => false)
       check('PowerShell pane: exit 3 gets a ✗ mark', !!failed, JSON.stringify(await marks()))
@@ -329,7 +332,7 @@ async function main() {
       const failLabel = await evaluate(`document.querySelector('${pane} [data-shell-mark][data-mark=fail]').getAttribute('aria-label')`)
       check('mark label names the command and exit code', failLabel.includes('cmd /c exit 3') && failLabel.includes('exit 3'), failLabel)
       await shot('v73-09-shell-marks')
-      const openMarkMenu = (kind) => evaluate(`document.querySelector('${pane} [data-shell-mark][data-mark=${kind}]').click()`)
+      const openMarkMenu = (kind) => evaluate(`[...document.querySelectorAll('${pane} [data-shell-mark][data-mark=${kind}]')].at(-1).click()`)
       await openMarkMenu('fail')
       await waitFor(`!!document.querySelector('[data-context-menu]')`, 3000, 'mark menu')
       const items = await evaluate(`[...document.querySelectorAll('[data-context-menu] [role=menuitem]')].map((b) => b.dataset.menuId)`)

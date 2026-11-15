@@ -175,3 +175,9 @@ export const ASKED_KEYS: readonly string[] = ['Ctrl', 'Alt', 'Q']
 export function askedShortcutText(mac: boolean): string {
   return keyCombo(ASKED_KEYS, mac)
 }
+
+export const detachKeys = (mac: boolean): readonly string[] => (mac ? ['Alt', 'Mod', 'T'] : ['Ctrl', 'Alt', 'T'])
+
+export function detachShortcutText(mac: boolean): string {
+  return keyCombo(detachKeys(mac), mac)
+}

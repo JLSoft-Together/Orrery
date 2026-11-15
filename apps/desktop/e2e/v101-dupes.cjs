@@ -7,7 +7,7 @@ process.env.CCM_E2E_OUT ||= path.join(os.tmpdir(), 'ccm-e2e-v101-dupes')
 process.env.CCM_E2E_PORT ||= '4483'
 process.env.CCM_E2E_DBG ||= '9483'
 
-const { launch, sleep, OUT, REPO } = require('./cdp.cjs')
+const { launch, sleep, OUT, REPO, UI } = require('./cdp.cjs')
 
 const results = []
 const check = (name, ok, extra = '') => {
@@ -72,7 +72,7 @@ const purge = (paths) => {
     await sleep(1500)
     await click('[data-setup-done]')
     await sleep(300)
-    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = 'data'; return true })()`)
+    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = '${UI === 'next' ? 'disk' : 'data'}'; return true })()`)
     await waitFor(q('[data-disk-open]'), 15000, 'settings disk section')
     await click('[data-disk-open]')
     await waitFor(q('[data-disk]'), 15000, 'disk view')

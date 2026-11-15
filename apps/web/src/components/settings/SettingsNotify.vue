@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, Send } from 'lucide-vue-next'
+import AppSelect from '../AppSelect.vue'
 import { DEFAULT_IDLE_MINUTES, DEFAULT_QUIET, IDLE_CHOICES, isHm, type QuietHours, type ToastKind } from '@ccm/shared'
 import { hasPhone } from '../../lib/phone'
 import { isMac } from '../../lib/platform'
@@ -210,16 +211,14 @@ onBeforeUnmount(() => extras.setToastTest(null))
           </button>
         </div>
         <SettingRow :label="t('resources.idleSetting')" :info="t('resources.idleSettingHint')" data-setting-row="idle">
-          <select
-            :value="idleMinutes"
+          <AppSelect
+            :model-value="idleMinutes"
+            :options="idleOptions"
+            :label="t('resources.idleSetting')"
             :disabled="offline"
-            :aria-label="t('resources.idleSetting')"
-            class="ccm-field cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             data-idle-select
-            @change="connection.updateNotify({ idleMinutes: Number(($event.target as HTMLSelectElement).value) })"
-          >
-            <option v-for="o in idleOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+            @update:model-value="(v) => connection.updateNotify({ idleMinutes: v })"
+          />
         </SettingRow>
       </template>
     </SettingSection>

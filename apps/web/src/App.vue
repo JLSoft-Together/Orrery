@@ -13,12 +13,16 @@ import { useUiStore } from './stores/ui'
 import { useWorkspaceStore } from './stores/workspace'
 import { useDeepSeekStore } from './stores/deepseek'
 import AppHeader from './components/AppHeader.vue'
+import NextShell from './components/next/NextShell.vue'
+import ExplorerDrawer from './components/next/explorer/ExplorerDrawer.vue'
+import { useUiGenStore } from './stores/uiGen'
 import CommandPalette from './components/CommandPalette.vue'
 import OnboardingTour from './components/OnboardingTour.vue'
 import ToastHost from './components/ToastHost.vue'
 import { hasBuildClean } from './lib/buildClean'
 import QuickSetup from './components/QuickSetup.vue'
 import WhatsNewDialog from './components/WhatsNewDialog.vue'
+import NextInvite from './components/next/NextInvite.vue'
 import { lazyOverlay } from './lib/lazyOverlay'
 import { useResourcesStore } from './stores/resources'
 import { useUpdateStore } from './stores/update'
@@ -53,6 +57,7 @@ const { t } = useI18n()
 const connection = useConnectionStore()
 const ui = useUiStore()
 useSettingsStore()
+const uiGen = useUiGenStore()
 useTurnCheckpoints()
 useNotifications()
 useBreakReminder()
@@ -85,7 +90,7 @@ desktop?.onSelect?.((terminalId) => {
 })
 
 const showWorkspace = computed(() => hasTerminals && !ui.compact && ui.view === 'workspace')
-const showFooter = computed(() => showWorkspace.value || (!ui.compact && ui.view === 'monitor'))
+const showFooter = computed(() => !uiGen.isNext && (showWorkspace.value || (!ui.compact && ui.view === 'monitor')))
 const workspaceOpened = ref(false)
 watch(showWorkspace, (shown) => shown && (workspaceOpened.value = true), { immediate: true })
 const diskCleanOn = hasDiskClean && hasDiskMap
@@ -142,10 +147,20 @@ const footerObserver = new ResizeObserver(([entry]) => {
   if (entry) footerH.value = heightOf(entry.target)
 })
 watch(
-  [headerH, footerH, showFooter],
-  () => document.documentElement.style.setProperty('--ccm-header-h', `${headerH.value + (showFooter.value ? footerH.value : 0)}px`),
+  [headerH, footerH, showFooter, () => uiGen.isNext, () => ui.compact],
+  () =>
+    document.documentElement.style.setProperty(
+      '--ccm-header-h',
+      uiGen.isNext ? (ui.compact ? '0px' : '24px') : `${headerH.value + (showFooter.value ? footerH.value : 0)}px`,
+    ),
   { flush: 'post' },
 )
+watch(header, (cur, prev) => {
+  const old = prev?.$el as Element | undefined
+  const el = cur?.$el as Element | undefined
+  if (old) headerObserver.unobserve(old)
+  if (el) headerObserver.observe(el)
+})
 watch(footer, (cur, prev) => {
   const old = prev?.$el as Element | undefined
   const el = cur?.$el as Element | undefined
@@ -161,12 +176,17 @@ function onCloseKey(e: KeyboardEvent): void {
   window.close()
 }
 
+const viewsInNext = ref(uiGen.isNext)
+watch(
+  () => uiGen.isNext,
+  (v) => (viewsInNext.value = v),
+  { flush: 'post' },
+)
+
 onMounted(() => {
   startClock()
   window.addEventListener('keydown', onCloseKey)
   connection.start()
-  const el = header.value?.$el as Element | undefined
-  if (el) headerObserver.observe(el)
 })
 onBeforeUnmount(() => {
   headerObserver.disconnect()
@@ -183,23 +203,28 @@ onBeforeUnmount(() => {
     >
       {{ t('app.skipToContent') }}
     </a>
-    <AppHeader ref="header" />
+    <AppHeader v-if="!uiGen.isNext" ref="header" />
     <!-- Views share one grid cell so the switch is a crossfade in place, never the old view pushing the new one down. -->
-    <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] *:[grid-area:1/1]">
-      <Transition name="ccm-view" @before-leave="retireView">
-        <CompactView v-if="ui.compact" id="main" key="compact" />
-        <MonitorView v-else-if="ui.view === 'monitor'" id="main" key="monitor" />
-        <UsageView v-else-if="ui.view === 'usage'" id="main" key="usage" />
-        <HistoryView v-else-if="ui.view === 'history'" id="main" key="history" />
-        <ExtensionsView v-else-if="ui.view === 'extensions' && hasExtensions" id="main" key="extensions" />
-        <DevicesView v-else-if="ui.view === 'devices' && hasDevices" id="main" key="devices" />
-        <DiskView v-else-if="ui.view === 'disk' && hasDiskMap" id="main" key="disk" />
-      </Transition>
-      <!-- Kept mounted once opened: switching views must not tear down the terminals' xterm state. -->
-      <Transition name="ccm-view">
-        <WorkspaceView v-if="workspaceOpened" v-show="showWorkspace" :id="showWorkspace ? 'main' : undefined" :visible="showWorkspace" />
-      </Transition>
-    </div>
+    <NextShell v-if="uiGen.isNext" />
+    <div v-else id="ccm-classic-host" class="contents" />
+    <Teleport :to="viewsInNext ? '[data-next-canvas]' : '#ccm-classic-host'" defer>
+      <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] *:[grid-area:1/1]">
+        <Transition name="ccm-view" @before-leave="retireView">
+          <CompactView v-if="ui.compact" id="main" key="compact" />
+          <MonitorView v-else-if="ui.view === 'monitor'" id="main" key="monitor" />
+          <UsageView v-else-if="ui.view === 'usage'" id="main" key="usage" />
+          <HistoryView v-else-if="ui.view === 'history'" id="main" key="history" />
+          <ExtensionsView v-else-if="ui.view === 'extensions' && hasExtensions" id="main" key="extensions" />
+          <DevicesView v-else-if="ui.view === 'devices' && hasDevices" id="main" key="devices" />
+          <DiskView v-else-if="ui.view === 'disk' && hasDiskMap" id="main" key="disk" />
+        </Transition>
+        <!-- Kept mounted once opened: switching views must not tear down the terminals' xterm state. -->
+        <Transition name="ccm-view">
+          <WorkspaceView v-if="workspaceOpened" v-show="showWorkspace" :id="showWorkspace ? 'main' : undefined" :visible="showWorkspace" />
+        </Transition>
+      </div>
+      <ExplorerDrawer v-if="uiGen.isNext && workspaceOpened" />
+    </Teleport>
     <WorkspaceFooter v-if="showFooter" ref="footer" />
     <CommandPalette />
     <component :is="recap.Comp" v-if="recap.mounted.value" />
@@ -211,6 +236,7 @@ onBeforeUnmount(() => {
     <QuickSetup />
     <OnboardingTour />
     <WhatsNewDialog />
+    <NextInvite />
     <component :is="updateDialog.Comp" v-if="updateDialog.mounted.value" />
     <ToastHost />
     <component :is="shortcuts.Comp" v-if="shortcuts.mounted.value" />

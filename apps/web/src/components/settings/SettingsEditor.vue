@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AUTO_SAVE_DELAYS, AUTO_SAVE_MODES } from '../../lib/autoSave'
 import { useSettingsStore } from '../../stores/settings'
+import { useUiGenStore } from '../../stores/uiGen'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import SettingRow from './SettingRow.vue'
@@ -10,6 +11,7 @@ import SettingSection from './SettingSection.vue'
 
 const { t } = useI18n()
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
 const autoSaveModes = computed(() => AUTO_SAVE_MODES.map((mode) => ({ value: mode, label: t(`settings.autoSaveMode.${mode}`) })))
 const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms, label: t('settings.seconds', { n: ms / 1000 }) })))
 </script>
@@ -30,7 +32,7 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         />
       </SettingRow>
       <ToggleSwitch v-model="settings.minimap" :label="t('settings.minimap')" :info="t('settings.minimapHint')" class="px-3" data-setting-row="minimap" />
-      <ToggleSwitch v-model="settings.dimInactive" :label="t('workspace.dim.setting')" :info="t('workspace.dim.settingHint')" class="px-3" data-setting-row="dim" />
+      <ToggleSwitch v-if="!uiGen.isNext" v-model="settings.dimInactive" :label="t('workspace.dim.setting')" :info="t('workspace.dim.settingHint')" class="px-3" data-setting-row="dim" />
       <ToggleSwitch
         v-model="settings.shellIntegration"
         :label="t('shellMarks.setting')"
@@ -40,6 +42,7 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         data-setting-row="shell"
       />
       <ToggleSwitch
+        v-if="!uiGen.isNext"
         v-model="settings.agentShim"
         :label="t('shellMarks.agentShim')"
         :info="t('shellMarks.agentShimHint')"
@@ -48,6 +51,7 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         data-setting-row="agentShim"
       />
       <ToggleSwitch
+        v-if="!uiGen.isNext"
         v-model="settings.compactAuto"
         :label="t('workspace.compact.auto.setting')"
         :info="t('workspace.compact.auto.settingHint')"
@@ -56,6 +60,7 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         data-setting-row="compactAuto"
       />
       <ToggleSwitch
+        v-if="!uiGen.isNext"
         v-model="settings.clickMenu"
         :label="t('clickMenu.setting')"
         :info="t('clickMenu.settingHint')"
@@ -64,6 +69,7 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         data-setting-row="clickMenu"
       />
       <ToggleSwitch
+        v-if="!uiGen.isNext"
         v-model="settings.menuToast"
         :label="t('clickMenu.toast')"
         :info="t('clickMenu.toastHint')"

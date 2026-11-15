@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, Search, X } from 'lucide-vue-next'
 import { breadcrumbs, datePattern, DISK_KINDS, DISK_SORTS, formatDateInput, formatSize, mbToBytes, OLD_MONTHS, parseDateInput, SIZE_PRESETS, type DiskKindFilter, type DiskSort } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
+import AppSelect from '../AppSelect.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskResults from './DiskResults.vue'
 
@@ -19,6 +20,13 @@ const isBig = computed(() => store.mode === 'big')
 const scopeName = computed(() => breadcrumbs(store.path).at(-1)?.label ?? '')
 const months = computed(() => OLD_MONTHS.map((n) => ({ value: n, label: t('diskMap.search.months', { n }) })))
 const kinds = computed(() => DISK_KINDS.map((k) => ({ value: k, label: t(`diskMap.kind.${k}`) })))
+const kindOptions = computed(() => [{ value: '', label: t('diskMap.search.anyKind') }, ...kinds.value])
+const onlyOptions = computed(() => [
+  { value: '', label: t('diskMap.search.onlyAll') },
+  { value: 'file', label: t('diskMap.search.onlyFile') },
+  { value: 'dir', label: t('diskMap.search.onlyDir') },
+])
+const sortOptions = computed(() => DISK_SORTS.map((s) => ({ value: s as string, label: t(`diskMap.search.sortBy.${s}`) })))
 const minMb = computed(() => (f.value.minSize ? Math.round((f.value.minSize / 1024 ** 2) * 100) / 100 : ''))
 const maxMb = computed(() => (f.value.maxSize ? Math.round((f.value.maxSize / 1024 ** 2) * 100) / 100 : ''))
 const res = computed(() => store.results)
@@ -71,32 +79,32 @@ function onPick(path: string, range: boolean): void {
           @input="onText"
         />
       </div>
-      <select :value="f.kind" class="ccm-field cursor-pointer" :aria-label="t('diskMap.search.kind')" data-disk-kind @change="store.patchFilters({ kind: ($event.target as HTMLSelectElement).value as DiskKindFilter })">
-        <option value="">{{ t('diskMap.search.anyKind') }}</option>
-        <option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option>
-      </select>
-      <select
+      <AppSelect
+        :model-value="f.kind as string"
+        :options="kindOptions"
+        :label="t('diskMap.search.kind')"
+        size="sm"
+        data-disk-kind
+        @update:model-value="(v) => store.patchFilters({ kind: v as DiskKindFilter })"
+      />
+      <AppSelect
         v-if="isSearch"
-        :value="f.only"
-        class="ccm-field cursor-pointer"
-        :aria-label="t('diskMap.search.only')"
+        :model-value="f.only as string"
+        :options="onlyOptions"
+        :label="t('diskMap.search.only')"
+        size="sm"
         data-disk-only
-        @change="store.patchFilters({ only: ($event.target as HTMLSelectElement).value as '' | 'file' | 'dir' })"
-      >
-        <option value="">{{ t('diskMap.search.onlyAll') }}</option>
-        <option value="file">{{ t('diskMap.search.onlyFile') }}</option>
-        <option value="dir">{{ t('diskMap.search.onlyDir') }}</option>
-      </select>
-      <select
+        @update:model-value="(v) => store.patchFilters({ only: v as '' | 'file' | 'dir' })"
+      />
+      <AppSelect
         v-if="isSearch"
-        :value="f.sort"
-        class="ccm-field cursor-pointer"
-        :aria-label="t('diskMap.search.sort')"
+        :model-value="f.sort as string"
+        :options="sortOptions"
+        :label="t('diskMap.search.sort')"
+        size="sm"
         data-disk-sort
-        @change="store.patchFilters({ sort: ($event.target as HTMLSelectElement).value as DiskSort })"
-      >
-        <option v-for="s in DISK_SORTS" :key="s" :value="s">{{ t(`diskMap.search.sortBy.${s}`) }}</option>
-      </select>
+        @update:model-value="(v) => store.patchFilters({ sort: v as DiskSort })"
+      />
       <button type="button" class="ccm-btn-plain shrink-0" data-disk-reset @click="store.resetFilters()"><X :size="13" aria-hidden="true" />{{ t('diskMap.search.reset') }}</button>
     </div>
 

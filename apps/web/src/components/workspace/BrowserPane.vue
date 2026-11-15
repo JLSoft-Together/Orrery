@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useUiGenStore } from '../../stores/uiGen'
 import { CircleAlert, Globe, Lock, MousePointerClick } from 'lucide-vue-next'
 import {
   PICKER_CANCEL_SCRIPT,
@@ -30,6 +31,7 @@ import {
 } from '../../lib/preview'
 import AccessPrompt from './AccessPrompt.vue'
 import BrowserToolbar from './BrowserToolbar.vue'
+import PaneLayoutMore from '../next/ui/PaneLayoutMore.vue'
 import ConsolePopover from './ConsolePopover.vue'
 
 /** Subset of Electron's WebviewTag used here (the renderer has no electron types). */
@@ -55,7 +57,7 @@ interface WebviewEl extends HTMLElement {
 const PARTITION = 'persist:ccm-preview'
 
 /** `cwd`: where "Open file" starts when the page is not a local file. */
-const props = withDefaults(defineProps<{ url: string; active?: boolean; cwd?: string }>(), { active: true })
+const props = withDefaults(defineProps<{ url: string; paneKey?: string; active?: boolean; cwd?: string }>(), { active: true })
 const emit = defineEmits<{
   navigate: [source: string]
   title: [title: string]
@@ -89,6 +91,8 @@ const stageSize = ref({ w: 0, h: 0 })
 const consoleEntries = ref<ConsoleEntry[]>([])
 const picking = ref(false)
 const consoleAnchor = ref<DOMRect | null>(null)
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
 const toolbar = ref<InstanceType<typeof BrowserToolbar> | null>(null)
 const handoffNote = ref<string | null>(null)
 let noteTimer: ReturnType<typeof setTimeout> | null = null
@@ -402,7 +406,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card" :aria-label="t('workspace.browser.title')">
+  <section class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card" :class="isNext ? 'ccm-next-viewer' : ''" :aria-label="t('workspace.browser.title')">
     <BrowserToolbar
       ref="toolbar"
       :address="address"
@@ -432,7 +436,10 @@ onBeforeUnmount(() => {
       :picking="picking"
       @handoff="onHandoff"
     >
-      <template #end><slot name="toolbar-end" /></template>
+      <template #end>
+        <PaneLayoutMore :pane-key="paneKey" />
+        <slot name="toolbar-end" />
+      </template>
     </BrowserToolbar>
     <ConsolePopover
       v-if="consoleAnchor"

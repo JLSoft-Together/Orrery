@@ -6,6 +6,7 @@ import { formatDuration, formatSize } from '../../../lib/diskMap'
 import { DUPE_MIN_SIZES, useDiskDupesStore } from '../../../stores/diskDupes'
 import { useDiskMapStore } from '../../../stores/diskMap'
 import { DUPE_KINDS } from './model'
+import AppSelect from '../../AppSelect.vue'
 import DupeList from './DupeList.vue'
 
 const { t, locale } = useI18n()
@@ -28,7 +29,9 @@ const capped = computed(() => (store.result?.totalGroups ?? 0) > (store.result?.
 const liveGroups = computed(() => (capped.value ? (store.result?.totalGroups ?? 0) - ((store.result?.groups.length ?? 0) - store.groups.length) : store.groups.length))
 const liveWasted = computed(() => (capped.value ? Math.max(0, (store.result?.wasted ?? 0) - ((store.result?.groups ?? []).reduce((s, g) => s + g.size * (g.count - 1), 0) - store.wasted)) : store.wasted))
 const sizes = computed(() => DUPE_MIN_SIZES.map((mb) => ({ value: mb, label: formatSize(mb * 1024 * 1024, locale.value) })))
-const kinds = computed(() => DUPE_KINDS.map((k) => ({ value: k, label: t(`diskMap.kind.${k}`) })))
+const kinds = computed(() => DUPE_KINDS.map((k) => ({ value: k as string, label: t(`diskMap.kind.${k}`) })))
+const scopeOptions = computed(() => [{ value: '', label: t('diskDupes.scopeHome') }, ...roots.value.map((r) => ({ value: r, label: r }))])
+const kindOptions = computed(() => [{ value: '', label: t('diskMap.search.anyKind') }, ...kinds.value])
 const filterMinMb = computed(() => (store.filters.minSize > 0 ? store.filters.minSize / (1024 * 1024) : 0))
 const stageLabel = computed(() => (store.progress ? t(`diskDupes.stage.${store.progress.stage}`) : t('diskDupes.stage.size')))
 
@@ -48,16 +51,11 @@ onBeforeUnmount(() => store.dispose())
     <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <label class="flex items-center gap-1.5 text-xs">
         <span class="text-ink-muted">{{ t('diskDupes.scope') }}</span>
-        <select v-model="store.scope" class="ccm-field cursor-pointer" :disabled="store.running" :aria-label="t('diskDupes.scope')" data-dupes-scope>
-          <option value="">{{ t('diskDupes.scopeHome') }}</option>
-          <option v-for="r in roots" :key="r" :value="r">{{ r }}</option>
-        </select>
+        <AppSelect v-model="store.scope" :options="scopeOptions" :label="t('diskDupes.scope')" size="sm" :disabled="store.running" data-dupes-scope />
       </label>
       <label class="flex items-center gap-1.5 text-xs">
         <span class="text-ink-muted">{{ t('diskDupes.minSize') }}</span>
-        <select v-model.number="store.minMb" class="ccm-field cursor-pointer" :disabled="store.running" :aria-label="t('diskDupes.minSize')" data-dupes-min-run>
-          <option v-for="s in sizes" :key="s.value" :value="s.value">{{ s.label }}</option>
-        </select>
+        <AppSelect v-model="store.minMb" :options="sizes" :label="t('diskDupes.minSize')" size="sm" :disabled="store.running" data-dupes-min-run />
       </label>
       <button v-if="!store.running" type="button" class="ccm-btn ccm-btn-primary" :disabled="!canRun" data-dupes-start @click="store.start()">
         <Copy :size="14" aria-hidden="true" />{{ store.hasResult ? t('diskDupes.again') : t('diskDupes.find') }}
@@ -100,10 +98,14 @@ onBeforeUnmount(() => store.dispose())
 
       <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
         <input v-model="store.filters.folder" type="search" class="ccm-field w-56" :placeholder="t('diskDupes.folderFilter')" :aria-label="t('diskDupes.folderFilter')" data-dupes-folder />
-        <select :value="store.filters.kind" class="ccm-field cursor-pointer" :aria-label="t('diskMap.search.kind')" data-dupes-kind @change="store.patchFilters({ kind: ($event.target as HTMLSelectElement).value })">
-          <option value="">{{ t('diskMap.search.anyKind') }}</option>
-          <option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option>
-        </select>
+        <AppSelect
+          :model-value="store.filters.kind as string"
+          :options="kindOptions"
+          :label="t('diskMap.search.kind')"
+          size="sm"
+          data-dupes-kind
+          @update:model-value="(v) => store.patchFilters({ kind: v })"
+        />
         <span class="text-ink-muted">{{ t('diskMap.search.sizeMin') }}</span>
         <input :value="filterMinMb || ''" type="number" min="0" step="any" class="ccm-field w-20 tabular-nums" :aria-label="t('diskMap.search.sizeMin')" data-dupes-min @change="onFilterMin" />
         <span class="text-ink-muted">MB</span>

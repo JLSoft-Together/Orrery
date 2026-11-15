@@ -88,7 +88,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 
 <template>
   <section
-    class="grid min-w-0 rounded-card bg-surface shadow-card"
+    class="mist-card mist-card-blur grid min-w-0 rounded-card bg-surface shadow-card"
     :class="hasLimits ? 'min-[900px]:grid-cols-[minmax(0,1fr)_15rem]' : ''"
     aria-labelledby="usage-hero-title"
   >

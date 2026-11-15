@@ -6,7 +6,7 @@ const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, selOptions } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const UI = `${S}.get('ui')`
@@ -254,7 +254,7 @@ async function main() {
     await step('device ui test', async () => {
       await evaluate(`${row}.querySelector('[data-dev-action=uiTest]').click()`)
       await waitFor(`!!document.querySelector('[data-device-uitest] [data-uitest-display]')`, 15000, 'ui test state')
-      check('project from the workspace tab is picked', (await evaluate(`document.querySelector('[data-uitest-root]').value`)) === DIR)
+      check('project from the workspace tab is picked', (await evaluate(selOptions(`document.querySelector('[data-uitest-root]')`)))?.find((o) => o.selected)?.value === DIR)
       check('package from the manifest / Gradle', (await evaluate(`document.querySelector('[data-uitest-pkg]').value`)) === 'com.example.demo')
       const launches = await evaluate(`document.querySelector('[data-uitest-rows]')?.textContent.replace(/\\s+/g, ' ') ?? ''`)
       check('deep link and exported activity listed', launches.includes('demo://shop/cart') && launches.includes('MainActivity'), launches)

@@ -1,5 +1,5 @@
 // v71 What's new: opens once per app version after quick setup and the guide, from Settings and Ctrl+K; dark + light shots.
-const { launch, sleep } = require('./cdp.cjs')
+const { launch, sleep, UI: UI_GEN } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const UI = `${S}.get('ui')`
 const SET = `${S}.get('settings')`
@@ -27,7 +27,13 @@ const expandedOf = (v) => `${header(v)}?.getAttribute('aria-expanded')`
     const end = Date.now() + 45000
     let quietSince = 0
     while (Date.now() < end) {
-      const st = await evaluate(`JSON.stringify({ n: ${visibleDialogs}, setup: ${UI}.setupOpen, tour: ${UI}.tourOpen, wn: ${UI}.whatsNewOpen, wnEl: !!${DLG} })`).then(JSON.parse)
+      const st = await evaluate(`JSON.stringify({ n: ${visibleDialogs}, setup: ${UI}.setupOpen, tour: !!${UI}.tourOpen || !!document.querySelector('[data-mist-tips]'), tips: !!document.querySelector('[data-mist-tips]'), wn: ${UI}.whatsNewOpen, wnEl: !!${DLG} })`).then(JSON.parse)
+      if (st.tips && st.n === 0) {
+        if (order.at(-1) !== 'tour') order.push('tour')
+        await evaluate(`document.querySelector('[data-mist-tips] .ccm-btn-primary')?.click()`)
+        await sleep(600)
+        continue
+      }
       maxVisible = Math.max(maxVisible, st.n)
       const now = st.wn ? 'whatsNew' : st.tour ? 'tour' : st.setup ? 'setup' : null
       if (now && order.at(-1) !== now) order.push(now)
@@ -61,7 +67,8 @@ const expandedOf = (v) => `${header(v)}?.getAttribute('aria-expanded')`
     check('an older release collapsed', !!older && (await evaluate(expandedOf(older))) === 'false', older)
     check('current header has focus', await evaluate(`document.activeElement === ${header(VERSION)}`))
     check('no horizontal overflow', await evaluate(`(() => { const sc = ${DLG}.querySelector('.ccm-scroll'); return sc.scrollWidth <= sc.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth })()`))
-    check('sheet is opaque', await evaluate(`(() => { const c = getComputedStyle(${DLG}).backgroundColor; const m = /rgba?\\(([^)]+)\\)/.exec(c); const a = m ? (m[1].split(',')[3] ?? '1') : '0'; return Number(a) === 1 })()`), await evaluate(`getComputedStyle(${DLG}).backgroundColor`))
+    if (UI_GEN === 'next') check('next: sheet is glass with blur', await evaluate(`(() => { const s = getComputedStyle(${DLG}); const m = /rgba?\\(([^)]+)\\)/.exec(s.backgroundColor); const a = m ? Number(m[1].split(',')[3] ?? '1') : 0; return a >= 0.8 && (s.backdropFilter.includes('blur') || document.documentElement.dataset.glass === 'reduced') })()`), await evaluate(`getComputedStyle(${DLG}).backgroundColor + ' ' + getComputedStyle(${DLG}).backdropFilter`))
+    else check('sheet is opaque', await evaluate(`(() => { const c = getComputedStyle(${DLG}).backgroundColor; const m = /rgba?\\(([^)]+)\\)/.exec(c); const a = m ? (m[1].split(',')[3] ?? '1') : '0'; return Number(a) === 1 })()`), await evaluate(`getComputedStyle(${DLG}).backgroundColor`))
     await shot('whats-new-dark-en')
 
     await evaluate(`${header(older)}.click()`)

@@ -75,5 +75,5 @@ export function useClusterDrag(list: Ref<HTMLElement | null>, onDrop: (from: num
     window.removeEventListener('pointercancel', onCancel)
     window.removeEventListener('keydown', onKey, true)
   })
-  return { onDown }
+  return { onDown, cancel: () => finish(false) }
 }

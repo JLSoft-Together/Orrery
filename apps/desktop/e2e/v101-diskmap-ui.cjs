@@ -7,7 +7,7 @@ process.env.CCM_E2E_OUT ||= path.join(os.tmpdir(), 'ccm-e2e-v101-diskmap-ui')
 process.env.CCM_E2E_PORT ||= '4472'
 process.env.CCM_E2E_DBG ||= '9472'
 
-const { launch, sleep, OUT, REPO } = require('./cdp.cjs')
+const { launch, sleep, OUT, REPO, UI, selPick } = require('./cdp.cjs')
 
 const results = []
 const check = (name, ok, extra = '') => {
@@ -83,7 +83,7 @@ const purge = (paths) => {
     await click('[data-setup-done]')
     await sleep(300)
 
-    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = 'data'; return true })()`)
+    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = '${UI === 'next' ? 'disk' : 'data'}'; return true })()`)
     await waitFor(q('[data-disk-map-settings]'), 15000, 'settings disk section')
     await evaluate(`${q('[data-disk-map-settings]')}.scrollIntoView({ block: 'center' })`)
     await sleep(300)
@@ -112,6 +112,7 @@ const purge = (paths) => {
     const bigRow = rows.find((r) => path.basename(r) === 'big')
     await evaluate(`(() => { const r = [...document.querySelectorAll('[data-disk-row]')].find((e) => e.dataset.path === ${JSON.stringify(bigRow)}); r?.querySelector('button')?.click(); return !!r })()`)
     await waitFor(`${S}.get('diskMap').path === ${JSON.stringify(bigRow)}`, 8000, 'enter folder')
+    await waitFor(`[...document.querySelectorAll('[data-disk-row]')].some((r) => r.dataset.path.endsWith('huge.mp4'))`, 8000, 'folder rows').catch(() => undefined)
     const inner = await evaluate(`[...document.querySelectorAll('[data-disk-row]')].map((r) => r.dataset.path.split(/[\\\\/]/).pop())`)
     check('click enters a folder and lists its children', inner.includes('huge.mp4') && inner.includes('old-video.mkv'), inner.join(','))
 
@@ -144,7 +145,7 @@ const purge = (paths) => {
     check('zero matches shows the empty note', !!(await evaluate(`!!${q('[data-disk-results-empty]')}`)))
 
     await setField('[data-disk-query]', '')
-    await setField('[data-disk-kind]', 'video', 'change')
+    await evaluate(selPick(q('[data-disk-kind]'), "(t, i, v) => v === 'video'"))
     got = await waitResults((n) => n.length === 2, 'kind video')
     check('kind video finds both videos', got.includes('huge.mp4') && got.includes('old-video.mkv'), got.join(','))
     await setField('[data-disk-min]', '2.5', 'change')
@@ -152,7 +153,7 @@ const purge = (paths) => {
     check('type video + min 2.5 MB finds only the 3 MB file', got[0] === 'huge.mp4', got.join(','))
     await click('[data-disk-reset]')
     await waitFor(q('[data-disk-search-idle]'), 5000, 'reset')
-    await setField('[data-disk-only]', 'dir', 'change')
+    await evaluate(selPick(q('[data-disk-only]'), "(t, i, v) => v === 'dir'"))
     await setField('[data-disk-query]', 'big')
     got = await waitResults((n) => n.length === 1 && n[0] === 'big', 'only dir')
     check('only folders returns the folder', got.length === 1)

@@ -4,6 +4,7 @@ import { ArrowRightLeft, CornerDownRight, Mail, Send } from 'lucide-vue-next'
 import type { GitDiffStat, PeerLink, TerminalSession, TerminalStatus } from '@ccm/shared'
 import { now, relativeTime, shortPath } from '../lib/format'
 import { isPeerNews, paneState, stateWord, type RailPeer, type RailState } from '../lib/rail/railModel'
+import { modelLabel } from '../lib/model'
 import { waitDisplay } from '../lib/wait'
 import { shellTitle } from '../lib/sidebarRows'
 import { effectiveStatus, runningSubagents } from '../lib/subagents'
@@ -150,6 +151,11 @@ export function usePaneInfo() {
     }
     const w = stateWord(state, subagentsOf(pane))
     return w.n === undefined ? t(w.key) : t(w.key, { n: w.n }, w.n)
+  }
+
+  function modelOf(terminalId: string | null | undefined): string | null {
+    const model = terminalId ? agents.mainOf(terminalId)?.model : undefined
+    return modelLabel(model)
   }
 
   function activityOf(pane: Pane | undefined): { tool: string | null; since?: string; diff?: GitDiffStat } | null {
@@ -301,6 +307,7 @@ export function usePaneInfo() {
     railStateOf,
     stateText,
     activityOf,
+    modelOf,
     viewLabel,
     viewDetail,
     describe,

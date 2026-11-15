@@ -6,7 +6,7 @@ process.env.CCM_E2E_OUT ||= path.join(os.tmpdir(), 'ccm-e2e-v101-diskmap-fast')
 process.env.CCM_E2E_PORT ||= '4473'
 process.env.CCM_E2E_DBG ||= '9473'
 
-const { launch, sleep, OUT, REPO } = require('./cdp.cjs')
+const { launch, sleep, OUT, REPO, UI } = require('./cdp.cjs')
 
 const results = []
 const check = (name, ok, extra = '') => {
@@ -48,7 +48,7 @@ bins.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
     const bad = await evaluate(`${D}.diskMapFastScan({ drive: 'C:\\\\Windows' })`)
     check('bridge refuses a path that is not a drive letter', bad.started === false && bad.error === 'unsupported', JSON.stringify(bad))
 
-    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = 'data'; return true })()`)
+    await evaluate(`(() => { const ui = ${S}.get('ui'); ui.settingsOpen = true; ui.settingsPage = '${UI === 'next' ? 'disk' : 'data'}'; return true })()`)
     await waitFor(q('[data-disk-open]'), 15000, 'settings disk section')
     await click('[data-disk-open]')
     await waitFor(q('[data-disk]'), 15000, 'disk view')

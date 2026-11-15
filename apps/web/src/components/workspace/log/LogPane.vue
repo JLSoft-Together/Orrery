@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PaneHeader from '../../next/ui/PaneHeader.vue'
+import PaneLayoutMore from '../../next/ui/PaneLayoutMore.vue'
+import { useUiGenStore } from '../../../stores/uiGen'
 import { ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, X } from 'lucide-vue-next'
 import type { BranchOpResult, CommitFile } from '@ccm/shared'
 import { absoluteIn, fileStepKey, scrollSideways } from '../../../lib/changesView'
@@ -25,8 +28,10 @@ import NewBranchDialog from './NewBranchDialog.vue'
 import PushDialog from './PushDialog.vue'
 import AccessPrompt from '../AccessPrompt.vue'
 
-const props = withDefaults(defineProps<{ cwd: string; active?: boolean; select?: string }>(), { active: true })
+const props = withDefaults(defineProps<{ cwd: string; paneKey?: string; active?: boolean; select?: string }>(), { active: true })
 const emit = defineEmits<{ root: [root: string]; selected: []; open: [path: string, line?: number] }>()
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
 const { t } = useI18n()
 const log = useGitLog(
   () => props.cwd,
@@ -410,12 +415,13 @@ const shortHash = computed(() => log.selected.value?.slice(0, 8) ?? '')
 </script>
 
 <template>
-  <section ref="rootEl" class="flex min-h-0 min-w-0 flex-col bg-surface" :aria-label="t('workspace.log.title')" data-log-pane>
-    <div class="@container flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2 select-none" data-pane-head>
+  <section ref="rootEl" class="flex min-h-0 min-w-0 flex-col bg-surface" :class="isNext ? 'ccm-next-viewer' : ''" :aria-label="t('workspace.log.title')" data-log-pane>
+    <component :is="isNext ? PaneHeader : 'div'" class="@container select-none" :class="isNext ? 'ccm-next-head ccm-next-viewer-head' : 'flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2'" data-pane-head>
       <span class="min-w-0 truncate text-xs font-semibold text-ink" :title="log.root.value ?? cwd">{{ t('workspace.log.title') }}</span>
       <span class="flex-1" />
+      <PaneLayoutMore :pane-key="paneKey" />
       <slot name="end" />
-    </div>
+    </component>
 
     <div v-if="log.error.value && !log.commits.value.length" class="grid flex-1 place-items-center p-6 text-center" data-log-fatal>
       <AccessPrompt v-if="log.error.value === 'denied'" :path="log.root.value ?? cwd" @granted="log.reload()" />

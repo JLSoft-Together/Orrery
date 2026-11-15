@@ -40,6 +40,13 @@ const compare = (covered = true): DiskCompare => ({
 const i18n = createI18n({ legacy: false, locale: 'en', fallbackLocale: 'en', messages: { en: diskV101.en, vi: diskV101.vi } })
 let wrapper: VueWrapper | null = null
 
+async function pickBase(w: VueWrapper, value: string): Promise<void> {
+  await w.find('[data-disk-compare-base]').trigger('click')
+  const opts = document.body.querySelectorAll<HTMLElement>('.ccm-menu [role=option]')
+  opts[['', 's2', 's1'].indexOf(value)]!.click()
+  await flushPromises()
+}
+
 async function mountTree(): Promise<VueWrapper> {
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -70,10 +77,11 @@ describe('DiskTree comparison', () => {
 
   it('lists the snapshots in the picker and keeps the normal columns until one is chosen', async () => {
     const w = await mountTree()
-    const opts = w.findAll('[data-disk-compare-base] option')
-    expect(opts.map((o) => o.text())[0]).toBe('No comparison')
-    expect(opts[1]!.text()).toMatch(/(11\/14|14\/11)\/2026/)
-    expect(opts[2]!.text()).toMatch(/(11\/10|10\/11)\/2026/)
+    await w.find('[data-disk-compare-base]').trigger('click')
+    const opts = [...document.body.querySelectorAll<HTMLElement>('.ccm-menu [role=option]')]
+    expect(opts[0]!.textContent).toContain('No comparison')
+    expect(opts[1]!.textContent).toMatch(/(11\/14|14\/11)\/2026/)
+    expect(opts[2]!.textContent).toMatch(/(11\/10|10\/11)\/2026/)
     expect(opts).toHaveLength(3)
     expect(w.find('[data-disk-delta]').exists()).toBe(false)
     expect(w.find('[data-disk-row] .rounded-full.bg-fill').exists()).toBe(true)
@@ -81,7 +89,7 @@ describe('DiskTree comparison', () => {
 
   it('picking a snapshot adds the change column with signs, arrows and words', async () => {
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
     expect(api.compare).toHaveBeenCalledWith('s1', '')
     expect(cellOf(w, 'big')).toContain('+20 GB')
@@ -98,7 +106,7 @@ describe('DiskTree comparison', () => {
   it('folders outside the comparison show a dash with the reason', async () => {
     api.compare.mockImplementation(async () => compare(false))
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
     const cell = w.find('[data-path="C:\\\\r\\\\big"] [data-disk-delta]')
     expect(cell.text()).toBe('-')
@@ -108,7 +116,7 @@ describe('DiskTree comparison', () => {
   it('shows a message when the comparison cannot be made', async () => {
     api.compare.mockResolvedValue(null)
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
     expect(w.find('[data-disk-compare-failed]').exists()).toBe(true)
     expect(w.find('[data-disk-delta]').exists()).toBe(false)
@@ -116,7 +124,7 @@ describe('DiskTree comparison', () => {
 
   it('the header button sorts the folders by change', async () => {
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
     const store = useDiskMapStore()
     store.children = { path: 'C:\\r', size: 44 * GB, total: items.length, items }
@@ -129,7 +137,7 @@ describe('DiskTree comparison', () => {
 
   it('the growth list shows the top folders and opens one', async () => {
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
     await w.find('[data-disk-growth-toggle]').trigger('click')
     const rows = w.findAll('[data-disk-growth-row]')
@@ -146,7 +154,7 @@ describe('DiskTree comparison', () => {
   it('an empty growth list says so', async () => {
     api.compare.mockImplementation(async () => ({ ...compare(), top: [] }))
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
     await w.find('[data-disk-growth-toggle]').trigger('click')
     expect(w.find('[data-disk-growth-empty]').text()).toContain('No folder grew')
@@ -154,9 +162,9 @@ describe('DiskTree comparison', () => {
 
   it('choosing "No comparison" brings the normal list back', async () => {
     const w = await mountTree()
-    await w.find('[data-disk-compare-base]').setValue('s1')
+    await pickBase(w, 's1')
     await flushPromises()
-    await w.find('[data-disk-compare-base]').setValue('')
+    await pickBase(w, '')
     await flushPromises()
     expect(w.find('[data-disk-delta]').exists()).toBe(false)
     expect(w.find('[data-disk-growth-toggle]').exists()).toBe(false)

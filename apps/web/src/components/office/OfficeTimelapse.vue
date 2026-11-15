@@ -9,6 +9,7 @@ import { dayKey, dayStart, shiftDay } from '@ccm/habblaud/shared/timeline'
 import { officeFeed } from '../../office/feed'
 import { chartPaths, DEFAULT_SPEED, hourTicks, isNotFound, PUSH_MS, SEEK_MS, sortDays, SPEEDS, STEP_S, type Speed } from '../../office/timelapse'
 import { useOfficeStore } from '../../stores/office'
+import AppSelect from '../AppSelect.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 
 const { t, locale } = useI18n()
@@ -162,8 +163,8 @@ async function loadDay(key: string, autoplay = false): Promise<void> {
   if (wasPlaying) play()
 }
 
-function onDayChange(e: Event): void {
-  void loadDay((e.target as HTMLSelectElement).value)
+function onDayChange(d: string): void {
+  void loadDay(d)
 }
 
 // ------------------------------------------------------------------ playback
@@ -364,16 +365,15 @@ onBeforeUnmount(() => {
             <strong class="text-lg leading-none font-semibold text-ink tabular-nums">{{ time }}</strong>
             <span class="text-2xs leading-none text-ink-muted tabular-nums">{{ span }}</span>
           </div>
-          <select
-            class="ccm-field h-7 max-w-[230px] min-w-0 cursor-pointer truncate disabled:cursor-not-allowed disabled:opacity-45"
-            :value="day"
+          <AppSelect
+            :model-value="day"
+            :options="dayOptions"
+            :label="t('officeV60.timelapse.day')"
+            size="sm"
+            class="max-w-[230px]"
             :disabled="!days.length"
-            :aria-label="t('officeV60.timelapse.day')"
-            :title="t('officeV60.timelapse.day')"
-            @change="onDayChange"
-          >
-            <option v-for="o in dayOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+            @update:model-value="onDayChange"
+          />
           <span class="flex-1" />
           <div data-lapse-speed class="shrink-0">
             <SegmentedControl v-model="speed" :options="speedOptions" :label="t('officeV60.timelapse.speed')" />

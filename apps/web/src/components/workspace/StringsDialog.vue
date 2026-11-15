@@ -9,6 +9,7 @@ import { buildRows, fillPrompt, filterRows, missingCounts, parseSource, setSourc
 import type { ReadOnlyReason } from '../../lib/strings/types'
 import { useUiStore } from '../../stores/ui'
 import { useWorkspaceStore } from '../../stores/workspace'
+import AppSelect from '../AppSelect.vue'
 import TextCompareDialog from './TextCompareDialog.vue'
 
 const props = defineProps<{ root: string | null; focus?: string | null }>()
@@ -39,6 +40,7 @@ const card = ref<HTMLElement | null>(null)
 let gen = 0
 
 const set = computed(() => sets.value[setIndex.value] ?? null)
+const setOptions = computed(() => sets.value.map((s, i) => ({ value: i, label: `${t(`stringsTable.kind.${s.kind}`)} - ${s.dir || '.'}` })))
 const rows = computed<Row[]>(() => (set.value ? buildRows(set.value.kind, columns.value) : []))
 const shown = computed(() => filterRows(rows.value, { missingOnly: missingOnly.value, query: query.value }))
 const counts = computed(() => missingCounts(rows.value, columns.value.length))
@@ -244,16 +246,16 @@ function onKey(e: KeyboardEvent): void {
           <h2 class="min-w-0 shrink truncate text-sm font-semibold text-ink" :title="root ?? undefined">
             {{ root ? t('stringsTable.titleOf', { name: baseName(root) }) : t('stringsTable.title') }}
           </h2>
-          <select
+          <AppSelect
             v-if="sets.length > 1"
-            class="ccm-field h-7 max-w-64 min-w-0 shrink text-xs"
-            :aria-label="t('stringsTable.set')"
-            :value="setIndex"
+            :model-value="setIndex"
+            :options="setOptions"
+            :label="t('stringsTable.set')"
+            size="sm"
+            class="max-w-64 shrink"
             data-strings-set
-            @change="changeSet(Number(($event.target as HTMLSelectElement).value))"
-          >
-            <option v-for="(s, i) in sets" :key="`${s.kind}:${s.dir}`" :value="i">{{ t(`stringsTable.kind.${s.kind}`) }} · {{ s.dir || '.' }}</option>
-          </select>
+            @update:model-value="changeSet"
+          />
           <span v-else-if="set" class="min-w-0 shrink truncate text-2xs text-ink-faint">{{ t(`stringsTable.kind.${set.kind}`) }} · {{ set.dir || '.' }}</span>
           <span v-if="columns.length" class="tabular inline-flex shrink-0 items-center gap-1 text-2xs" :class="total ? 'text-warning' : 'text-ink-faint'" data-strings-total>
             <CircleAlert v-if="total" :size="12" aria-hidden="true" />{{ t('stringsTable.missingCount', { n: total }, total) }}

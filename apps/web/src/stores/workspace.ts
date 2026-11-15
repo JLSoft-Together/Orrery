@@ -1851,6 +1851,31 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (tab) tab.root = setTreeRatio(tab.root, path, ratio)
   }
 
+  function setLayout(tabKey: string, root: LayoutNode): boolean {
+    const tab = tabs.value.find((t) => t.key === tabKey)
+    if (!tab) return false
+    const had = [...leaves(tab.root)].sort().join('\n')
+    if ([...leaves(root)].sort().join('\n') !== had) return false
+    unzoom(tab)
+    tab.root = root
+    settle(tab)
+    return true
+  }
+
+  function restoreLayout(snap: { tabs: Tab[]; projects: Record<string, string | null>; active: string | null }): boolean {
+    const now = tabs.value.flatMap((t) => leaves(t.root)).sort().join('\n')
+    const want = snap.tabs.flatMap((t) => leaves(t.root)).sort().join('\n')
+    if (now !== want) return false
+    tabs.value = snap.tabs.map((t) => ({ ...t }))
+    for (const p of panes.value) {
+      const v = snap.projects[p.key]
+      if (v !== undefined && (p.project ?? null) !== v) p.project = v ?? undefined
+    }
+    const focus = snap.active && tabOf(snap.active) ? snap.active : (tabs.value[0]?.focus ?? null)
+    if (focus) activate(focus)
+    return true
+  }
+
   function remember(dir: string): void {
     const key = dirKey(dir)
     recentDirs.value = [dir, ...recentDirs.value.filter((d) => dirKey(d) !== key)].slice(0, RECENT_LIMIT)
@@ -1961,6 +1986,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     moveGroup,
     groupKeys,
     setRatio,
+    setLayout,
+    restoreLayout,
     remember,
     forget,
   }

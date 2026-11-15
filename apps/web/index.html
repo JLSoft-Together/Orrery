@@ -42,6 +42,45 @@
             var fx = localStorage.getItem('ccm.starsFx')
             r.setAttribute('data-stars-fx', fx === 'off' || fx === 'meteors' ? fx : 'twinkle')
           } catch (e) {}
+          var NP = { mist: 'ld', nebula: 'ld', aurora: 'ld', graphite: 'ld', dawn: 'ld', galaxy: 'd', orrery: 'ld', console: 'd', custom: 'ld' }
+          function pickNext(u, nt, dk, g, rt, mo, rm) {
+            var ui = u === 'next' ? 'next' : 'classic'
+            var id = NP.hasOwnProperty(nt) ? nt : 'mist'
+            var s = NP[id]
+            var dark = ui === 'next' && s.indexOf(dk ? 'd' : 'l') < 0 ? s.charAt(0) === 'd' : dk
+            var motion = mo === 'full' || mo === 'reduced' || mo === 'off' ? mo : rm ? 'reduced' : 'full'
+            return { ui: ui, theme: id, dark: dark, glass: g === '1' || rt ? 'reduced' : 'full', motion: motion }
+          }
+          try {
+            var n = pickNext(
+              localStorage.getItem('ccm.uiGeneration'),
+              localStorage.getItem('ccm.nextTheme'),
+              r.classList.contains('dark'),
+              localStorage.getItem('ccm.next.reduceGlass'),
+              matchMedia('(prefers-reduced-transparency: reduce)').matches,
+              localStorage.getItem('ccm.next.motion'),
+              matchMedia('(prefers-reduced-motion: reduce)').matches
+            )
+            r.setAttribute('data-ui', n.ui)
+            r.setAttribute('data-motion', n.motion)
+            if (n.glass === 'reduced') r.setAttribute('data-glass', 'reduced')
+            if (n.ui === 'next') {
+              r.removeAttribute('data-theme')
+              r.setAttribute('data-next-theme', n.theme)
+              r.classList.toggle('dark', n.dark)
+              if (n.theme === 'custom') {
+                try {
+                  var cj = JSON.parse(localStorage.getItem('ccm.next.custom') || 'null')
+                  var cv = cj && cj.v === 1 && cj.css ? cj.css[n.dark ? 'dark' : 'light'] : null
+                  if (cv && typeof cv === 'object')
+                    for (var ck in cv)
+                      if (/^--ccm-[a-z-]+$/.test(ck) && typeof cv[ck] === 'string' && !(ck === '--ccm-glass' && n.glass === 'reduced')) r.style.setProperty(ck, cv[ck])
+                } catch (e) {}
+              }
+            }
+          } catch (e) {
+            r.setAttribute('data-ui', 'classic')
+          }
           try {
             var l = localStorage.getItem('ccm.locale')
             if (l === 'vi' || l === 'en') document.documentElement.lang = l

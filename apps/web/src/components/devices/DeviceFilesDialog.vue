@@ -5,6 +5,7 @@ import { ArrowUp, CircleAlert, Download, ExternalLink, File, FileQuestion, Folde
 import type { DevFsEntry, DevFsErrorCode, DevFsProgress, DevFsScope, DevFsSource } from '@ccm/shared'
 import { crumbs, devFsCancel, devFsDelete, devFsList, devFsMkdir, devFsOpen, devFsPull, devFsPush, fmtBytes, joinPath, onDevFsProgress, opensAsDir, parentOf, progressPct, SDCARD_ROOTS, transferId, validName } from '../../lib/devFiles'
 import { isPackageName } from '../../lib/deviceUiTest'
+import AppSelect from '../AppSelect.vue'
 import { dragPaths, hasDragPath } from '../../lib/explorer/dragPath'
 import { pathsForFiles } from '../../lib/preview'
 import { retireOverlay } from '../../lib/motion'
@@ -21,6 +22,7 @@ const KIND_ICON = { dir: Folder, file: File, link: Link2, other: FileQuestion }
 const dialog = ref<HTMLElement | null>(null)
 const scopeKind = ref<'sdcard' | 'app'>('sdcard')
 const sdRoot = ref<string>(SDCARD_ROOTS[0])
+const rootOptions = SDCARD_ROOTS.map((r) => ({ value: r as string, label: r }))
 const pkg = ref('')
 const appPkg = ref<string | null>(null)
 const dir = ref<string>(SDCARD_ROOTS[0])
@@ -331,9 +333,7 @@ watch(
           <div class="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
             <label v-if="scopeKind === 'sdcard'" class="flex items-center gap-1.5 text-2xs text-ink-muted">
               {{ t('devFiles.root') }}
-              <select class="ccm-field font-mono text-xs" :value="sdRoot" :disabled="!!busy" data-files-root @change="setRoot(($event.target as HTMLSelectElement).value)">
-                <option v-for="r in SDCARD_ROOTS" :key="r" :value="r">{{ r }}</option>
-              </select>
+              <AppSelect :model-value="sdRoot" :options="rootOptions" :label="t('devFiles.root')" size="sm" class="font-mono" :disabled="!!busy" data-files-root @update:model-value="setRoot" />
             </label>
             <form v-else class="flex min-w-0 items-center gap-1.5" @submit.prevent="openApp">
               <input

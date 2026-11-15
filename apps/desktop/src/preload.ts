@@ -346,6 +346,7 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   diskCleanCancel: (): Promise<unknown> => ipcRenderer.invoke('ccm:diskclean-cancel'),
   diskCleanDelete: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:diskclean-delete', req),
   onDiskCleanProgress: (handler: (progress: unknown) => void): (() => void) => subscribe('ccm:diskclean-progress', handler),
+  diskCleanEmptyBin: (): Promise<unknown> => ipcRenderer.invoke('ccm:diskclean-empty-bin'),
   diskState: (): Promise<unknown> => ipcRenderer.invoke('ccm:disk-state'),
   diskRefresh: (): Promise<unknown> => ipcRenderer.invoke('ccm:disk-refresh'),
   diskSet: (warnGb: number): Promise<unknown> => ipcRenderer.invoke('ccm:disk-set', { warnGb }),

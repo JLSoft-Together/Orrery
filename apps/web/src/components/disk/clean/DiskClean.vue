@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleAlert, CircleCheck, FolderPlus, RefreshCw, Trash2, TriangleAlert, X } from 'lucide-vue-next'
+import { CircleAlert, CircleCheck, FolderPlus, RefreshCw, Sparkles, Trash2, TriangleAlert, X } from 'lucide-vue-next'
 import { isRunLive } from '@ccm/shared'
 import { knownProjects, uniqueDirs } from '../../../lib/buildClean'
 import { desktop } from '../../../lib/desktop'
@@ -15,6 +15,7 @@ import { useRunStore } from '../../../stores/run'
 import { useTerminalsStore } from '../../../stores/terminals'
 import { isTerm, useWorkspaceStore, workCwd } from '../../../stores/workspace'
 import CleanGroup from './CleanGroup.vue'
+import CleanOneTap from './CleanOneTap.vue'
 
 const { t, locale } = useI18n()
 const store = useDiskCleanStore()
@@ -52,7 +53,35 @@ const scanningName = computed(() => {
   const cat = store.categories.find((c) => c.id === id)
   return cat ? t(cat.titleKey) : ''
 })
-const canScan = computed(() => !!store.project || roots.value.length > 0)
+const hasSystem = computed(() => store.categories.some((c) => c.group === 'system'))
+const canScan = computed(() => !!store.project || roots.value.length > 0 || hasSystem.value)
+const firstOfGroup = computed(() => {
+  const seen = new Set<string>()
+  const out = new Set<string>()
+  for (const g of shownGroups.value) {
+    if (!seen.has(g.category.group)) out.add(g.category.id)
+    seen.add(g.category.group)
+  }
+  return out
+})
+const showGroupLabels = computed(() => new Set(shownGroups.value.map((g) => g.category.group)).size > 1)
+const titles = computed(() => Object.fromEntries(store.categories.map((c) => [c.id, t(c.titleKey)])))
+
+function oneTap(): void {
+  now.value = Date.now()
+  void store.startOneTap(roots.value, currentOpen())
+}
+
+async function runOneTap(): Promise<void> {
+  detail.value = false
+  await store.runOneTap(currentOpen())
+  await diskMap.loadHistory()
+}
+
+async function emptyBin(): Promise<void> {
+  await store.emptyBin()
+  await diskMap.loadHistory()
+}
 
 function scan(): void {
   now.value = Date.now()
@@ -77,6 +106,10 @@ function onDays(e: Event): void {
 
 const reasonText = (r: string): string => {
   if (r.startsWith('locked:')) return t(`diskClean.locked.${r.slice(7)}`)
+  const skipped = /^skipped:(\d+)$/.exec(r)
+  if (skipped) return t('diskClean.reason.skipped', { n: Number(skipped[1]) })
+  const some = /^some:(\d+):(.*)$/.exec(r)
+  if (some) return t('diskClean.reason.some', { n: Number(some[1]), reason: reasonText(some[2]!) })
   const key = `diskClean.reason.${r}`
   const v = t(key)
   return v === key ? r : v
@@ -120,6 +153,9 @@ onBeforeUnmount(() => store.dispose())
       <button v-if="!store.project" type="button" class="ccm-btn shrink-0" data-clean-add @click="addFolder">
         <FolderPlus :size="14" aria-hidden="true" />{{ t('diskClean.addFolder') }}
       </button>
+      <button v-if="!store.project && hasSystem" type="button" class="ccm-btn shrink-0" :disabled="store.scanning || store.deleting" data-clean-onetap-start @click="oneTap">
+        <Sparkles :size="14" aria-hidden="true" />{{ t('diskClean.oneTap') }}
+      </button>
       <button v-if="store.scanning" type="button" class="ccm-btn shrink-0" data-clean-cancel @click="store.cancel()">{{ t('diskClean.cancel') }}</button>
       <button v-else type="button" class="ccm-btn ccm-btn-primary shrink-0" :disabled="!canScan" data-clean-scan @click="scan">
         <RefreshCw :size="14" aria-hidden="true" />{{ store.scanned ? t('diskClean.rescan') : t('diskClean.scan') }}
@@ -143,6 +179,19 @@ onBeforeUnmount(() => store.dispose())
       </template>
     </div>
 
+    <CleanOneTap
+      v-if="store.tap !== 'idle'"
+      :state="store.tap"
+      :groups="store.tapGroups"
+      :size="store.tapSize"
+      :days="store.days"
+      :titles="titles"
+      :deleting="store.deleting"
+      @toggle="store.toggleTap"
+      @run="runOneTap"
+      @close="store.closeOneTap()"
+    />
+
     <p v-if="store.scanning" class="text-xs text-ink-muted" role="status" data-clean-scanning>{{ t('diskClean.scanning', { name: scanningName || '...' }) }}</p>
 
     <p v-if="!canScan" class="rounded-card border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted" data-clean-noroots>{{ t('diskClean.noRoots') }}</p>
@@ -151,23 +200,28 @@ onBeforeUnmount(() => store.dispose())
     </p>
 
     <template v-if="store.scanned || store.scanning">
-      <CleanGroup
-        v-for="g in shownGroups"
-        :key="g.category.id"
-        :category="g.category"
-        :items="g.items"
-        :selected="store.selected"
-        :open="store.open"
-        :days="store.days"
-        :now="now"
-        :busy="store.scanning && !!store.progress[g.category.id] && store.progress[g.category.id]?.state !== 'done'"
-        :pending="ON_DEMAND.includes(g.category.id) && !store.measured.has(g.category.id)"
-        :can-measure="!store.scanning"
-        @measure="store.measure($event, currentOpen())"
-        @toggle="store.toggle"
-        @all="store.toggleCategory"
-        @reveal="diskMapReveal"
-      />
+      <template v-for="g in shownGroups" :key="g.category.id">
+        <h3 v-if="showGroupLabels && firstOfGroup.has(g.category.id)" class="ccm-label mt-1" :data-clean-section="g.category.group">
+          {{ g.category.group === 'system' ? t('diskClean.groupSystem') : t('diskClean.groupDev') }}
+        </h3>
+        <CleanGroup
+          :category="g.category"
+          :items="g.items"
+          :selected="store.selected"
+          :open="store.open"
+          :days="store.days"
+          :now="now"
+          :busy="store.scanning && !!store.progress[g.category.id] && store.progress[g.category.id]?.state !== 'done'"
+          :pending="ON_DEMAND.includes(g.category.id) && !store.measured.has(g.category.id)"
+          :can-measure="!store.scanning"
+          :deleting="store.deleting"
+          @measure="store.measure($event, currentOpen())"
+          @toggle="store.toggle"
+          @all="store.toggleCategory"
+          @empty-bin="emptyBin"
+          @reveal="diskMapReveal"
+        />
+      </template>
     </template>
 
     <div

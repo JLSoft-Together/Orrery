@@ -3,15 +3,15 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LoaderCircle } from 'lucide-vue-next'
 import { formatSize } from '../../../lib/diskMap'
-import { lockReason, type CleanCategory, type CleanItem } from '../../../lib/diskClean'
+import { pickable, type CleanCategory, type CleanItem } from '../../../lib/diskClean'
 import CleanRow from './CleanRow.vue'
 
-const props = defineProps<{ category: CleanCategory; items: CleanItem[]; selected: Set<string>; open: string[]; days: number; now: number; busy: boolean; pending?: boolean; canMeasure?: boolean }>()
-const emit = defineEmits<{ toggle: [path: string]; all: [id: string]; reveal: [path: string]; measure: [id: string] }>()
+const props = defineProps<{ category: CleanCategory; items: CleanItem[]; selected: Set<string>; open: string[]; days: number; now: number; busy: boolean; pending?: boolean; canMeasure?: boolean; deleting?: boolean }>()
+const emit = defineEmits<{ toggle: [path: string]; all: [id: string]; reveal: [path: string]; measure: [id: string]; emptyBin: [] }>()
 
 const { t, locale } = useI18n()
 
-const free = computed(() => props.items.filter((i) => !lockReason(i, props.open)))
+const free = computed(() => props.items.filter((i) => pickable(i, props.open)))
 const picked = computed(() => free.value.filter((i) => props.selected.has(i.path)))
 const total = computed(() => props.items.reduce((s, i) => s + i.size, 0))
 const allOn = computed(() => free.value.length > 0 && picked.value.length === free.value.length)
@@ -54,6 +54,8 @@ const title = computed(() => t(props.category.titleKey))
         :open="open"
         :days="days"
         :now="now"
+        :busy="deleting"
+        @empty-bin="emit('emptyBin')"
         @toggle="emit('toggle', $event)"
         @reveal="emit('reveal', $event)"
       />

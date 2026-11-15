@@ -1,8 +1,10 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { CleanGroup, CleanItem } from '@ccm/shared'
+import { checkDeletable, isUnder } from '../diskMap/guard'
 import { cacheSpots, realDir } from './caches'
 import { projectOf, projectTouched, restoreOf, type JunkHit } from './projects'
+import type { Member, SystemDeps } from './system'
 
 export interface CleanCtx {
   roots: string[]
@@ -13,6 +15,11 @@ export interface CleanCtx {
   junk: () => Promise<JunkHit[]>
   size: (p: string) => Promise<number>
   emit: (items: CleanItem[]) => void
+  keep: string[]
+  now: number
+  system?: SystemDeps
+  attach: (item: string, members: Member[]) => void
+  keepMember: (p: string) => boolean
 }
 
 export interface CleanProvider {
@@ -93,6 +100,7 @@ export const cacheProvider: CleanProvider = {
       if (ctx.signal.aborted) break
       const real = await realDir(spot.path)
       if (!real) continue
+      if (checkDeletable(real, { platform: ctx.platform, home: ctx.home, keep: ctx.keep, roots: [real] }) || ctx.keep.some((k) => k && isUnder(real, k, ctx.platform))) continue
       const key = ctx.platform === 'win32' || ctx.platform === 'darwin' ? real.toLowerCase() : real
       if (seen.has(key)) continue
       seen.add(key)

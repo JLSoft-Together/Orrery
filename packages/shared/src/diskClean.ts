@@ -1,5 +1,6 @@
 export type CleanGroup = 'dev' | 'system'
-export type CleanLock = 'open' | 'run' | 'server' | 'self'
+export type CleanLock = 'open' | 'run' | 'server' | 'self' | 'admin' | 'browser' | 'app' | 'denied'
+export type CleanAction = 'files' | 'bin'
 
 export interface CleanCategory {
   id: string
@@ -19,6 +20,11 @@ export interface CleanItem {
   lastTouched?: number
   restore?: string
   locked?: CleanLock
+  action?: CleanAction
+  file?: boolean
+  files?: number
+  detail?: string
+  unknown?: boolean
 }
 
 export interface CleanScanRequest {
@@ -45,6 +51,19 @@ export interface CleanDeleteRequest {
   paths: string[]
   permanent: boolean
   open: string[]
+  oneTap?: boolean
+}
+
+export const CLEAN_PERMANENT_OK: readonly string[] = ['temp', 'browser']
+export const CLEAN_ONE_TAP_SYSTEM: readonly string[] = ['temp', 'browser', 'crash', 'logs']
+export const CLEAN_ONE_TAP_DEV: readonly string[] = ['node_modules', 'build']
+export const CLEAN_ONE_TAP: readonly string[] = [...CLEAN_ONE_TAP_SYSTEM, ...CLEAN_ONE_TAP_DEV]
+
+export interface CleanBinResult {
+  done: boolean
+  freed: number
+  cancelled?: boolean
+  error?: string
 }
 
 export const CLEAN_ROOTS_MAX = 200
@@ -79,5 +98,5 @@ export function parseCleanDelete(raw: unknown): CleanDeleteRequest | null {
   const paths = strings(o.paths, CLEAN_DELETE_MAX)
   const open = strings(o.open ?? [], CLEAN_OPEN_MAX)
   if (!paths || !paths.length || !open) return null
-  return { paths, permanent: o.permanent === true, open }
+  return { paths, permanent: o.permanent === true, open, ...(o.oneTap === true ? { oneTap: true } : {}) }
 }

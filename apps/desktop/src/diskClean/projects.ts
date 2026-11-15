@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { buildDirKind } from '@ccm/shared'
@@ -81,7 +82,46 @@ export function junkKind(name: string, siblings: ReadonlySet<string>): JunkKind 
   }
 }
 
-export async function findJunk(root: string, signal?: AbortSignal, depthMax = WALK_DEPTH): Promise<JunkHit[]> {
+export type GitTracked = (dir: string, name: string) => Promise<boolean | null>
+
+export const gitTracked: GitTracked = (dir, name) =>
+  new Promise((resolve) =>
+    execFile('git', ['-C', dir, '-c', 'core.quotepath=false', 'ls-files', '--', name], { timeout: 15_000, windowsHide: true, maxBuffer: 256 * 1024 }, (err, out) => {
+      if (err) return resolve((err as { code?: unknown }).code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' ? true : null)
+      resolve(String(out).trim().length > 0)
+    }),
+  )
+
+const TRACK_CHECK = new Set(['build', 'dist', 'out', 'target'])
+const BUILDER_FILES = ['electron-builder.yml', 'electron-builder.yaml', 'electron-builder.json', 'electron-builder.json5', 'electron-builder.toml', 'electron-builder.js', 'electron-builder.cjs', 'electron-builder.mjs', 'electron-builder.ts', 'electron-builder.config.js', 'electron-builder.config.cjs', 'electron-builder.config.ts']
+
+export async function builderResources(owner: string, siblings: ReadonlySet<string>): Promise<string | null> {
+  let pkg: Record<string, unknown> | null = null
+  if (siblings.has('package.json')) {
+    try {
+      pkg = JSON.parse(await fs.readFile(path.join(owner, 'package.json'), 'utf8')) as Record<string, unknown>
+    } catch {
+      pkg = null
+    }
+  }
+  const deps = { ...((pkg?.dependencies as Record<string, unknown>) ?? {}), ...((pkg?.devDependencies as Record<string, unknown>) ?? {}) }
+  const build = pkg?.build && typeof pkg.build === 'object' ? (pkg.build as Record<string, unknown>) : null
+  const uses = !!build || 'electron-builder' in deps || BUILDER_FILES.some((f) => siblings.has(f))
+  if (!uses) return null
+  const dirs = build?.directories && typeof build.directories === 'object' ? (build.directories as Record<string, unknown>) : null
+  const res = typeof dirs?.buildResources === 'string' ? dirs.buildResources.replace(/^\.[\\/]/, '').replace(/[\\/]+$/, '') : 'build'
+  return res || 'build'
+}
+
+export async function junkAllowed(owner: string, name: string, siblings: ReadonlySet<string>, tracked: GitTracked): Promise<boolean> {
+  if (!TRACK_CHECK.has(name)) return true
+  if ((await builderResources(owner, siblings))?.toLowerCase() === name.toLowerCase()) return false
+  const repo = await repoOf(owner, path.parse(path.resolve(owner)).root)
+  if (!repo) return true
+  return (await tracked(owner, name).catch(() => null)) === false
+}
+
+export async function findJunk(root: string, signal?: AbortSignal, depthMax = WALK_DEPTH, tracked: GitTracked = gitTracked): Promise<JunkHit[]> {
   const out: JunkHit[] = []
   const queue: Array<{ dir: string; depth: number }> = [{ dir: root, depth: 0 }]
   let seen = 0
@@ -99,7 +139,7 @@ export async function findJunk(root: string, signal?: AbortSignal, depthMax = WA
       const child = path.join(dir, name)
       if (JUNK_NAMES.has(name)) {
         const kind = junkKind(name, siblings)
-        if (kind) out.push({ path: child, name, kind, owner: dir, root })
+        if (kind && (await junkAllowed(dir, name, siblings, tracked))) out.push({ path: child, name, kind, owner: dir, root })
         continue
       }
       if (SKIP.has(name) || depth + 1 >= depthMax) continue
@@ -180,7 +220,10 @@ export async function restoreOf(hit: Pick<JunkHit, 'kind' | 'owner' | 'root'>): 
       return 'cargo build'
     case 'maven':
       return 'mvn package'
-    case 'python':
-      return 'python -m venv .venv'
+    case 'python': {
+      const names = new Set((await fs.readdir(hit.owner).catch(() => [] as string[])).map((n) => n.toLowerCase()))
+      if (names.has('requirements.txt')) return 'python -m venv .venv && pip install -r requirements.txt'
+      return names.has('pyproject.toml') || names.has('setup.py') ? 'python -m venv .venv && pip install -e .' : 'python -m venv .venv'
+    }
   }
 }

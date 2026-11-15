@@ -1,7 +1,8 @@
-import type { CleanCategory, CleanItem, CleanLock, CleanProgress, CleanScanResult, DiskDeleteResult } from '@ccm/shared'
+import { CLEAN_ONE_TAP, CLEAN_PERMANENT_OK, type CleanBinResult, type CleanCategory, type CleanItem, type CleanLock, type CleanProgress, type CleanScanResult, type DiskDeleteResult } from '@ccm/shared'
 import { desktop } from './desktop'
 
-export type { CleanCategory, CleanItem, CleanLock, CleanProgress, CleanScanResult }
+export type { CleanBinResult, CleanCategory, CleanItem, CleanLock, CleanProgress, CleanScanResult }
+export { CLEAN_ONE_TAP, CLEAN_PERMANENT_OK }
 
 interface CleanBridge {
   diskCleanCategories?: () => Promise<unknown>
@@ -9,6 +10,7 @@ interface CleanBridge {
   diskCleanCancel?: () => Promise<unknown>
   diskCleanDelete?: (req: unknown) => Promise<unknown>
   onDiskCleanProgress?: (cb: (p: unknown) => void) => () => void
+  diskCleanEmptyBin?: () => Promise<unknown>
 }
 const bridge = desktop as unknown as CleanBridge | undefined
 
@@ -28,8 +30,10 @@ export const diskCleanCategories = (): Promise<CleanCategory[]> => call(bridge?.
 export const diskCleanScan = (ids: string[], roots: string[], open: string[]): Promise<CleanScanResult> =>
   call(bridge?.diskCleanScan && (() => bridge.diskCleanScan!({ ids: [...ids], roots: [...roots], open: [...open] })), { items: [] })
 export const diskCleanCancel = (): Promise<boolean> => call(bridge?.diskCleanCancel && (() => bridge.diskCleanCancel!()), false)
-export const diskCleanDelete = (paths: string[], permanent: boolean, open: string[]): Promise<DiskDeleteResult | null> =>
-  call<DiskDeleteResult | null>(bridge?.diskCleanDelete && (() => bridge.diskCleanDelete!({ paths: [...paths], permanent, open: [...open] })), null)
+export const diskCleanDelete = (paths: string[], permanent: boolean, open: string[], oneTap = false): Promise<DiskDeleteResult | null> =>
+  call<DiskDeleteResult | null>(bridge?.diskCleanDelete && (() => bridge.diskCleanDelete!({ paths: [...paths], permanent, open: [...open], ...(oneTap ? { oneTap: true } : {}) })), null)
+export const hasEmptyBin = typeof bridge?.diskCleanEmptyBin === 'function'
+export const diskCleanEmptyBin = (): Promise<CleanBinResult | null> => call<CleanBinResult | null>(bridge?.diskCleanEmptyBin && (() => bridge.diskCleanEmptyBin!()), null)
 export const onDiskCleanProgress = (cb: (p: CleanProgress) => void): (() => void) => bridge?.onDiskCleanProgress?.((p) => cb(p as CleanProgress)) ?? (() => {})
 
 export const DAY_MS = 86_400_000
@@ -82,9 +86,19 @@ export function isStale(item: Pick<CleanItem, 'lastTouched'>, days: number, now:
   return typeof item.lastTouched === 'number' && now - item.lastTouched > days * DAY_MS
 }
 
+export function pickable(item: Pick<CleanItem, 'path' | 'project' | 'locked' | 'action'>, open: readonly string[]): boolean {
+  return item.action !== 'bin' && !lockReason(item, open)
+}
+
+const oldEnough = (i: CleanItem, days: number, now: number): boolean => (i.group === 'system' ? !i.file : isStale(i, days, now)) && i.kind !== 'python'
+
 export function preselect(items: readonly CleanItem[], categories: readonly Pick<CleanCategory, 'id' | 'preselect'>[], days: number, now: number, open: readonly string[]): Set<string> {
   const on = new Set(categories.filter((c) => c.preselect).map((c) => c.id))
-  return new Set(items.filter((i) => on.has(i.category) && !lockReason(i, open) && isStale(i, days, now)).map((i) => i.path))
+  return new Set(items.filter((i) => on.has(i.category) && pickable(i, open) && oldEnough(i, days, now)).map((i) => i.path))
+}
+
+export function oneTapItems(items: readonly CleanItem[], days: number, now: number, open: readonly string[]): CleanItem[] {
+  return items.filter((i) => CLEAN_ONE_TAP.includes(i.category) && !i.file && pickable(i, open) && oldEnough(i, days, now))
 }
 
 export function inProject(item: Pick<CleanItem, 'path' | 'project'>, dir: string | null): boolean {

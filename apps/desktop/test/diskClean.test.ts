@@ -178,6 +178,10 @@ describe('global caches', () => {
       junk: async () => [],
       size: async () => 8,
       emit: (b) => items.push(...b),
+      keep: [],
+      now: Date.now(),
+      attach: () => undefined,
+      keepMember: () => true,
     }
     const out = await cacheProvider.scan(ctx)
     expect(out.map((i) => i.path)).toEqual([path.join(tmp, 'real-gradle', 'caches')])
@@ -317,6 +321,6 @@ describe('ipc', () => {
     expect(((await handlers.get('ccm:diskclean-categories')!('app')) as unknown[]).length).toBeGreaterThan(1)
     expect(await handlers.get('ccm:diskclean-delete')!('app', { paths: 'x' })).toMatchObject({ cancelled: true })
     dc.dispose()
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(4)
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(5)
   })
 })

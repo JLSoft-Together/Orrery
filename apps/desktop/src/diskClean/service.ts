@@ -1,34 +1,64 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import type { CleanCategory, CleanDeleteRequest, CleanItem, CleanLock, CleanProgress, CleanScanRequest, CleanScanResult, DiskDeleteResult, DiskHistoryEntry } from '@ccm/shared'
+import {
+  CLEAN_ONE_TAP,
+  CLEAN_PERMANENT_OK,
+  type CleanBinResult,
+  type CleanCategory,
+  type CleanDeleteRequest,
+  type CleanItem,
+  type CleanLock,
+  type CleanProgress,
+  type CleanScanRequest,
+  type CleanScanResult,
+  type DiskDeleteResult,
+  type DiskHistoryEntry,
+} from '@ccm/shared'
 import { Cancelled } from '../agentData/fsTree'
 import { refusedRoot } from '../buildClean/scan'
-import { runDelete, type DeleteAsk } from '../diskMap/delete'
-import { isUnder, normalizePath, topLevel } from '../diskMap/guard'
+import { measureRest, runDelete, type DeleteAsk } from '../diskMap/delete'
+import { canonicalOf, isUnder, normalizePath, topLevel } from '../diskMap/guard'
 import { findJunk, type JunkHit } from './projects'
 import { dirSize } from './size'
 import { DEV_PROVIDERS, type CleanCtx, type CleanProvider } from './providers'
+import { appCacheLock, browserSpots, isForbidden, runningApps, runningBrowsers, SYSTEM_PROVIDERS, type Member, type SystemDeps } from './system'
 
 export interface RunningHolder {
   cwd: string
   lock: Extract<CleanLock, 'run' | 'server'>
 }
 
+export interface OneTapAsk {
+  bytes: number
+  count: number
+  permBytes: number
+  permCount: number
+  trashBytes: number
+  trashCount: number
+}
+
+export type OneTapChoice = 'clean' | 'trash' | 'cancel'
+
 export interface DiskCleanDeps {
   platform: NodeJS.Platform
   home: string
   env: NodeJS.ProcessEnv
   providers?: CleanProvider[]
+  system?: SystemDeps
   self: () => string[]
   running: () => RunningHolder[]
+  openNow?: () => Promise<string[]>
   keep: () => string[]
   emit: (p: CleanProgress) => void
   confirm: (ask: DeleteAsk, second: boolean) => Promise<boolean>
+  askOneTap?: (ask: OneTapAsk) => Promise<OneTapChoice>
+  askBin?: (ask: { bytes: number; count: number }) => Promise<boolean>
   trash: (p: string) => Promise<void>
   remove: (p: string) => Promise<void>
   record: (e: DiskHistoryEntry) => Promise<void>
   forget?: (paths: string[]) => Promise<void>
   indexSize?: (p: string) => Promise<number | null>
+  now?: () => number
 }
 
 export function lockOf(item: Pick<CleanItem, 'path' | 'project'>, open: readonly string[], running: readonly RunningHolder[], self: readonly string[], platform: NodeJS.Platform): CleanLock | undefined {
@@ -39,19 +69,32 @@ export function lockOf(item: Pick<CleanItem, 'path' | 'project'>, open: readonly
   return r?.lock
 }
 
+const fail = (code: string): Error => Object.assign(new Error(code), { code })
+
+interface Target {
+  path: string
+  item: CleanItem
+  member?: Member
+}
+
 export class DiskCleanService {
   private abort: AbortController | null = null
   private deleting = false
   private readonly last = new Map<string, CleanItem>()
+  private readonly members = new Map<string, Member[]>()
   private readonly providers: CleanProvider[]
 
   constructor(private readonly deps: DiskCleanDeps) {
-    this.providers = (deps.providers ?? DEV_PROVIDERS).filter((p) => !p.platforms || p.platforms.includes(deps.platform))
+    this.providers = (deps.providers ?? (deps.system ? [...DEV_PROVIDERS, ...SYSTEM_PROVIDERS] : DEV_PROVIDERS)).filter((p) => !p.platforms || p.platforms.includes(deps.platform))
   }
 
   private key(p: string): string {
     const n = normalizePath(p, this.deps.platform)
     return this.deps.platform === 'win32' || this.deps.platform === 'darwin' ? n.toLowerCase() : n
+  }
+
+  private now(): number {
+    return (this.deps.now ?? Date.now)()
   }
 
   categories(): CleanCategory[] {
@@ -82,20 +125,31 @@ export class DiskCleanService {
     return topLevel(ok, this.deps.platform)
   }
 
+  private async openList(fromPage: readonly string[]): Promise<string[]> {
+    const own = await (this.deps.openNow?.() ?? Promise.resolve([] as string[])).catch(() => [] as string[])
+    const out: string[] = []
+    for (const p of [...own, ...fromPage]) if (p && !out.some((o) => this.key(o) === this.key(p))) out.push(p)
+    return out
+  }
+
   async scan(req: CleanScanRequest): Promise<CleanScanResult> {
     if (this.abort) return { items: [], busy: true }
     const abort = new AbortController()
     this.abort = abort
     const signal = abort.signal
     const items: CleanItem[] = []
+    const attached = new Map<string, Member[]>()
     try {
       const roots = await this.cleanRoots(req.roots)
       const running = this.deps.running()
       const self = this.deps.self()
+      const open = await this.openList(req.open)
+      const keep = this.deps.keep()
       const lock = (it: CleanItem): CleanItem => {
-        const l = lockOf(it, req.open, running, self, this.deps.platform)
-        const { locked: _drop, ...rest } = it
-        return l ? { ...rest, locked: l } : rest
+        const l = it.action === 'files' || it.action === 'bin' ? undefined : lockOf(it, open, running, self, this.deps.platform)
+        const { locked: own, ...rest } = it
+        const final = l ?? own
+        return final ? { ...rest, locked: final } : rest
       }
       let junk: Promise<JunkHit[]> | null = null
       const seen = new Set<string>()
@@ -112,6 +166,11 @@ export class DiskCleanService {
           platform: this.deps.platform,
           env: this.deps.env,
           signal,
+          keep,
+          now: this.now(),
+          ...(this.deps.system ? { system: this.deps.system } : {}),
+          attach: (p, list) => attached.set(this.key(p), list),
+          keepMember: (p) => !lockOf({ path: p }, open, running, self, this.deps.platform),
           junk: () => (junk ??= (async () => (await Promise.all(roots.map((r) => findJunk(r, signal)))).flat())()),
           size: async (p) => {
             const hint = await this.deps.indexSize?.(p).catch(() => null)
@@ -134,8 +193,18 @@ export class DiskCleanService {
         if (signal.aborted) throw new Cancelled()
         this.deps.emit({ category: id, state: 'done', count, bytes })
       }
-      for (const [k, v] of this.last) if (req.ids.includes(v.category)) this.last.delete(k)
-      for (const it of items) this.last.set(this.key(it.path), it)
+      for (const [k, v] of this.last) {
+        if (req.ids.includes(v.category)) {
+          this.last.delete(k)
+          this.members.delete(k)
+        }
+      }
+      for (const it of items) {
+        const k = this.key(it.path)
+        this.last.set(k, it)
+        const m = attached.get(k)
+        if (m && it.action === 'files') this.members.set(k, m)
+      }
       return { items }
     } catch (err) {
       if (err instanceof Cancelled || signal.aborted) return { items, cancelled: true }
@@ -149,19 +218,51 @@ export class DiskCleanService {
     return this.last.get(this.key(p))
   }
 
+  membersOf(p: string): Member[] {
+    return this.members.get(this.key(p)) ?? []
+  }
+
+  private async liveLock(item: CleanItem): Promise<CleanLock | undefined> {
+    const sys = this.deps.system
+    if (!sys) return undefined
+    if (item.category === 'browser') {
+      const running = await runningBrowsers(sys)
+      const spot = browserSpots(sys.roots).find((b) => b.id === item.kind)
+      return spot && running.has(spot.id) ? 'browser' : undefined
+    }
+    if (item.category === 'appcache') return appCacheLock(path.basename(item.path), await runningApps(sys)) ? 'app' : undefined
+    return undefined
+  }
+
+  private systemSafe(p: string): boolean {
+    const sys = this.deps.system
+    return !sys || !isForbidden(p, sys.roots, this.deps.keep())
+  }
+
+  private async realParent(p: string): Promise<string | null> {
+    const lib = this.deps.platform === 'win32' ? path.win32 : path.posix
+    const real = await fs.realpath(lib.dirname(p)).catch(() => null)
+    return real ? this.key(real) : null
+  }
+
   async remove(req: CleanDeleteRequest): Promise<DiskDeleteResult> {
     const permanent = req.permanent
     if (this.deleting || this.abort) return { done: [], failed: req.paths.map((p) => ({ path: p, reason: 'busy' })), freed: 0, permanent }
     this.deleting = true
     try {
       const failed: DiskDeleteResult['failed'] = []
-      const allowed: string[] = []
+      const targets: Target[] = []
       const running = this.deps.running()
       const self = this.deps.self()
+      const open = await this.openList(req.open)
       for (const p of req.paths) {
         const item = this.known(p)
-        if (!item) {
+        if (!item || item.action === 'bin' || (req.oneTap && !CLEAN_ONE_TAP.includes(item.category))) {
           failed.push({ path: p, reason: 'invalid' })
+          continue
+        }
+        if (item.locked) {
+          failed.push({ path: item.path, reason: `locked:${item.locked}` })
           continue
         }
         const st = await fs.lstat(item.path).catch(() => null)
@@ -169,34 +270,188 @@ export class DiskCleanService {
           failed.push({ path: item.path, reason: 'ENOENT' })
           continue
         }
-        if (!st.isDirectory() || st.isSymbolicLink()) {
+        const wantFile = item.file === true
+        if (st.isSymbolicLink() || (wantFile ? !st.isFile() : !st.isDirectory())) {
           failed.push({ path: item.path, reason: 'changed' })
           continue
         }
-        const l = lockOf(item, req.open, running, self, this.deps.platform)
-        if (l) {
-          failed.push({ path: item.path, reason: `locked:${l}` })
+        const live = (item.action === 'files' ? undefined : lockOf(item, open, running, self, this.deps.platform)) ?? (await this.liveLock(item))
+        if (live) {
+          failed.push({ path: item.path, reason: `locked:${live}` })
           continue
         }
-        allowed.push(item.path)
+        if (item.group === 'system' && item.action !== 'files' && !this.systemSafe(item.path)) {
+          failed.push({ path: item.path, reason: 'protected' })
+          continue
+        }
+        if (item.action === 'files') {
+          const list = this.membersOf(item.path)
+          let skipped = 0
+          for (const m of list) {
+            const ms = await fs.lstat(m.path).catch(() => null)
+            const ok =
+              !!ms &&
+              !ms.isSymbolicLink() &&
+              (m.file ? ms.isFile() : ms.isDirectory()) &&
+              ms.mtimeMs <= m.mtime + 2000 &&
+              isUnder(m.path, item.path, this.deps.platform) &&
+              this.systemSafe(m.path) &&
+              !lockOf({ path: m.path }, open, running, self, this.deps.platform) &&
+              !(m.file && (await this.deps.system?.busy(m.path).catch(() => true)))
+            if (ok) targets.push({ path: m.path, item, member: m })
+            else skipped++
+          }
+          if (skipped) failed.push({ path: item.path, reason: `skipped:${skipped}` })
+          continue
+        }
+        targets.push({ path: item.path, item })
       }
-      if (!allowed.length) return { done: [], failed, freed: 0, permanent, ...(failed.length ? {} : { cancelled: true }) }
-      const result = await runDelete(allowed, permanent, {
-        guard: async () => ({ platform: this.deps.platform, home: this.deps.home, keep: this.deps.keep(), roots: allowed }),
-        sizeOf: async (p) => this.known(p)?.size ?? null,
-        confirm: (a) => this.deps.confirm(a, false),
-        confirmPermanent: (a) => this.deps.confirm(a, true),
-        trash: this.deps.trash,
-        remove: this.deps.remove,
-        forget: async (gone) => {
-          for (const g of gone) this.last.delete(this.key(g))
-          await this.deps.forget?.(gone)
-        },
-        record: this.deps.record,
-      })
-      return { ...result, failed: [...failed, ...result.failed] }
+      if (!targets.length) return { done: [], failed, freed: 0, permanent, ...(failed.length ? {} : { cancelled: true }) }
+      const parents = new Map<string, string | null>()
+      for (const t of targets) parents.set(this.key(t.path), await this.realParent(t.path))
+      const byKey = new Map(targets.map((t) => [this.key(t.path), t]))
+      for (const t of targets) {
+        const c = await canonicalOf(t.path, this.deps.platform).catch(() => null)
+        if (!c || this.key(c.path) === this.key(t.path)) continue
+        byKey.set(this.key(c.path), t)
+        parents.set(this.key(c.path), parents.get(this.key(t.path)) ?? null)
+      }
+      let fresh = { open, running, self }
+      const refresh = async (): Promise<void> => {
+        fresh = { open: await this.openList(req.open), running: this.deps.running(), self: this.deps.self() }
+      }
+      const precheck = async (p: string): Promise<void> => {
+        const t = byKey.get(this.key(p))
+        if (!t) throw fail('invalid')
+        const st = await fs.lstat(p).catch(() => null)
+        if (!st) throw fail('ENOENT')
+        const wantFile = t.member ? t.member.file : t.item.file === true
+        if (st.isSymbolicLink() || (wantFile ? !st.isFile() : !st.isDirectory())) throw fail('changed')
+        const before = parents.get(this.key(p))
+        if (!before || (await this.realParent(p)) !== before) throw fail('changed')
+        const l = lockOf(t.member ? { path: p } : t.item, fresh.open, fresh.running, fresh.self, this.deps.platform)
+        if (l) throw fail(`locked:${l}`)
+      }
+      const trash = async (p: string): Promise<void> => {
+        await precheck(p)
+        await this.deps.trash(p)
+      }
+      const remove = async (p: string): Promise<void> => {
+        await precheck(p)
+        await this.deps.remove(p)
+      }
+      const sizeOf = async (p: string): Promise<number | null> => byKey.get(this.key(p))?.member?.size ?? this.known(p)?.size ?? null
+      const forget = async (gone: string[]): Promise<void> => {
+        const items = new Set<string>()
+        for (const g of gone) {
+          const t = byKey.get(this.key(g))
+          if (!t) continue
+          if (t.member) {
+            const k = this.key(t.item.path)
+            const rest = (this.members.get(k) ?? []).filter((m) => this.key(m.path) !== this.key(g))
+            this.members.set(k, rest)
+            if (!rest.length) {
+              this.last.delete(k)
+              this.members.delete(k)
+            }
+          } else {
+            this.last.delete(this.key(g))
+            items.add(g)
+          }
+        }
+        if (items.size) await this.deps.forget?.([...items])
+      }
+      const guard = (paths: string[]) => async () => ({ platform: this.deps.platform, home: this.deps.home, keep: this.deps.keep(), roots: paths })
+      const yes = async (): Promise<boolean> => {
+        await refresh()
+        return true
+      }
+      const base = { sizeOf, trash, remove, forget, record: this.deps.record, measure: measureRest }
+      let results: DiskDeleteResult[]
+      if (req.oneTap) {
+        const perm = targets.filter((t) => CLEAN_PERMANENT_OK.includes(t.item.category))
+        const soft = targets.filter((t) => !CLEAN_PERMANENT_OK.includes(t.item.category))
+        const sizes = (list: Target[]): number => list.reduce((s, t) => s + (t.member?.size ?? t.item.size), 0)
+        const ask: OneTapAsk = { bytes: sizes(targets), count: targets.length, permBytes: sizes(perm), permCount: perm.length, trashBytes: sizes(soft), trashCount: soft.length }
+        const choice = this.deps.askOneTap ? await this.deps.askOneTap(ask) : 'cancel'
+        if (choice === 'cancel') return { done: [], failed, freed: 0, permanent, cancelled: true }
+        await refresh()
+        const hard = choice === 'clean' ? perm.map((t) => t.path) : []
+        const rest = choice === 'clean' ? soft.map((t) => t.path) : targets.map((t) => t.path)
+        results = []
+        if (hard.length) results.push(await runDelete(hard, true, { ...base, guard: guard(hard), confirm: yes, confirmPermanent: yes }))
+        if (rest.length) results.push(await runDelete(rest, false, { ...base, guard: guard(rest), confirm: yes, confirmPermanent: yes }))
+      } else {
+        const all = targets.map((t) => t.path)
+        results = [
+          await runDelete(all, permanent, {
+            ...base,
+            guard: guard(all),
+            confirm: async (a) => (await this.deps.confirm(a, false)) && (await yes()),
+            confirmPermanent: async (a) => (await this.deps.confirm(a, true)) && (await yes()),
+          }),
+        ]
+      }
+      return this.fold(results, failed, permanent, byKey)
+    } finally {
+      this.deleting = false
+    }
+  }
+
+  private fold(results: DiskDeleteResult[], failed: DiskDeleteResult['failed'], permanent: boolean, byKey: Map<string, Target>): DiskDeleteResult {
+    const done = new Map<string, { path: string; size: number }>()
+    const fails = new Map<string, { path: string; reason: string; n: number }>()
+    let freed = 0
+    let cancelled = results.length > 0
+    let anyPermanent = false
+    for (const r of results) {
+      if (!r.cancelled) cancelled = false
+      if (r.permanent && r.done.length) anyPermanent = true
+      freed += r.freed
+      for (const d of r.done) {
+        const t = byKey.get(this.key(d.path))
+        const owner = t?.member ? t.item.path : d.path
+        const cur = done.get(this.key(owner)) ?? { path: owner, size: 0 }
+        cur.size += d.size
+        done.set(this.key(owner), cur)
+      }
+      for (const f of r.failed) {
+        const t = byKey.get(this.key(f.path))
+        if (t?.member) {
+          const k = this.key(t.item.path)
+          const cur = fails.get(k) ?? { path: t.item.path, reason: f.reason, n: 0 }
+          cur.n++
+          fails.set(k, cur)
+        } else fails.set(this.key(f.path), { path: f.path, reason: f.reason, n: 0 })
+      }
+    }
+    const extra = [...fails.values()].map((f) => ({ path: f.path, reason: f.n ? `some:${f.n}:${f.reason}` : f.reason }))
+    const res: DiskDeleteResult = { done: [...done.values()], failed: [...failed, ...extra], freed, permanent: permanent || anyPermanent }
+    return cancelled && !res.done.length ? { ...res, cancelled: true } : res
+  }
+
+  async emptyBin(): Promise<CleanBinResult> {
+    const sys = this.deps.system
+    if (!sys || this.deleting || this.abort) return { done: false, freed: 0, error: 'busy' }
+    const item = [...this.last.values()].find((i) => i.action === 'bin')
+    if (!item) return { done: false, freed: 0, error: 'invalid' }
+    this.deleting = true
+    try {
+      const info = await sys.bin.size().catch(() => null)
+      const bytes = info?.bytes ?? item.size
+      const count = info?.count ?? item.files ?? 0
+      if (!this.deps.askBin || !(await this.deps.askBin({ bytes, count }))) return { done: false, freed: 0, cancelled: true }
+      try {
+        await sys.bin.empty()
+      } catch (err) {
+        return { done: false, freed: 0, error: String((err as { code?: unknown }).code ?? 'failed') }
+      }
+      this.last.set(this.key(item.path), { ...item, size: 0, files: 0 })
+      await this.deps.record({ at: this.now(), action: 'delete', count, freed: bytes, paths: [item.path], failed: 0 }).catch(() => undefined)
+      return { done: true, freed: bytes }
     } finally {
       this.deleting = false
     }
   }
 }
+

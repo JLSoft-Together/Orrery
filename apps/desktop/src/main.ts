@@ -42,6 +42,7 @@ import { createDiskMap, type DiskMap } from './diskMap/ipc'
 import { e2eAutoConfirm } from './diskMap/delete'
 import { deleteBoxOptions } from './diskMap/dialog'
 import { createDiskClean, type DiskClean } from './diskClean/ipc'
+import { systemDeps as diskCleanSystem } from './diskClean/system'
 import { toChildren, toStatus } from './diskMap/map'
 import { isUnder as isUnderPath } from './diskMap/guard'
 import { devicesStandingHosts } from './devices/deskHosts'
@@ -1695,6 +1696,13 @@ function setupDiskClean(): void {
       ...(runManager?.live() ?? []).filter((r) => r.cwd).map((r) => ({ cwd: r.cwd, lock: 'run' as const })),
       ...(resReport?.servers ?? []).filter((s) => s.cwd && s.kind !== 'daemon').map((s) => ({ cwd: s.cwd!, lock: 'server' as const })),
     ],
+    system: diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, downloads: dir('downloads'), tmpdir: os.tmpdir(), fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SYS || null }),
+    openNow: () => paneRoots(true),
+    ask: async (event, opts) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      return (win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)).response
+    },
+    locale: () => saved().locale ?? 'vi',
     keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
     broadcast: (channel, payload) => {
       for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)

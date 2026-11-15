@@ -8,9 +8,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 pub const DIAG_MAX: usize = 12;
 const FALLBACK_KEEP: usize = 20;
-const ERRORS: [&str; 29] = [
+const ERRORS: [&str; 33] = [
     "unavailable", "failed", "starting", "not-layout", "missing", "too-large", "jar-missing", "bundle-missing", "jdk-missing", "jdk-old", "crash-loop", "render-failed", "timeout", "no-report", "not-found", "not-mine", "outside",
-    "emulator", "self", "busy", "gone", "cancelled", "confirm-open", "telegram-off", "telegram-config", "no-topic", "not-paired", "rate", "buttons-file",
+    "emulator", "self", "busy", "gone", "cancelled", "confirm-open", "telegram-off", "telegram-config", "no-topic", "not-paired", "rate", "buttons-file", "not-indexed", "not-in-index", "scanning", "invalid",
 ];
 
 static CONFIRMING: AtomicBool = AtomicBool::new(false);
@@ -305,6 +305,7 @@ pub fn run(d: &dyn Deps, o: &Opts, call: &Value) -> Value {
         "preview_layout" => preview_layout(d, o, call),
         "free_port" => free_port(d, o, call),
         "telegram_notify" | "telegram_send" | "telegram_receive" => telegram(d, call),
+        "disk_search" | "disk_usage" | "disk_propose_delete" => d.disk(call),
         "list_servers" => {
             let Some(report) = d.report() else { return fail("no-report") };
             let (servers, outside) = servers_for(&report, &scope_for(d, o, call), util::now_ms());

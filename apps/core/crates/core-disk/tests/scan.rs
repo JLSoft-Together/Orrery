@@ -626,3 +626,27 @@ fn non_utf8_names_are_still_walked() {
     assert_eq!(ix.stats.errors, 0);
     assert_eq!(ix.stats.files, 1);
 }
+
+#[test]
+fn engine_summary_lists_dirs_to_depth() {
+    let t = tree();
+    let engine = Engine::new(None, Arc::new(|_, _| {}));
+    assert!(engine.dispatch("disk.summary", &json!({"roots": ["x"]})).is_err());
+    let ix = run(&t.0, |_| {});
+    let root = t.0.to_string_lossy().to_string();
+    let media = t.0.join("media").to_string_lossy().to_string();
+    let photos = t.0.join("media").join("photos").to_string_lossy().to_string();
+    let media_size = ix.nodes[ix.find(&media).unwrap() as usize].size;
+    engine.set_index(Some(ix));
+    let r = engine.dispatch("disk.summary", &json!({"roots": [root.clone(), "nope"], "depth": 1, "minSize": 0})).unwrap();
+    let dirs = r["roots"][0]["dirs"].as_array().unwrap();
+    assert_eq!(r["roots"].as_array().unwrap().len(), 1);
+    assert!(dirs.iter().any(|d| d[0] == json!(media) && d[1] == json!(media_size)));
+    assert!(!dirs.iter().any(|d| d[0] == json!(photos)));
+    assert!(dirs.iter().all(|d| d[0] != json!(root)));
+    let deep = engine.dispatch("disk.summary", &json!({"roots": [root.clone()], "depth": 2, "minSize": 0})).unwrap();
+    assert!(deep["roots"][0]["dirs"].as_array().unwrap().iter().any(|d| d[0] == json!(photos)));
+    let big = engine.dispatch("disk.summary", &json!({"roots": [root], "depth": 4, "minSize": 100_000})).unwrap();
+    let paths: Vec<_> = big["roots"][0]["dirs"].as_array().unwrap().iter().map(|d| d[0].clone()).collect();
+    assert_eq!(paths, vec![json!(media)]);
+}

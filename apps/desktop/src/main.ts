@@ -40,7 +40,8 @@ import { DeviceHistory, DEVICES_FILE } from './devices/history'
 import { registerDevicesIpc } from './devices/ipc'
 import { createDiskMap, type DiskMap } from './diskMap/ipc'
 import { e2eAutoConfirm } from './diskMap/delete'
-import { deleteBoxOptions } from './diskMap/dialog'
+import { agentDeleteBoxOptions, deleteBoxOptions } from './diskMap/dialog'
+import { createDiskAgent } from './diskMap/agent'
 import { createDiskClean, type DiskClean } from './diskClean/ipc'
 import { createOrganize, e2ePath as organizeE2ePath, e2eStableMs as organizeStableMs, type Organize } from './organize/ipc'
 import { setupDiskAppsRam } from './diskApps/wire'
@@ -52,6 +53,7 @@ import { createDiskMove, type DiskMove } from './diskMove/ipc'
 import { fakeDev as moveFakeDev, fakeMoveSuggestions, fakePick as moveFakePick, fakeProcs as moveFakeProcs, fakeVolumes as moveFakeVolumes, moveSuggestions, toolProcs } from './diskMove/procs'
 import { toChildren, toStatus } from './diskMap/map'
 import { isUnder as isUnderPath } from './diskMap/guard'
+import { createDiskSnap, type DiskSnap } from './diskMap/snap'
 import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
 import { registerApkIpc } from './apk/ipc'
@@ -242,6 +244,7 @@ let diskClean: DiskClean | null = null
 let diskMove: DiskMove | null = null
 let organize: Organize | null = null
 let diskAppsRam: { dispose: () => void } | null = null
+let diskSnap: DiskSnap | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -400,6 +403,8 @@ function stopPreview(): Promise<void> {
   organize = null
   diskAppsRam?.dispose()
   diskAppsRam = null
+  diskSnap?.dispose()
+  diskSnap = null
   disposeDisk?.()
   disposeDisk = null
   disposeAgentStatus?.()
@@ -1020,7 +1025,18 @@ const deskDeps: DeskDeps = {
     const { response } = mainWindow ? await dialog.showMessageBox(mainWindow, opts) : await dialog.showMessageBox(opts)
     return response
   },
+  disk: (call) => diskAgent(call),
 }
+const diskAgent = createDiskAgent({
+  service: () => diskMap?.service ?? null,
+  platform: process.platform,
+  confirm: async ({ pane, reason, ask, second }) => {
+    if (e2eAutoConfirm(process.env, app.isPackaged)) return true
+    if (mainWindow && (!mainWindow.isVisible() || mainWindow.isMinimized())) showMain()
+    const opts = second ? deleteBoxOptions(ask, true, t.diskMap, IS_MAC) : agentDeleteBoxOptions(ask, { pane, reason }, t.diskMap, IS_MAC)
+    return confirmBox(mainWindow, opts)
+  },
+})
 const deskTs = createDesk(deskDeps)
 const desk = (call: McpDeskCall): Promise<unknown> => viaRustDesk('desk:mcp-desk', call, () => deskTs(call))
 
@@ -1690,6 +1706,54 @@ function setupDiskMap(): void {
     trash: (p) => shell.trashItem(p),
     remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
     reveal: (p) => shell.showItemInFolder(p),
+    onDone: (done) => void diskSnap?.onDone(done),
+    beforeScan: () => diskSnap?.beforeScan() ?? Promise.resolve(),
+  })
+}
+
+function setupDiskSnap(): void {
+  const dev = app.isPackaged ? null : (process.env.CCM_E2E_DISKSNAP_FAKE ?? null)
+  const sink = app.isPackaged ? null : (process.env.CCM_E2E_DISKSNAP_TG_SINK ?? null)
+  const tick = app.isPackaged ? 0 : Number(process.env.CCM_E2E_DISKSNAP_TICK ?? 0)
+  const fake = (): { idle?: number; battery?: boolean; free?: number } => {
+    try {
+      return dev ? (JSON.parse(readFileSync(dev, 'utf8')) as { idle?: number; battery?: boolean; free?: number }) : {}
+    } catch {
+      return {}
+    }
+  }
+  if (!diskMap) return
+  diskSnap = createDiskSnap({
+    ipcMain,
+    isAppFrame,
+    diskMap,
+    dataDir: DATA_DIR,
+    platform: process.platform,
+    home: os.homedir(),
+    locale: () => ((saved().locale ?? 'vi').startsWith('en') ? 'en' : 'vi'),
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    idleSeconds: () => (dev && typeof fake().idle === 'number' ? (fake().idle as number) : powerMonitor.getSystemIdleTime()),
+    onBattery: () => (dev && typeof fake().battery === 'boolean' ? (fake().battery as boolean) : powerMonitor.isOnBatteryPower()),
+    ...(Number.isFinite(tick) && tick >= 200 ? { tickMs: tick } : {}),
+    ...(dev ? { volumes: async () => (await diskMap!.service.volumes()).map((v) => (typeof fake().free === 'number' ? { ...v, free: fake().free as number } : v)) } : {}),
+    telegramOn: async () => {
+      if (sink) return process.env.CCM_E2E_DISKSNAP_TG_OFF !== '1'
+      const st = await telegram?.state()
+      return !!st?.enabled && !!st.configured
+    },
+    send: async (text) => {
+      if (sink) {
+        appendFileSync(sink, `${JSON.stringify({ text })}
+`)
+        return true
+      }
+      const st = await telegram?.state()
+      const route = st?.routes[0]
+      if (!telegram || !route) return false
+      return (await telegram.report(route.project, text)).ok
+    },
   })
 }
 
@@ -1906,6 +1970,7 @@ async function ready(): Promise<void> {
   setupBuildClean()
   setupDisk()
   setupDiskMap()
+  setupDiskSnap()
   setupDiskClean()
   setupDiskMove()
   setupOrganize()
@@ -1935,7 +2000,10 @@ async function ready(): Promise<void> {
         const episode = parsePhoneEpisode(data)
         if (episode) void phoneEpisode?.(episode).catch(() => undefined)
         if (episode?.reason === 'limit') void telegram?.alert('limit', { window: episode.window, usedPct: episode.usedPct, resetsAt: episode.resetsAt, hit: episode.hit })
-        else if (episode?.reason === 'disk') void telegram?.alert('disk', { label: episode.name, free: episode.freeBytes !== undefined ? formatGb(episode.freeBytes) : '?' })
+        else if (episode?.reason === 'disk') {
+          void telegram?.alert('disk', { label: episode.name, free: episode.freeBytes !== undefined ? formatGb(episode.freeBytes) : '?' })
+          void diskSnap?.onAlert()
+        }
       } else if (m?.type === 'telegram') {
         const episode = parseTelegramEpisode(data)
         if (episode) void telegram?.handle(episode)

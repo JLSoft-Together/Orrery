@@ -18,7 +18,7 @@ pub const PAGE_REPLY_MS: u64 = 8_000;
 
 pub fn desk_reply_ms(tool: &str) -> u64 {
     match tool {
-        "free_port" | "telegram_receive" => 600_000,
+        "free_port" | "telegram_receive" | "disk_propose_delete" => 600_000,
         "telegram_send" => 200_000,
         _ => 40_000,
     }

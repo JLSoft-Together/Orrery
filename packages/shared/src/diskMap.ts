@@ -191,3 +191,57 @@ export interface DiskDupesStart {
   started: boolean
   error?: string
 }
+
+export const DISK_SNAPSHOT_DEPTH = 4
+export const DISK_SNAPSHOT_KEEP = 30
+export const DISK_SNAPSHOT_TOP = 20
+export const DISK_FREQS = ['off', 'daily', 'weekly'] as const
+export type DiskFreq = (typeof DISK_FREQS)[number]
+export const isDiskFreq = (v: unknown): v is DiskFreq => typeof v === 'string' && (DISK_FREQS as readonly string[]).includes(v)
+
+export interface DiskSnapshotMeta {
+  id: string
+  at: number
+  bytes: number
+  roots: string[]
+}
+
+export interface DiskDiffRow {
+  path: string
+  name: string
+  before: number
+  after: number
+  delta: number
+  state: 'same' | 'new' | 'gone' | 'changed'
+}
+
+export interface DiskCompareRequest {
+  id: string
+  path?: string
+}
+
+export interface DiskCompare {
+  base: DiskSnapshotMeta
+  path: string
+  covered: boolean
+  rows: DiskDiffRow[]
+  top: DiskDiffRow[]
+}
+
+export interface DiskScheduleLast {
+  at: number
+  ok: boolean
+}
+
+export interface DiskSchedule {
+  freq: DiskFreq
+  telegram: boolean
+  last: DiskScheduleLast | null
+  running: boolean
+  paused: boolean
+}
+
+export interface DiskSchedulePatch {
+  freq?: DiskFreq
+  telegram?: boolean
+}

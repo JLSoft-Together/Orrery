@@ -63,6 +63,10 @@ export function mcpDeskHosts(src: McpDeskHostSources): HostHandlers {
       const a = obj(p)
       return telegram().report(str(a.cwd), str(a.text), typeof a.file === 'string' ? a.file : undefined, typeof a.from === 'string' ? a.from : undefined, a.buttons as never)
     },
+    'mcpDesk.disk': (p) => {
+      const d = need()
+      return d.disk ? d.disk(obj(p) as never) : { ok: false, error: 'unavailable' }
+    },
     'mcpDesk.snapshot': () => src.shot?.()?.snapshot() ?? null,
     'mcpDesk.screencap': (p) => shot().screencap(str(obj(p).serial)),
     'mcpDesk.runs': () => shot().runs(),

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { DiskChildren, DiskDeleteResult, DiskDupesStart, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskSizes, DiskStatus, DiskVolume } from '@ccm/shared'
+import type { DiskChildren, DiskDeleteResult, DiskDone, DiskDupesStart, DiskFastScanResult, DiskHistoryEntry, DiskSearchResult, DiskSizes, DiskStatus, DiskVolume } from '@ccm/shared'
 import { measureRest, runDelete, type DeleteAsk } from './delete'
 import { DiskHistory } from './history'
 import { DiskMapHost, type DiskMapSpawner } from './host'
@@ -34,6 +34,8 @@ export interface DiskMapOptions {
   reveal: (path: string) => void
   spawner?: DiskMapSpawner
   exists?: (file: string) => boolean
+  onDone?: (done: DiskDone) => void
+  beforeScan?: () => Promise<void>
 }
 
 export interface DiskMap {
@@ -83,6 +85,7 @@ export class DiskMapService {
   async scan(req: unknown): Promise<{ started: boolean }> {
     const clean = cleanScan(req, this.opts.platform)
     if (!clean) return { started: false }
+    await this.opts.beforeScan?.().catch(() => undefined)
     await this.ensureLoaded()
     try {
       await this.host.call('disk.scan', { roots: clean.roots, level: clean.level, excludes: clean.excludes, save: true })
@@ -96,6 +99,7 @@ export class DiskMapService {
   async fastScan(req: unknown): Promise<DiskFastScanResult> {
     const clean = cleanFastScan(req, this.opts.platform)
     if (!clean) return { started: false, error: 'unsupported' }
+    await this.opts.beforeScan?.().catch(() => undefined)
     await this.ensureLoaded()
     try {
       await this.host.call('disk.mft', { drive: clean.drive, save: true })
@@ -167,17 +171,26 @@ export class DiskMapService {
     return v ? toSearch(v) : EMPTY_SEARCH
   }
 
+  get isDeleting(): boolean {
+    return this.deleting
+  }
+
   async remove(event: IpcMainInvokeEvent, req: unknown): Promise<DiskDeleteResult> {
     const o = req && typeof req === 'object' ? (req as { paths?: unknown; permanent?: unknown }) : {}
     const permanent = o.permanent === true
     const paths = Array.isArray(o.paths) ? o.paths : []
+    const ask = (a: DeleteAsk, second: boolean): Promise<boolean> => (this.opts.autoConfirm ? Promise.resolve(true) : this.opts.confirm(event, a, second))
+    return this.removeWith(paths, permanent, ask)
+  }
+
+  async removeWith(paths: unknown[], permanent: boolean, ask: (ask: DeleteAsk, second: boolean) => Promise<boolean>, firstCount?: number): Promise<DiskDeleteResult> {
     if (!paths.length || paths.length > MAX_DELETE) return { done: [], failed: [], freed: 0, permanent, cancelled: true }
     if (this.deleting) return { done: [], failed: paths.map((p) => ({ path: typeof p === 'string' ? p : '', reason: 'busy' })), freed: 0, permanent }
     this.deleting = true
     try {
       await this.ensureLoaded()
-      const ask = (ask: DeleteAsk, second: boolean): Promise<boolean> => (this.opts.autoConfirm ? Promise.resolve(true) : this.opts.confirm(event, ask, second))
       return await runDelete(paths as string[], permanent, {
+        firstCount,
         guard: async () => ({ platform: this.opts.platform, home: this.opts.home, keep: this.opts.keep(), roots: toStatus(await this.host.call('disk.status')).roots, volumes: (await this.volumes()).map((v) => v.mount).filter(Boolean) }),
         known: async (p) => toChildren(await this.host.call('disk.children', { path: p, limit: 0 }).catch(() => null)) !== null,
         sizeOf: async (p) => toChildren(await this.host.call('disk.children', { path: p, limit: 0 }))?.size ?? null,
@@ -215,7 +228,11 @@ export function createDiskMap(opts: DiskMapOptions): DiskMap {
     exists: opts.exists,
     onEvent: (event, payload) => {
       if (event === 'disk:progress') opts.broadcast(DISKMAP_PROGRESS, toProgress(payload))
-      else if (event === 'disk:done') opts.broadcast(DISKMAP_DONE, toDone(payload))
+      else if (event === 'disk:done') {
+        const done = toDone(payload)
+        opts.broadcast(DISKMAP_DONE, done)
+        opts.onDone?.(done)
+      }
       else if (event === 'disk:dupes-progress') opts.broadcast(DISKMAP_DUPES_PROGRESS, toDupesProgress(payload))
       else if (event === 'disk:dupes-done') {
         if (service) service.dupesRunning = false
@@ -227,7 +244,11 @@ export function createDiskMap(opts: DiskMapOptions): DiskMap {
       if (service?.dupesRunning) {
         service.dupesRunning = false
         if (busy) opts.broadcast(DISKMAP_DUPES_DONE, toDupesDone({ ok: false, error: host.lastError ?? 'exited' }))
-      } else if (busy) opts.broadcast(DISKMAP_DONE, { ok: false, error: host.lastError ?? 'exited' })
+      } else if (busy) {
+        const done: DiskDone = { ok: false, error: host.lastError ?? 'exited' }
+        opts.broadcast(DISKMAP_DONE, done)
+        opts.onDone?.(done)
+      }
     },
   })
   service = new DiskMapService(host, opts)

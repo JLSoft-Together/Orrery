@@ -297,6 +297,8 @@ It runs in ${cwd} with a made-up JSON input on stdin and a minimal environment, 
     deleteConfirm: 'Delete permanently',
     permanentTitle: 'This cannot be undone',
     permanentDetail: (n: number, size: string, mac: boolean) => `${n === 1 ? '1 item' : `${n} items`} (${size}) will be deleted for good. ${mac ? 'They do not go to the Trash.' : 'They do not go to the Recycle Bin.'}`,
+    agentTitle: (pane: string, n: number, mac: boolean, permanent: boolean) => `An agent in “${pane}” proposes to ${permanent ? 'delete permanently' : `move to the ${mac ? 'Trash' : 'Recycle Bin'}`} ${n === 1 ? '1 item' : `${n} items`}`,
+    agentDetail: (reason: string, size: string, first: string[], more: number) => `Reason: ${reason}\nTotal: ${size}\n\n${first.join('\n')}${more ? `\n…and ${more} more` : ''}\n\nThe agent asked through Orrery's disk_propose_delete tool. Nothing is removed unless you confirm.`,
   },
   deepseek: {
     cancel: 'Cancel',
@@ -608,6 +610,8 @@ Lệnh chạy trong ${cwd} với input JSON giả trên stdin và môi trường
     deleteConfirm: 'Xoá hẳn',
     permanentTitle: 'Không khôi phục được',
     permanentDetail: (n, size) => `${n} mục (${size}) sẽ bị xoá vĩnh viễn, không vào Thùng rác.`,
+    agentTitle: (pane, n, _mac, permanent) => `Agent ở “${pane}” đề xuất ${permanent ? 'xoá hẳn' : 'chuyển vào Thùng rác'} ${n} mục`,
+    agentDetail: (reason, size, first, more) => `Lý do: ${reason}\nTổng: ${size}\n\n${first.join('\n')}${more ? `\n…và ${more} mục nữa` : ''}\n\nAgent đề xuất qua công cụ disk_propose_delete của Orrery. Không có gì bị xoá nếu bạn không đồng ý.`,
   },
   deepseek: {
     cancel: 'Huỷ',

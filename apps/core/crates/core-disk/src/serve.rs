@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-pub const CHANNELS: [&str; 15] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft", "disk.sizes", "disk.dupes"];
+pub const CHANNELS: [&str; 16] = ["disk.scan", "disk.pause", "disk.resume", "disk.cancel", "disk.status", "disk.children", "disk.search", "disk.save", "disk.load", "disk.volumes", "disk.clear", "disk.forget", "disk.mft", "disk.sizes", "disk.dupes", "disk.summary"];
 pub const EVENT_PROGRESS: &str = "disk:progress";
 pub const EVENT_DONE: &str = "disk:done";
 pub const EVENT_DUPES_PROGRESS: &str = "disk:dupes-progress";
@@ -21,6 +21,8 @@ pub const EVENT_DUPES_DONE: &str = "disk:dupes-done";
 const TICK: Duration = Duration::from_millis(100);
 const LIMIT_MAX: usize = 10_000;
 const SIZES_MAX: usize = 2_000;
+const SUMMARY_MAX: usize = 60_000;
+const SUMMARY_DEPTH_MAX: u64 = 8;
 const DRAIN: Duration = Duration::from_secs(3);
 
 pub type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
@@ -200,6 +202,7 @@ impl Engine {
             }
             "disk.forget" => self.forget(&a),
             "disk.sizes" => self.sizes(&a),
+            "disk.summary" => self.summary_dirs(&a),
             "disk.mft" => self.start_mft(&a),
             "disk.dupes" => self.start_dupes(&a),
             "disk.volumes" => Ok(Value::Array(volumes::list().iter().map(|v| v.to_json()).collect())),
@@ -218,6 +221,43 @@ impl Engine {
         let entries = next.len();
         *slot = Some(Arc::new(next));
         Ok(json!({"removed": removed.len(), "freed": freed, "entries": entries}))
+    }
+
+    fn summary_dirs(&self, a: &Value) -> Result<Value, String> {
+        let ix = self.index().ok_or("no index")?;
+        let depth = u(a, "depth").unwrap_or(4).min(SUMMARY_DEPTH_MAX) as usize;
+        let min = u(a, "minSize").unwrap_or(1 << 20);
+        let mut left = SUMMARY_MAX;
+        let mut roots = Vec::new();
+        for p in strings(a, "roots") {
+            let Some(r) = ix.find(&p) else { continue };
+            let mut dirs: Vec<Value> = Vec::new();
+            let mut level = vec![r];
+            for d in 0..=depth {
+                let mut next = Vec::new();
+                for n in level {
+                    if left == 0 {
+                        break;
+                    }
+                    let node = &ix.nodes[n as usize];
+                    if d > 0 {
+                        dirs.push(json!([ix.path(n), node.size]));
+                        left -= 1;
+                    }
+                    if d < depth {
+                        for c in ix.children(n) {
+                            let cn = &ix.nodes[c as usize];
+                            if cn.is_dir() && cn.size >= min {
+                                next.push(c);
+                            }
+                        }
+                    }
+                }
+                level = next;
+            }
+            roots.push(json!({"path": ix.path(r), "size": ix.nodes[r as usize].size, "dirs": dirs}));
+        }
+        Ok(json!({"scannedAt": ix.stats.scanned_at, "roots": roots}))
     }
 
     fn sizes(&self, a: &Value) -> Result<Value, String> {

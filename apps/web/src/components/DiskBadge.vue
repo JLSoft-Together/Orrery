@@ -4,6 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { CircleCheck, FolderOpen, RefreshCw, TriangleAlert, OctagonAlert, X } from 'lucide-vue-next'
 import type { DiskDrive, DiskLevel } from '@ccm/shared'
 import { hasBuildClean, uniqueDirs } from '../lib/buildClean'
+import { hasDiskClean } from '../lib/diskClean'
+import { hasDiskMap } from '../lib/diskMap'
+import { useDiskCleanStore } from '../stores/diskClean'
 import { hasAgentData } from '../lib/agentData'
 import { formatBytes } from '../lib/resources'
 import { useDiskStore } from '../stores/disk'
@@ -15,6 +18,7 @@ const props = defineProps<{ anchor: HTMLElement | null }>()
 const { t, locale } = useI18n()
 const disk = useDiskStore()
 const ui = useUiStore()
+const diskClean = useDiskCleanStore()
 const workspace = useWorkspaceStore()
 onMounted(() => disk.start())
 
@@ -68,6 +72,17 @@ async function refresh(): Promise<void> {
 function cleanBuild(): void {
   close(false)
   ui.buildClean = { dir: null }
+}
+
+function openDisk(): void {
+  close(false)
+  ui.setView('disk')
+}
+
+function cleanUp(): void {
+  close(false)
+  diskClean.openFor(null)
+  ui.setView('disk')
 }
 
 async function agentData(): Promise<void> {
@@ -148,7 +163,9 @@ watch(
         </li>
       </ul>
       <div class="flex shrink-0 flex-wrap items-center gap-2 border-t border-line p-2">
-        <button v-if="hasBuildClean" type="button" class="ccm-btn" data-disk-clean @click="cleanBuild">{{ t('disk.cleanBuild') }}</button>
+        <button v-if="hasDiskMap" type="button" class="ccm-btn" data-disk-open-view @click="openDisk">{{ t('disk.openDisk') }}</button>
+        <button v-if="hasDiskClean" type="button" class="ccm-btn" data-disk-cleanup @click="cleanUp">{{ t('disk.cleanUp') }}</button>
+        <button v-if="hasBuildClean && !hasDiskClean" type="button" class="ccm-btn" data-disk-clean @click="cleanBuild">{{ t('disk.cleanBuild') }}</button>
         <button v-if="hasAgentData" type="button" class="ccm-btn" data-disk-agentdata @click="agentData">{{ t('disk.agentData') }}</button>
         <span v-if="measuredAt" class="ml-auto text-2xs text-ink-faint">{{ t('disk.measured', { time: measuredAt }) }}</span>
       </div>

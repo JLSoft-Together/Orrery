@@ -24,6 +24,8 @@ struct Fake {
     runs: Vec<Value>,
     cap: Option<Value>,
     active: bool,
+    disk: Option<Value>,
+    disk_calls: RefCell<Vec<Value>>,
 }
 
 impl Deps for Fake {
@@ -77,6 +79,10 @@ impl Deps for Fake {
     }
     fn capture_active(&self) -> bool {
         self.active
+    }
+    fn disk(&self, call: &Value) -> Value {
+        self.disk_calls.borrow_mut().push(call.clone());
+        self.disk.clone().unwrap_or(json!({"ok": false, "error": "unavailable"}))
     }
 }
 
@@ -184,4 +190,18 @@ fn screenshot_picks_the_device_and_reports_refusals() {
     let secure = Fake { snapshot: Some(snap()), cap: Some(json!({"ok": false, "error": "secure"})), ..Default::default() };
     assert_eq!(go(&secure, &json!({"cwd": "/x", "serial": "A1"}))["refused"]["code"], "secure");
     let _ = std::fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn disk_tools_are_forwarded_to_the_host_untouched() {
+    let none = Fake::default();
+    for tool in ["disk_search", "disk_usage", "disk_propose_delete"] {
+        assert_eq!(run(&none, &opts(), &call(tool, json!({}))), json!({"ok": false, "error": "unavailable"}));
+    }
+    let f = Fake { disk: Some(json!({"ok": true, "tool": "disk_search", "total": 0, "ms": 0, "items": []})), ..Default::default() };
+    let r = run(&f, &opts(), &call("disk_search", json!({"query": "zip", "limit": 5})));
+    assert_eq!(r["tool"], "disk_search");
+    let sent = f.disk_calls.borrow()[0].clone();
+    assert_eq!(sent["query"], "zip");
+    assert_eq!(sent["name"], "appx");
 }

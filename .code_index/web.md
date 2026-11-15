@@ -333,3 +333,8 @@ Invariants:
 ## Ổ đĩa: tab App + RAM (v101 phase 4b)
 
 - `lib/diskApps.ts` (bridge `diskApps*` / `diskRam*`, `filterApps`, `groupRam` (nhóm theo tên exe; nhóm có process self / parent thì không cho kết thúc cả nhóm), `ramShare`, `formatPct`), `stores/diskApps.ts` (`active`, list, uninstall notice, leftovers, picked không tick sẵn), `stores/diskRam.ts` (poll 2 s qua `start`/`stop` theo số component đang mở, bỏ qua khi `document.hidden`). Components `components/disk/apps/{DiskApps,AppRow,AppLeftovers}.vue`, `components/disk/ram/DiskRam.vue`; gắn ở `DiskView.vue` (`extraMode` ưu tiên trên các tab khác, ẩn chart + `DiskActions`). i18n `i18n/disk-apps-v101.ts` (`diskApps.*`, `diskRam.*`), tạm merge qua `components/disk/apps/messages.ts` (`mergeLocaleMessage`) cho tới khi en.ts / vi.ts import.
+
+## Disk snapshot so sánh + quét nền (WP-4c)
+
+- `lib/diskSnap.ts` (bridge + cleaner + `findRow` / `sortByDelta`), `stores/diskSnap.ts` (danh sách snapshot, `baseId`, compare theo thư mục, top 20, schedule). `stores/diskMap.ts` `items` đi qua `diskSnap.order` (sắp theo chênh lệch khi bật).
+- `components/disk/DiskTree.vue`: ô "So với", cột chênh lệch (mũi tên + chữ + màu), nút "Phình ra nhiều nhất". `components/settings/SettingsDiskMap.vue`: tần suất quét nền, lần quét cuối, công tắc Telegram, nhúng `DiskSettings` (ngưỡng ổ đầy v77, key `disk.json` giữ nguyên). `DiskBadge.vue` + `HeaderStatusPopover.vue`: dòng ổ đầy mở view Ổ đĩa, popover có "Mở Ổ đĩa" / "Dọn dẹp".

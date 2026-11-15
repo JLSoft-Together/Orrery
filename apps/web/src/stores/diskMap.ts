@@ -42,6 +42,8 @@ import {
   type DiskVolume,
   type FastScanError,
 } from '../lib/diskMap'
+import { hasDiskSnap } from '../lib/diskSnap'
+import { useDiskSnapStore } from './diskSnap'
 
 export interface DeleteReport {
   freed: number
@@ -82,7 +84,10 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   let searchSeq = 0
   let searchTimer: ReturnType<typeof setTimeout> | null = null
 
-  const items = computed(() => children.value?.items ?? [])
+  const items = computed(() => {
+    const list = children.value?.items ?? []
+    return hasDiskSnap ? (useDiskSnapStore().order(list) as DiskEntry[]) : list
+  })
   const scanning = computed(() => !!status.value?.scanning)
   const paused = computed(() => !!status.value?.paused)
   const indexed = computed(() => !!status.value?.indexed)

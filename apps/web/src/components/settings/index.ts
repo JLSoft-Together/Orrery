@@ -122,7 +122,6 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'notify', id: 'sound', labelKey: 'settings.sound', hintKey: 'settings.soundHint' },
   { page: 'notify', id: 'quiet', labelKey: 'settings.quiet', hintKey: 'settings.quietHint', needs: 'notifyData' },
   { page: 'notify', id: 'idle', labelKey: 'resources.idleSetting', hintKey: 'resources.idleSettingHint', needs: 'notifyData' },
-  { page: 'notify', id: 'disk', labelKey: 'disk.setting', hintKey: 'disk.settingHint', needs: 'disk' },
   { page: 'notify', id: 'phone', labelKey: 'phone.section', needs: 'phone' },
   { page: 'telegram', id: 'telegram', labelKey: 'telegram.section', hintKey: 'telegram.enable', needs: 'telegram' },
 
@@ -153,6 +152,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'data', id: 'agentData', labelKey: 'agentData.section', needs: 'agentData' },
   { page: 'data', id: 'backup', labelKey: 'backup.section', hintKey: 'backup.autoHint', needs: 'backup' },
   { page: 'data', id: 'diskMap', labelKey: 'diskMap.settings.title', hintKey: 'diskMap.settings.hint' },
+  { page: 'data', id: 'disk', labelKey: 'disk.setting', hintKey: 'disk.settingHint', needs: 'disk' },
 
   { page: 'about', id: 'update', labelKey: 'update.section', needs: 'updater' },
   { page: 'about', id: 'help-whatsNew', labelKey: 'whatsNew.open' },

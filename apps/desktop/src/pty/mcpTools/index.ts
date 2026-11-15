@@ -1,4 +1,7 @@
 import { deviceScreenshot } from './deviceScreenshot'
+import { diskProposeDelete } from './diskProposeDelete'
+import { diskSearch } from './diskSearch'
+import { diskUsage } from './diskUsage'
 import { freePort } from './freePort'
 import { handBack } from './handBack'
 import { listServers } from './listServers'
@@ -17,7 +20,7 @@ import type { McpTool } from './types'
 import { whoIsEditing } from './whoIsEditing'
 
 /** Order is the tools/list order; open_session stays first (older clients and the v49 E2E read tools[0]). */
-export const MCP_TOOLS: readonly McpTool[] = [openSession, notifyOwner, openInWorkspace, whoIsEditing, previewLayout, listServers, freePort, runApp, runStatus, runLog, deviceScreenshot, telegramNotify, telegramSend, telegramReceive, handBack, listSessions, sendToSession, closeSession, waitSession]
+export const MCP_TOOLS: readonly McpTool[] = [openSession, notifyOwner, openInWorkspace, whoIsEditing, previewLayout, listServers, freePort, runApp, runStatus, runLog, deviceScreenshot, telegramNotify, telegramSend, telegramReceive, handBack, listSessions, sendToSession, closeSession, waitSession, diskSearch, diskUsage, diskProposeDelete]
 
 /** Owner paused agent ↔ DeepSeek over MCP (2026-11-03): no deepseek in open_session, no hand_back. */
 export const mcpToolsFor = (deepseek: boolean): readonly McpTool[] =>

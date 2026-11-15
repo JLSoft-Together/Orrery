@@ -23,6 +23,7 @@ export interface DeleteDeps {
   concurrency?: number
   known?: (path: string) => Promise<boolean>
   measure?: (path: string) => Promise<number | null>
+  firstCount?: number
   io?: CanonicalIo
 }
 
@@ -84,7 +85,7 @@ export async function runDelete(paths: string[], permanent: boolean, deps: Delet
   const targets = topLevel(allowed, ctx.platform)
   if (!targets.length) return result
   const sizes = await mapLimit(targets, SIZE_CONCURRENCY, (p) => deps.sizeOf(p).catch(() => null))
-  const ask: DeleteAsk = { count: targets.length, bytes: sizes.reduce<number>((a, s) => a + (s ?? 0), 0), first: targets.slice(0, 3), permanent }
+  const ask: DeleteAsk = { count: targets.length, bytes: sizes.reduce<number>((a, s) => a + (s ?? 0), 0), first: targets.slice(0, deps.firstCount ?? 3), permanent }
   if (!(await deps.confirm(ask)) || (permanent && !(await deps.confirmPermanent(ask)))) {
     return { ...result, cancelled: true }
   }

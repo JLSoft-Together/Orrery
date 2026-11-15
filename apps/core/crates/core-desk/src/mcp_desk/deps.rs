@@ -20,6 +20,9 @@ pub trait Deps {
     fn screencap(&self, serial: &str) -> Value;
     fn runs(&self) -> Vec<Value>;
     fn capture_active(&self) -> bool;
+    fn disk(&self, _call: &Value) -> Value {
+        json!({"ok": false, "error": "unavailable"})
+    }
 }
 
 fn unavailable_render() -> Value {
@@ -112,6 +115,10 @@ impl Deps for HostDeps<'_> {
     fn capture_active(&self) -> bool {
         self.h("captureActive", Value::Null) == Some(json!(true))
     }
+
+    fn disk(&self, call: &Value) -> Value {
+        object_or(self.h("disk", call.clone()), json!({"ok": false, "error": "unavailable"}))
+    }
 }
 
 pub struct NativeDeps<'a> {
@@ -190,5 +197,9 @@ impl Deps for NativeDeps<'_> {
 
     fn capture_active(&self) -> bool {
         !self.ch("ccm:capture-get", Value::Null)["active"].is_null()
+    }
+
+    fn disk(&self, call: &Value) -> Value {
+        object_or(self.ctx.host("mcpDesk.disk", call.clone()).ok(), json!({"ok": false, "error": "unavailable"}))
     }
 }

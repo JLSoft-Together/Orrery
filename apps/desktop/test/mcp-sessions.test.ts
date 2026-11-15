@@ -15,7 +15,7 @@ describe('tool list and the action table', () => {
   it('keeps every earlier tool in order and appends the session tools', () => {
     expect(MCP_TOOLS.map((t) => t.def.name)).toEqual([
       'open_session', 'notify_owner', 'open_in_workspace', 'who_is_editing', 'preview_layout', 'list_servers', 'free_port', 'run_app', 'run_status', 'run_log',
-      'device_screenshot', 'telegram_notify', 'telegram_send', 'telegram_receive', 'hand_back', 'list_sessions', 'send_to_session', 'close_session', 'wait_session',
+      'device_screenshot', 'telegram_notify', 'telegram_send', 'telegram_receive', 'hand_back', 'list_sessions', 'send_to_session', 'close_session', 'wait_session', 'disk_search', 'disk_usage', 'disk_propose_delete',
     ])
   })
 

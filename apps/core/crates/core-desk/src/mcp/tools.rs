@@ -1,5 +1,5 @@
 use super::host::{Args, ToolHost};
-use super::{t_desk, t_files, t_notes, t_open, t_run, t_sessions};
+use super::{t_desk, t_disk, t_files, t_notes, t_open, t_run, t_sessions};
 use serde_json::Value;
 
 pub fn call_tool(name: &str, args: &Args, host: &dyn ToolHost) -> Value {
@@ -23,6 +23,9 @@ pub fn call_tool(name: &str, args: &Args, host: &dyn ToolHost) -> Value {
         "send_to_session" => t_sessions::send_to_session(args, host),
         "close_session" => t_sessions::close_session(args, host),
         "wait_session" => t_sessions::wait_session(args, host),
+        "disk_search" => t_disk::disk_search(args, host),
+        "disk_usage" => t_disk::disk_usage(args, host),
+        "disk_propose_delete" => t_disk::disk_propose_delete(args, host),
         _ => super::host::fail_with("Unknown tool", "failed"),
     }
 }

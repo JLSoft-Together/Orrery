@@ -23,6 +23,9 @@ export type McpDeskCall =
   | (DeskBase & { tool: 'telegram_notify'; state: 'on' | 'off' | 'status' })
   | (DeskBase & { tool: 'telegram_send'; text: string; file?: string; buttons?: TelegramButton[] })
   | (DeskBase & { tool: 'telegram_receive'; state: 'on' | 'off' | 'status' })
+  | (DeskBase & { tool: 'disk_search'; query?: string; kind?: string; minSize?: number; maxSize?: number; olderThanDays?: number; under?: string; limit: number })
+  | (DeskBase & { tool: 'disk_usage'; path: string; limit: number })
+  | (DeskBase & { tool: 'disk_propose_delete'; paths: string[]; reason: string; permanent: boolean })
 
 export type McpDeskTool = McpDeskCall['tool']
 
@@ -56,6 +59,10 @@ export const DESK_ERRORS = [
   'not-paired',
   'rate',
   'buttons-file',
+  'not-indexed',
+  'not-in-index',
+  'scanning',
+  'invalid',
 ] as const
 export type McpDeskError = (typeof DESK_ERRORS)[number]
 
@@ -80,6 +87,23 @@ export interface AgentServer {
   orphan: boolean
 }
 
+export interface AgentDiskItem {
+  path: string
+  name: string
+  size: number
+  dir: boolean
+  mtime: number
+  kind?: string
+}
+
+export const DISK_ITEMS_MAX = 200
+export const DISK_SEARCH_MAX = 200
+export const DISK_SEARCH_DEFAULT = 50
+export const DISK_USAGE_MAX = 100
+export const DISK_USAGE_DEFAULT = 20
+export const DISK_DELETE_MAX = 200
+export const DISK_REASON_MAX = 500
+
 export type McpDeskResult =
   | { ok: true; tool: 'preview_layout'; png: string; width: number; height: number; renderMs: number; frameworkOnly: boolean; diagnostics: AgentLayoutDiagnostic[] }
   | { ok: true; tool: 'list_servers'; at: string; servers: AgentServer[]; outside: { port: number; name: string }[] }
@@ -87,6 +111,9 @@ export type McpDeskResult =
   | { ok: true; tool: 'telegram_notify'; enabled: boolean; configured: boolean; projects: string[]; routed: boolean }
   | { ok: true; tool: 'telegram_send'; topic: string; file?: string; linkOnly?: boolean; uploading?: boolean; buttons?: number }
   | { ok: true; tool: 'telegram_receive'; receiving: boolean; paired: boolean; owner?: string }
+  | { ok: true; tool: 'disk_search'; total: number; ms: number; items: AgentDiskItem[] }
+  | { ok: true; tool: 'disk_usage'; path: string; size: number; total: number; items: AgentDiskItem[] }
+  | { ok: true; tool: 'disk_propose_delete'; done: { path: string; size: number }[]; failed: { path: string; reason: string }[]; freed: number; permanent: boolean; cancelled?: boolean }
   | { ok: false; error: McpDeskError; retryInSec?: number; detail?: string }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -111,6 +138,36 @@ function parseServer(v: unknown): AgentServer | null {
   const cmd = v.mine === true ? line(v.cmd, 200) : undefined
   const idleSec = v.idleSec === null ? null : (int(v.idleSec, 0, 10 * 365 * 86400) ?? null)
   return { pid, name, kind, ports, mine: v.mine === true, ...(cmd ? { cmd } : {}), idleSec, orphan: v.orphan === true }
+}
+
+const pathOf = (v: unknown): string | undefined => {
+  const s = str(v, 4096)
+  return s && !/[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]/.test(s) ? s : undefined
+}
+const bytes = (v: unknown): number => int(v, 0, Number.MAX_SAFE_INTEGER) ?? 0
+
+function parseDiskItems(raw: unknown): AgentDiskItem[] {
+  return (Array.isArray(raw) ? raw : []).slice(0, DISK_ITEMS_MAX).flatMap((v): AgentDiskItem[] => {
+    if (!isObj(v)) return []
+    const path = pathOf(v.path)
+    if (!path) return []
+    const kind = typeof v.kind === 'string' && /^[a-z]{2,12}$/.test(v.kind) ? v.kind : undefined
+    const mtime = typeof v.mtime === 'number' && Number.isFinite(v.mtime) && v.mtime >= 0 ? Math.floor(v.mtime) : 0
+    return [{ path, name: line(v.name, 255) ?? path, size: bytes(v.size), dir: v.dir === true, mtime, ...(kind ? { kind } : {}) }]
+  })
+}
+
+function parseDiskDelete(raw: Record<string, unknown>): McpDeskResult {
+  const done = (Array.isArray(raw.done) ? raw.done : []).slice(0, 200).flatMap((d): { path: string; size: number }[] => {
+    const path = isObj(d) ? pathOf(d.path) : undefined
+    return isObj(d) && path ? [{ path, size: bytes(d.size) }] : []
+  })
+  const failed = (Array.isArray(raw.failed) ? raw.failed : []).slice(0, 200).flatMap((d): { path: string; reason: string }[] => {
+    if (!isObj(d)) return []
+    const path = pathOf(d.path) ?? ''
+    return [{ path, reason: line(d.reason, 200) ?? 'failed' }]
+  })
+  return { ok: true, tool: 'disk_propose_delete', done, failed, freed: bytes(raw.freed), permanent: raw.permanent === true, ...(raw.cancelled === true ? { cancelled: true as const } : {}) }
 }
 
 /** The main process's answer is checked again by the PTY host before it reaches an agent. */
@@ -165,6 +222,13 @@ export function parseMcpDeskResult(raw: unknown, tool: McpDeskTool): McpDeskResu
     const buttons = int(raw.buttons, 1, 6)
     return { ok: true, tool, topic, ...(file ? { file } : {}), ...(raw.linkOnly === true ? { linkOnly: true } : {}), ...(raw.uploading === true ? { uploading: true } : {}), ...(buttons ? { buttons } : {}) }
   }
+  if (tool === 'disk_search') return { ok: true, tool, total: bytes(raw.total), ms: bytes(raw.ms), items: parseDiskItems(raw.items) }
+  if (tool === 'disk_usage') {
+    const path = pathOf(raw.path)
+    if (!path) return { ok: false, error: 'failed' }
+    return { ok: true, tool, path, size: bytes(raw.size), total: bytes(raw.total), items: parseDiskItems(raw.items) }
+  }
+  if (tool === 'disk_propose_delete') return parseDiskDelete(raw)
   const port = int(raw.port, 1, 65535)
   if (!port || !Array.isArray(raw.stopped)) return { ok: false, error: 'failed' }
   const stopped = raw.stopped.slice(0, 50).flatMap((s): { pid: number; name: string }[] => {

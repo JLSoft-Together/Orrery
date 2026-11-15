@@ -139,3 +139,7 @@ Save 32 MB / 1.3 s, load 0.3 s. `THREAD_MODE_BACKGROUND_BEGIN` hạ IO priority 
 - Kết quả: `{groups:[{size, hash(32 hex), count, files:[{path, mtime ms}]}], totalGroups, wasted, candidates, hashedFiles, hashedBytes, skipped{stale,cloud,locked,changed,gone}, ms}`; nhóm sort `size*(n-1)` giảm dần, cap 5000 nhóm, 500 file / nhóm, 50 000 file tổng (nhóm sau còn tối thiểu 2); `files` sort cũ nhất (mtime nhỏ) -> path ngắn -> path. `count` là số bản thật.
 - Engine: dùng chung slot `scan` (busy khi đang quét, `disk.pause/resume/cancel` dùng chung `Control`), chạy thread nền; `disk.dupes` trả `{started}` ngay hoặc lỗi `no index` / `busy` / `not in index: <path>`; sự kiện `disk:dupes-progress` (`stage` size/quick/full, `candidates`, `files`, `filesDone`, `bytes`, `bytesRead`, `groups`, `skipped`, `current`, `paused`, `elapsedMs`) mỗi 100 ms và `disk:dupes-done` (`{ok:true, ...kết quả}` / `{ok:false, cancelled}` / `{ok:false, error}`).
 - Bench: `orrery-core disk bench-dupes <path> [--level] [--min-mb N] [--exclude name]`. Test `tests/dupes.rs` (13).
+
+## Summary (`disk.summary`, WP-4c)
+
+- Op `disk.summary {roots[], depth (4, max 8), minSize (1 MiB)}` -> `{scannedAt, roots:[{path, size, dirs:[[path, size]]}]}`: BFS theo thư mục, chỉ thư mục có size >= `minSize`, không gồm root trong `dirs`, tối đa 60 000 thư mục; không có tên file. Root không có trong index bị bỏ. Lỗi `no index` khi chưa có index. Test `engine_summary_lists_dirs_to_depth`. CHANNELS 16.

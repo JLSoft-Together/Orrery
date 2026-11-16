@@ -386,20 +386,25 @@ const moreEntries = computed<MenuEntry[]>(() => {
   if (url) out.push({ id: 'dev', label: t('workspace.devServer.open', { host: devUrlLabel(url) }), icon: Globe })
   if (compactSuggested.value) out.push({ id: 'compact', label: t('workspace.paneHead.compact.label', { pct: compactPct.value }), icon: TriangleAlert, hint: t('workspace.compact.hint') })
   out.push({ separator: true })
-  if (canAttach.value)
-    out.push({ id: 'attach', label: attachCount.value ? t('workspace.paneHead.attachCount', { label: t('attach.button'), n: attachCount.value }) : t('attach.button'), icon: Paperclip })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
   if (isShell.value) out.push({ id: 'scan', label: t('workspace.termScan.button'), icon: ScanSearch, hint: t('workspace.termScan.hint') })
   else {
     const n = queueCount.value
     out.push({ id: 'queue', label: n ? t('workspace.promptQueue.count', { n }, n) : t('workspace.promptQueue.title'), icon: ListOrdered })
   }
-  if (preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value) out.push({ id: 'tools', label: t('sessionTools.menu'), icon: Blocks })
   out.push({ id: 'restart', label: t(reconnectable.value ? 'workspace.reconnect' : 'workspace.restart'), icon: RotateCw })
   const layout = layoutMenu?.entries(props.pane.key) ?? []
   if (layout.length) out.push({ separator: true }, ...layout)
   return out
 })
+
+const canTools = computed(() => preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value)
+const attachLabel = computed(() => (attachCount.value ? t('workspace.paneHead.attachCount', { label: t('attach.button'), n: attachCount.value }) : t('attach.button')))
+
+function openTools(): void {
+  const dir = session.value?.cwd || cwd.value
+  if (dir) ui.sessionTools = { dir, paneKey: props.pane.key }
+}
 
 function pickMore(id: string): void {
   if (layoutMenu?.pick(props.pane.key, id)) return
@@ -407,14 +412,10 @@ function pickMore(id: string): void {
     const url = devUrls.value[devUrls.value.length - 1]
     if (url) emit('openLink', { kind: 'url', url }, {})
   } else if (id === 'compact') compactFlow.start(props.pane.key)
-  else if (id === 'attach') attachments.toggle(props.pane.key)
   else if (id === 'scripts') emit('scripts')
   else if (id === 'scan') scanErrors()
   else if (id === 'queue') queueButton.value?.open(more.value?.button?.getBoundingClientRect())
-  else if (id === 'tools') {
-    const dir = session.value?.cwd || cwd.value
-    if (dir) ui.sessionTools = { dir, paneKey: props.pane.key }
-  } else if (id === 'restart') {
+  else if (id === 'restart') {
     if (reconnectable.value) reconnect()
     else restart()
   }
@@ -1314,6 +1315,37 @@ onBeforeUnmount(() => {
           <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
           <span v-if="branch" class="max-w-[16ch] min-w-[4ch] truncate @max-[440px]:sr-only @max-[440px]:min-w-0">{{ branch }}</span>
           <span v-else class="sr-only">{{ t('workspace.wt.title') }}</span>
+        </button>
+        <button
+          v-if="canAttach"
+          type="button"
+          class="relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-pressed:bg-fill aria-pressed:text-ink"
+          :title="attachLabel"
+          :aria-label="attachLabel"
+          :aria-pressed="attachOpen"
+          data-no-drag
+          data-pane-attach
+          @click="attachments.toggle(pane.key)"
+        >
+          <Paperclip :size="12" aria-hidden="true" />
+          <span
+            v-if="attachCount"
+            class="absolute -top-1 -right-1 grid h-3 min-w-3 place-items-center rounded-full bg-accent px-0.5 text-[9px] leading-none font-bold text-on-accent tabular-nums"
+            aria-hidden="true"
+            >{{ attachCount }}</span
+          >
+        </button>
+        <button
+          v-if="canTools"
+          type="button"
+          class="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink"
+          :title="t('sessionTools.menu')"
+          :aria-label="t('sessionTools.menu')"
+          data-no-drag
+          data-pane-tools
+          @click="openTools"
+        >
+          <Blocks :size="12" aria-hidden="true" />
         </button>
         <span class="grid min-w-6 justify-items-end empty:hidden *:[grid-area:1/1] @max-[300px]:hidden" data-more="compact" data-pane-chip>
           <Transition name="ccm-fade">

@@ -67,10 +67,8 @@ async function main() {
     check('re-armed toast after drop', await evaluate(`!!document.querySelector('[data-context-warn-toast="e2e-v89"]')`))
     await agent(120000)
 
-    await evaluate(`document.querySelector('[data-pane-more]').click()`)
-    await waitFor(`!!document.querySelector('[data-context-menu]')`, 3000, 'pane menu')
-    check('pane ⋯ has MCP & plugin entry', await evaluate(`!!${item('tools')}`))
-    await evaluate(`${item('tools')}.click()`)
+    check('pane header has the MCP & plugin button', await evaluate(`!!document.querySelector('[data-pane-tools]')`))
+    await evaluate(`document.querySelector('[data-pane-tools]').click()`)
     await waitFor(`!!document.querySelector('[data-session-tools] [data-tools-row="demo-a"]')`, 15000, 'sheet from pane')
     check('sheet opened for pane dir', await evaluate(`${S}.get('ui').sessionTools?.paneKey === '${pane}'`))
     await evaluate(`document.querySelector('[data-tools-row="demo-a"] [role=switch]').click()`)

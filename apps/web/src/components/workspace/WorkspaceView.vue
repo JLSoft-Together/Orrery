@@ -1802,7 +1802,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="flex h-[calc(100dvh-var(--ccm-header-h,52px))] min-h-0 w-full gap-3 px-3 pt-2 pb-3 sm:px-4" :data-ws-focus="focusOn || undefined">
+  <main class="flex h-[calc(100dvh-var(--ccm-header-h,52px))] min-h-0 w-full" :class="isNext ? 'gap-(--ccm-gap-shell)' : 'gap-3 px-3 pt-2 pb-3 sm:px-4'" :data-ws-focus="focusOn || undefined">
     <aside
       v-if="workspace.tabs.length && !focusOn"
       class="relative hidden shrink-0 flex-col gap-1.5 md:flex"

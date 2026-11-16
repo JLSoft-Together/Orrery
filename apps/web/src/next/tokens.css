@@ -447,11 +447,31 @@
 }
 
 :root[data-ui='next'] .ccm-next-tabs {
+  position: relative;
+  z-index: 30;
   height: 36px;
   flex-shrink: 0;
   padding: 0 4px;
   gap: 4px;
   border-radius: 14px;
+}
+
+:root[data-ui='next'] .ccm-next-tabs.glass {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root[data-ui='next'] .ccm-next-tabs.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ccm-glass);
+  -webkit-backdrop-filter: var(--ccm-glass-blur);
+  backdrop-filter: var(--ccm-glass-blur);
+  pointer-events: none;
 }
 
 :root[data-ui='next'] .ccm-next-tabs .ccm-tab-rail {

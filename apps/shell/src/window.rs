@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use serde_json::json;
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PermissionKind, PermissionResponse};
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -192,7 +192,25 @@ pub fn show_main(app: &AppHandle) {
     }
 }
 
+fn report_maximized(window: &tauri::Window) {
+    static LAST: std::sync::Mutex<Vec<(String, bool)>> = std::sync::Mutex::new(Vec::new());
+    let now = window.is_maximized().unwrap_or(false);
+    let label = window.label().to_owned();
+    {
+        let mut last = LAST.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        match last.iter_mut().find(|(l, _)| *l == label) {
+            Some((_, v)) if *v == now => return,
+            Some((_, v)) => *v = now,
+            None => last.push((label.clone(), now)),
+        }
+    }
+    let _ = window.emit_to(label.as_str(), "ccm:window-maximized", now);
+}
+
 pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
+    if cfg!(windows) && matches!(event, WindowEvent::Resized(_)) {
+        report_maximized(window);
+    }
     if matches!(event, WindowEvent::Destroyed) {
         crate::preview_ipc::release(window.app_handle(), window.label());
         release_owners(window.app_handle(), window.label());

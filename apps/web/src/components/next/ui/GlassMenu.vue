@@ -90,6 +90,7 @@ function onKey(e: KeyboardEvent): void {
 </script>
 
 <template>
+  <Teleport to="body" :disabled="x === undefined || y === undefined">
   <Transition name="ccm-next-pop">
     <div
       v-if="open"
@@ -130,4 +131,5 @@ function onKey(e: KeyboardEvent): void {
       </template>
     </div>
   </Transition>
+  </Teleport>
 </template>

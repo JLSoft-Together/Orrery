@@ -2,8 +2,9 @@
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { waitReason, type PtyPreset } from '@ccm/shared'
-import { ChevronDown, ChevronRight, Ellipsis } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Ellipsis, LoaderCircle, Plus } from 'lucide-vue-next'
 import { useClusterDrag } from '../../../composables/useClusterDrag'
+import { useOpenProject } from '../../../composables/useOpenProject'
 import { useCompact } from '../../../composables/useCompact'
 import { useProjectDisks } from '../../../composables/useDiskSizes'
 import { usePaneActions } from '../../../composables/usePaneActions'
@@ -49,6 +50,7 @@ const { t } = useI18n()
 const workspace = useWorkspaceStore()
 const ui = useUiStore()
 const uigen = useUiGenStore()
+const { available: openable, picking, openProject } = useOpenProject()
 const info = usePaneInfo()
 const agents = useAgentsStore()
 const toasts = useToastsStore()
@@ -637,6 +639,20 @@ const clusterKeyOf = (id: string): string => id.slice(2)
     <div v-if="!props.collapsed" class="flex shrink-0 items-center gap-2 px-2 pt-1 pb-1">
       <span class="shrink-0 text-2xs font-medium text-ink-faint" aria-hidden="true">{{ t('mist.rail.group.name') }}</span>
       <SegmentedControl v-model="uigen.railGroup" :options="groupOptions" :label="t('mist.rail.group.label')" size="sm" fill class="min-w-0 flex-1" data-rail-group />
+      <button
+        v-if="openable"
+        type="button"
+        class="ccm-btn-plain inline-flex size-7 shrink-0 items-center justify-center disabled:cursor-default disabled:text-ink-faint"
+        :title="t('workspace.rail.openProjectHint')"
+        :aria-label="t('workspace.rail.openProject')"
+        :disabled="picking"
+        data-no-drag
+        data-rail-open-project
+        @click="openProject"
+      >
+        <LoaderCircle v-if="picking" :size="15" class="ccm-spin" aria-hidden="true" />
+        <Plus v-else :size="15" aria-hidden="true" />
+      </button>
     </div>
     <RailNeeds v-if="!props.collapsed && needsShown.length" :items="needsShown" @open="activateRow" @next="openNext" @snooze="snoozeRow" />
     <div ref="listEl" class="ccm-scroll min-h-0 flex-1 overflow-y-auto px-1.5 py-1" data-rail-list>

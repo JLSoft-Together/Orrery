@@ -17,7 +17,7 @@ import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-ser
 import { createServeToasts, windowsToasts, type ServeToasts } from './serve-toast'
 import { createMenuToasts, electronMenuDrawer, windowsMenuDrawer, type MenuToastDrawer, type MenuToasts } from './menuToast'
 import { adoptLoginShellPath, offerMoveToApplications, setMacMenu } from './mac'
-import { errorPage, INTRO_MS, LEAVE_MS, LEAVE_SCRIPT, loadingPage, RETRY_URL } from './pages'
+import { errorPage, INTRO_MS, LEAVE_MS, LEAVE_SCRIPT, loadingPage, RETRY_URL, WINDOW_URL } from './pages'
 import { pickStartDir } from './pick-start'
 import { hardenWebviews, PREVIEW_PARTITION, registerPreviewIpc, type PreviewIpc } from './preview/ipc'
 import { claudeConfigDir } from './preview/denyRules'
@@ -444,6 +444,13 @@ function harden(contents: WebContents): void {
       void boot()
       return
     }
+    const winAction = url.startsWith(WINDOW_URL) ? url.slice(WINDOW_URL.length) : null
+    if (winAction !== null) {
+      event.preventDefault()
+      const win = BrowserWindow.fromWebContents(contents)
+      if (win && isWindowAction(winAction)) windowAction(win, winAction)
+      return
+    }
     if (isAppUrl(url)) return
     event.preventDefault()
     openExternal(url)
@@ -524,18 +531,20 @@ function zoom(contents: WebContents, action: 'in' | 'out' | 'reset'): number {
   return zoomPercent(level)
 }
 
-const TITLE_BAR_H = 40
+type WindowAction = 'minimize' | 'toggle-maximize' | 'close'
+const isWindowAction = (v: unknown): v is WindowAction => v === 'minimize' || v === 'toggle-maximize' || v === 'close'
 
-function titleBarOverlay(): Electron.TitleBarOverlay {
-  const look = saved().look
-  const dark = look?.dark ?? nativeTheme.shouldUseDarkColors
-  return { color: look?.bar ?? look?.canvas ?? (dark ? '#1e1e1e' : '#ececee'), symbolColor: look?.ink ?? (dark ? '#f5f5f7' : '#1d1d1f'), height: TITLE_BAR_H }
+function windowAction(win: BrowserWindow, action: WindowAction): void {
+  if (action === 'minimize') win.minimize()
+  else if (action === 'close') win.close()
+  else if (win.isMaximized()) win.unmaximize()
+  else win.maximize()
 }
 
 function baseWindow(options: Electron.BrowserWindowConstructorOptions, prefs: Electron.WebPreferences = {}): BrowserWindow {
   const win = new BrowserWindow({
     show: false,
-    ...(IS_MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 14 } } : { titleBarStyle: 'hidden' as const, titleBarOverlay: titleBarOverlay() }),
+    ...(IS_MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 14 } } : { titleBarStyle: 'hidden' as const }),
     // macOS takes the window icon from the app bundle.
     icon: IS_MAC ? undefined : resource('ccm.ico', 'scripts/assets/ccm.ico'),
     backgroundColor: savedBackground() ?? (nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ececee'),
@@ -546,6 +555,13 @@ function baseWindow(options: Electron.BrowserWindowConstructorOptions, prefs: El
   })
   win.removeMenu()
   harden(win.webContents)
+  if (!IS_MAC) {
+    const report = (): void => {
+      if (!win.isDestroyed()) win.webContents.send('ccm:window-maximized', win.isMaximized())
+    }
+    win.on('maximize', report)
+    win.on('unmaximize', report)
+  }
   return win
 }
 
@@ -671,7 +687,7 @@ function fatalMessage(reason: FatalReason): string {
 function showError(reason: FatalReason): void {
   if (!mainWindow || quitting || showingError) return
   showingError = true
-  mainWindow.loadURL(errorPage(t, fatalMessage(reason), host.tail, saved().look)).catch(() => undefined)
+  mainWindow.loadURL(errorPage(t, fatalMessage(reason), host.tail, saved().look, !IS_MAC)).catch(() => undefined)
   showMain()
 }
 
@@ -802,7 +818,7 @@ let booting: Promise<void> | null = null
 function showIntro(): Promise<number> {
   const win = mainWindow
   if (!win) return Promise.resolve(Date.now())
-  return win.loadURL(loadingPage(t, saved().look, app.getVersion())).catch(() => undefined).then(() => Date.now())
+  return win.loadURL(loadingPage(t, saved().look, app.getVersion(), !IS_MAC)).catch(() => undefined).then(() => Date.now())
 }
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)))
 
@@ -2051,6 +2067,14 @@ async function ready(): Promise<void> {
     setWindowBackground(color)
     return true
   })
+  ipcMain.handle('ccm:window', (event, action: unknown) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!isAppFrame(event) || !win || IS_MAC) return null
+    if (action === 'state') return win.isMaximized()
+    if (!isWindowAction(action)) return null
+    windowAction(win, action)
+    return true
+  })
   ipcMain.handle('ccm:locale', (event, raw: unknown) => {
     if (!isAppFrame(event) || (raw !== 'en' && raw !== 'vi')) return false
     if (raw !== saved().locale) saveAppearance({ locale: raw })
@@ -2062,10 +2086,7 @@ async function ready(): Promise<void> {
     if (!look) return false
     if (JSON.stringify(look) !== JSON.stringify(saved().look)) {
       saveAppearance({ look, background: look.canvas })
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.setBackgroundColor(look.canvas)
-        if (!IS_MAC) win.setTitleBarOverlay(titleBarOverlay())
-      }
+      for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(look.canvas)
     }
     return true
   })

@@ -81,7 +81,10 @@ const style = computed(() => {
   const a = anchor.value
   if (!a) return {}
   const left = Math.max(12, Math.min(a.right - WIDTH, window.innerWidth - WIDTH - 12))
-  return { left: `${left}px`, top: `${a.bottom + 6}px`, width: `${Math.min(WIDTH, window.innerWidth - 24)}px`, '--ccm-origin': 'top right' }
+  const width = `${Math.min(WIDTH, window.innerWidth - 24)}px`
+  const below = window.innerHeight - a.bottom
+  if (below < 320 && a.top > below) return { left: `${left}px`, bottom: `${window.innerHeight - a.top + 6}px`, width, maxHeight: `${a.top - 18}px`, '--ccm-origin': 'bottom left' }
+  return { left: `${left}px`, top: `${a.bottom + 6}px`, width, maxHeight: `${below - 18}px`, '--ccm-origin': 'top right' }
 })
 
 function close(refocus = true): void {
@@ -161,6 +164,7 @@ onBeforeUnmount(() => {
     <span v-if="risk" class="absolute right-0.5 bottom-0.5 size-2 rounded-full bg-warning ring-2 ring-surface" aria-hidden="true" data-status-risk />
   </button>
 
+  <Teleport to="body">
   <Transition name="ccm-menu" @before-leave="retireOverlay">
     <div
       v-if="open && anchor"
@@ -208,5 +212,6 @@ onBeforeUnmount(() => {
       </p>
     </div>
   </Transition>
+  </Teleport>
   <DiskBadge :anchor="btn" />
 </template>

@@ -12,7 +12,8 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 19] = [
+const LOCAL: [&str; 20] = [
+    "ccm:window",
     "ccm:pty-endpoint",
     "ccm:editor-dirty",
     "ccm:editor-save-reply",
@@ -180,6 +181,21 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         "shell:window" => {
             let window = app.get_webview_window(webview.label()).ok_or("no window")?;
             Ok(window_action(&window, arg(&args, 0).as_str().unwrap_or("")))
+        }
+        "ccm:window" => {
+            if !cfg!(windows) {
+                return Ok(Value::Null);
+            }
+            let window = app.get_webview_window(webview.label()).ok_or("no window")?;
+            let action = match arg(&args, 0).as_str() {
+                Some("state") => return Ok(json!(window.is_maximized().unwrap_or(false))),
+                Some("minimize") => "min",
+                Some("toggle-maximize") => "max",
+                Some("close") => "close",
+                _ => return Ok(Value::Null),
+            };
+            window_action(&window, action);
+            Ok(json!(true))
         }
         "shell:guest" => {
             let owner = webview.window().label().to_owned();

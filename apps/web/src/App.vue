@@ -32,7 +32,7 @@ import WorkspaceFooter from './components/workspace/WorkspaceFooter.vue'
 import CompactView from './components/CompactView.vue'
 import UsageView from './components/usage/UsageView.vue'
 import HistoryView from './components/history/HistoryView.vue'
-import { desktop, hasDeepSeek, hasExtensions, hasTerminals } from './lib/desktop'
+import { desktop, hasDeepSeek, hasExtensions, hasTerminals, titleBar } from './lib/desktop'
 import { hasDevices } from './lib/devices'
 import { hasDiskMap } from './lib/diskMap'
 import { hasDiskClean } from './lib/diskClean'
@@ -151,9 +151,15 @@ watch(
   () =>
     document.documentElement.style.setProperty(
       '--ccm-header-h',
-      uiGen.isNext ? (ui.compact ? '0px' : '24px') : `${headerH.value + (showFooter.value ? footerH.value : 0)}px`,
+      uiGen.isNext
+        ? ui.compact
+          ? '0px'
+          : titleBar === 'overlay'
+            ? 'calc(var(--ccm-next-titlebar, 36px) + 12px)'
+            : '24px'
+        : `${headerH.value + (showFooter.value ? footerH.value : 0)}px`,
     ),
-  { flush: 'post' },
+  { flush: 'post', immediate: true },
 )
 watch(header, (cur, prev) => {
   const old = prev?.$el as Element | undefined

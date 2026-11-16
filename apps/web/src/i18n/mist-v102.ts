@@ -150,6 +150,13 @@ const en = {
       noQuota: 'No plan limits reported yet',
       openRail: 'Open sidebar',
     },
+    window: {
+      label: 'Window',
+      minimize: 'Minimize',
+      maximize: 'Maximize',
+      restore: 'Restore',
+      close: 'Close',
+    },
     ui: {
       close: 'Close',
       more: 'More',
@@ -374,6 +381,13 @@ const vi: typeof en = {
       quotaWeek: 'Tuần',
       noQuota: 'Chưa có hạn mức gói',
       openRail: 'Mở thanh bên',
+    },
+    window: {
+      label: 'Cửa sổ',
+      minimize: 'Thu nhỏ',
+      maximize: 'Phóng to',
+      restore: 'Khôi phục',
+      close: 'Đóng',
     },
     ui: {
       close: 'Đóng',

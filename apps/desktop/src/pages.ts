@@ -2,6 +2,7 @@ import type { Look } from './appearance'
 import type { Strings } from './strings'
 
 export const RETRY_URL = 'ccm-desktop://retry'
+export const WINDOW_URL = 'ccm-desktop://window/'
 /** Until the wordmark has landed (STYLE `--text` + letters); a faster collector still waits for it. */
 export const INTRO_MS = 2450
 /** `.out` leave animation before the dashboard replaces the page. */
@@ -127,9 +128,24 @@ const MARK =
   `<circle class="sun" cx="512" cy="512" r="96" fill="#E8915A"/>` +
   `</svg><i class="ring"></i></div></div>`
 
-const page = (title: string, body: string, look?: Look | null, n = 0, intro = true): string =>
+const WINDOW_STYLE = `
+.win { position: fixed; top: 6px; right: 8px; display: flex; gap: 2px; -webkit-app-region: no-drag; app-region: no-drag; z-index: 1; }
+.win a { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: var(--muted); }
+.win a:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); }
+.win a.close:hover { background: var(--error); color: #fff; }
+.win svg { width: 14px; height: 14px; }
+`
+const icon = (d: string): string => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+const WINDOW_CONTROLS =
+  `<nav class="win">` +
+  `<a href="${WINDOW_URL}minimize" aria-label="Minimize">${icon('<path d="M5 12h14"/>')}</a>` +
+  `<a href="${WINDOW_URL}toggle-maximize" aria-label="Maximize">${icon('<rect x="5" y="5" width="14" height="14" rx="2"/>')}</a>` +
+  `<a class="close" href="${WINDOW_URL}close" aria-label="Close">${icon('<path d="M6 6l12 12M18 6L6 18"/>')}</a>` +
+  `</nav>`
+
+const page = (title: string, body: string, look?: Look | null, n = 0, intro = true, controls = false): string =>
   `data:text/html;charset=utf-8,${encodeURIComponent(
-    `<!doctype html><html${intro ? '' : ' class="static"'}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>${tokens(look)}\n:root { --n: ${n}; }${STYLE}</style></head><body><main>${body}</main></body></html>`,
+    `<!doctype html><html${intro ? '' : ' class="static"'}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>${tokens(look)}\n:root { --n: ${n}; }${STYLE}${controls ? WINDOW_STYLE : ''}</style></head><body>${controls ? WINDOW_CONTROLS : ''}<main>${body}</main></body></html>`,
   )}`
 
 /** One span per character (code points, so an emoji or accented letter is not split); spaces stay spaces. */
@@ -137,7 +153,7 @@ export function wordmark(text: string): string {
   return [...text].map((ch, i) => `<span aria-hidden="true" style="--i:${i}">${ch === ' ' ? ' ' : esc(ch)}</span>`).join('')
 }
 
-export const loadingPage = (t: Strings, look?: Look | null, version?: string): string => {
+export const loadingPage = (t: Strings, look?: Look | null, version?: string, controls = false): string => {
   const n = [...t.appName].length
   return page(
     t.appName,
@@ -146,10 +162,12 @@ export const loadingPage = (t: Strings, look?: Look | null, version?: string): s
       (version ? `<p class="ver">v${esc(version)}</p>` : ''),
     look,
     n,
+    true,
+    controls,
   )
 }
 
-export const errorPage = (t: Strings, message: string, log: string[], look?: Look | null): string =>
+export const errorPage = (t: Strings, message: string, log: string[], look?: Look | null, controls = false): string =>
   page(
     t.appName,
     `${MARK}<h1 class="title">${esc(t.errorTitle)}</h1><p class="err" role="alert">${esc(message)}</p><a class="btn" href="${RETRY_URL}">${esc(t.retry)}</a>` +
@@ -157,4 +175,5 @@ export const errorPage = (t: Strings, message: string, log: string[], look?: Loo
     look,
     0,
     false,
+    controls,
   )

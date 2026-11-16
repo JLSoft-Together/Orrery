@@ -34,6 +34,12 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   setAppearance: (look: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:appearance', look),
   setLocale: (locale: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:locale', locale),
   zoomApp: (action: 'in' | 'out' | 'reset' | 'get'): Promise<unknown> => ipcRenderer.invoke('ccm:zoom', action),
+  ...(process.platform === 'darwin'
+    ? {}
+    : {
+      windowControl: (action: 'minimize' | 'toggle-maximize' | 'close' | 'state'): Promise<unknown> => ipcRenderer.invoke('ccm:window', action),
+      onWindowMaximized: (handler: (maximized: boolean) => void): (() => void) => subscribe('ccm:window-maximized', (v) => handler(v === true)),
+    }),
   loginItem: (on?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:login-item', on),
   runState: (): Promise<unknown> => ipcRenderer.invoke('ccm:run-state'),
   dirsExist: (paths: string[]): Promise<unknown> => ipcRenderer.invoke('ccm:dirs-exist', paths),

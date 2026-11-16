@@ -25,7 +25,7 @@ import {
   Undo2,
 } from 'lucide-vue-next'
 import { usePageActive } from '../../composables/usePageActive'
-import { hasExtensions, hasTerminals } from '../../lib/desktop'
+import { hasExtensions, hasTerminals, titleBar } from '../../lib/desktop'
 import { hasDevices } from '../../lib/devices'
 import { hasDiskMap } from '../../lib/diskMap'
 import { hasTelegram } from '../../lib/telegram'
@@ -51,6 +51,7 @@ import LiveRail from './rail/LiveRail.vue'
 import GlassMenu, { type GlassMenuItem } from './ui/GlassMenu.vue'
 import GlassTooltip from './ui/GlassTooltip.vue'
 import SegmentedControl, { type NextSegment } from './ui/SegmentedControl.vue'
+import WindowControls from '../ui/WindowControls.vue'
 
 const InboxPanel = defineAsyncComponent(() => import('../inbox/InboxPanel.vue'))
 
@@ -241,7 +242,9 @@ const iconBtn =
 </script>
 
 <template>
-  <div class="ccm-next-shell" :data-rail-mode="mode" :data-rail-open="railOpen || undefined" :data-rail-hidden="railHidden || undefined" :data-rail-dragging="dragging || undefined" :style="{ '--ccm-rail-w': `${width}px` }" data-next-shell>
+  <div class="ccm-next-shell" :data-rail-mode="mode" :data-rail-open="railOpen || undefined" :data-rail-hidden="railHidden || undefined" :data-rail-dragging="dragging || undefined" :data-title-bar="titleBar ?? undefined" :style="{ '--ccm-rail-w': `${width}px` }" data-next-shell>
+    <div v-if="titleBar === 'overlay'" class="ccm-next-drag" aria-hidden="true" data-next-drag data-tauri-drag-region />
+    <WindowControls v-if="titleBar === 'overlay'" class="ccm-next-winctl" />
     <div v-if="mode === 'overlay' && overlayOpen && !railHidden" class="fixed inset-0 z-30 bg-(--ccm-scrim,rgb(0_0_0/0.32))" aria-hidden="true" data-rail-scrim @click="closeRail" />
 
     <div v-if="!railHidden" class="ccm-next-rail-cell" :class="mode === 'overlay' ? 'ccm-next-rail-overlay' : ''" :aria-hidden="!railOpen || undefined" :inert="!railOpen || undefined">
@@ -423,6 +426,35 @@ const iconBtn =
 }
 :root[data-ui='next'] .ccm-next-shell[data-rail-mode='overlay'] {
   grid-template-columns: minmax(0, 1fr);
+}
+:root[data-ui='next'] .ccm-next-shell[data-rail-mode='overlay']:not([data-rail-hidden]) .ccm-next-canvas {
+  padding-left: calc(36px + var(--ccm-gap-shell, 12px));
+}
+:root[data-ui='next'] .ccm-next-shell[data-title-bar='overlay'] {
+  padding-top: var(--ccm-next-titlebar, 36px);
+}
+:root[data-ui='next'] .ccm-next-shell[data-title-bar='overlay'] .ccm-next-rail-overlay {
+  top: var(--ccm-next-titlebar, 36px);
+}
+:root[data-ui='next'] .ccm-next-shell[data-title-bar='overlay'] [data-rail-toggle] {
+  top: var(--ccm-next-titlebar, 36px);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+:root[data-ui='next'] .ccm-next-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--ccm-next-titlebar, 36px);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+:root[data-ui='next'] .ccm-next-winctl {
+  position: fixed;
+  top: calc((var(--ccm-next-titlebar, 36px) - 28px) / 2);
+  right: 12px;
+  z-index: 60;
 }
 :root[data-ui='next'] .ccm-next-rail-cell {
   position: relative;

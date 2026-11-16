@@ -20,6 +20,7 @@ import { useUiStore, type View } from '../stores/ui'
 import HeaderStatusPopover from './HeaderStatusPopover.vue'
 import TelegramToggle from './TelegramToggle.vue'
 import SettingsMenu from './SettingsMenu.vue'
+import WindowControls from './ui/WindowControls.vue'
 import ContextMenu from './ui/ContextMenu.vue'
 
 const InboxPanel = defineAsyncComponent(() => import('./inbox/InboxPanel.vue'))
@@ -207,6 +208,7 @@ function onTabKey(e: KeyboardEvent): void {
         </button>
         <SettingsMenu />
       </div>
+      <WindowControls class="ml-1 border-l border-line pl-1.5" />
     </div>
     <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inboxBtn" @close="inbox.open = false" />
     <ContextMenu v-if="moreAt" :at="moreAt" :entries="moreEntries" :label="t('nav.more')" :trigger="moreBtn" @pick="pickMore" @close="closeMore" />

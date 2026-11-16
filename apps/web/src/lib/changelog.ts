@@ -18,6 +18,19 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.7',
+    date: '2026-11-16',
+    items: [
+      { en: 'Smaller minimize, maximize and close buttons that match the app theme', vi: 'Nút thu nhỏ, phóng to, đóng cửa sổ nhỏ gọn, theo màu theme của app' },
+      { en: 'New UI: the close button no longer sits on the tab bar; drag the window by its top strip', vi: 'Giao diện mới: nút đóng không còn đè thanh tab; kéo cửa sổ ở dải trên cùng' },
+      { en: 'New UI: + in the session rail opens a project folder', vi: 'Giao diện mới: nút + trên rail session để mở thư mục project' },
+      { en: 'New UI: the + menu and rail menus show above terminals, blurred and uncut', vi: 'Giao diện mới: menu + và menu trên rail hiện trên terminal, mờ kính đúng, không bị cắt' },
+      { en: 'New UI: Limits and status opens upward in full instead of being cut off', vi: 'Giao diện mới: Hạn mức và trạng thái mở lên trên, hiện đủ, không bị cắt' },
+      { en: 'New UI: the same 12px spacing around the rail, tab bar and panes', vi: 'Giao diện mới: khoảng cách 12px đều nhau quanh rail, thanh tab và pane' },
+      { en: 'Pane header: Attachments and MCP & plugins are one click, next to the branch', vi: 'Header pane: nút Đính kèm và MCP & plugin bấm thẳng, cạnh branch git' },
+    ],
+  },
+  {
     version: '4.0.6',
     date: '2026-11-16',
     items: [

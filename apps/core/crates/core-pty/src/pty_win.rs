@@ -10,7 +10,7 @@ use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
-use windows_sys::Win32::System::Console::{ClosePseudoConsole, CreatePseudoConsole, ResizePseudoConsole, COORD, HPCON};
+use windows_sys::Win32::System::Console::{SetConsoleCtrlHandler, ClosePseudoConsole, CreatePseudoConsole, ResizePseudoConsole, COORD, HPCON};
 use windows_sys::Win32::System::Pipes::CreatePipe;
 use windows_sys::Win32::System::Threading::{
     CreateProcessW, DeleteProcThreadAttributeList, GetExitCodeProcess, InitializeProcThreadAttributeList, ResumeThread, UpdateProcThreadAttribute, WaitForSingleObject,
@@ -150,6 +150,7 @@ fn env_block(env: &[(String, String)]) -> Vec<u16> {
 }
 
 pub fn spawn(spec: &SpawnSpec, sink: Sink) -> io::Result<(Sys, u32, Box<dyn Write + Send>)> {
+    unsafe { SetConsoleCtrlHandler(None, 0) };
     let env = dedupe_env(&spec.env, true);
     let (in_r, in_w) = pipe()?;
     let (out_r, out_w) = pipe()?;
@@ -278,5 +279,49 @@ impl Sys {
     pub fn hangup(&self) -> Force {
         self.kill();
         Force
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+
+    fn run_and_interrupt(file: &str, args: &[&str], settle_ms: u64) -> Option<i64> {
+        let (tx, rx) = mpsc::channel::<PtyEvent>();
+        let tx = Mutex::new(tx);
+        let sink: Sink = Arc::new(move |e| {
+            let _ = tx.lock().unwrap().send(e);
+        });
+        let env: Vec<(String, String)> = std::env::vars().collect();
+        let spec = SpawnSpec { file: file.into(), args: args.iter().map(|s| s.to_string()).collect(), env, cwd: std::env::temp_dir().to_string_lossy().into_owned(), cols: 80, rows: 24 };
+        let (sys, _pid, mut writer) = spawn(&spec, sink).expect("spawn");
+        std::thread::sleep(Duration::from_millis(settle_ms));
+        writer.write_all(&[0x03]).unwrap();
+        writer.flush().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut code = None;
+        while let Some(left) = deadline.checked_duration_since(Instant::now()) {
+            match rx.recv_timeout(left) {
+                Ok(PtyEvent::Exit { code: c, .. }) => {
+                    code = Some(c);
+                    break;
+                }
+                Ok(_) => {}
+                Err(_) => break,
+            }
+        }
+        sys.kill();
+        code
+    }
+
+    #[test]
+    fn ctrl_c_interrupts_ping() {
+        assert!(run_and_interrupt("ping.exe", &["-t", "127.0.0.1"], 1000).is_some());
+    }
+
+    #[test]
+    fn ctrl_c_interrupts_powershell_sleep() {
+        assert!(run_and_interrupt("powershell.exe", &["-NoLogo", "-NoProfile", "-Command", "Start-Sleep -Seconds 60"], 2500).is_some());
     }
 }

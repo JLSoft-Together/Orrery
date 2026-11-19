@@ -11,6 +11,8 @@ describe('uiGen store', () => {
     localStorage.clear()
     localStorage.setItem('ccm.theme', 'orrery-light')
     localStorage.setItem('ccm.themeMigration', '4.0.2-galaxy')
+    localStorage.setItem('ccm.uiMigration', '4.1-next')
+    localStorage.setItem('ccm.uiGeneration', 'classic')
     root.removeAttribute('data-theme')
     root.removeAttribute('data-ui')
     root.removeAttribute('data-next-theme')
@@ -20,13 +22,34 @@ describe('uiGen store', () => {
     setActivePinia(createPinia())
   })
 
-  it('defaults to classic and leaves the classic theme on the root', () => {
+  it('keeps a stored classic choice after the migration and leaves the classic theme on the root', () => {
     const settings = useSettingsStore()
     const gen = useUiGenStore()
     expect(gen.generation).toBe('classic')
     expect(root.dataset.ui).toBe('classic')
     expect(root.dataset.theme).toBe(settings.theme)
     expect(root.dataset.nextTheme).toBeUndefined()
+  })
+
+  it('fresh install starts on next and records the migration', () => {
+    localStorage.clear()
+    const gen = useUiGenStore()
+    expect(gen.generation).toBe('next')
+    expect(localStorage.getItem('ccm.uiGeneration')).toBe('next')
+    expect(localStorage.getItem('ccm.uiMigration')).toBe('4.1-next')
+  })
+
+  it('moves a machine on classic to next once, then respects a later classic choice', async () => {
+    localStorage.clear()
+    localStorage.setItem('ccm.uiGeneration', 'classic')
+    const first = useUiGenStore()
+    expect(first.generation).toBe('next')
+    expect(localStorage.getItem('ccm.uiMigration')).toBe('4.1-next')
+    first.setGeneration('classic')
+    await nextTick()
+    expect(localStorage.getItem('ccm.uiGeneration')).toBe('classic')
+    setActivePinia(createPinia())
+    expect(useUiGenStore().generation).toBe('classic')
   })
 
   it('switches to next and back at once, keeping the classic theme', async () => {

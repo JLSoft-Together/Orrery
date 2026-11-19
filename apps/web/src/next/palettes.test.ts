@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { isNextPaletteId, NEXT_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_THEME_IDS, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from './palettes'
-import { startNext } from '../lib/uiGeneration'
+import { startNext, startUi, UI_MIGRATION } from '../lib/uiGeneration'
 
 const tokensCss = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8')
 const palettesCss = readFileSync(new URL('./palettes.css', import.meta.url), 'utf8')
@@ -166,9 +166,32 @@ describe('pre-paint next pick', () => {
                 for (const rm of [true, false]) expect(run.pick(ui, theme, dark, glass, rt, motion, rm), `${ui} ${theme} ${dark} ${glass} ${rt} ${motion} ${rm}`).toEqual(startNext(ui, theme, dark, glass, rt, motion, rm))
   })
 
-  it('startNext keeps classic untouched', () => {
-    expect(startNext(null, 'galaxy', false, null, false, null, false)).toEqual({ ui: 'classic', theme: 'galaxy', dark: false, glass: 'full', motion: 'full' })
+  it('startNext defaults to next and keeps an explicit classic untouched', () => {
+    expect(startNext(null, 'galaxy', false, null, false, null, false)).toMatchObject({ ui: 'next', theme: 'galaxy', dark: true })
+    expect(startNext('classic', 'galaxy', false, null, false, null, false)).toEqual({ ui: 'classic', theme: 'galaxy', dark: false, glass: 'full', motion: 'full' })
     expect(startNext('next', 'galaxy', false, null, false, null, true)).toEqual({ ui: 'next', theme: 'galaxy', dark: true, glass: 'full', motion: 'reduced' })
     expect(startNext('next', null, false, '1', false, 'off', false)).toMatchObject({ theme: 'mist', glass: 'reduced', motion: 'off' })
+  })
+})
+
+describe('pre-paint ui generation pick', () => {
+  const src = /function pickUi\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
+  const pick = new Function(`${src}; return pickUi`)() as (u: string | null, m: string | null) => { u: string; w: boolean }
+
+  it('mirrors startUi', () => {
+    expect(indexHtml).toContain(`localStorage.setItem('ccm.uiMigration', '${UI_MIGRATION}')`)
+    for (const stored of [null, 'classic', 'next', 'x'])
+      for (const m of [null, '4.0.7', UI_MIGRATION]) {
+        const want = startUi(stored, m)
+        expect(pick(stored, m), `${stored} ${m}`).toEqual({ u: want.ui, w: want.migrate })
+      }
+  })
+
+  it('moves everyone to next once, then keeps classic', () => {
+    expect(startUi(null, null)).toEqual({ ui: 'next', migrate: true })
+    expect(startUi('classic', null)).toEqual({ ui: 'next', migrate: true })
+    expect(startUi('classic', UI_MIGRATION)).toEqual({ ui: 'classic', migrate: false })
+    expect(startUi('next', UI_MIGRATION)).toEqual({ ui: 'next', migrate: false })
+    expect(startUi(null, UI_MIGRATION)).toEqual({ ui: 'next', migrate: false })
   })
 })

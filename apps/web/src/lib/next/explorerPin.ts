@@ -1,28 +1,31 @@
 export const EXPLORER_DRAWER_W = 288
-export const PIN_MIN_VIEWPORT = 1440
-export const PIN_MIN_CANVAS = 720
+export const PIN_MIN_CANVAS = 560
 
-export interface PinInput {
-  viewport: number
-  canvas: number
-  pinned: boolean
-  drawerWidth?: number
+export const EXPLORER_MIN_W = 220
+export const EXPLORER_MAX_W = 640
+export const EXPLORER_PIN_GAP = 8
+
+export function clampExplorerWidth(width: number, room?: number): number {
+  const ceiling = room === undefined ? EXPLORER_MAX_W : Math.max(EXPLORER_MIN_W, Math.min(EXPLORER_MAX_W, room))
+  if (!Number.isFinite(width)) return EXPLORER_DRAWER_W
+  return Math.round(Math.min(ceiling, Math.max(EXPLORER_MIN_W, width)))
 }
 
-export type PinVerdict = { ok: true } | { ok: false; reason: 'viewport' | 'canvas' }
-
-export function canvasWithoutDrawer(input: PinInput): number {
-  const w = input.drawerWidth ?? EXPLORER_DRAWER_W
-  return input.pinned ? input.canvas + w : input.canvas
+export function parseExplorerWidth(raw: string | null): number {
+  if (raw === null || raw.trim() === '') return EXPLORER_DRAWER_W
+  return clampExplorerWidth(Number(raw))
 }
 
-export function pinVerdict(input: PinInput): PinVerdict {
-  if (input.viewport < PIN_MIN_VIEWPORT) return { ok: false, reason: 'viewport' }
-  const w = input.drawerWidth ?? EXPLORER_DRAWER_W
-  if (canvasWithoutDrawer(input) - w < PIN_MIN_CANVAS) return { ok: false, reason: 'canvas' }
-  return { ok: true }
+export function pinnedRoom(canvasFree: number): number {
+  return canvasFree - PIN_MIN_CANVAS - EXPLORER_PIN_GAP
 }
 
-export function effectivePinned(input: PinInput): boolean {
-  return input.pinned && pinVerdict(input).ok
+export function dragWidth(startWidth: number, startX: number, x: number, room?: number): number {
+  return clampExplorerWidth(startWidth + (startX - x), room)
+}
+
+export function fitPinnedWidth(canvasTotal: number, desired: number): number | null {
+  const room = pinnedRoom(canvasTotal)
+  if (room < EXPLORER_MIN_W) return null
+  return clampExplorerWidth(desired, room)
 }

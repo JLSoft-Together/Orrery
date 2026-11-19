@@ -4,7 +4,6 @@ import { useWorkspaceStore, type Pane } from '../../stores/workspace'
 import { lastRows, registerSnapshot, snapshotOf } from '../paneSnapshots'
 import { buildAttentionList } from './attentionList'
 import { avatarInitials } from './avatars'
-import { flipTransform } from './mission'
 import { projectTabKeys, spaceIndexes, spaceLabel } from './spaces'
 import {
   buildRail,
@@ -567,12 +566,6 @@ describe('pane snapshots', () => {
     expect(snapshotOf('p1', 2)).toBe('l2\nl3')
     off()
     expect(snapshotOf('p1', 2)).toBe('')
-  })
-})
-
-describe('mission control', () => {
-  it('maps a window rect onto a pane rect with translate + scale', () => {
-    expect(flipTransform({ left: 0, top: 0, width: 100, height: 50 }, { left: 10, top: 20, width: 200, height: 100 })).toBe('translate(10px, 20px) scale(2, 2)')
   })
 })
 

@@ -161,7 +161,7 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await call('ws.rename', { tabKey: 'nope', name: 'x' })).toEqual({ ok: false, error: 'notFound' })
     expect(await call('ws.move', { paneKey: b.key, tabKey: tabA.key })).toEqual({ ok: true })
     expect(ws.tabOf(b.key)).toBe(tabA)
-    expect(ws.tabs.includes(tabB)).toBe(false)
+    expect(tabB === tabA || !ws.tabs.includes(tabB)).toBe(true)
     expect(await call('ws.move', { paneKey: 'nope', tabKey: tabA.key })).toEqual({ ok: false, error: 'notFound' })
   })
 

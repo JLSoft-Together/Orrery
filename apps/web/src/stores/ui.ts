@@ -174,6 +174,7 @@ export const useUiStore = defineStore('ui', () => {
   const savedMap = initialMapLayout()
   const view = ref<View>(initialView())
   const compact = ref(initialCompact())
+  const compactHosted = compact.value
   const selectedAgentId = ref<string | null>(null)
   const focusedTerminalId = ref<string | null>(null)
   const focusRequest = ref(0)
@@ -428,6 +429,14 @@ export const useUiStore = defineStore('ui', () => {
     compact.value = !compact.value
   }
 
+  function leaveCompact(): void {
+    if (compactHosted && typeof window !== 'undefined') {
+      window.open(`${location.origin}/`, '_blank')
+      return
+    }
+    compact.value = false
+  }
+
   function selectAgent(id: string | null): void {
     selectedAgentId.value = id
   }
@@ -519,6 +528,7 @@ export const useUiStore = defineStore('ui', () => {
     timelineWindow,
     compact,
     toggleCompact,
+    leaveCompact,
     panels,
     narrow,
     isCollapsed,

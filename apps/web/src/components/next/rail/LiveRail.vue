@@ -441,8 +441,7 @@ async function showProjectMenu(c: RailCluster, at: DOMRect, trigger: HTMLElement
   if (seq !== projectMenuSeq) return
   const anchor = anchorOf(c)
   const index = shownProjects.value.indexOf(c.key)
-  const entries = dropEntries(
-    buildProjectMenu(
+  const entries = buildProjectMenu(
       {
         mac: isMac,
         deepseek: hasDeepSeek,
@@ -465,9 +464,7 @@ async function showProjectMenu(c: RailCluster, at: DOMRect, trigger: HTMLElement
         collapsed: folded.value.has(c.key),
       },
       t,
-    ),
-    bridge ? [] : ['mission'],
-  )
+    )
   ctxMenu.value = { at, trigger, label: t('workspace.rail.menu.label', { name: nameOf(c) }), entries, pick: (id) => void pickProject(id, c, dir, anchor, layouts ?? []) }
 }
 
@@ -509,11 +506,6 @@ async function pickProject(id: string, c: RailCluster, dir: string | null, ancho
       break
     case 'explorer':
       if (anchor) bridge?.explorer(anchor.paneKey)
-      break
-    case 'mission':
-      if (anchor) workspace.activate(anchor.paneKey)
-      await nextTick()
-      bridge?.mission()
       break
     case 'env':
       if (dir) ui.envCheck = { dir }

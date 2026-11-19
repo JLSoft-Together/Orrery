@@ -3,7 +3,7 @@ import type { ChangeEntry } from './preview'
 export type CompareMode = 'side' | 'slider' | 'onion'
 export const COMPARE_MODES: readonly CompareMode[] = ['side', 'slider', 'onion']
 
-const IMAGE = /\.(?:png|jpe?g|gif|webp|svg|bmp)$/i
+const IMAGE = /\.(?:png|jpe?g|gif|webp|svg|bmp|ico)$/i
 
 export const isImagePath = (path: string): boolean => IMAGE.test(path)
 

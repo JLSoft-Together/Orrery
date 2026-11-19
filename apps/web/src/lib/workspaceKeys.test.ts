@@ -39,10 +39,9 @@ describe('workspaceAction', () => {
     expect(workspaceAction(key('Digit2', { ctrlKey: true, altKey: true }, true), false, false)).toBeNull()
   })
 
-  it('maps Ctrl+Shift+O / Cmd+Shift+O to mission control', () => {
-    expect(workspaceAction(key('KeyO', { ctrlKey: true, shiftKey: true }), false, false)).toEqual({ t: 'mission' })
-    expect(workspaceAction(key('KeyO', { metaKey: true, shiftKey: true }), true, false)).toEqual({ t: 'mission' })
-    expect(workspaceAction(key('KeyO', { ctrlKey: true }), false, false)).toBeNull()
+  it('no longer maps Ctrl+Shift+O / Cmd+Shift+O', () => {
+    expect(workspaceAction(key('KeyO', { ctrlKey: true, shiftKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('KeyO', { metaKey: true, shiftKey: true }), true, false)).toBeNull()
   })
 
   it('maps Ctrl+. / Cmd+. to focus mode and nothing else with a period', () => {

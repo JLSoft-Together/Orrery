@@ -85,7 +85,6 @@ import ViewPaneControls from './ViewPaneControls.vue'
 import WorkspaceSidebar from './WorkspaceSidebar.vue'
 import SideResizer from './SideResizer.vue'
 import RailColumn from './rail/RailColumn.vue'
-import MissionControl from './MissionControl.vue'
 import AttentionPopover from './AttentionPopover.vue'
 import MenuQueueChip from './MenuQueueChip.vue'
 import { useMenuQueueStore } from '../../stores/menuQueue'
@@ -209,11 +208,9 @@ const sideEvents = {
     workspace.activate(key)
     void showExplorer()
   },
-  mission: () => toggleMission(),
 }
 
 const rail = useRail()
-/** Spaces: the strip, Ctrl+Alt+1–9 and Ctrl+Tab cover only the active tab's project (Mission Control shows all). */
 const tabGroupOf = computed(
   () =>
     new Map(
@@ -243,27 +240,6 @@ const otherNews = computed(() => {
   return latest ? t('peerWs.projectNews', { text: info.peerView(latest).label }) : null
 })
 
-const missionOpen = ref(false)
-const missionOpener = ref<HTMLElement | null>(null)
-let missionReturn: HTMLElement | null = null
-
-function toggleMission(): void {
-  if (missionOpen.value) return closeMission(true)
-  if (!workspace.tabs.length) return
-  missionReturn = document.activeElement as HTMLElement | null
-  missionOpen.value = true
-}
-
-function closeMission(focusOpener: boolean): void {
-  if (!missionOpen.value) return
-  missionOpen.value = false
-  const back = missionReturn ?? missionOpener.value
-  missionReturn = null
-  void nextTick(() => {
-    if (focusOpener && back?.isConnected && back.getClientRects().length) back.focus()
-    else focusActivePane()
-  })
-}
 
 function paneRect(key: string): DOMRect | null {
   return canvas.value?.querySelector<HTMLElement>(`[data-pane="${CSS.escape(key)}"]`)?.getBoundingClientRect() ?? null
@@ -668,16 +644,6 @@ watch(
   (shown) => {
     if (shown) return
     needsAnchor.value = null
-    missionOpen.value = false
-  },
-)
-// Not closeMission: refocusing the pane would pull focus out of the dialog that just opened.
-watch(
-  () => quickOpen.value || ui.settingsOpen,
-  (covered) => {
-    if (!covered || !missionOpen.value) return
-    missionOpen.value = false
-    missionReturn = null
   },
 )
 
@@ -1202,9 +1168,6 @@ function onGlobalKey(e: KeyboardEvent): void {
       break
     case 'search':
       void showSearch()
-      break
-    case 'mission':
-      toggleMission()
       break
     case 'focusMode':
       announce(t(focusOn.value ? 'tabsV93.focusOff' : 'tabsV93.focusOn'))
@@ -1841,17 +1804,11 @@ onBeforeUnmount(() => {
       >
         <PanelLeft :size="15" aria-hidden="true" />
       </button>
-      <button
+      <div
         v-if="activeCluster"
-        ref="missionOpener"
-        type="button"
-        class="inline-flex h-7 max-w-[24ch] min-w-0 shrink-0 cursor-pointer items-center gap-1.5 rounded-inner px-2 text-xs font-semibold text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink"
-        :title="[activeCluster.root, t('workspace.rail.mission.open', { keys: shortcutText('wsMission', isMac) }), otherNews].filter(Boolean).join('\n')"
-        :aria-label="[t('workspace.rail.mission.open', { keys: shortcutText('wsMission', isMac) }), otherNews].filter(Boolean).join('. ')"
-        aria-haspopup="dialog"
-        :aria-expanded="missionOpen"
+        class="inline-flex h-7 max-w-[24ch] min-w-0 shrink-0 items-center gap-1.5 rounded-inner px-2 text-xs font-semibold text-ink-muted"
+        :title="[activeCluster.root, otherNews].filter(Boolean).join('\n')"
         data-strip-project
-        @click="toggleMission"
       >
         <FolderOpen :size="14" class="shrink-0" aria-hidden="true" />
         <span class="min-w-0 truncate">{{ activeCluster.key === 'home' ? t('workspace.side.home') : activeCluster.name }}</span>
@@ -1863,7 +1820,7 @@ onBeforeUnmount(() => {
             <Mail :size="11" />
           </span>
         </Transition>
-      </button>
+      </div>
       <div
         ref="tabRow"
         class="ccm-tab-rail flex min-w-0 flex-1 items-center gap-1 rounded-inner outline-2 -outline-offset-2 transition-[background-color,outline-color] duration-(--ccm-dur-fast)"
@@ -2362,7 +2319,6 @@ onBeforeUnmount(() => {
         data-drop-preview
         :data-edge="dropPreview.edge ?? 'swap'"
       />
-      <MissionControl :open="missionOpen && visible" :pane-rect="paneRect" @close="closeMission" />
     </div>
     <DropTerminal v-if="dropMounted" :open="dropOpen && visible" :cwd="dropCwd" @hide="dropOpen = false" />
     </div>

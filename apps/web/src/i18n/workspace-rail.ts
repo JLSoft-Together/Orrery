@@ -1,4 +1,4 @@
-// Merged into `workspace` of en.ts / vi.ts in v38: project rail, spaces, Mission Control, needs-you list.
+// Merged into `workspace` of en.ts / vi.ts in v38: project rail, spaces, needs-you list.
 const en = {
   rail: {
     title: 'Projects',
@@ -22,13 +22,6 @@ const en = {
       action: 'Stop and close',
       cancel: 'Cancel',
     },
-    mission: {
-      title: 'Mission Control',
-      open: 'Mission Control ({keys})',
-      enter: 'Open {name}',
-      empty: 'No output yet',
-      panes: '{n} pane | {n} panes',
-    },
     menu: {
       label: 'Actions for {name}',
       empty: 'Projects',
@@ -36,7 +29,6 @@ const en = {
       layouts: 'Layouts',
       noPane: 'Open a tab in this project first',
       showExplorer: 'Show in Explorer panel',
-      mission: 'Open Mission Control',
       copyPath: 'Copy path',
       copyCwd: 'Copy working directory',
       copied: 'Path copied',
@@ -94,13 +86,6 @@ const vi: typeof en = {
       action: 'Dừng và đóng',
       cancel: 'Huỷ',
     },
-    mission: {
-      title: 'Mission Control',
-      open: 'Mission Control ({keys})',
-      enter: 'Mở {name}',
-      empty: 'Chưa có output',
-      panes: '{n} pane | {n} pane',
-    },
     menu: {
       label: 'Thao tác cho {name}',
       empty: 'Dự án',
@@ -108,7 +93,6 @@ const vi: typeof en = {
       layouts: 'Bố cục',
       noPane: 'Hãy mở một tab trong dự án này trước',
       showExplorer: 'Hiện trong panel Explorer',
-      mission: 'Mở Mission Control',
       copyPath: 'Sao chép đường dẫn',
       copyCwd: 'Sao chép thư mục làm việc',
       copied: 'Đã sao chép đường dẫn',

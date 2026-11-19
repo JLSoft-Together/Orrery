@@ -45,7 +45,6 @@ const emit = defineEmits<{
   closeProject: [cluster: RailCluster]
   split: [paneKey: string, dir: SplitDir, choice: SplitChoice]
   explorer: [paneKey: string]
-  mission: []
 }>()
 
 const { t } = useI18n()
@@ -447,7 +446,7 @@ async function copyPath(path: string): Promise<void> {
   }
 }
 
-/** Pane a checkout's actions anchor to (Explorer root, Mission Control): its focused row, else the active tab's, else the first. */
+/** Pane a checkout's actions anchor to (Explorer root): its focused row, else the active tab's, else the first. */
 const anchorOf = (k: RailCheckout | undefined): RailRow | undefined => k && (k.rows.find((r) => r.focused) ?? k.rows.find((r) => r.tabActive) ?? k.rows[0])
 
 const ctxMenu = ref<{ at: DOMRect; trigger: HTMLElement | null; label: string; entries: MenuEntry[]; pick: (id: string) => void } | null>(null)
@@ -549,11 +548,6 @@ async function pickProject(id: string, c: RailCluster, dir: string | null, ancho
       break
     case 'explorer':
       if (anchor) emit('explorer', anchor.paneKey)
-      break
-    case 'mission':
-      if (anchor) workspace.activate(anchor.paneKey)
-      await nextTick()
-      emit('mission')
       break
     case 'copy-path':
       if (dir) await copyPath(dir)

@@ -397,6 +397,11 @@ const en = {
       unavailable: 'Image compare needs the desktop app.',
       'new-missing': 'Could not open the working copy.',
     },
+    commitError: {
+      missing: 'This version is not in the commit.',
+      'too-large': 'The image is over 20 MB.',
+      failed: 'Could not read the image from git.',
+    },
   },
   logView: {
     toolbar: 'Log tools',
@@ -1076,6 +1081,11 @@ const vi: typeof en = {
       failed: 'Không đọc được ảnh đã commit.',
       unavailable: 'So sánh ảnh cần ứng dụng desktop.',
       'new-missing': 'Không mở được bản đang sửa.',
+    },
+    commitError: {
+      missing: 'Commit này không có bản ảnh đó.',
+      'too-large': 'Ảnh lớn hơn 20 MB.',
+      failed: 'Không đọc được ảnh từ git.',
     },
   },
   logView: {

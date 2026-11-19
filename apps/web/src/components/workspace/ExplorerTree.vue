@@ -50,6 +50,7 @@ import { setDragPath } from '../../lib/explorer/dragPath'
 import { findAction, isSeparator, type MenuEntry } from '../../lib/menu'
 import { isMac } from '../../lib/platform'
 import { nextRevealStep } from '../../lib/explorer/reveal'
+import { textMeasurer, treeContentWidth } from '../../lib/explorer/treeWidth'
 import { fileGlyph, parentDirectory, resolveFocusIndex, type FileGlyph, type TreeRow } from '../../lib/explorer/tree'
 import { fileIcon, folderIcon, openDirectories, type AtomIcon } from '../../lib/explorer/fileIcons'
 import { modeOf } from '../../lib/themes'
@@ -129,6 +130,14 @@ const rows = computed(() => explorer.rows)
 const focusIndex = computed(() => resolveFocusIndex(rows.value, explorer.state.focused, lastIndex))
 watch(focusIndex, (i) => (lastIndex = i))
 
+const measureText = textMeasurer(() => {
+  const el = scroller.value
+  if (!el) return '12px sans-serif'
+  const cs = getComputedStyle(el)
+  return `${cs.fontSize} ${cs.fontFamily}`
+})
+const contentWidth = computed(() => (scroller.value ? treeContentWidth(rows.value, { indent: INDENT, measure: measureText }) : 0))
+
 const windowed = computed(() => {
   const first = Math.max(0, Math.floor(scrollTop.value / ROW) - OVERSCAN)
   const last = Math.min(rows.value.length, Math.ceil((scrollTop.value + viewport.value) / ROW) + OVERSCAN)
@@ -157,7 +166,10 @@ const isActive = (row: TreeRow): boolean => !!props.activePath && !row.directory
 
 let resize: ResizeObserver | null = null
 onMounted(() => {
-  resize = new ResizeObserver(([e]) => (viewport.value = e?.contentRect.height ?? 0))
+  resize = new ResizeObserver(([e]) => {
+    viewport.value = e?.contentRect.height ?? 0
+    scroller.value?.style.setProperty('--ccm-tree-cw', `${scroller.value.clientWidth}px`)
+  })
   if (scroller.value) resize.observe(scroller.value)
 })
 onBeforeUnmount(() => resize?.disconnect())
@@ -365,7 +377,7 @@ const ACTION = 'inline-flex size-[18px] shrink-0 cursor-pointer items-center jus
       @scroll.passive="onScroll"
       @keydown="onKey"
     >
-      <div class="relative w-full" :style="{ height: `${rows.length * ROW}px` }">
+      <div class="relative w-full" :style="{ height: `${rows.length * ROW}px`, '--ccm-tree-min-w': `${contentWidth}px` }" data-explorer-tree-inner>
         <div
           v-for="{ row, index, icon } in windowed"
           :key="row.path"

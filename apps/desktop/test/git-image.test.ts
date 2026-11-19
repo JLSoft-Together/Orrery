@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { findGit } from '../src/pty/git'
-import { headImage, imageMime, MAX_IMAGE_BYTES } from '../src/preview/gitImage'
+import { commitImage, headImage, imageMime, MAX_IMAGE_BYTES } from '../src/preview/gitImage'
 
 const git = findGit()
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0xff, 0x00, 0x80])
@@ -15,6 +15,7 @@ describe('imageMime', () => {
     expect(imageMime('x.jpeg')).toBe('image/jpeg')
     expect(imageMime('icon.svg')).toBe('image/svg+xml')
     expect(imageMime('x.bmp')).toBe('image/bmp')
+    expect(imageMime('favicon.ICO')).toBe('image/x-icon')
     expect(imageMime('notes.txt')).toBeNull()
     expect(imageMime('png')).toBeNull()
   })
@@ -55,5 +56,51 @@ describe.skipIf(!git)('headImage', () => {
     run('add', 'big.bmp')
     run('commit', '-q', '-m', 'big')
     expect(await headImage(repo, 'big.bmp')).toEqual({ ok: false, error: 'too-large' })
+  })
+})
+
+describe.skipIf(!git)('commitImage', () => {
+  const repo = mkdtempSync(path.join(os.tmpdir(), 'ccm-logimg-'))
+  const run = (...args: string[]) => execFileSync(git!, args, { cwd: repo, encoding: 'utf8' })
+  const head = () => run('rev-parse', 'HEAD').trim()
+  const OTHER = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
+  const url = (b: Buffer, mime = 'image/png') => `data:${mime};base64,${b.toString('base64')}`
+  afterAll(() => rmSync(repo, { recursive: true, force: true }))
+
+  it('reads both sides of a commit, under the old name after a rename', async () => {
+    run('init', '-q')
+    run('config', 'user.email', 't@example.com')
+    run('config', 'user.name', 'Tess')
+    writeFileSync(path.join(repo, 'a.png'), PNG)
+    writeFileSync(path.join(repo, 'fav.ico'), OTHER)
+    run('add', '.')
+    run('commit', '-q', '-m', 'one')
+    const one = head()
+    expect(await commitImage(repo, one, 'a.png', 'new')).toEqual({ ok: true, dataUrl: url(PNG), size: PNG.length })
+    expect(await commitImage(repo, one, 'a.png', 'old')).toEqual({ ok: false, error: 'missing' })
+    expect(await commitImage(repo, one, 'fav.ico', 'new')).toMatchObject({ ok: true, dataUrl: url(OTHER, 'image/x-icon') })
+    writeFileSync(path.join(repo, 'a.png'), OTHER)
+    run('commit', '-q', '-am', 'two')
+    const two = head()
+    expect(await commitImage(repo, two, 'a.png', 'old')).toMatchObject({ ok: true, dataUrl: url(PNG) })
+    expect(await commitImage(repo, two, 'a.png', 'new')).toMatchObject({ ok: true, dataUrl: url(OTHER) })
+    run('mv', 'a.png', 'b.png')
+    run('commit', '-q', '-m', 'three')
+    const three = head()
+    expect(await commitImage(repo, three, 'b.png', 'old', 'a.png')).toMatchObject({ ok: true, dataUrl: url(OTHER) })
+    expect(await commitImage(repo, three, 'b.png', 'old')).toEqual({ ok: false, error: 'missing' })
+    expect(await commitImage(repo, three, 'b.png', 'new', null)).toMatchObject({ ok: true })
+    writeFileSync(path.join(repo, 'b.png'), Buffer.from('working copy'))
+    expect(await commitImage(repo, three, 'b.png', 'new')).toMatchObject({ ok: true, dataUrl: url(OTHER) })
+  })
+
+  it('refuses bad input', async () => {
+    const h = head()
+    expect(await commitImage(repo, h, '../x.png', 'new')).toEqual({ ok: false, error: 'denied' })
+    expect(await commitImage(repo, h, 'b.png', 'both')).toEqual({ ok: false, error: 'denied' })
+    expect(await commitImage(repo, h, 'b.png', 'old', '../a.png')).toEqual({ ok: false, error: 'denied' })
+    expect(await commitImage(repo, h, 'notes.txt', 'new')).toEqual({ ok: false, error: 'unsupported' })
+    expect(await commitImage(repo, 'not-a-hash', 'b.png', 'new')).toEqual({ ok: false, error: 'denied' })
+    expect(await commitImage(repo, 'abcdef12', 'b.png', 'new')).toEqual({ ok: false, error: 'missing' })
   })
 })

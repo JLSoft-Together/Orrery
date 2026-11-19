@@ -18,7 +18,7 @@ const en = {
       tryNext: 'Try the new UI (UI next gen)',
       tryNextHint: 'Mist glass layout around the Workspace. Switches at once, no restart; you can come back any time.',
       backClassic: 'Back to the classic Orrery UI',
-      backClassicHint: 'Switches at once, your classic theme stays as it was.',
+      backClassicHint: 'Switches at once, your classic theme stays as it was. The classic UI will be removed in a later version.',
       preview: 'Preview of the new UI, more screens are on the way.',
     },
     palette: {
@@ -99,7 +99,7 @@ const en = {
     },
     settings: {
       generation: 'Interface style',
-      generationHint: 'Classic Orrery or the Mist glass layout. Switches at once, no restart.',
+      generationHint: 'Classic Orrery or the Mist glass layout. Switches at once, no restart. The classic UI will be removed in a later version.',
       genClassic: 'Classic Orrery',
       genNext: 'Mist glass',
       palette: 'Palette',
@@ -137,8 +137,9 @@ const en = {
       pin: 'Pin Explorer as a column',
       unpin: 'Unpin, back to drawer',
       close: 'Close Explorer',
-      pinNoRoomViewport: 'Window is narrower than {min}px, Explorer stays a drawer.',
-      pinNoRoomCanvas: 'Canvas would drop below {min}px, Explorer stays a drawer.',
+      resize: 'Explorer width',
+      resizeTip: 'Drag to resize, double click to reset',
+      pinNoRoomCanvas: 'Not enough room to pin: the canvas needs {min}px, Explorer stays a drawer.',
     },
     shell: {
       rail: 'Sidebar',
@@ -258,7 +259,7 @@ const vi: typeof en = {
       tryNext: 'Thử giao diện mới (UI next gen)',
       tryNextHint: 'Bố cục Sương kính xoay quanh Workspace. Đổi ngay, không cần khởi động lại, quay về lúc nào cũng được.',
       backClassic: 'Về giao diện Orrery cũ',
-      backClassicHint: 'Đổi ngay, theme giao diện cũ giữ nguyên như trước.',
+      backClassicHint: 'Đổi ngay, theme giao diện cũ giữ nguyên như trước. Giao diện cũ sẽ bị bỏ ở bản sau.',
       preview: 'Bản xem trước giao diện mới, các màn khác đang làm tiếp.',
     },
     palette: {
@@ -339,7 +340,7 @@ const vi: typeof en = {
     },
     settings: {
       generation: 'Kiểu giao diện',
-      generationHint: 'Orrery cũ hoặc Sương kính. Đổi ngay, không cần restart.',
+      generationHint: 'Orrery cũ hoặc Sương kính. Đổi ngay, không cần restart. Giao diện cũ sẽ bị bỏ ở bản sau.',
       genClassic: 'Orrery cũ',
       genNext: 'Sương kính',
       palette: 'Bảng màu',
@@ -377,8 +378,9 @@ const vi: typeof en = {
       pin: 'Ghim Explorer thành cột',
       unpin: 'Bỏ ghim, về drawer',
       close: 'Đóng Explorer',
-      pinNoRoomViewport: 'Cửa sổ hẹp hơn {min}px, Explorer giữ dạng drawer.',
-      pinNoRoomCanvas: 'Canvas sẽ nhỏ hơn {min}px, Explorer giữ dạng drawer.',
+      resize: 'Độ rộng Explorer',
+      resizeTip: 'Kéo để chỉnh độ rộng, bấm đúp để về mặc định',
+      pinNoRoomCanvas: 'Không đủ chỗ để ghim: canvas cần {min}px, Explorer giữ dạng drawer.',
     },
     shell: {
       rail: 'Thanh bên',

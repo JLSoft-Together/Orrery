@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, Inbox } from 'lucide-vue-next'
+import { useDismiss } from '../../composables/useDismiss'
 import type { InboxItem, InboxReason } from '../../lib/inbox'
 import { duration, now } from '../../lib/format'
 import { displayTitle } from '../../lib/title'
@@ -80,16 +81,11 @@ function onKey(e: KeyboardEvent): void {
   }
 }
 
-function onOutside(e: PointerEvent): void {
-  const target = e.target as Node
-  if (!root.value?.contains(target) && !props.trigger?.contains(target)) emit('close')
-}
+useDismiss({ active: () => true, inside: () => [root.value, props.trigger], dismiss: () => emit('close') })
 onMounted(() => {
-  document.addEventListener('pointerdown', onOutside, true)
   if (rows.value.length) focusRow()
   else root.value?.focus()
 })
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, true))
 </script>
 
 <template>

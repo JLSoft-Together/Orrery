@@ -18,7 +18,6 @@ import v48 from './workspace-v48'
 import v50 from './workspace-v50'
 import v50Rail from './workspace-v50-rail'
 import v50Tabs from './workspace-v50-tabs'
-import v50Mission from './workspace-v50-mission'
 import v51 from './workspace-v51'
 import v52 from './workspace-v52'
 import footerV92 from './footer-v92'
@@ -31,7 +30,6 @@ import v52Pane from './workspace-v52-pane'
 import v52Tabs from './workspace-v52-tabs'
 import v52Rail from './workspace-v52-rail'
 import v64Restore from './workspace-v64-restore'
-import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
 import paneV92 from './pane-v92'
@@ -218,14 +216,12 @@ export default {
     ...v50.en,
     ...v50Rail.en,
     ...v50Tabs.en,
-    ...v50Mission.en,
     ...v51.en,
     ...v52.en,
     ...v52Pane.en,
     ...v52Tabs.en,
     ...v52Rail.en,
     ...v64Restore.en,
-    ...v52Mission.en,
     tabs: 'Terminals',
     newLabel: 'New terminal or tab',
     close: 'Close terminal',
@@ -750,7 +746,6 @@ export default {
       wsCycle: 'Next tab of this project (add Shift to go back)',
       wsMoveTab: 'Move the tab left / right',
       wsTab: 'Tab 1–9 of this project',
-      wsMission: 'Mission Control: every tab of every project',
       wsFocusMode: 'Focus mode: hide the rail and the Explorer for this tab',
       wsFocus: 'Move focus to the pane beside it',
       wsQuickOpen: 'Go to file in the project',

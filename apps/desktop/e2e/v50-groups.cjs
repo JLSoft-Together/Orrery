@@ -135,17 +135,6 @@ async function run(app) {
   await sleep(500)
   check('subagent done: rail no longer waits on it', (await evaluate(`${NAV}.querySelector('[data-side-pane="${main}"]')?.closest('[data-rail-row]')?.dataset.state`)) !== 'subagents')
 
-  await evaluate(`${W}.activate('${main}')`)
-  await evaluate(`document.querySelector('.xterm-helper-textarea')?.focus()`)
-  await chord('O', 'KeyO', 79, CTRL | SHIFT)
-  await waitFor(`!!document.querySelector('[data-mission][role=dialog]')`, 5000, 'mission open')
-  await sleep(700)
-  check('Mission Control: one card per tab', (await evaluate(`document.querySelectorAll('[data-mission-card]').length`)) === 2)
-  check('grouped card holds both panes', (await evaluate(`document.querySelectorAll('[data-mission-card="${target}"] [data-mission-tile]').length`)) === 2)
-  await shot('v50-07-mission')
-  await key('Escape', 'Escape', 27)
-  await waitFor(`!document.querySelector('[data-mission]')`, 5000, 'mission closed')
-
   await evaluate(`${S}.get('settings').dustEffect = true`)
   const bytes = await evaluate(`window.ccmDesktop.captureRect({ x: 0, y: 0, width: 40, height: 20 }).then((b) => b?.byteLength ?? b?.length ?? 0)`)
   check('capture-rect returns a PNG for the dust effect', bytes > 0, String(bytes))

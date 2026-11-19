@@ -773,48 +773,6 @@
   border-radius: var(--radius-card);
 }
 
-:root[data-ui='next'] .mist-mission-card {
-  border-radius: 18px;
-  transition:
-    transform var(--ccm-dur-fast) var(--ease-out-quint),
-    opacity var(--ccm-dur-fast) var(--ease-out-quint);
-}
-:root[data-ui='next'][data-motion='off'] .mist-mission-card {
-  transition: none;
-}
-:root[data-ui='next'] .mist-mission-card:is(:hover, :focus-visible) {
-  transform: translateY(-1px);
-}
-:root[data-ui='next'][data-motion='off'] .mist-mission-card:is(:hover, :focus-visible),
-:root[data-ui='next'][data-motion='reduced'] .mist-mission-card:is(:hover, :focus-visible) {
-  transform: none;
-}
-:root[data-ui='next'] .mist-mission-head {
-  height: 34px;
-  border-bottom-color: var(--ccm-glass-edge);
-}
-:root[data-ui='next'] .mist-mission-body {
-  border-radius: 0 0 18px 18px;
-  margin: 0 6px 6px;
-}
-:root[data-ui='next'] .mist-mission-body [data-mission-tile] {
-  border-radius: 12px;
-}
-:root[data-ui='next'] .mist-mission-ask {
-  border-radius: 12px;
-  background: var(--ccm-surface);
-  border: 1px solid color-mix(in srgb, var(--ccm-waiting) 25%, transparent);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--ccm-shadow);
-}
-:root[data-ui='next'] .mist-mission-ask [data-term-menu-bar] {
-  margin: 0 6px 6px;
-}
-@media (prefers-reduced-motion: reduce) {
-  :root[data-ui='next'] .mist-mission-card:is(:hover, :focus-visible) {
-    transform: none;
-  }
-}
-
 :root[data-ui='next'] .ccm-next-viewer {
   border-radius: var(--radius-card);
   box-shadow: none;

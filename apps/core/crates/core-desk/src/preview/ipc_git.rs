@@ -107,6 +107,10 @@ pub fn register(desk: &mut Desk) {
         let req = arg(args, 0);
         Ok(with_repo(ctx, req, |repo| log::commit_diff(repo, field(req, "hash"), field(req, "path"), field(req, "opts"), opt_field(req, "origPath"))))
     });
+    desk.on(MODULE, "ccm:log-image", |ctx, args| {
+        let req = arg(args, 0);
+        Ok(with_repo(ctx, req, |repo| gitmisc::commit_image(repo, field(req, "hash"), field(req, "path"), field(req, "side"), opt_field(req, "origPath"))))
+    });
     desk.on(MODULE, "ccm:git-branch-create", |ctx, args| {
         let req = arg(args, 0);
         Ok(with_repo(ctx, req, |repo| branches::create_branch(repo, field(req, "name"), field(req, "base"), field(req, "checkout"))))

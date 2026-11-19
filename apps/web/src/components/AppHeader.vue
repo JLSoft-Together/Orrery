@@ -90,7 +90,7 @@ function toggleMore(): void {
   if (r) moreAt.value = { left: r.left, right: r.right, top: r.top, bottom: r.bottom + 4 }
 }
 function pickMore(id: string): void {
-  if (id === COMPACT_ID) return ui.toggleCompact()
+  if (id === COMPACT_ID) return ui.compact ? ui.leaveCompact() : ui.toggleCompact()
   if (id === DIM_ID) return void (settings.dimInactive = !settings.dimInactive)
   if (id === KEYS_ID) return void (ui.shortcutsOpen = true)
   if (id === TOUR_ID) return void (ui.tourOpen = 'workspace')

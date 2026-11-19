@@ -42,9 +42,13 @@
             var fx = localStorage.getItem('ccm.starsFx')
             r.setAttribute('data-stars-fx', fx === 'off' || fx === 'meteors' ? fx : 'twinkle')
           } catch (e) {}
+          function pickUi(u, m) {
+            if (m !== '4.1-next') return { u: 'next', w: true }
+            return { u: u === 'classic' ? 'classic' : 'next', w: false }
+          }
           var NP = { mist: 'ld', nebula: 'ld', aurora: 'ld', graphite: 'ld', dawn: 'ld', galaxy: 'd', orrery: 'ld', console: 'd', custom: 'ld' }
           function pickNext(u, nt, dk, g, rt, mo, rm) {
-            var ui = u === 'next' ? 'next' : 'classic'
+            var ui = u === 'classic' ? 'classic' : 'next'
             var id = NP.hasOwnProperty(nt) ? nt : 'mist'
             var s = NP[id]
             var dark = ui === 'next' && s.indexOf(dk ? 'd' : 'l') < 0 ? s.charAt(0) === 'd' : dk
@@ -52,8 +56,15 @@
             return { ui: ui, theme: id, dark: dark, glass: g === '1' || rt ? 'reduced' : 'full', motion: motion }
           }
           try {
+            var pu = pickUi(localStorage.getItem('ccm.uiGeneration'), localStorage.getItem('ccm.uiMigration'))
+            if (pu.w) {
+              try {
+                localStorage.setItem('ccm.uiGeneration', pu.u)
+                localStorage.setItem('ccm.uiMigration', '4.1-next')
+              } catch (e) {}
+            }
             var n = pickNext(
-              localStorage.getItem('ccm.uiGeneration'),
+              pu.u,
               localStorage.getItem('ccm.nextTheme'),
               r.classList.contains('dark'),
               localStorage.getItem('ccm.next.reduceGlass'),

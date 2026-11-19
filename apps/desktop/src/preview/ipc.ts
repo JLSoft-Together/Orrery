@@ -6,7 +6,7 @@ import { electronClipboardImage, writeClipboardImage, writeClipboardImageFile, t
 import { createEntry, listDir, renameEntry, trashEntry } from './explorer'
 import { readFileForView } from './files'
 import { readLogChunk } from './logRead'
-import { headImage } from './gitImage'
+import { commitImage, headImage } from './gitImage'
 import { detectScripts } from './scripts'
 import { workspaceChord } from './keys'
 import { filesystemRoots, FullAccess, GrantStore } from './grants'
@@ -128,7 +128,7 @@ export interface PreviewIpc {
 const CHANNELS = [
   'ccm:preview-url', 'ccm:read-file', 'ccm:log-read', 'ccm:watch', 'ccm:unwatch', 'ccm:pick-file', 'ccm:open-external', 'ccm:reveal', 'ccm:open-path', 'ccm:request-access',
   'ccm:changes-status', 'ccm:changes-diff', 'ccm:git-show-image', 'ccm:changes-file', 'ccm:changes-discard', 'ccm:changes-watch', 'ccm:changes-unwatch', 'ccm:list-files', 'ccm:clipboard-image', 'ccm:clipboard-image-file', 'ccm:pick-files', 'ccm:capture-guest', 'ccm:forget-grants', 'ccm:full-access',
-  'ccm:log-refs', 'ccm:log-page', 'ccm:log-commit', 'ccm:log-contains', 'ccm:log-diff', 'ccm:git-branch-create', 'ccm:git-branch-delete', 'ccm:git-fetch', 'ccm:git-branch-update', 'ccm:git-push-preview', 'ccm:git-push', 'ccm:gh-repo-account', 'ccm:gh-repo-account-set',
+  'ccm:log-refs', 'ccm:log-page', 'ccm:log-commit', 'ccm:log-contains', 'ccm:log-diff', 'ccm:log-image', 'ccm:git-branch-create', 'ccm:git-branch-delete', 'ccm:git-fetch', 'ccm:git-branch-update', 'ccm:git-push-preview', 'ccm:git-push', 'ccm:gh-repo-account', 'ccm:gh-repo-account-set',
   'ccm:project-root', 'ccm:scripts', 'ccm:list-dir', 'ccm:create-entry', 'ccm:rename-entry', 'ccm:trash-entry',
   'ccm:file-write', 'ccm:search', 'ccm:git-stage', 'ccm:git-unstage', 'ccm:git-can-amend', 'ccm:git-commit', 'ccm:git-commit-cancel', 'ccm:check-run', 'ccm:check-cancel', 'ccm:wt-compare', 'ccm:wt-merge', 'ccm:cp-state', 'ccm:cp-set', 'ccm:cp-take', 'ccm:git-blame', 'ccm:git-merge-state', 'ccm:git-merge-abort', 'ccm:cp-diff', 'ccm:cp-file-diff', 'ccm:cp-revert-hunk', 'ccm:cp-restore', 'ccm:commands-list', 'ccm:wt-diff', 'ccm:wt-file-diff', 'ccm:wt-take', 'ccm:overlap-files', 'ccm:overlap-dryrun', 'ccm:notes-read', 'ccm:notes-write', 'ccm:lh-list', 'ccm:lh-read', 'ccm:format', 'ccm:env-check', 'ccm:env-reveal', 'ccm:replace-files', 'ccm:i18n-scan', 'ccm:perm-read', 'ccm:perm-allow', 'ccm:sensitive-deny', 'ccm:ctx-sources', 'ccm:memory-doctor',
 ]
@@ -571,6 +571,11 @@ export function registerPreviewIpc(deps: PreviewIpcDeps): PreviewIpc {
     const { root, hash, path: rel, opts, origPath } = (req ?? {}) as { root?: unknown; hash?: unknown; path?: unknown; opts?: unknown; origPath?: unknown }
     const repo = await logRepo(event, root)
     return repo ? commitDiff(repo, hash, rel, opts, origPath) : denied
+  })
+  git('ccm:log-image', async (event, req: unknown) => {
+    const { root, hash, path: rel, side, origPath } = (req ?? {}) as { root?: unknown; hash?: unknown; path?: unknown; side?: unknown; origPath?: unknown }
+    const repo = await logRepo(event, root)
+    return repo ? commitImage(repo, hash, rel, side, origPath) : denied
   })
 
   git('ccm:git-branch-create', async (event, req: unknown) => {

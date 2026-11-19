@@ -18,7 +18,7 @@ const row = (p: Partial<RowMenuCtx> = {}): RowMenuCtx => ({
 describe('projectMenu', () => {
   it('lists the project actions in order', () => {
     expect(ids(projectMenu(project(), t))).toEqual([
-      'new', 'run', 'scripts', 'plan', 'env', 'i18n', 'layouts', '-', 'explorer', 'mission', 'copy-path', 'reveal', '-', 'move-up', 'move-down', 'toggle', '-', 'close-project',
+      'new', 'run', 'scripts', 'plan', 'env', 'i18n', 'layouts', '-', 'explorer', 'copy-path', 'reveal', '-', 'move-up', 'move-down', 'toggle', '-', 'close-project',
     ])
   })
   it('new tab offers agents, browser and the viewers that exist', () => {
@@ -53,11 +53,10 @@ describe('projectMenu', () => {
     expect(findAction(m, 'move-up')?.disabled).toBe(true)
     expect(findAction(m, 'move-down')?.disabled).toBe(true)
   })
-  it('remembered project: Remove from list instead of Close, no Mission Control', () => {
+  it('remembered project: Remove from list instead of Close', () => {
     const m = projectMenu(project({ live: false, anchored: false }), t)
     expect(ids(m)).toContain('forget')
     expect(ids(m)).not.toContain('close-project')
-    expect(findAction(m, 'mission')?.disabled).toBe(true)
   })
   it('home cluster: new tab only, path actions disabled', () => {
     const m = projectMenu(project({ dir: null, home: true }), t)

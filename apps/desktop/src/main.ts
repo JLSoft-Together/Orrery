@@ -603,7 +603,9 @@ function showMain(): void {
 }
 
 function openAppWindow(url: string): void {
-  const compact = new URL(url).searchParams.get('mode') === 'compact'
+  const parsed = new URL(url)
+  const compact = parsed.searchParams.get('mode') === 'compact'
+  if (!compact && parsed.pathname === '/') return showMain()
   if (compact && compactWindow) {
     compactWindow.show()
     compactWindow.focus()

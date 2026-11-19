@@ -16,7 +16,7 @@ export interface ProjectMenuCtx {
   home: boolean
   /** Has open tabs (not only remembered). */
   live: boolean
-  /** A pane of this checkout can anchor the Explorer / Mission Control. */
+  /** A pane of this checkout can anchor the Explorer. */
   anchored: boolean
   viewers: { file: boolean; changes: boolean; log: boolean }
   scripts: boolean
@@ -68,7 +68,6 @@ export function projectMenu(ctx: ProjectMenuCtx, t: T): MenuEntry[] {
   if (entries.length) entries.push({ separator: true })
   const unanchored = ctx.anchored ? undefined : t(`${M}noPane`)
   if (ctx.explorer) entries.push({ id: 'explorer', label: t(`${M}showExplorer`), disabled: !ctx.anchored || noDir, hint: unanchored })
-  entries.push({ id: 'mission', label: t(`${M}mission`), shortcut: ctx.mac ? '⇧⌘O' : 'Ctrl+Shift+O', disabled: !ctx.live })
   entries.push({ id: 'copy-path', label: t(`${M}copyPath`), disabled: noDir })
   if (ctx.reveal) entries.push({ id: 'reveal', label: t(`${M}${ctx.mac ? 'finder' : 'fileManager'}`), disabled: noDir })
   entries.push(

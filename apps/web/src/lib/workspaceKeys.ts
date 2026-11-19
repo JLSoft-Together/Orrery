@@ -18,8 +18,6 @@ export type WorkspaceAction =
   | { t: 'explorer' }
   /** Explorer → Search (⇧⌘F; Alt+Shift+F elsewhere: Ctrl+Shift+F is terminal find). */
   | { t: 'search' }
-  /** Mission Control: every tab of every project (⇧⌘O / Ctrl+Shift+O). */
-  | { t: 'mission' }
   | { t: 'focusMode' }
   | { t: 'moveTab'; step: 1 | -1 }
   | { t: 'zoom' }
@@ -45,7 +43,7 @@ export type WorkspaceAction =
   | { t: 'detachTab' }
 
 /** Chords that still work while focus is in the drop-down terminal: they open global UI, never touch the pane behind it. */
-export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'mission', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
+export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
 
 const ARROWS: Record<string, FocusDir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
 const PAGES: Record<string, 1 | -1> = { PageUp: -1, PageDown: 1 }
@@ -83,7 +81,6 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
     if (code === 'KeyP' && !shift && !alt) return { t: 'quickOpen' }
     if (code === 'KeyE' && shift && !alt) return { t: 'explorer' }
     if (code === 'KeyF' && shift && !alt) return { t: 'search' }
-    if (code === 'KeyO' && shift && !alt) return { t: 'mission' }
     if (code === 'KeyP' && shift && !alt) return { t: 'prompts' }
     if ((code === 'BracketLeft' || code === 'BracketRight') && shift && !alt) return { t: 'cycleTab', step: code === 'BracketRight' ? 1 : -1 }
     if (PAGES[code] && shift && !alt) return { t: 'moveTab', step: PAGES[code]! }
@@ -99,7 +96,6 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
   if (ctrl && shift && !alt && code === 'KeyA') return { t: 'attention' }
   if (ctrl && shift && !alt && code === 'KeyP') return { t: 'quickOpen' }
   if (ctrl && shift && !alt && code === 'KeyE') return { t: 'explorer' }
-  if (ctrl && shift && !alt && code === 'KeyO') return { t: 'mission' }
   if (ctrl && shift && !alt && PAGES[code]) return { t: 'moveTab', step: PAGES[code]! }
   if (alt && shift && !ctrl) {
     if (code === 'KeyD') return { t: 'split' }

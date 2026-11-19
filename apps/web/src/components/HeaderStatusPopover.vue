@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, Gauge, HardDrive, OctagonAlert, WifiOff } from 'lucide-vue-next'
+import { useDismiss } from '../composables/useDismiss'
 import { hasDisk } from '../lib/buildClean'
 import { hasDiskMap } from '../lib/diskMap'
 import { now, relativeTime } from '../lib/format'
@@ -108,10 +109,7 @@ function showDisk(): void {
   ui.setView('disk')
 }
 
-function onOutside(e: PointerEvent): void {
-  const target = e.target as Node
-  if (open.value && !pop.value?.contains(target) && !btn.value?.contains(target)) close(false)
-}
+useDismiss({ active: open, inside: () => [pop.value, btn.value], dismiss: () => close(false) })
 function onKey(e: KeyboardEvent): void {
   if (e.key !== 'Escape' || !open.value) return
   e.preventDefault()
@@ -122,11 +120,7 @@ watch(open, (value) => {
   if (value) document.addEventListener('keydown', onKey, true)
   else document.removeEventListener('keydown', onKey, true)
 })
-onMounted(() => document.addEventListener('pointerdown', onOutside, true))
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onOutside, true)
-  document.removeEventListener('keydown', onKey, true)
-})
+onBeforeUnmount(() => document.removeEventListener('keydown', onKey, true))
 </script>
 
 <template>

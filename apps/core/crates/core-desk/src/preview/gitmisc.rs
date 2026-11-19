@@ -1,5 +1,6 @@
 use super::changes::base_rev;
 use super::exec::{exec_git, ExecOpts};
+use super::log::resolve_commit;
 use super::paths::{is_absolute, relative, safe_repo_path};
 use regex::Regex;
 use serde_json::{json, Map, Value};
@@ -35,6 +36,7 @@ pub fn image_mime(rel: &str) -> Option<&'static str> {
         "webp" => "image/webp",
         "svg" => "image/svg+xml",
         "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
         _ => return None,
     })
 }
@@ -49,13 +51,16 @@ pub fn head_image(root: &str, rel: &Value) -> Value {
     if base_rev(root).as_deref() != Some("HEAD") {
         return err("missing");
     }
+    blob_image(root, &format!("HEAD:{}", safe.rel), mime)
+}
+
+fn blob_image(root: &str, spec: &str, mime: &str) -> Value {
     let r = Path::new(root);
-    let spec = format!("HEAD:{}", safe.rel);
-    let kind = exec_git(r, &["cat-file", "-t", &spec], &ExecOpts::max(64).with_timeout(10_000));
+    let kind = exec_git(r, &["cat-file", "-t", spec], &ExecOpts::max(64).with_timeout(10_000));
     if !kind.ok() || kind.stdout.trim() != "blob" {
         return err("missing");
     }
-    let size = exec_git(r, &["cat-file", "-s", &spec], &ExecOpts::max(64).with_timeout(10_000));
+    let size = exec_git(r, &["cat-file", "-s", spec], &ExecOpts::max(64).with_timeout(10_000));
     let bytes: Option<f64> = size.stdout.trim().parse().ok().or(if size.stdout.trim().is_empty() { Some(0.0) } else { None });
     let Some(bytes) = bytes.filter(|_| size.ok()) else { return err("failed") };
     if bytes > MAX_IMAGE_BYTES as f64 {
@@ -63,10 +68,38 @@ pub fn head_image(root: &str, rel: &Value) -> Value {
     }
     let mut o = ExecOpts::max(MAX_IMAGE_BYTES).with_timeout(20_000);
     o.binary = true;
-    let blob = exec_git(r, &["cat-file", "blob", &spec], &o);
+    let blob = exec_git(r, &["cat-file", "blob", spec], &o);
     let good = blob.ok() && !blob.truncated;
     let Some(data) = blob.bytes.filter(|_| good) else { return err("failed") };
     json!({"ok": true, "dataUrl": format!("data:{mime};base64,{}", base64(&data)), "size": data.len()})
+}
+
+pub fn commit_image(root: &str, hash: &Value, rel: &Value, side: &Value, orig: Option<&Value>) -> Value {
+    let orig = orig.filter(|v| !v.is_null());
+    let safe = safe_repo_path(root, rel);
+    let orig_safe = orig.and_then(|o| safe_repo_path(root, o));
+    let side = side.as_str().filter(|s| *s == "old" || *s == "new");
+    let (Some(safe), Some(side), true) = (safe, side, orig.is_none() || orig_safe.is_some()) else { return err("denied") };
+    let path = match (side, &orig_safe) {
+        ("old", Some(o)) => o.rel.clone(),
+        _ => safe.rel.clone(),
+    };
+    let Some(mime) = image_mime(&path) else { return err("unsupported") };
+    let full = match resolve_commit(root, hash) {
+        Ok(f) => f,
+        Err(e) => return err(e),
+    };
+    let rev = if side == "old" {
+        let rl = exec_git(Path::new(root), &["rev-list", "--parents", "-n", "1", &full], &ExecOpts::max(16_384));
+        let line = rl.stdout.trim().to_string();
+        match line.split(' ').nth(1).filter(|p| !p.is_empty()) {
+            Some(p) => p.to_string(),
+            None => return err("missing"),
+        }
+    } else {
+        full
+    };
+    blob_image(root, &format!("{rev}:{path}"), mime)
 }
 
 pub fn parse_blame(out: &str) -> (Map<String, Value>, Vec<String>) {
@@ -209,6 +242,7 @@ mod tests {
         assert_eq!(base64(b"M"), "TQ==");
         assert_eq!(image_mime("a/B.PNG"), Some("image/png"));
         assert_eq!(image_mime("a.txt"), None);
+        assert_eq!(image_mime("fav.ICO"), Some("image/x-icon"));
         let h = "a".repeat(40);
         let z = "0".repeat(40);
         let out = format!("{h} 1 1 1\nauthor Ann\nauthor-time 10\nsummary s\n\tline\n{z} 2 2 1\n\tnew\n");

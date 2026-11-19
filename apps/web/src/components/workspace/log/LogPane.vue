@@ -1,24 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PaneHeader from '../../next/ui/PaneHeader.vue'
 import PaneLayoutMore from '../../next/ui/PaneLayoutMore.vue'
 import { useUiGenStore } from '../../../stores/uiGen'
-import { ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, X } from 'lucide-vue-next'
+import { CircleAlert, CircleCheck, PanelBottom, PanelBottomClose, X } from 'lucide-vue-next'
 import type { BranchOpResult, CommitFile } from '@ccm/shared'
 import { absoluteIn, fileStepKey, scrollSideways } from '../../../lib/changesView'
-import { grammarFor } from '../../../lib/codeView'
-import { parseUnifiedDiff, type DiffFile } from '../../../lib/diff'
-import { viewBlocks } from '../../../lib/diffBlocks'
-import { hideImportChanges } from '../../../lib/diffImports'
-import { readDiffOpts } from '../../../lib/diffOpts'
 import { expandableIds, type RefRow } from '../../../lib/gitRefs'
 import { hasFilters } from '../../../lib/logQuery'
-import { gitBranchCreate, gitBranchDelete, gitBranchUpdate, gitFetch, hasBranchOps, hasPush, logDiff } from '../../../lib/preview'
+import { gitBranchCreate, gitBranchDelete, gitBranchUpdate, gitFetch, hasBranchOps, hasPush } from '../../../lib/preview'
 import { readFavorites, readRefsView, writeFavorites, writeRefsView } from '../../../lib/refPrefs'
 import { useGitLog } from '../../../composables/useGitLog'
-import DiffView from '../DiffView.vue'
 import LogCommitDetails from './LogCommitDetails.vue'
+import LogDiffPanel from './LogDiffPanel.vue'
 import LogCommitFiles from './LogCommitFiles.vue'
 import LogFilterBar from './LogFilterBar.vue'
 import LogRefsToolbar from './LogRefsToolbar.vue'
@@ -39,13 +34,13 @@ const log = useGitLog(
 )
 
 const COLS_KEY = 'ccm.workspace.logCols'
-const readCols = (): { refs: number; side: number; split: number; refsOpen: boolean } => {
+const readCols = (): { refs: number; side: number; split: number; refsOpen: boolean; preview: boolean; previewSplit: number } => {
   try {
     const v = JSON.parse(localStorage.getItem(COLS_KEY) ?? 'null') as Record<string, unknown> | null
     const n = (x: unknown, lo: number, hi: number, d: number): number => (typeof x === 'number' && x >= lo && x <= hi ? x : d)
-    return { refs: n(v?.refs, 140, 480, 220), side: n(v?.side, 200, 720, 340), split: n(v?.split, 0.2, 0.8, 0.55), refsOpen: v?.refsOpen !== false }
+    return { refs: n(v?.refs, 140, 480, 220), side: n(v?.side, 200, 720, 340), split: n(v?.split, 0.2, 0.8, 0.55), refsOpen: v?.refsOpen !== false, preview: v?.preview !== false, previewSplit: n(v?.previewSplit, 0.2, 0.8, 0.45) }
   } catch {
-    return { refs: 220, side: 340, split: 0.55, refsOpen: true }
+    return { refs: 220, side: 340, split: 0.55, refsOpen: true, preview: true, previewSplit: 0.45 }
   }
 }
 const cols = ref(readCols())
@@ -59,18 +54,20 @@ watch(cols, (v) => {
 
 const rootEl = ref<HTMLElement | null>(null)
 const sideEl = ref<HTMLElement | null>(null)
+const midEl = ref<HTMLElement | null>(null)
 const table = ref<InstanceType<typeof LogTable> | null>(null)
 const selectedPath = ref<string | null>(null)
 
 let stopDrag: (() => void) | null = null
-function drag(e: PointerEvent, kind: 'refs' | 'side' | 'split'): void {
+function drag(e: PointerEvent, kind: 'refs' | 'side' | 'split' | 'preview'): void {
   const startX = e.clientX
   const startY = e.clientY
   const start = { ...cols.value }
-  const rect = sideEl.value?.getBoundingClientRect()
+  const rect = (kind === 'preview' ? midEl.value : sideEl.value)?.getBoundingClientRect()
   const onMove = (m: PointerEvent): void => {
     if (kind === 'refs') cols.value.refs = Math.min(480, Math.max(140, start.refs + m.clientX - startX))
     else if (kind === 'side') cols.value.side = Math.min(720, Math.max(200, start.side - (m.clientX - startX)))
+    else if (rect && kind === 'preview') cols.value.previewSplit = Math.min(0.8, Math.max(0.2, start.previewSplit + (m.clientY - startY) / rect.height))
     else if (rect) cols.value.split = Math.min(0.8, Math.max(0.2, start.split + (m.clientY - startY) / rect.height))
   }
   stopDrag?.()
@@ -108,84 +105,83 @@ watch(
     }
   },
 )
-watch(log.selected, (hash) => {
-  selectedPath.value = null
-  if (diffFileRef.value && hash !== diffHash) {
-    diffSeq++
-    diffFileRef.value = null
-    diffFile.value = null
-  }
-})
-
 const empty = computed<'none' | 'filtered' | 'repo'>(() => {
   if (log.loading.value || log.commits.value.length) return 'none'
   return hasFilters(log.filters.value) ? 'filtered' : 'repo'
 })
 const remotes = computed(() => log.refs.value?.remotes.map((g) => g.name) ?? [])
 
-// Diff mode: the middle + right area shows one file of the selected commit.
-const diffFileRef = ref<CommitFile | null>(null)
-let diffHash: string | null = null
-const diffFile = shallowRef<DiffFile | null>(null)
-const diffState = ref<'idle' | 'loading' | 'binary' | 'too-large' | 'empty' | 'error'>('idle')
-const opts = ref(readDiffOpts())
-const currentBlock = ref(0)
-const diffView = ref<InstanceType<typeof DiffView> | null>(null)
-const blocks = computed(() => (diffFile.value ? viewBlocks(diffFile.value, opts.value.highlight) : []))
+const panel = ref<InstanceType<typeof LogDiffPanel> | null>(null)
+const shown = ref<{ hash: string; file: CommitFile } | null>(null)
+const diffFull = ref(false)
+let wantPath: string | null = null
 const commitFiles = computed(() => (log.detail.value?.ok ? log.detail.value.files : []))
-let diffSeq = 0
+const diffOpen = computed(() => !!shown.value && !!log.root.value && (cols.value.preview || diffFull.value))
+const shownIndex = computed(() => commitFiles.value.findIndex((f) => f.path === shown.value?.file.path))
+const commitIndex = computed(() => log.commits.value.findIndex((c) => c.hash === log.selected.value))
+const rootCommit = computed(() => !!log.detail.value?.ok && !log.detail.value.parents.length)
 
-async function openDiff(file: CommitFile): Promise<void> {
-  const root = log.root.value
+function syncDetail(): void {
+  const d = log.detail.value
+  if (!d?.ok || d.hash !== log.selected.value) return
+  const keep = d.files.find((f) => f.path === wantPath) ?? d.files.find((f) => !!wantPath && f.origPath === wantPath) ?? null
+  if (cols.value.preview || diffFull.value) {
+    const f = keep ?? d.files[0] ?? null
+    shown.value = f ? { hash: d.hash, file: f } : null
+    selectedPath.value = f?.path ?? null
+  } else selectedPath.value = keep?.path ?? null
+}
+watch(log.detail, syncDetail)
+watch(log.selected, (hash) => {
+  if (hash) return
+  shown.value = null
+  diffFull.value = false
+  selectedPath.value = null
+})
+
+function openFile(file: CommitFile, full = false): void {
   const hash = log.selected.value
-  if (!root || !hash) return
-  opts.value = readDiffOpts()
-  diffFileRef.value = file
-  diffHash = hash
+  if (!hash) return
+  wantPath = file.path
   selectedPath.value = file.path
-  diffState.value = 'loading'
-  currentBlock.value = 0
-  const run = ++diffSeq
-  const res = await logDiff(root, hash, file.path, { context: 'full', whitespace: opts.value.whitespace }, file.origPath)
-  if (run !== diffSeq) return
-  if (!res.ok) {
-    diffState.value = 'error'
-    diffFile.value = null
-    return
-  }
-  if (res.binary || res.tooLarge) {
-    diffState.value = res.binary ? 'binary' : 'too-large'
-    diffFile.value = null
-    return
-  }
-  const parsed = parseUnifiedDiff(res.text)[0] ?? null
-  diffFile.value = parsed && opts.value.whitespace === 'imports' ? hideImportChanges(parsed).file : parsed
-  diffState.value = diffFile.value?.hunks.length ? 'idle' : 'empty'
-  await nextTick()
-  if (run === diffSeq && blocks.value.length) void diffView.value?.scrollToBlock(0)
+  if (full) diffFull.value = true
+  if (cols.value.preview || diffFull.value) shown.value = { hash, file }
 }
 
-function closeDiff(): void {
-  diffSeq++
-  diffFileRef.value = null
-  diffFile.value = null
+function pickFile(path: string): void {
+  const file = commitFiles.value.find((f) => f.path === path)
+  if (file) openFile(file)
+}
+
+function closeFull(): void {
+  diffFull.value = false
+  if (!cols.value.preview) shown.value = null
   void nextTick(() => table.value?.focus())
 }
 
+function togglePreview(): void {
+  cols.value.preview = !cols.value.preview
+  if (cols.value.preview) syncDetail()
+  else if (!diffFull.value) shown.value = null
+}
+
 function stepFile(dir: 1 | -1): void {
-  const list = commitFiles.value
-  const at = list.findIndex((f) => f.path === diffFileRef.value?.path)
-  const next = list[at + dir]
-  if (next) void openDiff(next)
+  const next = commitFiles.value[shownIndex.value + dir]
+  if (next && shownIndex.value >= 0) openFile(next)
 }
 
 function stepBlock(dir: 1 | -1): void {
-  const n = blocks.value.length
-  if (!n) return stepFile(dir)
-  const next = currentBlock.value + dir
-  if (next < 0 || next >= n) return stepFile(dir)
-  currentBlock.value = next
-  void diffView.value?.scrollToBlock(next)
+  if (!panel.value?.stepBlock(dir)) stepFile(dir)
+}
+
+function stepCommit(dir: 1 | -1): void {
+  const c = log.commits.value[commitIndex.value + dir]
+  if (!c) {
+    if (dir === 1 && log.more.value) void log.loadMore()
+    return
+  }
+  log.select(c.hash)
+  syncDetail()
 }
 
 function typing(e: KeyboardEvent): boolean {
@@ -207,36 +203,26 @@ function onKey(e: KeyboardEvent): void {
     }
     return
   }
-  if (!diffFileRef.value || typing(e)) return
-  if (e.key === 'Escape') closeDiff()
+  if (e.defaultPrevented || !diffOpen.value || typing(e)) return
+  const target = e.target instanceof HTMLElement ? e.target : null
+  const plain = !e.ctrlKey && !e.metaKey && !e.altKey
+  if (e.key === 'Escape' && diffFull.value) closeFull()
+  else if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) stepCommit(e.key === 'ArrowUp' ? -1 : 1)
   else if (e.key === 'F7') stepBlock(e.shiftKey ? -1 : 1)
-  else if (e.key === ']' && !e.ctrlKey && !e.metaKey) stepFile(1)
-  else if (e.key === '[' && !e.ctrlKey && !e.metaKey) stepFile(-1)
+  else if (plain && (e.key === 'j' || e.key === 'k') && !target?.closest('[data-log-table]')) stepBlock(e.key === 'j' ? 1 : -1)
+  else if (e.key === ']' && plain) stepFile(1)
+  else if (e.key === '[' && plain) stepFile(-1)
   else if (scrollSideways(e)) return e.preventDefault()
-  else if (fileStepKey(e) && !(e.target as HTMLElement | null)?.closest('[role=tree],[role=toolbar],[role=menu],[role=dialog]')) stepFile(fileStepKey(e) as 1 | -1)
+  else if (fileStepKey(e) && !target?.closest('[role=tree],[role=toolbar],[role=menu],[role=dialog]')) stepFile(fileStepKey(e) as 1 | -1)
   else return
   e.preventDefault()
 }
 
-/** Commit whose first file opens as soon as its details land (select clears the detail first). */
-let pendingOpen: string | null = null
-
 function openCommit(hash: string): void {
-  pendingOpen = hash
+  diffFull.value = true
   log.select(hash)
-  tryPendingOpen()
+  syncDetail()
 }
-
-function tryPendingOpen(): void {
-  const d = log.detail.value
-  if (!pendingOpen || !d?.ok || d.hash !== pendingOpen) return
-  pendingOpen = null
-  if (d.files[0]) void openDiff(d.files[0])
-}
-watch(log.detail, tryPendingOpen)
-watch(log.selected, (h) => {
-  if (h !== pendingOpen) pendingOpen = null
-})
 
 // Branches toolbar: the focused refs-tree row is its target; clicking a ref still filters the log.
 const refsTree = ref<InstanceType<typeof LogRefsTree> | null>(null)
@@ -395,7 +381,7 @@ function commitMenu(hash: string, x: number, y: number): void {
 function fileMenu(file: CommitFile, x: number, y: number): void {
   const root = log.root.value
   openMenu(x, y, [
-    { id: 'diff', label: t('workspace.log.menu.showDiff'), run: () => void openDiff(file) },
+    { id: 'diff', label: t('workspace.log.menu.showDiff'), run: () => openFile(file, true) },
     ...(root && file.kind !== 'deleted' ? [{ id: 'open', label: t('workspace.log.menu.openCurrent'), run: () => emit('open', absoluteIn(root, file.path)) }] : []),
     { id: 'path', label: t('workspace.log.menu.copyPath'), run: () => copy(file.path) },
   ])
@@ -410,8 +396,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('pointerdown', closeMenu)
 })
-const lang = computed(() => (diffFileRef.value ? grammarFor(undefined, diffFileRef.value.path) : null))
-const shortHash = computed(() => log.selected.value?.slice(0, 8) ?? '')
 </script>
 
 <template>
@@ -419,6 +403,9 @@ const shortHash = computed(() => log.selected.value?.slice(0, 8) ?? '')
     <component :is="isNext ? PaneHeader : 'div'" class="@container select-none" :class="isNext ? 'ccm-next-head ccm-next-viewer-head' : 'flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2'" data-pane-head>
       <span class="min-w-0 truncate text-xs font-semibold text-ink" :title="log.root.value ?? cwd">{{ t('workspace.log.title') }}</span>
       <span class="flex-1" />
+      <button type="button" class="ccm-btn-plain size-6 shrink-0 p-0" :aria-pressed="cols.preview" :title="cols.preview ? t('workspace.log.diff.hidePreview') : t('workspace.log.diff.showPreview')" :aria-label="t('workspace.log.diff.preview')" data-log-preview-toggle @click="togglePreview">
+        <component :is="cols.preview ? PanelBottomClose : PanelBottom" :size="14" aria-hidden="true" />
+      </button>
       <PaneLayoutMore :pane-key="paneKey" />
       <slot name="end" />
     </component>
@@ -470,43 +457,8 @@ const shortHash = computed(() => log.selected.value?.slice(0, 8) ?? '')
         <div class="w-1 shrink-0 cursor-col-resize border-l border-line hover:bg-fill" role="separator" aria-orientation="vertical" @pointerdown.prevent="drag($event, 'refs')" />
       </template>
 
-      <div v-if="diffFileRef" class="flex min-h-0 min-w-0 flex-1 flex-col" data-log-diff>
-        <div class="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs">
-          <button type="button" class="ccm-btn-plain h-6 gap-1 px-1.5" :title="`${t('workspace.log.diff.back')} (Esc)`" data-log-diff-back @click="closeDiff">
-            <ArrowLeft :size="13" aria-hidden="true" />{{ t('workspace.log.diff.back') }}
-          </button>
-          <span class="min-w-0 flex-1 truncate font-mono text-ink" :title="diffFileRef.path">{{ t('workspace.log.diff.title', { path: diffFileRef.path, hash: shortHash }) }}</span>
-          <button type="button" class="ccm-btn-plain size-6 p-0" :title="`${t('workspace.log.diff.prevFile')} (←)`" :aria-label="t('workspace.log.diff.prevFile')" @click="stepFile(-1)"><ChevronLeft :size="14" aria-hidden="true" /></button>
-          <button type="button" class="ccm-btn-plain size-6 p-0" :title="`${t('workspace.log.diff.nextFile')} (→)`" :aria-label="t('workspace.log.diff.nextFile')" @click="stepFile(1)"><ChevronRight :size="14" aria-hidden="true" /></button>
-          <span class="hidden truncate text-2xs text-ink-faint md:inline">{{ t('workspace.log.diff.keys') }}</span>
-        </div>
-        <div class="ccm-scroll min-h-0 flex-1 bg-well" :class="opts.layout === 'split' && diffFile && diffState === 'idle' ? 'overflow-hidden' : 'overflow-auto'">
-          <p v-if="diffState === 'loading'" class="p-4 text-xs text-well-ink" role="status">{{ t('workspace.log.diff.loading') }}</p>
-          <p v-else-if="diffState === 'binary' || diffState === 'too-large' || diffState === 'empty' || diffState === 'error'" class="p-4 text-xs text-well-ink">
-            {{ t(diffState === 'binary' ? 'workspace.log.diff.binary' : diffState === 'too-large' ? 'workspace.log.diff.tooLarge' : diffState === 'empty' ? 'workspace.log.diff.empty' : 'workspace.log.error.failed') }}
-          </p>
-          <DiffView
-            v-else-if="diffFile"
-            ref="diffView"
-            :file="diffFile"
-            :blocks="blocks"
-            :layout="opts.layout"
-            :lang="lang"
-            :collapse="opts.collapse"
-            :context="opts.context"
-            :highlight="opts.highlight"
-            :sides="{ left: log.detail.value?.ok && !log.detail.value.parents.length ? t('workspace.diff.side.none') : `${shortHash}^`, right: shortHash }"
-            :align="opts.align"
-            :sync="opts.sync"
-            :can-revert="false"
-            :current="currentBlock"
-            @focus-block="(i) => (currentBlock = i)"
-          />
-        </div>
-      </div>
-
-      <template v-else>
-        <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div ref="midEl" class="flex min-h-0 min-w-0 flex-1 flex-col">
+        <template v-if="!diffFull">
           <p v-if="log.filters.value.notRef && log.filters.value.branch" class="flex shrink-0 items-center gap-2 border-b border-line bg-accent-soft px-3 py-1 text-xs text-ink" role="status" data-log-compare>
             <span class="min-w-0 flex-1 truncate">{{ t('workspace.log.branches.comparing', { a: shortRef(log.filters.value.branch), b: shortRef(log.filters.value.notRef) }) }}</span>
             <button type="button" class="ccm-btn-plain h-6 shrink-0 px-2 text-xs" data-log-compare-swap @click="log.setFilters({ branch: log.filters.value.notRef, notRef: log.filters.value.branch })">{{ t('workspace.log.branches.swap') }}</button>
@@ -517,35 +469,60 @@ const shortHash = computed(() => log.selected.value?.slice(0, 8) ?? '')
             <span class="min-w-0 flex-1 truncate" :title="branchNotice.text">{{ branchNotice.text }}</span>
             <button type="button" class="shrink-0 cursor-pointer rounded-inner text-ink-faint hover:text-ink" :title="t('workspace.log.branches.dismiss')" :aria-label="t('workspace.log.branches.dismiss')" @click="branchNotice = null"><X :size="12" aria-hidden="true" /></button>
           </p>
-          <LogFilterBar :filters="log.filters.value" :refs="log.refs.value" :authors="log.authors.value" :root="log.root.value ?? cwd" :flat="log.mode.value === 'flat'" @change="log.setFilters" @refresh="log.reload()" />
-          <LogTable
-            ref="table"
-            :commits="log.commits.value"
-            :rows="log.rows.value"
-            :selected="log.selected.value"
-            :head-hash="log.refs.value?.head.hash ?? null"
-            :remotes="remotes"
-            :loading="log.loading.value"
-            :loading-more="log.loadingMore.value"
-            :more="log.more.value"
-            :empty="empty"
-            :error="log.pageError.value"
-            :filtered="hasFilters(log.filters.value)"
-            @select="log.select"
-            @open="openCommit"
-            @load-more="log.loadMore()"
-            @menu="commitMenu"
-            @clear="log.setFilters({ text: '', branch: null, notRef: null, author: null, date: 'any', from: '', to: '', paths: [] })"
-            @retry="log.reload()"
+        </template>
+        <LogFilterBar v-show="!diffFull" :filters="log.filters.value" :refs="log.refs.value" :authors="log.authors.value" :root="log.root.value ?? cwd" :flat="log.mode.value === 'flat'" @change="log.setFilters" @refresh="log.reload()" />
+        <LogTable
+          v-show="!diffFull"
+          ref="table"
+          :style="diffOpen ? { flex: `${cols.previewSplit} 1 0` } : undefined"
+          :commits="log.commits.value"
+          :rows="log.rows.value"
+          :selected="log.selected.value"
+          :head-hash="log.refs.value?.head.hash ?? null"
+          :remotes="remotes"
+          :loading="log.loading.value"
+          :loading-more="log.loadingMore.value"
+          :more="log.more.value"
+          :empty="empty"
+          :error="log.pageError.value"
+          :filtered="hasFilters(log.filters.value)"
+          @select="log.select"
+          @open="openCommit"
+          @load-more="log.loadMore()"
+          @menu="commitMenu"
+          @clear="log.setFilters({ text: '', branch: null, notRef: null, author: null, date: 'any', from: '', to: '', paths: [] })"
+          @retry="log.reload()"
+        />
+        <div v-if="diffOpen && !diffFull" class="h-1 shrink-0 cursor-row-resize border-t border-line hover:bg-fill" role="separator" aria-orientation="horizontal" data-log-preview-split @pointerdown.prevent="drag($event, 'preview')" />
+        <Transition name="ccm-fade">
+          <LogDiffPanel
+            v-if="diffOpen && shown && log.root.value"
+            ref="panel"
+            class="min-h-0"
+            :style="{ flex: diffFull ? '1 1 0' : `${1 - cols.previewSplit} 1 0` }"
+            :root="log.root.value"
+            :hash="shown.hash"
+            :file="shown.file"
+            :root-commit="rootCommit"
+            :full="diffFull"
+            :index="shownIndex"
+            :total="commitFiles.length"
+            :has-newer="commitIndex > 0"
+            :has-older="commitIndex >= 0 && (commitIndex < log.commits.value.length - 1 || log.more.value)"
+            @back="closeFull"
+            @expand="diffFull = true"
+            @hide="togglePreview"
+            @step="stepFile"
+            @commit="stepCommit"
           />
-        </div>
-        <div class="w-1 shrink-0 cursor-col-resize border-l border-line hover:bg-fill" role="separator" aria-orientation="vertical" @pointerdown.prevent="drag($event, 'side')" />
-        <div ref="sideEl" class="flex min-h-0 shrink-0 flex-col" :style="{ width: `${sideW}px` }">
-          <LogCommitFiles class="min-h-0" :style="{ flex: `${cols.split} 1 0` }" :detail="log.detail.value" :loading="log.detailLoading.value" :selected-path="selectedPath" @select="(p) => (selectedPath = p)" @open="openDiff" @menu="fileMenu" />
-          <div class="h-1 shrink-0 cursor-row-resize border-t border-line hover:bg-fill" role="separator" aria-orientation="horizontal" @pointerdown.prevent="drag($event, 'split')" />
-          <LogCommitDetails class="min-h-0" :style="{ flex: `${1 - cols.split} 1 0` }" :detail="log.detail.value" :loading="log.detailLoading.value" :contains="log.contains" />
-        </div>
-      </template>
+        </Transition>
+      </div>
+      <div class="w-1 shrink-0 cursor-col-resize border-l border-line hover:bg-fill" role="separator" aria-orientation="vertical" @pointerdown.prevent="drag($event, 'side')" />
+      <div ref="sideEl" class="flex min-h-0 shrink-0 flex-col" :style="{ width: `${sideW}px` }">
+        <LogCommitFiles class="min-h-0" :style="{ flex: `${cols.split} 1 0` }" :detail="log.detail.value" :loading="log.detailLoading.value" :selected-path="selectedPath" @select="pickFile" @open="(f) => openFile(f, true)" @menu="fileMenu" />
+        <div class="h-1 shrink-0 cursor-row-resize border-t border-line hover:bg-fill" role="separator" aria-orientation="horizontal" @pointerdown.prevent="drag($event, 'split')" />
+        <LogCommitDetails class="min-h-0" :style="{ flex: `${1 - cols.split} 1 0` }" :detail="log.detail.value" :loading="log.detailLoading.value" :contains="log.contains" />
+      </div>
     </div>
 
     <div v-if="menu" ref="menuEl" class="ccm-menu fixed z-50 flex w-52 flex-col p-1" :style="{ left: `${menu.x}px`, top: `${menu.y}px` }" role="menu" @pointerdown.stop @keydown="menuKey">

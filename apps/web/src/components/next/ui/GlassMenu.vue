@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue'
 import { Check } from 'lucide-vue-next'
+import { useDismiss } from '../../../composables/useDismiss'
 import { captureFocus, wrapIndex } from './focus'
 
 export interface GlassMenuItem {
@@ -37,6 +38,8 @@ const style = computed(() => {
   return s
 })
 let restore: (() => void) | null = null
+
+useDismiss({ active: () => props.open, inside: () => [root.value], dismiss: () => emit('close'), escape: true })
 
 function focusRow(i: number): void {
   active.value = i

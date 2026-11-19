@@ -3,7 +3,7 @@ import { clampPercent, imageSides, isImagePath, readMode } from './imageCompare'
 
 describe('imageCompare', () => {
   it('knows image paths', () => {
-    expect(['a.png', 'b.JPG', 'c.jpeg', 'd.gif', 'e.webp', 'f.svg', 'g.bmp'].every(isImagePath)).toBe(true)
+    expect(['a.png', 'b.JPG', 'c.jpeg', 'd.gif', 'e.webp', 'f.svg', 'g.bmp', 'h.ico'].every(isImagePath)).toBe(true)
     expect(['a.ts', 'png', 'a.png.txt', 'a.tiff'].some(isImagePath)).toBe(false)
   })
 

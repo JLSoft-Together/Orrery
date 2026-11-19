@@ -9,7 +9,6 @@ const stub = (): WorkspaceBridge => ({
   openLayout: vi.fn(),
   split: vi.fn(),
   explorer: vi.fn(),
-  mission: vi.fn(),
   projectDrag: vi.fn(),
   paneDrag: vi.fn(),
 })

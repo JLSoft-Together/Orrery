@@ -127,7 +127,7 @@ export async function listRefs(root: string): Promise<RefsResult> {
   }
 }
 
-async function resolveCommit(root: string, hash: unknown): Promise<string | LogError> {
+export async function resolveCommit(root: string, hash: unknown): Promise<string | LogError> {
   if (!isHash(hash)) return 'denied'
   const res = await execGit(root, ['rev-parse', '--verify', '-q', `${hash}^{commit}`], { maxBytes: 4096 })
   return res.code === 0 ? res.stdout.trim() : 'missing'

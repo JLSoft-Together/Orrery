@@ -64,7 +64,15 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
             let shell = popup.state::<Shell>();
             if shell.is_app_url(&u) {
                 let app = popup.clone();
-                std::thread::spawn(move || open_compact(&app));
+                let compact = u.query_pairs().any(|(k, v)| k == "mode" && v == "compact");
+                let root = u.path() == "/";
+                std::thread::spawn(move || {
+                    if root && !compact {
+                        show_main(&app);
+                    } else {
+                        open_compact(&app);
+                    }
+                });
             } else {
                 open_external(&popup, u.as_str());
             }

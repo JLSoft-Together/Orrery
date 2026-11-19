@@ -318,6 +318,7 @@ interface PreviewBridge {
   logCommit?: (root: string, hash: string) => Promise<CommitDetail>
   logContains?: (root: string, hash: string) => Promise<ContainsResult>
   logDiff?: (root: string, hash: string, path: string, opts?: ChangesDiffOpts, origPath?: string) => Promise<ChangesDiff>
+  logImage?: (root: string, hash: string, path: string, side: 'old' | 'new', origPath?: string) => Promise<HeadImage>
   gitBranchCreate?: (root: string, name: string, base: string, checkout: boolean) => Promise<BranchOpResult>
   gitBranchDelete?: (root: string, ref: string) => Promise<BranchOpResult>
   gitFetch?: (root: string) => Promise<BranchOpResult>
@@ -463,6 +464,9 @@ export const logCommit = (root: string, hash: string): Promise<WebCommitDetail> 
 export const logContains = (root: string, hash: string): Promise<WebContains> => bridge?.logContains?.(root, hash) ?? Promise.resolve(unavailable)
 export const logDiff = (root: string, hash: string, path: string, opts?: ChangesDiffOpts, origPath?: string): Promise<ChangesDiff> =>
   bridge?.logDiff?.(root, hash, path, opts, origPath) ?? Promise.resolve(unavailable)
+export const hasLogImage = typeof bridge?.logImage === 'function'
+export const logImage = (root: string, hash: string, path: string, side: 'old' | 'new', origPath?: string): Promise<HeadImage> =>
+  bridge?.logImage?.(root, hash, path, side, origPath) ?? Promise.resolve(unavailable)
 const noBranchOps: BranchOpResult = { ok: false, error: 'denied' }
 export const hasBranchOps = typeof bridge?.gitFetch === 'function'
 export const gitBranchCreate = (root: string, name: string, base: string, checkout: boolean): Promise<BranchOpResult> =>

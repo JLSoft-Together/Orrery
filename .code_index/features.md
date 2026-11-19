@@ -112,7 +112,7 @@ Rà trước khi đề xuất ý tưởng mới. Cập nhật khi thêm / bỏ t
 - **Mở pane qua API / deep link** (v49) — agent tự mở pane, prefill, không tự gửi · `apps/desktop/src/pty/mcp.ts`
 - **Ghi log khi PTY thoát sớm** (< 15 s) vào `pty.log` · `apps/desktop/src/pty/host.ts`
 
-## Rail, dự án & Mission Control
+## Rail, dự án
 
 - **Rail nhóm dự án** (v38) — cụm, checkout, hàng pane, nhãn trạng thái · `apps/web/src/lib/rail/railModel.ts`
 - **Lọc rail, nhóm Đang có agent / Đã mở** (v79) — ô lọc, nút mở project dạng icon, một dòng cho mỗi session · `apps/web/src/lib/rail/railView.ts`, `apps/web/src/components/workspace/WorkspaceSidebar.vue`
@@ -121,7 +121,7 @@ Rà trước khi đề xuất ý tưởng mới. Cập nhật khi thêm / bỏ t
 - **Bố cục đã lưu theo project** (v24) — tối đa 20 mỗi project, một bố cục tự mở khi khởi động · `apps/desktop/src/layouts.ts`
 - **Menu script theo project** (v24) — chạy script từ package.json / Makefile / Cargo / pyproject · `apps/desktop/src/preview/scripts.ts`
 - **Worktree** — tạo worktree, sao chép file cấu hình, so sánh, gộp (ff / squash) · `apps/web/src/components/workspace/WorktreeMenu.vue`
-- **Mission Control** (v38, v52) — lưới thẻ theo project, lọc, phím 1–9 · `apps/web/src/components/workspace/MissionControl.vue`
+- **Mission Control** — đã bỏ ở v103 (`MissionControl.vue`, `workspace/mission/`, `lib/rail/mission*.ts`); trả lời menu v100 còn ở chip "Chờ trả lời" + toast + thanh dưới pane
 - **Cần chủ nhân (Attention)** — popover liệt kê pane cần xử lý · `apps/web/src/components/workspace/AttentionPopover.vue`
 - **Nút + mở chọn loại pane** (kiểu trình duyệt) — `apps/web/src/components/workspace/LaunchPicker.vue`
 

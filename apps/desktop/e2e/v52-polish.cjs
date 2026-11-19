@@ -199,32 +199,6 @@ async function run(app) {
   await sleep(1500)
   check('F2: Ctrl+Shift+Z reopens the whole tab with its name and layout', await evaluate(`${W}.tabs.some((t) => t.name === 'Build box' && ${W}.panes.filter((p) => ${W}.tabOf(p.key)?.key === t.key).length === 2)`))
 
-  await evaluate(`document.querySelector('.xterm-helper-textarea')?.focus()`)
-  await chord('O', 'KeyO', 79, CTRL | SHIFT)
-  await waitFor(`!!document.querySelector('[data-mission][role=dialog]')`, 5000, 'mission open')
-  await sleep(900)
-  const fill = await evaluate(`(() => {
-    const root = document.querySelector('[data-mission][role=dialog]').getBoundingClientRect()
-    const cards = [...document.querySelectorAll('[data-mission-card]')].map((c) => c.getBoundingClientRect())
-    const area = cards.reduce((n, r) => n + r.width * r.height, 0)
-    return { n: cards.length, ratio: area / (root.width * root.height), minW: Math.min(...cards.map((r) => r.width)) }
-  })()`)
-  check('F5: Mission Control cards fill the space', fill.ratio > 0.3 && fill.minW > 300, JSON.stringify(fill))
-  check('F5: cards carry number badges', await evaluate(`!!document.querySelector('[data-mission-index="1"]')`))
-  await shot('v52-09-mission')
-  await evaluate(`(() => { const f = document.querySelector('[data-mission-filter]'); f.focus() })()`)
-  await cmd('Input.insertText', { text: 'zzzz-nothing' })
-  await sleep(600)
-  check('F5: filter with no match shows an empty state', await evaluate(`!!document.querySelector('[data-mission-empty="filter"]') && document.querySelectorAll('[data-mission-card]').length === 0`))
-  await key('Escape', 'Escape', 27)
-  await sleep(500)
-  check('F5: Esc clears the filter first, Mission Control stays open', await evaluate(`!!document.querySelector('[data-mission][role=dialog]') && document.querySelectorAll('[data-mission-card]').length > 0`))
-  const firstCard = await evaluate(`document.querySelector('[data-mission-index="1"]')?.closest('[data-mission-card]')?.dataset.missionCard ?? ''`)
-  await evaluate(`document.querySelector('[data-mission][role=dialog] [data-mission-card]')?.focus()`)
-  await chord('1', 'Digit1', 49, 0)
-  await waitFor(`!document.querySelector('[data-mission]')`, 5000, 'mission closed').catch(() => {})
-  check('F5: number key 1 opens the first card', (await evaluate(`${W}.activeTab?.key`)) === firstCard, firstCard)
-
   check('A6: tab strip hides its scrollbar', (await evaluate(`getComputedStyle(document.querySelector('.ccm-tabstrip')).scrollbarWidth`)) === 'none')
 
   const AT = `${S}.get('attachments')`

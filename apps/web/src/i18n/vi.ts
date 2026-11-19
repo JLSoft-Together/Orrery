@@ -19,7 +19,6 @@ import v48 from './workspace-v48'
 import v50 from './workspace-v50'
 import v50Rail from './workspace-v50-rail'
 import v50Tabs from './workspace-v50-tabs'
-import v50Mission from './workspace-v50-mission'
 import v51 from './workspace-v51'
 import v52 from './workspace-v52'
 import footerV92 from './footer-v92'
@@ -32,7 +31,6 @@ import v52Pane from './workspace-v52-pane'
 import v52Tabs from './workspace-v52-tabs'
 import v52Rail from './workspace-v52-rail'
 import v64Restore from './workspace-v64-restore'
-import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
 import paneV92 from './pane-v92'
@@ -219,14 +217,12 @@ const vi: typeof en = {
     ...v50.vi,
     ...v50Rail.vi,
     ...v50Tabs.vi,
-    ...v50Mission.vi,
     ...v51.vi,
     ...v52.vi,
     ...v52Pane.vi,
     ...v52Tabs.vi,
     ...v52Rail.vi,
     ...v64Restore.vi,
-    ...v52Mission.vi,
     tabs: 'Terminal',
     newLabel: 'Terminal hoặc tab mới',
     close: 'Đóng terminal',
@@ -751,7 +747,6 @@ const vi: typeof en = {
       wsCycle: 'Tab kế tiếp của dự án này (thêm Shift để lùi)',
       wsMoveTab: 'Chuyển tab sang trái / phải',
       wsTab: 'Tab 1–9 của dự án này',
-      wsMission: 'Mission Control: mọi tab của mọi dự án',
       wsFocusMode: 'Chế độ tập trung: ẩn rail và Explorer của tab này',
       wsFocus: 'Chuyển sang pane bên cạnh',
       wsQuickOpen: 'Mở nhanh tệp trong dự án',

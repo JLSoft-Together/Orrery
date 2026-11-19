@@ -12,7 +12,7 @@ import { isTerm, presetOf, useWorkspaceStore, type Pane } from '../stores/worksp
 import { usePaneInfo } from './usePaneInfo'
 import { useProjectRoots } from './useProjectRoots'
 
-// Module level: the sidebar, the strip scope, Mission Control and the needs-you list share one stored order.
+// Module level: the sidebar, the strip scope and the needs-you list share one stored order.
 const order = ref<string[]>(loadRailOrder())
 
 function createRail() {
@@ -98,7 +98,7 @@ export const RAIL_PROJECT_DRAG: InjectionKey<(e: PointerEvent, src: RailProjectD
 
 let shared: ReturnType<typeof createRail> | undefined
 
-/** One projection for the rail, the strip scope, Mission Control and the needs-you list. */
+/** One projection for the rail, the strip scope and the needs-you list. */
 export function useRail() {
   // Built in the first caller's setup (useI18n needs it) but in a detached scope, so it outlives that component.
   shared ??= effectScope(true).run(createRail)!

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDismiss } from '../../../composables/useDismiss'
 import type { CollapsedProject, LiveRow } from '../../../lib/next/railLive'
 import { monogram } from '../../../lib/rail/projectRow'
 import RailRowItem from './RailRowItem.vue'
@@ -34,23 +35,16 @@ function toggle(p: CollapsedProject, e: MouseEvent): void {
   const r = trigger.getBoundingClientRect()
   const top = Math.max(8, Math.min(r.top, window.innerHeight - 320))
   open.value = { key: p.clusterKey, top, left: r.right + 8, trigger }
-  document.addEventListener('pointerdown', onOutside, true)
   void nextTick(() => flyout.value?.querySelector<HTMLElement>('[data-rail-open]')?.focus())
 }
 
 function close(refocus = false): void {
   const trigger = open.value?.trigger
   open.value = null
-  document.removeEventListener('pointerdown', onOutside, true)
   if (refocus) trigger?.focus()
 }
 
-function onOutside(e: PointerEvent): void {
-  const target = e.target as Node
-  if (flyout.value?.contains(target) || open.value?.trigger.contains(target)) return
-  if ((target as Element).closest?.('[role=menu], .ccm-menu')) return
-  close()
-}
+useDismiss({ active: computed(() => !!open.value), inside: () => [flyout.value, open.value?.trigger], dismiss: () => close(), ignore: '[role=menu], .ccm-menu' })
 
 function onKey(e: KeyboardEvent): void {
   if (e.key === 'Escape') {
@@ -63,8 +57,6 @@ function pickRow(row: LiveRow): void {
   close()
   emit('open', row)
 }
-
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, true))
 
 const badge = (p: CollapsedProject): number => p.needs + p.failed
 </script>

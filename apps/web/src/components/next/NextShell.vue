@@ -216,7 +216,7 @@ function closeMore(): void {
 function pickMore(id: string): void {
   if (id.startsWith('view:')) return ui.setView(id.slice(5) as View)
   if (id === 'resources') return resources.show()
-  if (id === 'compact') return ui.toggleCompact()
+  if (id === 'compact') return ui.compact ? ui.leaveCompact() : ui.toggleCompact()
   if (id === 'dim') return void (settings.dimInactive = !settings.dimInactive)
   if (id === 'notify') return void settings.toggleNotifications()
   if (id === 'shortcuts') return void (ui.shortcutsOpen = true)

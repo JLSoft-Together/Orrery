@@ -1,0 +1,18 @@
+PASS selecting a commit shows the first file diff under the log
+PASS svg in a commit shows before and after as images - [{"side":"old","w":160,"src":"data:image/svg+xml;bas"},{"side":"new","w":160,"src":"data:image/svg+xml;bas"}]
+PASS no binary file message for images
+PASS png before and after both load from git - [{"side":"old","w":96,"src":"data:image/png;base64,"},{"side":"new","w":64,"src":"data:image/png;base64,"}]
+PASS slider mode works on commit images
+PASS ↓ moves to the older commit and keeps the same file - a.png in 9768d368
+PASS an added image shows one side only - [{"side":"new","w":96,"src":"data:image/png;base64,"}]
+PASS k in the log moves to the newer commit
+PASS Enter opens the diff full size and keeps the file list
+PASS Alt+↑ steps to the newer commit inside the full diff - img/b.png in 54103583
+PASS renamed image reads the old name from the parent - [{"side":"old","w":64,"src":"data:image/png;base64,"},{"side":"new","w":64,"src":"data:image/png;base64,"}]
+PASS a deleted image shows the old side only - [{"side":"old","w":160,"src":"data:image/svg+xml;bas"}]
+PASS ← steps to the previous file - logo.svg in 54103583 -> img/b.png in 54103583
+PASS Esc goes back to the log with the preview still open
+PASS the preview can be hidden
+PASS the header button brings the preview back
+PASS no horizontal page scroll
+PASS text files still show a text diff

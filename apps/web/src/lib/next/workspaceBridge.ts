@@ -12,7 +12,6 @@ export interface WorkspaceBridge {
   openLayout: (layout: SavedLayout) => void
   split: (paneKey: string, dir: SplitDir, choice: SplitChoice) => void
   explorer: (paneKey: string) => void
-  mission: () => void
   projectDrag: (e: PointerEvent, src: RailProjectDrag, el: HTMLElement) => void
   paneDrag: (e: PointerEvent, paneKey: string, el: HTMLElement) => void
 }

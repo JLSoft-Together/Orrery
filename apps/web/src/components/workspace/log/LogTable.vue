@@ -125,8 +125,8 @@ function onKey(e: KeyboardEvent): void {
     void copyHash(props.selected)
     return
   }
-  const map: Record<string, number> = { ArrowDown: at + 1, ArrowUp: at - 1, PageDown: at + page, PageUp: at - page, Home: 0, End: props.commits.length - 1 }
-  if (e.key in map) {
+  const map: Record<string, number> = { ArrowDown: at + 1, ArrowUp: at - 1, PageDown: at + page, PageUp: at - page, Home: 0, End: props.commits.length - 1, j: at + 1, k: at - 1 }
+  if (e.key in map && !e.altKey && !e.ctrlKey && !e.metaKey) {
     e.preventDefault()
     move(map[e.key]!)
   } else if (e.key === 'Enter' && props.selected) {

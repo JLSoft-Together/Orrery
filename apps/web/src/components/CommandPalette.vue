@@ -504,7 +504,7 @@ const items = computed<Item[]>(() => {
           },
         ]
       : []),
-    { id: 'c:compact', group: 'nav', label: ui.compact ? t('compact.exit') : t('compact.enter'), icon: Minimize2, run: () => ui.toggleCompact() },
+    { id: 'c:compact', group: 'nav', label: ui.compact ? t('compact.exit') : t('compact.enter'), icon: Minimize2, run: () => (ui.compact ? ui.leaveCompact() : ui.toggleCompact()) },
     { id: 'c:inbox', group: 'actions', label: t('inbox.palette'), sub: t('inbox.button', { n: inbox.items.length }, inbox.items.length), icon: Inbox, run: () => (inbox.open = true) },
     { id: 'c:recap', group: 'actions', label: t('palette.recap'), icon: FileDown, run: () => ui.openRecap() },
     ...DEV_TOOLS.map((id) => ({

@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LayoutGrid } from 'lucide-vue-next'
+import { useDismiss } from '../../../composables/useDismiss'
 import { LAYOUT_PRESETS, type LayoutPreset } from '../../../lib/layoutPresets'
 
 const props = defineProps<{
@@ -55,10 +56,7 @@ function even(): void {
   close(true)
 }
 
-function onOutside(e: PointerEvent): void {
-  const target = e.target as Node
-  if (!root.value?.contains(target) && !panel.value?.contains(target)) close()
-}
+useDismiss({ active: open, inside: () => [root.value, panel.value], dismiss: () => close() })
 
 function onKey(e: KeyboardEvent): void {
   if (e.key === 'Escape') {
@@ -80,17 +78,14 @@ function onKey(e: KeyboardEvent): void {
 
 watch(open, async (on) => {
   if (on) {
-    document.addEventListener('pointerdown', onOutside, true)
     window.addEventListener('resize', measure)
     await nextTick()
     panel.value?.querySelector<HTMLButtonElement>('[data-layout-item]:not([aria-disabled])')?.focus()
   } else {
-    document.removeEventListener('pointerdown', onOutside, true)
     window.removeEventListener('resize', measure)
   }
 })
 onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onOutside, true)
   window.removeEventListener('resize', measure)
 })
 </script>

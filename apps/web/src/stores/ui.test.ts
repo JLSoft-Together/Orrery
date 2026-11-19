@@ -61,3 +61,30 @@ describe('monitor mode and command panel', () => {
     expect(useUiStore().monitorMode).toBe('board')
   })
 })
+
+describe('compact view', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    history.replaceState(null, '', '/')
+    setActivePinia(createPinia())
+  })
+
+  it('leaveCompact returns an in-window compact view to the full view', () => {
+    const ui = useUiStore()
+    ui.toggleCompact()
+    expect(ui.compact).toBe(true)
+    ui.leaveCompact()
+    expect(ui.compact).toBe(false)
+  })
+
+  it('a window opened as compact asks the host for the main window instead', () => {
+    history.replaceState(null, '', '/?mode=compact')
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const ui = useUiStore()
+    expect(ui.compact).toBe(true)
+    ui.leaveCompact()
+    expect(open).toHaveBeenCalledWith(`${location.origin}/`, '_blank')
+    expect(ui.compact).toBe(true)
+    open.mockRestore()
+  })
+})

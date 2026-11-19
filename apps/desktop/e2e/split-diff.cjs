@@ -219,21 +219,21 @@ async function run(app) {
   await waitFor(`!!document.querySelector('[data-context-menu] [data-menu-id="log"]')`, 5000, 'menu log')
   await evaluate(`document.querySelector('[data-context-menu] [data-menu-id="log"]').click()`)
   await waitFor(`document.querySelectorAll('[data-log-table] [data-commit]').length === 2`, 10000, 'log rows').catch(() => {})
-  const openLogDiff = async (subject) => {
+  const openLogDiff = async (subject, hash) => {
     await evaluate(`[...document.querySelectorAll('[data-log-table] [data-commit]')].find((r) => r.textContent.includes(${JSON.stringify(subject)})).click()`)
     await waitFor(`!!document.querySelector('[data-log-file="src/long.ts"]')`, 8000, 'files').catch(() => {})
     await evaluate(`document.querySelector('[data-log-file="src/long.ts"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`)
-    await waitFor(`!!document.querySelector('[data-log-diff] [data-split-head=left]')`, 8000, 'log split').catch(() => {})
+    await waitFor(`document.querySelector('[data-log-diff-mode=full] [data-split-head=right]')?.textContent.trim() === ${JSON.stringify(hash)}`, 8000, 'log split').catch(() => {})
     await sleep(300)
-    return evaluate(`[...document.querySelectorAll('[data-log-diff] [data-split-head]')].map((h) => h.textContent.trim())`)
+    return evaluate(`[...document.querySelectorAll('[data-log-diff-mode=full] [data-split-head]')].map((h) => h.textContent.trim())`)
   }
   const [edit, root] = [hashes[0], hashes[1]]
-  const heads = await openLogDiff('edit long')
+  const heads = await openLogDiff('edit long', edit[0])
   check('Log split view heads read <hash>^ / <hash>', heads[0] === `${edit[0]}^` && heads[1] === edit[0], JSON.stringify(heads))
   await shot('split-diff-05-log')
   await evaluate(`document.querySelector('[data-log-diff-back]').click()`)
-  await waitFor(`!document.querySelector('[data-log-diff]')`, 5000, 'back').catch(() => {})
-  const rootHeads = await openLogDiff(root[1])
+  await waitFor(`!document.querySelector('[data-log-diff-mode=full]')`, 5000, 'back').catch(() => {})
+  const rootHeads = await openLogDiff(root[1], root[0])
   check('root commit: no <hash>^ side, an empty label instead', !rootHeads[0].includes('^') && /none|không/i.test(rootHeads[0]) && rootHeads[1] === root[0], JSON.stringify(rootHeads))
 }
 

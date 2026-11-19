@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, onBeforeUnmount, onMounted, type Component } from 'vue'
 import { pinLeaving } from '../lib/motion'
 import { useI18n } from 'vue-i18n'
 import type { TerminalSession } from '@ccm/shared'
-import { AlarmClock, AppWindow, BellOff, BellRing, Hand, Info, LoaderCircle } from 'lucide-vue-next'
+import { AlarmClock, AppWindow, BellOff, BellRing, Hand, Info, LoaderCircle, Maximize2 } from 'lucide-vue-next'
+import { isTyping } from '../lib/shortcuts'
 import { duration, now } from '../lib/format'
 import { statusMeta } from '../lib/status'
 import { badgeOf, type BadgeProvider } from '../lib/provider'
@@ -119,11 +120,25 @@ function toggleSnooze(id: string): void {
 
 const jumpNote = (id: string) => ui.windowResult?.terminalId === id && ui.windowResult.result === 'appOnly'
 const jumpError = (id: string) => (ui.windowResult?.terminalId === id && ui.windowResult.result !== 'ok' ? t(`terminal.jumpError.${ui.windowResult.result}`) : null)
+function onKey(e: KeyboardEvent): void {
+  if (e.defaultPrevented || e.key !== 'Escape' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || isTyping(e.target)) return
+  if (ui.paletteOpen || ui.settingsOpen || ui.tourOpen || ui.recapOpen || ui.diagnosticsOpen || ui.shortcutsOpen || ui.whatsNewOpen) return
+  e.preventDefault()
+  ui.leaveCompact()
+}
+onMounted(() => window.addEventListener('keydown', onKey, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
+
 const openLabel = (r: Row) => (r.canJump ? t('terminal.jump', { title: r.title }) : t('compact.show', { title: r.title }))
 </script>
 
 <template>
   <main class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-4 sm:px-6">
+    <div class="flex items-center justify-end" data-compact-bar>
+      <button type="button" class="ccm-btn" :title="t('compact.exitTitle')" :aria-label="t('compact.exitTitle')" data-compact-exit @click="ui.leaveCompact()">
+        <Maximize2 :size="14" aria-hidden="true" />{{ t('compact.exit') }}
+      </button>
+    </div>
     <section aria-labelledby="compact-waiting" class="flex flex-col gap-2">
       <h2 id="compact-waiting" class="inline-flex items-center gap-2 text-base font-semibold" :class="activeWaiting ? 'text-st-waiting' : 'text-ink-muted'">
         <Hand :size="18" aria-hidden="true" />{{ t('waiting.title', { n: activeWaiting }) }}

@@ -119,12 +119,12 @@ async function run(app) {
 
   // Diff of one file, Esc back.
   await evaluate(`document.querySelector('[data-log-file="b.txt"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`)
-  await waitFor(`!!document.querySelector('[data-log-diff]') && document.querySelector('[data-log-diff]').textContent.includes('b')`, 8000, 'diff').catch(() => {})
-  check('double-click opens the file diff', await evaluate(`!!document.querySelector('[data-log-diff]')`))
+  await waitFor(`!!document.querySelector('[data-log-diff-mode=full]') && document.querySelector('[data-log-diff]').textContent.includes('b')`, 8000, 'diff').catch(() => {})
+  check('double-click opens the file diff', await evaluate(`!!document.querySelector('[data-log-diff-mode=full]')`))
   await shot('log-03-diff')
   await evaluate(`document.activeElement?.blur?.(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
-  await waitFor(`!document.querySelector('[data-log-diff]')`, 5000, 'back').catch(() => {})
-  check('Esc returns to the log', await evaluate(`!document.querySelector('[data-log-diff]') && !!document.querySelector('[data-log-table]')`))
+  await waitFor(`!document.querySelector('[data-log-diff-mode=full]')`, 5000, 'back').catch(() => {})
+  check('Esc returns to the log', await evaluate(`!document.querySelector('[data-log-diff-mode=full]') && document.querySelector('[data-log-table]')?.offsetParent !== null`))
 
   // v36 Branches toolbar (delete is not driven here: the native confirm cannot be clicked through CDP; test/branches.test.ts covers it).
   check('vertical branches toolbar is shown', await evaluate(`!!document.querySelector('[data-refs-toolbar] [data-refs-action=fetch]') && !!document.querySelector('[data-refs-toolbar] [data-refs-action=more]')`))

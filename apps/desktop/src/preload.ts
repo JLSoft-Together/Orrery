@@ -186,6 +186,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   logContains: (root: string, hash: string): Promise<unknown> => ipcRenderer.invoke('ccm:log-contains', { root, hash }),
   logDiff: (root: string, hash: string, path: string, opts?: unknown, origPath?: string): Promise<unknown> =>
     ipcRenderer.invoke('ccm:log-diff', { root, hash, path, opts, origPath }),
+  logImage: (root: string, hash: string, path: string, side: 'old' | 'new', origPath?: string): Promise<unknown> =>
+    ipcRenderer.invoke('ccm:log-image', { root, hash, path, side, origPath }),
   gitBranchCreate: (root: string, name: string, base: string, checkout: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:git-branch-create', { root, name, base, checkout }),
   gitBranchDelete: (root: string, ref: string): Promise<unknown> => ipcRenderer.invoke('ccm:git-branch-delete', { root, ref }),
   gitFetch: (root: string): Promise<unknown> => ipcRenderer.invoke('ccm:git-fetch', root),

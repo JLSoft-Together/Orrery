@@ -7,7 +7,7 @@ import { useProjectRoots } from '../../../composables/useProjectRoots'
 import { withViewTransition } from '../../../lib/motion'
 import { renamedPanePatches, trashedPaneKeys } from '../../../lib/explorer/tree'
 import { hasDragPath } from '../../../lib/explorer/dragPath'
-import { effectivePinned, EXPLORER_DRAWER_W, PIN_MIN_CANVAS, PIN_MIN_VIEWPORT, pinVerdict } from '../../../lib/next/explorerPin'
+import { dragWidth, EXPLORER_DRAWER_W, EXPLORER_MAX_W, EXPLORER_MIN_W, EXPLORER_PIN_GAP, fitPinnedWidth, PIN_MIN_CANVAS, pinnedRoom } from '../../../lib/next/explorerPin'
 import { isMac } from '../../../lib/platform'
 import { workspaceAction } from '../../../lib/workspaceKeys'
 import { paneProjectOf, useWorkspaceStore, type Pane } from '../../../stores/workspace'
@@ -18,7 +18,6 @@ import { useUiGenStore } from '../../../stores/uiGen'
 import { captureFocus, trapTab } from '../ui/focus'
 import { useExplorerDrawer } from './useExplorerDrawer'
 
-const PIN_COLUMN_W = EXPLORER_DRAWER_W + 8
 const FALLBACK_TOAST = 'explorer-pin-fallback'
 
 const { t } = useI18n()
@@ -33,9 +32,9 @@ const { open } = useExplorerDrawer()
 const root = ref<HTMLElement | null>(null)
 const panelEl = ref<HTMLElement | null>(null)
 const panel = ref<{ showSearch: (query?: never) => Promise<void> } | null>(null)
-const viewport = ref(window.innerWidth)
-const canvasFree = ref(0)
+const canvasTotal = ref(0)
 const dragging = ref(false)
+const resizing = ref(false)
 let restore: (() => void) | null = null
 let observer: ResizeObserver | null = null
 let fellBack = false
@@ -55,16 +54,17 @@ const activeProject = computed(() => {
 const activeFile = computed(() => (workspace.active?.kind === 'file' ? (workspace.active.path ?? null) : null))
 
 const active = computed(() => inWorkspace.value && uiGen.isNext)
-const pinned = computed(() => active.value && effectivePinned({ viewport: viewport.value, canvas: canvasFree.value, pinned: uiGen.explorerPinned, drawerWidth: PIN_COLUMN_W }))
+const pinFit = computed(() => fitPinnedWidth(canvasTotal.value, uiGen.explorerWidth))
+const pinned = computed(() => active.value && uiGen.explorerPinned && pinFit.value !== null)
+const colWidth = computed(() => (pinned.value ? (pinFit.value ?? uiGen.explorerWidth) : uiGen.explorerWidth))
+const canPin = computed(() => pinned.value || pinFit.value !== null)
+const pinTip = computed(() => (pinned.value ? t('mist.explorer.unpin') : canPin.value ? t('mist.explorer.pin') : t('mist.explorer.pinNoRoomCanvas', { min: PIN_MIN_CANVAS })))
 const shown = computed(() => active.value && (pinned.value || open.value))
 const asDrawer = computed(() => shown.value && !pinned.value)
 
 function measure(): void {
-  viewport.value = window.innerWidth
   const parent = root.value?.parentElement
-  if (!parent) return
-  const columnTaken = document.documentElement.getAttribute('data-explorer-pinned') === 'on' ? PIN_COLUMN_W : 0
-  canvasFree.value = parent.clientWidth - columnTaken
+  if (parent) canvasTotal.value = parent.clientWidth
 }
 
 function openFile(path: string, _keep?: boolean, line?: number): void {
@@ -108,23 +108,23 @@ function close(giveFocus = true): void {
   if (giveFocus) back?.()
 }
 
-function notifyNoRoom(reason: 'viewport' | 'canvas'): void {
+function notifyNoRoom(): void {
   toasts.push({
     id: FALLBACK_TOAST,
     kind: 'info',
-    text: reason === 'viewport' ? t('mist.explorer.pinNoRoomViewport', { min: PIN_MIN_VIEWPORT }) : t('mist.explorer.pinNoRoomCanvas', { min: PIN_MIN_CANVAS }),
-    attrs: { 'data-explorer-pin-toast': reason },
+    text: t('mist.explorer.pinNoRoomCanvas', { min: PIN_MIN_CANVAS }),
+    attrs: { 'data-explorer-pin-toast': 'canvas' },
   })
 }
 
 function togglePin(): void {
   if (pinned.value) {
     uiGen.explorerPinned = false
+    open.value = true
     return
   }
-  const verdict = pinVerdict({ viewport: viewport.value, canvas: canvasFree.value, pinned: false, drawerWidth: PIN_COLUMN_W })
-  if (!verdict.ok) {
-    notifyNoRoom(verdict.reason)
+  if (!canPin.value) {
+    notifyNoRoom()
     return
   }
   uiGen.explorerPinned = true
@@ -167,8 +167,8 @@ watch(
   },
 )
 
-watch([active, () => uiGen.explorerPinned, pinned, viewport, canvasFree], () => {
-  if (!active.value || !uiGen.explorerPinned || !canvasFree.value) {
+watch([active, () => uiGen.explorerPinned, pinned, canvasTotal], () => {
+  if (!active.value || !uiGen.explorerPinned || !canvasTotal.value) {
     fellBack = false
     return
   }
@@ -178,9 +178,14 @@ watch([active, () => uiGen.explorerPinned, pinned, viewport, canvasFree], () => 
   }
   if (fellBack) return
   fellBack = true
-  const verdict = pinVerdict({ viewport: viewport.value, canvas: canvasFree.value, pinned: false, drawerWidth: PIN_COLUMN_W })
-  if (!verdict.ok) notifyNoRoom(verdict.reason)
+  notifyNoRoom()
 })
+
+watch(
+  colWidth,
+  (w) => document.documentElement.style.setProperty('--ccm-explorer-w', `${w}px`),
+  { immediate: true },
+)
 
 watch(
   pinned,
@@ -207,6 +212,54 @@ watch(
 watch(shown, (on) => {
   if (on) void explorer.retryFailed()
 })
+
+function roomFor(): number {
+  const parent = root.value?.parentElement
+  if (!parent) return EXPLORER_MAX_W
+  return pinned.value ? pinnedRoom(parent.clientWidth) : parent.clientWidth - 48
+}
+
+let resizeFrom: { x: number; width: number; room: number } | null = null
+
+function onResizeDown(e: PointerEvent): void {
+  if (e.button !== 0) return
+  e.preventDefault()
+  resizeFrom = { x: e.clientX, width: colWidth.value, room: roomFor() }
+  resizing.value = true
+  document.documentElement.setAttribute('data-explorer-resizing', 'on')
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+}
+
+function onResizeMove(e: PointerEvent): void {
+  if (!resizeFrom) return
+  uiGen.explorerWidth = dragWidth(resizeFrom.width, resizeFrom.x, e.clientX, resizeFrom.room)
+}
+
+function onResizeUp(e: PointerEvent): void {
+  if (!resizeFrom) return
+  resizeFrom = null
+  resizing.value = false
+  document.documentElement.removeAttribute('data-explorer-resizing')
+  const el = e.currentTarget as HTMLElement
+  if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId)
+  void nextTick(measure)
+}
+
+function onResizeKey(e: KeyboardEvent): void {
+  const step = e.shiftKey ? 48 : 16
+  if (e.key === 'ArrowLeft') uiGen.setExplorerWidth(colWidth.value + step, roomFor())
+  else if (e.key === 'ArrowRight') uiGen.setExplorerWidth(colWidth.value - step, roomFor())
+  else if (e.key === 'Home') uiGen.setExplorerWidth(EXPLORER_MIN_W)
+  else if (e.key === 'End') uiGen.setExplorerWidth(EXPLORER_MAX_W, roomFor())
+  else return
+  e.preventDefault()
+  void nextTick(measure)
+}
+
+function resetWidth(): void {
+  uiGen.setExplorerWidth(EXPLORER_DRAWER_W, roomFor())
+  void nextTick(measure)
+}
 
 function onDragStart(e: DragEvent): void {
   if (hasDragPath(e.dataTransfer)) dragging.value = true
@@ -238,6 +291,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   observer?.disconnect()
   document.documentElement.removeAttribute('data-explorer-pinned')
+  document.documentElement.removeAttribute('data-explorer-resizing')
+  document.documentElement.style.removeProperty('--ccm-explorer-w')
 })
 </script>
 
@@ -247,21 +302,40 @@ onBeforeUnmount(() => {
     <aside
       v-show="shown"
       class="ccm-explorer-card glass-pop"
-      :class="{ 'is-pinned': pinned }"
-      :style="{ width: `${EXPLORER_DRAWER_W}px` }"
+      :class="{ 'is-pinned': pinned, 'is-resizing': resizing }"
+      :style="{ width: `${colWidth}px` }"
       :role="asDrawer ? 'dialog' : 'complementary'"
       :aria-label="t('mist.explorer.drawer')"
       :aria-modal="asDrawer ? 'false' : undefined"
       data-explorer-drawer-card
     >
+      <div
+        class="ccm-explorer-grip"
+        role="separator"
+        aria-orientation="vertical"
+        tabindex="0"
+        :aria-label="t('mist.explorer.resize')"
+        :title="t('mist.explorer.resizeTip')"
+        :aria-valuemin="EXPLORER_MIN_W"
+        :aria-valuemax="EXPLORER_MAX_W"
+        :aria-valuenow="colWidth"
+        data-explorer-grip
+        @pointerdown="onResizeDown"
+        @pointermove="onResizeMove"
+        @pointerup="onResizeUp"
+        @pointercancel="onResizeUp"
+        @dblclick="resetWidth"
+        @keydown="onResizeKey"
+      />
       <div class="ccm-explorer-bar">
         <span class="ccm-explorer-title">{{ t('mist.explorer.title') }}</span>
         <button
           type="button"
           class="ccm-explorer-btn"
           :aria-pressed="pinned"
-          :aria-label="pinned ? t('mist.explorer.unpin') : t('mist.explorer.pin')"
-          :title="pinned ? t('mist.explorer.unpin') : t('mist.explorer.pin')"
+          :aria-label="pinTip"
+          :title="pinTip"
+          :data-pin-blocked="canPin ? undefined : 'canvas'"
           data-explorer-pin
           @click="togglePin"
         >
@@ -321,9 +395,6 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   animation: ccm-explorer-in var(--ccm-dur-base, 180ms) ease-out;
 }
-:root[data-ui='next'] .ccm-explorer-card.is-pinned {
-  animation: none;
-}
 :root[data-ui='next'] .ccm-explorer-bar {
   display: flex;
   align-items: center;
@@ -366,7 +437,66 @@ onBeforeUnmount(() => {
   outline: none;
 }
 :root[data-ui='next'][data-explorer-pinned='on'] .ccm-next-canvas {
-  padding-right: 296px;
+  padding-right: calc(var(--ccm-explorer-w, 288px) + 8px);
+}
+:root[data-ui='next'] .ccm-next-canvas {
+  transition: padding-right var(--ccm-dur-base, 180ms) var(--ccm-ease-standard, ease-out);
+}
+:root[data-ui='next'][data-explorer-resizing='on'] .ccm-next-canvas,
+:root[data-ui='next'][data-motion='off'] .ccm-next-canvas {
+  transition: none;
+}
+:root[data-ui='next'][data-explorer-resizing='on'] {
+  cursor: col-resize;
+  user-select: none;
+}
+:root[data-ui='next'] .ccm-explorer-card.is-pinned {
+  background: var(--ccm-material-pop);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-color: var(--ccm-line);
+}
+:root[data-ui='next'] .ccm-explorer-grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  z-index: 2;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+:root[data-ui='next'] .ccm-explorer-grip::after {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: transparent;
+  content: '';
+  transition: background var(--ccm-dur-fast, 120ms) ease-out;
+}
+:root[data-ui='next'] .ccm-explorer-grip:hover::after,
+:root[data-ui='next'] .ccm-explorer-grip:focus-visible::after,
+:root[data-ui='next'] .ccm-explorer-card.is-resizing .ccm-explorer-grip::after {
+  background: var(--ccm-accent);
+}
+:root[data-ui='next'] [data-explorer-tree] {
+  overflow-x: auto;
+}
+:root[data-ui='next'] [data-explorer-tree-inner] {
+  min-width: var(--ccm-tree-min-w, 0);
+}
+:root[data-ui='next'] [data-explorer-tree] [role='treeitem'][aria-level='1'] {
+  position: sticky !important;
+  top: auto !important;
+  right: auto !important;
+  left: 0 !important;
+  z-index: 1;
+  width: var(--ccm-tree-cw, 100%);
 }
 :root[data-ui='next'] [data-explorer-panel] {
   display: none;

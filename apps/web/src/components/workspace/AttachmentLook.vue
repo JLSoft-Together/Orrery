@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 import { previewUrl } from '../../lib/preview'
 import { reducedMotion } from '../../lib/motion'
 import type { Attachment } from '../../stores/attachments'
-import { dur, ease } from './mission/missionMotion'
+import { dur, ease } from './motionTokens'
 
 const props = defineProps<{ items: readonly Attachment[]; index: number; origin: DOMRect | null; label: (a: Attachment) => string }>()
 const emit = defineEmits<{ close: []; move: [index: number] }>()

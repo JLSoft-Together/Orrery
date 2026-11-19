@@ -160,6 +160,15 @@ async function launch(opts = {}) {
     }
     await waitFor(`document.documentElement.dataset.ui === 'next'`, 20000, 'data-ui=next')
   }
+  if (ui === 'classic') {
+    await appUp()
+    const cur = await evaluate(`localStorage.getItem('ccm.uiGeneration')`).catch(() => null)
+    if (cur !== 'classic') {
+      await evaluate(uiGenScript('classic'))
+      await cmd('Page.reload')
+    }
+    await waitFor(`document.documentElement.dataset.ui === 'classic'`, 20000, 'data-ui=classic')
+  }
   const stop = () => {
     if (process.platform === 'win32') {
       try { execFileSync('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore' }) } catch {}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDismiss } from '../../../composables/useDismiss'
 import { hexToHsv, hsvToHex, hueTrackBackground, parseHex, svBackground } from '../../../lib/next/customTheme'
 
 const props = withDefaults(defineProps<{ modelValue: string; name: string; swatches?: readonly string[]; recent?: readonly string[]; disabled?: boolean }>(), {
@@ -188,10 +189,7 @@ function close(focus = false): void {
   if (focus) button.value?.focus()
 }
 
-function onOutside(e: PointerEvent): void {
-  const target = e.target as Node
-  if (!button.value?.contains(target) && !panel.value?.contains(target)) close()
-}
+useDismiss({ active: open, inside: () => [button.value, panel.value], dismiss: () => close() })
 
 function onPanelKey(e: KeyboardEvent): void {
   if (e.key !== 'Escape') return
@@ -202,15 +200,12 @@ function onPanelKey(e: KeyboardEvent): void {
 
 watch(open, (on) => {
   if (on) {
-    document.addEventListener('pointerdown', onOutside, true)
     window.addEventListener('resize', measure)
   } else {
-    document.removeEventListener('pointerdown', onOutside, true)
     window.removeEventListener('resize', measure)
   }
 })
 onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onOutside, true)
   window.removeEventListener('resize', measure)
 })
 </script>

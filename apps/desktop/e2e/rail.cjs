@@ -1,4 +1,4 @@
-// v38 multi-project: project rail, project-scoped strip (Spaces), Mission Control, needs-you list, rail column.
+// v38 multi-project: project rail, project-scoped strip (Spaces), needs-you list, rail column.
 const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
@@ -67,54 +67,12 @@ async function run(app) {
   check('switching to beta draws its single tab', (await drawn()) === 1, String(await drawn()))
   await shot('rail-01-spaces')
 
-  // --- Mission Control ---
   await evaluate(`${W}.activate(${W}.panes[0].key)`)
-  await evaluate(`${W}.openFile(${JSON.stringify(path.join(A, 'x.txt'))}, undefined, { cwd: ${JSON.stringify(A)}, split: { key: ${W}.panes[0].key, dir: 'row' } })`)
-  await evaluate(`${W}.activate(${W}.panes[0].key)`)
-  await sleep(500)
   await evaluate(`document.querySelector('.xterm-helper-textarea')?.focus()`)
   await chord('O', 'KeyO', 79, CTRL | SHIFT)
-  await waitFor(`!!document.querySelector('[data-mission][role=dialog]')`, 5000, 'mission open')
-  check('Ctrl+Shift+O opens Mission Control', true)
-  await sleep(700)
-  const current = await evaluate(`${W}.activeTab.key`)
-  check('grid: 3 tab cards in 2 project sections', await evaluate(`document.querySelectorAll('[data-mission-card]').length === 3 && document.querySelectorAll('[data-mission-section]').length === 2`))
-  const tiles = await evaluate(`document.querySelectorAll('[data-mission-card="${current}"] [data-mission-tile]').length`)
-  check('current card draws both panes of its tab', tiles === 2, String(tiles))
-  check('a file pane tile shows its path instead of output', /x\.txt/.test(await evaluate(`document.querySelector('[data-mission-view]')?.textContent ?? ''`)))
-  check('focus starts on the current tab card', (await evaluate(`document.activeElement?.dataset.missionCard`)) === current)
-  await shot('rail-02-mission')
-  await key('ArrowRight', 'ArrowRight', 39)
-  const moved = await evaluate(`document.activeElement?.dataset.missionCard`)
-  check('arrow keys move between cards', !!moved && moved !== current, String(moved))
-  await key('ArrowLeft', 'ArrowLeft', 37)
-  check('arrow back returns to the current card', (await evaluate(`document.activeElement?.dataset.missionCard`)) === current)
-  const target = await evaluate(`(() => { const t = [...document.querySelectorAll('[data-mission-card="${current}"] [data-mission-tile]')].find((n) => n.dataset.missionTile !== ${W}.activeKey); t?.focus(); return t?.dataset.missionTile })()`)
-  await key('Enter', 'Enter', 13)
-  await waitFor(`!document.querySelector('[data-mission]')`, 5000, 'mission closed')
-  check('Enter on a pane tile jumps to that pane', !!target && (await evaluate(`${W}.activeKey`)) === target, String(target))
-  await evaluate(`document.querySelector('[data-strip-project]').focus()`)
-  await evaluate(`document.querySelector('[data-strip-project]').click()`)
-  await waitFor(`!!document.querySelector('[data-mission]')`, 5000, 'mission reopened')
-  await key('Escape', 'Escape', 27)
-  await waitFor(`!document.querySelector('[data-mission]')`, 5000, 'mission closed by Esc')
-  check('Esc returns focus to the opener', await evaluate(`document.activeElement?.hasAttribute('data-strip-project')`))
-
-  // --- Exited pane that never printed: the host refuses a missing cwd, so its xterm stays empty ---
-  const GONE = path.join(BASE, 'gone')
-  const dead = JSON.stringify(await evaluate(`${W}.open('shell', ${JSON.stringify(GONE)}, undefined, { tab: true }).key`))
-  await waitFor(`${W}.panes.find((p) => p.key === ${dead})?.state === 'error'`, 10000, 'spawn refused')
-  await evaluate(`${W}.update(${dead}, { state: 'exited', exitCode: 0, error: undefined })`)
-  await evaluate(`document.querySelector('[data-strip-project]').click()`)
-  await waitFor(`!!document.querySelector('[data-mission-tile]')`, 5000, 'mission for exited pane')
-  check(
-    'exited pane tile shows the empty text and its state',
-    await evaluate(`(() => { const w = document.querySelector('[data-mission-tile=' + JSON.stringify(${dead}) + ']'); return !!w?.querySelector('[data-mission-empty]') && /Ended/.test(w.textContent) })()`),
-  )
-  await key('Escape', 'Escape', 27)
-  await waitFor(`!document.querySelector('[data-mission]')`, 5000, 'mission closed')
-  await evaluate(`${W}.remove(${dead}); ${W}.forget(${JSON.stringify(GONE)})`)
-  await sleep(300)
+  await sleep(500)
+  check('Ctrl+Shift+O no longer opens anything', await evaluate(`!document.querySelector('[data-mission]')`))
+  check('the project label on the strip is a plain label', await evaluate(`document.querySelector('[data-strip-project]')?.tagName !== 'BUTTON'`))
 
   // --- Needs-you list --- (focus elsewhere: the focused pane clears its own attention)
   await evaluate(`${W}.activate(${W}.panes[0].key)`)

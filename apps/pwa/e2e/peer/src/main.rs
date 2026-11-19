@@ -1,5 +1,6 @@
 mod conn;
 mod data;
+mod vw;
 
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
@@ -41,6 +42,7 @@ pub struct Desk {
     pub tab2: bool,
     pub moved: bool,
     pub hidden: Vec<&'static str>,
+    pub vw: vw::Vw,
 }
 
 pub fn now() -> u64 {
@@ -141,6 +143,8 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
             }
         }
         "viewonly" => desk.view_only = true,
+        "diskchange" => desk.vw.disk_change(),
+        "vwreset" => desk.vw = vw::Vw::new(),
         "viewoff" => desk.view_only = false,
         "deny" => desk.deny = true,
         "tab2" => {
@@ -213,6 +217,7 @@ fn main() {
         tab2: false,
         moved: false,
         hidden: Vec::new(),
+        vw: vw::Vw::new(),
     };
 
     let ts = now();

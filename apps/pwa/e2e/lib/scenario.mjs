@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { idbCounts, makeCtx, PHONE, wait } from './ctx.mjs'
 import { lockStep } from './lock-step.mjs'
+import { editSteps } from './edit-steps.mjs'
 import { helloControlStep, paneSteps, pairDeniedStep } from './pane-steps.mjs'
 import { pushSteps } from './push-steps.mjs'
 import { startPeer } from './procs.mjs'
@@ -9,7 +10,7 @@ import { uiSteps } from './ui-steps.mjs'
 import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
 
-export const STEPS_PER_BROWSER = 34
+export const STEPS_PER_BROWSER = 40
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -120,6 +121,7 @@ export async function runScenario({ browserName, launch, env, record }) {
     await paneSteps(c, page, peer)
     await viewOnlyStep(c, page, peer)
     await helloControlStep(c, page, peer)
+    await editSteps(c, page, peer)
     await pairDeniedStep(c, env)
 
     await step('desktop gone: card turns stale, reload shows the saved snapshot from IndexedDB at once, Monitor shows the offline banner', async () => {

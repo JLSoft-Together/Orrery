@@ -75,7 +75,7 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
     })
 }
 
-const FILE_TEXT: &str = "import 'package:flutter/material.dart';\n\nclass KeyBar extends StatelessWidget {\n  const KeyBar({super.key});\n}\n";
+pub const FILE_TEXT: &str = "import 'package:flutter/material.dart';\n\nclass KeyBar extends StatelessWidget {\n  const KeyBar({super.key});\n}\n";
 
 const DIFF_TEXT: &str = "diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -12,6 +12,9 @@ class KeyBar\n   return SizedBox(\n-    child: Row(\n+    child: ListView(\n+      scrollDirection: Axis.horizontal,\n     children: [\n";
 

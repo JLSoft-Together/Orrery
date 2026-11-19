@@ -6,6 +6,7 @@ use core_remote_proto::{Error, Transport, PROTO};
 use serde_json::{json, Value};
 
 use crate::data;
+use crate::vw::Reply;
 use crate::{now, Desk, NAME};
 
 fn terminals(desk: &Desk) -> Value {
@@ -338,11 +339,23 @@ impl Live {
                     }
                     Some("confirm.answer") => {
                         println!("{}", json!({"ev": "confirm", "cid": value.get("cid"), "ok": value.get("ok")}));
+                        extra.extend(desk.vw.answer(value.get("ok").and_then(Value::as_bool).unwrap_or(false)));
                         json!({ "re": id, "ok": true })
                     }
-                    Some(other) => match data::viewer(other, &value) {
-                        Some(body) => json!({ "re": id, "ok": true, "data": body }),
-                        None => json!({ "re": id, "ok": false, "error": "invalid" }),
+                    Some(other) => match desk.vw.handle(desk.view_only, other, &value) {
+                        Some(Reply::Data(body, more)) => {
+                            extra.extend(more);
+                            json!({ "re": id, "ok": true, "data": body })
+                        }
+                        Some(Reply::Denied) => json!({ "re": id, "ok": false, "error": "denied" }),
+                        Some(Reply::Confirm(more)) => {
+                            extra.extend(more);
+                            json!({ "re": id, "ok": true, "confirm": "cid1" })
+                        }
+                        None => match data::viewer(other, &value) {
+                            Some(body) => json!({ "re": id, "ok": true, "data": body }),
+                            None => json!({ "re": id, "ok": false, "error": "invalid" }),
+                        },
                     },
                     None => json!({ "re": id, "ok": false, "error": "invalid" }),
                 };

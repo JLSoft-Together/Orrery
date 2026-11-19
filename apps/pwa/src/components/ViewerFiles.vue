@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { ChevronLeft, File, Folder } from 'lucide-vue-next'
+import { ChevronLeft, File, Folder, Pencil } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { leaveOk } from '../lib/editGuard'
+import { useAction } from '../lib/useAction'
 import { useAsync } from '../lib/useAsync'
 import { viewerData, type Commander } from '../lib/viewerApi'
-import { parseDir, parseFile, relativePath, samePath, sizeText } from '../lib/viewerModel'
+import { parseDir, parseFile, relativePath, samePath, sizeText, type FileData } from '../lib/viewerModel'
 import AsyncState from './AsyncState.vue'
 import CodeLines from './CodeLines.vue'
+import FileEditor from './FileEditor.vue'
+import NoticeLine from './NoticeLine.vue'
 
-const props = defineProps<{ command: Commander; root: string; open?: string | null }>()
+const props = defineProps<{ command: Commander; root: string; open?: string | null; editable: boolean; refresh: number }>()
 const emit = defineEmits<{ opened: [path: string | null] }>()
 const { t } = useI18n()
 const dir = ref(props.root)
 const file = ref<string | null>(props.open ?? null)
+const editing = ref(false)
+const { notice, show } = useAction()
 
 const list = useAsync(async () => parseDir(await viewerData(props.command, 'fs.list', { root: props.root, dir: dir.value })), false)
 const content = useAsync(async () => parseFile(await viewerData(props.command, 'fs.read', { path: file.value })), false)
@@ -33,13 +39,37 @@ watch(
   file,
   (path) => {
     emit('opened', path)
+    editing.value = false
     content.data.value = null
     if (path) void content.reload()
   },
   { immediate: true },
 )
 
-function up(): void {
+watch(
+  () => props.refresh,
+  () => {
+    void list.reload()
+    if (file.value && !editing.value) void content.reload()
+  },
+)
+
+const canEdit = computed(() => props.editable && content.data.value?.kind === 'text' && content.data.value.text !== null)
+
+function saved(text: string, mtimeMs: number): void {
+  const current = content.data.value
+  if (current) content.data.value = { ...current, text, mtimeMs, size: new TextEncoder().encode(text).length } satisfies FileData
+  editing.value = false
+  show('ok', t('edit.saved'))
+}
+
+async function reloadFromDisk(): Promise<void> {
+  editing.value = false
+  await content.reload()
+}
+
+async function up(): Promise<void> {
+  if (!(await leaveOk(t))) return
   if (file.value) {
     file.value = null
     return
@@ -58,8 +88,15 @@ function up(): void {
     </div>
     <template v-if="file">
       <AsyncState :blank="content.data.value === null" :error="content.error.value" :empty="content.data.value !== null && content.data.value.kind !== 'text'" :empty-text="t(`viewer.kind.${content.data.value?.kind ?? 'missing'}`)" @retry="content.reload">
-        <div class="scroll"><CodeLines v-if="content.data.value?.text !== null && content.data.value" :text="content.data.value.text ?? ''" /></div>
-        <footer v-if="content.data.value" class="foot mono" data-testid="file-foot">{{ t('viewer.fileFoot', { n: lineCount, size: sizeText(content.data.value.size) }) }}</footer>
+        <FileEditor v-if="editing && content.data.value?.text != null" :command="command" :path="content.data.value.path || file" :text="content.data.value.text" :base="content.data.value.mtimeMs" @saved="saved" @cancel="editing = false" @reload="reloadFromDisk" />
+        <template v-else>
+          <NoticeLine :notice="notice" />
+          <div class="scroll"><CodeLines v-if="content.data.value?.text !== null && content.data.value" :text="content.data.value.text ?? ''" /></div>
+          <footer v-if="content.data.value" class="foot">
+            <span class="mono" data-testid="file-foot">{{ t(editable ? 'viewer.fileFoot' : 'viewer.fileFootRo', { n: lineCount, size: sizeText(content.data.value.size) }) }}</span>
+            <button v-if="canEdit" type="button" class="btn edit" data-testid="edit-start" @click="editing = true"><Pencil :size="18" :stroke-width="2" aria-hidden="true" />{{ t('edit.start') }}</button>
+          </footer>
+        </template>
       </AsyncState>
     </template>
     <AsyncState v-else :blank="list.data.value === null" :error="list.error.value" :empty="list.data.value !== null && list.data.value.length === 0" :empty-text="t('viewer.emptyDir')" @retry="list.reload">
@@ -119,11 +156,23 @@ function up(): void {
 }
 
 .foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex: none;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--ccm-line);
   font-size: 0.8125rem;
   color: var(--ccm-ink-muted);
+}
+
+.foot span {
+  flex: 1;
+  min-width: 0;
+}
+
+.edit {
+  flex: none;
 }
 
 .list {

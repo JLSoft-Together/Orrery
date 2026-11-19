@@ -29,3 +29,7 @@
 
 ### Báo cáo
 `.planning/wp/v98/WP-61b-report.md`: file + symbol, test thật (lệnh + số), ảnh, bước QA iPhone, chỗ desktop còn thiếu (nếu có), rủi ro.
+
+### Thêm (main, 2026-11-19)
+- WP-61a làm `apps/pwa/src/views/WorkspaceView.vue` lên ~490 dòng: tách xuống ≤ ~400 (chỉ tách, không đổi hành vi; E2E pane phải còn pass). Được đụng file này cho việc tách.
+- Máy này đã cài `wasm32-unknown-unknown`, `wasm-bindgen-cli 0.2.130`, WebKit Playwright. Mốc test sau WP-61a: pwa vitest 175, E2E 34/34 mỗi engine.

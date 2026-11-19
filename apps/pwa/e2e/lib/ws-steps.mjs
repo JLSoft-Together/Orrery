@@ -148,7 +148,7 @@ export async function workspaceSteps(c, page, peer) {
     await byId(page, 'entry-key_bar.dart').click()
     await byId(page, 'code-view').waitFor({ timeout: 8000 })
     if (Number(await byId(page, 'code-view').getAttribute('data-lines')) < 5) throw new Error('file lines')
-    await expectText(page, '[data-testid="file-foot"]', /chỉ đọc/)
+    await expectText(page, '[data-testid="file-foot"]', /dòng/)
     await byId(page, 'files-up').click()
     await byId(page, 'files-list').waitFor()
     await byId(page, 'viewer-seg-diff').click()

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ChevronLeft } from 'lucide-vue-next'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ViewerChanges from '../components/ViewerChanges.vue'
 import ViewerFiles from '../components/ViewerFiles.vue'
 import ViewerLog from '../components/ViewerLog.vue'
 import ViewerRun from '../components/ViewerRun.vue'
+import { leaveOk } from '../lib/editGuard'
 import type { JsonMap } from '../remote/types'
 import { useHubStore } from '../stores/hub'
 
@@ -18,7 +19,10 @@ const hub = useHubStore()
 const segment = ref<Segment>('files')
 const refresh = ref(0)
 const segments: Segment[] = ['files', 'diff', 'git', 'run']
+const editable = computed(() => !hub.isViewOnly(props.machine))
+const asks = computed(() => hub.viewOf(props.machine).confirms.length)
 let off: (() => void) | null = null
+let settle: ReturnType<typeof setTimeout> | null = null
 
 const command = (type: string, fields?: JsonMap, timeoutMs?: number): Promise<JsonMap> => hub.command(props.machine, type, fields, timeoutMs)
 const subscribe = (handler: (event: JsonMap) => void): (() => void) => hub.events(props.machine, handler)
@@ -30,7 +34,23 @@ onMounted(() => {
   void command('git.watch', { root: props.root }).catch(() => null)
 })
 
+watch(asks, (now, before) => {
+  if (now !== 0 || before === 0) return
+  if (settle) clearTimeout(settle)
+  settle = setTimeout(() => refresh.value++, 800)
+})
+
+async function pick(next: Segment): Promise<void> {
+  if (next === segment.value) return
+  if (await leaveOk(t)) segment.value = next
+}
+
+async function close(): Promise<void> {
+  if (await leaveOk(t)) emit('close')
+}
+
 onBeforeUnmount(() => {
+  if (settle) clearTimeout(settle)
   off?.()
   void command('git.unwatch', { root: props.root }).catch(() => null)
 })
@@ -39,16 +59,16 @@ onBeforeUnmount(() => {
 <template>
   <section class="viewer" data-testid="viewer" :data-segment="segment">
     <header class="head">
-      <button type="button" class="icon" :aria-label="t('common.back')" data-testid="viewer-close" @click="emit('close')"><ChevronLeft :size="24" :stroke-width="2" aria-hidden="true" /></button>
+      <button type="button" class="icon" :aria-label="t('common.back')" data-testid="viewer-close" @click="close"><ChevronLeft :size="24" :stroke-width="2" aria-hidden="true" /></button>
       <h2 class="title">{{ title }}</h2>
     </header>
     <div class="seg" role="tablist">
-      <button v-for="s in segments" :key="s" type="button" role="tab" class="seg-btn" :class="{ on: segment === s }" :aria-selected="segment === s" :data-testid="`viewer-seg-${s}`" @click="segment = s">{{ t(`viewer.seg.${s}`) }}</button>
+      <button v-for="s in segments" :key="s" type="button" role="tab" class="seg-btn" :class="{ on: segment === s }" :aria-selected="segment === s" :data-testid="`viewer-seg-${s}`" @click="pick(s)">{{ t(`viewer.seg.${s}`) }}</button>
     </div>
-    <ViewerFiles v-if="segment === 'files'" :command="command" :root="root" />
-    <ViewerChanges v-else-if="segment === 'diff'" :command="command" :root="root" :refresh="refresh" />
+    <ViewerFiles v-if="segment === 'files'" :command="command" :root="root" :editable="editable" :refresh="refresh" />
+    <ViewerChanges v-else-if="segment === 'diff'" :command="command" :root="root" :refresh="refresh" :editable="editable" />
     <ViewerLog v-else-if="segment === 'git'" :command="command" :root="root" :refresh="refresh" />
-    <ViewerRun v-else :command="command" :root="root" :refresh="refresh" :subscribe="subscribe" />
+    <ViewerRun v-else :command="command" :root="root" :refresh="refresh" :editable="editable" :subscribe="subscribe" />
   </section>
 </template>
 

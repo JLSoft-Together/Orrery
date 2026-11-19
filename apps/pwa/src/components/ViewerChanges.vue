@@ -2,15 +2,23 @@
 import { ChevronLeft, Minus, Plus } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { askConfirm } from '../lib/confirm'
+import { useAction } from '../lib/useAction'
 import { useAsync } from '../lib/useAsync'
+import { commitMessage, commitStaged, discardPath, stagePaths, unstagePaths } from '../lib/viewerActions'
 import { viewerData, type Commander } from '../lib/viewerApi'
-import { diffCounts, parseChanges, parseDiff } from '../lib/viewerModel'
+import { diffCounts, parseChanges, parseDiff, type ChangeEntry } from '../lib/viewerModel'
 import AsyncState from './AsyncState.vue'
+import ChangeRow from './ChangeRow.vue'
+import CommitBox from './CommitBox.vue'
 import DiffLines from './DiffLines.vue'
+import NoticeLine from './NoticeLine.vue'
 
-const props = defineProps<{ command: Commander; root: string; refresh: number }>()
+const props = defineProps<{ command: Commander; root: string; refresh: number; editable: boolean }>()
 const { t } = useI18n()
 const picked = ref<string | null>(null)
+const message = ref('')
+const { busy, notice, perform } = useAction()
 
 const status = useAsync(async () => parseChanges(await viewerData(props.command, 'git.status', { root: props.root })))
 const diff = useAsync(async () => {
@@ -22,9 +30,33 @@ const diff = useAsync(async () => {
   return { note: text.trim() === '' ? ('empty' as const) : null, lines: parseDiff(text) }
 }, false)
 
+const entries = computed(() => status.data.value?.entries ?? [])
+const staged = computed(() => entries.value.filter((e) => e.staged))
+const unstaged = computed(() => entries.value.filter((e) => e.unstaged))
 const counts = computed(() => diffCounts(diff.data.value?.lines ?? []))
-const allAdded = computed(() => (status.data.value?.entries ?? []).reduce((n, e) => n + (e.added ?? 0), 0))
-const allRemoved = computed(() => (status.data.value?.entries ?? []).reduce((n, e) => n + (e.removed ?? 0), 0))
+const allAdded = computed(() => entries.value.reduce((n, e) => n + (e.added ?? 0), 0))
+const allRemoved = computed(() => entries.value.reduce((n, e) => n + (e.removed ?? 0), 0))
+const canCommit = computed(() => staged.value.length > 0 && commitMessage(message.value) !== null)
+
+async function stage(paths: string[]): Promise<void> {
+  if (await perform(() => stagePaths(props.command, props.root, paths))) await status.reload()
+}
+
+async function unstage(paths: string[]): Promise<void> {
+  if (await perform(() => unstagePaths(props.command, props.root, paths))) await status.reload()
+}
+
+async function discard(entry: ChangeEntry): Promise<void> {
+  const ok = await askConfirm({ title: t('git.discardTitle', { path: entry.path }), body: t('git.discardBody'), ok: t('git.discardOk'), cancel: t('common.cancel'), danger: true })
+  if (!ok) return
+  if (await perform(() => discardPath(props.command, props.root, entry.path))) await status.reload()
+}
+
+async function commit(): Promise<void> {
+  const result = await perform(() => commitStaged(props.command, props.root, message.value), t('git.committed'))
+  if (result?.kind === 'done') message.value = ''
+  if (result) await status.reload()
+}
 
 watch(picked, (path) => {
   diff.data.value = null
@@ -54,23 +86,33 @@ watch(
         <div class="scroll"><DiffLines :lines="diff.data.value?.lines ?? []" /></div>
       </AsyncState>
     </template>
-    <AsyncState v-else :blank="status.data.value === null" :error="status.error.value" :empty="status.data.value !== null && status.data.value.entries.length === 0" :empty-text="t('viewer.noChanges')" @retry="status.reload">
-      <div class="chips">
-        <span class="chip add"><Plus :size="14" :stroke-width="2.4" aria-hidden="true" />{{ t('viewer.added', { n: allAdded }) }}</span>
-        <span class="chip del"><Minus :size="14" :stroke-width="2.4" aria-hidden="true" />{{ t('viewer.removed', { n: allRemoved }) }}</span>
-        <span class="count">{{ t('viewer.files', { n: status.data.value?.entries.length ?? 0 }) }}</span>
-      </div>
-      <ul class="list" data-testid="changes-list">
-        <li v-for="entry in status.data.value?.entries ?? []" :key="entry.path">
-          <button type="button" class="entry" :data-testid="`change-${entry.path}`" @click="picked = entry.path">
-            <span class="mark mono" :class="`m-${entry.mark === '?' ? 'u' : entry.mark}`">{{ entry.mark }}</span>
-            <span class="name mono">{{ entry.path }}</span>
-            <span v-if="entry.added !== null" class="plus mono">+{{ entry.added }}</span>
-            <span v-if="entry.removed !== null" class="minus mono">−{{ entry.removed }}</span>
-          </button>
-        </li>
-      </ul>
-    </AsyncState>
+    <template v-else>
+      <NoticeLine :notice="notice" />
+      <AsyncState :blank="status.data.value === null" :error="status.error.value" :empty="status.data.value !== null && entries.length === 0" :empty-text="t('viewer.noChanges')" @retry="status.reload">
+        <div class="chips">
+          <span class="chip add"><Plus :size="14" :stroke-width="2.4" aria-hidden="true" />{{ t('viewer.added', { n: allAdded }) }}</span>
+          <span class="chip del"><Minus :size="14" :stroke-width="2.4" aria-hidden="true" />{{ t('viewer.removed', { n: allRemoved }) }}</span>
+          <span class="count">{{ t('viewer.files', { n: entries.length }) }}</span>
+        </div>
+        <div class="body" data-testid="changes-list">
+          <div v-if="staged.length" class="section" data-testid="staged-head">
+            <h3>{{ t('git.staged', { n: staged.length }) }}</h3>
+            <button v-if="editable" type="button" class="btn all" :disabled="busy" data-testid="unstage-all" @click="unstage(staged.map((e) => e.path))">{{ t('git.unstageAll') }}</button>
+          </div>
+          <TransitionGroup tag="ul" name="row" class="list" data-testid="staged-list">
+            <li v-for="entry in staged" :key="entry.path"><ChangeRow :entry="entry" staged :editable="editable" :busy="busy" @open="picked = entry.path" @toggle="unstage([entry.path])" /></li>
+          </TransitionGroup>
+          <div v-if="unstaged.length" class="section" data-testid="changes-head">
+            <h3>{{ t('git.changes', { n: unstaged.length }) }}</h3>
+            <button v-if="editable" type="button" class="btn all" :disabled="busy" data-testid="stage-all" @click="stage(unstaged.map((e) => e.path))">{{ t('git.stageAll') }}</button>
+          </div>
+          <TransitionGroup tag="ul" name="row" class="list" data-testid="unstaged-list">
+            <li v-for="entry in unstaged" :key="entry.path"><ChangeRow :entry="entry" :staged="false" :editable="editable" :busy="busy" @open="picked = entry.path" @toggle="stage([entry.path])" @discard="discard(entry)" /></li>
+          </TransitionGroup>
+        </div>
+        <CommitBox v-if="editable" v-model="message" :can="canCommit" :busy="busy" @commit="commit" />
+      </AsyncState>
+    </template>
   </div>
 </template>
 
@@ -150,61 +192,56 @@ watch(
   background: var(--ccm-term-bg);
 }
 
-.list {
+.body {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.list {
   margin: 0;
   padding: 0 8px;
-  overflow-y: auto;
   list-style: none;
 }
 
-.entry {
+.list > li {
+  position: relative;
+}
+
+.section {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  color: var(--ccm-ink);
+  gap: 8px;
+  padding: 8px 16px 2px;
 }
 
-.mark {
-  width: 18px;
-  flex: none;
-  font-weight: 700;
-  text-align: center;
-  color: var(--ccm-warning);
-}
-
-.m-A,
-.m-u {
-  color: var(--ccm-done);
-}
-
-.m-D,
-.m-\! {
-  color: var(--ccm-error);
-}
-
-.name {
+.section h3 {
   flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ccm-ink-muted);
+}
+
+.all {
+  min-height: 36px;
+  padding: 0 12px;
   font-size: 0.8125rem;
 }
 
-.plus {
-  color: var(--ccm-done);
-  font-size: 0.8125rem;
+.row-enter-active,
+.row-leave-active,
+.row-move {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
 }
 
-.minus {
-  color: var(--ccm-error);
-  font-size: 0.8125rem;
+.row-enter-from,
+.row-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.row-leave-active {
+  position: absolute;
+  width: calc(100% - 16px);
 }
 </style>

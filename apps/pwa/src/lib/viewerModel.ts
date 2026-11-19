@@ -69,12 +69,13 @@ export interface FileData {
   kind: string
   path: string
   size: number
+  mtimeMs: number
   text: string | null
 }
 
 export function parseFile(raw: unknown): FileData {
   const m = isItem(raw) ? raw : {}
-  return { kind: str(m.kind) ?? 'missing', path: str(m.path) ?? '', size: num(m.size), text: typeof m.text === 'string' ? m.text : null }
+  return { kind: str(m.kind) ?? 'missing', path: str(m.path) ?? '', size: num(m.size), mtimeMs: num(m.mtimeMs), text: typeof m.text === 'string' ? m.text : null }
 }
 
 export interface ChangeEntry {
@@ -84,6 +85,10 @@ export interface ChangeEntry {
   added: number | null
   removed: number | null
   binary: boolean
+  x: string
+  y: string
+  staged: boolean
+  unstaged: boolean
 }
 
 const MARKS: Record<string, string> = { added: 'A', deleted: 'D', renamed: 'R', untracked: '?', conflict: '!' }
@@ -99,7 +104,11 @@ export function parseChanges(raw: unknown): ChangesData {
     const path = str(e.path)
     if (!path) return []
     const kind = str(e.kind) ?? 'modified'
-    return [{ path, kind, mark: MARKS[kind] ?? 'M', added: typeof e.added === 'number' ? e.added : null, removed: typeof e.removed === 'number' ? e.removed : null, binary: e.binary === true }]
+    const x = str(e.x) ?? (kind === 'untracked' ? '?' : '.')
+    const y = str(e.y) ?? (kind === 'untracked' ? '?' : '.')
+    const staged = x !== '.' && x !== '?'
+    const unstaged = y !== '.' || x === '?'
+    return [{ path, kind, mark: MARKS[kind] ?? 'M', added: typeof e.added === 'number' ? e.added : null, removed: typeof e.removed === 'number' ? e.removed : null, binary: e.binary === true, x, y, staged, unstaged }]
   })
   return { branch: str(m.branch), entries }
 }
@@ -153,6 +162,36 @@ export function parseRunSession(raw: unknown): RunSession | null {
 
 export function parseRunSessions(raw: unknown): RunSession[] {
   return Array.isArray(raw) ? raw.flatMap((r) => parseRunSession(r) ?? []) : []
+}
+
+export interface RunConfig {
+  id: string
+  name: string
+  type: string
+}
+
+export function parseRunConfigs(raw: unknown): RunConfig[] {
+  return items(raw).flatMap((m) => {
+    const id = str(m.id)
+    return id ? [{ id, name: str(m.name) ?? id, type: str(m.type) ?? 'custom' }] : []
+  })
+}
+
+export interface RunDevice {
+  id: string
+  name: string
+  ready: boolean
+}
+
+export function parseRunDevices(raw: unknown): RunDevice[] {
+  return items(raw).flatMap((m) => {
+    const id = str(m.id)
+    return id ? [{ id, name: str(m.name) ?? id, ready: m.state === undefined || m.state === null || m.state === 'ready' }] : []
+  })
+}
+
+export function firstReady(devices: RunDevice[]): string | null {
+  return devices.find((d) => d.ready)?.id ?? null
 }
 
 export interface RunLine {

@@ -165,8 +165,8 @@ watch(
         ? ui.compact
           ? '0px'
           : titleBar
-            ? 'calc(var(--ccm-next-titlebar, 36px) + 12px)'
-            : '24px'
+            ? 'calc(var(--ccm-next-titlebar, 36px) + 38px)'
+            : '50px'
         : `${headerH.value + (showFooter.value ? footerH.value : 0)}px`,
     ),
   { flush: 'post', immediate: true },

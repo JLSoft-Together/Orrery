@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { BellRing, FolderOpen, LayoutTemplate, Mail, Maximize2, PanelLeft, PanelRight, Play, Plus, Send, X } from 'lucide-vue-next'
+import { BellRing, FolderOpen, FolderTree, LayoutTemplate, Mail, Maximize2, PanelLeft, PanelRight, Play, Plus, Send, X } from 'lucide-vue-next'
 import type { TerminalStatus } from '@ccm/shared'
 import { useCompact } from '../../composables/useCompact'
 import { usePaneActions } from '../../composables/usePaneActions'
@@ -2107,14 +2107,17 @@ onBeforeUnmount(() => {
       <button
         v-if="!focusOn"
         type="button"
-        class="ccm-btn-plain hidden shrink-0 md:inline-flex"
+        :class="isNext ? 'ccm-btn hidden shrink-0 md:inline-flex' : 'ccm-btn-plain hidden shrink-0 md:inline-flex'"
         :aria-pressed="explorerOn"
-        :title="t('workspace.explorer.toggle', { keys: shortcutText('wsExplorer', isMac) })"
-        :aria-label="t('workspace.explorer.toggle', { keys: shortcutText('wsExplorer', isMac) })"
+        :title="isNext ? t('mist.shell.explorerTip', { keys: shortcutText('wsExplorer', isMac) }) : t('workspace.explorer.toggle', { keys: shortcutText('wsExplorer', isMac) })"
+        :aria-label="isNext ? t('mist.shell.explorerTip', { keys: shortcutText('wsExplorer', isMac) }) : t('workspace.explorer.toggle', { keys: shortcutText('wsExplorer', isMac) })"
+        :data-active="isNext && explorerOn ? '' : undefined"
         data-explorer-toggle
         @click="onExplorerToggle"
       >
-        <PanelRight :size="15" aria-hidden="true" />
+        <FolderTree v-if="isNext" :size="14" aria-hidden="true" />
+        <span v-if="isNext" class="text-xs font-medium">{{ t('mist.shell.explorer') }}</span>
+        <PanelRight v-else :size="15" aria-hidden="true" />
       </button>
     </div>
 

@@ -15,8 +15,8 @@ import { hasBuildClean } from '../../../lib/buildClean'
 import { hasCtxSources } from '../../../lib/ctxSources'
 import { hasDeepSeek } from '../../../lib/desktop'
 import type { MenuEntry } from '../../../lib/menu'
-import { buildLiveRows, collapsedProjects, freezeLayout, layoutOf, needsLayout, needsOf, UNDO_MS, type LayoutSection, type LiveExtras, type LiveRow } from '../../../lib/next/railLive'
-import { forgetSnoozed, isSnoozed, snooze } from '../../../lib/next/railSnooze'
+import { buildLiveRows, collapsedProjects, freezeLayout, layoutOf, type LayoutSection, type LiveExtras, type LiveRow } from '../../../lib/next/railLive'
+import { forgetSnoozed, isSnoozed } from '../../../lib/next/railSnooze'
 import { NEXT_SHELL_KEY } from '../../../lib/next/shellContext'
 import { leftRail, workspaceBridge, type DragHandoff } from '../../../lib/next/workspaceBridge'
 import { hasLayouts, hasScripts, listLayouts, type SavedLayout } from '../../../lib/projects'
@@ -34,14 +34,12 @@ import { leaves, type SplitDir } from '../../../lib/splitLayout'
 import { waitDisplay } from '../../../lib/wait'
 import { useAgentsStore } from '../../../stores/agents'
 import { useRunStore } from '../../../stores/run'
-import { useToastsStore } from '../../../stores/toasts'
 import { useUiStore } from '../../../stores/ui'
 import { useUiGenStore } from '../../../stores/uiGen'
 import { isTerm, presetOf, useWorkspaceStore, workCwd, type SplitChoice } from '../../../stores/workspace'
 import ContextMenu from '../../ui/ContextMenu.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import RailCollapsed from './RailCollapsed.vue'
-import RailNeeds from './RailNeeds.vue'
 import RailRowItem from './RailRowItem.vue'
 
 const props = defineProps<{ collapsed?: boolean }>()
@@ -53,7 +51,6 @@ const uigen = useUiGenStore()
 const { available: openable, picking, openProject } = useOpenProject()
 const info = usePaneInfo()
 const agents = useAgentsStore()
-const toasts = useToastsStore()
 const run = useRunStore()
 const rail = useRail()
 const paneActions = usePaneActions()
@@ -83,24 +80,19 @@ const rowByKey = computed(() => new Map(rows.value.map((r) => [r.key, r] as cons
 const clusterOrder = computed(() => rail.clusters.value.map((c) => c.key))
 const clusterByKey = computed(() => new Map(rail.clusters.value.map((c) => [c.key, c] as const)))
 const mode = computed(() => uigen.railGroup)
-const needs = computed(() => needsOf(rows.value, isSnoozed))
 const freshBody = computed(() => layoutOf(rows.value, mode.value, clusterOrder.value))
-const freshNeeds = computed(() => needsLayout(needs.value))
 
 const hold = ref(false)
 const body = ref<LayoutSection[]>([])
-const needsFrozen = ref<LayoutSection[]>([])
 let lastMode = mode.value
 
 function sync(force = false): void {
   const reset = force || lastMode !== mode.value
   lastMode = mode.value
   body.value = freezeLayout(reset ? null : body.value, freshBody.value, hold.value)
-  needsFrozen.value = freezeLayout(reset ? null : needsFrozen.value, freshNeeds.value, hold.value)
 }
-watch([freshBody, freshNeeds, hold, mode], () => sync(), { immediate: true })
+watch([freshBody, hold, mode], () => sync(), { immediate: true })
 
-const needsShown = computed(() => (needsFrozen.value[0]?.keys ?? []).map((k) => rowByKey.value.get(k)).filter((r): r is LiveRow => !!r))
 const sectionRows = (s: LayoutSection): LiveRow[] => s.keys.map((k) => rowByKey.value.get(k)).filter((r): r is LiveRow => !!r)
 const collapsedList = computed(() => collapsedProjects(rows.value, clusterOrder.value, isSnoozed))
 
@@ -124,34 +116,6 @@ function activateRow(row: LiveRow): void {
   workspace.activate(row.paneKey)
   ui.setView('workspace')
   shell?.closeRail()
-}
-
-function openNext(): void {
-  workspace.nextAttention()
-  ui.setView('workspace')
-  shell?.closeRail()
-}
-
-function snoozeRow(row: LiveRow, minutes: number): void {
-  if (!row.attn) return
-  const done = snooze(row.key, row.attn, minutes)
-  sync(true)
-  toasts.push({
-    id: `rail-snooze-${row.key}`,
-    kind: 'undo',
-    text: t('mist.rail.snoozed', { name: row.title, n: done.minutes }),
-    timeoutMs: UNDO_MS,
-    actions: [
-      {
-        label: t('mist.rail.undo'),
-        primary: true,
-        run: () => {
-          done.undo()
-          sync(true)
-        },
-      },
-    ],
-  })
 }
 
 const selection = ref<RailSelection>(NO_SELECTION)
@@ -654,7 +618,6 @@ const clusterKeyOf = (id: string): string => id.slice(2)
         <Plus v-else :size="15" aria-hidden="true" />
       </button>
     </div>
-    <RailNeeds v-if="!props.collapsed && needsShown.length" :items="needsShown" @open="activateRow" @next="openNext" @snooze="snoozeRow" />
     <div ref="listEl" class="ccm-scroll min-h-0 flex-1 overflow-y-auto px-1.5 py-1" data-rail-list>
       <p v-if="empty && !props.collapsed" class="px-2 py-3 text-2xs text-ink-faint">{{ t('mist.rail.empty') }}</p>
       <RailCollapsed v-else-if="props.collapsed" :projects="collapsedList" @open="activateRow" @menu="onRowMenu" />
@@ -695,7 +658,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
                 <Ellipsis :size="14" aria-hidden="true" />
               </button>
             </div>
-            <div v-if="!folded.has(clusterKeyOf(s.id))" class="flex flex-col gap-0.5">
+            <div v-if="!folded.has(clusterKeyOf(s.id))" class="ccm-next-rail-children ml-[17px] flex flex-col gap-0.5 border-l border-line pl-1" data-rail-children>
               <RailRowItem
                 v-for="r in sectionRows(s)"
                 :key="r.key"

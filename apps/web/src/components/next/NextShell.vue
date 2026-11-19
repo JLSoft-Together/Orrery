@@ -29,10 +29,10 @@ import { hasExtensions, hasTerminals, titleBar } from '../../lib/desktop'
 import { hasDevices } from '../../lib/devices'
 import { hasDiskMap } from '../../lib/diskMap'
 import { hasTelegram } from '../../lib/telegram'
-import { limitLevel } from '../../lib/headerStatus'
 import { formatKeys } from '../../lib/shortcuts'
 import { isMac } from '../../lib/platform'
 import { leaves } from '../../lib/splitLayout'
+import { canCollapseRail, effectiveRailMode, isRailToggleKey, readRailCollapsed, writeRailCollapsed } from '../../lib/next/railCollapse'
 import { clampRailWidth, nextRailMode, RAIL_MAX, RAIL_MIN, railModeFor, railWidth, readRailWidth, writeRailWidth, type RailMode } from '../../lib/next/railMode'
 import { NEXT_SHELL_KEY } from '../../lib/next/shellContext'
 import { useExtrasStore } from '../../stores/extras'
@@ -48,6 +48,8 @@ import SettingsMenu from '../SettingsMenu.vue'
 import SideResizer from '../workspace/SideResizer.vue'
 import TelegramToggle from '../TelegramToggle.vue'
 import LiveRail from './rail/LiveRail.vue'
+import RailCollapseButton from './rail/RailCollapseButton.vue'
+import NextQuotaBar from './NextQuotaBar.vue'
 import GlassMenu, { type GlassMenuItem } from './ui/GlassMenu.vue'
 import GlassTooltip from './ui/GlassTooltip.vue'
 import SegmentedControl, { type NextSegment } from './ui/SegmentedControl.vue'
@@ -66,7 +68,10 @@ const resources = useResourcesStore()
 const update = useUpdateStore()
 
 const viewport = ref(typeof window === 'undefined' ? 1440 : window.innerWidth)
-const mode = ref<RailMode>(railModeFor(viewport.value))
+const baseMode = ref<RailMode>(railModeFor(viewport.value))
+const collapsed = ref(readRailCollapsed())
+const mode = computed<RailMode>(() => effectiveRailMode(baseMode.value, collapsed.value))
+const collapsible = computed(() => canCollapseRail(baseMode.value))
 const custom = ref<number | null>(readRailWidth())
 const overlayOpen = ref(false)
 const dragging = ref(false)
@@ -78,7 +83,12 @@ const iconMode = computed(() => mode.value === 'icon')
 
 function onResize(): void {
   viewport.value = window.innerWidth
-  mode.value = nextRailMode(mode.value, viewport.value)
+  baseMode.value = nextRailMode(baseMode.value, viewport.value)
+}
+function toggleCollapse(): void {
+  if (!collapsible.value) return
+  collapsed.value = !collapsed.value
+  writeRailCollapsed(collapsed.value)
 }
 function closeRail(): void {
   overlayOpen.value = false
@@ -98,6 +108,12 @@ watch(
 )
 
 function onKey(e: KeyboardEvent): void {
+  if (isRailToggleKey(e, isMac) && collapsible.value && !railHidden.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleCollapse()
+    return
+  }
   if (e.key === 'Escape' && overlayOpen.value && mode.value === 'overlay') {
     e.preventDefault()
     closeRail()
@@ -125,12 +141,12 @@ watch(pageActive, applyPause, { immediate: true })
 
 onMounted(() => {
   window.addEventListener('resize', onResize)
-  window.addEventListener('keydown', onKey)
+  window.addEventListener('keydown', onKey, true)
   onResize()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
-  window.removeEventListener('keydown', onKey)
+  window.removeEventListener('keydown', onKey, true)
   document.documentElement.removeAttribute('data-paused')
 })
 
@@ -151,22 +167,6 @@ watch(
   () => inbox.open,
   (o) => (inboxAt.value = o ? (inboxBtn.value?.getBoundingClientRect() ?? null) : null),
 )
-
-const quota = computed(() => {
-  const source = extras.limits?.fiveHour || extras.limits?.sevenDay ? extras.limits : extras.codexLimits
-  const rows = [
-    { id: '5h', label: t('mist.shell.quota5h'), w: source?.fiveHour },
-    { id: '7d', label: t('mist.shell.quotaWeek'), w: source?.sevenDay },
-  ]
-  return rows
-    .filter((r) => r.w && Number.isFinite(r.w.usedPct))
-    .map((r) => {
-      const used = Math.min(100, Math.max(0, Math.round(r.w!.usedPct)))
-      const level = limitLevel(100 - used)
-      return { id: r.id, label: r.label, used, tone: level === 'critical' ? 'bg-st-error' : level === 'warn' ? 'bg-warning' : 'bg-accent' }
-    })
-})
-const quotaTitle = computed(() => quota.value.map((q) => `${q.label} ${q.used}%`).join(', '))
 
 const searchKeys = computed(() => formatKeys(['Mod', 'K'], isMac).join(isMac ? '' : '+'))
 const updateVersion = computed(() => update.state?.release?.version ?? '')
@@ -252,6 +252,7 @@ const iconBtn =
         <div class="flex shrink-0 gap-2 px-2.5" :class="iconMode ? 'flex-col items-center py-2.5' : 'h-11 items-center'">
           <span class="bg-accent-grad inline-grid size-[26px] shrink-0 place-items-center rounded-inner text-[13px] font-bold" aria-hidden="true" data-next-logo>O</span>
           <SegmentedControl v-if="!iconMode" v-model="view" :options="textOptions" :label="t('mist.switch.title')" size="sm" fill class="min-w-0 flex-1" data-tour="tabs" />
+          <RailCollapseButton v-if="!iconMode && collapsible" :collapsed="false" @toggle="toggleCollapse" />
           <div v-else class="flex flex-col gap-1" role="radiogroup" :aria-label="t('mist.switch.title')" data-tour="tabs" @keydown="onIconKey">
             <GlassTooltip v-for="o in options" :key="o.value" :text="o.label" side="bottom">
               <button
@@ -268,6 +269,7 @@ const iconBtn =
               </button>
             </GlassTooltip>
           </div>
+          <RailCollapseButton v-if="iconMode && collapsible" :collapsed="true" @toggle="toggleCollapse" />
         </div>
 
         <button
@@ -322,20 +324,8 @@ const iconBtn =
             <CircleArrowDown :size="16" class="text-accent-ink" aria-hidden="true" />
           </button>
 
-          <div v-if="!iconMode" class="flex min-w-0 items-center gap-2 px-1" data-next-quota>
-            <div class="flex min-w-0 flex-1 flex-col gap-1" :title="quotaTitle || t('mist.shell.noQuota')">
-              <p v-if="!quota.length" class="truncate text-2xs text-ink-faint">{{ t('mist.shell.noQuota') }}</p>
-              <p v-for="q in quota" :key="q.id" class="flex items-center gap-1.5 text-2xs text-ink-muted tabular-nums" :data-quota="q.id">
-                <span class="w-7 shrink-0">{{ q.label }}</span>
-                <span class="h-1 min-w-0 flex-1 overflow-hidden rounded-sm bg-line-strong" aria-hidden="true"><span class="block h-full" :class="q.tone" :style="{ width: `${q.used}%` }" /></span>
-                <span class="w-8 shrink-0 text-right">{{ q.used }}%</span>
-              </p>
-            </div>
-            <div class="ccm-next-status shrink-0"><HeaderStatusPopover /></div>
-          </div>
-          <div v-else class="ccm-next-status"><HeaderStatusPopover /></div>
-
           <div class="flex items-center gap-0.5" :class="iconMode ? 'flex-col' : 'justify-between'">
+            <div class="ccm-next-status"><HeaderStatusPopover /></div>
             <button
               ref="inboxBtn"
               type="button"
@@ -404,6 +394,8 @@ const iconBtn =
       <slot name="drawer" />
     </div>
 
+    <NextQuotaBar v-if="!railHidden" />
+
     <div hidden aria-hidden="true"><SettingsMenu /></div>
     <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inboxBtn" @close="inbox.open = false" />
     <GlassMenu :open="moreOpen" :items="moreItems" :label="t('nav.more')" :width="MENU_W" :x="moreAt.x" :y="moreAt.y" @select="pickMore" @close="closeMore" />
@@ -414,14 +406,29 @@ const iconBtn =
 :root[data-ui='next'] .ccm-next-shell {
   display: grid;
   grid-template-columns: var(--ccm-rail-w) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 24px;
   gap: var(--ccm-gap-shell, 12px);
+  row-gap: 8px;
+  transition: grid-template-columns var(--ccm-dur-base) var(--ccm-ease-enter);
   height: 100dvh;
-  padding: 12px;
+  padding: 12px 12px 6px;
   box-sizing: border-box;
   overflow: hidden;
 }
+:root[data-ui='next'] .ccm-next-shell[data-rail-dragging],
+:root[data-ui='next'][data-motion='off'] .ccm-next-shell {
+  transition: none;
+}
+:root[data-ui='next'] .ccm-next-footer {
+  grid-column: 1 / -1;
+}
+:root[data-ui='next'] [data-explorer-toggle][aria-pressed='true'] {
+  background: var(--ccm-accent-soft);
+  color: var(--ccm-accent-ink);
+}
 :root[data-ui='next'] .ccm-next-shell[data-rail-hidden] {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   padding: 0;
 }
 :root[data-ui='next'] .ccm-next-shell[data-rail-mode='overlay'] {
@@ -464,7 +471,7 @@ const iconBtn =
 :root[data-ui='next'] .ccm-next-rail-overlay {
   position: fixed;
   top: 12px;
-  bottom: 12px;
+  bottom: 38px;
   left: 12px;
   width: var(--ccm-rail-w);
   z-index: 40;

@@ -37,7 +37,8 @@ export function lanEndpoints(view: QrView, defaultPort: number): Array<{ host: s
 }
 
 export function pairCandidates(view: QrView, input: Pick<PairInput, 'token'>, lanBudgetMs: number, relayBudgetMs: number, defaultPort: number): Candidate[] {
-  const out: Candidate[] = lanEndpoints(view, defaultPort).map((a) => ({ url: lanUrl(a.host, a.port), route: 'lan' as const, budgetMs: lanBudgetMs }))
+  const lan = view.tls === true ? lanEndpoints(view, defaultPort) : []
+  const out: Candidate[] = lan.map((a) => ({ url: lanUrl(a.host, a.port), route: 'lan' as const, budgetMs: lanBudgetMs }))
   if (view.relay && view.pt) out.push({ url: relayPairUrl(view.relay, view.machine, view.pt), route: 'relay', budgetMs: relayBudgetMs })
   else if (view.relay && input.token) out.push({ url: relayPhoneUrl(view.relay, view.machine, input.token), route: 'relay', budgetMs: relayBudgetMs })
   return out
@@ -88,6 +89,7 @@ export function createPairFlow(deps: ConnectionDeps): PairFlow {
               pairedAt: deps.now(),
               lastHost: lan?.host,
               lastPort: lan?.port,
+              lanTls: view.tls === true,
               relayUrl,
               relayToken: parsed?.token,
               relayTokenExp: parsed?.exp,

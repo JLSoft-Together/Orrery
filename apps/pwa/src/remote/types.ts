@@ -61,6 +61,7 @@ export interface Machine {
   pairedAt: number
   lastHost?: string
   lastPort?: number
+  lanTls?: boolean
   relayUrl?: string
   relayToken?: string
   relayTokenExp?: number

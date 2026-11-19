@@ -194,3 +194,7 @@ Cargo workspace riêng (`[workspace]` trống, `Cargo.lock` riêng, target `apps
 
 ## WP-61a (hello control, pair denied)
 - `ctx.rs` trait `Host::control()` (mặc định `true`; `TestHost.view_only` để test) -> `Ctx::welcome` thêm `control`. `pair.rs` `Pairing::deny()` đặt `ended = "denied"` khi hộp duyệt từ chối, `ctx.changed()` -> status `pairEnded: "denied"`. Test: `session_tests.rs` `hello_reports_control_off_when_the_host_is_view_only`, `pair_tests.rs` `a_denied_confirm_sends_pair_denied_and_saves_nothing`.
+
+## WP-63 (snapshot lớn, relay backoff)
+- `remote/fit.rs`: `fit_data(data, budget)` → `Fit::{Whole, Trimmed(Trimmed{activity, agents, text}), Failed(bytes)}` (activity giữ 100 → bỏ sub-agent đã xong cũ nhất → bỏ hết activity → cắt chuỗi > 1000 → bỏ sub-agent còn lại; `main` / terminal giữ), `fit_snapshot(event, SNAPSHOT_BUDGET 900 000)` thêm `trimmed` + log stderr, `limit_event`, `oversized` (reply `re` → `error:"limit"`, event → `limit`), `size` (đếm byte không cấp phát), `fits_message`. `dashboard.rs Phone::snapshot` gọi `fit_snapshot` (Failed → event `limit`), `forward` batch quá 1 MiB → `resync_event`. `link.rs Secure::json` quá `MAX_MESSAGE` → gửi `oversized` thay vì trả false (trước đây phiên dừng im lặng, socket không đóng). Test `fit_tests.rs` (cắt từng bước + phiên LAN thật với store 700 sub-agent > 1 MiB).
+- `relay.rs`: `FIRST_BACKOFF` 1 s, `MAX_BACKOFF` 15 s (trước 60), `REPLACED_BACKOFF` 60 s (4409), `next_backoff`, `jittered(d, r)` = `[d/2, d]`, `wait` dùng `jitter` (getrandom). Test `relay_tests.rs`.

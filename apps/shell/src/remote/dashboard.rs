@@ -10,6 +10,7 @@ use tokio::sync::{mpsc, watch};
 
 use super::config::now_secs;
 use super::ctx::{Control, Ctx};
+use super::fit::{fit_snapshot, fits_message, limit_event, Fit, SNAPSHOT_BUDGET};
 use super::limits::{Rate, MAX_COMMANDS_PER_MINUTE};
 use super::liveness::{due, Liveness};
 use super::link::{Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_OFF, CLOSE_PROTO};
@@ -322,13 +323,12 @@ impl Phone {
     }
 
     async fn snapshot(&mut self, text: &str) -> bool {
-        match snapshot_event(text) {
-            Some((seq, event)) => {
-                self.last_seq = seq;
-                self.sec.json(&event).await
-            }
-            None => true,
+        let Some((seq, mut event)) = snapshot_event(text) else { return true };
+        self.last_seq = seq;
+        if let Fit::Failed(bytes) = fit_snapshot(&mut event, SNAPSHOT_BUDGET) {
+            return self.sec.json(&limit_event("snapshot", bytes)).await;
         }
+        self.sec.json(&event).await
     }
 
     async fn resync_event(&mut self) -> bool {
@@ -387,6 +387,10 @@ impl Phone {
             let Some((seq, event)) = events_event(&text) else { continue };
             if seq != 0 && seq <= self.last_seq {
                 continue;
+            }
+            if !fits_message(&event) {
+                eprintln!("[remote] events batch seq {seq} over {} B, sending a snapshot instead", core_remote_proto::frame::MAX_MESSAGE);
+                return self.resync_event().await;
             }
             self.last_seq = seq;
             if !self.sec.json(&event).await {

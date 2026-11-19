@@ -55,7 +55,7 @@ describe('MachineConnection', () => {
       sockets.push(socket)
       attachDesktop(socket)
     })
-    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2' }))
+    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2', lanTls: true }))
     const conn = make()
     conn.connect()
     await tick(10)
@@ -65,7 +65,7 @@ describe('MachineConnection', () => {
 
   it('falls back to the relay when LAN is unreachable', async () => {
     relayRoute()
-    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2' }))
+    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2', lanTls: true }))
     const conn = make()
     conn.connect()
     await tick(10)
@@ -79,7 +79,7 @@ describe('MachineConnection', () => {
       sockets.push(socket)
       attachDesktop(socket)
     })
-    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2' }))
+    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2', lanTls: true }))
     const conn = make()
     conn.connect()
     await tick(10)
@@ -262,7 +262,7 @@ describe('MachineConnection', () => {
       sockets.push(socket)
       attachDesktop(socket)
     })
-    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2' }))
+    machines.byId.set('m1', sampleMachine({ lastHost: '10.0.0.2', lanTls: true }))
     const conn = make()
     const rtts: number[] = []
     conn.rtt.on((ms) => rtts.push(ms))

@@ -28,7 +28,7 @@ describe('relay token and urls', () => {
 })
 
 describe('planRoutes', () => {
-  const both = { lastHost: '10.0.0.2', relayUrl: 'https://r' }
+  const both = { lastHost: '10.0.0.2', lanTls: true, relayUrl: 'https://r' }
   it('orders by policy', () => {
     expect(planRoutes('auto', both)).toEqual(['lan', 'relay'])
     expect(planRoutes('lan', both)).toEqual(['lan'])
@@ -36,13 +36,18 @@ describe('planRoutes', () => {
   })
   it('skips routes the machine cannot use', () => {
     expect(planRoutes('auto', { relayUrl: 'https://r' })).toEqual(['relay'])
-    expect(planRoutes('auto', { lastHost: '10.0.0.2' })).toEqual(['lan'])
+    expect(planRoutes('auto', { lastHost: '10.0.0.2', lanTls: true })).toEqual(['lan'])
     expect(planRoutes('lan', { relayUrl: 'https://r' })).toEqual([])
+  })
+  it('never plans LAN while the desktop has not reported a TLS listener', () => {
+    expect(planRoutes('auto', { lastHost: '10.0.0.2', relayUrl: 'https://r' })).toEqual(['relay'])
+    expect(planRoutes('auto', { lastHost: '10.0.0.2', lanTls: false, relayUrl: 'https://r' })).toEqual(['relay'])
+    expect(planRoutes('lan', { lastHost: '10.0.0.2' })).toEqual([])
   })
 })
 
 describe('dial', () => {
-  const machine = sampleMachine({ lastHost: '10.0.0.2', relayToken: 'tok' })
+  const machine = sampleMachine({ lastHost: '10.0.0.2', lanTls: true, relayToken: 'tok' })
 
   function deps(net = createNetwork(), nowSeconds = 100) {
     return { net, deps: { connector: net.connector, config: testConfig(), nowSeconds: () => nowSeconds } }
@@ -63,6 +68,15 @@ describe('dial', () => {
     const result = await dial(d, machine, 'auto')
     expect('opened' in result && result.opened.route).toBe('relay')
     expect(net.opened[0]?.url).toBe('wss://relay.example/p/m1?t=tok')
+  })
+
+  it('goes straight to the relay without a wss:// LAN attempt when the desktop has no TLS listener', async () => {
+    const { net, deps: d } = deps()
+    net.routes.set('wss://10.0.0.2:4320/remote', () => {})
+    net.routes.set('wss://relay.example/p/m1', () => {})
+    const result = await dial(d, { ...machine, lanTls: undefined }, 'auto')
+    expect('opened' in result && result.opened.route).toBe('relay')
+    expect(net.opened.map((o) => o.url)).toEqual(['wss://relay.example/p/m1?t=tok'])
   })
 
   it('relay policy never touches LAN', async () => {

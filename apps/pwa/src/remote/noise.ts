@@ -47,6 +47,7 @@ export interface QrView {
   host: string | null
   port: number | null
   lan?: Array<{ host: string; port: number }>
+  tls?: boolean
   relay: string | null
   pt?: string | null
   mkey: string

@@ -146,3 +146,31 @@ describe('MachineData cache and confirms', () => {
     expect(calls).toEqual(['confirm.answer'])
   })
 })
+
+describe('MachineData size limit', () => {
+  it('keeps the trimmed marker of a cut snapshot and drops it on a whole one', () => {
+    data.handleEvent({ ...snapshot(1), trimmed: { activity: 400, agents: 12, text: false } })
+    expect(data.view.trimmed).toEqual({ activity: 400, agents: 12, text: false })
+    data.handleEvent(snapshot(2))
+    expect(data.view.trimmed).toBeNull()
+  })
+
+  it('shows a limit event instead of waiting forever, asks one resync, and clears it with the next snapshot', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    data.handleEvent({ t: 'limit', what: 'snapshot', bytes: 1_300_000, max: 1_048_576 })
+    expect(data.view.limit).toEqual({ what: 'snapshot', bytes: 1_300_000, max: 1_048_576 })
+    expect(data.view.snapshot).toBeNull()
+    expect(warn).toHaveBeenCalledOnce()
+    data.handleEvent({ t: 'events', seq: 3, events: [] })
+    data.handleEvent({ t: 'events', seq: 4, events: [] })
+    expect(calls).toEqual(['resync'])
+    data.handleEvent(snapshot(5))
+    expect(data.view.limit).toBeNull()
+    warn.mockRestore()
+  })
+
+  it('ignores a malformed limit event', () => {
+    data.handleEvent({ t: 'limit', bytes: 5 })
+    expect(data.view.limit).toBeNull()
+  })
+})

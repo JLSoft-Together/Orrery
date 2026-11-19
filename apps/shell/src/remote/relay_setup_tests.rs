@@ -72,7 +72,7 @@ fn the_first_deploy_creates_the_subdomain_and_sends_bindings_with_migrations() {
     assert_eq!(meta["main_module"], "worker.js");
     assert_eq!(meta["migrations"], json!({ "new_tag": "v1", "new_sqlite_classes": ["Room"] }));
     let kinds: Vec<&str> = meta["bindings"].as_array().unwrap().iter().map(|b| b["type"].as_str().unwrap()).collect();
-    assert_eq!(kinds, ["durable_object_namespace", "ratelimit", "plain_text", "plain_text"]);
+    assert_eq!(kinds, ["durable_object_namespace", "ratelimit", "plain_text"]);
     assert_eq!(meta["bindings"][0], json!({ "type": "durable_object_namespace", "name": "ROOM", "class_name": "Room" }));
     assert_eq!(meta["bindings"][1], json!({ "type": "ratelimit", "name": "LIMITER", "namespace_id": "9701", "simple": { "limit": 30, "period": 60 } }));
     assert!(calls(&cf).contains(&("POST".into(), format!("/accounts/{ACCOUNT}/workers/scripts/orrery-relay/subdomain"))));

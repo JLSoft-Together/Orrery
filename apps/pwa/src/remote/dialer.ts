@@ -18,8 +18,8 @@ export interface DialDeps {
   nowSeconds(): number
 }
 
-export function planRoutes(policy: RoutePolicy, machine: Pick<Machine, 'lastHost' | 'relayUrl'>): LinkRoute[] {
-  const lan = machine.lastHost ? (['lan'] as const) : []
+export function planRoutes(policy: RoutePolicy, machine: Pick<Machine, 'lastHost' | 'lanTls' | 'relayUrl'>): LinkRoute[] {
+  const lan = machine.lastHost && machine.lanTls === true ? (['lan'] as const) : []
   const relay = machine.relayUrl ? (['relay'] as const) : []
   if (policy === 'lan') return [...lan]
   if (policy === 'relay') return [...relay]
@@ -27,7 +27,7 @@ export function planRoutes(policy: RoutePolicy, machine: Pick<Machine, 'lastHost
 }
 
 async function openLan(deps: DialDeps, machine: Machine): Promise<Opened | null> {
-  if (!machine.lastHost) return null
+  if (!machine.lastHost || machine.lanTls !== true) return null
   const port = machine.lastPort ?? deps.config.lanPort
   try {
     const socket = await deps.connector(lanUrl(machine.lastHost, port), deps.config.lanBudgetMs)

@@ -11,6 +11,18 @@ export interface ConfirmAsk {
   receivedAt: number
 }
 
+export interface SnapshotTrim {
+  activity: number
+  agents: number
+  text: boolean
+}
+
+export interface SizeLimit {
+  what: string
+  bytes: number
+  max: number
+}
+
 export type WorkspaceDoc = Record<string, unknown> & { tabs?: unknown[] }
 
 export interface MachineView {
@@ -20,6 +32,8 @@ export interface MachineView {
   wsRev: number
   confirms: ConfirmAsk[]
   hello: JsonMap | null
+  trimmed: SnapshotTrim | null
+  limit: SizeLimit | null
   stale: boolean
   fromCache: boolean
   updatedAt: number | null
@@ -59,6 +73,8 @@ export const EMPTY_VIEW: MachineView = {
   wsRev: 0,
   confirms: [],
   hello: null,
+  trimmed: null,
+  limit: null,
   stale: true,
   fromCache: false,
   updatedAt: null,
@@ -66,6 +82,19 @@ export const EMPTY_VIEW: MachineView = {
 }
 
 const isMap = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
+
+const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0)
+
+export function parseTrim(raw: unknown): SnapshotTrim | null {
+  if (!isMap(raw)) return null
+  const trim = { activity: count(raw.activity), agents: count(raw.agents), text: raw.text === true }
+  return trim.activity || trim.agents || trim.text ? trim : null
+}
+
+export function parseLimit(event: JsonMap): SizeLimit | null {
+  if (typeof event.what !== 'string' || !event.what) return null
+  return { what: event.what.slice(0, 40), bytes: count(event.bytes), max: count(event.max) || 1 << 20 }
+}
 
 export class MachineData {
   readonly machineId: string
@@ -133,6 +162,9 @@ export class MachineData {
       case 'confirm.ask':
         this.onConfirm(event)
         break
+      case 'limit':
+        this.onLimit(event)
+        return
       default:
         return
     }
@@ -142,7 +174,14 @@ export class MachineData {
   private onSnapshot(event: JsonMap): void {
     if (!isMap(event.data) || typeof event.seq !== 'number') return
     this.resyncPending = false
-    this.set({ snapshot: deepCopy(event.data), seq: event.seq, stale: false, fromCache: false, updatedAt: this.now() })
+    this.set({ snapshot: deepCopy(event.data), seq: event.seq, trimmed: parseTrim(event.trimmed), limit: null, stale: false, fromCache: false, updatedAt: this.now() })
+  }
+
+  private onLimit(event: JsonMap): void {
+    const limit = parseLimit(event)
+    if (!limit) return
+    console.warn(`[remote] ${this.machineId}: ${limit.what} is ${limit.bytes} B, over ${limit.max} B`)
+    this.set({ limit })
   }
 
   private onEvents(event: JsonMap): void {

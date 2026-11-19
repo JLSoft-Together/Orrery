@@ -25,7 +25,9 @@ use crate::state::lock;
 pub const REGISTER_DOMAIN: &str = "orrery-register/1";
 pub const MACHINE_DOMAIN: &str = "orrery-machine/1";
 pub const PING_EVERY: Duration = Duration::from_secs(30);
-pub const MAX_BACKOFF: Duration = Duration::from_secs(60);
+pub const FIRST_BACKOFF: Duration = Duration::from_secs(1);
+pub const MAX_BACKOFF: Duration = Duration::from_secs(15);
+pub const REPLACED_BACKOFF: Duration = Duration::from_secs(60);
 pub const MAX_CONNS: usize = 64;
 pub const REVOKE_BATCH: usize = 64;
 pub const CLOSE_REPLACED: u16 = 4409;
@@ -104,15 +106,30 @@ pub fn flush_revokes(ctx: &Ctx) {
     }
 }
 
+pub fn next_backoff(d: Duration) -> Duration {
+    (d * 2).min(MAX_BACKOFF)
+}
+
+pub fn jittered(d: Duration, r: u16) -> Duration {
+    let half = d / 2;
+    half + half.mul_f64(f64::from(r) / f64::from(u16::MAX))
+}
+
+fn jitter(d: Duration) -> Duration {
+    let mut b = [0u8; 2];
+    let r = getrandom::fill(&mut b).map_or(u16::MAX, |()| u16::from_be_bytes(b));
+    jittered(d, r)
+}
+
 async fn wait(stop: &mut watch::Receiver<bool>, d: Duration) -> bool {
     tokio::select! {
-        _ = tokio::time::sleep(d) => !*stop.borrow(),
+        _ = tokio::time::sleep(jitter(d)) => !*stop.borrow(),
         _ = stop.changed() => false,
     }
 }
 
 pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
-    let mut backoff = Duration::from_secs(1);
+    let mut backoff = FIRST_BACKOFF;
     while !*stop.borrow() {
         let (url, registered) = {
             let cfg = lock(&ctx.config);
@@ -130,7 +147,7 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
                 if !wait(&mut stop, backoff).await {
                     break;
                 }
-                backoff = (backoff * 2).min(MAX_BACKOFF);
+                backoff = next_backoff(backoff);
                 continue;
             }
         }
@@ -139,20 +156,18 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
         ctx.set_relay_state("connecting");
         let code = match connect(&ctx, &url).await {
             Some(ws) => {
-                backoff = Duration::from_secs(1);
+                backoff = FIRST_BACKOFF;
                 ctx.set_relay_state("online");
                 connection(&ctx, ws, &mut stop).await
             }
             None => None,
         };
-        ctx.set_relay_state(if code == Some(CLOSE_REPLACED) { "replaced" } else { "offline" });
-        if code == Some(CLOSE_REPLACED) {
-            backoff = MAX_BACKOFF;
-        }
-        if !wait(&mut stop, backoff).await {
+        let replaced = code == Some(CLOSE_REPLACED);
+        ctx.set_relay_state(if replaced { "replaced" } else { "offline" });
+        if !wait(&mut stop, if replaced { REPLACED_BACKOFF } else { backoff }).await {
             break;
         }
-        backoff = (backoff * 2).min(MAX_BACKOFF);
+        backoff = if replaced { MAX_BACKOFF } else { next_backoff(backoff) };
     }
     ctx.set_relay_state("off");
 }

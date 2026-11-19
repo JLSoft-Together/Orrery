@@ -31,6 +31,8 @@ function setFlag(): void {
 export async function registerServiceWorker(options: SwOptions): Promise<SwHandle | null> {
   if (!('serviceWorker' in navigator)) return null
   const suppress = takeFlag()
+  const hadController = navigator.serviceWorker.controller !== null
+  const offer = hadController && !suppress
   let registration: ServiceWorkerRegistration
   try {
     registration = await navigator.serviceWorker.register(options.url, { scope: options.scope })
@@ -40,15 +42,14 @@ export async function registerServiceWorker(options: SwOptions): Promise<SwHandl
   const watch = (worker: ServiceWorker | null) => {
     if (!worker) return
     const settle = () => {
-      if (worker.state === 'installed' && navigator.serviceWorker.controller && !suppress) options.onWaiting()
+      if (worker.state === 'installed' && offer) options.onWaiting()
     }
     worker.addEventListener('statechange', settle)
     settle()
   }
-  if (registration.waiting && navigator.serviceWorker.controller && !suppress) options.onWaiting()
+  if (registration.waiting && offer) options.onWaiting()
   registration.addEventListener('updatefound', () => watch(registration.installing))
   let reloading = false
-  const hadController = navigator.serviceWorker.controller !== null
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloading || !hadController) return
     reloading = true

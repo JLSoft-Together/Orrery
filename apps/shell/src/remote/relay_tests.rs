@@ -16,7 +16,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use super::config::now_secs;
 use super::devices::Device;
-use super::relay::{register, ws_url, MACHINE_DOMAIN, REGISTER_DOMAIN};
+use super::relay::{jittered, next_backoff, register, ws_url, FIRST_BACKOFF, MACHINE_DOMAIN, MAX_BACKOFF, REGISTER_DOMAIN};
 use super::test_util::*;
 use crate::state::lock;
 
@@ -210,4 +210,27 @@ fn a_failed_handshake_over_the_relay_tells_the_relay_to_close_that_phone_with_th
         assert!(seen.iter().all(|v| !v.to_string().contains("203.0.113")));
     });
     rig.remote.enable(false);
+}
+
+#[test]
+fn the_relay_backoff_doubles_up_to_fifteen_seconds() {
+    let mut d = FIRST_BACKOFF;
+    let mut seen = vec![d];
+    for _ in 0..8 {
+        d = next_backoff(d);
+        seen.push(d);
+    }
+    let secs: Vec<u64> = seen.iter().map(Duration::as_secs).collect();
+    assert_eq!(secs, [1, 2, 4, 8, 15, 15, 15, 15, 15]);
+    assert!(MAX_BACKOFF <= Duration::from_secs(15));
+}
+
+#[test]
+fn the_relay_backoff_jitter_stays_between_half_and_the_full_delay() {
+    assert_eq!(jittered(MAX_BACKOFF, 0), Duration::from_millis(7500));
+    assert_eq!(jittered(MAX_BACKOFF, u16::MAX), MAX_BACKOFF);
+    let mid = jittered(MAX_BACKOFF, u16::MAX / 2);
+    assert!(mid > Duration::from_millis(11_000) && mid < Duration::from_millis(11_500), "{mid:?}");
+    let per_minute = 60.0 / jittered(MAX_BACKOFF, 0).as_secs_f64();
+    assert!(per_minute <= 8.0);
 }

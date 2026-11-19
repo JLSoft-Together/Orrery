@@ -59,7 +59,7 @@ describe('pair flow', () => {
 })
 
 describe('pairCandidates', () => {
-  const base: QrView = { ...view, lan: [{ host: '192.168.1.5', port: 4320 }, { host: '10.0.0.4', port: 4321 }], pt: 'ticket 1' }
+  const base: QrView = { ...view, lan: [{ host: '192.168.1.5', port: 4320 }, { host: '10.0.0.4', port: 4321 }], pt: 'ticket 1', tls: true }
 
   it('tries every LAN address first, then the relay with the ticket', () => {
     const list = pairCandidates(base, {}, 3000, 8000, 4320)
@@ -68,8 +68,14 @@ describe('pairCandidates', () => {
   })
 
   it('falls back to a v1 host and a bootstrap token', () => {
-    const v1: QrView = { ...view, host: '10.1.1.1', port: null, lan: undefined, pt: undefined }
+    const v1: QrView = { ...view, host: '10.1.1.1', port: null, lan: undefined, pt: undefined, tls: true }
     expect(pairCandidates(v1, { token: 'abc' }, 1, 2, 4320).map((c) => c.url)).toEqual(['wss://10.1.1.1:4320/remote', 'wss://relay.example/p/m9?t=abc'])
+  })
+
+  it('skips the wss:// LAN addresses while the QR does not announce a TLS listener', () => {
+    const list = pairCandidates({ ...base, tls: undefined }, {}, 3000, 8000, 4320)
+    expect(list.map((c) => c.url)).toEqual(['wss://relay.example/p/m9?pt=ticket%201'])
+    expect(pairCandidates({ ...base, tls: false, relay: null }, {}, 3000, 8000, 4320)).toEqual([])
   })
 
   it('has nothing to dial without any route', () => {

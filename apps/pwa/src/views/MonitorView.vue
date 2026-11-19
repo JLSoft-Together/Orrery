@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Clock, LayoutList, LoaderCircle, MoonStar, Rows3, TriangleAlert, WifiOff } from 'lucide-vue-next'
+import { Check, Clock, Info, LayoutList, LoaderCircle, MoonStar, Rows3, TriangleAlert, WifiOff } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LinkChip from '../components/LinkChip.vue'
@@ -47,6 +47,10 @@ function open(id: string): void {
   navigate({ name: 'session', machine: props.machine, terminal: id })
 }
 
+function megabytes(bytes: number): string {
+  return `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }).format(bytes / (1 << 20))} MB`
+}
+
 function toggleMode(): void {
   prefs.setMonitorMode(grouped.value ? 'cards' : 'groups')
 }
@@ -71,6 +75,19 @@ function toggleMode(): void {
       </div>
       <button type="button" class="banner-btn" data-testid="monitor-retry" @click="hub.refresh(machine)">{{ t('monitor.retry') }}</button>
     </div>
+
+    <div v-if="view.limit" class="banner" role="alert" data-testid="monitor-limit">
+      <TriangleAlert :size="22" :stroke-width="2" aria-hidden="true" />
+      <div class="banner-text">
+        <strong>{{ t('monitor.limitTitle') }}</strong>
+        <span>{{ t('monitor.limitBody', { size: megabytes(view.limit.bytes), max: megabytes(view.limit.max) }) }}</span>
+      </div>
+      <button type="button" class="banner-btn" data-testid="monitor-limit-retry" @click="hub.refresh(machine)">{{ t('monitor.retry') }}</button>
+    </div>
+    <p v-else-if="view.trimmed" class="note" role="status" data-testid="monitor-trimmed">
+      <Info :size="16" :stroke-width="2" aria-hidden="true" />
+      <span>{{ t('monitor.trimmed', { agents: view.trimmed.agents, activity: view.trimmed.activity, text: view.trimmed.text ? t('monitor.trimmedText') : '' }) }}</span>
+    </p>
 
     <p v-if="!known" class="empty" data-testid="monitor-unknown">{{ t('monitor.unknown') }}</p>
     <p v-else-if="sessions.length === 0" class="empty" data-testid="monitor-empty">{{ t(view.snapshot ? 'monitor.empty' : 'machines.noData') }}</p>
@@ -152,6 +169,20 @@ function toggleMode(): void {
   background: transparent;
   color: var(--ccm-accent-ink);
   font-weight: 700;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ccm-ink-muted);
+}
+
+.note svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 .filters {

@@ -8,6 +8,7 @@ mod ctx;
 mod dashboard;
 mod devices;
 mod fcm;
+mod fit;
 mod fcm_files;
 mod fcm_jwt;
 mod guard;
@@ -91,6 +92,8 @@ mod push_content_tests;
 mod push_seal_tests;
 #[cfg(test)]
 mod webpush_live_tests;
+#[cfg(test)]
+mod fit_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;

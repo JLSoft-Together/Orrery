@@ -2,10 +2,12 @@ use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use core_remote_proto::frame::{Chunker, Kind};
+use core_remote_proto::frame::{Chunker, Kind, MAX_MESSAGE};
 use core_remote_proto::Transport;
 use serde_json::Value;
 use tokio::sync::mpsc;
+
+use super::fit::oversized;
 
 pub const INBOX: usize = 64;
 pub const OUTBOX: usize = 256;
@@ -108,10 +110,12 @@ impl Secure {
     }
 
     pub async fn json(&mut self, value: &Value) -> bool {
-        match serde_json::to_vec(value) {
-            Ok(bytes) => self.frame(Kind::Json, 0, &bytes).await,
-            Err(_) => false,
+        let Ok(bytes) = serde_json::to_vec(value) else { return false };
+        if bytes.len() <= MAX_MESSAGE {
+            return self.frame(Kind::Json, 0, &bytes).await;
         }
+        let Ok(small) = serde_json::to_vec(&oversized(value, bytes.len())) else { return false };
+        self.frame(Kind::Json, 0, &small).await
     }
 
     pub async fn close(&self, code: u16, reason: &'static str) {

@@ -2,3 +2,4 @@ src/gen/
 e2e/peer/Cargo.lock
 e2e/.out/
 e2e/live/
+.vitest/

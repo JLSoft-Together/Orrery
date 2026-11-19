@@ -304,6 +304,8 @@ export class MachineConnection {
       if (parsed) updated = { ...updated, relayToken: parsed.token, relayTokenExp: parsed.exp }
     }
     if (typeof reply.name === 'string' && reply.name && reply.name !== machine.name) updated = { ...updated, name: reply.name }
+    const lanTls = reply.lanTls === true
+    if (lanTls !== (machine.lanTls === true)) updated = { ...updated, lanTls }
     if (updated !== machine) await this.deps.machines.save(updated)
   }
 

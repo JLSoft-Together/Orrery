@@ -16,6 +16,7 @@ import '../machine_api.dart';
 import '../model/workspace_model.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
+import 'anchored_terminal.dart';
 import 'input_bar.dart';
 import 'pane_header.dart';
 import 'permission_bar.dart';
@@ -48,14 +49,14 @@ class TerminalPane extends ConsumerStatefulWidget {
 }
 
 class _TerminalPaneState extends ConsumerState<TerminalPane> {
-  final Terminal _terminal = Terminal(maxLines: 5000);
+  final Terminal _terminal = AnchoredTerminal(maxLines: 5000);
   final TerminalController _controller = TerminalController();
   late final LineProbe _probe = LineProbe(_terminal);
   final StringBuffer _pendingOut = StringBuffer();
   final StickyModifiers _mods = StickyModifiers();
   bool _flushScheduled = false;
   PtyHandle? _handle;
-  StreamSubscription<String>? _outSub;
+  StreamSubscription<Uint8List>? _outSub;
   StreamSubscription<JsonMap>? _evSub;
   Timer? _typingTimer;
   bool _attaching = false;
@@ -176,9 +177,9 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
       }
       final tail = handle.tail;
       _handle = handle;
-      _outSub = const Utf8Decoder(allowMalformed: true)
-          .bind(handle.output)
-          .listen(_write);
+      final decoder = const Utf8Decoder(allowMalformed: true)
+          .startChunkedConversion(TerminalTextSink(_write));
+      _outSub = handle.output.listen(decoder.add);
       _evSub = handle.events.listen(_onEvent);
       if (tail.isNotEmpty) {
         _write(utf8.decode(tail, allowMalformed: true));
@@ -206,6 +207,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
           });
         }
       case 'pty.resized':
+        _flushOut();
         _applyDesk(event);
         if (_claimed && !_typing) setState(() => _claimed = false);
       case 'pty.exit':
@@ -227,6 +229,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     final changed = cols.toInt() != _deskCols || rows.toInt() != _deskRows;
     _deskCols = cols.toInt();
     _deskRows = rows.toInt();
+    if (!_typing) _terminal.fitTo(_deskCols, _deskRows);
     if (changed && mounted) setState(() {});
   }
 

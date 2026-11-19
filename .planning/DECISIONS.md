@@ -48,3 +48,14 @@
 - 2026-11-12 · Chưa dựng relay ⇒ chỉ LAN; relay `orrery-relay.jinvu.workers.dev` là relay riêng của chủ nhân, không phải mặc định chung
 - 2026-11-12 · App điện thoại khoá bằng sinh trắc học / PIN máy (local_auth), bật mặc định, xác thực lần đầu rồi lại sau mỗi 1 giờ (chỉnh được trong cài đặt, đổi cài đặt phải xác thực); khoá = đóng mọi kết nối · chủ nhân hỏi 2FA, chọn giữa sinh trắc và TOTP → con chọn sinh trắc (không cần app thứ 2, TOTP trên cùng máy thêm ít bảo vệ)
 - 2026-11-15 - Test app của v100/v101 chỉ chạy bản dev tách biệt (cổng riêng, userData/CCM_DATA_DIR/APPDATA tạm), không ảnh hưởng Orrery đang chạy - chủ nhân yêu cầu; công thức trong PROGRESS-2026-11-15-click-disk.md.
+
+## v104 - 7 đề xuất UX + terminal điện thoại (2026-11-20)
+- 2026-11-20 - Gói đầu tiên: terminal điện thoại mất dòng khi resize (ConPTY `PSEUDOCONSOLE_RESIZE_QUIRK` vẽ lại theo cỡ mới, điện thoại resize muộn). Làm cả 2 hướng: điện thoại xử lý output + event đúng thứ tự, flush rồi resize ngay (Android + PWA); desktop giữ terminal ảo Rust, gửi `pty.snapshot` (scrollback max 2000 dòng) sau mỗi resize và khi nối lại - chủ nhân chốt; `.planning/PLAN-v104-ux-proposals.md` WP-104a1/a2
+- 2026-11-20 - Inbox gộp cho desktop + web app + Android, cùng nhóm cùng thứ tự; desktop gửi thêm nhóm menu chờ trả lời và đụng file qua remote; Inbox không trả lời menu (ngoại lệ 6 giữ nguyên) - chủ nhân chốt
+- 2026-11-20 - UI classic: E2E sang next ngay; 4.0.8 đóng băng + changelog báo trước; xoá hẳn ở 4.1.0 - chủ nhân chốt (thay mốc "sau 1-2 bản")
+- 2026-11-20 - Electron: v104 chỉ làm bảng so tính năng Tauri vs Electron + E2E mặc định Tauri; xoá `apps/desktop/src` sau khi `.planning/QA-mac-checklist.md` đạt, giữ tag `last-electron` - chủ nhân chốt
+- 2026-11-20 - Cảnh báo đụng file: 1 switch chung `ccm.notify.clash` (Settings, Thông báo) cho chip rail + header pane + nhóm Inbox + toast, mặc định TẮT; bật thì mỗi cặp (file, 2 session) báo 1 lần / lượt, có "Bỏ qua file này" + "Xem diff", chỉ cảnh báo không chặn - chủ nhân chốt
+- 2026-11-20 - Settings: sửa search + test mọi entry có dòng thật, `fileIcons` / `dust` chỉ ở trang Workspace, gộp `reminders` vào `notify` (map `ccm.settings.page` cũ) - chủ nhân chốt
+- 2026-11-20 - Changes theo session: luôn hiện nhóm "Không rõ", giữ tập file lượt cuối tới khi đánh dấu đã xem, notify `done` có nút "Xem thay đổi" - chủ nhân chốt
+- 2026-11-20 - DeepSeek không xoá, tách phần web thành module lazy `apps/web/src/features/deepseek/` - chủ nhân chốt
+- 2026-11-20 - Triển khai v104 chế độ manager; mỗi gói nghiệm thu xong commit + push lên `feat/v98-pwa`, không trailer attribution - chủ nhân cho phép riêng đợt này

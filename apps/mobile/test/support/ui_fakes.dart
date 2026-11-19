@@ -9,6 +9,7 @@ import 'package:orrery_remote/l10n/app_localizations.dart';
 import 'package:orrery_remote/remote/link_state.dart';
 import 'package:orrery_remote/remote/machines.dart';
 import 'package:orrery_remote/remote/protocol.dart';
+import 'package:orrery_remote/remote/size_notes.dart';
 import 'package:orrery_remote/remote/providers.dart';
 import 'package:orrery_remote/remote/store.dart';
 import 'package:orrery_remote/ui/machine_api.dart';
@@ -44,6 +45,7 @@ class FakeMachineApi implements MachineApi {
   Object? attachError;
   JsonMap commandReply = {'paneKey': 'new'};
   int retries = 0;
+  int resyncs = 0;
   bool cleared = false;
   Uint8List? tail;
 
@@ -107,6 +109,9 @@ class FakeMachineApi implements MachineApi {
 
   @override
   Future<void> retry() async => retries++;
+
+  @override
+  Future<void> resync() async => resyncs++;
 
   @override
   Future<void> clearCache() async => cleared = true;
@@ -238,6 +243,8 @@ MachineView view({
   DateTime? updatedAt,
   List<ConfirmAsk> confirms = const [],
   Map<String, dynamic>? hello,
+  SnapshotTrim? trimmed,
+  SizeLimit? limit,
 }) => MachineView(
   workspace: ws,
   snapshot: snapshot,
@@ -245,6 +252,8 @@ MachineView view({
   updatedAt: updatedAt ?? DateTime(2026, 11, 12, 9, 30),
   confirms: confirms,
   hello: hello,
+  trimmed: trimmed,
+  limit: limit,
 );
 
 class MemoryViewPrefsStore implements ViewPrefsStore {

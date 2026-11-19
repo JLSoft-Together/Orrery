@@ -1082,6 +1082,24 @@ abstract class AppLocalizations {
   /// **'No sessions on the computer right now.'**
   String get vMonitorEmpty;
 
+  /// No description provided for @monLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Data too large to send'**
+  String get monLimitTitle;
+
+  /// No description provided for @monLimitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer has {size} of monitor data, over the {max} limit per message. Close some old sessions on the computer, then Retry.'**
+  String monLimitBody(String size, String max);
+
+  /// No description provided for @monTrimmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Old data was left out to fit the size limit'**
+  String get monTrimmed;
+
   /// No description provided for @vTokens.
   ///
   /// In en, this message translates to:

@@ -575,6 +575,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vMonitorEmpty => 'No sessions on the computer right now.';
 
   @override
+  String get monLimitTitle => 'Data too large to send';
+
+  @override
+  String monLimitBody(String size, String max) {
+    return 'The computer has $size of monitor data, over the $max limit per message. Close some old sessions on the computer, then Retry.';
+  }
+
+  @override
+  String get monTrimmed => 'Old data was left out to fit the size limit';
+
+  @override
   String vTokens(String count) {
     return '$count tokens';
   }

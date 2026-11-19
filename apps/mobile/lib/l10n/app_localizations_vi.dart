@@ -549,6 +549,17 @@ class AppLocalizationsVi extends AppLocalizations {
   String get vMonitorEmpty => 'Máy tính chưa có session nào.';
 
   @override
+  String get monLimitTitle => 'Dữ liệu quá lớn để gửi';
+
+  @override
+  String monLimitBody(String size, String max) {
+    return 'Máy tính có $size dữ liệu giám sát, vượt giới hạn $max mỗi tin. Đóng bớt session cũ trên máy tính rồi Thử lại.';
+  }
+
+  @override
+  String get monTrimmed => 'Đã lược bớt dữ liệu cũ để vừa giới hạn';
+
+  @override
   String vTokens(String count) {
     return '$count token';
   }

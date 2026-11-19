@@ -25,6 +25,7 @@ abstract class MachineApi {
   Uint8List? cachedTail(String paneKey);
   Future<void> answerConfirm(String cid, bool ok);
   Future<void> retry();
+  Future<void> resync();
   Future<void> clearCache();
 }
 
@@ -108,6 +109,9 @@ class BundleMachineApi implements MachineApi {
 
   @override
   Future<void> retry() => _bundle.connection.goForeground();
+
+  @override
+  Future<void> resync() => _bundle.store.resync();
 
   @override
   Future<void> clearCache() => host.cache.delete(machineId);

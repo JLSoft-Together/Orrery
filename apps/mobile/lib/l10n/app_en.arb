@@ -269,6 +269,19 @@
   "navWorkspace": "Workspace",
   "vMonitor": "Monitor",
   "vMonitorEmpty": "No sessions on the computer right now.",
+  "monLimitTitle": "Data too large to send",
+  "monLimitBody": "The computer has {size} of monitor data, over the {max} limit per message. Close some old sessions on the computer, then Retry.",
+  "@monLimitBody": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "monTrimmed": "Old data was left out to fit the size limit",
   "vTokens": "{count} tokens",
   "@vTokens": {
     "placeholders": {

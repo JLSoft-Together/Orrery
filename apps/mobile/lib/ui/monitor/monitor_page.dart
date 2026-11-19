@@ -7,10 +7,12 @@ import '../model/workspace_model.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import '../workspace/machine_scope.dart';
+import '../ui_providers.dart';
 import '../workspace/session_rename.dart';
 import 'monitor_cards.dart';
 import 'monitor_filter.dart';
 import 'monitor_model.dart';
+import 'size_notice.dart';
 import 'session_detail_page.dart';
 import 'view_prefs.dart';
 
@@ -76,6 +78,8 @@ class _MonitorPageState extends ConsumerState<MonitorPage> {
     final mode = ref.watch(viewPrefsProvider.select((p) => p.monitor));
     final alternate = mode == ViewMode.alternate;
     final link = ref.watch(linkProvider(id));
+    final limit = ref.watch(machineViewProvider(id).select((v) => v.limit));
+    final trimmed = ref.watch(machineViewProvider(id).select((v) => v.trimmed));
     final shown = [
       for (final s in all)
         if (matchesFilter(_filter, s)) s,
@@ -107,70 +111,84 @@ class _MonitorPageState extends ConsumerState<MonitorPage> {
           const SizedBox(width: 4),
         ],
       ),
-      body: all.isEmpty
-          ? EmptyState(title: l.vMonitorEmpty)
-          : Column(
-              children: [
-                QuietSize(
-                  alignment: Alignment.topCenter,
-                  child: alternate
-                      ? const SizedBox(width: double.infinity)
-                      : _Filters(
-                          all: all,
-                          selected: _filter,
-                          label: _filterLabel,
-                          onSelect: (f) => setState(() => _filter = f),
-                        ),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: motion(context),
-                    switchInCurve: context.tokens.out,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: ScaleTransition(
-                        scale: Tween<double>(
-                          begin: 0.98,
-                          end: 1,
-                        ).animate(animation),
-                        child: child,
+      body: Column(
+        children: [
+          SizeNotice(
+            limit: limit,
+            trimmed: trimmed,
+            onRetry: () => ref.read(machineApiProvider(id)).resync(),
+          ),
+          Expanded(
+            child: all.isEmpty
+                ? (limit != null
+                      ? const SizedBox.shrink()
+                      : EmptyState(title: l.vMonitorEmpty))
+                : Column(
+                    children: [
+                      QuietSize(
+                        alignment: Alignment.topCenter,
+                        child: alternate
+                            ? const SizedBox(width: double.infinity)
+                            : _Filters(
+                                all: all,
+                                selected: _filter,
+                                label: _filterLabel,
+                                onSelect: (f) => setState(() => _filter = f),
+                              ),
                       ),
-                    ),
-                    child: ListView(
-                      key: ValueKey(alternate),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      children: [
-                        if (alternate)
-                          _Grouped(
-                            sessions: all,
-                            onTap: _detail,
-                            onLongPress: _rename,
-                          )
-                        else if (shown.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 48),
-                            child: Text(
-                              l.monFilterEmpty,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: c.inkMuted),
-                            ),
-                          )
-                        else
-                          AnimatedItems<MonitorSession>(
-                            items: shown,
-                            keyOf: (s) => s.terminalId,
-                            builder: (context, s) => SessionCard(
-                              session: s,
-                              onTap: () => _detail(s),
-                              onLongPress: () => _rename(s),
-                            ),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: motion(context),
+                          switchInCurve: context.tokens.out,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(
+                                    begin: 0.98,
+                                    end: 1,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              ),
+                          child: ListView(
+                            key: ValueKey(alternate),
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                            children: [
+                              if (alternate)
+                                _Grouped(
+                                  sessions: all,
+                                  onTap: _detail,
+                                  onLongPress: _rename,
+                                )
+                              else if (shown.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 48),
+                                  child: Text(
+                                    l.monFilterEmpty,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: c.inkMuted),
+                                  ),
+                                )
+                              else
+                                AnimatedItems<MonitorSession>(
+                                  items: shown,
+                                  keyOf: (s) => s.terminalId,
+                                  builder: (context, s) => SessionCard(
+                                    session: s,
+                                    onTap: () => _detail(s),
+                                    onLongPress: () => _rename(s),
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
+          ),
+        ],
+      ),
     );
   }
 }

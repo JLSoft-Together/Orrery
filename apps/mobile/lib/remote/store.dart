@@ -6,6 +6,7 @@ import 'json_patch.dart';
 import 'link_state.dart';
 import 'monitor_reducer.dart';
 import 'protocol.dart';
+import 'size_notes.dart';
 
 typedef Commander = Future<JsonMap> Function(String type, [JsonMap? fields]);
 
@@ -27,6 +28,8 @@ class ConfirmAsk {
   final DateTime receivedAt;
 }
 
+const Object _keep = Object();
+
 class MachineView {
   const MachineView({
     this.snapshot,
@@ -35,6 +38,8 @@ class MachineView {
     this.wsRev = 0,
     this.confirms = const [],
     this.hello,
+    this.trimmed,
+    this.limit,
     this.stale = true,
     this.fromCache = false,
     this.updatedAt,
@@ -47,6 +52,8 @@ class MachineView {
   final int wsRev;
   final List<ConfirmAsk> confirms;
   final Map<String, dynamic>? hello;
+  final SnapshotTrim? trimmed;
+  final SizeLimit? limit;
   final bool stale;
   final bool fromCache;
   final DateTime? updatedAt;
@@ -64,6 +71,8 @@ class MachineView {
     int? wsRev,
     List<ConfirmAsk>? confirms,
     Map<String, dynamic>? hello,
+    Object? trimmed = _keep,
+    Object? limit = _keep,
     bool? stale,
     bool? fromCache,
     DateTime? updatedAt,
@@ -74,6 +83,10 @@ class MachineView {
     wsRev: wsRev ?? this.wsRev,
     confirms: confirms ?? this.confirms,
     hello: hello ?? this.hello,
+    trimmed: identical(trimmed, _keep)
+        ? this.trimmed
+        : trimmed as SnapshotTrim?,
+    limit: identical(limit, _keep) ? this.limit : limit as SizeLimit?,
     stale: stale ?? this.stale,
     fromCache: fromCache ?? this.fromCache,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -154,6 +167,9 @@ class MachineStore {
         _onSnapshot(event);
       case 'events':
         _onEvents(event);
+      case 'limit':
+        _onLimit(event);
+        return;
       case 'ws.snapshot':
         _onWsSnapshot(event);
       case 'ws.patch':
@@ -175,6 +191,8 @@ class MachineStore {
       _view.copyWith(
         snapshot: deepCopy(data) as Map<String, dynamic>,
         seq: seq.toInt(),
+        trimmed: SnapshotTrim.parse(event['trimmed']),
+        limit: null,
         stale: false,
         fromCache: false,
         updatedAt: _now(),
@@ -213,17 +231,29 @@ class MachineStore {
     );
   }
 
+  void _onLimit(JsonMap event) {
+    final limit = SizeLimit.parse(event);
+    if (limit == null) return;
+    _set(_view.copyWith(limit: limit));
+  }
+
   void _requestResync() {
     if (_resyncPending) return;
     _resyncPending = true;
-    unawaited(
-      commander('resync').then(
-        (_) {},
-        onError: (Object _) {
-          _resyncPending = false;
-        },
-      ),
-    );
+    unawaited(resync());
+  }
+
+  Future<void> resync() async {
+    try {
+      await commander('resync');
+    } on RemoteCommandException catch (error) {
+      _resyncPending = false;
+      if (error.code == 'limit') {
+        _set(_view.copyWith(limit: const SizeLimit(what: 'snapshot')));
+      }
+    } catch (_) {
+      _resyncPending = false;
+    }
   }
 
   void _onWsSnapshot(JsonMap event) {

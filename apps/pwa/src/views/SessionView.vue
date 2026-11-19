@@ -105,7 +105,7 @@ function openWorkspace(): void {
         <h2 class="sec">{{ t('session.subagents', { n: session.subagents.length }) }}</h2>
         <TransitionGroup name="srow" tag="div" class="card list" data-testid="session-subagents">
           <div v-for="sub in session.subagents" :key="sub.id" class="sub-row" :data-depth="sub.depth" :style="{ paddingLeft: indent(sub.depth) }">
-            <component :is="subIcon[sub.rail]" :size="20" :stroke-width="2.2" class="sub-icon" :class="`tone-${sub.rail}`" aria-hidden="true" />
+            <component :is="subIcon[sub.rail]" :size="20" :stroke-width="2.2" class="sub-icon" :class="`subtone-${sub.rail}`" aria-hidden="true" />
             <span class="sub-name">{{ sub.name ?? t('session.subagent') }}</span>
             <StatusChip :rail="sub.rail" />
           </div>
@@ -308,20 +308,20 @@ function openWorkspace(): void {
   white-space: nowrap;
 }
 
-.tone-working {
+.subtone-working {
   color: var(--ccm-working);
 }
 
-.tone-asked {
+.subtone-asked {
   color: var(--ccm-waiting);
 }
 
-.tone-failed {
+.subtone-failed {
   color: var(--ccm-error);
 }
 
-.tone-done,
-.tone-idle {
+.subtone-done,
+.subtone-idle {
   color: var(--ccm-done);
 }
 

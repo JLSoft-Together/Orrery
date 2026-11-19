@@ -1,0 +1,85 @@
+{
+  "updated": "2026-11-20",
+  "status": "ready",
+  "source": ".planning/PROPOSALS-2026-11-20-ux.md",
+  "lede": "7 đề xuất từ nghiên cứu chỉ đọc trên nhánh feat/v98-pwa (sau v103, UI next mặc định). Mỗi đề xuất có bằng chứng file:line trong code, độ ưu tiên, công sức và wireframe bấm thử được.",
+  "items": [
+    {
+      "id": "#1", "anchor": "inbox", "title": "Gộp các lối \"cần bạn\" thành 1 Inbox", "group": "ui", "priority": "P2", "effort": "M", "effortText": "M", "rank": 4,
+      "problem": ["Câu hỏi \"agent nào đang chờ mình\" có 5 lối vào và 2 phím tắt: chip Cần bạn (Ctrl+Shift+A), chip Chờ trả lời (Ctrl+Alt+Q), badge chuông ở rail, trạng thái chờ trên dòng rail next, cột needs trên Monitor và nhóm needs trong Ctrl+K.", "Hai chip đứng sát nhau nhưng đếm 2 tập khác nhau (permission, câu hỏi, lỗi so với menu chọn)."],
+      "proposal": ["Một chip \"Inbox (N)\" trên thanh tab, popover chia nhóm: Chờ trả lời menu, Xin quyền, Câu hỏi, Lỗi, Xong chưa xem.", "Ctrl+Alt+Q nhảy tới mục kế, Ctrl+Shift+A mở danh sách, Enter mở pane, S hoãn (dùng lại railSnooze).", "Rail và board chỉ hiện chấm trạng thái, không đếm riêng."],
+      "impact": "Chạy 6 đến 10 agent chỉ cần nhìn một con số; bớt 1 chip trên thanh tab.",
+      "risk": "Đụng luồng trả lời menu v100: giữ nguyên \"mọi phím đều sau một click của chủ nhân\". Thói quen phím cũ đổi nghĩa.",
+      "files": ["WorkspaceView.vue:2043-2058", "AttentionPopover.vue", "stores/menuQueue.ts", "LiveRail.vue:66-71"],
+      "wireframe": "inbox", "wfHint": "Bấm chip, Enter, S"
+    },
+    {
+      "id": "#2", "anchor": "settings", "title": "Settings: search trỏ đúng dòng, bỏ setting trùng", "group": "ui", "priority": "P1", "effort": "S", "effortText": "S, M nếu gộp trang", "rank": 2,
+      "problem": ["fileIcons, dust, starsPanels, starsFx khai báo ở trang appearance nhưng bị ẩn ở UI next. Gõ \"file icons\" ra kết quả, bấm vào thì flash() không thấy dòng và im lặng return.", "fileIcons và dust có 2 bản (Appearance và Workspace). Trang workspace không có entry nào trong registry nên search không dẫn tới.", "15 trang settings, trang reminders chồng ý với notify."],
+      "proposal": ["Registry khai báo theo thế hệ UI (ui?: 'next' | 'classic') + test mount từng trang: entry nào hiện cũng phải có [data-setting-row] thật.", "fileIcons, dust chỉ ở trang Workspace.", "Gộp reminders vào notify thành nhóm \"Nhắc nhở\". Mục tiêu 12 trang."],
+      "impact": "Hết lỗi \"bấm kết quả không có gì xảy ra\"; ít chỗ để tìm một switch.",
+      "risk": "Thấp; khoá ccm.settings.page cũ trỏ tới reminders cần map sang notify.",
+      "files": ["components/settings/index.ts:100-107", "SettingsAppearance.vue:84, 141", "SettingsMenu.vue:187-188"],
+      "wireframe": "settings", "wfHint": "Gõ rồi bấm kết quả"
+    },
+    {
+      "id": "#3", "anchor": "classic", "title": "Lộ trình gỡ UI classic, bắt đầu từ E2E", "group": "clean", "priority": "P1", "effort": "S", "effortText": "Bước 1: S, bước 3: L", "rank": 1,
+      "problem": ["App mặc định next từ v103 nhưng E2E mặc định vẫn classic (ui-gen.cjs:18); chỉ 5 trên khoảng 90 file E2E chạy next.", "v51-compact.cjs, v25.cjs hỏng vì Mission Control đã bỏ.", "Nhánh classic / next rải khắp: next/tokens.css 214 chỗ, WorkspaceView.vue 43 (file 2440 dòng), CommandPalette.vue 23, NextShell.vue 22."],
+      "proposal": ["Bước 1 (ngay): E2E mặc định next, sửa hoặc xoá v51-compact.cjs, v25.cjs; E2E chỉ có nghĩa với classic thì gắn --ui=classic.", "Bước 2 (bản kế): classic đóng băng, chỉ fix vỡ, changelog báo trước.", "Bước 3 (sau 1 đến 2 bản): xoá nhánh isNext, gộp 2 Appearance, tách WorkspaceView.vue xuống dưới khoảng 1200 dòng."],
+      "impact": "Mỗi tính năng UI làm 1 lần; E2E bắt lỗi trên UI người dùng thật thấy.",
+      "risk": "Người dùng classic mất giao diện quen; chuông otherNeeds, explorer cũ chỉ có ở classic phải có tương đương ở next trước khi xoá.",
+      "files": ["apps/desktop/e2e/ui-gen.cjs:18", "v51-compact.cjs:51-55", "v25.cjs:207-209"],
+      "wireframe": "classic", "wfHint": "Bấm từng bước"
+    },
+    {
+      "id": "#4", "anchor": "electron", "title": "Gỡ vỏ Electron và các fallback Node", "group": "clean", "priority": "P3", "effort": "L", "effortText": "L", "rank": 7,
+      "problem": ["DECISIONS 12/11: vỏ chỉ còn Tauri, dist:win / dist:mac đã chạy dist-tauri.mjs. Nhưng apps/desktop/src (khoảng 54.8k dòng TS) vẫn sửa song song, 33 file *.twin.test.ts giữ 2 bản khớp nhau.", "E2E mặc định launch Electron, Tauri chỉ khi CCM_E2E_SHELL=tauri.", "Fallback Node cho từng lõi (CCM_CORE, CCM_CORE_PTY, deskMode) kéo theo collector Node khoảng 14.7k dòng.", "CLAUDE.md vẫn mô tả Electron là shell chính."],
+      "proposal": ["Kiểm Tauri đủ tính năng (bảng Electron so với apps/shell).", "E2E mặc định tauri; xoá apps/desktop/src trừ preload.ts và phần TS Rust còn gọi; bỏ CCM_CORE_*=node; viết lại CLAUDE.md.", "Giữ tag cuối có Electron để rollback."],
+      "impact": "Bớt khoảng 50 đến 70k dòng bảo trì kép, bớt 33 twin test, build và qa nhanh hơn.",
+      "risk": "Cao: macOS chưa test kỹ Tauri; mất đường thoát khi lõi Rust lỗi trên máy lạ. Làm sau khi Tauri chạy ổn trên Mac.",
+      "files": ["apps/desktop/e2e/cdp.cjs:14, 82", "core-serve-host.ts:41", "main.ts:189, 865, 930"],
+      "wireframe": "electron", "wfHint": "So trước / sau, hover khối"
+    },
+    {
+      "id": "#5", "anchor": "deadcode", "title": "Dọn code chết, DeepSeek đang dừng, .code_index phình to", "group": "clean", "priority": "P2", "effort": "S", "effortText": "S, M cho index và DeepSeek", "rank": 5,
+      "problem": ["10 component không ai import (1502 dòng), .code_index/web.md ghi \"stay unused\" từ v79.", "Comment còn nhắc Mission Control: DropTerminal.vue:21, paneSnapshots.ts:1.", "DeepSeek dừng từ 03/11 nhưng còn 55 file web tham chiếu, SettingsDeepSeek.vue 18.5 KB, apps/desktop/src/deepseek khoảng 1.1k dòng.", ".code_index tổng 761 KB (web.md 172, _meta.md 137, desktop.md 134), agent đọc trước mỗi task."],
+      "proposal": ["Xoá 10 component và prefs đi kèm.", "DeepSeek: tách module lazy features/deepseek/ hoặc xoá hẳn, giữ git tag (cần chủ nhân chốt).", "Index: _meta.md cắt phần trước v90 sang archive/, mỗi file dưới khoảng 40 KB, tách theo khu vực."],
+      "impact": "Ít nhiễu khi grep, index rẻ token hơn nhiều lần.",
+      "risk": "Thấp với component chết (typecheck + vitest bắt). DeepSeek: xoá thì mất đường bật lại nhanh.",
+      "files": ["apps/web/src/components/", ".code_index/", "LiveRail.vue:16"],
+      "wireframe": "deadcode", "wfHint": "Mở rộng từng nhóm"
+    },
+    {
+      "id": "#6", "anchor": "clash", "title": "Cảnh báo 2 agent cùng sửa 1 file, đưa lên rail và header pane", "group": "feature", "priority": "P1", "effort": "S", "effortText": "S đến M", "rank": 3,
+      "problem": ["lib/agentTouches.ts đã tính state 'conflict' khi 2 session trở lên sửa cùng file trong lượt hiện tại, nhưng chỉ hiện trong Explorer tree.", "Cảnh báo mức checkout chỉ hiện trên SessionCardSignals của Monitor, không có ở rail next. Không có notification."],
+      "proposal": ["Selector conflictsByTerminal: chip trên dòng rail + header pane \"Đụng file với <session>: a.ts\" (icon + chữ + màu warning).", "Đưa vào Inbox nhóm \"Đụng file\"; notify kind mới clash dùng toast có sẵn.", "Bấm mở diff file; gợi ý \"tách worktree\" (đã có wt.add); nút \"Bỏ qua cho file này\"."],
+      "impact": "Lỗi đắt nhất khi nhiều agent chạy trên 1 checkout là ghi đè nhau mà không biết. Chỉ đọc dữ liệu có sẵn, không tốn token.",
+      "risk": "Báo nhầm khi 2 agent sửa 2 đoạn khác nhau hợp lệ: chỉ cảnh báo, không chặn.",
+      "files": ["lib/agentTouches.ts:64-97", "ExplorerTree.vue:120, 394, 442", "lib/conflicts.ts:13"],
+      "wireframe": "clash", "wfHint": "Bấm mô phỏng agent sửa file"
+    },
+    {
+      "id": "#7", "anchor": "changes", "title": "Changes theo session: lượt này agent đã sửa gì", "group": "feature", "priority": "P2", "effort": "M", "effortText": "M", "rank": 6,
+      "problem": ["Changes pane chỉ chia \"Chưa xem\" theo repo, không biết file nào do session nào sửa.", "3 agent cùng làm 1 repo thì review sau khi một agent báo done phải tự lọc bằng mắt."],
+      "proposal": ["Bộ lọc \"Theo session\" (Tất cả, session A, session B, Không rõ): giao git status với tập path edit của session trong lượt gần nhất.", "Notify done kèm nút \"Xem thay đổi\" mở Changes đã lọc.", "Rail chuột phải: \"Xem thay đổi của lượt này\"."],
+      "impact": "Review nhanh từng agent, ít bỏ sót file; nối thẳng từ \"agent xong\" sang \"duyệt diff\".",
+      "risk": "File do Bash sửa (sed, codegen, formatter) không có tool.span path: nhóm \"Không rõ\" luôn hiện. Giữ tập path lượt cuối tới khi đánh dấu đã xem.",
+      "files": ["lib/reviewQueue.ts:15, 72", "ChangesPane.vue:132-139", "stores/agentTouches.ts:12, 31-32", "useNotifications.ts:34"],
+      "wireframe": "changes", "wfHint": "Bấm Xem thay đổi trên toast"
+    }
+  ],
+  "order": [
+    { "rank": 1, "ref": "#3", "what": "Bước 1: E2E sang next + sửa E2E hỏng", "group": "clean", "effort": "S", "why": "Rẻ, mở đường cho mọi việc UI sau" },
+    { "rank": 2, "ref": "#2", "what": "Settings search + setting trùng", "group": "ui", "effort": "S", "why": "Lỗi thật đang có ở UI mặc định" },
+    { "rank": 3, "ref": "#6", "what": "Cảnh báo đụng file", "group": "feature", "effort": "S đến M", "why": "Dữ liệu sẵn, giá trị cao nhất khi chạy nhiều agent" },
+    { "rank": 4, "ref": "#1", "what": "Inbox gộp", "group": "ui", "effort": "M", "why": "Bớt rối rõ nhất trên thanh tab" },
+    { "rank": 5, "ref": "#5", "what": "Dọn code chết + index", "group": "clean", "effort": "S đến M", "why": "Rẻ, giảm token mỗi phiên" },
+    { "rank": 6, "ref": "#7", "what": "Changes theo session", "group": "feature", "effort": "M", "why": "Làm sau #6 (dùng chung selector)" },
+    { "rank": 7, "ref": "#3, #4", "what": "Bước 3 gỡ classic, gỡ Electron / Node", "group": "clean", "effort": "L", "why": "Lợi lớn nhất lâu dài nhưng rủi ro cao, chờ Tauri ổn trên Mac" }
+  ],
+  "asks": [
+    { "q": "DeepSeek xoá hẳn hay giữ dạng module lazy?", "ref": "#5", "options": ["Xoá hẳn, giữ git tag", "Tách features/deepseek/ lazy"] },
+    { "q": "Mốc gỡ UI classic là bản nào?", "ref": "#3", "options": ["Bản kế tiếp", "Sau 2 bản"] },
+    { "q": "Notify kind clash có mặc định bật không?", "ref": "#6", "options": ["Bật mặc định", "Tắt, user tự bật"] }
+  ]
+}

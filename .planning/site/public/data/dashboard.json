@@ -1,0 +1,610 @@
+{
+  "updated": "2026-11-20",
+  "version": "4.0.7",
+  "released": "2026-11-16",
+  "branch": "feat/v98-pwa",
+  "targets": {
+    "claude": "2.1.289",
+    "codex": "0.162.0"
+  },
+  "planCount": 103,
+  "lastPlan": "v103",
+  "summary": "Bản đang phát hành 4.0.7. Nhánh feat/v98-pwa đã xong phần PC của web app Sương kính và v103 UI next, còn nốt QA WP-68b5 rồi chờ test trên Mac và iPhone thật.",
+  "areas": [
+    {
+      "id": "desktop",
+      "name": "Desktop",
+      "color": "c6",
+      "status": "ok",
+      "statusText": "Ổn định",
+      "stack": "Electron, Vue 3, Windows + macOS",
+      "now": "4.0.7 đã phát hành 16/11. v103 xong 12 góp ý UI next, UI next sẽ là mặc định ở bản kế tiếp (classic còn chọn lại được).",
+      "src": ".planning/PLAN-v103-next-polish.md"
+    },
+    {
+      "id": "pwa",
+      "name": "Web app Sương kính",
+      "color": "c4",
+      "status": "doing",
+      "statusText": "Đang QA",
+      "stack": "apps/pwa, iPhone / iPad",
+      "now": "WP-68b1 đến b4 xong (Home, Ghép, Face ID, Monitor A / B, Workspace nhóm project, rail iPad). WP-68b5 QA dừng giữa chừng: E2E 96 / 96 pass trên WebKit + Chromium.",
+      "src": ".planning/PLAN-v98-pwa-mist.md"
+    },
+    {
+      "id": "android",
+      "name": "Android",
+      "color": "c2",
+      "status": "ok",
+      "statusText": "Ổn định",
+      "stack": "apps/mobile, Flutter",
+      "now": "WP-66 hiện snapshot bị cắt và lỗi limit kèm Thử lại. Còn treo: vẽ tabs[].groups của desktop.",
+      "src": ".planning/PROGRESS-2026-11-12-v98.md"
+    },
+    {
+      "id": "core",
+      "name": "Rust core",
+      "color": "c1",
+      "status": "warn",
+      "statusText": "1 test fail",
+      "stack": "orrery-core, Tauri shell",
+      "now": "Core Rust là mặc định từ 10/11 (PTY, usage, transcript, serve). cargo test shell 504 / 505: disk_organize fail, nghi phân giải mtime.",
+      "src": ".planning/HANDOFF-2026-11-20-0205-v98-v103.md"
+    },
+    {
+      "id": "disk",
+      "name": "Disk",
+      "color": "c5",
+      "status": "ok",
+      "statusText": "Ổn định",
+      "stack": "core-disk, Disk view",
+      "now": "v101 quét song song, MFT nhanh, Clean up, file trùng, Organize. WP-73: checkbox giữ tick, chỉ quét ổ đã chọn.",
+      "src": ".planning/PLAN-v101-disk-manager.md"
+    },
+    {
+      "id": "remote",
+      "name": "Remote",
+      "color": "c3",
+      "status": "wait",
+      "statusText": "Chờ iPhone thật",
+      "stack": "Noise E2E, relay Cloudflare, push",
+      "now": "Ghép, Workspace, push mã hoá, relay /app/* đã xong. WP-50bc spike LAN và WP-51 (CA LAN) chờ iPhone thật.",
+      "src": ".planning/PLAN-v98-ios-pwa.md"
+    }
+  ],
+  "plans": [
+    {
+      "id": "v98",
+      "title": "Web app iPhone / iPad (PWA)",
+      "file": "PLAN-v98-ios-pwa.md",
+      "done": 19,
+      "total": 21,
+      "note": "WP-50a đến WP-66. Còn WP-50bc, WP-51 chờ iPhone thật."
+    },
+    {
+      "id": "v98 Mist",
+      "title": "Web app đổi sang Sương kính",
+      "file": "PLAN-v98-pwa-mist.md",
+      "done": 4,
+      "total": 5,
+      "note": "WP-68b5 QA đang dở mục 2, 3, 4, 6."
+    },
+    {
+      "id": "v103",
+      "title": "UI next: 12 góp ý + mặc định",
+      "file": "PLAN-v103-next-polish.md",
+      "done": 7,
+      "total": 7,
+      "note": "WP-70a, 70b, 71, 72, 73, 67, 68a đã commit."
+    },
+    {
+      "id": "QA Mac",
+      "title": "Checklist macOS / iPhone",
+      "file": "QA-mac-checklist.md",
+      "done": 0,
+      "total": 35,
+      "note": "Chủ nhân test một lượt sau khi xong trên Windows."
+    }
+  ],
+  "wps": [
+    {
+      "id": "WP-68b5",
+      "plan": "v98 Mist",
+      "title": "QA web app: so ảnh mockup, đo cuộn, test remote, bundle relay",
+      "status": "doing"
+    },
+    {
+      "id": "WP-68b4",
+      "plan": "v98 Mist",
+      "title": "Workspace nhóm project, dock phím đặc, Viewer, rail iPad",
+      "status": "done",
+      "commit": "1d22c71d"
+    },
+    {
+      "id": "WP-68b3",
+      "plan": "v98 Mist",
+      "title": "Home thẻ máy + hạn mức, Ghép, Face ID, Monitor A / B",
+      "status": "done",
+      "commit": "1d22c71d"
+    },
+    {
+      "id": "WP-68b2",
+      "plan": "v98 Mist",
+      "title": "Hạn mức Claude Code / Codex hiện trên điện thoại",
+      "status": "done",
+      "commit": "6e41590e"
+    },
+    {
+      "id": "WP-68b1",
+      "plan": "v98 Mist",
+      "title": "packages/mist-tokens + khung kính cho pwa",
+      "status": "done",
+      "commit": "6e41590e"
+    },
+    {
+      "id": "WP-67",
+      "plan": "v103",
+      "title": "Remote trên UI next: chip Điện thoại, Ctrl+K ghép, toast Hoàn tác",
+      "status": "done",
+      "commit": "b74ceeb8"
+    },
+    {
+      "id": "WP-68a",
+      "plan": "v103",
+      "title": "Mockup Sương kính cho web app",
+      "status": "done",
+      "commit": "b74ceeb8"
+    },
+    {
+      "id": "WP-70b",
+      "plan": "v103",
+      "title": "Menu tắt khi click ngoài, compact về full, bỏ Mission Control, UI next mặc định",
+      "status": "done",
+      "commit": "365bbc21"
+    },
+    {
+      "id": "WP-71",
+      "plan": "v103",
+      "title": "Explorer ghim bên phải, kéo width, cuộn ngang cây sâu",
+      "status": "done",
+      "commit": "365bbc21"
+    },
+    {
+      "id": "WP-72",
+      "plan": "v103",
+      "title": "Git log: diff preview, xem ảnh trong commit",
+      "status": "done",
+      "commit": "365bbc21"
+    },
+    {
+      "id": "WP-73",
+      "plan": "v103",
+      "title": "Disk: checkbox giữ tick, chỉ quét ổ đã chọn",
+      "status": "done",
+      "commit": "3e14ff8f"
+    },
+    {
+      "id": "WP-70a",
+      "plan": "v103",
+      "title": "Rail UI next: nút Explorer riêng, session lùi vào, footer hạn mức",
+      "status": "done",
+      "commit": "63aac303"
+    },
+    {
+      "id": "WP-65",
+      "plan": "v98",
+      "title": "Hỏi bật khoá Face ID sau lần ghép đầu",
+      "status": "done",
+      "commit": "bc5dda86"
+    },
+    {
+      "id": "WP-66",
+      "plan": "v98",
+      "title": "Android hiện snapshot bị cắt và lỗi limit",
+      "status": "done",
+      "commit": "e1533686"
+    },
+    {
+      "id": "WP-63",
+      "plan": "v98",
+      "title": "Cắt snapshot quá lớn thay vì treo im lặng",
+      "status": "done",
+      "commit": "c36734f0"
+    },
+    {
+      "id": "WP-64",
+      "plan": "v98",
+      "title": "Ctrl+C tới được tiến trình trong pane ConPTY",
+      "status": "done",
+      "commit": "03fb2d40"
+    },
+    {
+      "id": "WP-50bc",
+      "plan": "v98",
+      "title": "Spike LAN: CA, .mobileconfig, wss, Web Push trên iPhone",
+      "status": "wait"
+    },
+    {
+      "id": "WP-51",
+      "plan": "v98",
+      "title": "CA LAN cho iPhone",
+      "status": "wait"
+    }
+  ],
+  "pending": [
+    {
+      "title": "Làm nốt WP-68b5",
+      "detail": "Mục 3 số đo cuộn WebKit, mục 4 cargo test remote:: + apps/mobile/scripts/check.mjs, mục 6 build pwa + sinh lại bundle relay, viết WP-68b5-report.md.",
+      "kind": "doing"
+    },
+    {
+      "title": "Test disk_organize fail",
+      "detail": "auto_pass_moves_only_files_newer_than_the_switch_and_broadcasts: old.png bị chuyển dù cũ hơn lúc bật auto. Xem lại trên máy mới.",
+      "kind": "bug"
+    },
+    {
+      "title": "Chờ iPhone thật",
+      "detail": "WP-50bc spike (scripts/spike-v98/lan, node run.mjs, đổi IP theo máy mới) rồi WP-51 CA LAN.",
+      "kind": "wait"
+    },
+    {
+      "title": "E2E desktop hỏng",
+      "detail": "apps/desktop/e2e/v51-compact.cjs và v25.cjs còn gọi Mission Control đã bỏ.",
+      "kind": "bug"
+    },
+    {
+      "title": "Treo nhỏ",
+      "detail": "Android chưa vẽ tabs[].groups; popover classic chưa dùng useDismiss.",
+      "kind": "todo"
+    },
+    {
+      "title": "Câu hỏi chờ chốt",
+      "detail": "Font Manrope bundle; Giảm trong suốt mặc định tắt; Git log preview mặc định bật; Git log wrap, so 2 commit, preview bên phải.",
+      "kind": "ask"
+    }
+  ],
+  "roadmap": [
+    {
+      "stage": "Đang làm",
+      "items": [
+        "WP-68b5 QA web app Sương kính (mục 3, 4, 6 + báo cáo)",
+        "Sửa test disk_organize trên máy mới"
+      ]
+    },
+    {
+      "stage": "Kế tiếp",
+      "items": [
+        "Chủ nhân test Mac + iPhone một lượt theo QA-mac-checklist (35 mục)",
+        "WP-50bc spike LAN trên iPhone thật, rồi WP-51 CA LAN",
+        "Phát hành bản có UI next mặc định"
+      ]
+    },
+    {
+      "stage": "Sau đó",
+      "items": [
+        "Bỏ UI classic sau 1 đến 2 bản",
+        "Android vẽ nhóm project của Workspace",
+        "Office vẫn tạm dừng (từ 28/10)"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "date": "2026-11-15",
+      "label": "v101 Disk: Clean up, file trùng, Organize, Apps",
+      "lane": "disk"
+    },
+    {
+      "date": "2026-11-16",
+      "label": "v102 UI next (opt-in)",
+      "lane": "desktop"
+    },
+    {
+      "date": "2026-11-16",
+      "label": "Phát hành 4.0.6 và 4.0.7",
+      "lane": "release"
+    },
+    {
+      "date": "2026-11-19",
+      "label": "WP-61a đến WP-66 (remote, Android)",
+      "lane": "remote"
+    },
+    {
+      "date": "2026-11-19",
+      "label": "v103 WP-70a, 70b, 71, 72, 73",
+      "lane": "desktop"
+    },
+    {
+      "date": "2026-11-19",
+      "label": "WP-67, WP-68a, WP-68b1, 68b2",
+      "lane": "pwa"
+    },
+    {
+      "date": "2026-11-20",
+      "label": "WP-68b3, 68b4, E2E 96 / 96",
+      "lane": "pwa"
+    }
+  ],
+  "commits": [
+    {
+      "h": "1d22c71d",
+      "date": "2026-11-20",
+      "type": "feat",
+      "scope": "pwa",
+      "msg": "WP-68b3/b4 Mist web app screens: machine cards with plan limits, pairing and Face ID offer, Monitor A/B and session detail, Workspace project groups, solid key dock, viewers, iPad left rail; WP-68b5 E2E fixes (96/96 on WebKit and Chromium)"
+    },
+    {
+      "h": "6e41590e",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "pwa",
+      "msg": "WP-68b1 Mist tokens package and glass shell for the iPhone web app; WP-68b2 plan limits read on the phone"
+    },
+    {
+      "h": "b74ceeb8",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "remote",
+      "msg": "WP-67 remote on UI next: phone chip in the rail foot, Ctrl+K pair / devices, undo toasts for phone moves and closes, layout groups sent to phones; WP-68a Mist mockup for the iPhone web app"
+    },
+    {
+      "h": "365bbc21",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "web",
+      "msg": "v103 UI next polish: menus close on outside click, compact view returns to full view, Mission Control removed, UI next by default, Explorer pinned on the right with a resizable width, Git log diff preview and image diffs"
+    },
+    {
+      "h": "3e14ff8f",
+      "date": "2026-11-19",
+      "type": "fix",
+      "scope": "disk",
+      "msg": "v103 WP-73 checkboxes keep their tick, scans and idle rescans cover only the picked drives, stale data of unpicked drives is labelled"
+    },
+    {
+      "h": "63aac303",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "web",
+      "msg": "v103 WP-70a UI next rail: distinct Explorer button, no needs box, indented sessions per project, collapsible rail, quota footer at the bottom"
+    },
+    {
+      "h": "a91daa12",
+      "date": "2026-11-19",
+      "type": "release",
+      "scope": "",
+      "msg": "origin/master (4.0.3–4.0.7: click menu, Disk, UI next gen v102) into feat/v98-pwa"
+    },
+    {
+      "h": "bc5dda86",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "remote",
+      "msg": "WP-65 web app asks to turn on the Face ID lock after the first pairing, warns about disk changes while editing, offers Undo after a confirmed pane close"
+    },
+    {
+      "h": "e1533686",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "mobile",
+      "msg": "WP-66 show trimmed snapshots and the size limit error with a retry on Android Monitor"
+    },
+    {
+      "h": "e173e839",
+      "date": "2026-11-19",
+      "type": "docs",
+      "scope": "planning",
+      "msg": "v98 handoff 2026-11-19: PC work done, waiting on iPhone"
+    },
+    {
+      "h": "080386c4",
+      "date": "2026-11-19",
+      "type": "build",
+      "scope": "relay",
+      "msg": "regenerate desktop relay bundle with the web app after WP-58a / WP-63"
+    },
+    {
+      "h": "c36734f0",
+      "date": "2026-11-19",
+      "type": "fix",
+      "scope": "remote",
+      "msg": "WP-63 trim oversized snapshots instead of a silent stall, dial LAN only when the desktop offers TLS, faster relay reconnect, no update bar on first WebKit install"
+    },
+    {
+      "h": "03fb2d40",
+      "date": "2026-11-19",
+      "type": "fix",
+      "scope": "pty",
+      "msg": "Ctrl+C reaches processes in Windows ConPTY panes: clear the inherited ignore-Ctrl+C flag before CreateProcessW (WP-64)"
+    },
+    {
+      "h": "1772f7a0",
+      "date": "2026-11-19",
+      "type": "test",
+      "scope": "remote",
+      "msg": "WP-58a live QA on PC with the real dev app and a local relay; pairing errors 4429 / 4401 show blocked / expired"
+    },
+    {
+      "h": "b6f220ae",
+      "date": "2026-11-19",
+      "type": "build",
+      "scope": "relay",
+      "msg": "regenerate desktop relay bundle with the web app (/app/*) after WP-61a/61b/62"
+    },
+    {
+      "h": "65fd1ca4",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "remote",
+      "msg": "WP-61b file editing, git stage / unstage / commit and Run in the web app viewer"
+    },
+    {
+      "h": "f070a669",
+      "date": "2026-11-19",
+      "type": "feat",
+      "scope": "remote",
+      "msg": "WP-61a pane actions in the web app, hello control flag, denied pairing on desktop; WP-62 drop iOS native leftovers"
+    },
+    {
+      "h": "84e543cf",
+      "date": "2026-11-16",
+      "type": "release",
+      "scope": "",
+      "msg": "4.0.7: compact window buttons, new UI popup and spacing fixes, pane header shortcuts"
+    },
+    {
+      "h": "83a25fd6",
+      "date": "2026-11-16",
+      "type": "fix",
+      "scope": "ui",
+      "msg": "compact window buttons, new UI popups and spacing, pane header shortcuts"
+    },
+    {
+      "h": "a572c636",
+      "date": "2026-11-16",
+      "type": "release",
+      "scope": "",
+      "msg": "4.0.6: click to answer menus, Disk view (also on Tauri), Tauri parity fixes, Mist glass UI (opt-in) with custom theme, unified dropdowns"
+    },
+    {
+      "h": "54279d91",
+      "date": "2026-11-16",
+      "type": "feat",
+      "scope": "ui",
+      "msg": "v102 Mist glass UI (UI next gen, opt-in) with custom theme picker, unified dropdowns and Tauri-ready E2E"
+    },
+    {
+      "h": "9de056b7",
+      "date": "2026-11-16",
+      "type": "feat",
+      "scope": "shell",
+      "msg": "Disk (v101) on the Tauri shell: scan, browse, search, snapshots, move, clean up, organize, apps, RAM, MCP disk tools and Telegram reports"
+    },
+    {
+      "h": "e686eddb",
+      "date": "2026-11-15",
+      "type": "docs",
+      "scope": "plan",
+      "msg": "v100/v101 handoff and progress, v100-v102 coordination, release 4.0.6 notes"
+    },
+    {
+      "h": "248846b1",
+      "date": "2026-11-15",
+      "type": "docs",
+      "scope": "plan",
+      "msg": "v102 mist UI redesign plan, spec, UI inventory and static mockups"
+    },
+    {
+      "h": "5ad9594a",
+      "date": "2026-11-15",
+      "type": "fix",
+      "scope": "shell",
+      "msg": "Tauri parity with the Node app: only the main window answers orrery and focus asks, quit confirm with dirty editor save, cold start deep link queue, DeepSeek feature flag, build clean and backup hosts, registry reset on core relaunch, E2E updated for UI 4.0.x"
+    },
+    {
+      "h": "60438421",
+      "date": "2026-11-15",
+      "type": "fix",
+      "scope": "disk",
+      "msg": "wrap the Disk mode bar, locale date fields, count only unlocked cleanable size, move to another drive from Browse and Explorer with its own history entry, select E2E tabs by value"
+    },
+    {
+      "h": "2eb6afe0",
+      "date": "2026-11-15",
+      "type": "docs",
+      "scope": "",
+      "msg": "describe v100 click menu and v101 Disk in CLAUDE.md and the integration doc"
+    },
+    {
+      "h": "e0bb18c5",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "folder snapshots with compare and top growth, idle background rescan, Telegram disk report, low disk warning merged into Settings Disk, and disk_search / disk_usage / disk_propose_delete MCP tools"
+    },
+    {
+      "h": "d729fab1",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "add Apps tab with installed app list, safe uninstaller launch and leftover cleanup, and RAM tab with guarded process end"
+    },
+    {
+      "h": "fd211c67",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "add SDK, emulator, Gradle and Docker clean up groups, move folders to another drive behind a junction with verify, rollback and move back, allow the macOS user TMPDIR in the guard"
+    },
+    {
+      "h": "9a613568",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "add duplicate file finder with BLAKE3 staged hashing, hardlink and cloud-only safe, keep-oldest picks; Disk view tabs for duplicates and organize"
+    },
+    {
+      "h": "7d1ea54b",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "add Organize tab with preview, undo log, auto sort of settled files and empty folder / broken shortcut cleanup"
+    },
+    {
+      "h": "1ba491b6",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "add system junk groups, one-tap clean and Recycle Bin empty to the Clean up tab, with main-side open locks and post-confirm rechecks"
+    },
+    {
+      "h": "0514ae7c",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "show project and folder sizes from the disk index in Explorer, rail and Monitor with Open in Disk and Clean up this project entries"
+    },
+    {
+      "h": "07260d5d",
+      "date": "2026-11-15",
+      "type": "fix",
+      "scope": "desktop",
+      "msg": "canonical delete guard with realpath, Windows name folding, wider protected list, post-confirm recheck and packaged-safe E2E env"
+    },
+    {
+      "h": "59f51156",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "disk",
+      "msg": "add Clean up tab with dev junk groups, project locks, on-demand cache measure and v77 build cleanup redirect"
+    },
+    {
+      "h": "9bb22a0d",
+      "date": "2026-11-15",
+      "type": "docs",
+      "scope": "index",
+      "msg": "menu toast notes"
+    },
+    {
+      "h": "ce9a9709",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "desktop",
+      "msg": "OS toast with answer buttons for agent menus when Orrery is not focused, activation by per-run key link"
+    },
+    {
+      "h": "fd87fcbc",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "core",
+      "msg": "add MFT fast scan for NTFS via one-shot elevated helper over an authenticated named pipe, with desktop bridge and Fast scan button"
+    },
+    {
+      "h": "6f766885",
+      "date": "2026-11-15",
+      "type": "feat",
+      "scope": "web",
+      "msg": "waiting-for-answer queue chip with next-pane shortcut and answer strip on Mission Control cards"
+    }
+  ]
+}

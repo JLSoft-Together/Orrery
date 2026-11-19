@@ -350,7 +350,7 @@ function go(target: 'monitor' | 'workspace'): void {
 .dotc[data-tone='1'] { background: var(--ccm-agent-codex); }
 .dotc[data-tone='2'] { background: var(--ccm-working); }
 .dotc[data-tone='3'] { background: var(--ccm-agent-shell); }
-.dotc[data-tone='4'] { background: var(--ccm-success); }
+.dotc[data-tone='4'] { background: var(--ccm-done); }
 .dotc[data-tone='5'] { background: var(--ccm-peer); }
 .dotc[data-tone='6'] { background: var(--ccm-warning); }
 .dotc[data-tone='7'] { background: var(--ccm-accent); }
@@ -432,7 +432,7 @@ function go(target: 'monitor' | 'workspace'): void {
 .tone-working { color: var(--ccm-working); }
 .tone-waiting { color: var(--ccm-waiting); }
 .tone-error { color: var(--ccm-error); }
-.tone-done { color: var(--ccm-success); }
+.tone-done { color: var(--ccm-done); }
 .tone-idle { color: var(--ccm-ink-faint); }
 
 .spin {

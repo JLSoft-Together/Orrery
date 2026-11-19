@@ -125,7 +125,7 @@ function setMode(mode: 'cards' | 'groups'): void {
 
     <div v-else class="groups" data-testid="monitor-groups">
       <section v-for="g in groups" :key="g.rail" class="group" :data-rail="g.rail">
-        <h2 class="group-head" :class="`tone-${groupMeta[g.rail].tone}`">
+        <h2 class="group-head" :class="`gtone-${groupMeta[g.rail].tone}`">
           <component :is="groupMeta[g.rail].icon" :size="16" :stroke-width="2.2" aria-hidden="true" />
           <span class="gl">{{ t(`status.${g.rail}`) }} {{ g.sessions.length }}</span>
         </h2>
@@ -384,23 +384,23 @@ function setMode(mode: 'cards' | 'groups'): void {
   font-weight: 800;
 }
 
-.tone-error {
+.gtone-error {
   color: var(--ccm-error);
 }
 
-.tone-waiting {
+.gtone-waiting {
   color: var(--ccm-waiting);
 }
 
-.tone-working {
+.gtone-working {
   color: var(--ccm-working);
 }
 
-.tone-done {
+.gtone-done {
   color: var(--ccm-done);
 }
 
-.tone-idle {
+.gtone-idle {
   color: var(--ccm-idle);
 }
 

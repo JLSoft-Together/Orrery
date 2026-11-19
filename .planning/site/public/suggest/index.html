@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Orrery Đề xuất</title>
+<meta name="description" content="Đề xuất cải thiện UI/UX, dọn dẹp và tính năng cho Orrery, kèm wireframe bấm thử được.">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/suggest/suggest.css">
+<link rel="stylesheet" href="/suggest/wireframes.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="Mục lục">
+  <div class="wrap">
+    <a class="home" href="/" aria-label="Về trang tổng quan"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="4.2" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-24 12 12)"/><circle cx="20.2" cy="8.4" r="1.6" fill="currentColor"/></svg></span><b>Orrery</b></a>
+    <div class="seg" id="seg">
+      <a href="#de-xuat">Đề xuất</a>
+      <a href="#thu-tu">Thứ tự</a>
+      <a href="#can-chot">Cần chốt</a>
+      <a href="#cach-doc">Cách đọc</a>
+      <a class="out" href="/">Dashboard</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+<header class="hero">
+  <p class="eyebrow">Đề xuất cải thiện, <span id="updated">20/11/2026</span></p>
+  <h1>Làm Orrery dễ dùng hơn</h1>
+  <p class="lede" id="lede">Các đề xuất UI/UX, dọn dẹp và tính năng mới. Mỗi đề xuất có độ ưu tiên, công sức và wireframe bấm thử được.</p>
+  <p class="notice" id="notice" hidden><span class="pill p-warn"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 3.4V6l1.8 1.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Đang cập nhật</span> Nội dung đề xuất đang được viết, trang sẽ điền khi xong.</p>
+</header>
+
+<section id="de-xuat" aria-labelledby="h-dx">
+  <h2 id="h-dx">Đề xuất</h2>
+  <div class="toolbar">
+    <div class="filters" role="group" aria-label="Lọc theo nhóm" id="gf">
+      <button type="button" class="chipbtn on" data-g="all">Tất cả <span class="n" data-n="all">0</span></button>
+      <button type="button" class="chipbtn" data-g="ui">UI/UX <span class="n" data-n="ui">0</span></button>
+      <button type="button" class="chipbtn" data-g="clean">Clean <span class="n" data-n="clean">0</span></button>
+      <button type="button" class="chipbtn" data-g="feature">Tính năng <span class="n" data-n="feature">0</span></button>
+    </div>
+    <label class="sort">Sắp xếp
+      <select id="sort">
+        <option value="prio">Thứ tự ưu tiên</option>
+        <option value="effort">Công sức ít trước</option>
+        <option value="id">Thứ tự gốc</option>
+      </select>
+    </label>
+  </div>
+  <div class="props" id="props" aria-live="polite"></div>
+</section>
+
+<section id="thu-tu" aria-labelledby="h-tt">
+  <h2 id="h-tt">Thứ tự ưu tiên</h2>
+  <p class="sub">Rẻ và mở đường trước, rủi ro cao để sau cùng.</p>
+  <div class="card tw"><table><thead><tr><th>#</th><th>Đề xuất</th><th>Nhóm</th><th>Công sức</th><th>Lý do xếp</th></tr></thead><tbody id="order"><tr><td colspan="5">Đang cập nhật</td></tr></tbody></table></div>
+</section>
+
+<section id="can-chot" aria-labelledby="h-cc">
+  <h2 id="h-cc">Cần chủ nhân chốt</h2>
+  <p class="sub">Ba câu hỏi chặn việc triển khai.</p>
+  <div class="asks" id="asks"><div class="ask"><strong>Đang cập nhật</strong></div></div>
+</section>
+
+<section id="cach-doc" aria-labelledby="h-cd">
+  <h2 id="h-cd">Cách đọc</h2>
+  <p class="sub">Ba nhãn trên mỗi thẻ.</p>
+  <div class="legend">
+    <div class="card"><ul class="rows">
+      <li><span class="k">Nhóm</span><span class="v"><span class="pill p-c6">UI/UX</span> <span class="pill p-c5">Clean</span> <span class="pill p-c4">Tính năng</span></span></li>
+      <li><span class="k">Ưu tiên</span><span class="v"><span class="pill p-c1">P1</span> làm ngay, <span class="pill p-warn">P2</span> bản kế tiếp, <span class="pill p-off">P3</span> khi rảnh</span></li>
+      <li><span class="k">Công sức</span><span class="v"><b>S</b> dưới 1 ngày, <b>M</b> 1 đến 3 ngày, <b>L</b> trên 3 ngày</span></li>
+      <li><span class="k">Wireframe</span><span class="v">Bấm, hover và kéo được. Chỉ minh hoạ hành vi, không phải giao diện cuối.</span></li>
+    </ul></div>
+  </div>
+</section>
+</main>
+
+<footer class="wrap"><p>Nguồn: <code id="src">.planning/PROPOSALS-2026-11-20-ux.md</code>. Dữ liệu ở <a href="/data/proposals.json"><code>/data/proposals.json</code></a>.</p><p class="copy">© <span id="yr">2026</span> Jin Vũ. All rights reserved.</p></footer>
+
+<script src="/site.js"></script>
+<script src="/suggest/wireframes.js"></script>
+<script src="/suggest/suggest.js"></script>
+</body>
+</html>

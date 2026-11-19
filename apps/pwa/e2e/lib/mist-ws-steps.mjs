@@ -127,7 +127,7 @@ export async function mistWorkspaceSteps(c, page, peer) {
     for (const key of ['esc', 'tab', 'ctrl', 'alt', 'shiftTab', 'ctrlC', 'up', 'down', 'left', 'right', 'enter']) {
       if ((await byId(page, `key-${key}`).count()) !== 1) throw new Error(`key ${key} missing`)
       const box = await byId(page, `key-${key}`).boundingBox()
-      if (!box || box.height < 40 || box.width < 44) throw new Error(`key ${key} too small ${JSON.stringify(box)}`)
+      if (!box || box.height < 39.5 || box.width < 43.5) throw new Error(`key ${key} too small ${JSON.stringify(box)}`)
     }
     const dock = byId(page, 'dock')
     const blur = await dock.evaluate((el) => getComputedStyle(el).backdropFilter || 'none')

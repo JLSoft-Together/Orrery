@@ -38,7 +38,8 @@ const meta = computed(() => {
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-chip);
-  border: 1px solid currentColor;
+  border: 0;
+  background: color-mix(in srgb, currentColor 12%, transparent);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;

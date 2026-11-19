@@ -51,3 +51,7 @@ Chủ nhân 2026-11-19: mọi phần cần test trên Mac ghi hết vào file n�
 - [ ] Desktop có tab chia nhóm project: Workspace A hiện nhãn nhóm, B hiện section gập (nhóm `folded` đóng sẵn), màu tone khớp rail desktop.
 - [ ] iPhone: dock phím đặc, không thấy chữ terminal / nền sương xuyên qua dock; bàn phím ảo mở lên dock không bị che.
 - [ ] Viewer Tệp / Diff / Git / Chạy không blur, cuộn mượt.
+
+### WP-68b5
+- [ ] Đo cuộn danh sách dài Monitor / Workspace trên Safari iPhone thật (WebKit Windows p50 155 ms/frame, không đại diện)
+- [ ] 4 sửa bố cục (màu tên session, ô chữ project, chip Relay, nút màn Bật khoá ở đáy) trên iPhone + iPad

@@ -213,6 +213,15 @@ watch(
   min-height: 100%;
 }
 
+.view:not(.fill) {
+  display: flex;
+  flex-direction: column;
+}
+
+.view:not(.fill) > * {
+  flex: 1 0 auto;
+}
+
 .view.fill {
   height: 100%;
 }

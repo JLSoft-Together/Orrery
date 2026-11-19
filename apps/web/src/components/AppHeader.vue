@@ -2,12 +2,13 @@
 import ArtImage from './ArtImage.vue'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Activity, ChartColumnBig, CircleArrowDown, Ellipsis, GraduationCap, History, Inbox, Keyboard, Maximize2, Minimize2, Puzzle, Search, Smartphone, SquareTerminal, SunDim } from 'lucide-vue-next'
+import { Activity, ChartColumnBig, CircleArrowDown, Ellipsis, GraduationCap, HardDrive, History, Inbox, Keyboard, Maximize2, Minimize2, Puzzle, Search, Smartphone, SquareTerminal, SunDim } from 'lucide-vue-next'
 import { leaves } from '../lib/splitLayout'
 import { useSettingsStore } from '../stores/settings'
 import { useWorkspaceStore } from '../stores/workspace'
 import { hasExtensions, hasTerminals, titleBar } from '../lib/desktop'
 import { hasDevices } from '../lib/devices'
+import { hasDiskMap } from '../lib/diskMap'
 import { hasTelegram } from '../lib/telegram'
 import type { MenuEntry, Rect } from '../lib/menu'
 import { isMac } from '../lib/platform'
@@ -19,6 +20,7 @@ import { useUiStore, type View } from '../stores/ui'
 import HeaderStatusPopover from './HeaderStatusPopover.vue'
 import TelegramToggle from './TelegramToggle.vue'
 import SettingsMenu from './SettingsMenu.vue'
+import WindowControls from './ui/WindowControls.vue'
 import ContextMenu from './ui/ContextMenu.vue'
 
 const InboxPanel = defineAsyncComponent(() => import('./inbox/InboxPanel.vue'))
@@ -48,6 +50,7 @@ const secondary = computed(() => [
   { id: 'history' as View, label: t('nav.history'), icon: History },
   ...(hasExtensions ? [{ id: 'extensions' as View, label: t('nav.extensions'), icon: Puzzle }] : []),
   ...(hasDevices ? [{ id: 'devices' as View, label: t('nav.devices'), icon: Smartphone }] : []),
+  ...(hasDiskMap ? [{ id: 'disk' as View, label: t('diskMap.nav'), icon: HardDrive }] : []),
 ])
 const tabs = computed(() => {
   const extra = secondary.value.find((x) => x.id === ui.view)
@@ -205,6 +208,7 @@ function onTabKey(e: KeyboardEvent): void {
         </button>
         <SettingsMenu />
       </div>
+      <WindowControls class="ml-1 border-l border-line pl-1.5" />
     </div>
     <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inboxBtn" @close="inbox.open = false" />
     <ContextMenu v-if="moreAt" :at="moreAt" :entries="moreEntries" :label="t('nav.more')" :trigger="moreBtn" @pick="pickMore" @close="closeMore" />

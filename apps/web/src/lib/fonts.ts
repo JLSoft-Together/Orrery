@@ -44,6 +44,7 @@ export const UI_FONTS: readonly FontEntry[] = [
   { id: 'roboto', name: 'Roboto', kind: 'ui', family: 'Roboto Variable', source: 'bundled' },
   { id: 'ibm-plex-sans', name: 'IBM Plex Sans', kind: 'ui', family: 'IBM Plex Sans Variable', source: 'bundled' },
   { id: 'source-sans-3', name: 'Source Sans 3', kind: 'ui', family: 'Source Sans 3 Variable', source: 'bundled' },
+  { id: 'manrope', name: 'Manrope', kind: 'ui', family: 'Manrope Variable', source: 'bundled' },
   { id: 'noto-sans', name: 'Noto Sans', kind: 'ui', family: 'Noto Sans Variable', source: 'bundled' },
   { id: 'open-sans', name: 'Open Sans', kind: 'ui', family: 'Open Sans Variable', source: 'bundled' },
   { id: 'be-vietnam-pro', name: 'Be Vietnam Pro', kind: 'ui', family: 'Be Vietnam Pro', source: 'bundled' },

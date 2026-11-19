@@ -7,6 +7,7 @@ import { retireOverlay } from '../../lib/motion'
 import { appModules, cloneConfig, configChanges, configIssues, envRows, issueKey, moveItem, newConfig, rowsToEnv, sameConfig, tidyIssueText, type EnvRow } from '../../lib/runUi'
 import { dirKey } from '../../stores/favorites'
 import { useRunStore } from '../../stores/run'
+import AppSelect from '../AppSelect.vue'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 
@@ -104,6 +105,14 @@ const pinnedMissing = computed(() => {
   const c = current.value
   return c && c.type !== 'custom' && c.device !== 'selected' && !devices.value.some((d) => d.id === c.device) ? c.device : null
 })
+const cwdOptions = computed(() => projectDirs.value.map((d) => ({ value: d, label: rel(d) })))
+const entryOptions = computed(() => entrypoints.value.map((e) => ({ value: e, label: e })))
+const moduleOptions = computed(() => modules.value.map((m) => ({ value: m, label: m })))
+const deviceOptions = computed(() => [
+  { value: 'selected', label: t('run.configs.deviceSelected') },
+  ...(pinnedMissing.value ? [{ value: pinnedMissing.value, label: `${pinnedMissing.value} - ${t('run.device.offline')}` }] : []),
+  ...devices.value.map((d) => ({ value: d.id, label: d.name })),
+])
 const modeOptions = computed(() => MODES.map((m) => ({ value: m, label: t(`run.configs.modes.${m}`) })))
 
 const issues = computed(() => (current.value ? configIssues(current.value, currentRows.value) : []))
@@ -435,22 +444,16 @@ const ICON_BTN =
                   <input id="rc-name" v-model="current.name" type="text" maxlength="80" class="ccm-field h-8 min-w-0 text-sm" data-config-name />
 
                   <label :class="LABEL" for="rc-cwd">{{ t('run.configs.project') }}</label>
-                  <select id="rc-cwd" v-model="current.cwd" class="ccm-field h-8 min-w-0 cursor-pointer text-sm" :title="current.cwd">
-                    <option v-for="d in projectDirs" :key="d" :value="d">{{ rel(d) }}</option>
-                  </select>
+                  <AppSelect id="rc-cwd" v-model="current.cwd" :options="cwdOptions" :label="t('run.configs.project')" :title="current.cwd" class="w-full" />
 
                   <template v-if="current.type === 'flutter'">
                     <label :class="LABEL" for="rc-entry">{{ t('run.configs.entrypoint') }}</label>
-                    <select id="rc-entry" v-model="current.entrypoint" class="ccm-field h-8 min-w-0 cursor-pointer font-mono text-xs">
-                      <option v-for="e in entrypoints" :key="e" :value="e">{{ e }}</option>
-                    </select>
+                    <AppSelect id="rc-entry" v-model="current.entrypoint" :options="entryOptions" :label="t('run.configs.entrypoint')" class="w-full font-mono" />
                   </template>
 
                   <template v-if="current.type === 'android'">
                     <label :class="LABEL" for="rc-module">{{ t('run.configs.module') }}</label>
-                    <select id="rc-module" v-model="current.module" class="ccm-field h-8 min-w-0 cursor-pointer font-mono text-xs">
-                      <option v-for="m in modules" :key="m" :value="m">{{ m }}</option>
-                    </select>
+                    <AppSelect id="rc-module" v-model="current.module" :options="moduleOptions" :label="t('run.configs.module')" class="w-full font-mono" />
                     <label :class="LABEL" for="rc-variant">{{ t('run.configs.variant') }}</label>
                     <div class="min-w-0">
                       <input id="rc-variant" v-model.trim="current.variant" type="text" maxlength="64" class="ccm-field h-8 w-full font-mono text-xs" spellcheck="false" />
@@ -460,11 +463,7 @@ const ICON_BTN =
 
                   <template v-if="current.type !== 'custom'">
                     <label :class="LABEL" for="rc-device">{{ t('run.configs.device') }}</label>
-                    <select id="rc-device" v-model="current.device" class="ccm-field h-8 min-w-0 cursor-pointer text-sm">
-                      <option value="selected">{{ t('run.configs.deviceSelected') }}</option>
-                      <option v-if="pinnedMissing" :value="pinnedMissing">{{ pinnedMissing }} · {{ t('run.device.offline') }}</option>
-                      <option v-for="d in devices" :key="`${d.source}:${d.id}`" :value="d.id">{{ d.name }}</option>
-                    </select>
+                    <AppSelect id="rc-device" v-model="current.device" :options="deviceOptions" :label="t('run.configs.device')" class="w-full" />
                   </template>
 
                   <template v-if="current.type === 'flutter'">

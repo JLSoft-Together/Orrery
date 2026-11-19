@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, provide, ref, watch } from 'vue'
+import { computed, inject, nextTick, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PtyPreset } from '@ccm/shared'
 import { ChevronsDownUp, LoaderCircle, Minus, Plus, Search, X } from 'lucide-vue-next'
@@ -7,7 +7,7 @@ import { useClusterDrag } from '../../composables/useClusterDrag'
 import { useCompact } from '../../composables/useCompact'
 import { usePaneActions } from '../../composables/usePaneActions'
 import { useOpenProject } from '../../composables/useOpenProject'
-import { RAIL_TAB_STOP, useRail } from '../../composables/useRail'
+import { RAIL_PROJECT_DRAG, RAIL_SELECTED, RAIL_TAB_STOP, useRail } from '../../composables/useRail'
 import { useRailDrag, type RailDrop } from '../../composables/useRailDrag'
 import { hasDeepSeek, hasRun } from '../../lib/desktop'
 import { onDustLeave } from '../../lib/dust'
@@ -23,6 +23,7 @@ import type { RailDragSource } from '../../lib/rail/railDrag'
 import { isSolo, rowLines, tabStopOf, type RailCheckout, type RailCluster, type RailGroup, type RailRow } from '../../lib/rail/railModel'
 import { buildSections, railMoveIndexes } from '../../lib/rail/railView'
 import { emptyMenu, groupMenu, isMenuKey, projectMenu as buildProjectMenu, rowMenu } from '../../lib/rail/railMenu'
+import { clickSelect, extendSelect, NO_SELECTION, pruneSelection, selectionFacts, selectionMenu, selectionPanes, type RailSelection } from '../../lib/rail/railSelect'
 import { leaves, type SplitDir } from '../../lib/splitLayout'
 import { useRunStore } from '../../stores/run'
 import { useUiStore } from '../../stores/ui'
@@ -206,6 +207,92 @@ function onFocusIn(e: FocusEvent): void {
   if (id) lastFocus.value = id
 }
 
+const selection = ref<RailSelection>(NO_SELECTION)
+const selectedSet = computed(() => new Set(selection.value.keys))
+provide(RAIL_SELECTED, (key) => selectedSet.value.has(key))
+const allRows = computed(() => new Map(rail.clusters.value.flatMap((c) => c.checkouts.flatMap((k) => k.rows)).map((r) => [r.key, r] as const)))
+watch(allRows, (rows) => {
+  selection.value = pruneSelection(selection.value, (k) => rows.has(k))
+})
+const selectHint = computed(() => t(isMac ? 'railSelect.hintMac' : 'railSelect.hint'))
+
+function clearSelection(): void {
+  selection.value = NO_SELECTION
+}
+
+function announceSelection(): void {
+  const n = selection.value.keys.length
+  announce.value = n ? t('railSelect.count', { n }, n) : t('railSelect.clear')
+}
+
+const visibleRowKeys = (): string[] =>
+  [...(navEl.value?.querySelectorAll<HTMLElement>('[data-side-row]') ?? [])].filter((n) => n.offsetParent && !n.closest('[inert]')).flatMap((n) => (n.dataset.rowKey ? [n.dataset.rowKey] : []))
+const focusedRowKey = (): string | null => [...allRows.value.values()].find((r) => r.focused)?.key ?? null
+
+function onRowClickCapture(e: MouseEvent): void {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-side-row]')
+  const key = btn?.dataset.rowKey
+  if (!btn || !key) return
+  const toggle = isMac ? e.metaKey : e.ctrlKey
+  if (!toggle && !e.shiftKey) {
+    if (selection.value.keys.length) clearSelection()
+    return
+  }
+  e.preventDefault()
+  e.stopPropagation()
+  window.getSelection()?.removeAllRanges()
+  selection.value = clickSelect(selection.value, key, visibleRowKeys(), { toggle, range: e.shiftKey }, focusedRowKey())
+  btn.focus()
+  announceSelection()
+}
+
+function selectedPanes(): string[] {
+  return selectionPanes(
+    selection.value.keys,
+    (k) => {
+      const r = allRows.value.get(k)
+      return r && { paneKey: r.paneKey, tabKey: r.tabKey, tabRow: r.key.startsWith('tab:') }
+    },
+    tabLeaves,
+  )
+}
+
+function showSelectionMenu(at: DOMRect, trigger: HTMLElement | null): void {
+  ++menuSeq
+  const panes = selectedPanes()
+  const facts = selectionFacts(panes, (k) => {
+    const tab = workspace.tabOf(k)
+    return tab && { key: tab.key, size: leaves(tab.root).length }
+  })
+  ctxMenu.value = {
+    at,
+    trigger,
+    label: t('railSelect.menuLabel', { n: panes.length }),
+    entries: selectionMenu({ count: panes.length, ...facts }, t),
+    pick: (id) => pickSelection(id, panes),
+  }
+}
+
+function pickSelection(id: string, panes: string[]): void {
+  if (id === 'sel-group') {
+    if (workspace.groupPanes(panes)) flash(t('railSelect.grouped', { n: panes.length }))
+  } else if (id === 'sel-ungroup') {
+    const n = workspace.ungroupPanes(panes)
+    if (n) flash(t('railSelect.ungrouped', { n }, n))
+  } else if (id === 'sel-close') emit('close', panes)
+  clearSelection()
+}
+
+const projectDrag = inject(RAIL_PROJECT_DRAG, null)
+
+function startProjectDrag(e: PointerEvent): void {
+  const target = e.target as HTMLElement
+  const head = target.closest<HTMLElement>('[data-side-head]')
+  if (!projectDrag || !head || target.closest('[data-no-drag]')) return
+  const c = rail.clusters.value.find((x) => x.key === head.closest<HTMLElement>('[data-group]')?.dataset.group)
+  if (c) projectDrag(e, { key: c.key, dir: headDir(c) ?? c.history[0] ?? null, name: nameOf(c) }, head)
+}
+
 /** A filtered cluster only lists its matching rows; actions still act on the whole project. */
 const fullOf = (c: RailCluster): RailCluster => rail.clusters.value.find((x) => x.key === c.key) ?? c
 /** Folder the header acts on: the active checkout, else the main one (a worktree tab never gets the main checkout's root). */
@@ -267,6 +354,7 @@ const railDrag = useRailDrag(
 function onPointerDown(e: PointerEvent): void {
   drag.onDown(e)
   railDrag.onDown(e)
+  startProjectDrag(e)
 }
 
 function movePane(paneKey: string, name: string, tabKey: string): void {
@@ -294,7 +382,6 @@ function onRailDrop(src: RailDragSource, drop: RailDrop): void {
     if (src.paneKey) detach(src.paneKey, src.title)
     return
   }
-  if (!rail.sameProject(src.tabKey, drop.tabKey)) return
   if (src.kind === 'tab') mergeTab(src.tabKey, drop.tabKey)
   else if (src.paneKey) movePane(src.paneKey, src.title, drop.tabKey)
 }
@@ -495,6 +582,8 @@ const compactFlow = useCompact()
 const paneActions = usePaneActions()
 
 function showRowMenu(row: RailRow, at: DOMRect, trigger: HTMLElement | null): void {
+  if (selection.value.keys.length > 1 && selectedSet.value.has(row.key)) return showSelectionMenu(at, trigger)
+  if (selection.value.keys.length) clearSelection()
   ++menuSeq
   const tab = workspace.tabs.find((x) => x.key === row.tabKey)
   const cwd = workCwd(row.pane) ?? null
@@ -663,6 +752,13 @@ function openMenuFromKey(el: HTMLElement): void {
 // Roving focus over headers, checkout lines and rows, in screen order; Alt+↑/↓ on a header reorders projects.
 function onKey(e: KeyboardEvent): void {
   const el = document.activeElement as HTMLElement | null
+  if (e.key === 'Escape' && selection.value.keys.length && !ctxMenu.value && !e.defaultPrevented) {
+    e.preventDefault()
+    e.stopPropagation()
+    clearSelection()
+    announceSelection()
+    return
+  }
   if (!el?.matches('[data-side-item]')) return
   if (isMenuKey(e)) {
     e.preventDefault()
@@ -708,6 +804,14 @@ function onKey(e: KeyboardEvent): void {
     else if (after?.closest<HTMLElement>('[data-rail-member]')?.dataset.railMember === group.tabKey) next = after
   } else return
   e.preventDefault()
+  if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && el.dataset.rowKey) {
+    const wraps = e.key === 'ArrowDown' ? at + 1 >= items.length : at <= 0
+    if (wraps) return
+    if (next?.dataset.rowKey) {
+      selection.value = extendSelect(selection.value, el.dataset.rowKey, next.dataset.rowKey, visibleRowKeys())
+      announceSelection()
+    }
+  }
   next?.focus()
 }
 
@@ -733,7 +837,7 @@ function pickNew(choice: SplitChoice): void {
   if (!newMenu.value) return
   const dir = newMenu.value.dir ?? undefined
   if (choice === 'browser') workspace.openBrowser('', { cwd: dir })
-  else workspace.launch(choice, dir)
+  else if (choice !== 'project') workspace.launch(choice, dir)
 }
 </script>
 
@@ -747,6 +851,7 @@ function pickNew(choice: SplitChoice): void {
     @keydown="onKey"
     @focusin="onFocusIn"
     @pointerdown="onPointerDown"
+    @click.capture="onRowClickCapture"
     @contextmenu="showEmptyMenu"
   >
     <div v-if="!only && (openable || clusters.length > 0)" class="flex shrink-0 items-center gap-1">
@@ -809,6 +914,8 @@ function pickNew(choice: SplitChoice): void {
       class="relative flex flex-col gap-0.5"
       :role="clusters.length ? 'tree' : undefined"
       :aria-label="clusters.length ? t('workspace.railTree.label') : undefined"
+      :aria-multiselectable="clusters.length ? 'true' : undefined"
+      :aria-description="clusters.length ? selectHint : undefined"
       @before-leave="pinLeaving"
       @leave="onClusterLeave"
     >
@@ -862,6 +969,19 @@ function pickNew(choice: SplitChoice): void {
     </TransitionGroup>
     </div>
     <p v-if="filtering && !shown.length" class="shrink-0 px-2 py-1 text-2xs text-ink-muted" role="status" data-rail-filter-empty>{{ t('railV79.noMatch', { q: query.trim() }) }}</p>
+    <div v-if="selection.keys.length" class="flex shrink-0 items-center gap-1 rounded-inner bg-accent-soft px-1.5 py-0.5 text-2xs text-ink" :title="selectHint" data-rail-selection>
+      <span class="min-w-0 flex-1 truncate font-medium">{{ t('railSelect.count', { n: selection.keys.length }, selection.keys.length) }}</span>
+      <button
+        type="button"
+        class="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[5px] text-ink-muted hover:bg-fill-strong hover:text-ink"
+        :title="`${t('railSelect.clear')} (Esc)`"
+        :aria-label="t('railSelect.clear')"
+        data-rail-selection-clear
+        @click="clearSelection"
+      >
+        <X :size="12" aria-hidden="true" />
+      </button>
+    </div>
     <p v-if="status" class="shrink-0 truncate px-1 text-2xs text-ink-muted" aria-hidden="true" data-rail-status>{{ status }}</p>
     <span class="sr-only" aria-live="polite">{{ announce }}</span>
     <ContextMenu

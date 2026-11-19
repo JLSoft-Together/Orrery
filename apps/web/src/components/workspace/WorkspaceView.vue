@@ -23,13 +23,13 @@ import { baseName, changesStatus, fullAccess, hasFullAccess, hasPreview, openExt
 import { pinLeaving, retireOverlay, withViewTransition } from '../../lib/motion'
 import type { MenuEntry } from '../../lib/menu'
 import { isMac } from '../../lib/platform'
-import { boxes, clampRatio, dividers, leaves, MIN_PANE, type Box, type Divider, type Edge, type SplitDir } from '../../lib/splitLayout'
+import { boxes, clampRatio, dividers, foldedKeys, foldLayout, GROUP_CHROME, GROUP_TONES, groupBoxes, groupsOf, leaves, MIN_PANE, type Box, type Divider, type Edge, type GroupMeta, type SplitDir } from '../../lib/splitLayout'
 import { DROP_TERM_KEYS, workspaceAction } from '../../lib/workspaceKeys'
 import { editorKeepsKey, inEditor, onSaveAllRequest, reportDirty } from '../../lib/fileEditor'
 import { isTyping, keyCombo, shortcutText } from '../../lib/shortcuts'
 import { moveTargetOf, tabMenu } from '../../lib/tabMenu'
 import { fitTabs, groupKeys, groupStarts, withinGroup } from '../../lib/tabGroups'
-import { projectTone } from '../../lib/rail/projectRow'
+import { monogram, projectTone } from '../../lib/rail/projectRow'
 import { useFocusMode } from '../../composables/useFocusMode'
 import { stepSlot, tabMoveIndex } from '../../lib/tabStrip'
 import { isMenuKey } from '../../lib/rail/railMenu'
@@ -42,8 +42,12 @@ import { useTerminalsStore } from '../../stores/terminals'
 import { displayTitle } from '../../lib/title'
 import { useUiStore } from '../../stores/ui'
 import { useSettingsStore } from '../../stores/settings'
-import { isTerm, presetOf, primaryPaneKey, tabProject, useWorkspaceStore, workCwd, type Pane, type PaneSpec, type SplitChoice, type Tab } from '../../stores/workspace'
+import { useUiGenStore } from '../../stores/uiGen'
+import { useExplorerDrawer } from '../next/explorer/useExplorerDrawer'
+import { isTerm, paneProjectOf, presetOf, primaryPaneKey, tabProject, useWorkspaceStore, workCwd, type Pane, type PaneSpec, type SplitChoice, type Tab } from '../../stores/workspace'
+import type { ResumeItem } from '../../lib/launcher'
 import StatusIcon from '../StatusIcon.vue'
+import Chip from '../next/ui/Chip.vue'
 import { statusMeta } from '../../lib/status'
 import LaunchPicker from './LaunchPicker.vue'
 import BrowserPane from './BrowserPane.vue'
@@ -83,11 +87,14 @@ import SideResizer from './SideResizer.vue'
 import RailColumn from './rail/RailColumn.vue'
 import MissionControl from './MissionControl.vue'
 import AttentionPopover from './AttentionPopover.vue'
+import MenuQueueChip from './MenuQueueChip.vue'
+import { useMenuQueueStore } from '../../stores/menuQueue'
 import TabRenameInput from './TabRenameInput.vue'
 import { useToastsStore } from '../../stores/toasts'
 import ContextMenu from '../ui/ContextMenu.vue'
 import { SIDE_MIN } from '../../lib/sideWidth'
-import { boxStyle, dividerStyle } from './view/geometry'
+import { boxStyle, dividerStyle, groupBoxStyle, groupContentPx, groupDividerStyle } from './view/geometry'
+import GroupFrames, { type GroupFrame } from './view/GroupFrames.vue'
 import { useSidePanels, RAIL_COLUMN_W, SIDE_NARROW } from './view/useSidePanels'
 import { useDialogRoots } from './view/useDialogRoots'
 import { useTabStripVisuals } from './view/useTabStripVisuals'
@@ -100,16 +107,26 @@ import { hasRun } from '../../lib/desktop'
 import { latestPeer, type RailCluster } from '../../lib/rail/railModel'
 import { projectTabKeys, spaceIndexes, spaceLabel } from '../../lib/rail/spaces'
 import { buildAttentionList } from '../../lib/rail/attentionList'
-import { useRail } from '../../composables/useRail'
+import { RAIL_PROJECT_DRAG, useRail } from '../../composables/useRail'
 import { useRunStore } from '../../stores/run'
 import { useExplorerStore } from '../../stores/explorer'
-import { usePaneDrag, type PaneDragSource, type PaneDropAction } from '../../composables/usePaneDrag'
+import { RAIL_PANE_DRAG, usePaneDrag, type PaneDragSource, type PaneDropAction } from '../../composables/usePaneDrag'
+import { registerWorkspaceBridge } from '../../lib/next/workspaceBridge'
+import DropOverlay from '../next/canvas/DropOverlay.vue'
+import DragGhost from '../next/canvas/DragGhost.vue'
+import LayoutMenu from '../next/canvas/LayoutMenu.vue'
+import SplitHint from '../next/canvas/SplitHint.vue'
+import FileDropLayer from '../next/canvas/FileDropLayer.vue'
+import { useNextLayout, type LayoutChange } from '../next/canvas/useNextLayout'
+import { DOCK_PERCENT, DROP_MIN } from '../../lib/next/dropCompass'
+import { ratioLabel, snapRatio } from '../../lib/layoutSnap'
 
 /** The view is on screen: App hides it with v-show for other views and in compact mode. */
 const props = defineProps<{ visible: boolean }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
+const menuQueue = useMenuQueueStore()
 useWorkspaceLinks(() => props.visible)
 installMcpCalls()
 installTelegramInbound()
@@ -117,6 +134,14 @@ useAgentStatusStore().start()
 const info = usePaneInfo()
 const { describe, isBusy, viewDetail } = info
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
+const explorerDrawer = useExplorerDrawer()
+const explorerOn = computed(() => (isNext.value ? explorerDrawer.open.value : explorerOpen.value))
+function onExplorerToggle(): void {
+  if (isNext.value) explorerDrawer.open.value = !explorerDrawer.open.value
+  else toggleExplorer()
+}
 workspace.setClosedNamer((pane) => info.titleOf(pane))
 
 const {
@@ -146,7 +171,8 @@ const focusOn = focusMode.on
 const explorerPanel = ref<{ showSearch: (query?: SearchQuery) => Promise<void> } | null>(null)
 async function showSearch(query?: SearchQuery): Promise<void> {
   focusMode.set(false)
-  explorerOpen.value = true
+  if (isNext.value) explorerDrawer.open.value = true
+  else explorerOpen.value = true
   await nextTick()
   await explorerPanel.value?.showSearch(query)
 }
@@ -161,7 +187,8 @@ watch(
 
 async function showExplorer(): Promise<void> {
   focusMode.set(false)
-  explorerOpen.value = true
+  if (isNext.value) explorerDrawer.open.value = true
+  else explorerOpen.value = true
   await nextTick()
   ;(document.querySelector<HTMLElement>('[data-explorer-tree] [tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-explorer] [role="tab"][tabindex="0"]'))?.focus()
 }
@@ -410,8 +437,7 @@ const { rootOf, resolve } = useProjectRoots()
 
 /** Checkout a pane works in: git toplevel of its tab's project (a worktree stays itself), else that folder. */
 function paneProject(pane: Pane): string | null {
-  const tab = workspace.tabOf(pane.key)
-  const dir = (tab && tabProject(tab, paneOf)) ?? pane.cwd
+  const dir = paneProjectOf(workspace.tabOf(pane.key), pane, paneOf)
   return dir ? (rootOf(dir) ?? dir) : null
 }
 
@@ -678,6 +704,10 @@ const canvasSize = ref({ w: 0, h: 0 })
 let canvasObserver: ResizeObserver | null = null
 
 const menuOpen = ref(false)
+const splitTarget = ref<{ key: string; dir: SplitDir } | null>(null)
+watch(menuOpen, (open) => {
+  if (!open) splitTarget.value = null
+})
 const menuAlignRight = ref(false)
 const menuTrigger = ref<HTMLButtonElement | null>(null)
 const menu = ref<HTMLElement | null>(null)
@@ -690,14 +720,195 @@ const tabZoom = (tab: Tab | null | undefined): string | null => {
   return keys.length > 1 && keys.includes(tab.zoom) ? tab.zoom : null
 }
 const zoomedKey = computed(() => tabZoom(workspace.activeTab))
-const layoutBoxes = computed(() => (workspace.activeTab ? boxes(workspace.activeTab.root) : new Map<string, Box>()))
+const FOLD_STRIP = { w: 36, h: GROUP_CHROME.head + GROUP_CHROME.pad }
+const folding = computed(() => (workspace.activeTab ? foldLayout(workspace.activeTab.root, canvasSize.value, FOLD_STRIP) : null))
+const foldedPanes = computed(() => (workspace.activeTab ? foldedKeys(workspace.activeTab.root) : new Set<string>()))
+const layoutBoxes = computed(() => {
+  const all = folding.value ? boxes(folding.value.root) : new Map<string, Box>()
+  for (const k of foldedPanes.value) all.delete(k)
+  return all
+})
 const tabBoxes = computed(() => (zoomedKey.value ? new Map<string, Box>([[zoomedKey.value, { x: 0, y: 0, w: 1, h: 1 }]]) : layoutBoxes.value))
-const tabDividers = computed(() => (workspace.activeTab && !zoomedKey.value ? dividers(workspace.activeTab.root) : []))
+const tabDividers = computed(() => {
+  const f = folding.value
+  if (!f || zoomedKey.value) return []
+  const shut = new Set(groupsOf(f.root).filter((g) => g.folded).map((g) => g.project))
+  return dividers(f.root).filter((d) => !f.locked.includes(d.path) && !(d.group !== undefined && shut.has(d.group)))
+})
 const multiPane = computed(() => tabBoxes.value.size > 1)
 const hiddenCount = computed(() => (zoomedKey.value ? layoutBoxes.value.size - 1 : 0))
 const isZoomed = (key: string): boolean => key === zoomedKey.value
 const hiddenOf = (key: string): number => (isZoomed(key) ? hiddenCount.value : 0)
 const paneDim = (key: string): boolean => settings.dimInactive && multiPane.value && key !== workspace.activeKey
+
+function projectToneOf(project: string): number {
+  return rail.toneOf(project)
+}
+
+const groupFrames = computed<GroupFrame[]>(() => {
+  const tab = workspace.activeTab
+  if (!tab || zoomedKey.value) return []
+  const root = folding.value?.root ?? tab.root
+  const list = groupsOf(root)
+  if (list.length < 2) return []
+  const at = groupBoxes(root)
+  const size = canvasSize.value
+  return list.map((g) => {
+    const name = g.name || (g.project ? folderName(g.project) : t('groupsV99.home'))
+    const box = at.get(g.project)!
+    return {
+      project: g.project,
+      name,
+      letter: monogram(name),
+      tone: g.tone ?? projectToneOf(g.project),
+      count: g.keys.length,
+      active: !!workspace.activeKey && g.keys.includes(workspace.activeKey),
+      folded: !!g.folded,
+      vertical: box.w * size.w < box.h * size.h,
+      box,
+    }
+  })
+})
+const frameBoxes = computed(() => new Map(groupFrames.value.map((f) => [f.project, f.box])))
+const paneFrame = computed(() => {
+  const out = new Map<string, Box>()
+  const tab = workspace.activeTab
+  if (!tab || !groupFrames.value.length) return out
+  for (const g of groupsOf(tab.root)) for (const k of g.keys) out.set(k, frameBoxes.value.get(g.project)!)
+  return out
+})
+const paneStyle = (key: string): Record<string, string> => {
+  const box = tabBoxes.value.get(key)!
+  const frame = paneFrame.value.get(key)
+  return frame ? groupBoxStyle(box, frame) : boxStyle(box)
+}
+const paneGroup = (key: string): string | undefined => {
+  const tab = workspace.tabOf(key)
+  return tab ? groupsOf(tab.root).find((g) => g.keys.includes(key))?.project : undefined
+}
+const divStyle = (d: Divider): Record<string, string> => {
+  const frame = d.group !== undefined ? frameBoxes.value.get(d.group) : undefined
+  return frame ? groupDividerStyle(d, frame) : dividerStyle(d)
+}
+
+function groupFocusKey(project: string): string | undefined {
+  const tab = workspace.activeTab
+  const keys = tab ? (groupsOf(tab.root).find((g) => g.project === project)?.keys ?? []) : []
+  return workspace.activeKey && keys.includes(workspace.activeKey) ? workspace.activeKey : keys[0]
+}
+
+function groupAdd(project: string): void {
+  const key = groupFocusKey(project)
+  if (key) splitActive(undefined, undefined, key)
+}
+
+function groupAddProject(project: string): void {
+  const key = groupFocusKey(project)
+  if (key) void openMenu({ key, dir: 'row' })
+}
+
+function groupToTab(project: string, name: string): void {
+  const tab = workspace.activeTab
+  if (!tab) return
+  withViewTransition(() => {
+    if (workspace.groupToTab(tab.key, project)) announce(t('groupsV99.moved', { name }))
+  })
+}
+
+function groupClose(project: string): void {
+  const tab = workspace.activeTab
+  const keys = tab ? workspace.groupKeys(tab.key, project) : []
+  if (keys.length) closePanes(keys)
+}
+
+function addGroupNow(): void {
+  const key = workspace.activeKey
+  if (key && workspace.tabOf(key)) void openMenu({ key, dir: 'row' })
+}
+watch(
+  () => ui.addGroupAsk,
+  () => {
+    if (props.visible || ui.view === 'workspace') void nextTick(addGroupNow)
+  },
+)
+
+const groupFramesRef = ref<InstanceType<typeof GroupFrames> | null>(null)
+
+function setGroup(project: string, patch: GroupMeta): boolean {
+  const tab = workspace.activeTab
+  return !!tab && workspace.setGroupMeta(tab.key, project, patch)
+}
+
+function groupUnfold(project: string): void {
+  withViewTransition(() => setGroup(project, { folded: false }))
+  void nextTick(() => groupFocus(project))
+}
+
+function groupRename(project: string, name: string): void {
+  setGroup(project, { name: name.trim() || undefined })
+}
+
+function showGroupMenu(f: GroupFrame, e: MouseEvent, el: HTMLElement): void {
+  const tones = Array.from({ length: GROUP_TONES }, (_, i) => ({ id: `tone:${i}`, label: t(`groupsV99.tones.${i}`) }))
+  const entries: MenuEntry[] = [
+    { id: 'rename', label: t('groupsV99.rename') },
+    { id: 'colour', label: t('groupsV99.colour'), children: [{ id: 'tone:auto', label: t('groupsV99.colourAuto') }, { separator: true }, ...tones] },
+    { id: f.folded ? 'unfold' : 'fold', label: f.folded ? t('groupsV99.unfold', { name: f.name }) : t('groupsV99.fold') },
+    { separator: true },
+    { id: 'add', label: t('groupsV99.newSession', { name: f.name }) },
+    { id: 'add-project', label: t('groupsV99.addProject', { name: f.name }), shortcut: isMac ? '⌃⌥G' : 'Ctrl+Alt+G' },
+    { id: 'to-tab', label: t('groupsV99.toTab', { name: f.name }) },
+    { separator: true },
+    { id: 'close', label: t('groupsV99.close', { name: f.name }) },
+  ]
+  tabCtx.value = {
+    at: new DOMRect(e.clientX, e.clientY, 0, 0),
+    trigger: el,
+    label: t('groupsV99.menu', { name: f.name }),
+    entries,
+    pick: (id) => pickGroupAction(id, f),
+  }
+}
+
+function pickGroupAction(id: string, f: GroupFrame): void {
+  tabCtx.value = null
+  if (id.startsWith('tone:')) {
+    const n = id.slice(5)
+    setGroup(f.project, { tone: n === 'auto' ? undefined : Number(n) })
+    return
+  }
+  switch (id) {
+    case 'rename':
+      void nextTick(() => groupFramesRef.value?.startRename(f))
+      break
+    case 'fold':
+      withViewTransition(() => {
+        if (setGroup(f.project, { folded: true })) announce(t('groupsV99.folded', { name: f.name }))
+        else announce(t('groupsV99.lastOpen'))
+      })
+      break
+    case 'unfold':
+      groupUnfold(f.project)
+      break
+    case 'add':
+      groupAdd(f.project)
+      break
+    case 'add-project':
+      groupAddProject(f.project)
+      break
+    case 'to-tab':
+      groupToTab(f.project, f.name)
+      break
+    case 'close':
+      groupClose(f.project)
+      break
+  }
+}
+
+function groupFocus(project: string): void {
+  const key = groupFocusKey(project)
+  if (key) workspace.activate(key)
+}
 
 function toggleZoom(key = workspace.activeKey): void {
   const tab = key ? workspace.tabOf(key) : undefined
@@ -731,13 +942,18 @@ watch(
 )
 
 function launch(cwd: string | undefined): void {
+  if (splitTarget.value) {
+    if (cwd) splitInto(cwd)
+    return
+  }
   closeMenu(false)
   workspace.launch(workspace.preset, cwd)
 }
 
-async function openMenu(): Promise<void> {
+async function openMenu(split: { key: string; dir: SplitDir } | null = null): Promise<void> {
   // No tabs: the picker is already on screen, inline in the empty state.
   if (!workspace.tabs.length) return emptyPicker.value?.focusFirst()
+  splitTarget.value = split
   // Left-aligned under the "+" like a browser, unless that would run off the right edge.
   const r = menuTrigger.value?.getBoundingClientRect()
   menuAlignRight.value = !!r && r.left + 380 > window.innerWidth - 12
@@ -853,16 +1069,25 @@ function startDrag(d: Divider, e: PointerEvent): void {
   if (!el) return
   const handle = e.currentTarget as HTMLElement
   handle.setPointerCapture(e.pointerId)
-  const rect = el.getBoundingClientRect()
+  const whole = el.getBoundingClientRect()
+  const g = d.group !== undefined ? frameBoxes.value.get(d.group) : undefined
+  const area = g ? groupContentPx(g, whole) : null
+  const toCanvas = (x: number, y: number): [number, number] =>
+    g && area ? [g.x + ((x - area.left) / area.width) * g.w, g.y + ((y - area.top) / area.height) * g.h] : [(x - whole.left) / whole.width, (y - whole.top) / whole.height]
   let frame = 0
+  const snap = isNext.value
+  const span = d.dir === 'row' ? (g && area ? (area.width * d.box.w) / g.w : whole.width * d.box.w) : g && area ? (area.height * d.box.h) / g.h : whole.height * d.box.h
+  if (snap) dividerLive.value = d.path
   const move = (ev: PointerEvent): void => {
     cancelAnimationFrame(frame)
     frame = requestAnimationFrame(() => {
-      const r = d.dir === 'row' ? ((ev.clientX - rect.left) / rect.width - d.box.x) / d.box.w : ((ev.clientY - rect.top) / rect.height - d.box.y) / d.box.h
-      setDivider(d, r)
+      const [fx, fy] = toCanvas(ev.clientX, ev.clientY)
+      const r = d.dir === 'row' ? (fx - d.box.x) / d.box.w : (fy - d.box.y) / d.box.h
+      setDivider(d, snap && !ev.altKey ? snapRatio(r, span) : r)
     })
   }
   const end = (): void => {
+    if (snap) dividerLive.value = null
     handle.removeEventListener('pointermove', move)
     handle.removeEventListener('pointerup', end)
     handle.removeEventListener('pointercancel', end)
@@ -870,6 +1095,12 @@ function startDrag(d: Divider, e: PointerEvent): void {
   handle.addEventListener('pointermove', move)
   handle.addEventListener('pointerup', end)
   handle.addEventListener('pointercancel', end)
+}
+
+const dividerLive = ref<string | null>(null)
+
+function onDividerDblClick(d: Divider): void {
+  if (isNext.value) setDivider(d, 0.5)
 }
 
 function onDividerKey(d: Divider, e: KeyboardEvent): void {
@@ -890,8 +1121,28 @@ function splitActive(dir?: SplitDir, choice?: SplitChoice, key = workspace.activ
   const want: SplitDir = dir ?? (w >= h * 1.4 ? 'row' : 'col')
   const other: SplitDir = want === 'row' ? 'col' : 'row'
   const chosen = fits(want) ? want : !dir && fits(other) ? other : null
+  if (choice === 'project') {
+    if (chosen) void openMenu({ key, dir: chosen })
+    return
+  }
   const spec: PaneSpec | undefined = !choice ? undefined : choice === 'browser' ? { kind: 'browser', url: '' } : { kind: 'term', preset: choice }
   if (chosen) withViewTransition(() => workspace.split(key, chosen, spec))
+}
+
+function splitInto(cwd: string, resume?: string): void {
+  const target = splitTarget.value
+  closeMenu(false)
+  if (!target || !workspace.tabOf(target.key)) return
+  withViewTransition(() => {
+    const pane = workspace.split(target.key, target.dir, { kind: 'term', preset: workspace.preset }, { cwd, resume })
+    if (!pane) return
+    const grouped = !!paneGroup(pane.key) && paneGroup(pane.key) !== paneGroup(target.key)
+    announce(t(grouped ? 'groupsV99.added' : 'splitV97.opened', { name: folderName(cwd) }))
+  })
+}
+
+function resumeInto(item: ResumeItem): void {
+  if (splitTarget.value) splitInto(item.cwd, item.id)
 }
 
 function onGlobalKey(e: KeyboardEvent): void {
@@ -899,7 +1150,7 @@ function onGlobalKey(e: KeyboardEvent): void {
   // Alt+↑/↓ on a rail project header reorders projects (WorkspaceSidebar), not pane focus.
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.target as Element | null)?.closest?.('[data-side-head]')) return
   if (inEditor(e.target) && editorKeepsKey(e, isMac)) return
-  const action = workspaceAction(e, isMac, multiPane.value)
+  const action = workspaceAction(e, isMac, multiPane.value, !!workspace.activeTab && groupsOf(workspace.activeTab.root).length > 1, isNext.value)
   if (!action) return
   // The drop-down terminal floats over the active pane: chords aimed at that pane stay with the shell.
   if (!DROP_TERM_KEYS.has(action.t) && (e.target as Element | null)?.closest?.('[data-drop-term]')) return
@@ -923,6 +1174,11 @@ function onGlobalKey(e: KeyboardEvent): void {
     case 'attention':
       workspace.nextAttention()
       break
+    case 'asked': {
+      const target = menuQueue.next(workspace.activeKey)
+      if (target) workspace.activate(target)
+      break
+    }
     case 'cycleTab':
       workspace.cycleTab(action.step, visibleTabKeys.value)
       break
@@ -942,7 +1198,7 @@ function onGlobalKey(e: KeyboardEvent): void {
       else if (hasPreview) void openQuick()
       break
     case 'explorer':
-      void showExplorer()
+      if (!isNext.value) void showExplorer()
       break
     case 'search':
       void showSearch()
@@ -983,6 +1239,18 @@ function onGlobalKey(e: KeyboardEvent): void {
     case 'projects':
       if (ui.projectSwitcher) projectStep.value = { n: projectStep.value.n + 1, back: action.back }
       else ui.projectSwitcher = true
+      break
+    case 'groupFocus':
+      workspace.focusGroup(action.dir)
+      break
+    case 'groupMove':
+      withViewTransition(() => workspace.shiftGroup(action.dir))
+      break
+    case 'addGroup':
+      addGroupNow()
+      break
+    case 'detachTab':
+      nextLayout.detach(workspace.activeKey)
       break
   }
 }
@@ -1029,6 +1297,12 @@ const hiddenTabs = computed(() => tabFit.value.hidden.map((k) => visibleTabs.val
 const groupStartKeys = computed(() => groupStarts(shownTabKeys.value, groupOf))
 const hiddenNeeds = computed(() => hiddenTabs.value.some((tab) => tabAttention(tab) === 'waiting' || tabState(tab)?.status === 'waiting'))
 const tabTone = (tab: Tab): number => projectTone(rail.clusterOfTab(tab.key) ?? groupOf(tab.key))
+function tabMono(tab: Tab): string {
+  const key = rail.clusterOfTab(tab.key) ?? groupOf(tab.key)
+  if (key === 'home' || key === '~') return '~'
+  return monogram(rail.clusters.value.find((c) => c.key === key)?.name ?? tabName(tab))
+}
+const tabDirty = (tab: Tab): boolean => leaves(tab.root).some((k) => paneOf(k)?.dirty)
 
 function measureStrip(): void {
   const row = tabRow.value
@@ -1098,6 +1372,7 @@ watch(
 )
 watch([shownTabKeys, tabNames, () => props.visible], measureStrip, { flush: 'post' })
 const dragAnnounce = ref('')
+const SPRING_MS = 600
 const swapKeyName = isMac ? '⌘' : 'Ctrl'
 const tabDraggable = (): boolean => visibleTabs.value.length > 1
 
@@ -1296,7 +1571,9 @@ const {
   toStrip: dropToStrip,
   pointer: dragPointer,
   caret: dropCaret,
+  spring: dragSpring,
   onDown: onDragDown,
+  startFrom: startExternalDrag,
 } = usePaneDrag({
   canvas,
   strip: tabRow,
@@ -1310,10 +1587,37 @@ const {
     const key = target.closest('[data-pane-grip]')?.closest<HTMLElement>('[data-pane]')?.dataset.pane
     return key && multiPane.value && tabBoxes.value.has(key) ? { kind: 'pane', key } : null
   },
-  canDock: (src) => src.kind === 'pane' || src.key !== workspace.activeTab?.key,
+  canDock: (src) => src.kind === 'pane' || src.kind === 'group' || src.key !== workspace.activeTab?.key,
+  canDockOn: (src, key, swap) =>
+    src.kind !== 'pane' || (swap ? workspace.tabOf(src.key) === workspace.tabOf(key) && paneGroup(src.key) === paneGroup(key) : workspace.canDock(src.key, key)),
   swapKey: (e) => (isMac ? e.metaKey : e.ctrlKey),
   onDrop: onPaneDrop,
+  compass: () => isNext.value,
+  minPane: DROP_MIN,
+  spring: {
+    ms: SPRING_MS,
+    canSpring: (src, key) => isNext.value && src.kind === 'pane' && key !== workspace.activeTab?.key,
+    onSpring: (key) => workspace.activateTab(key),
+  },
 })
+provide(RAIL_PROJECT_DRAG, (e, src, el) => startExternalDrag(e, { kind: 'project', ...src }, el))
+provide(RAIL_PANE_DRAG, (e, key, el) => {
+  if (isNext.value && workspace.tabOf(key)) startExternalDrag(e, { kind: 'pane', key, rail: true }, el)
+})
+
+const nextLayout = useNextLayout({
+  isNext,
+  canvasSize,
+  tabBoxes,
+  multiPane,
+  zoomedKey,
+  toggleZoom: (key) => toggleZoom(key),
+  split: (dir, key) => splitActive(dir, undefined, key),
+  close: (key) => mouseClose(key),
+  announce,
+  focusPane: () => void nextTick(focusActivePane),
+})
+const { hint: splitHint, presetDisabled, currentPreset } = nextLayout
 
 // Past the middle of the window the ghost hangs left of the pointer, so it never leaves the screen.
 const ghostStyle = computed(() => {
@@ -1327,6 +1631,7 @@ const edgeWord = (edge: Edge): string => t(`workspace.drag.edge.${edge}`)
 const dragLabel = computed(() => {
   const src = dragSource.value
   if (!src) return ''
+  if (src.kind === 'project' || src.kind === 'group') return src.name
   if (src.kind === 'tab') {
     const tab = workspace.tabs.find((x) => x.key === src.key)
     return tab ? tabName(tab) : ''
@@ -1337,6 +1642,7 @@ const dragLabel = computed(() => {
 const dragPane = computed(() => {
   const src = dragSource.value
   if (src?.kind === 'pane') return paneOf(src.key)
+  if (src?.kind === 'project' || src?.kind === 'group') return undefined
   const tab = src && workspace.tabs.find((x) => x.key === src.key)
   return tab ? tabPrimary(tab) : undefined
 })
@@ -1347,14 +1653,84 @@ const dropWord = computed(() => {
   if (dropCaret.value !== null) return t('workspace.tabStrip.moveHere')
   const p = dropPreview.value
   if (!p) return ''
+  if (dragSource.value?.kind === 'project' && p.edge) return `${t('railSelect.dropProject')} · ${edgeWord(p.edge)}`
+  if (dragSource.value?.kind === 'group' && p.edge) return `${t('groupsV99.dropGroup')} · ${edgeWord(p.edge)}`
   return p.edge ? t('workspace.drag.dock', { edge: edgeWord(p.edge) }) : t('workspace.drag.swap')
 })
 
+const nextDropLabel = computed(() => {
+  const p = dropPreview.value
+  if (!p) return ''
+  if (p.bad) return t('mist.drag.tooNarrow', { left: p.bad.left, min: p.bad.min })
+  if (!p.edge) return t('mist.drag.swap')
+  const edge = t(`mist.drag.edge.${p.edge}`)
+  const kind = dragSource.value?.kind
+  if (kind === 'project') return t('mist.drag.moveProject', { edge })
+  if (kind === 'group') return t('mist.drag.moveGroup', { edge })
+  if (kind === 'tab') return t('mist.drag.mergeTab', { edge })
+  return t('mist.drag.split', { edge, pct: DOCK_PERCENT })
+})
+
+const nextGhost = computed(() => {
+  const src = dragSource.value
+  if (!src) return null
+  const pane = dragPane.value
+  const tone = src.kind === 'pane' || src.kind === 'tab' ? (pane ? (isTerm(pane) ? presetOf(pane) : (pane.kind ?? 'shell')) : 'shell') : src.kind
+  const agent = src.kind === 'tab' && !pane ? 'tab' : tone
+  const springTab = dragSpring.value ? workspace.tabs.find((x) => x.key === dragSpring.value!.key) : undefined
+  const hint = springTab
+    ? t('mist.drag.holdTab', { name: tabName(springTab) })
+    : dropToStrip.value
+      ? t('mist.drag.newTab')
+      : dropCaret.value !== null
+        ? t('workspace.tabStrip.moveHere')
+        : ''
+  const status = pane && isTerm(pane) ? info.statusOf(pane) : undefined
+  return {
+    agent: t(`mist.drag.agent.${agent}`),
+    tone,
+    title: dragLabel.value,
+    status,
+    statusLabel: pane && status ? (info.stateText(pane) ?? undefined) : undefined,
+    hint,
+  }
+})
+
+const dragVeil = computed(() => {
+  const src = dragSource.value
+  return isNext.value && src?.kind === 'pane' && !src.rail && tabBoxes.value.has(src.key) ? src.key : null
+})
+
+function dropProject(src: { key: string; dir: string | null; name: string }, target: string, edge: Edge): void {
+  const cluster = rail.clusters.value.find((c) => c.key === src.key)
+  withViewTransition(() => {
+    const done = workspace.bringProject(cluster?.tabKeys ?? [], src.dir, target, edge)
+    if (done) announce(t(done === 'merged' ? 'railSelect.projectMerged' : 'railSelect.projectOpened', { name: src.name }))
+    void nextTick(focusActivePane)
+  })
+}
+
 function onPaneDrop(src: PaneDragSource, act: PaneDropAction): void {
+  if (src.kind === 'project') {
+    if (act.kind === 'dock') dropProject(src, act.key, act.edge)
+    return
+  }
+  if (src.kind === 'group') {
+    const before = nextLayout.begin()
+    if (act.kind === 'newTab') groupToTab(src.key, src.name)
+    else if (act.kind === 'dock') {
+      withViewTransition(() => workspace.moveGroup(src.tab, src.key, act.key, act.edge))
+      announce(t('groupsV99.reordered', { name: src.name, edge: edgeWord(act.edge) }))
+    }
+    nextLayout.end(before, act.kind === 'newTab' ? 'detach' : 'group')
+    return
+  }
   if (act.kind === 'reorder') {
     if (src.kind === 'tab') reorderTab(src.key, act.slot)
     return
   }
+  const change: LayoutChange = src.kind === 'tab' ? 'merge' : act.kind === 'swap' ? 'swap' : act.kind === 'newTab' ? 'detach' : 'split'
+  nextLayout.end(nextLayout.begin(), change)
   withViewTransition(() => {
     if (src.kind === 'tab') {
       if (act.kind === 'dock') workspace.mergeTab(src.key, act.key, act.edge)
@@ -1392,7 +1768,16 @@ function tabDetail(tab: Tab): string | undefined {
   return [space, pane && !isTerm(pane) ? viewDetail(pane) : pane && workCwd(pane)].filter(Boolean).join('\n') || undefined
 }
 
+let unregisterBridge: (() => void) | null = null
+
 onMounted(() => {
+  unregisterBridge = registerWorkspaceBridge({
+    ...sideEvents,
+    projectDrag: (e, src, el) => startExternalDrag(e, { kind: 'project', ...src }, el),
+    paneDrag: (e, key, el) => {
+      if (isNext.value && workspace.tabOf(key)) startExternalDrag(e, { kind: 'pane', key, rail: true }, el)
+    },
+  })
   // First workspace visit (or after the app's data was reset): ask for every folder once instead of per folder later.
   void fullAccess('first')
   // Capture: runs before xterm's own handler sees the key.
@@ -1406,6 +1791,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  unregisterBridge?.()
   window.removeEventListener('keydown', onGlobalKey, true)
   window.removeEventListener('focus', clearSeenAttention)
   window.removeEventListener('resize', onViewportResize)
@@ -1416,7 +1802,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="flex h-[calc(100dvh-var(--ccm-header-h,52px))] min-h-0 w-full gap-3 px-3 pt-2 pb-3 sm:px-4" :data-ws-focus="focusOn || undefined">
+  <main class="flex h-[calc(100dvh-var(--ccm-header-h,52px))] min-h-0 w-full" :class="isNext ? 'gap-(--ccm-gap-shell)' : 'gap-3 px-3 pt-2 pb-3 sm:px-4'" :data-ws-focus="focusOn || undefined">
     <aside
       v-if="workspace.tabs.length && !focusOn"
       class="relative hidden shrink-0 flex-col gap-1.5 md:flex"
@@ -1443,9 +1829,9 @@ onBeforeUnmount(() => {
       :class="[sideDragging || explorerDragging ? 'pointer-events-none' : '', dragSource ? 'cursor-grabbing select-none' : '']"
       @pointerdown="onDragDown"
     >
-    <div v-if="workspace.tabs.length" class="flex min-w-0 items-center gap-2">
+    <div v-if="workspace.tabs.length" class="flex min-w-0 items-center gap-2" :class="isNext ? 'ccm-next-tabs glass' : ''" :data-next-tabs="isNext || undefined">
       <button
-        v-if="!focusOn"
+        v-if="!focusOn && !isNext"
         type="button"
         class="ccm-btn-plain hidden shrink-0 md:inline-flex"
         :aria-pressed="sidebarOpen"
@@ -1498,7 +1884,7 @@ onBeforeUnmount(() => {
         <span
           v-if="tabPill"
           aria-hidden="true"
-          class="ccm-tab-on pointer-events-none absolute top-0 left-0 h-7 rounded-inner"
+          class="ccm-tab-on ccm-next-pill pointer-events-none absolute top-0 left-0 h-7 rounded-inner"
           :class="[tabAgentClass(workspace.activeTab), pillReady ? 'transition-[transform,width] duration-(--ccm-dur-slow) ease-out-quint' : '']"
           :style="{ width: `${tabPill.w}px`, transform: `translateX(${tabPill.x}px)` }"
         />
@@ -1535,6 +1921,14 @@ onBeforeUnmount(() => {
             aria-hidden="true"
             :data-tab-flash="tabFlash[tab.key]!.kind"
           />
+          <span
+            v-if="isNext && dragSpring?.key === tab.key"
+            :key="dragSpring.n"
+            class="mist-spring"
+            :style="{ '--mist-spring-ms': `${dragSpring.ms}ms` }"
+            aria-hidden="true"
+            data-drag-spring
+          ><i /></span>
           <div v-if="renaming === tab.key" class="flex h-full min-w-0 items-center pr-1 pl-1.5" :style="{ width: `${renameWidth}px` }" data-tab-renaming>
             <TabRenameInput :tab-key="tab.key" :initial="tab.name ?? tabName(tab)" @done="(saved) => onRenameDone(tab.key, saved)" />
           </div>
@@ -1551,7 +1945,11 @@ onBeforeUnmount(() => {
             @dblclick.stop="startRename(tab)"
             @keydown="onTabKey($event, tab, i)"
           >
-            <span class="grid size-[13px] shrink-0 place-items-center *:[grid-area:1/1]">
+            <span v-if="isNext" class="ccm-next-mono relative" :data-tone="tabTone(tab)" aria-hidden="true" data-tab-mono>
+              {{ tabMono(tab) }}
+              <span v-if="tabState(tab)" class="ccm-next-mono-dot" :class="statusMeta(tabState(tab)!.status).text" :data-tab-status="tabState(tab)?.status" />
+            </span>
+            <span v-else class="grid size-[13px] shrink-0 place-items-center *:[grid-area:1/1]">
               <Transition name="ccm-fade">
                 <span :key="tabState(tab)?.status ?? 'pane'" class="inline-flex" :data-tab-status="tabState(tab)?.status">
                   <span v-if="tabState(tab)" class="size-[7px] rounded-full bg-current" :class="statusMeta(tabState(tab)!.status).text" aria-hidden="true" />
@@ -1565,6 +1963,7 @@ onBeforeUnmount(() => {
               :class="labelFlash[tab.key] ? 'ccm-highlight' : ''"
               data-tab-label
             >{{ tabName(tab) }}</span>
+            <span :class="isNext ? 'ccm-next-extra' : 'contents'"><span :class="isNext ? 'ccm-next-extra-in' : 'contents'">
             <Transition name="ccm-fade">
               <span v-if="tabNewsOf(tab)" class="inline-flex shrink-0 text-peer" :data-tab-peer="tabNewsOf(tab)!.dir">
                 <Mail :size="10" aria-hidden="true" />
@@ -1602,6 +2001,11 @@ onBeforeUnmount(() => {
                 <span class="sr-only">{{ t('workspace.zoom.tabGlyph', { n: leaves(tab.root).length - 1 }, leaves(tab.root).length - 1) }}</span>
               </span>
             </Transition>
+            </span></span>
+            <span v-if="isNext && tabDirty(tab)" class="shrink-0 text-warning" data-tab-dirty-next>
+              <span aria-hidden="true">●</span><span class="sr-only">{{ t('editor.unsaved') }}</span>
+            </span>
+            <Chip v-if="isNext && !tabAttention(tab) && tabState(tab)?.status === 'error'" status="error" data-tab-attention="error" />
             <span v-if="tabAttention(tab) === 'waiting'" class="inline-flex h-4 shrink-0 items-center gap-0.5 rounded-inner px-1 text-2xs font-medium" :class="statusMeta('waiting').chip" :data-tab-attention="'waiting'">
               <StatusIcon status="waiting" :size="10" :animate="false" />{{ t('paneV92.wait') }}
             </span>
@@ -1659,10 +2063,12 @@ onBeforeUnmount(() => {
             class="ccm-menu absolute top-full z-40 mt-1.5 w-[min(380px,calc(100vw-24px))] p-2"
             :class="menuAlignRight ? 'right-0 [--ccm-origin:top_right]' : 'left-0 [--ccm-origin:top_left]'"
             role="dialog"
-            :aria-label="t('workspace.launch.title')"
+            :aria-label="splitTarget ? t('groupsV99.pickTitle') : t('workspace.launch.title')"
+            :data-split-project="splitTarget ? '' : undefined"
           >
-            <LaunchPicker ref="menuPicker" :cwd="contextCwd" @resumed="closeMenu()" @launch="launch" @browser="openBrowserTab" @open-file="openFileTab" @changes="openChangesTab" @log="openLogTab" />
-            <div v-if="activeProject && (hasScripts || hasLayouts)" class="mt-1.5 flex flex-col border-t border-line pt-1.5">
+            <p v-if="splitTarget" class="px-1 pb-2 text-xs font-semibold text-ink-muted">{{ t('groupsV99.pickTitle') }}</p>
+            <LaunchPicker ref="menuPicker" :cwd="contextCwd" :pick-only="!!splitTarget" @resumed="closeMenu()" @resume="resumeInto" @launch="launch" @browser="openBrowserTab" @open-file="openFileTab" @changes="openChangesTab" @log="openLogTab" />
+            <div v-if="!splitTarget && activeProject && (hasScripts || hasLayouts)" class="mt-1.5 flex flex-col border-t border-line pt-1.5">
               <button v-if="hasScripts" type="button" :class="MENU_ROW" data-menu="scripts" @click="openScriptsForActive()">
                 <Play :size="14" class="shrink-0 text-ink-muted group-focus-visible/row:text-on-accent" aria-hidden="true" />{{ t('workspace.scripts.open') }}
               </button>
@@ -1674,6 +2080,7 @@ onBeforeUnmount(() => {
         </Transition>
       </div>
       </div>
+      <LayoutMenu v-if="isNext && workspace.activeTab" :disabled="presetDisabled" :current="currentPreset" @preset="nextLayout.applyPreset" @even="nextLayout.evenOut" />
       <div ref="paneBar" class="flex min-w-0 shrink-0 items-center empty:hidden" data-pane-bar />
       <button
         v-if="chipCount"
@@ -1690,6 +2097,7 @@ onBeforeUnmount(() => {
         <BellRing :size="14" aria-hidden="true" />
         <span>{{ t('workspace.attention.chip', { n: chipCount }, chipCount) }}</span>
       </button>
+      <MenuQueueChip />
       <Teleport to="body">
         <Transition name="ccm-menu" @before-leave="retireOverlay">
           <AttentionPopover v-if="needsAnchor" :anchor="needsAnchor" :list="needs" :trigger="attentionChip" @close="closeNeeds" />
@@ -1700,11 +2108,11 @@ onBeforeUnmount(() => {
         v-if="!focusOn"
         type="button"
         class="ccm-btn-plain hidden shrink-0 md:inline-flex"
-        :aria-pressed="explorerOpen"
+        :aria-pressed="explorerOn"
         :title="t('workspace.explorer.toggle', { keys: shortcutText('wsExplorer', isMac) })"
         :aria-label="t('workspace.explorer.toggle', { keys: shortcutText('wsExplorer', isMac) })"
         data-explorer-toggle
-        @click="toggleExplorer"
+        @click="onExplorerToggle"
       >
         <PanelRight :size="15" aria-hidden="true" />
       </button>
@@ -1732,14 +2140,28 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <SplitHint v-if="isNext && splitHint && workspace.tabs.length" :total="splitHint.total" :count="splitHint.keys.length" @split="nextLayout.splitHinted" @skip="nextLayout.skipHint" />
     <!-- Every pane lives here flat, placed by its box: splitting or switching tabs never remounts a terminal. -->
     <div v-show="workspace.tabs.length" ref="canvas" class="relative min-h-0 flex-1">
+      <GroupFrames
+        ref="groupFramesRef"
+        :frames="groupFrames"
+        @add="groupAdd"
+        @add-project="groupAddProject"
+        @to-tab="(p) => groupToTab(p, groupFrames.find((f) => f.project === p)?.name ?? p)"
+        @close="groupClose"
+        @focus="groupFocus"
+        @unfold="groupUnfold"
+        @rename="groupRename"
+        @menu="showGroupMenu"
+        @grab="(e, f, el) => workspace.activeTab && startExternalDrag(e, { kind: 'group', key: f.project, tab: workspace.activeTab.key, name: f.name }, el)"
+      />
       <template v-for="pane in workspace.panes" :key="pane.key">
         <TermPane
           v-if="isTerm(pane)"
           v-show="tabBoxes.has(pane.key)"
           class="absolute"
-          :style="tabBoxes.has(pane.key) ? boxStyle(tabBoxes.get(pane.key)!) : undefined"
+          :style="tabBoxes.has(pane.key) ? paneStyle(pane.key) : undefined"
           :pane="pane"
           :visible="visible && tabBoxes.has(pane.key)"
           :focused="pane.key === workspace.activeKey"
@@ -1747,6 +2169,7 @@ onBeforeUnmount(() => {
           :zoomed="isZoomed(pane.key)"
           :hidden-count="hiddenOf(pane.key)"
           :dim="paneDim(pane.key)"
+          :grouped="paneFrame.has(pane.key)"
           @zoom="toggleZoom(pane.key)"
           @split="(choice) => mouseSplit(choice, pane.key)"
           @close="mouseClose(pane.key)"
@@ -1759,15 +2182,17 @@ onBeforeUnmount(() => {
           v-show="tabBoxes.has(pane.key)"
           class="ccm-pane-ring absolute flex min-h-0 min-w-0 flex-col rounded-card transition-[outline-color,opacity] duration-(--ccm-dur-base) ease-out-quint"
           :class="multiPane ? (pane.key === workspace.activeKey ? 'ccm-pane-active' : 'ccm-pane-idle') : ''"
-          :style="[tabBoxes.has(pane.key) ? boxStyle(tabBoxes.get(pane.key)!) : {}, visible && tabBoxes.has(pane.key) ? { viewTransitionName: `ccm-pane-${pane.key}`, viewTransitionClass: 'ccm-pane' } : {}]"
+          :style="[tabBoxes.has(pane.key) ? paneStyle(pane.key) : {}, visible && tabBoxes.has(pane.key) ? { viewTransitionName: `ccm-pane-${pane.key}`, viewTransitionClass: 'ccm-pane' } : {}]"
           :data-pane="pane.key"
           :data-kind="pane.kind"
+          :data-next-pane-card="isNext || undefined"
           @pointerdown="mouseFocus(pane.key)"
           @focusin="workspace.activate(pane.key)"
         >
           <BrowserPane
             v-if="pane.kind === 'browser'"
             class="min-h-0 flex-1"
+            :pane-key="pane.key"
             :url="pane.url ?? ''"
             :cwd="workCwd(pane) ?? workspace.recentDirs[0]"
             :active="visible && tabBoxes.has(pane.key)"
@@ -1816,6 +2241,7 @@ onBeforeUnmount(() => {
           <LogPane
             v-else-if="pane.kind === 'log'"
             class="min-h-0 flex-1"
+            :pane-key="pane.key"
             :cwd="pane.cwd!"
             :select="pane.select"
             :active="visible && tabBoxes.has(pane.key)"
@@ -1838,6 +2264,7 @@ onBeforeUnmount(() => {
           <RunPane
             v-else-if="pane.kind === 'run'"
             class="min-h-0 flex-1"
+            :pane-key="pane.key"
             :root="pane.cwd!"
             :active="visible && tabBoxes.has(pane.key)"
             @open="(path, line) => workspace.openFile(path, line, { cwd: pane.cwd, split: { key: pane.key, dir: 'row' } })"
@@ -1858,6 +2285,7 @@ onBeforeUnmount(() => {
           <ChangesPane
             v-else
             class="min-h-0 flex-1"
+            :pane-key="pane.key"
             :cwd="pane.cwd!"
             :select="pane.select"
             :active="visible && tabBoxes.has(pane.key)"
@@ -1894,7 +2322,7 @@ onBeforeUnmount(() => {
         :key="`${workspace.activeTab?.key}:${d.path}`"
         class="group/div absolute z-10 flex touch-none items-center justify-center outline-none"
         :class="d.dir === 'row' ? 'cursor-col-resize' : 'cursor-row-resize'"
-        :style="dividerStyle(d)"
+        :style="divStyle(d)"
         role="separator"
         tabindex="0"
         :aria-orientation="d.dir === 'row' ? 'vertical' : 'horizontal'"
@@ -1902,18 +2330,29 @@ onBeforeUnmount(() => {
         aria-valuemin="15"
         aria-valuemax="85"
         :aria-label="t('workspace.resize')"
+        :title="isNext ? t('mist.drag.divider.hint') : undefined"
+        :data-split-divider="isNext ? d.dir : undefined"
+        :data-dragging="isNext && dividerLive === d.path ? '' : undefined"
         @pointerdown.prevent="startDrag(d, $event)"
         @keydown="onDividerKey(d, $event)"
+        @dblclick="onDividerDblClick(d)"
       >
         <span
           class="rounded-full bg-transparent transition-colors duration-(--ccm-dur-fast) group-hover/div:bg-accent group-focus-visible/div:bg-accent group-active/div:bg-accent"
           :class="d.dir === 'row' ? 'h-full w-0.5' : 'h-0.5 w-full'"
         />
+        <span v-if="isNext" class="mist-div-grip" aria-hidden="true"><i /><i /><i /></span>
+        <span v-if="isNext && dividerLive === d.path" class="mist-div-ratio" aria-hidden="true" data-divider-ratio>{{ ratioLabel(d.ratio) }}</span>
       </div>
       <!-- While a pane or tab is dragged: dividers, webviews and terminals stay out of the way. -->
       <div v-if="dragSource" class="absolute inset-0 z-20 cursor-grabbing" aria-hidden="true" />
+      <div v-if="dragVeil" class="mist-drag-veil absolute z-[25]" :style="paneStyle(dragVeil)" aria-hidden="true" data-drag-veil>
+        <span>{{ t('mist.drag.dragging') }}</span>
+      </div>
+      <DropOverlay v-if="isNext" :preview="dropPreview" :label="nextDropLabel" compass />
+      <FileDropLayer v-if="isNext" :canvas="canvas" :enabled="visible" @drop="nextLayout.dropFile" />
       <div
-        v-if="dropPreview"
+        v-if="dropPreview && !isNext"
         class="pointer-events-none absolute z-30 rounded-card border-2 border-accent bg-accent-soft motion-safe:transition-[left,top,width,height] motion-safe:duration-(--ccm-dur-fast)"
         :style="{ left: `${dropPreview.left}px`, top: `${dropPreview.top}px`, width: `${dropPreview.width}px`, height: `${dropPreview.height}px` }"
         aria-hidden="true"
@@ -1925,7 +2364,7 @@ onBeforeUnmount(() => {
     <DropTerminal v-if="dropMounted" :open="dropOpen && visible" :cwd="dropCwd" @hide="dropOpen = false" />
     </div>
     <aside
-      v-if="workspace.tabs.length && explorerOpen && !focusOn"
+      v-if="workspace.tabs.length && explorerOpen && !focusOn && !isNext"
       class="relative hidden shrink-0 flex-col md:flex"
       :class="explorerDragging ? 'select-none' : ''"
       :style="{ width: `${explorerWidth}px` }"
@@ -1949,7 +2388,7 @@ onBeforeUnmount(() => {
 
     <Teleport to="body">
       <div
-        v-if="dragSource"
+        v-if="dragSource && !isNext"
         class="pointer-events-none fixed z-50 inline-flex h-7 max-w-[40ch] items-center gap-1.5 rounded-inner bg-control px-2 text-xs text-ink shadow-control"
         :style="ghostStyle"
         aria-hidden="true"
@@ -1961,6 +2400,17 @@ onBeforeUnmount(() => {
         <span v-else-if="dragSource.kind === 'pane'" class="shrink-0 text-ink-faint">· {{ swapKeyName }} = {{ t('workspace.drag.swap') }}</span>
       </div>
     </Teleport>
+    <DragGhost
+      v-if="isNext && nextGhost"
+      :x="dragPointer.x"
+      :y="dragPointer.y"
+      :agent="nextGhost.agent"
+      :agent-tone="nextGhost.tone"
+      :title="nextGhost.title"
+      :status="nextGhost.status"
+      :status-label="nextGhost.statusLabel"
+      :hint="nextGhost.hint"
+    />
     <p class="sr-only" aria-live="polite">{{ dragAnnounce }}</p>
     <ContextMenu v-if="tabCtx" :at="tabCtx.at" :entries="tabCtx.entries" :label="tabCtx.label" :trigger="tabCtx.trigger" @pick="tabCtx.pick" @close="tabCtx = null" />
 

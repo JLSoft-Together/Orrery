@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scripts": [
+    {
+      "name": "qa",
+      "file": "scripts/qa-fast.mjs",
+      "run": "npm run qa -- --no-e2e",
+      "desc": "Gate nhanh theo git diff: typecheck workspace đang đổi, vitest related, cargo test crate liên quan, E2E map sẵn",
+      "when": "Sau khi sửa code TS/Vue/Rust, thay cho chạy rời npm run typecheck / npm test; bỏ --no-e2e khi cần E2E",
+      "flags": "--dry · --no-e2e · --no-cargo · --e2e=a,b · --base=<ref> · --jobs=<n>",
+      "covers": ["npm run typecheck", "npm test"],
+      "created": "2026-11-13",
+      "estSaveTokens": 22000
+    }
+  ]
+}

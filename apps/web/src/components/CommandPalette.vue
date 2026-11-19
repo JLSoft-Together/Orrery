@@ -25,6 +25,7 @@ import {
   Moon,
   Search,
   Settings2,
+  HardDrive,
   Smartphone,
   Stethoscope,
   FolderSearch,
@@ -48,11 +49,14 @@ import {
   SlidersHorizontal,
   Star,
   Focus,
+  FolderPlus,
+  Undo2,
 } from 'lucide-vue-next'
 import { DEV_TOOLS } from '../lib/devTools'
 import { retireOverlay, withViewTransition } from '../lib/motion'
 import { desktop, hasExtensions, hasTerminals } from '../lib/desktop'
 import { hasDevices } from '../lib/devices'
+import { hasDiskMap } from '../lib/diskMap'
 import { hasEnvCheck, hasExplorer, hasI18nScan, hasLog } from '../lib/preview'
 import { hasPermAdvisor } from '../lib/permAdvisor'
 import { hasApkSize } from '../lib/apkSize'
@@ -62,7 +66,7 @@ import { visibleFonts } from '../lib/fonts'
 import { stepCodeSize } from '../composables/useWheelZoom'
 import { useFocusMode } from '../composables/useFocusMode'
 import { useTipsStore } from '../stores/tips'
-import { shortPath } from '../lib/format'
+import { now, relativeTime, shortPath } from '../lib/format'
 import { highlightRuns } from '../lib/fuzzy'
 import { entries as settingsEntries, searchSettings, type SettingsPage } from './settings'
 import { cap, fold, joinPath, listSettings, matchFiles, matchText, parsePrefix, prefixOf, searchable, type PaletteMode, type Searchable } from '../lib/paletteSearch'
@@ -80,18 +84,39 @@ import { statusMeta } from '../lib/status'
 import { APP_VERSION } from '../lib/changelog'
 import { badgeOf } from '../lib/provider'
 import { displayTitle } from '../lib/title'
+import { useAgentsStore } from '../stores/agents'
+import { usePaneInfo } from '../composables/usePaneInfo'
+import {
+  bucketOf,
+  compareSessions,
+  groupOfSession,
+  inNextScope,
+  NEXT_GROUP_ORDER,
+  NEXT_MODES,
+  NEXT_SCOPES,
+  nextPrefixOf,
+  parseNextPrefix,
+  repoName,
+  scopeOfMode,
+  sessionTerms,
+  type NextGroup,
+  type NextPrefixMode,
+  type SessionBucket,
+} from '../lib/next/palette'
+import { canUndoLayout, undoLayout } from '../lib/next/paletteHooks'
 import { useConnectionStore } from '../stores/connection'
 import { useFavoritesStore } from '../stores/favorites'
 import { usePromptsStore } from '../stores/prompts'
 import { useInboxStore } from '../stores/inbox'
 import { useSettingsStore } from '../stores/settings'
+import { useUiGenStore } from '../stores/uiGen'
 import { useTerminalsStore } from '../stores/terminals'
 import { useUiStore } from '../stores/ui'
 import { useWorkspaceStore, workCwd } from '../stores/workspace'
 import ArtImage from './ArtImage.vue'
 import StatusIcon from './StatusIcon.vue'
 
-type Group = 'sessions' | 'projects' | 'favorites' | 'files' | 'nav' | 'actions' | 'prefs' | 'settings' | 'help'
+type Group = NextGroup
 type Scope = 'all' | 'sessions' | 'projects' | 'commands' | 'files' | 'settings'
 
 interface Item extends Searchable {
@@ -100,6 +125,8 @@ interface Item extends Searchable {
   sub?: string
   icon?: Component
   status?: string
+  bucket?: SessionBucket
+  meta?: SessionMeta
   /** Current state of a preference, shown as an On / Off tag. */
   on?: boolean
   /** Character positions in `label` a fuzzy match hit. */
@@ -110,18 +137,30 @@ interface Item extends Searchable {
   altHint?: string
 }
 
+interface SessionMeta {
+  reason: string
+  project?: string
+  branch?: string
+  model?: string | null
+  ago?: string | null
+}
+
 interface MoreRow {
   more: Group
   hidden: number
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const ui = useUiStore()
 const workspace = useWorkspaceStore()
 const tips = useTipsStore()
 const terminals = useTerminalsStore()
 const favorites = useFavoritesStore()
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
+const agents = useAgentsStore()
+const paneInfo = usePaneInfo()
+const minute = computed(() => Math.floor(now.value / 60_000))
 const connection = useConnectionStore()
 const prompts = usePromptsStore()
 const focusMode = useFocusMode()
@@ -139,16 +178,25 @@ const list = ref<HTMLElement | null>(null)
 let restoreFocus: HTMLElement | null = null
 
 const STATUS_RANK: Record<string, number> = { waiting: 0, working: 1, error: 2, idle: 3, unknown: 4, stale: 5 }
-const GROUP_ORDER: Group[] = ['sessions', 'projects', 'favorites', 'files', 'nav', 'actions', 'prefs', 'help', 'settings']
-const SCOPES: Scope[] = ['all', 'sessions', 'projects', 'commands', 'files', 'settings']
+const CLASSIC_GROUP_ORDER: Group[] = ['sessions', 'projects', 'favorites', 'files', 'nav', 'actions', 'prefs', 'help', 'settings']
+const CLASSIC_SCOPES: Scope[] = ['all', 'sessions', 'projects', 'commands', 'files', 'settings']
 const MODE_SCOPE: Record<PaletteMode, Scope> = { actions: 'commands', sessions: 'sessions', files: 'files', settings: 'settings' }
-const MODES: PaletteMode[] = ['actions', 'sessions', 'files', 'settings']
-const inScope = (g: Group, s: Scope) =>
+const CLASSIC_MODES: PaletteMode[] = ['actions', 'sessions', 'files', 'settings']
+const classicInScope = (g: Group, s: Scope) =>
   s === 'all' || s === g || (s === 'projects' && g === 'favorites') || (s === 'commands' && g !== 'sessions' && g !== 'projects' && g !== 'favorites' && g !== 'files' && g !== 'settings')
 
-const parsed = computed(() => parsePrefix(query.value))
+const isNext = computed(() => uiGen.isNext)
+const GROUP_ORDER = computed<Group[]>(() => (isNext.value ? [...NEXT_GROUP_ORDER] : CLASSIC_GROUP_ORDER))
+const SCOPES = computed<Scope[]>(() => (isNext.value ? [...NEXT_SCOPES] : CLASSIC_SCOPES))
+const MODES = computed<(PaletteMode | NextPrefixMode)[]>(() => (isNext.value ? [...NEXT_MODES] : CLASSIC_MODES))
+const inScope = (g: Group, s: Scope) => (isNext.value ? inNextScope(g, s as (typeof NEXT_SCOPES)[number]) : classicInScope(g, s))
+const prefixFor = (m: PaletteMode | NextPrefixMode): string => (isNext.value ? nextPrefixOf(m as NextPrefixMode) : prefixOf(m as PaletteMode))
+
+const parsed = computed<{ mode: PaletteMode | NextPrefixMode | null; text: string }>(() => (isNext.value ? parseNextPrefix(query.value) : parsePrefix(query.value)))
 const text = computed(() => parsed.value.text)
-const scopeNow = computed<Scope>(() => (parsed.value.mode ? MODE_SCOPE[parsed.value.mode] : scope.value))
+const scopeNow = computed<Scope>(() =>
+  parsed.value.mode ? (isNext.value ? scopeOfMode(parsed.value.mode as NextPrefixMode) : MODE_SCOPE[parsed.value.mode as PaletteMode]) : scope.value,
+)
 
 const tabFocusedAt = (tabKey: string): number => {
   const tab = workspace.tabs.find((x) => x.key === tabKey)
@@ -207,21 +255,37 @@ async function loadFiles(): Promise<void> {
 }
 
 const items = computed<Item[]>(() => {
-  const sessions: Item[] = [...terminals.list]
-    .sort((a, b) => (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9))
-    .map((x) => {
+  const next = isNext.value
+  const ranked = next
+    ? terminals.list
+        .map((x) => ({ x, bucket: bucketOf({ status: x.status, attention: workspace.paneByTerminal.get(x.id)?.attention }), since: x.statusSince }))
+        .sort(compareSessions)
+    : [...terminals.list].sort((a, b) => (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9)).map((x) => ({ x, bucket: undefined, since: undefined }))
+  const sessions: Item[] = ranked
+    .map(({ x, bucket }) => {
       const title = displayTitle(x)
       const live = x.status !== 'stale'
       const badge = badgeOf(x)
       const provider = badge ? t(`provider.${badge}`) : null
       const reopen = !live && reveal.canReopen(x)
+      const model = next ? paneInfo.modelOf(x.id) : null
+      const pane = next ? workspace.paneByTerminal.get(x.id) : undefined
+      const tool = next && x.status === 'working' ? (agents.mainOf(x.id)?.currentTool ?? null) : null
+      const state = next ? paneInfo.stateText(pane) : null
+      const reason = [state ?? t(statusMeta(x.status).labelKey), tool].filter(Boolean).join(': ')
       return {
         id: `s:${x.id}`,
         group: 'sessions' as const,
-        ...searchable(title, x.title, x.cwd, x.gitBranch, x.status, provider),
+        bucket,
+        ...searchable(title, x.title, x.cwd, x.gitBranch, x.status, provider, ...(next ? sessionTerms({ model, branch: x.gitBranch, cwd: x.cwd }) : [])),
         sub: [provider, t(statusMeta(x.status).labelKey), x.gitBranch, shortPath(x.cwd)].filter(Boolean).join(' · '),
+        meta: next ? { reason, project: repoName(x.cwd), branch: x.gitBranch, model, ago: relativeTime(x.statusSince, locale.value, (minute.value + 1) * 60_000) } : undefined,
         status: x.status,
         run: () => {
+          if (next) {
+            paneInfo.goToPeer(x.id)
+            return
+          }
           ui.setView('monitor')
           ui.focusTerminal(x.id)
         },
@@ -258,6 +322,7 @@ const items = computed<Item[]>(() => {
     },
     ...(hasExtensions ? [{ id: 'c:extensions', group: 'nav' as const, label: t('palette.goExtensions'), icon: Puzzle, run: () => ui.setView('extensions') }] : []),
     ...(hasDevices ? [{ id: 'c:devices', group: 'nav' as const, label: t('palette.goDevices'), icon: Smartphone, run: () => ui.setView('devices') }] : []),
+    ...(hasDiskMap ? [{ id: 'c:disk', group: 'nav' as const, label: t('diskMap.goDisk'), icon: HardDrive, run: () => ui.setView('disk') }] : []),
     ...(hasTerminals && hasLog
       ? [
           {
@@ -286,6 +351,17 @@ const items = computed<Item[]>(() => {
             run: () => {
               ui.setView('workspace')
               ui.projectSwitcher = true
+            },
+          },
+          {
+            id: 'c:addGroup',
+            group: 'actions' as const,
+            label: t('groupsV99.palette'),
+            sub: isMac ? '⌃⌥G' : 'Ctrl+Alt+G',
+            icon: FolderPlus,
+            run: () => {
+              ui.setView('workspace')
+              ui.addGroupAsk++
             },
           },
           {
@@ -440,6 +516,14 @@ const items = computed<Item[]>(() => {
       run: () => (ui.devTools = id),
     })),
     ...(ended ? [{ id: 'c:clear', group: 'actions' as const, label: t('sessions.clearEnded', { n: ended }), icon: Trash2, run: () => void connection.dismissEnded() }] : []),
+    {
+      id: 'c:ui-generation',
+      group: 'prefs',
+      label: uiGen.isNext ? t('mist.switch.backClassic') : t('mist.switch.tryNext'),
+      icon: Palette,
+      run: () => withViewTransition(() => uiGen.toggleGeneration()),
+    },
+    ...(uiGen.isNext && canUndoLayout() ? [{ id: 'c:undo-layout', group: 'actions' as const, label: t('mist.cmdk.undoLayout'), icon: Undo2, run: () => void undoLayout() }] : []),
     { id: 'c:notify', group: 'prefs', label: t('settings.notifyEnable'), icon: Bell, on: settings.notifyEnabled, run: () => void settings.toggleNotifications() },
     { id: 'c:sound', group: 'prefs', label: t('settings.sound'), icon: Volume2, on: settings.sound, run: () => (settings.sound = !settings.sound) },
     { id: 'c:theme', group: 'prefs', label: t('palette.darkTheme'), icon: Moon, on: modeOf(settings.theme) === 'dark', run: () => settings.toggleTheme() },
@@ -540,26 +624,34 @@ const fileItems = computed<Item[]>(() => {
   })
 })
 
-const matched = computed<Item[]>(() => [...localMatches.value, ...fileItems.value, ...settingItems.value])
+const matched = computed<Item[]>(() => {
+  const all = [...localMatches.value, ...fileItems.value, ...settingItems.value]
+  if (!isNext.value) return all
+  const hasText = !!text.value
+  return all.map((x) => (x.bucket ? { ...x, group: groupOfSession(x.bucket, hasText) } : x))
+})
 const filtered = computed(() => matched.value.filter((x) => inScope(x.group, scopeNow.value)))
-const scopeCounts = computed(() => Object.fromEntries(SCOPES.map((s) => [s, matched.value.filter((x) => inScope(x.group, s)).length])) as Record<Scope, number>)
+const scopeCounts = computed(() => Object.fromEntries(SCOPES.value.map((s) => [s, matched.value.filter((x) => inScope(x.group, s)).length])) as Record<Scope, number>)
 
 const expanded = ref(new Set<Group>())
 type Row = (Item | MoreRow) & { index: number }
 const isMore = (r: Row): r is MoreRow & { index: number } => 'more' in r
 
-const groupLabel = (g: Group): string => (g === 'projects' || g === 'files' || g === 'settings' ? t(`paletteV80.group.${g}`) : t(`palette.group.${g}`))
+const groupLabel = (g: Group): string =>
+  g === 'needs' || g === 'running' || g === 'doneUnseen' || g === 'recent'
+    ? t(`mist.cmdk.group.${g}`)
+    : g === 'projects' || g === 'files' || g === 'settings' ? t(`paletteV80.group.${g}`) : t(`palette.group.${g}`)
 
 const groups = computed(() => {
   let index = 0
   const single = scopeNow.value !== 'all'
-  return GROUP_ORDER.flatMap((g) => {
+  return GROUP_ORDER.value.flatMap((g) => {
     const inGroup = filtered.value.filter((x) => x.group === g)
     if (!inGroup.length) return []
     const { shown, hidden } = single ? { shown: inGroup, hidden: 0 } : cap(inGroup, expanded.value.has(g))
     const rows: Row[] = shown.map((x) => ({ ...x, index: index++ }))
     if (hidden) rows.push({ more: g, hidden, index: index++ })
-    return [{ key: g, label: groupLabel(g), items: rows }]
+    return [{ key: g, label: groupLabel(g), total: inGroup.length, items: rows }]
   })
 })
 const flat = computed(() => groups.value.flatMap((g) => g.items))
@@ -636,7 +728,17 @@ function setScope(next: Scope): void {
 }
 
 function cycleScope(delta: number): void {
-  setScope(SCOPES[(SCOPES.indexOf(scopeNow.value) + delta + SCOPES.length) % SCOPES.length]!)
+  const all = SCOPES.value
+  setScope(all[(all.indexOf(scopeNow.value) + delta + all.length) % all.length]!)
+}
+
+function onScopeKey(e: KeyboardEvent): void {
+  if (!isNext.value) return
+  const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
+  if (!step) return
+  e.preventDefault()
+  cycleScope(step)
+  void nextTick(() => document.querySelector<HTMLElement>(`[data-palette-scope="${scopeNow.value}"]`)?.focus())
 }
 
 function clearQuery(): void {
@@ -644,8 +746,8 @@ function clearQuery(): void {
   input.value?.focus()
 }
 
-function startMode(mode: PaletteMode): void {
-  query.value = prefixOf(mode)
+function startMode(mode: PaletteMode | NextPrefixMode): void {
+  query.value = prefixFor(mode)
   input.value?.focus()
 }
 
@@ -663,7 +765,7 @@ function onKey(e: KeyboardEvent): void {
     e.preventDefault()
     if (query.value) query.value = ''
     else close()
-  } else if (e.key === 'Tab') {
+  } else if (e.key === 'Tab' && !isNext.value) {
     e.preventDefault()
     cycleScope(e.shiftKey ? -1 : 1)
   }
@@ -733,6 +835,7 @@ const HINTS = [
           aria-modal="true"
           :aria-label="t('palette.title')"
           class="flex max-h-[min(78vh,620px)] w-full max-w-[640px] flex-col overflow-hidden ccm-sheet"
+          :data-palette-ui="isNext ? 'next' : undefined"
         >
           <div class="flex items-center gap-3 px-5 pt-2">
             <Search :size="19" class="shrink-0 text-ink-muted" aria-hidden="true" />
@@ -746,7 +849,7 @@ const HINTS = [
               aria-autocomplete="list"
               :aria-activedescendant="activeId"
               :aria-label="t('palette.title')"
-              :placeholder="t('paletteV80.placeholder')"
+              :placeholder="isNext ? t('mist.cmdk.placeholder') : t('paletteV80.placeholder')"
               class="ccm-bare-input h-14 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
               autocomplete="off"
               spellcheck="false"
@@ -766,20 +869,21 @@ const HINTS = [
             <kbd v-else class="hidden shrink-0 rounded-inner bg-fill px-1.5 py-0.5 font-sans text-2xs text-ink-faint sm:inline">Esc</kbd>
           </div>
 
-          <div class="flex gap-4 border-b border-line px-5" role="radiogroup" :aria-label="t('palette.scopeLabel')">
+          <div class="flex gap-4 border-b border-line px-5" role="radiogroup" :aria-label="isNext ? t('mist.cmdk.scopeLabel') : t('palette.scopeLabel')" @keydown="onScopeKey">
             <button
               v-for="s in SCOPES"
               :key="s"
               type="button"
               role="radio"
               :aria-checked="scopeNow === s"
-              tabindex="-1"
+              :tabindex="isNext && scopeNow === s ? 0 : -1"
               class="-mb-px inline-flex h-9 cursor-pointer items-center gap-1.5 border-b-2 text-xs font-medium transition-colors"
               :class="scopeNow === s ? 'border-accent text-ink' : 'border-transparent text-ink-faint hover:text-ink-muted'"
+              :data-palette-scope="s"
               @mousedown.prevent
               @click="setScope(s)"
             >
-              {{ t(`paletteV80.scope.${s}`) }}
+              {{ isNext ? t(`mist.cmdk.scope.${s}`) : t(`paletteV80.scope.${s}`) }}
               <span class="tabular text-2xs" :class="scopeNow === s ? 'text-accent-ink' : 'text-ink-faint'">{{ scopeCounts[s] }}</span>
             </button>
           </div>
@@ -800,7 +904,7 @@ const HINTS = [
               </button>
             </div>
             <div v-for="g in groups" :key="g.key" role="group" :aria-label="g.label" class="pt-3">
-              <p class="px-3 pb-1.5 text-2xs font-medium text-ink-faint">{{ g.label }}</p>
+              <p class="px-3 pb-1.5 text-2xs font-medium text-ink-faint">{{ g.label }}<span v-if="isNext" class="ccm-tabular ml-1.5" data-palette-group-count>{{ g.total }}</span></p>
               <div class="flex flex-col gap-0.5">
                 <template v-for="item in g.items" :key="'more' in item ? `more:${item.more}` : item.id">
                 <div
@@ -824,8 +928,9 @@ const HINTS = [
                   role="option"
                   :data-index="item.index"
                   :aria-selected="item.index === active"
-                  class="relative flex min-h-11 cursor-pointer items-center gap-3 rounded-inner px-3 py-1.5 text-sm"
-                  :class="item.index === active ? 'bg-accent text-on-accent' : 'text-ink'"
+                  class="relative flex cursor-pointer items-center gap-3 rounded-inner px-3 py-1.5 text-sm"
+                  :data-palette-row="item.meta ? 'session' : undefined"
+                  :class="[item.index === active ? 'bg-accent text-on-accent' : 'text-ink', isNext ? 'min-h-[52px]' : 'min-h-11']"
                   @mousemove="active = item.index"
                   @click="choose(item, $event.shiftKey)"
                 >
@@ -844,7 +949,13 @@ const HINTS = [
                         ><template v-else>{{ p.text }}</template></template
                       ></span
                     >
-                    <span v-if="item.sub" class="mt-0.5 block truncate text-2xs" :class="item.index === active ? 'text-on-accent' : 'text-ink-faint'">{{ item.sub }}</span>
+                    <span v-if="item.meta" class="mt-0.5 flex min-w-0 items-center gap-2 text-2xs" :class="item.index === active ? 'text-on-accent' : 'text-ink-faint'" data-palette-meta>
+                      <span class="min-w-0 truncate">{{ item.meta.reason }}</span>
+                      <span v-if="item.meta.project" class="shrink-0 font-medium">{{ item.meta.project }}</span>
+                      <span v-if="item.meta.branch" class="max-w-[14ch] shrink truncate">{{ item.meta.branch }}</span>
+                      <span v-if="item.meta.model" class="shrink-0">{{ item.meta.model }}</span>
+                    </span>
+                    <span v-else-if="item.sub" class="mt-0.5 block truncate text-2xs" :class="item.index === active ? 'text-on-accent' : 'text-ink-faint'">{{ item.sub }}</span>
                   </span>
                   <span
                     v-if="item.on !== undefined"
@@ -854,6 +965,7 @@ const HINTS = [
                     <span class="size-1.5 rounded-full" :class="item.on ? (item.index === active ? 'bg-on-accent' : 'bg-success') : 'border border-current'" aria-hidden="true" />
                     {{ item.on ? t('palette.on') : t('palette.off') }}
                   </span>
+                  <span v-if="item.meta?.ago && item.index !== active" class="shrink-0 text-2xs text-ink-faint tabular" data-palette-ago>{{ item.meta.ago }}</span>
                   <span v-if="item.index === active" class="hidden shrink-0 items-center gap-2 text-2xs text-on-accent sm:inline-flex">
                     <span v-if="item.alt" class="inline-flex items-center gap-1"
                       ><AppWindow v-if="item.group === 'sessions'" :size="12" aria-hidden="true" />{{ item.altHint }}
@@ -869,9 +981,19 @@ const HINTS = [
           </div>
 
           <div class="hidden flex-wrap items-center gap-x-5 gap-y-1 border-t border-line px-5 py-3 text-2xs text-ink-faint sm:flex">
-            <span v-for="h in HINTS" :key="h.key" class="inline-flex items-center gap-1.5">
-              <kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ h.keys }}</kbd>{{ t(`palette.hints.${h.key}`) }}
-            </span>
+            <template v-if="isNext">
+              <span class="inline-flex items-center gap-1.5"><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">↑ ↓</kbd>{{ t('mist.cmdk.hints.move') }}</span>
+              <span class="inline-flex items-center gap-1.5"><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">Enter</kbd>{{ t('mist.cmdk.hints.open') }}</span>
+              <span class="inline-flex items-center gap-1.5"
+                ><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ keyCombo(['Shift', 'Enter'], isMac) }}</kbd>{{ t('mist.cmdk.hints.openNew') }}</span
+              >
+              <span class="inline-flex items-center gap-1.5"><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">Esc</kbd>{{ t('mist.cmdk.hints.close') }}</span>
+            </template>
+            <template v-else>
+              <span v-for="h in HINTS" :key="h.key" class="inline-flex items-center gap-1.5">
+                <kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ h.keys }}</kbd>{{ t(`palette.hints.${h.key}`) }}
+              </span>
+            </template>
             <span class="ml-auto inline-flex items-center gap-3">
               <button
                 v-for="m in MODES"
@@ -882,7 +1004,7 @@ const HINTS = [
                 @mousedown.prevent
                 @click="startMode(m)"
               >
-                <kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ prefixOf(m) }}</kbd>{{ t(`paletteV80.prefix.${m}`) }}
+                <kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ prefixFor(m) }}</kbd>{{ isNext ? t(`mist.cmdk.prefix.${m}`) : t(`paletteV80.prefix.${m}`) }}
               </button>
             </span>
           </div>

@@ -1,0 +1,14 @@
+Quét nền ổ đĩa xong
+Ổ C: còn trống 80 GB / 475 GB, giảm 10 GB so với lần quét ngày 15/11/2026.
+Ổ F: còn trống 80 GB / 931 GB, giảm 10 GB so với lần quét ngày 15/11/2026.
+Ổ K: còn trống 80 GB / 1,9 TB, giảm 10 GB so với lần quét ngày 15/11/2026.
+Ổ L: còn trống 80 GB / 1,7 TB, giảm 10 GB so với lần quét ngày 15/11/2026.
+Ổ Z: còn trống 80 GB / 96 MB, giảm 10 GB so với lần quét ngày 15/11/2026.
+
+Phình nhiều nhất:
+1. ~\...\ccm-snap-e2e-VamvCn\a  +2 MB (7,5 MB)
+
+Lớn nhất:
+1. ~\...\ccm-snap-e2e-VamvCn\a  7,5 MB
+2. ~\...\ccm-snap-e2e-VamvCn\b  2 MB
+3. ~\...\ccm-snap-e2e-VamvCn\d  2 MB

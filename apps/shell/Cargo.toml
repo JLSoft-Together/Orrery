@@ -31,6 +31,8 @@ trash = "5"
 notify = { version = "8.2", default-features = false, features = ["macos_fsevent"] }
 core-serve = { path = "../core/crates/core-serve" }
 core-desk = { path = "../core/crates/core-desk" }
+core-procs = { path = "../core/crates/core-procs" }
+core-transcript = { path = "../core/crates/core-transcript" }
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 aes-gcm = "0.10"
 aes = "0.8"
@@ -38,6 +40,7 @@ cbc = { version = "0.1", features = ["alloc"] }
 pbkdf2 = "0.12"
 sha1 = "0.10"
 rusty-leveldb = "3"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 zip = { version = "=7.2.0", default-features = false, features = ["deflate"] }
 core-remote-proto = { path = "../core/crates/core-remote-proto" }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
@@ -51,21 +54,22 @@ mdns-sd = "0.21"
 if-addrs = "0.15"
 socket2 = { version = "0.6", features = ["all"] }
 zeroize = "1"
+regex = "1"
 
 [dev-dependencies]
 core-http = { path = "../core/crates/core-http" }
 core-store = { path = "../core/crates/core-store" }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography", "Win32_Networking_WinSock"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography", "Win32_Networking_WinSock", "Win32_Storage_FileSystem", "Win32_System_IO"] }
 webview2-com = "=0.39.1"
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSData", "NSDictionary", "NSError", "NSGeometry"] }
-objc2-app-kit = { version = "0.3", features = ["NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics"] }
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSData", "NSDictionary", "NSEnumerator", "NSError", "NSGeometry", "NSString", "NSURL"] }
+objc2-app-kit = { version = "0.3", features = ["NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSPasteboard"] }
 objc2-web-kit = { version = "0.3", features = ["WKWebView", "WKSnapshotConfiguration", "block2", "objc2-app-kit"] }
 block2 = "0.6"
 

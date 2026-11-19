@@ -41,6 +41,11 @@ export const webUtils = {
   getPathsForFiles: (files) => {
     const wv = window.chrome?.webview
     const none = files.map(() => '')
+    if (files.length && __ccmShell.platform === 'darwin')
+      return call('ccm:drop-paths', [files.map((f) => f.name)]).then(
+        (paths) => files.map((_, i) => (Array.isArray(paths) && typeof paths[i] === 'string' ? paths[i] : '')),
+        () => none,
+      )
     if (!files.length || typeof wv?.postMessageWithAdditionalObjects !== 'function') return Promise.resolve(none)
     if (!pathListening) {
       pathListening = true

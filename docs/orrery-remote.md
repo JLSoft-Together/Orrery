@@ -2,7 +2,7 @@
 
 Orrery Remote là app điện thoại (Flutter) để xem và điều khiển Workspace của Orrery trên máy tính: terminal, pane, file, Changes, Git Log, Run, danh sách session. Mọi pane vẫn chạy trên máy tính; điện thoại chỉ là màn hình + bàn phím thứ 2. Máy tính phải đang chạy Orrery (ẩn ở tray vẫn được).
 
-Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bảo mật: `docs/claude-code-integration.md` §11as.
+Hợp đồng kỹ thuật: `docs/remote-integration.md`. Ngoại lệ rule bảo mật: `docs/claude-code-integration.md` §11au.
 
 ## 1. Tình trạng hiện tại
 
@@ -174,7 +174,7 @@ Nội dung hai file chỉ nằm trong bộ nhớ của trang đến lúc gửi c
 2. Cài đặt → Thông báo → dòng "Thông báo đẩy" → "Bật" → cho phép. Mỗi máy tính đang nối được đăng ký riêng ("Đang bật · 2 máy tính").
 3. Chuông trên thẻ từng máy ở Home tắt / bật thông báo từ máy đó; 3 nhóm (chờ / xong / lỗi) và "Kèm nội dung" áp cho mọi máy.
 
-Thông báo có nội dung (ngoại lệ thứ 7 trong `CLAUDE.md`): tiêu đề `agent · session · dự án`, thân là câu hỏi / quyền đang chờ, "Xong sau 12m" hoặc lỗi; secret bị che, cắt 120 ký tự, hiện cả trên màn khoá. Tắt "Kèm nội dung" thì về chữ cố định. Nội dung Web Push được mã hoá đầu cuối (RFC 8291): Apple / Microsoft / Google chỉ thấy gói mã hoá. Thông báo Android (FCM) có nội dung được mã hoá bằng khoá của chính điện thoại (X25519 + ChaCha20-Poly1305, Google chỉ thấy gói mã hoá); app tự giải mã rồi hiện, không mở được thì hiện chữ cố định. Thông báo đầu tiên sau khi cài / cập nhật app vẫn là chữ cố định: điện thoại phải nhận được một tin khi app chạy nền thì máy tính mới chuyển sang gửi nội dung (để không mất thông báo nếu Android chặn app chạy nền); không mở app quá 48 giờ thì lại về chữ cố định cho tới lần mở sau. Chỉ máy đã ghép mới tạo được nội dung mà điện thoại mở được. Trên Android: Cài đặt → Thông báo → "Kèm nội dung". Cảnh báo bảo mật luôn là chữ cố định. Không push khi app đang mở trên điện thoại; chạm thông báo mở thẳng pane.
+Thông báo có nội dung (ngoại lệ thứ 8 trong `CLAUDE.md`): tiêu đề `agent · session · dự án`, thân là câu hỏi / quyền đang chờ, "Xong sau 12m" hoặc lỗi; secret bị che, cắt 120 ký tự, hiện cả trên màn khoá. Tắt "Kèm nội dung" thì về chữ cố định. Nội dung Web Push được mã hoá đầu cuối (RFC 8291): Apple / Microsoft / Google chỉ thấy gói mã hoá. Thông báo Android (FCM) có nội dung được mã hoá bằng khoá của chính điện thoại (X25519 + ChaCha20-Poly1305, Google chỉ thấy gói mã hoá); app tự giải mã rồi hiện, không mở được thì hiện chữ cố định. Thông báo đầu tiên sau khi cài / cập nhật app vẫn là chữ cố định: điện thoại phải nhận được một tin khi app chạy nền thì máy tính mới chuyển sang gửi nội dung (để không mất thông báo nếu Android chặn app chạy nền); không mở app quá 48 giờ thì lại về chữ cố định cho tới lần mở sau. Chỉ máy đã ghép mới tạo được nội dung mà điện thoại mở được. Trên Android: Cài đặt → Thông báo → "Kèm nội dung". Cảnh báo bảo mật luôn là chữ cố định. Không push khi app đang mở trên điện thoại; chạm thông báo mở thẳng pane.
 
 Trên máy tính: Settings → Điều khiển từ xa → khối thiết bị → nút **Thông báo điện thoại** (chuông, "Bật 2 / 3") mở danh sách điện thoại đã ghép; mỗi dòng có trạng thái (biểu tượng + chữ + màu: đang bật · Web Push / FCM · kèm nội dung, tắt trên máy tính này, chưa bật trên điện thoại) và công tắc bật / tắt push cho riêng điện thoại đó, không cần huỷ ghép. Chi tiết giao thức: `docs/remote-integration.md` §7.6.
 

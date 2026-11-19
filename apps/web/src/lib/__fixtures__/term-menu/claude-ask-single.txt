@@ -1,0 +1,24 @@
+ ▐▛███▛█   Claude Code v2.1.318
+▝▜██████▀  Haiku 5.5 · Claude Team
+ ▝▝   ▝▝   ~\AppData\Local\Temp\claude\0f0ce96d9ef846ae\a7e0d3ef-1718-4b6b-b855-12d1b84f1e41\scratchpad\w…
+
+
+❯ First call the AskUserQuestion tool exactly once with two questions. Q1: Pick a color, single select,
+  options Red, Green, Blue. Q2: Pick fruits, multiSelect true, options Apple, Banana, Cherry. After I answer,
+  run the Bash command: echo hello-orrery . Nothing else.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Màu  ☐ Trái cây  ✔ Submit  →
+
+Chọn một màu?
+
+❯ 1. Red
+     Màu đỏ
+  2. Green
+     Màu xanh lá
+  3. Blue
+     Màu xanh dương
+  4. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel

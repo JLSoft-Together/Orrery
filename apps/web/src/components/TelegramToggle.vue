@@ -6,6 +6,7 @@ import { useTelegramStore } from '../stores/telegram'
 import { useToastsStore } from '../stores/toasts'
 import { useUiStore } from '../stores/ui'
 
+const props = withDefaults(defineProps<{ iconOnly?: boolean }>(), { iconOnly: false })
 const { t } = useI18n()
 const tg = useTelegramStore()
 const ui = useUiStore()
@@ -52,17 +53,17 @@ async function stopReceiving(): Promise<void> {
       :aria-label="title"
       :title="title"
       :disabled="tg.busy"
-      class="ccm-btn-plain mr-1 h-6 gap-1 rounded-full px-2 text-xs font-medium transition-colors duration-(--ccm-dur-base)"
-      :class="on ? 'bg-fill text-accent-ink' : 'text-ink-muted'"
+      class="ccm-btn-plain gap-1 text-xs font-medium transition-colors duration-(--ccm-dur-base)"
+      :class="[props.iconOnly ? 'relative size-8 rounded-control' : 'mr-1 h-6 rounded-full px-2', on ? 'bg-fill text-accent-ink' : 'text-ink-muted']"
       data-telegram-toggle
       :data-on="on || undefined"
       @click="toggle"
     >
       <Send :size="14" class="shrink-0 transition-transform duration-(--ccm-dur-base) ease-spring" :class="on ? '' : '-rotate-45'" aria-hidden="true" />
       <Transition name="ccm-swap" mode="out-in">
-        <span v-if="!ui.compact" :key="on ? 'on' : 'off'" class="hidden sm:inline">{{ on ? t('telegram.top.on') : t('telegram.top.off') }}</span>
+        <span v-if="!ui.compact && !props.iconOnly" :key="on ? 'on' : 'off'" class="hidden sm:inline">{{ on ? t('telegram.top.on') : t('telegram.top.off') }}</span>
       </Transition>
-      <span class="size-1.5 shrink-0 rounded-full transition-colors duration-(--ccm-dur-base)" :class="on ? 'bg-success' : 'bg-fill-strong'" aria-hidden="true" />
+      <span class="size-1.5 shrink-0 rounded-full transition-colors duration-(--ccm-dur-base)" :class="[on ? 'bg-success' : 'bg-fill-strong', props.iconOnly ? 'absolute top-1 right-1' : '']" aria-hidden="true" />
     </button>
   </Transition>
   <Transition name="ccm-fade">
@@ -72,12 +73,13 @@ async function stopReceiving(): Promise<void> {
       :aria-label="t('telegram.receive.topTitle')"
       :title="t('telegram.receive.topTitle')"
       :disabled="tg.busy"
-      class="ccm-btn-plain mr-1 h-6 gap-1 rounded-full bg-warning-soft px-2 text-xs font-medium text-warning"
+      class="ccm-btn-plain gap-1 bg-warning-soft text-xs font-medium text-warning"
+      :class="props.iconOnly ? 'size-8 rounded-control' : 'mr-1 h-6 rounded-full px-2'"
       data-telegram-receiving-chip
       @click="stopReceiving"
     >
       <Radio :size="14" class="shrink-0" aria-hidden="true" />
-      <span v-if="!ui.compact" class="hidden sm:inline">{{ t('telegram.receive.top') }}</span>
+      <span v-if="!ui.compact && !props.iconOnly" class="hidden sm:inline">{{ t('telegram.receive.top') }}</span>
     </button>
   </Transition>
 </template>

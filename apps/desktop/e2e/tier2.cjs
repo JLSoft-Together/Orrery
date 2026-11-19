@@ -56,7 +56,7 @@ const HOME = path.basename(os.homedir())
     check('click row activates its pane', (await evaluate(`${W}.activeKey`)) === p2)
     list = await rows()
     check('active row aria-current', list.find((r) => r.current === 'true')?.key === p2)
-    check('active project group outlined', await evaluate(`[...${NAV}.querySelectorAll('section[data-group]')].map((s) => s.className.includes('outline-line-strong'))`).then((a) => a[0] === true && a[1] === false))
+    check('active project group header highlighted', await evaluate(`[...${NAV}.querySelectorAll('section[data-group]')].map((s) => !!s.firstElementChild?.classList.contains('bg-selection'))`).then((a) => a[0] === true && a[1] === false))
 
     // Keyboard: header ← collapses, → expands, ↓ moves into rows, Enter activates.
     await evaluate(`${NAV}.querySelector('[data-side-head]').focus()`)
@@ -176,7 +176,9 @@ const HOME = path.basename(os.homedir())
   } finally {
     app.stop()
     fs.writeFileSync(path.join(OUT, 'results-tier2.txt'), results.join('\n'))
-    fs.rmSync(DIR, { recursive: true, force: true })
+    try {
+      fs.rmSync(DIR, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
+    } catch {}
     process.exit(0)
   }
 })()

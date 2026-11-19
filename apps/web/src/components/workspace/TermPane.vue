@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Blocks, Columns2, FileText, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, FileText, FolderOpen, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -14,7 +14,9 @@ import { DevServerDetector, devUrlLabel, rememberDevUrl } from '../../lib/devSer
 import { createFileLinkProvider, inLinks, joinWrappedLinks, oscLinkUri, selectionText, type LinkOpenOptions, type LinkTarget } from '../../lib/fileLinks'
 import { fontEntry, termFontStack } from '../../lib/fonts'
 import { duration, now, shortPath } from '../../lib/format'
+import { folderName } from '../../lib/sidebarRows'
 import type { MenuEntry } from '../../lib/menu'
+import { PANE_LAYOUT_MENU } from '../../lib/layoutPaneMenu'
 import { newlineFor } from '../../lib/termKeys'
 import { installReplacementIme } from '../../lib/termIme'
 import { headMode, isHeadBlank, processChip, STATE_BADGE, statusWordShown, suggestCompact, zoomKeys } from '../../lib/paneHead'
@@ -35,6 +37,8 @@ import { hasAttachments, pathsForFiles } from '../../lib/preview'
 import { useAgentsStore } from '../../stores/agents'
 import { fromPath, useAttachmentsStore, type NewAttachment } from '../../stores/attachments'
 import { useSettingsStore } from '../../stores/settings'
+import { NEXT_CODE_FONT, useUiGenStore } from '../../stores/uiGen'
+import PaneHeader from '../next/ui/PaneHeader.vue'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useTipsStore } from '../../stores/tips'
 import { useUiStore } from '../../stores/ui'
@@ -54,9 +58,13 @@ import StatusIcon from '../StatusIcon.vue'
 import { statusMeta } from '../../lib/status'
 import { usePaneInfo, usePeerSweep } from '../../composables/usePaneInfo'
 import { useCompact } from '../../composables/useCompact'
+import { HIDDEN_MENU_THROTTLE_MS, MENU_THROTTLE_MS, useTermMenu } from '../../composables/useTermMenu'
+import { useMenuQueueStore } from '../../stores/menuQueue'
+import { useTermMenuMouse } from '../../composables/useTermMenuMouse'
 import { needsUser } from '../../lib/rail/railModel'
 import { leaves } from '../../lib/splitLayout'
 import PaneMore from './PaneMore.vue'
+import TermMenuBar from './TermMenuBar.vue'
 import PresetIcon from './PresetIcon.vue'
 import SplitMenu from './SplitMenu.vue'
 import WorktreeMenu from './WorktreeMenu.vue'
@@ -74,13 +82,16 @@ import { useResumeScheduleStore } from '../../stores/resumeSchedule'
 import { useShellMarks } from '../../composables/useShellMarks'
 import ContextMenu from '../ui/ContextMenu.vue'
 
-const props = defineProps<{ pane: Pane; visible: boolean; focused: boolean; multi: boolean; zoomed: boolean; hiddenCount: number; dim: boolean }>()
+const props = defineProps<{ pane: Pane; visible: boolean; focused: boolean; multi: boolean; zoomed: boolean; hiddenCount: number; dim: boolean; grouped?: boolean }>()
 const emit = defineEmits<{ split: [choice: SplitChoice]; close: []; openLink: [target: LinkTarget, opts: Partial<LinkOpenOptions>]; scripts: []; zoom: [] }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
 const remote = useRemoteStore()
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
+const codeFontId = (): string => (uiGen.isNext && settings.codeFont === 'system' ? NEXT_CODE_FONT : settings.codeFont)
 const terminals = useTerminalsStore()
 const agents = useAgentsStore()
 const tips = useTipsStore()
@@ -358,7 +369,7 @@ const meterOn = computed(() => !isShell.value && props.pane.state === 'running')
 const canMeterCompact = computed(() => compactFlow.stateOf(props.pane) === 'ready')
 
 const barSlot = inject<Ref<HTMLElement | null>>('ccm-pane-bar', ref(null))
-const inBar = computed(() => headMode(props.multi, props.zoomed) === 'bar' && props.visible && !!barSlot.value)
+const inBar = computed(() => !isNext.value && headMode(props.multi, props.zoomed) === 'bar' && props.visible && !!barSlot.value)
 const headTip = computed(() => [cwd.value, activityText.value, session.value ? sessionTitle.value : ''].filter(Boolean).join('\n') || undefined)
 
 const zoomLabel = computed(() => t(props.zoomed ? 'workspace.paneHead.unzoom' : 'workspace.paneHead.zoom', { key: zoomKeys(isMac) }))
@@ -370,6 +381,7 @@ function onHeadDblClick(e: MouseEvent): void {
 }
 
 const more = ref<InstanceType<typeof PaneMore> | null>(null)
+const layoutMenu = inject(PANE_LAYOUT_MENU, null)
 const reconnectable = computed(() => props.pane.state === 'error' && !!props.pane.sessionId)
 const moreEntries = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = []
@@ -377,43 +389,81 @@ const moreEntries = computed<MenuEntry[]>(() => {
   if (url) out.push({ id: 'dev', label: t('workspace.devServer.open', { host: devUrlLabel(url) }), icon: Globe })
   if (compactSuggested.value) out.push({ id: 'compact', label: t('workspace.paneHead.compact.label', { pct: compactPct.value }), icon: TriangleAlert, hint: t('workspace.compact.hint') })
   out.push({ separator: true })
-  if (canAttach.value)
-    out.push({ id: 'attach', label: attachCount.value ? t('workspace.paneHead.attachCount', { label: t('attach.button'), n: attachCount.value }) : t('attach.button'), icon: Paperclip })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
   if (isShell.value) out.push({ id: 'scan', label: t('workspace.termScan.button'), icon: ScanSearch, hint: t('workspace.termScan.hint') })
   else {
     const n = queueCount.value
     out.push({ id: 'queue', label: n ? t('workspace.promptQueue.count', { n }, n) : t('workspace.promptQueue.title'), icon: ListOrdered })
   }
-  if (preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value) out.push({ id: 'tools', label: t('sessionTools.menu'), icon: Blocks })
   out.push({ id: 'restart', label: t(reconnectable.value ? 'workspace.reconnect' : 'workspace.restart'), icon: RotateCw })
+  const layout = layoutMenu?.entries(props.pane.key) ?? []
+  if (layout.length) out.push({ separator: true }, ...layout)
   return out
 })
 
+const canTools = computed(() => preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value)
+const attachLabel = computed(() => (attachCount.value ? t('workspace.paneHead.attachCount', { label: t('attach.button'), n: attachCount.value }) : t('attach.button')))
+
+function openTools(): void {
+  const dir = session.value?.cwd || cwd.value
+  if (dir) ui.sessionTools = { dir, paneKey: props.pane.key }
+}
+
 function pickMore(id: string): void {
+  if (layoutMenu?.pick(props.pane.key, id)) return
   if (id === 'dev') {
     const url = devUrls.value[devUrls.value.length - 1]
     if (url) emit('openLink', { kind: 'url', url }, {})
   } else if (id === 'compact') compactFlow.start(props.pane.key)
-  else if (id === 'attach') attachments.toggle(props.pane.key)
   else if (id === 'scripts') emit('scripts')
   else if (id === 'scan') scanErrors()
   else if (id === 'queue') queueButton.value?.open(more.value?.button?.getBoundingClientRect())
-  else if (id === 'tools') {
-    const dir = session.value?.cwd || cwd.value
-    if (dir) ui.sessionTools = { dir, paneKey: props.pane.key }
-  } else if (id === 'restart') {
+  else if (id === 'restart') {
     if (reconnectable.value) reconnect()
     else restart()
   }
 }
 
 const cwd = computed(() => workCwd(props.pane))
+const ownProject = computed(() => (props.pane.project && !props.grouped ? folderName(props.pane.project) : null))
 // What runs in the pane now (a shell can be running `claude`); spawn and restart keep `pane.preset`.
 const preset = computed(() => presetOf(props.pane))
 let reportedCwd: string | null = null
 
 const isShell = computed(() => preset.value === 'shell')
+const termMenu = useTermMenu({
+  term: () => term,
+  enabled: () => settings.clickMenu && props.visible && props.pane.state === 'running' && (preset.value === 'claude' || preset.value === 'codex'),
+  send: (keys) => {
+    if (conn?.isOpen) conn.write(keys)
+  },
+  focus: () => term?.focus(),
+  observe: () => props.pane.state === 'running' && (preset.value === 'claude' || preset.value === 'codex'),
+  throttle: () => (props.visible ? MENU_THROTTLE_MS : HIDDEN_MENU_THROTTLE_MS),
+})
+const menuQueue = useMenuQueueStore()
+const unregisterMenu = menuQueue.register(props.pane.key, termMenu.pick)
+watch(
+  () => termMenu.seen.value,
+  (seen) => menuQueue.report(props.pane.key, seen),
+  { immediate: true },
+)
+watch(
+  () => [settings.clickMenu, props.visible, props.pane.state, preset.value] as const,
+  () => termMenu.refresh(),
+)
+const menuMouse = useTermMenuMouse({
+  host: () => host.value ?? null,
+  term: () => term,
+  menu: () => termMenu.menu.value,
+  click: termMenu.click,
+})
+watch(() => termMenu.menu.value, menuMouse.sync)
+onBeforeUnmount(() => {
+  menuMouse.dispose()
+  termMenu.dispose()
+  unregisterMenu()
+})
 const checks = useChecksStore()
 const scanNotice = ref<string | null>(null)
 let scanTimer: ReturnType<typeof setTimeout> | null = null
@@ -570,15 +620,22 @@ function cssVar(name: string): string {
 
 const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'] as const
 
+function skyWell(): boolean {
+  const sky = cssVar('--ccm-sky-pane')
+  if (uiGen.isNext && uiGen.clearTerm) return true
+  return sky !== '' && sky !== 'none'
+}
+
 function theme(): Terminal['options']['theme'] {
   const ansi: Record<string, string> = {}
   ANSI.forEach((name, i) => {
     ansi[name] = cssVar(`--ccm-ansi-${i}`)
     ansi[`bright${name.charAt(0).toUpperCase()}${name.slice(1)}`] = cssVar(`--ccm-ansi-${i + 8}`)
   })
+  const well = cssVar('--ccm-well')
   return {
     ...ansi,
-    background: cssVar('--ccm-well'),
+    background: skyWell() && /^#[0-9a-f]{6}$/i.test(well) ? `${well}00` : well,
     foreground: cssVar('--ccm-well-ink'),
     cursor: cssVar('--ccm-accent'),
     cursorAccent: cssVar('--ccm-well'),
@@ -611,10 +668,11 @@ function dropRenderer(): void {
 
 // xterm measures the cell when the option changes: the face has to be loaded first or it measures the fallback.
 async function applyCodeFont(): Promise<void> {
-  const { codeFont: id, codeFontSize: size } = settings
+  const id = codeFontId()
+  const size = settings.codeFontSize
   const entry = fontEntry('code', id)
   if (entry.family) await document.fonts.load(`${size}px '${entry.family}'`).catch(() => undefined)
-  if (!term || id !== settings.codeFont || size !== settings.codeFontSize) return
+  if (!term || id !== codeFontId() || size !== settings.codeFontSize) return
   const family = termFontStack(entry)
   if (term.options.fontFamily === family && term.options.fontSize === size) return
   term.options.fontFamily = family
@@ -699,6 +757,11 @@ const att = usePaneAttachments({
   screen: readScreen,
   appCursorKeys: () => !!term?.modes.applicationCursorKeysMode,
   win: isWin,
+  clipboardPixels: async () => {
+    const blob = await clipboardImageBlob()
+    const img = blob ? await imageData(blob) : null
+    return img && { thumb: img.thumb, view: img.view }
+  },
 })
 
 watch(
@@ -764,9 +827,9 @@ async function paste(textOnly: boolean): Promise<void> {
   const key = textOnly ? null : imagePasteKey(preset.value, isWin)
   const blob = key ? await clipboardImageBlob() : null
   if (key && blob) {
-    conn?.write(key)
     const img = await imageData(blob)
     att.notePaste({ kind: 'image', name: t('attach.clipboard'), source: 'paste', thumb: img?.thumb, view: img?.view })
+    conn?.write(key)
     return
   }
   try {
@@ -990,6 +1053,7 @@ onMounted(() => {
     minimumContrastRatio: 4.5,
     // Apps that track the mouse (full-screen TUIs) get drags; Shift-drag (xterm default) / Option-drag on macOS still selects.
     macOptionClickForcesSelection: true,
+    allowTransparency: skyWell(),
     theme: theme(),
     // OSC 8 links (Claude Code prints sign-in URLs this way): xterm's default handler opens about:blank, which the app denies.
     linkHandler: {
@@ -1010,6 +1074,8 @@ onMounted(() => {
   term.attachCustomKeyEventHandler(onKey)
   installReplacementIme(term)
   term.onWriteParsed(() => att.schedule())
+  termMenu.attach(term)
+  menuMouse.install()
   term.parser.registerOscHandler(7, (data) => (onShellCwd(parseOsc7(data)), true))
   // Not consumed (false): xterm still turns the sequence into a link.
   term.parser.registerOscHandler(8, (data) => (rememberLink(oscLinkUri(data)), false))
@@ -1152,14 +1218,16 @@ watch(
 )
 
 watch(
-  () => settings.theme,
+  () => [settings.theme, settings.stars, settings.starsPanels, uiGen.isNext, uiGen.clearTerm, uiGen.nextTheme, uiGen.dark, uiGen.customScheme] as const,
   async () => {
     await nextTick()
-    if (term) term.options.theme = theme()
+    if (!term) return
+    term.options.allowTransparency = skyWell()
+    term.options.theme = theme()
   },
 )
 
-watch(() => [settings.codeFont, settings.codeFontSize] as const, () => void applyCodeFont())
+watch(() => [settings.codeFont, settings.codeFontSize, uiGen.isNext] as const, () => void applyCodeFont())
 
 // Leaving the view only detaches; a pane gone from the store was closed, so its process goes too.
 onBeforeUnmount(() => {
@@ -1185,17 +1253,20 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-    class="@container flex min-h-0 min-w-0 flex-col gap-1.5 transition-opacity duration-(--ccm-dur-base) ease-out-quint"
-    :class="[`ccm-agent-${preset}`, multi && !focused ? 'ccm-pane-idle' : '']"
+    class="@container flex min-h-0 min-w-0 flex-col transition-opacity duration-(--ccm-dur-base) ease-out-quint"
+    :class="[`ccm-agent-${preset}`, isNext ? 'ccm-next-pane gap-0' : 'gap-1.5', multi && !focused ? 'ccm-pane-idle' : '', isNext ? 'ccm-pane-ring' : '', isNext && multi && focused ? 'ccm-pane-active' : '']"
+    :data-next-pane-card="isNext || undefined"
     :data-pane="pane.key"
     :style="visible ? `view-transition-name: ccm-pane-${pane.key}; view-transition-class: ccm-pane` : undefined"
     :aria-label="t(`workspace.preset.${preset}`)"
     @pointerdown="onPointerDown"
   >
     <Teleport :to="barSlot ?? 'body'" :disabled="!inBar">
-    <header
-      class="relative flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs select-none @max-[420px]:gap-1"
-      :class="[multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', multi && focused ? 'ccm-pane-head-on' : '']"
+    <component
+      :is="isNext ? PaneHeader : 'header'"
+      v-bind="isNext ? { active: multi && focused } : {}"
+      class="relative select-none"
+      :class="[isNext ? 'ccm-next-head' : 'flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs @max-[420px]:gap-1', multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', !isNext && multi && focused ? 'ccm-pane-head-on' : '']"
       :title="multi ? t('workspace.drag.paneHint', { key: isMac ? '⌘' : 'Ctrl' }) : inBar ? headTip : undefined"
       :data-pane-grip="multi || undefined"
       :data-pane-of="pane.key"
@@ -1216,6 +1287,15 @@ onBeforeUnmount(() => {
           >{{ t(`workspace.preset.${preset}`) }}</span
         >
       </template>
+      <span
+        v-if="ownProject"
+        class="inline-flex min-w-0 shrink items-center gap-1 text-2xs font-medium text-accent-ink @max-[360px]:hidden"
+        :title="`${t('splitV97.paneProject', { name: ownProject })}\n${pane.project}`"
+        data-pane-project
+        data-pane-chip
+      >
+        <FolderOpen :size="11" class="shrink-0" aria-hidden="true" /><span class="truncate">{{ ownProject }}</span>
+      </span>
       <Transition name="ccm-fade">
         <span
           v-if="diff"
@@ -1252,6 +1332,37 @@ onBeforeUnmount(() => {
           <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
           <span v-if="branch" class="max-w-[16ch] min-w-[4ch] truncate @max-[440px]:sr-only @max-[440px]:min-w-0">{{ branch }}</span>
           <span v-else class="sr-only">{{ t('workspace.wt.title') }}</span>
+        </button>
+        <button
+          v-if="canAttach"
+          type="button"
+          class="relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-pressed:bg-fill aria-pressed:text-ink"
+          :title="attachLabel"
+          :aria-label="attachLabel"
+          :aria-pressed="attachOpen"
+          data-no-drag
+          data-pane-attach
+          @click="attachments.toggle(pane.key)"
+        >
+          <Paperclip :size="12" aria-hidden="true" />
+          <span
+            v-if="attachCount"
+            class="absolute -top-1 -right-1 grid h-3 min-w-3 place-items-center rounded-full bg-accent px-0.5 text-[9px] leading-none font-bold text-on-accent tabular-nums"
+            aria-hidden="true"
+            >{{ attachCount }}</span
+          >
+        </button>
+        <button
+          v-if="canTools"
+          type="button"
+          class="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink"
+          :title="t('sessionTools.menu')"
+          :aria-label="t('sessionTools.menu')"
+          data-no-drag
+          data-pane-tools
+          @click="openTools"
+        >
+          <Blocks :size="12" aria-hidden="true" />
         </button>
         <span class="grid min-w-6 justify-items-end empty:hidden *:[grid-area:1/1] @max-[300px]:hidden" data-more="compact" data-pane-chip>
           <Transition name="ccm-fade">
@@ -1422,19 +1533,23 @@ onBeforeUnmount(() => {
           <X :size="14" aria-hidden="true" />
         </button>
       </div>
-    </header>
+    </component>
     </Teleport>
     <ContextMeter v-if="meterOn" :tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
-    <div class="flex min-h-0 flex-1 gap-1.5" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+    <div class="flex min-h-0 flex-1 gap-1.5" data-pane-body @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
-      class="ccm-pane-ring relative min-h-0 min-w-0 flex-1 rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
-      :class="multi && focused ? 'ccm-pane-active' : ''"
+      class="ccm-pane-ring ccm-sky-well relative flex min-h-0 min-w-0 flex-1 flex-col rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"
+      :class="!isNext && multi && focused ? 'ccm-pane-active' : ''"
+      data-pane-well
+      :data-term-clear="(isNext && uiGen.clearTerm) || undefined"
     >
       <!-- Dimmed when the process has ended; the well fades, the terminal text itself never animates. -->
       <!-- Shell command marks sit in the left padding, outside the cell grid. -->
-      <div class="size-full overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
+      <div class="relative min-h-0 w-full flex-1 overflow-hidden rounded-card p-2 pr-0.5 transition-opacity duration-(--ccm-dur-slow) ease-out-quint" :class="[ended ? 'opacity-60' : '', marksOn ? 'pl-4' : '']">
         <div ref="host" class="size-full" data-code-zoom :title="linkHint" />
+        <div v-if="menuMouse.hover.value" class="pointer-events-none absolute rounded-inner bg-accent/20" :style="{ left: menuMouse.hover.value.left + 'px', top: menuMouse.hover.value.top + 'px', width: menuMouse.hover.value.width + 'px', height: menuMouse.hover.value.height + 'px' }" data-term-menu-hover />
       </div>
+      <TermMenuBar v-if="termMenu.menu.value" :menu="termMenu.menu.value" :busy="termMenu.busy.value" @pick="termMenu.pick" />
       <Transition name="ccm-fade">
         <div v-if="booting" class="absolute inset-0 z-11 flex items-center justify-center rounded-card bg-well p-4" data-pane-boot>
           <div class="flex max-w-80 flex-col items-center gap-3 text-center" role="status" aria-live="polite">

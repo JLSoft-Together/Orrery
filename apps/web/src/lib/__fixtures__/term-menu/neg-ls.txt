@@ -1,0 +1,7 @@
+$ ls -la
+total 24
+drwxr-xr-x  5 user staff  160 Nov 15 10:00 .
+drwxr-xr-x 12 user staff  384 Nov 15 09:58 ..
+-rw-r--r--  1 user staff  612 Nov 15 10:00 package.json
+drwxr-xr-x  4 user staff  128 Nov 15 10:00 src
+$

@@ -10,7 +10,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT, REPO } = require('./cdp.cjs')
+const { launch, OUT, REPO, selOptions, selPick } = require('./cdp.cjs')
 const WS = require(path.join(REPO, 'node_modules/ws'))
 const INSPECT = Number(process.env.CCM_E2E_INSPECT) || (Number(process.env.CCM_E2E_DBG) || 9333) + 7
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
@@ -212,8 +212,13 @@ async function main() {
       await click('[data-status-button]')
       await waitFor(`!!document.querySelector('[data-status-popover] [data-resources-badge]')`, 5000, 'badge')
       check('header status popover: Resources row shows the forgotten badge (1)', (await text('[data-resources-badge]')) === '1', await text('[data-resources-badge]'))
-      await waitFor(`document.querySelectorAll('[data-card-resources]').length >= 2`, 5000, 'card lines')
-      const cards = await evaluate(`[...document.querySelectorAll('[data-card-resources]')].map((e) => e.textContent.replace(/\\s+/g, ' ').trim())`)
+      const cardLine = async (id) => {
+        await evaluate(`${UI}.openSessionTab(${JSON.stringify(id)}); ${UI}.panels.sessions.open = true`)
+        await waitFor(`!!document.querySelector('[data-card-resources]')`, 5000, 'card lines')
+        return evaluate(`document.querySelector('[data-card-resources]').textContent.replace(/\s+/g, ' ').trim()`)
+      }
+      const cards = [await cardLine(A), await cardLine(B)]
+      await evaluate(`${UI}.openSessionTab(null)`)
       check('session cards show a RAM / CPU line, the idle one marked forgotten', cards.some((c) => /528\s?MB/.test(c)) && cards.some((c) => /300\s?MB/.test(c) && /forgotten/i.test(c)), JSON.stringify(cards))
 
       await click('[data-status-popover] [data-resources-button]')
@@ -301,7 +306,7 @@ async function main() {
       const rules = ev.map((e) => e.data.rule)
       check('Edit .env and git push --force flagged', rules.some((r) => /env/.test(r)) && rules.includes('git-force-push'), JSON.stringify(rules))
       check('no command text or file content in the events', !JSON.stringify(ev).includes('origin main') && !JSON.stringify(ev).includes('A=2'), JSON.stringify(ev.map((e) => e.data)))
-      await evaluate(`${UI}.panels.sessions.open = true`)
+      await evaluate(`${UI}.openSessionTab(${JSON.stringify(B)}); ${UI}.panels.sessions.open = true`)
       await waitFor(`!!document.querySelector('[data-card-sensitive]')`, 5000, 'card badge')
       check('session card badge counts 2', /2/.test(await text('[data-card-sensitive]')), await text('[data-card-sensitive]'))
       check('hit list folded until the badge is clicked', !(await evaluate(`!!document.querySelector('[data-card-sensitive-list]')`)))
@@ -340,7 +345,7 @@ async function main() {
         const sharedBefore = '{\n  "model": "opus",\n  "permissions": {\n    "allow": ["Read"]\n  },\n  "env": {}\n}\n'
         write(sharedFile, sharedBefore)
         await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor')`)
-        await evaluate(`${UI}.panels.sessions.open = true`)
+        await evaluate(`${UI}.openSessionTab(${JSON.stringify(B)}); ${UI}.panels.sessions.open = true`)
         await waitFor(`!!document.querySelector('[data-card-sensitive]')`, 5000, 'card badge')
         if (!(await evaluate(`!!document.querySelector('[data-card-sensitive-list]')`))) await click('[data-card-sensitive]')
         await waitFor(`!!document.querySelector('[data-sensitive-rule="custom:*.secret"]')`, 5000, 'rows')
@@ -407,18 +412,19 @@ async function main() {
     await step('idle setting', async () => {
       await evaluate(`${UI}.settingsPage = 'notify'; ${UI}.settingsOpen = true`)
       const group = '[data-idle-select]'
-      const pick = (i) => evaluate(`(() => { const s = document.querySelector('${group}'); s.selectedIndex = ${i}; s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+      const pick = (i) => evaluate(selPick(`document.querySelector('${group}')`, `(t, j) => j === ${i}`))
+      const selIs = (i) => `(${selOptions(`document.querySelector('${group}')`)}).then((o) => (o ?? []).findIndex((x) => x.selected) === ${i})`
       await waitFor(`!!document.querySelector('${group}')`, 5000, 'idle control')
-      const opts = await evaluate(`[...document.querySelectorAll('${group} option')].map((o, i) => o.textContent.trim() + (i === document.querySelector('${group}').selectedIndex ? '*' : ''))`)
+      const opts = ((await evaluate(selOptions(`document.querySelector('${group}')`))) ?? []).map((o) => o.text + (o.selected ? '*' : ''))
       check('Notifications › Forgotten after: Off / 15 / 30 / 1 h* / 2 h / 4 h', opts.length === 6 && opts[3].endsWith('*'), JSON.stringify(opts))
       await pick(1)
-      await waitFor(`document.querySelector('${group}').selectedIndex === 1`, 5000, '15 min')
+      await waitFor(selIs(1), 5000, '15 min')
       await pass('idle 15', `${RES}.report?.idleMinutes === 15`)
       check('collector applies 15 min to the next report', true)
       await evaluate(`${UI}.settingsPage = 'notify'; ${UI}.settingsOpen = true`)
       await waitFor(`!!document.querySelector('${group}')`, 5000, 'idle control again')
       await pick(3)
-      await waitFor(`document.querySelector('${group}').selectedIndex === 3`, 5000, 'back to 60')
+      await waitFor(selIs(3), 5000, 'back to 60')
       await evaluate(`${UI}.settingsOpen = false`)
     })
 

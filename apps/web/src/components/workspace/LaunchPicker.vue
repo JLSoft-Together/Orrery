@@ -15,8 +15,8 @@ import { useTerminalsStore } from '../../stores/terminals'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { useDeepSeekStore } from '../../stores/deepseek'
 
-const props = defineProps<{ cwd?: string }>()
-const emit = defineEmits<{ launch: [cwd: string | undefined]; browser: [url: string]; openFile: []; changes: []; log: []; resumed: [] }>()
+const props = defineProps<{ cwd?: string; pickOnly?: boolean }>()
+const emit = defineEmits<{ launch: [cwd: string | undefined]; browser: [url: string]; openFile: []; changes: []; log: []; resumed: []; resume: [item: ResumeItem] }>()
 
 const { t, locale } = useI18n()
 const workspace = useWorkspaceStore()
@@ -101,6 +101,7 @@ const resumeProject = computed(() => (selectedDir.value ? baseName(selectedDir.v
 const ago = (iso: string): string => relativeTime(iso, locale.value, now.value) ?? ''
 
 function resume(item: ResumeItem): void {
+  if (props.pickOnly) return emit('resume', item)
   workspace.resumeSession(workspace.preset, item.cwd, item.id)
   emit('resumed')
 }
@@ -253,7 +254,7 @@ defineExpose({ focusFirst })
       </section>
     </div>
 
-    <div v-if="hasPreview" class="flex flex-col border-t border-line pt-1.5">
+    <div v-if="hasPreview && !pickOnly" class="flex flex-col border-t border-line pt-1.5">
       <button v-if="devUrl" type="button" data-launch-row :class="ROW" :title="devUrl" @click="emit('browser', devUrl)">
         <Globe :size="14" class="shrink-0 text-agent-browser group-focus-visible/row:text-on-accent" aria-hidden="true" />
         <span class="truncate">{{ t('workspace.open.devUrl', { host: devUrlLabel(devUrl) }) }}</span>
@@ -276,7 +277,7 @@ defineExpose({ focusFirst })
       <button type="button" data-launch-row :class="[ROW, 'disabled:cursor-default disabled:opacity-50']" :disabled="browsing" @click="browse">
         <FolderOpen :size="14" class="shrink-0 text-ink-muted group-focus-visible/row:text-on-accent" aria-hidden="true" />{{ t('workspace.launch.browse') }}
       </button>
-      <button type="button" data-launch-row :class="ROW" @click="emit('launch', undefined)">
+      <button v-if="!pickOnly" type="button" data-launch-row :class="ROW" @click="emit('launch', undefined)">
         <House :size="14" class="shrink-0 text-ink-muted group-focus-visible/row:text-on-accent" aria-hidden="true" />{{ t('workspace.launch.home') }}
       </button>
     </div>

@@ -47,3 +47,4 @@
 - 2026-11-12 · Điện thoại chỉ init 1 Firebase (plugin chỉ hỗ trợ app mặc định): dùng project của máy đầu tiên gửi `push.config`; máy khác cùng projectId vẫn nhận push, khác projectId ⇒ hiện "Máy này dùng Firebase khác, không nhận thông báo" (con tự quyết, đa số người dùng 1 project)
 - 2026-11-12 · Chưa dựng relay ⇒ chỉ LAN; relay `orrery-relay.jinvu.workers.dev` là relay riêng của chủ nhân, không phải mặc định chung
 - 2026-11-12 · App điện thoại khoá bằng sinh trắc học / PIN máy (local_auth), bật mặc định, xác thực lần đầu rồi lại sau mỗi 1 giờ (chỉnh được trong cài đặt, đổi cài đặt phải xác thực); khoá = đóng mọi kết nối · chủ nhân hỏi 2FA, chọn giữa sinh trắc và TOTP → con chọn sinh trắc (không cần app thứ 2, TOTP trên cùng máy thêm ít bảo vệ)
+- 2026-11-15 - Test app của v100/v101 chỉ chạy bản dev tách biệt (cổng riêng, userData/CCM_DATA_DIR/APPDATA tạm), không ảnh hưởng Orrery đang chạy - chủ nhân yêu cầu; công thức trong PROGRESS-2026-11-15-click-disk.md.

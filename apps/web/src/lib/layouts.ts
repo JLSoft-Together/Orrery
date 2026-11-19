@@ -1,6 +1,6 @@
 import { isTerm, primaryPaneKey, reopenAs, tabProject, type Pane, type Tab } from '../stores/workspace'
 import type { LayoutDraft, LayoutPane } from './projects'
-import { leaves } from './splitLayout'
+import { groupsOf, leaves, ungrouped } from './splitLayout'
 
 export interface CaptureOptions {
   project: string
@@ -30,9 +30,14 @@ export function captureLayout(tabs: readonly Tab[], panes: readonly Pane[], inPr
   const paneOf = (k: string): Pane | undefined => byKey.get(k)
   const picked = tabs.filter((t) => {
     const primary = paneOf(primaryPaneKey(t.root, paneOf))
-    return !!primary && inProject({ ...primary, cwd: tabProject(t, paneOf) })
+    if (!primary) return false
+    const dirs = [tabProject(t, paneOf), ...groupsOf(t.root).map((g) => g.project)].filter((d): d is string => !!d)
+    return dirs.some((cwd) => inProject({ ...primary, key: '', cwd, project: undefined }))
   })
-  const kept = picked.map((t) => ({ root: t.root, focus: t.focus }))
+  const kept = picked.map((t) => {
+    const groups = groupsOf(t.root).map(({ keys: _keys, ...g }) => g)
+    return { root: ungrouped(t.root), focus: t.focus, ...(groups.length ? { groups } : {}) }
+  })
   if (!kept.length) return null
   const specs: Record<string, LayoutPane> = {}
   for (const tab of kept) for (const key of leaves(tab.root)) specs[key] = specOf(byKey.get(key)!, opts.resume)

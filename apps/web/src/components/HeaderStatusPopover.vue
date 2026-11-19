@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, Gauge, HardDrive, OctagonAlert, WifiOff } from 'lucide-vue-next'
 import { hasDisk } from '../lib/buildClean'
+import { hasDiskMap } from '../lib/diskMap'
 import { now, relativeTime } from '../lib/format'
 import { limitRisk, limitsStale, worstLimit } from '../lib/headerStatus'
 import { retireOverlay } from '../lib/motion'
@@ -10,6 +11,7 @@ import { useAwakeStore } from '../stores/awake'
 import { useConnectionStore } from '../stores/connection'
 import { useDiskStore } from '../stores/disk'
 import { useExtrasStore } from '../stores/extras'
+import { useUiStore } from '../stores/ui'
 import PlanLimits from './PlanLimits.vue'
 import KeepAwakeBadge from './KeepAwakeBadge.vue'
 import ResourcesButton from './ResourcesButton.vue'
@@ -79,7 +81,10 @@ const style = computed(() => {
   const a = anchor.value
   if (!a) return {}
   const left = Math.max(12, Math.min(a.right - WIDTH, window.innerWidth - WIDTH - 12))
-  return { left: `${left}px`, top: `${a.bottom + 6}px`, width: `${Math.min(WIDTH, window.innerWidth - 24)}px`, '--ccm-origin': 'top right' }
+  const width = `${Math.min(WIDTH, window.innerWidth - 24)}px`
+  const below = window.innerHeight - a.bottom
+  if (below < 320 && a.top > below) return { left: `${left}px`, bottom: `${window.innerHeight - a.top + 6}px`, width, maxHeight: `${a.top - 18}px`, '--ccm-origin': 'bottom left' }
+  return { left: `${left}px`, top: `${a.bottom + 6}px`, width, maxHeight: `${below - 18}px`, '--ccm-origin': 'top right' }
 })
 
 function close(refocus = true): void {
@@ -92,9 +97,15 @@ function toggle(): void {
   open.value = true
   void nextTick(() => pop.value?.focus())
 }
-function showDisk(): void {
+const ui = useUiStore()
+function showDrives(): void {
   close(false)
   disk.open = true
+}
+function showDisk(): void {
+  if (!hasDiskMap) return showDrives()
+  close(false)
+  ui.setView('disk')
 }
 
 function onOutside(e: PointerEvent): void {
@@ -153,6 +164,7 @@ onBeforeUnmount(() => {
     <span v-if="risk" class="absolute right-0.5 bottom-0.5 size-2 rounded-full bg-warning ring-2 ring-surface" aria-hidden="true" data-status-risk />
   </button>
 
+  <Teleport to="body">
   <Transition name="ccm-menu" @before-leave="retireOverlay">
     <div
       v-if="open && anchor"
@@ -173,18 +185,22 @@ onBeforeUnmount(() => {
 
       <div class="mt-3 flex flex-col gap-0.5 border-t border-line pt-2">
         <KeepAwakeBadge row class="px-2 py-1.5" />
-        <button
-          v-if="diskLow"
-          type="button"
-          class="flex w-full cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-left text-xs transition-colors hover:bg-fill"
-          :class="disk.worst === 'danger' ? 'text-st-error' : 'text-warning'"
-          data-status-disk
-          @click="showDisk"
-        >
-          <HardDrive :size="14" class="shrink-0" aria-hidden="true" />
-          <span class="min-w-0 flex-1 truncate">{{ t('headerV79.disk') }}: {{ diskText }}</span>
-          <span class="shrink-0 text-ink-faint">{{ t('headerV79.diskOpen') }}</span>
-        </button>
+        <div v-if="diskLow" class="flex items-stretch gap-0.5">
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-left text-xs transition-colors hover:bg-fill"
+            :class="disk.worst === 'danger' ? 'text-st-error' : 'text-warning'"
+            data-status-disk
+            @click="showDisk"
+          >
+            <HardDrive :size="14" class="shrink-0" aria-hidden="true" />
+            <span class="min-w-0 flex-1 truncate">{{ t('headerV79.disk') }}: {{ diskText }}</span>
+            <span class="shrink-0 text-ink-faint">{{ hasDiskMap ? t('disk.openDisk') : t('headerV79.diskOpen') }}</span>
+          </button>
+          <button v-if="hasDiskMap" type="button" class="ccm-btn-plain shrink-0 px-2" :title="t('disk.title')" :aria-label="t('disk.title')" data-status-disk-drives @click="showDrives">
+            <Gauge :size="14" aria-hidden="true" />
+          </button>
+        </div>
         <ResourcesButton variant="row" @click="close(false)" />
       </div>
 
@@ -196,5 +212,6 @@ onBeforeUnmount(() => {
       </p>
     </div>
   </Transition>
+  </Teleport>
   <DiskBadge :anchor="btn" />
 </template>

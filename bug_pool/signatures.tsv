@@ -1,2 +1,4 @@
 # regex chữ ký lỗi (grep -iE)	tags	file bug	fix 1 dòng
 insertReplacementText|/uuuu|IME tiếng Việt.*(mất|trùng) chữ|Telex.*terminal	ime,telex,xterm,webkit,webview2,terminal	ui/terminal-vietnamese-ime	lib/termIme.ts installReplacementIme: insertReplacementText → DEL×phần thay + chữ mới, gửi lại insertText xterm bỏ
+not allowed by ACL|plugin:notification\|notify|allowed on: \[windows: "main", URL: local\]	tauri,acl,capability,notification,remote-url	config/tauri-notification-acl-remote	capabilities/default.json: thêm notification:default + remote.urls http://127.0.0.1:* (trang app từ collector = remote)
+(paste|Alt\+V).*(ảnh|image).*(attachment|tray).*(không|no).*(preview|thumb)	attachment,paste,clipboard,image,preview	ui/attachment-paste-image-no-preview	reconcile trả blind → fillPixels đọc ảnh clipboard; paste() notePaste trước khi gửi phím

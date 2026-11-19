@@ -3,7 +3,7 @@ const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const NAV = `document.querySelector('nav[aria-label=Projects]')`
@@ -155,11 +155,14 @@ async function run(app) {
   await sleep(300)
 
   // --- Alt+↓ reorders projects from the header ---
-  await evaluate(`${NAV}.querySelector('[data-side-head]').focus()`)
-  await chord('ArrowDown', 'ArrowDown', 40, ALT)
-  const reordered = await evaluate(`[...${NAV}.querySelectorAll('[data-rail-name]')].map((n) => n.textContent.trim())`)
-  check('Alt+↓ on a header moves the project down', JSON.stringify(reordered) === JSON.stringify(['beta', 'alpha']), JSON.stringify(reordered))
-  check('order is remembered', (await evaluate(`localStorage.getItem('ccm.workspace.railOrder')`))?.includes('beta'))
+  if (UI === 'next') console.log('SKIP Alt+↓ / Shift+F10 on the classic sidebar header: hidden in next, the live rail is covered by v102-next.cjs')
+  else {
+    await evaluate(`${NAV}.querySelector('[data-side-head]').focus()`)
+    await chord('ArrowDown', 'ArrowDown', 40, ALT)
+    const reordered = await evaluate(`[...${NAV}.querySelectorAll('[data-rail-name]')].map((n) => n.textContent.trim())`)
+    check('Alt+↓ on a header moves the project down', JSON.stringify(reordered) === JSON.stringify(['beta', 'alpha']), JSON.stringify(reordered))
+    check('order is remembered', (await evaluate(`localStorage.getItem('ccm.workspace.railOrder')`))?.includes('beta'))
+  }
 
   // --- v43 context menus: project header, keyboard, Copy path, row Split right, Close project, empty space ---
   const MENU = `document.querySelector('[data-context-menu]')`
@@ -177,13 +180,15 @@ async function run(app) {
   const status = await evaluate(`${NAV}.querySelector('[data-rail-status]')?.textContent.trim() ?? ''`)
   check('Copy path copies the project folder and says so', status === 'Path copied' && (copied === A || String(copied).startsWith('ERR')), `${status} / ${copied}`)
 
-  await evaluate(`${headOf('alpha')}.focus()`)
-  await chord('F10', 'F10', 121, SHIFT)
-  await waitFor(`!!${MENU}`, 5000, 'menu from keyboard')
-  check('Shift+F10 on a header opens the menu with focus on its first item', await evaluate(`document.activeElement?.getAttribute('role') === 'menuitem' && !!document.activeElement.closest('[data-context-menu]')`))
-  await key('Escape', 'Escape', 27)
-  await waitFor(`!${MENU}`, 3000, 'menu closed by Esc')
-  check('Esc closes the menu and returns focus to the header', await evaluate(`document.activeElement === ${headOf('alpha')}`))
+  if (UI !== 'next') {
+    await evaluate(`${headOf('alpha')}.focus()`)
+    await chord('F10', 'F10', 121, SHIFT)
+    await waitFor(`!!${MENU}`, 5000, 'menu from keyboard')
+    check('Shift+F10 on a header opens the menu with focus on its first item', await evaluate(`document.activeElement?.getAttribute('role') === 'menuitem' && !!document.activeElement.closest('[data-context-menu]')`))
+    await key('Escape', 'Escape', 27)
+    await waitFor(`!${MENU}`, 3000, 'menu closed by Esc')
+    check('Esc closes the menu and returns focus to the header', await evaluate(`document.activeElement === ${headOf('alpha')}`))
+  }
 
   const firstRow = `${NAV}.querySelector('[data-group] [data-side-row]')`
   const rowTab = await evaluate(`(() => { const k = ${firstRow}.dataset.sidePane; return ${W}.tabs.findIndex((t) => JSON.stringify(t.root).includes(k)) })()`)
@@ -217,6 +222,68 @@ async function run(app) {
   check('right-click on empty rail space offers Collapse all', await evaluate(`!!${item('collapse-all')}`))
   await key('Escape', 'Escape', 27)
   await waitFor(`!${MENU}`, 3000, 'empty menu closed')
+
+  // --- v98 multi-select: Ctrl+click rows of two projects, Esc clears, right-click → Group ---
+  if (UI === 'next') {
+    console.log('SKIP v98 multi-select, v99 project drag, avatar column: classic sidebar only, hidden in next')
+    return
+  }
+  const tabOfPane = (k) => `${W}.tabs.findIndex((t) => JSON.stringify(t.root).includes(${k}))`
+  const rowIn = (name) => `${headOf(name)}.closest('[data-group]').querySelector('[data-side-row]')`
+  const modClick = (sel) => evaluate(`(() => { const el = ${sel}; el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true })); return true })()`)
+  await evaluate(`${W}.activate(${rowIn('alpha')}.dataset.sidePane)`)
+  await sleep(300)
+  await modClick(rowIn('alpha'))
+  await modClick(rowIn('beta'))
+  await sleep(200)
+  check('Ctrl+click selects rows of two projects', (await evaluate(`${NAV}.querySelectorAll('[data-rail-selected]').length`)) === 2 && (await evaluate(`!!${NAV}.querySelector('[data-rail-selection]')`)))
+  await shot('rail-07-multiselect')
+  await key('Escape', 'Escape', 27)
+  check('Esc clears the selection', (await evaluate(`${NAV}.querySelectorAll('[data-rail-selected]').length`)) === 0)
+  const betaPane = JSON.stringify(await evaluate(`${rowIn('beta')}.dataset.sidePane`))
+  const alphaPane = JSON.stringify(await evaluate(`${rowIn('alpha')}.dataset.sidePane`))
+  await modClick(rowIn('alpha'))
+  await modClick(rowIn('beta'))
+  await rightClick(`${rowIn('beta')}.closest('[data-rail-row]')`)
+  await waitFor(`!!${MENU}`, 5000, 'selection menu')
+  check('right-click on a selected row opens the selection menu', await evaluate(`['sel-group', 'sel-ungroup', 'sel-close', 'sel-clear'].every((id) => !!document.querySelector('[data-context-menu] [data-menu-id="' + id + '"]'))`))
+  await evaluate(`${item('sel-group')}.click()`)
+  await waitFor(`${tabOfPane(betaPane)} === ${tabOfPane(alphaPane)}`, 5000, 'grouped')
+  check('Group puts both projects into one tab, beta pane keeps its project', await evaluate(`(${W}.panes.find((p) => p.key === ${betaPane})?.project ?? '').endsWith('beta')`))
+  await evaluate(`${W}.ungroupPanes([${betaPane}])`)
+  await sleep(300)
+
+  // --- v98 drag a project header onto a pane edge ---
+  const D = path.join(BASE, 'delta')
+  fs.mkdirSync(D)
+  const deltaPane = JSON.stringify(await evaluate(`${W}.open('shell', ${JSON.stringify(D)}, undefined, { tab: true }).key`))
+  await waitFor(`!!${headOf('delta')}`, 10000, 'delta cluster')
+  await evaluate(`${W}.activate(${alphaPane})`)
+  await sleep(500)
+  const from = await evaluate(`(() => { const r = ${headOf('delta')}.getBoundingClientRect(); return { x: r.left + 40, y: r.top + r.height / 2 } })()`)
+  const to = await evaluate(`(() => { const r = document.querySelector('[data-pane=' + JSON.stringify(${alphaPane}) + ']').getBoundingClientRect(); return { x: r.right - 12, y: r.top + r.height / 2 } })()`)
+  const mouse = (type, p, buttons = 1) => cmd('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, button: 'left', buttons, clickCount: type === 'mouseMoved' ? 0 : 1 })
+  await mouse('mousePressed', from)
+  for (let i = 1; i <= 12; i++) {
+    await mouse('mouseMoved', { x: from.x + ((to.x - from.x) * i) / 12, y: from.y + ((to.y - from.y) * i) / 12 })
+    await sleep(30)
+  }
+  await sleep(200)
+  check('dragging a project over a pane shows the drop preview', await evaluate(`document.querySelector('[data-drop-preview]')?.dataset.edge === 'right'`))
+  await shot('rail-08-project-drag')
+  await mouse('mouseReleased', to, 0)
+  await waitFor(`${tabOfPane(deltaPane)} === ${tabOfPane(alphaPane)}`, 5000, 'project dropped')
+  check('dropping the project brings its tab beside the pane with its own project', await evaluate(`(${W}.panes.find((p) => p.key === ${deltaPane})?.project ?? '').endsWith('delta')`))
+  await sleep(500)
+  const frames = JSON.parse(await evaluate(`JSON.stringify([...document.querySelectorAll('[data-group-frame]')].map((el) => el.querySelector('[data-group-name]')?.textContent.trim()))`))
+  check('v99: the dropped project shows as its own group frame right of alpha', JSON.stringify(frames) === JSON.stringify(['alpha', 'delta']), JSON.stringify(frames))
+  check('v99: the rail lists the delta pane under alpha with its project label', await evaluate(`/delta/.test(${rowIn('alpha')}.closest('[data-group]').textContent)`))
+  const sub = JSON.parse(await evaluate(`JSON.stringify([...${NAV}.querySelectorAll('[data-rail-subgroup]')].map((el) => el.textContent.replace(/\\s+/g, ' ').trim()))`))
+  check('v99: the mixed tab is one rail entry with one subgroup per project', sub.length === 2 && /alpha/.test(sub[0]) && /delta/.test(sub[1]), JSON.stringify(sub))
+  check('v99: the rail entry names both projects with colour dots', await evaluate(`[...${NAV}.querySelectorAll('[data-rail-group-title]')].some((el) => el.textContent.trim() === 'alpha + delta') && ${NAV}.querySelectorAll('[data-rail-group-dots] > span').length >= 2`))
+  await shot('rail-09-project-groups')
+  await evaluate(`${W}.remove(${deltaPane}); ${W}.forget(${JSON.stringify(D)})`)
+  await sleep(300)
 
   // --- Open Project (native folder picker, not driven here): pinned above the scrolling project list ---
   check('Open Project is pinned at the top of the rail', await evaluate(`(() => { const b = ${NAV}.querySelector('[data-rail-open-project]'); return !!b && /Open Project/.test(b.getAttribute('aria-label') ?? '') && ${NAV}.firstElementChild.contains(b) && !b.closest('.overflow-y-auto') })()`))

@@ -5,9 +5,9 @@ use std::sync::OnceLock;
 
 pub const DIAG_MAX: usize = 12;
 const SERVERS_MAX: usize = 100;
-pub const DESK_ERRORS: [&str; 29] = [
+pub const DESK_ERRORS: [&str; 33] = [
     "unavailable", "failed", "starting", "not-layout", "missing", "too-large", "jar-missing", "bundle-missing", "jdk-missing", "jdk-old", "crash-loop", "render-failed", "timeout", "no-report",
-    "not-found", "not-mine", "outside", "emulator", "self", "busy", "gone", "cancelled", "confirm-open", "telegram-off", "telegram-config", "no-topic", "not-paired", "rate", "buttons-file",
+    "not-found", "not-mine", "outside", "emulator", "self", "busy", "gone", "cancelled", "confirm-open", "telegram-off", "telegram-config", "no-topic", "not-paired", "rate", "buttons-file", "not-indexed", "not-in-index", "scanning", "invalid",
 ];
 
 fn failed() -> Value {
@@ -96,6 +96,59 @@ fn parse_layout(o: &serde_json::Map<String, Value>, tool: &str) -> Value {
     })
 }
 
+const DISK_ITEMS_MAX: usize = 200;
+
+fn bytes(v: Option<&Value>) -> i64 {
+    int(v, 0, 9_007_199_254_740_991).unwrap_or(0)
+}
+
+fn path_of(v: Option<&Value>) -> Option<String> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let re = R.get_or_init(|| Regex::new(r"[\x00-\x1f\x7f-\x{9f}\x{2028}\x{2029}\x{202a}-\x{202e}\x{2066}-\x{2069}]").unwrap());
+    strv(v, 4096).filter(|s| !s.is_empty() && !re.is_match(s))
+}
+
+fn disk_items(v: Option<&Value>) -> Vec<Value> {
+    static K: OnceLock<Regex> = OnceLock::new();
+    arr(v, DISK_ITEMS_MAX)
+        .into_iter()
+        .filter_map(|it| {
+            let it = it.as_object()?;
+            let path = path_of(it.get("path"))?;
+            let name = line(it.get("name"), 255).unwrap_or_else(|| path.clone());
+            let kind = it.get("kind").and_then(Value::as_str).filter(|k| K.get_or_init(|| Regex::new(r"^[a-z]{2,12}$").unwrap()).is_match(k));
+            let mtime = it.get("mtime").and_then(Value::as_f64).filter(|m| m.is_finite() && *m >= 0.0).map(|m| m.floor()).unwrap_or(0.0);
+            let mut out = json!({ "path": path, "name": name, "size": bytes(it.get("size")), "dir": it.get("dir") == Some(&json!(true)), "mtime": mtime as i64 });
+            if let Some(k) = kind {
+                out["kind"] = json!(k);
+            }
+            Some(out)
+        })
+        .collect()
+}
+
+fn parse_disk_delete(o: &serde_json::Map<String, Value>, tool: &str) -> Value {
+    let done: Vec<Value> = arr(o.get("done"), 200)
+        .into_iter()
+        .filter_map(|d| {
+            let d = d.as_object()?;
+            Some(json!({ "path": path_of(d.get("path"))?, "size": bytes(d.get("size")) }))
+        })
+        .collect();
+    let failed: Vec<Value> = arr(o.get("failed"), 200)
+        .into_iter()
+        .filter_map(|d| {
+            let d = d.as_object()?;
+            Some(json!({ "path": path_of(d.get("path")).unwrap_or_default(), "reason": line(d.get("reason"), 200).unwrap_or_else(|| "failed".to_string()) }))
+        })
+        .collect();
+    let mut out = json!({ "ok": true, "tool": tool, "done": done, "failed": failed, "freed": bytes(o.get("freed")), "permanent": o.get("permanent") == Some(&json!(true)) });
+    if o.get("cancelled") == Some(&json!(true)) {
+        out["cancelled"] = json!(true);
+    }
+    out
+}
+
 pub fn parse_mcp_desk_result(raw: &Value, tool: &str) -> Value {
     let Some(o) = raw.as_object() else { return failed() };
     if o.get("ok") != Some(&json!(true)) {
@@ -155,6 +208,12 @@ pub fn parse_mcp_desk_result(raw: &Value, tool: &str) -> Value {
             }
             out
         }
+        "disk_search" => json!({ "ok": true, "tool": tool, "total": bytes(o.get("total")), "ms": bytes(o.get("ms")), "items": disk_items(o.get("items")) }),
+        "disk_usage" => {
+            let Some(path) = path_of(o.get("path")) else { return failed() };
+            json!({ "ok": true, "tool": tool, "path": path, "size": bytes(o.get("size")), "total": bytes(o.get("total")), "items": disk_items(o.get("items")) })
+        }
+        "disk_propose_delete" => parse_disk_delete(o, tool),
         _ => {
             let (Some(port), Some(stopped)) = (int(o.get("port"), 1, 65535), o.get("stopped").and_then(Value::as_array)) else { return failed() };
             let stopped: Vec<Value> = stopped

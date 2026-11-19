@@ -132,23 +132,23 @@ const rangeLabel = computed(() => {
       <PromptSearchCard ref="promptSearchCard" />
     </section>
 
-    <section aria-labelledby="timeline-title" class="mt-6 border-t border-line pt-5">
+    <section aria-labelledby="timeline-title" class="mist-section mt-6 border-t border-line pt-5">
       <TimelineChart />
     </section>
 
-    <section aria-labelledby="heatmap-title" class="mt-6 border-t border-line pt-5">
+    <section aria-labelledby="heatmap-title" class="mist-section mt-6 border-t border-line pt-5">
       <h3 id="heatmap-title" class="font-semibold">{{ t('history.heatmap.title') }}</h3>
       <p class="mb-3 text-xs text-ink-muted">{{ t('history.heatmap.hint') }}</p>
       <HeatmapChart />
     </section>
 
-    <section aria-labelledby="toolstats-title" class="mt-6 border-t border-line pt-5">
+    <section aria-labelledby="toolstats-title" class="mist-section mt-6 border-t border-line pt-5">
       <h3 id="toolstats-title" class="font-semibold">{{ t('toolStats.title') }}</h3>
       <p class="mb-3 text-xs text-ink-muted">{{ t('toolStats.hint') }}</p>
       <ToolStatsCard />
     </section>
 
-    <section aria-labelledby="ended-title" class="mt-6 rounded-card bg-surface shadow-card">
+    <section aria-labelledby="ended-title" class="mist-card mt-6 rounded-card bg-surface shadow-card">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <div class="min-w-0">
           <h3 id="ended-title" class="font-semibold">{{ t('history.ended') }}</h3>

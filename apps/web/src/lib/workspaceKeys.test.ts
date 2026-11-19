@@ -128,3 +128,32 @@ describe('workspaceAction', () => {
     expect(workspaceAction(key('ArrowLeft', { altKey: true, shiftKey: true }), false, false)).toBeNull()
   })
 })
+
+describe('project group chords', () => {
+  const cad = { ctrlKey: true, altKey: true }
+  it('Ctrl+Alt+←/→ focuses the neighbour group only in a multi-group tab, else stays back / forward', () => {
+    expect(workspaceAction(key('ArrowRight', cad), false, true, true)).toEqual({ t: 'groupFocus', dir: 'right' })
+    expect(workspaceAction(key('ArrowLeft', cad), true, true, true)).toEqual({ t: 'groupFocus', dir: 'left' })
+    expect(workspaceAction(key('ArrowLeft', cad), false, true, false)).toEqual({ t: 'navBack' })
+    expect(workspaceAction(key('ArrowLeft', { ...cad, shiftKey: true }), false, true, true)).toEqual({ t: 'groupMove', dir: 'left' })
+    expect(workspaceAction(key('ArrowLeft', cad, true), false, true, true)).toEqual(null)
+  })
+  it('Ctrl+Alt+G (⌃⌥G) adds another project as a group', () => {
+    expect(workspaceAction(key('KeyG', cad), false, false)).toEqual({ t: 'addGroup' })
+    expect(workspaceAction(key('KeyG', cad), true, false)).toEqual({ t: 'addGroup' })
+    expect(workspaceAction(key('KeyG', cad, true), false, false)).toBeNull()
+  })
+})
+
+describe('workspaceAction asked', () => {
+  it('Ctrl+Alt+Q jumps to the next pane waiting for an answer on both platforms', () => {
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true }), false, false)).toEqual({ t: 'asked' })
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true }), true, false)).toEqual({ t: 'asked' })
+  })
+
+  it('other modifiers and AltGr do not trigger it', () => {
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true, shiftKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('KeyQ', { ctrlKey: true, altKey: true }, true), false, false)).toBeNull()
+  })
+})

@@ -142,6 +142,8 @@ interface DesktopBridge {
   setLocale?: (locale: 'en' | 'vi') => Promise<boolean>
   /** App zoom (Chromium level, saved by the app); resolves to the new percent. */
   zoomApp?: (action: 'in' | 'out' | 'reset' | 'get') => Promise<number | null>
+  windowControl?: (action: 'minimize' | 'toggle-maximize' | 'close' | 'state') => Promise<boolean | null>
+  onWindowMaximized?: (handler: (maximized: boolean) => void) => () => void
   /** Start with Windows / open at login: no argument reads, a boolean sets; null in a dev build. */
   loginItem?: (on?: boolean) => Promise<boolean | null>
   /** Claude Code's settings.json statusLine vs the bridge (quick setup). */
@@ -170,6 +172,8 @@ interface DesktopBridge {
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   remoteGuard?: (op: RemoteGuardOp) => Promise<RemoteGuardReply | null>
+  menuToastSync?: (payload: unknown) => void
+  onMenuToast?: (handler: (action: unknown) => void) => () => void
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */
   onOrrery?: (handler: (action: unknown, args: unknown, caller: unknown) => unknown) => void
   captureRect?: (rect: { x: number; y: number; width: number; height: number }) => Promise<Uint8Array | null>

@@ -1,5 +1,6 @@
 import { cleanNoteText, isAgentNoteLevel, type McpPageCall, type McpPageTool } from './mcpCall'
-import { LAYOUT_DEVICES, type AgentLayoutDevice, type McpDeskCall, type McpDeskTool } from './mcpDesk'
+import { DISK_KINDS } from './diskMap'
+import { DISK_DELETE_MAX, DISK_REASON_MAX, DISK_SEARCH_DEFAULT, DISK_SEARCH_MAX, DISK_USAGE_DEFAULT, DISK_USAGE_MAX, LAYOUT_DEVICES, type AgentLayoutDevice, type McpDeskCall, type McpDeskTool } from './mcpDesk'
 import { compileLogMatch, isMcpLogCursor, isMcpRunAction, isMcpRunId, MCP_LOG_LINES_DEFAULT, MCP_LOG_LINES_MAX } from './mcpRun'
 import { cleanPanePrompt, isAgentSessionId, isPtyPreset, PANE_OPEN_PROMPT_MAX, type PaneOpenError, type PaneOpenRequest, type PtyPreset } from './pty'
 import { parseRemotePhoneCall, type RemoteCommandName } from './remote'
@@ -190,6 +191,7 @@ export function parseMcpPageCall<T extends McpPageTool>(raw: unknown, tool: T): 
 }
 
 type DeskCall<T extends McpDeskTool> = Extract<McpDeskCall, { tool: T }>
+const optInt = (v: unknown, lo: number, hi: number): number | undefined | null => (v === undefined ? undefined : typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi ? v : null)
 const TELEGRAM_STATES = ['on', 'off', 'status'] as const
 const isTelegramState = (v: unknown): v is (typeof TELEGRAM_STATES)[number] => (TELEGRAM_STATES as readonly unknown[]).includes(v)
 
@@ -216,6 +218,27 @@ export function parseMcpDeskCall<T extends McpDeskTool>(raw: unknown, tool: T): 
         const buttons = parseTelegramButtons(raw.buttons)
         if (!text(raw.text, TEXT_MAX) || (raw.file !== undefined && !pathArg(raw.file)) || buttons === null) return null
         return { ...base, tool: 'telegram_send', text: raw.text, ...opt('file', raw.file as string | undefined), ...opt('buttons', buttons) }
+      }
+      case 'disk_search': {
+        const query = raw.query === undefined ? undefined : text(raw.query, 1024) ? raw.query : null
+        const kind = raw.kind === undefined ? undefined : typeof raw.kind === 'string' && (DISK_KINDS as readonly string[]).includes(raw.kind) ? raw.kind : null
+        const minSize = optInt(raw.minSize, 0, Number.MAX_SAFE_INTEGER)
+        const maxSize = optInt(raw.maxSize, 0, Number.MAX_SAFE_INTEGER)
+        const olderThanDays = optInt(raw.olderThanDays, 0, 36_500)
+        const under = raw.under === undefined ? undefined : pathArg(raw.under) ? raw.under : null
+        const limit = optInt(raw.limit, 1, DISK_SEARCH_MAX)
+        if (query === null || kind === null || minSize === null || maxSize === null || olderThanDays === null || under === null || limit === null) return null
+        return { ...base, tool: 'disk_search', ...opt('query', query), ...opt('kind', kind), ...opt('minSize', minSize), ...opt('maxSize', maxSize), ...opt('olderThanDays', olderThanDays), ...opt('under', under), limit: limit ?? DISK_SEARCH_DEFAULT }
+      }
+      case 'disk_usage': {
+        const limit = optInt(raw.limit, 1, DISK_USAGE_MAX)
+        return pathArg(raw.path) && limit !== null ? { ...base, tool: 'disk_usage', path: raw.path, limit: limit ?? DISK_USAGE_DEFAULT } : null
+      }
+      case 'disk_propose_delete': {
+        if (!Array.isArray(raw.paths) || raw.paths.length < 1 || raw.paths.length > DISK_DELETE_MAX || !raw.paths.every(pathArg)) return null
+        if (!filled(raw.reason, DISK_REASON_MAX) || !raw.reason.trim()) return null
+        if (raw.permanent !== undefined && typeof raw.permanent !== 'boolean') return null
+        return { ...base, tool: 'disk_propose_delete', paths: raw.paths as string[], reason: raw.reason, permanent: raw.permanent === true }
       }
       default:
         return null
@@ -294,6 +317,9 @@ export const ORRERY_ACTIONS = {
   'telegram.notify': onDesk('telegram_notify'),
   'telegram.send': onDesk('telegram_send'),
   'telegram.receive': onDesk('telegram_receive'),
+  'disk.search': onDesk('disk_search'),
+  'disk.usage': onDesk('disk_usage'),
+  'disk.proposeDelete': onDesk('disk_propose_delete'),
 } as const
 
 export type OrreryAction = keyof typeof ORRERY_ACTIONS
@@ -329,6 +355,9 @@ export const MCP_TOOL_ACTION: Readonly<Record<McpPageTool | McpDeskTool, OrreryA
   telegram_notify: 'telegram.notify',
   telegram_send: 'telegram.send',
   telegram_receive: 'telegram.receive',
+  disk_search: 'disk.search',
+  disk_usage: 'disk.usage',
+  disk_propose_delete: 'disk.proposeDelete',
 }
 
 export const TELEGRAM_INBOUND_ACTION: Readonly<Record<TelegramInbound['action'], OrreryAction>> = {

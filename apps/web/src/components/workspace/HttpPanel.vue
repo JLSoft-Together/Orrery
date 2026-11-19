@@ -5,6 +5,7 @@ import { ArrowRightLeft, Check, CircleCheck, CircleX, Copy, LoaderCircle, Play, 
 import { buildRequest, envNames, envVars, parseEnvFile, parseHttpFile, prettyJson, statusTone, type HttpEnvs } from '../../lib/httpFile'
 import { dirOf, hasHttpSend, httpCancel, httpSend, readFile, type HttpResult } from '../../lib/preview'
 import { joinPath } from '../../lib/fileLinks'
+import AppSelect from '../AppSelect.vue'
 
 const JsonTree = defineAsyncComponent(() => import('./JsonTree.vue'))
 
@@ -25,6 +26,7 @@ const privEnvs = shallowRef<HttpEnvs | null>(null)
 const envError = ref(false)
 const env = ref<string>(NO_ENV)
 const envs = computed(() => envNames(pubEnvs.value, privEnvs.value))
+const envOptions = computed(() => [{ value: NO_ENV as string, label: t('workspace.http.noEnv') }, ...envs.value.map((e) => ({ value: e as string, label: e }))])
 const vars = computed(() => envVars(pubEnvs.value, privEnvs.value, env.value || null))
 
 const envKey = (dir: string) => `ccm.http.env:${dir}`
@@ -142,10 +144,7 @@ async function copyBody(): Promise<void> {
     <div class="ccm-material flex h-9 shrink-0 items-center gap-1 border-b border-line px-2" role="toolbar" :aria-label="t('workspace.http.toolbar')">
       <span class="text-xs font-semibold">{{ t('workspace.http.title') }}</span>
       <span class="ml-auto" />
-      <select v-if="envs.length" v-model="env" class="ccm-field h-7 max-w-40 shrink cursor-pointer pr-1 text-2xs" :aria-label="t('workspace.http.env')" :title="envDir ?? ''" data-http-env>
-        <option :value="''">{{ t('workspace.http.noEnv') }}</option>
-        <option v-for="e in envs" :key="e" :value="e">{{ e }}</option>
-      </select>
+      <AppSelect v-if="envs.length" v-model="env" :options="envOptions" :label="t('workspace.http.env')" :title="envDir ?? ''" size="sm" class="max-w-40 shrink" data-http-env />
       <span v-else class="truncate text-2xs text-ink-faint" :title="t('workspace.http.noEnvFileHint')">{{ t('workspace.http.noEnvFile') }}</span>
       <button type="button" class="ccm-btn-plain shrink-0" :title="t('workspace.http.reloadEnv')" :aria-label="t('workspace.http.reloadEnv')" @click="loadEnvs">
         <RefreshCw :size="13" aria-hidden="true" />

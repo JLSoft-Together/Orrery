@@ -55,6 +55,8 @@ function readWorktreeCopy(): string[] {
 
 export type FileIconStyle = 'atom' | 'simple'
 const isFileIconStyle = (value: unknown): value is FileIconStyle => value === 'atom' || value === 'simple'
+export type StarsFx = 'off' | 'twinkle' | 'meteors'
+const isStarsFx = (value: unknown): value is StarsFx => value === 'off' || value === 'twinkle' || value === 'meteors'
 export const ACTIVITY_PAGE_SIZES = [50, 100, 200, 500]
 
 function readPinned(): Set<string> {
@@ -96,6 +98,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const autoSave = ref<AutoSaveMode>(isAutoSaveMode(read('ccm.autoSave')) ? (read('ccm.autoSave') as AutoSaveMode) : 'off')
   const autoSaveDelay = ref(AUTO_SAVE_DELAYS.includes(Number(read('ccm.autoSaveDelay'))) ? Number(read('ccm.autoSaveDelay')) : AUTO_SAVE_DELAY_DEFAULT)
   const compactAuto = ref(read('ccm.compactAuto') !== '0')
+  const clickMenu = ref(read('ccm.clickMenu') !== '0')
+  const menuToast = ref(read('ccm.menuToast') !== '0')
   const dimInactive = ref(read('ccm.workspace.dim') === '1')
   /** Shell panes started with command marks (OSC 633); read at spawn, so it applies to new shells. */
   const shellIntegration = ref(read('ccm.shellIntegration') !== '0')
@@ -104,6 +108,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const dustEffect = ref(read('ccm.dust') === '1')
   const officeEnabled = ref(read('ccm.office') === '1')
   const stars = ref(read('ccm.stars') !== '0')
+  const starsPanels = ref(read('ccm.starsPanels') !== '0')
+  const starsFx = ref<StarsFx>(isStarsFx(read('ccm.starsFx')) ? (read('ccm.starsFx') as StarsFx) : 'twinkle')
   const fileIcons = ref<FileIconStyle>(isFileIconStyle(read('ccm.fileIcons')) ? (read('ccm.fileIcons') as FileIconStyle) : 'atom')
   const worktreeCopy = ref<string[]>(readWorktreeCopy())
   const pinned = ref<Set<string>>(readPinned())
@@ -135,6 +141,8 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(autoSave, (value) => persist('ccm.autoSave', value))
   watch(autoSaveDelay, (value) => persist('ccm.autoSaveDelay', String(value)))
   watch(compactAuto, (value) => persist('ccm.compactAuto', value ? '1' : '0'))
+  watch(clickMenu, (value) => persist('ccm.clickMenu', value ? '1' : '0'))
+  watch(menuToast, (value) => persist('ccm.menuToast', value ? '1' : '0'))
   watch(dimInactive, (value) => persist('ccm.workspace.dim', value ? '1' : '0'))
   watch(shellIntegration, (value) => persist('ccm.shellIntegration', value ? '1' : '0'))
   watch(agentShim, (value) => persist('ccm.agentShim', value ? '1' : '0'))
@@ -143,6 +151,10 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(officeEnabled, (value) => persist('ccm.office', value ? '1' : '0'))
   watch(stars, (value) => persist('ccm.stars', value ? '1' : '0'))
   watch(stars, (value) => document.documentElement.setAttribute('data-stars', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
+  watch(starsPanels, (value) => persist('ccm.starsPanels', value ? '1' : '0'))
+  watch(starsPanels, (value) => document.documentElement.setAttribute('data-stars-panels', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
+  watch(starsFx, (value) => persist('ccm.starsFx', value))
+  watch(starsFx, (value) => document.documentElement.setAttribute('data-stars-fx', value), { flush: 'sync', immediate: true })
   watch(fileIcons, (value) => persist('ccm.fileIcons', value))
   watch(worktreeCopy, (value) => persist('ccm.worktreeCopy', JSON.stringify(value)))
   watch(pinned, (value) => persist('ccm.pinned', JSON.stringify([...value])))
@@ -298,9 +310,13 @@ export const useSettingsStore = defineStore('settings', () => {
     shellIntegration,
     agentShim,
     compactAuto,
+    clickMenu,
+    menuToast,
     dustEffect,
     officeEnabled,
     stars,
+    starsPanels,
+    starsFx,
     fileIcons,
     pinned,
     activityPageSize,

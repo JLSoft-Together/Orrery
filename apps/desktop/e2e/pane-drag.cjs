@@ -1,5 +1,5 @@
 // v48 pane drag: dock a pane by its header, swap with Ctrl, pop it out onto the tab row, drop a whole tab next to a pane.
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const results = []
@@ -63,12 +63,13 @@ const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} 
     let mid = {}
     await drag(await headOf(b), await nearEdge(a, 'left'), {
       during: async () => {
-        mid = JSON.parse(await evaluate(`JSON.stringify({ edge: document.querySelector('[data-drop-preview]')?.dataset.edge, ghost: document.querySelector('[data-drag-ghost]')?.textContent.trim() })`))
+        mid = JSON.parse(await evaluate(`JSON.stringify({ edge: document.querySelector('[data-drop-preview]')?.dataset.edge, ghost: document.querySelector('[data-drag-ghost]')?.textContent.trim(), label: document.querySelector('[data-drop-preview]')?.textContent.trim() })`))
         await shot('pane-drag-1-preview')
       },
     })
     check('preview shows the left half while dragging', mid.edge === 'left', JSON.stringify(mid))
-    check('ghost names the pane and the action', /^\S.*·/.test(mid.ghost ?? '') && /left|trái/i.test(mid.ghost ?? ''), mid.ghost)
+    if (UI === 'next') check('next: ghost names the pane, the drop zone names the action', /\S/.test(mid.ghost ?? '') && /left|trái/i.test(mid.label ?? ''), `${mid.ghost} | ${mid.label}`)
+    else check('ghost names the pane and the action', /^\S.*·/.test(mid.ghost ?? '') && /left|trái/i.test(mid.ghost ?? ''), mid.ghost)
     check('dock left moves the pane', JSON.stringify(await leavesOf()) === JSON.stringify([b, a]))
     check('no preview after drop', await evaluate(`!document.querySelector('[data-drop-preview]') && !document.querySelector('[data-drag-ghost]')`))
 

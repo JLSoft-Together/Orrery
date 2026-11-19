@@ -283,3 +283,63 @@ describe('usePaneAttachments scan debounce', () => {
     expect(reads).toBe(0)
   })
 })
+
+describe('usePaneAttachments clipboard preview', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  function pane(pixels: () => Promise<{ thumb: string; view: string } | null>) {
+    const agent = fakeAgent('')
+    const att = usePaneAttachments({
+      paneKey: () => 'p',
+      preset: () => 'claude',
+      cwd: () => undefined,
+      running: () => true,
+      visible: () => true,
+      write: () => {},
+      paste: () => {},
+      screen: () => agent.screen(),
+      appCursorKeys: () => false,
+      win: true,
+      clipboardPixels: pixels,
+    })
+    return { att, agent }
+  }
+
+  it('an image pasted in the terminal (Alt+V) gets the clipboard image as its preview', async () => {
+    const pixels = vi.fn(async () => ({ thumb: 'data:t', view: 'data:v' }))
+    const { att, agent } = pane(pixels)
+    await scanned(att)
+    agent.st.text = '[Image #1] '
+    await scanned(att)
+    expect(pixels).toHaveBeenCalledTimes(1)
+    expect(byToken('[Image #1]')).toMatchObject({ source: 'terminal', thumb: 'data:t', view: 'data:v' })
+  })
+
+  it('a paste the page already has pixels for reads nothing; images already in the prompt at first sight are left alone', async () => {
+    const pixels = vi.fn(async () => ({ thumb: 'data:t', view: 'data:v' }))
+    const { att, agent } = pane(pixels)
+    agent.st.text = '[Image #1] '
+    await scanned(att)
+    att.notePaste({ kind: 'image', name: 'Clipboard image', source: 'paste', thumb: 'data:a', view: 'data:b' })
+    agent.st.text = '[Image #1] [Image #2] '
+    await scanned(att)
+    expect(pixels).not.toHaveBeenCalled()
+    expect(byToken('[Image #1]').thumb).toBeUndefined()
+    expect(byToken('[Image #2]')).toMatchObject({ source: 'paste', thumb: 'data:a', view: 'data:b' })
+  })
+
+  it('a screenshot hand-off without pixels takes them from the clipboard it filled', async () => {
+    const pixels = vi.fn(async () => ({ thumb: 'data:s', view: 'data:sv' }))
+    const { att, agent } = pane(pixels)
+    await scanned(att)
+    att.notePaste({ kind: 'image', name: 'Screenshot', source: 'paste' })
+    agent.st.text = '[Image #1] '
+    await scanned(att)
+    expect(byToken('[Image #1]')).toMatchObject({ name: 'Screenshot', thumb: 'data:s', view: 'data:sv' })
+  })
+})

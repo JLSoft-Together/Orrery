@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
@@ -7,13 +8,52 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use crate::config::{uuid, LINK_SCHEME};
 use crate::presets::{is_session_id, resolve_cwd};
 use crate::serve::request;
-use crate::state::{Shell, MAIN};
+use crate::state::{lock, Shell, MAIN};
 use crate::window::show_main;
 
 const CWD_MAX: usize = 1024;
 const PANE_OPEN: Duration = Duration::from_secs(5);
 const FOCUS_ASK: Duration = Duration::from_millis(1500);
 const LINK_PRESETS: [&str; 4] = ["claude", "codex", "deepseek", "shell"];
+const QUEUE_MAX: usize = 10;
+
+static FOCUS_TURN: Mutex<()> = Mutex::new(());
+
+pub struct Queue<T> {
+    ready: bool,
+    waiting: Vec<T>,
+}
+
+impl<T> Default for Queue<T> {
+    fn default() -> Self {
+        Self { ready: false, waiting: Vec::new() }
+    }
+}
+
+impl<T> Queue<T> {
+    pub fn offer(&mut self, item: T) -> Option<T> {
+        if self.ready {
+            return Some(item);
+        }
+        if self.waiting.len() >= QUEUE_MAX {
+            self.waiting.remove(0);
+        }
+        self.waiting.push(item);
+        None
+    }
+
+    pub fn ready(&mut self) -> Vec<T> {
+        self.ready = true;
+        std::mem::take(&mut self.waiting)
+    }
+
+    pub fn started(&mut self) {
+        self.ready = false;
+    }
+}
+
+#[derive(Default)]
+pub struct LinkGate(Mutex<Queue<Link>>);
 
 #[derive(Debug, PartialEq)]
 pub enum Link {
@@ -97,7 +137,10 @@ fn open(app: &AppHandle, preset: String, cwd: String, resume: Option<String>) {
 fn focus(app: &AppHandle, key: String, terminal: Option<String>) {
     let shell = app.state::<Shell>();
     let Some(terminal) = terminal else { return show_main(app) };
-    let handled = shell.ask(app, "focus", "ccm:focus", json!(terminal), FOCUS_ASK);
+    let handled = {
+        let _turn = lock(&FOCUS_TURN);
+        shell.ask(app, "focus", "ccm:focus", json!(terminal), FOCUS_ASK)
+    };
     if handled == Some(Value::Bool(true)) {
         return show_main(app);
     }
@@ -111,8 +154,33 @@ fn focus(app: &AppHandle, key: String, terminal: Option<String>) {
     let _ = app.emit_to(MAIN, "ccm:select", terminal);
 }
 
+pub fn page_started(app: &AppHandle) {
+    if let Some(gate) = app.try_state::<LinkGate>() {
+        lock(&gate.0).started();
+    }
+}
+
+pub fn page_ready(app: &AppHandle) {
+    let Some(gate) = app.try_state::<LinkGate>() else { return };
+    let waiting = lock(&gate.0).ready();
+    for link in waiting {
+        run(app, link);
+    }
+}
+
 pub fn handle(app: &AppHandle, raw: &str) {
     let Some(link) = parse(raw, cfg!(windows)) else { return };
+    let link = match (&link, app.try_state::<LinkGate>()) {
+        (Link::Snooze { .. }, _) | (_, None) => link,
+        (_, Some(gate)) => match lock(&gate.0).offer(link) {
+            Some(link) => link,
+            None => return,
+        },
+    };
+    run(app, link);
+}
+
+fn run(app: &AppHandle, link: Link) {
     let app = app.clone();
     std::thread::spawn(move || match link {
         Link::Open { preset, cwd, resume } => open(&app, preset, cwd, resume),
@@ -166,6 +234,38 @@ mod tests {
         assert_eq!(parse("agent-monitor://focus?k=abc&t=t1", true), Some(Link::Focus { key: "abc".into(), terminal: Some("t1".into()) }));
         assert_eq!(parse("agent-monitor://focus?t=t1", true), None);
         assert_eq!(parse("agent-monitor://snooze?k=a&t=b&m=5", true), Some(Link::Snooze { query: "k=a&t=b&m=5".into() }));
+    }
+
+    #[test]
+    fn links_wait_in_order_until_the_page_is_ready() {
+        let mut q = Queue::default();
+        assert_eq!(q.offer("a"), None);
+        assert_eq!(q.offer("b"), None);
+        assert_eq!(q.ready(), vec!["a", "b"]);
+        assert_eq!(q.offer("c"), Some("c"));
+        assert!(q.ready().is_empty());
+    }
+
+    #[test]
+    fn a_reload_holds_links_until_it_finishes() {
+        let mut q = Queue::default();
+        q.ready();
+        q.started();
+        assert_eq!(q.offer("a"), None);
+        assert_eq!(q.ready(), vec!["a"]);
+        assert_eq!(q.offer("b"), Some("b"));
+    }
+
+    #[test]
+    fn the_queue_keeps_only_the_newest_links() {
+        let mut q = Queue::default();
+        for i in 0..QUEUE_MAX + 3 {
+            assert_eq!(q.offer(i), None);
+        }
+        let drained = q.ready();
+        assert_eq!(drained.len(), QUEUE_MAX);
+        assert_eq!(drained.first(), Some(&3));
+        assert_eq!(drained.last(), Some(&(QUEUE_MAX + 2)));
     }
 
     #[test]

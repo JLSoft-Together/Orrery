@@ -1,7 +1,11 @@
 import type { ToastKind } from '@ccm/shared'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'remote', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'remote', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about', 'workspace', 'disk'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
+
+export const NEXT_ONLY_PAGES: readonly SettingsPage[] = ['workspace', 'disk']
+
+export const pageAvailable = (page: SettingsPage, env: SettingsEnv, next: boolean): boolean => (next || !NEXT_ONLY_PAGES.includes(page)) && pageVisible(page, env)
 
 export const isSettingsPage = (v: unknown): v is SettingsPage => typeof v === 'string' && (SETTINGS_PAGES as readonly string[]).includes(v)
 
@@ -90,8 +94,11 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'general', id: 'keyHints', labelKey: 'keys.hints', hintKey: 'keys.hintsHint' },
   { page: 'general', id: 'launch', labelKey: 'settings.launchTerminal', hintKey: 'settings.launchTerminalHint', needs: 'mac' },
 
+  { page: 'appearance', id: 'uiGeneration', labelKey: 'mist.switch.tryNext', hintKey: 'mist.switch.tryNextHint' },
   { page: 'appearance', id: 'theme', labelKey: 'settings.theme' },
   { page: 'appearance', id: 'stars', labelKey: 'themeV95.stars', hintKey: 'themeV95.starsHint' },
+  { page: 'appearance', id: 'starsPanels', labelKey: 'themeV95.starsPanels', hintKey: 'themeV95.starsPanelsHint' },
+  { page: 'appearance', id: 'starsFx', labelKey: 'themeV95.starsFx', hintKey: 'themeV95.starsFxHint' },
   { page: 'appearance', id: 'uiFont', labelKey: 'fonts.ui', hintKey: 'fonts.uiHint' },
   { page: 'appearance', id: 'codeFont', labelKey: 'fonts.code', hintKey: 'fonts.codeHint' },
   { page: 'appearance', id: 'codesize', labelKey: 'fonts.size', hintKey: mac ? 'fonts.sizeHintMac' : 'fonts.sizeHint' },
@@ -104,6 +111,8 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'editor', id: 'dim', labelKey: 'workspace.dim.setting', hintKey: 'workspace.dim.settingHint', needs: 'terminals' },
   { page: 'editor', id: 'shell', labelKey: 'shellMarks.setting', hintKey: 'shellMarks.settingHint', needs: 'terminals' },
   { page: 'editor', id: 'compactAuto', labelKey: 'workspace.compact.auto.setting', hintKey: 'workspace.compact.auto.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'clickMenu', labelKey: 'clickMenu.setting', hintKey: 'clickMenu.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'menuToast', labelKey: 'clickMenu.toast', hintKey: 'clickMenu.toastHint', needs: 'terminals' },
   { page: 'editor', id: 'agentShim', labelKey: 'shellMarks.agentShim', hintKey: 'shellMarks.agentShimHint', needs: 'terminals' },
 
   { page: 'notify', id: 'toast', labelKey: 'settings.toast', hintKey: mac ? 'settings.toastHintMac' : 'settings.toastHint', needs: 'toast' },
@@ -119,7 +128,6 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'notify', id: 'sound', labelKey: 'settings.sound', hintKey: 'settings.soundHint' },
   { page: 'notify', id: 'quiet', labelKey: 'settings.quiet', hintKey: 'settings.quietHint', needs: 'notifyData' },
   { page: 'notify', id: 'idle', labelKey: 'resources.idleSetting', hintKey: 'resources.idleSettingHint', needs: 'notifyData' },
-  { page: 'notify', id: 'disk', labelKey: 'disk.setting', hintKey: 'disk.settingHint', needs: 'disk' },
   { page: 'notify', id: 'phone', labelKey: 'phone.section', needs: 'phone' },
   { page: 'telegram', id: 'telegram', labelKey: 'telegram.section', hintKey: 'telegram.enable', needs: 'telegram' },
 
@@ -160,6 +168,8 @@ export const entries = (mac: boolean): SettingsEntry[] => [
 
   { page: 'data', id: 'agentData', labelKey: 'agentData.section', needs: 'agentData' },
   { page: 'data', id: 'backup', labelKey: 'backup.section', hintKey: 'backup.autoHint', needs: 'backup' },
+  { page: 'data', id: 'diskMap', labelKey: 'diskMap.settings.title', hintKey: 'diskMap.settings.hint' },
+  { page: 'data', id: 'disk', labelKey: 'disk.setting', hintKey: 'disk.settingHint', needs: 'disk' },
 
   { page: 'about', id: 'update', labelKey: 'update.section', needs: 'updater' },
   { page: 'about', id: 'help-whatsNew', labelKey: 'whatsNew.open' },
@@ -171,6 +181,29 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'about', id: 'help-fonts', labelKey: 'fonts.licenses', hintKey: 'fonts.licensesHint' },
   { page: 'about', id: 'help-fileIcons', labelKey: 'settings.fileIconsLicense', hintKey: 'settings.fileIconsLicenseHint', needs: 'terminals' },
   { page: 'about', id: 'help-habblaud', labelKey: 'settings.habblaudLicense', hintKey: 'settings.habblaudLicenseHint' },
+]
+
+const NEXT_PAGE_OF: Record<string, SettingsPage> = {
+  clickMenu: 'workspace',
+  menuToast: 'workspace',
+  dim: 'workspace',
+  compactAuto: 'workspace',
+  agentShim: 'workspace',
+  dust: 'workspace',
+  fileIcons: 'workspace',
+  diskMap: 'disk',
+  disk: 'disk',
+}
+
+export const nextEntries = (mac: boolean): SettingsEntry[] => [
+  ...entries(mac)
+    .filter((e) => !(e.page === 'appearance' && ['stars', 'starsPanels', 'starsFx'].includes(e.id)))
+    .map((e): SettingsEntry => ({ ...e, page: NEXT_PAGE_OF[e.id] ?? e.page })),
+  { page: 'appearance', id: 'mode', labelKey: 'mist.settings.mode', hintKey: 'mist.settings.modeHint' },
+  { page: 'appearance', id: 'reduceGlass', labelKey: 'mist.settings.reduceGlass', hintKey: 'mist.settings.reduceGlassHint' },
+  { page: 'appearance', id: 'clearTerm', labelKey: 'mist.settings.clearTerm', hintKey: 'mist.settings.clearTermHint' },
+  { page: 'appearance', id: 'motion', labelKey: 'mist.settings.motion', hintKey: 'mist.settings.motionHint' },
+  { page: 'appearance', id: 'stars', labelKey: 'mist.settings.stars', hintKey: 'mist.settings.starsOnly' },
 ]
 
 const fold = (s: string): string =>

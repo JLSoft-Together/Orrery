@@ -110,7 +110,7 @@ onBeforeUnmount(() => usage.selectDay(null))
       leave-active-class="transition duration-(--ccm-dur-fast) ease-exit"
       leave-to-class="opacity-0"
     >
-      <div v-if="scanning" class="mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card" role="status">
+      <div v-if="scanning" class="mist-card mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card" role="status">
         <LottieArt name="radar-scan" loop class="size-10 shrink-0" />
         <div class="min-w-0 flex-1">
           <p class="text-sm text-ink">{{ t('usage.scanning', { done: usage.scan.filesDone, total: usage.scan.filesTotal }) }}</p>

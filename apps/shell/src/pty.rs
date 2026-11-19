@@ -36,6 +36,7 @@ struct Host {
 struct Panes {
     live: HashMap<String, bool>,
     dirs: HashMap<String, PaneDir>,
+    census: Vec<mpsc::Sender<Vec<Value>>>,
 }
 
 impl Panes {
@@ -259,6 +260,9 @@ impl PtyHost {
         let (tx, rx) = mpsc::channel::<u16>();
         let writer = stdin.clone();
         *lock(&self.panes) = Panes::default();
+        if let Some(link) = crate::mcp::link() {
+            link.reg.reset();
+        }
         let shared = self.panes.clone();
         let _ = std::thread::Builder::new().name("pty-control".into()).spawn(move || {
             let home = home();
@@ -270,6 +274,13 @@ impl PtyHost {
                 if msg.get("t").and_then(Value::as_str) == Some("listening") {
                     if let Some(port) = msg.get("port").and_then(Value::as_u64).and_then(|p| u16::try_from(p).ok()) {
                         let _ = tx.send(port);
+                    }
+                    continue;
+                }
+                if msg.get("t").and_then(Value::as_str) == Some("census-reply") {
+                    let rows = msg.get("sessions").and_then(Value::as_array).cloned().unwrap_or_default();
+                    for waiter in lock(&shared).census.drain(..) {
+                        let _ = waiter.send(rows.clone());
                     }
                     continue;
                 }
@@ -301,6 +312,21 @@ impl PtyHost {
                 Err("pty host did not start".into())
             }
         }
+    }
+
+    pub fn census(&self, timeout: Duration) -> Option<Vec<Value>> {
+        let rx = {
+            let mut host = lock(&self.host);
+            let Some(h) = host.as_mut() else { return Some(Vec::new()) };
+            if !matches!(h.child.try_wait(), Ok(None)) {
+                return Some(Vec::new());
+            }
+            let (tx, rx) = mpsc::channel();
+            lock(&self.panes).census.push(tx);
+            send(&h.stdin, &json!({ "t": "census" }));
+            rx
+        };
+        rx.recv_timeout(timeout).ok()
     }
 
     pub fn stop(&self) {

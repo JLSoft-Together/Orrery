@@ -10,7 +10,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT, REPO } = require('./cdp.cjs')
+const { launch, OUT, REPO, selOptions, selPick } = require('./cdp.cjs')
 const WS = require(path.join(REPO, 'node_modules/ws'))
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -420,14 +420,15 @@ async function main() {
     await step('strings table', async () => {
       await menuOn('l10n.yaml', 'strings')
       await waitFor(`!!document.querySelector('[data-strings-table] [data-strings-col]')`, 15000, 'strings grid')
-      const options = await evaluate(`[...document.querySelectorAll('[data-strings-set] option')].map((o) => o.textContent.trim())`)
+      const setOpts = (await evaluate(selOptions(`document.querySelector('[data-strings-set]')`))) ?? []
+      const options = setOpts.map((o) => o.text)
       check('Explorer menu on l10n.yaml → strings table; Android + ARB sets found', options.length >= 2 && options.some((o) => o.includes('res')) && options.some((o) => o.includes('l10n')), JSON.stringify(options))
       const cols = () => evaluate(`[...document.querySelectorAll('[data-strings-col]')].map((c) => c.dataset.stringsCol)`)
-      check('opened on the ARB set (focus = l10n.yaml)', (await evaluate(`document.querySelector('[data-strings-set]').selectedOptions[0].textContent.includes('l10n')`)) && (await cols()).length === 2, JSON.stringify(await cols()))
+      check('opened on the ARB set (focus = l10n.yaml)', !!setOpts.find((o) => o.selected)?.text.includes('l10n') && (await cols()).length === 2, JSON.stringify(await cols()))
       const arbCount = await evaluate(`document.querySelector('[data-strings-row="count"] td:nth-of-type(2)')?.dataset.stringsCell`)
       const arbTitle = await evaluate(`document.querySelector('[data-strings-row="title"] td:nth-of-type(2)')?.hasAttribute('data-strings-mismatch')`)
       check('ARB: count missing in vi, {name} placeholder mismatch on title', arbCount === 'missing' && arbTitle === true, `${arbCount} ${arbTitle}`)
-      await evaluate(`(() => { const s = document.querySelector('[data-strings-set]'); const i = [...s.options].findIndex((o) => o.textContent.includes('res')); s.value = String(i); s.dispatchEvent(new Event('change')) })()`)
+      await evaluate(selPick(`document.querySelector('[data-strings-set]')`, "(t) => t.includes('res')"))
       await waitFor(`!!document.querySelector('[data-strings-row="bye"]')`, 10000, 'android set')
       const c = await cols()
       check('Android set: base + vi columns', c.length === 2 && c[1] === 'vi', JSON.stringify(c))

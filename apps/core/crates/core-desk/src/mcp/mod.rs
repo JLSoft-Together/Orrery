@@ -13,6 +13,7 @@ pub mod rpc;
 pub mod server;
 pub mod t_common;
 pub mod t_desk;
+pub mod t_disk;
 pub mod t_files;
 pub mod t_notes;
 pub mod t_open;
@@ -21,6 +22,8 @@ pub mod t_sessions;
 pub mod t_telegram;
 #[cfg(test)]
 mod tests_desk;
+#[cfg(test)]
+mod tests_disk;
 #[cfg(test)]
 mod tests_tools;
 pub mod text;

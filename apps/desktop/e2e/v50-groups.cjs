@@ -1,13 +1,14 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const NAV = `document.querySelector('nav[aria-label=Projects]')`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
 const CTRL = 2, SHIFT = 8
+const checkSide = (name, ok, extra) => (UI === 'next' ? console.log(`SKIP ${name}: classic sidebar is hidden in next`) : check(name, ok, extra))
 
 const BASE = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-v50-')))
 const A = path.join(BASE, 'alpha')
@@ -52,7 +53,7 @@ async function run(app) {
   check('split tab shows as one group in the rail', (await evaluate(`${NAV}.querySelectorAll('[data-rail-group]').length`)) === 1)
   check('group lists its two panes as members', (await evaluate(`${NAV}.querySelectorAll('[data-rail-member="${groupTab}"]').length`)) === 2)
   check('group icon draws the split layout (one divider)', (await evaluate(`${G}.querySelectorAll('[data-rail-group-glyph] line').length`)) === 1)
-  check('group head sits at row indent, not at the project header', await evaluate(`${G}.querySelector('[data-rail-group-glyph]').getBoundingClientRect().left - ${NAV}.querySelector('[data-rail-name]').closest('button').getBoundingClientRect().left >= 12`))
+  checkSide('group head sits at row indent, not at the project header', await evaluate(`${G}.querySelector('[data-rail-group-glyph]').getBoundingClientRect().left - ${NAV}.querySelector('[data-rail-name]').closest('button').getBoundingClientRect().left >= 12`))
   check('project shows its monogram', await evaluate(`!!${NAV}.querySelector('[data-rail-folder]')?.textContent.trim()`))
   check('group disclosure button shows the pane count', (await evaluate(`${G}.querySelector('[data-rail-group-chevron] [data-rail-group-count]')?.textContent.trim()`)) === '2')
   await shot('v50-01-rail-group')
@@ -66,7 +67,7 @@ async function run(app) {
     requestAnimationFrame(tick)
   })`)
   const full = Math.max(...heights)
-  check('collapse animates the member height', heights.some((h) => h > 1 && h < full) && heights.at(-1) <= 1, JSON.stringify(heights))
+  checkSide('collapse animates the member height', heights.some((h) => h > 1 && h < full) && heights.at(-1) <= 1, JSON.stringify(heights))
   check('collapsed: group folded, members inert', await evaluate(`${G}.hasAttribute('data-folded') && !!${NAV}.querySelector('[data-rail-member="${groupTab}"]').closest('li[inert]')`))
   check('disclosure reports collapsed', (await evaluate(`${G}.querySelector('[data-rail-group-chevron]').getAttribute('aria-expanded')`)) === 'false')
   check('collapsed group shows its state line', await evaluate(`!!${G}.querySelector('[data-rail-group-state]')`))
@@ -79,7 +80,7 @@ async function run(app) {
     const tick = () => { out.push(Math.round(li.getBoundingClientRect().height)); performance.now() - t0 < 500 ? requestAnimationFrame(tick) : done(out) }
     requestAnimationFrame(tick)
   })`)
-  check('expand animates back to full height', opening.some((h) => h > 1 && h < full) && opening.at(-1) >= full - 1, JSON.stringify(opening))
+  checkSide('expand animates back to full height', opening.some((h) => h > 1 && h < full) && opening.at(-1) >= full - 1, JSON.stringify(opening))
   check('store keeps the fold state', (await evaluate(`!!${W}.tabs.find((t) => t.key === '${groupTab}').folded`)) === false)
 
   await evaluate(`document.querySelector('[data-tab="${groupTab}"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`)

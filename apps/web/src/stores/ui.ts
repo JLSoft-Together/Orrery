@@ -7,10 +7,11 @@ import type { FocusWindowResult, OpenApp, OpenResult, TerminalApp } from '@ccm/s
 import type { NodeSize, Point } from '../lib/layout'
 import { hasExtensions, hasTerminals } from '../lib/desktop'
 import { hasDevices } from '../lib/devices'
+import { hasDiskMap } from '../lib/diskMap'
 import { WINDOWS, type WindowMin } from '../lib/toolTimeline'
 import { parseGroupBy, type BoardGroupBy } from '../lib/boardV95'
 
-export type View = 'monitor' | 'workspace' | 'usage' | 'history' | 'extensions' | 'devices'
+export type View = 'monitor' | 'workspace' | 'usage' | 'history' | 'extensions' | 'devices' | 'disk'
 export type Panel = 'sessions' | 'activity'
 export type WindowResult = FocusWindowResult | 'offline'
 
@@ -21,6 +22,7 @@ function initialView(): View {
     if (v === 'workspace') return start
     if (v === 'extensions') return hasExtensions ? v : start
     if (v === 'devices') return hasDevices ? v : start
+    if (v === 'disk') return hasDiskMap ? v : start
     return v === 'monitor' || v === 'usage' || v === 'history' ? v : start
   } catch {
     return start
@@ -247,6 +249,7 @@ export const useUiStore = defineStore('ui', () => {
   const permAdvisor = ref<{ dir: string | null } | null>(null)
   /** Go to project (ProjectSwitcher.vue, Ctrl+Alt+P / ⌃⌥P or the palette). */
   const projectSwitcher = ref(false)
+  const addGroupAsk = ref(0)
   /** Project build output cleanup (BuildCleanDialog.vue, v77 R8): a project to pick first, or null = all known. */
   const buildClean = ref<{ dir: string | null } | null>(null)
   const sessionTools = ref<{ dir: string; paneKey?: string } | null>(null)
@@ -554,6 +557,7 @@ export const useUiStore = defineStore('ui', () => {
     i18nScan,
     permAdvisor,
     projectSwitcher,
+    addGroupAsk,
     buildClean,
     sessionTools,
     apkSize,

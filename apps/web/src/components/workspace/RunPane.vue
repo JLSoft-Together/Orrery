@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PaneHeader from '../next/ui/PaneHeader.vue'
+import PaneLayoutMore from '../next/ui/PaneLayoutMore.vue'
+import { useUiGenStore } from '../../stores/uiGen'
 import { Bot, Camera, CircleAlert, CirclePlay, CircleSlash, CircleStop, CircleX, LoaderCircle, Package, PlayCircle, TriangleAlert, X } from 'lucide-vue-next'
 import { isRunLive, type EnvIssue, type RunSession, type RunState } from '@ccm/shared'
 import { desktop, type RunSdkKey } from '../../lib/desktop'
@@ -11,13 +14,14 @@ import { dirKey } from '../../stores/favorites'
 import { useRunStore } from '../../stores/run'
 import { useUiStore } from '../../stores/ui'
 import DeviceCaptureDialog from '../devices/DeviceCaptureDialog.vue'
+import AppSelect from '../AppSelect.vue'
 import RunBar from './RunBar.vue'
 import RunConfigsDialog from './RunConfigsDialog.vue'
 import RunLog from './RunLog.vue'
 import RunProjectMark from './RunProjectMark.vue'
 import RunToolchainDialog from './RunToolchainDialog.vue'
 
-const props = withDefaults(defineProps<{ root: string; active?: boolean }>(), { active: true })
+const props = withDefaults(defineProps<{ root: string; active?: boolean; paneKey?: string }>(), { active: true })
 const emit = defineEmits<{
   /** Absolute path + line of a build error. */
   open: [path: string, line: number]
@@ -25,6 +29,8 @@ const emit = defineEmits<{
   openAgent: []
 }>()
 
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
 const { t, te } = useI18n()
 const run = useRunStore()
 const ui = useUiStore()
@@ -104,6 +110,7 @@ async function pubGet(): Promise<void> {
 const live = computed(() => run.liveSessionsFor(props.root))
 const session = computed(() => run.focusedSession(props.root))
 const switchable = computed(() => (session.value && !isRunLive(session.value.state) ? [session.value, ...live.value] : live.value))
+const switchOptions = computed(() => switchable.value.map((s) => ({ value: s.id, label: `${sessionLabel(s)} - ${t(`run.state.${s.state}`)}` })))
 
 // Picking a config / device whose session exists brings that session's log up.
 watch(
@@ -188,9 +195,11 @@ function sessionLabel(s: RunSession): string {
 </script>
 
 <template>
-  <section class="@container flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card outline-none" tabindex="-1" :aria-label="t('run.titleIn', { name: baseName(root) })" data-run-pane>
-    <div
-      class="ccm-material flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2 select-none @max-[480px]:h-auto @max-[480px]:min-h-9 @max-[480px]:flex-wrap @max-[480px]:gap-y-1 @max-[480px]:py-1"
+  <section class="@container flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card outline-none" :class="isNext ? 'ccm-next-viewer' : ''" tabindex="-1" :aria-label="t('run.titleIn', { name: baseName(root) })" data-run-pane>
+    <component
+      :is="isNext ? PaneHeader : 'div'"
+      class="select-none"
+      :class="isNext ? 'ccm-next-head ccm-next-viewer-head' : 'ccm-material flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2 @max-[480px]:h-auto @max-[480px]:min-h-9 @max-[480px]:flex-wrap @max-[480px]:gap-y-1 @max-[480px]:py-1'"
       data-pane-head
     >
       <CirclePlay :size="15" class="mr-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
@@ -210,8 +219,9 @@ function sessionLabel(s: RunSession): string {
         <span v-if="env.fvm" class="rounded-full bg-fill px-1.5 text-ink-muted">{{ t('run.fvm') }}</span>
       </span>
       <span v-if="runnable" class="hidden min-w-0 flex-1 @max-[480px]:block" aria-hidden="true" />
+      <PaneLayoutMore :pane-key="paneKey" />
       <slot name="end" />
-    </div>
+    </component>
 
     <div v-if="!loaded && !run.detected(root)" class="flex flex-1 items-center justify-center gap-2 text-xs text-ink-muted">
       <LoaderCircle :size="14" class="ccm-spin" aria-hidden="true" />{{ t('run.empty.detecting') }}
@@ -247,17 +257,16 @@ function sessionLabel(s: RunSession): string {
           {{ issueText(session.failure, ['fail', 'env']) }}
         </span>
         <span class="min-w-0 flex-1" />
-        <select
+        <AppSelect
           v-if="live.length > 1"
-          class="ccm-field h-6 max-w-56 min-w-0 shrink cursor-pointer text-2xs"
-          :value="session?.id"
-          :aria-label="t('run.session.label')"
-          :title="t('run.session.label')"
+          :model-value="session?.id ?? ''"
+          :options="switchOptions"
+          :label="t('run.session.label')"
+          size="sm"
+          class="max-w-56 shrink"
           data-run-session
-          @change="run.focusSession(root, ($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="s in switchable" :key="s.id" :value="s.id">{{ sessionLabel(s) }} · {{ t(`run.state.${s.state}`) }}</option>
-        </select>
+          @update:model-value="(v) => run.focusSession(root, v)"
+        />
         <span v-else-if="session" class="hidden min-w-0 truncate text-2xs text-ink-faint @md:inline" :title="session.cwd">{{ sessionLabel(session) }}</span>
         <button
           v-if="androidDevice"

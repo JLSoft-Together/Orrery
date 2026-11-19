@@ -4,6 +4,8 @@ import { reducedMotion } from './motion'
 const MAX_PIXELS = 160_000
 const DURATION_MS = 1000
 const STAGGER_MS = 24
+const NEXT_DURATION_MS = 340
+const NEXT_STAGGER_MS = 20
 const KEEP_MS = 4000
 const UNDO_LIMIT = 12
 const GATHER_MS = 700
@@ -12,6 +14,18 @@ const SCATTER_EASE = 'cubic-bezier(0.4, 0, 0.7, 1)'
 const GATHER_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
 export const UNDO_MS = 8000
+
+export function scatterTiming(next: boolean): { duration: number; stagger: number } {
+  return next ? { duration: NEXT_DURATION_MS, stagger: NEXT_STAGGER_MS } : { duration: DURATION_MS, stagger: STAGGER_MS }
+}
+
+export const scatterTotal = (layers: number, next: boolean): number => {
+  const t = scatterTiming(next)
+  return t.duration + Math.max(0, layers - 1) * t.stagger
+}
+
+const nextUi = (): boolean => typeof document !== 'undefined' && document.documentElement.dataset.ui === 'next'
+
 export const GATHER_LAYER_MS = 540
 
 export const layerOf = (x: number, width: number, layers: number, random: number): number =>
@@ -272,13 +286,14 @@ function play(rect: DOMRect, dust: Dust, ash?: Ash): Promise<void> {
   const travel = travelOf(rect.width, rect.height)
   if (ash) ash.travel = travel
   track(1)
+  const timing = scatterTiming(nextUi())
   const runs = dust.layers.map((layer, n) => {
     const canvas = paint(layer, dust.h)
     place(canvas, rect, dust.w, layer.lo, layer.width)
     root.appendChild(canvas)
     const scatter = scatterOf(travel, Math.random(), Math.random(), Math.random())
     ash?.flakes.push({ lo: layer.lo, width: layer.width, canvas, scatter })
-    const run = canvas.animate(scatterFrames(scatter), { duration: DURATION_MS, delay: n * STAGGER_MS, easing: SCATTER_EASE, fill: 'forwards' })
+    const run = canvas.animate(scatterFrames(scatter), { duration: timing.duration, delay: n * timing.stagger, easing: SCATTER_EASE, fill: 'forwards' })
     return run.finished.catch(() => undefined).then(() => settle(canvas, run, ash))
   })
   return Promise.all(runs).then(() => track(-1))

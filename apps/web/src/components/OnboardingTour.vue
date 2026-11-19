@@ -9,10 +9,24 @@ import { markTourShownThisSession } from '../lib/onboardingGate'
 import { keyCombo, shortcutText } from '../lib/shortcuts'
 import { TOURS, markTourDone, tourDone, tourFor, type TourId } from '../lib/tour'
 import { useUiStore } from '../stores/ui'
+import { useUiGenStore } from '../stores/uiGen'
 import ArtImage from './ArtImage.vue'
 
 const { t } = useI18n()
 const ui = useUiStore()
+const uiGen = useUiGenStore()
+const tips = ref<TourId | null>(null)
+const tipItems = computed(() => {
+  const id = tips.value
+  if (!id) return []
+  const tour = TOURS[id]
+  return tour.steps.map((s) => ({ id: s.id, title: t(`${tour.i18n}.${s.id}.title`, params.value), body: t(`${tour.i18n}.${s.id}.body`, params.value) }))
+})
+
+function closeTips(): void {
+  if (tips.value) markTourDone(tips.value)
+  tips.value = null
+}
 
 const index = ref(0)
 const rect = ref<DOMRect | null>(null)
@@ -143,6 +157,14 @@ function onKey(e: KeyboardEvent): void {
 watch(
   () => ui.tourOpen,
   (open) => {
+    if (open && uiGen.isNext) {
+      markTourShownThisSession()
+      const id: TourId = open === 'workspace' ? 'workspace' : 'monitor'
+      ui.setView(TOURS[id].view)
+      tips.value = id
+      ui.tourOpen = false
+      return
+    }
     if (open) {
       markTourShownThisSession()
       restoreFocus = document.activeElement as HTMLElement | null
@@ -151,7 +173,7 @@ watch(
       ui.setView(TOURS[active.value].view)
       index.value = 0
       void show()
-    } else {
+    } else if (restoreFocus || openedPanel) {
       syncPanel(null)
       restoreFocus?.focus?.()
       restoreFocus = null
@@ -174,7 +196,7 @@ function offerTour(view: string): void {
   window.clearTimeout(offerTimer)
   if (!id || tourDone(id)) return
   offerTimer = window.setTimeout(() => {
-    if (!ui.tourOpen && !ui.setupOpen && !ui.whatsNewOpen && !ui.compact && ui.view === view && !tourDone(id)) ui.tourOpen = id
+    if (!ui.tourOpen && !tips.value && !ui.setupOpen && !ui.whatsNewOpen && !ui.compact && ui.view === view && !tourDone(id)) ui.tourOpen = id
   }, id === 'monitor' ? 800 : 600)
 }
 watch(
@@ -273,6 +295,34 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+    </Transition>
+    <Transition name="ccm-scrim">
+      <section
+        v-if="tips && uiGen.isNext"
+        class="mist-tips ccm-sheet fixed right-4 bottom-4 z-[55] flex w-[320px] max-w-[calc(100vw-32px)] flex-col gap-2 p-4"
+        role="complementary"
+        aria-labelledby="mist-tips-title"
+        data-mist-tips
+        @keydown.esc.stop="closeTips"
+      >
+        <div class="flex items-center gap-2">
+          <h2 id="mist-tips-title" class="min-w-0 flex-1 text-sm font-semibold">{{ t(`mist.tips.${tips}`) }}</h2>
+          <button type="button" class="ccm-btn-plain -mr-1 shrink-0" :aria-label="t('mist.tips.close')" :title="t('mist.tips.close')" @click="closeTips">
+            <X :size="14" aria-hidden="true" />
+          </button>
+        </div>
+        <ul class="flex flex-col gap-1.5">
+          <li v-for="item in tipItems" :key="item.id" class="text-xs leading-relaxed text-ink-muted">
+            <span class="font-medium text-ink">{{ item.title }}</span>
+            <span>: {{ item.body }}</span>
+          </li>
+        </ul>
+        <div class="flex justify-end pt-1">
+          <button type="button" class="ccm-btn ccm-btn-primary" @click="closeTips">
+            <Check :size="14" aria-hidden="true" />{{ t('mist.tips.gotIt') }}
+          </button>
+        </div>
+      </section>
     </Transition>
   </Teleport>
 </template>

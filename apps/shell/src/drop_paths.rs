@@ -85,6 +85,77 @@ pub fn attach(win: &WebviewWindow) {
 #[cfg(not(windows))]
 pub fn attach(_win: &WebviewWindow) {}
 
+fn file_name(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
+}
+
+pub fn match_names(names: &[String], paths: &[String]) -> Vec<String> {
+    let mut used = vec![false; paths.len()];
+    let mut out: Vec<Option<usize>> = names
+        .iter()
+        .map(|name| {
+            let hit = paths.iter().enumerate().position(|(i, p)| !used[i] && !name.is_empty() && file_name(p) == name)?;
+            used[hit] = true;
+            Some(hit)
+        })
+        .collect();
+    if names.len() == paths.len() {
+        for (i, slot) in out.iter_mut().enumerate() {
+            if slot.is_none() && !used[i] {
+                used[i] = true;
+                *slot = Some(i);
+            }
+        }
+    }
+    out.into_iter().map(|i| i.map_or_else(String::new, |i| paths[i].clone())).collect()
+}
+
+#[cfg(target_os = "macos")]
+fn drag_pasteboard() -> Vec<String> {
+    use objc2::ClassType;
+    use objc2_app_kit::{NSPasteboard, NSPasteboardNameDrag};
+    use objc2_foundation::{NSArray, NSURL};
+
+    let pb = NSPasteboard::pasteboardWithName(unsafe { NSPasteboardNameDrag });
+    let classes = NSArray::from_slice(&[NSURL::class()]);
+    let Some(items) = (unsafe { pb.readObjectsForClasses_options(&classes, None) }) else { return Vec::new() };
+    items
+        .iter()
+        .take(MAX_FILES as usize)
+        .filter_map(|item| {
+            let url = item.downcast_ref::<NSURL>()?;
+            if !url.isFileURL() {
+                return None;
+            }
+            Some(url.filePathURL()?.path()?.to_string())
+        })
+        .collect()
+}
+
+#[cfg(target_os = "macos")]
+pub fn for_names(app: &tauri::AppHandle, names: Vec<String>) -> Vec<String> {
+    let blank = vec![String::new(); names.len()];
+    if names.is_empty() || names.len() > MAX_FILES as usize {
+        return blank;
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    let read = move || {
+        let _ = tx.send(drag_pasteboard());
+    };
+    if app.run_on_main_thread(read).is_err() {
+        return blank;
+    }
+    match rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(paths) => match_names(&names, &paths),
+        Err(_) => blank,
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn for_names(_app: &tauri::AppHandle, names: Vec<String>) -> Vec<String> {
+    vec![String::new(); names.len()]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,5 +177,16 @@ mod tests {
         assert_eq!(v["ccm"], "file-paths");
         assert_eq!(v["id"], "x1");
         assert_eq!(v["paths"], serde_json::json!(["C:\\a b\\c.txt", ""]));
+    }
+
+    #[test]
+    fn names_pick_their_own_path() {
+        let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        let paths = s(&["/Users/a/b c.png", "/tmp/x/notes.md", "/tmp/dir"]);
+        assert_eq!(match_names(&s(&["notes.md", "dir"]), &paths), s(&["/tmp/x/notes.md", "/tmp/dir"]));
+        assert_eq!(match_names(&s(&["missing.txt"]), &paths), s(&[""]));
+        assert_eq!(match_names(&s(&["a.txt", "a.txt"]), &s(&["/p/a.txt", "/q/a.txt"])), s(&["/p/a.txt", "/q/a.txt"]));
+        assert_eq!(match_names(&s(&["Tie\u{0301}ng.md"]), &s(&["/p/Tiếng.md"])), s(&["/p/Tiếng.md"]));
+        assert_eq!(match_names(&s(&["x"]), &[]), s(&[""]));
     }
 }

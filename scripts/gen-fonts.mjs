@@ -30,6 +30,7 @@ export const FONTS = [
   ['@fontsource-variable/noto-sans', ['wght.css'], 'Noto Sans Variable'],
   ['@fontsource-variable/open-sans', ['wght.css'], 'Open Sans Variable'],
   ['@fontsource/be-vietnam-pro', ['400.css', '500.css', '600.css', '700.css'], 'Be Vietnam Pro'],
+  ['@fontsource-variable/manrope', ['wght.css'], 'Manrope Variable'],
 ]
 const SUBSETS = ['latin', 'latin-ext', 'vietnamese']
 // Packages whose LICENSE has no copyright line of its own (holders from the upstream font repositories).

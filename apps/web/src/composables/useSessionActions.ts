@@ -122,7 +122,7 @@ export function useSessionActions() {
 
   function projectOf(p: Pane): string | undefined {
     const tab = workspace.tabOf(p.key)
-    return (tab && tabProject(tab, paneOf)) ?? workCwd(p)
+    return p.project ?? (tab && tabProject(tab, paneOf)) ?? workCwd(p)
   }
 
   function sameProject(p: Pane, project: string): boolean {

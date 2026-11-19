@@ -1,0 +1,18 @@
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Accessing workspace:
+
+ C:\Users\user_\AppData\Local\Temp\claude\0f0ce96d9ef846ae\a7e0d3ef-1718-4b6b-b855-12d1b84f1e41\scratchpad\wp
+ 0a\work\proj
+
+ Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open
+ source project, or work from your team). If not, take a moment to review what's in this folder first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ No, exit
+   Yes, I trust this folder
+
+ Enter to confirm · Esc to cancel

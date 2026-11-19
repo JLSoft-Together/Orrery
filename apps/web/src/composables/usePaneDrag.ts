@@ -1,8 +1,13 @@
-import { onBeforeUnmount, ref, shallowRef, type Ref } from 'vue'
-import { dropTargetAt, type Edge, type Rect } from '../lib/splitLayout'
+import { nextTick, onBeforeUnmount, ref, shallowRef, type InjectionKey, type Ref } from 'vue'
+import { dropTargetAt, edgeAt, type Edge, type Rect } from '../lib/splitLayout'
 import { caretAt, slotMoves, stripSlot, type StripItem } from '../lib/tabStrip'
+import { compassZoneAt, dropFit, type CompassZone } from '../lib/next/dropCompass'
 
-export type PaneDragSource = { kind: 'pane'; key: string } | { kind: 'tab'; key: string }
+export type PaneDragSource =
+  | { kind: 'pane'; key: string; rail?: boolean }
+  | { kind: 'tab'; key: string }
+  | { kind: 'project'; key: string; dir: string | null; name: string }
+  | { kind: 'group'; key: string; tab: string; name: string }
 export type PaneDropAction = { kind: 'dock'; key: string; edge: Edge } | { kind: 'swap'; key: string } | { kind: 'newTab' } | { kind: 'reorder'; slot: number }
 
 /** Drop preview in canvas pixels; a swap (no `edge`) covers the whole target pane. */
@@ -12,7 +17,19 @@ export interface PaneDropPreview {
   width: number
   height: number
   edge?: Edge
+  zone?: CompassZone
+  target?: { left: number; top: number; width: number; height: number }
+  from?: { left: number; top: number; width: number; height: number }
+  bad?: { left: number; min: number }
 }
+
+export interface PaneSpring {
+  key: string
+  ms: number
+  n: number
+}
+
+export const RAIL_PANE_DRAG: InjectionKey<(e: PointerEvent, paneKey: string, el: HTMLElement) => void> = Symbol('railPaneDrag')
 
 interface Options {
   canvas: Ref<HTMLElement | null>
@@ -22,9 +39,13 @@ interface Options {
   /** Source under a pointerdown target, or null when it must not start a drag. */
   sourceAt(target: HTMLElement): PaneDragSource | null
   canDock?(source: PaneDragSource): boolean
+  canDockOn?(source: PaneDragSource, key: string, swap: boolean): boolean
   /** Hold to swap instead of dock (Ctrl, ⌘ on macOS). */
   swapKey(e: { ctrlKey: boolean; metaKey: boolean }): boolean
   onDrop(source: PaneDragSource, action: PaneDropAction): void
+  compass?(): boolean
+  minPane?: number
+  spring?: { ms: number; canSpring(source: PaneDragSource, tabKey: string): boolean; onSpring(tabKey: string): void }
 }
 
 const THRESHOLD = 5
@@ -41,12 +62,46 @@ export function usePaneDrag(opts: Options) {
   const pointer = ref({ x: 0, y: 0 })
   const swapping = ref(false)
   const caret = ref<number | null>(null)
+  const spring = ref<PaneSpring | null>(null)
 
   let start: { x: number; y: number; id: number; src: PaneDragSource; el: HTMLElement } | null = null
   let rects = new Map<string, Rect>()
   let items: StripItem[] = []
   let action: PaneDropAction | null = null
   let last = { x: 0, y: 0 }
+  let springTimer: ReturnType<typeof setTimeout> | null = null
+  let springSeq = 0
+
+  function stopSpring(): void {
+    if (springTimer) clearTimeout(springTimer)
+    springTimer = null
+    spring.value = null
+  }
+
+  function trackSpring(x: number, y: number): void {
+    const sp = opts.spring
+    const src = source.value
+    if (!sp || !src) return
+    const el = document.elementFromPoint?.(x, y)?.closest?.<HTMLElement>('[data-tab]')
+    const key = el?.dataset.tab
+    if (!key || !sp.canSpring(src, key)) return stopSpring()
+    if (spring.value?.key === key) return
+    stopSpring()
+    spring.value = { key, ms: sp.ms, n: ++springSeq }
+    springTimer = setTimeout(() => {
+      springTimer = null
+      spring.value = null
+      if (!source.value) return
+      sp.onSpring(key)
+      void nextTick(() =>
+        requestAnimationFrame(() => {
+          if (!source.value) return
+          measure()
+          hitTest(last.x, last.y)
+        }),
+      )
+    }, sp.ms)
+  }
 
   function onDown(e: PointerEvent): void {
     const target = e.target as HTMLElement
@@ -56,7 +111,16 @@ export function usePaneDrag(opts: Options) {
     if (control && !control.matches('[data-tab], [data-pane-grip]')) return
     const src = opts.sourceAt(target)
     if (!src) return
-    start = { x: e.clientX, y: e.clientY, id: e.pointerId, src, el: e.currentTarget as HTMLElement }
+    track(e, src, e.currentTarget as HTMLElement)
+  }
+
+  function startFrom(e: PointerEvent, src: PaneDragSource, el: HTMLElement): void {
+    if (e.button !== 0 || start) return
+    track(e, src, el)
+  }
+
+  function track(e: PointerEvent, src: PaneDragSource, el: HTMLElement): void {
+    start = { x: e.clientX, y: e.clientY, id: e.pointerId, src, el }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onCancel)
@@ -67,9 +131,10 @@ export function usePaneDrag(opts: Options) {
   /** Visible panes only: hidden ones (other tabs) have an empty box. */
   function measure(): void {
     rects = new Map()
-    for (const el of opts.canvas.value?.querySelectorAll<HTMLElement>('[data-pane]') ?? []) {
+    const group = source.value?.kind === 'group'
+    for (const el of opts.canvas.value?.querySelectorAll<HTMLElement>(group ? '[data-group-frame]' : '[data-pane]') ?? []) {
       const r = el.getBoundingClientRect()
-      if (r.width > 0 && r.height > 0) rects.set(el.dataset.pane!, r)
+      if (r.width > 0 && r.height > 0) rects.set(group ? el.dataset.groupFrame! : el.dataset.pane!, r)
     }
   }
 
@@ -112,7 +177,7 @@ export function usePaneDrag(opts: Options) {
     caret.value = null
     if (!src || !box) return
     const strip = opts.strip.value?.getBoundingClientRect()
-    if (src.kind === 'pane' && strip && x >= strip.left && x <= strip.right && y >= strip.top && y <= strip.bottom) {
+    if ((src.kind === 'pane' || src.kind === 'group') && strip && x >= strip.left && x <= strip.right && y >= strip.top && y <= strip.bottom) {
       action = { kind: 'newTab' }
       toStrip.value = true
       return
@@ -122,10 +187,12 @@ export function usePaneDrag(opts: Options) {
       return
     }
     if (opts.canDock && !opts.canDock(src)) return
-    const hit = dropTargetAt(rects, x, y, src.kind === 'pane' ? src.key : null)
+    const hit = dropTargetAt(rects, x, y, src.kind === 'pane' || src.kind === 'group' ? src.key : null)
     if (!hit) return
     const r = rects.get(hit.key)!
+    if (opts.compass?.()) return compassHit(src, hit.key, r, box, x, y)
     const swap = src.kind === 'pane' && swapping.value
+    if (opts.canDockOn && !opts.canDockOn(src, hit.key, swap)) return
     action = swap ? { kind: 'swap', key: hit.key } : { kind: 'dock', key: hit.key, edge: hit.edge }
     let left = r.left - box.left
     let top = r.top - box.top
@@ -140,16 +207,45 @@ export function usePaneDrag(opts: Options) {
     preview.value = { left, top, width, height, edge: swap ? undefined : hit.edge }
   }
 
+  function compassHit(src: PaneDragSource, key: string, r: Rect, box: DOMRect, x: number, y: number): void {
+    const found = compassZoneAt(r, x, y)
+    const zone: CompassZone = found.zone === 'center' && (src.kind !== 'pane' || src.rail) ? edgeAt(r, x, y) : swapping.value && src.kind === 'pane' && !src.rail ? 'center' : found.zone
+    const swap = zone === 'center'
+    if (opts.canDockOn && !opts.canDockOn(src, key, swap)) return
+    const target = { left: r.left - box.left, top: r.top - box.top, width: r.right - r.left, height: r.bottom - r.top }
+    const fit = dropFit(target, zone, opts.minPane)
+    const own = src.kind === 'pane' ? rects.get(src.key) : undefined
+    const from = swap && own ? { left: own.left - box.left, top: own.top - box.top, width: own.right - own.left, height: own.bottom - own.top } : undefined
+    let { left, top, width, height } = target
+    if (!swap) {
+      if (zone === 'left' || zone === 'right') width /= 2
+      else height /= 2
+      if (zone === 'right') left += width
+      if (zone === 'bottom') top += height
+    }
+    const edge = swap ? undefined : (zone as Edge)
+    preview.value = { left, top, width, height, edge, zone, target, from, bad: fit.ok ? undefined : { left: fit.left, min: fit.min } }
+    if (!fit.ok) return
+    action = swap ? { kind: 'swap', key } : { kind: 'dock', key, edge: zone as Edge }
+  }
+
+  function overCanvas(x: number, y: number): boolean {
+    const box = opts.canvas.value?.getBoundingClientRect()
+    return !!box && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+  }
+
   function onMove(e: PointerEvent): void {
     if (!start || e.pointerId !== start.id) return
     if (!source.value) {
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return
+      if ((start.src.kind === 'project' || (start.src.kind === 'pane' && start.src.rail)) && !overCanvas(e.clientX, e.clientY)) return
       begin()
     }
     swapping.value = opts.swapKey(e)
     last = { x: e.clientX, y: e.clientY }
     pointer.value = last
     hitTest(e.clientX, e.clientY)
+    if (opts.spring && source.value?.kind === 'pane' && opts.compass?.()) trackSpring(e.clientX, e.clientY)
   }
 
   function finish(commit: boolean): void {
@@ -175,6 +271,7 @@ export function usePaneDrag(opts: Options) {
     caret.value = null
     swapping.value = false
     items = []
+    stopSpring()
     if (!src) return
     // The pointerup turns into a click on the tab or header: swallow that one.
     const swallow = (ev: Event): void => ev.stopPropagation()
@@ -204,5 +301,5 @@ export function usePaneDrag(opts: Options) {
   }
 
   onBeforeUnmount(() => finish(false))
-  return { source, preview, toStrip, pointer, swapping, caret, onDown }
+  return { source, preview, toStrip, pointer, swapping, caret, spring, onDown, startFrom }
 }

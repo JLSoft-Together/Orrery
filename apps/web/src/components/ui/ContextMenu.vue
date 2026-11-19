@@ -8,7 +8,7 @@ import { openedByKey } from '../../lib/inputModality'
 const props = defineProps<{ at: Rect; entries: MenuEntry[]; label: string; trigger?: HTMLElement | null }>()
 const emit = defineEmits<{ pick: [id: string]; close: [] }>()
 
-const WIDTH = 252
+const WIDTH = computed(() => (document.documentElement.dataset.ui === 'next' ? 304 : 252))
 const SUB_WIDTH = 228
 const main = ref<HTMLElement | null>(null)
 const sub = ref<HTMLElement | null>(null)
@@ -20,8 +20,8 @@ const byKey = openedByKey()
 
 const openEntry = computed(() => props.entries.find((e): e is MenuAction => !isSeparator(e) && e.id === openId.value) ?? null)
 const mainStyle = computed(() => {
-  const p = menuPosition(props.at, WIDTH, mainH.value, window.innerWidth, window.innerHeight)
-  return { left: `${p.left}px`, top: `${p.top}px`, width: `${WIDTH}px`, '--ccm-origin': p.origin, visibility: mainH.value ? ('visible' as const) : ('hidden' as const) }
+  const p = menuPosition(props.at, WIDTH.value, mainH.value, window.innerWidth, window.innerHeight)
+  return { left: `${p.left}px`, top: `${p.top}px`, width: `${WIDTH.value}px`, '--ccm-origin': p.origin, visibility: mainH.value ? ('visible' as const) : ('hidden' as const) }
 })
 const subStyle = computed(() => {
   if (!subRow.value) return {}

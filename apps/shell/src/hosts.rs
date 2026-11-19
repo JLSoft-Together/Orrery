@@ -220,6 +220,49 @@ fn agent_pick(app: &AppHandle, p: &Value) -> Value {
     as_path(d.blocking_pick_folder())
 }
 
+fn desk_call(app: &AppHandle, channel: &str) -> Value {
+    match app.try_state::<crate::desk::DeskState>() {
+        Some(d) => d.desk.dispatch(channel, Value::Null).unwrap_or_else(|_| json!([])),
+        None => json!([]),
+    }
+}
+
+fn live_runs(app: &AppHandle) -> Vec<Value> {
+    desk_call(app, "desk:run-sessions")
+        .as_array()
+        .map(|a| a.iter().filter(|s| core_desk::run::sessions::is_live(s["state"].as_str().unwrap_or(""))).cloned().collect())
+        .unwrap_or_default()
+}
+
+fn running_in(root: &str, report: &Value, runs: &[Value]) -> Vec<String> {
+    let mut out = Vec::new();
+    for s in report["servers"].as_array().into_iter().flatten() {
+        let cwd = s["cwd"].as_str().unwrap_or("");
+        if !cwd.is_empty() && core_desk::util::is_inside_or_same(root, cwd) {
+            out.push(format!("{} ({})", s["name"].as_str().unwrap_or(""), s["pid"].as_i64().unwrap_or(0)));
+        }
+    }
+    for r in runs {
+        let cwd = r["cwd"].as_str().unwrap_or("");
+        if core_desk::util::is_inside_or_same(root, cwd) {
+            out.push(r["configName"].as_str().unwrap_or("").to_owned());
+        }
+    }
+    out
+}
+
+fn daemon_list(report: &Value) -> Vec<Value> {
+    report["servers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|s| {
+            s["kind"] == "daemon" && matches!(s["daemon"]["type"].as_str(), Some("gradle" | "kotlin")) && s["start"].as_str().is_some_and(|t| !t.is_empty())
+        })
+        .map(|s| json!({ "pid": s["pid"], "start": s["start"], "name": s["name"] }))
+        .collect()
+}
+
 fn relaunch(app: &AppHandle) {
     let shell = app.state::<Shell>();
     shell.quitting.store(true, Ordering::SeqCst);
@@ -255,7 +298,13 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
     match method {
         "keychain.available" | "keychain.seal" | "keychain.unseal" => keychain(app, method, p),
         "backup.readLocal" => Ok(read_local(app, caller)),
-        "backup.github" | "buildClean.running" | "buildClean.daemons" => Ok(json!([])),
+        "backup.github" => Ok(desk_call(app, "desk:gh-list")),
+        "buildClean.running" => Ok(json!(running_in(
+            p.get("root").and_then(Value::as_str).unwrap_or(""),
+            core_serve::sampler::latest_resources().as_ref().unwrap_or(&Value::Null),
+            &live_runs(app)
+        ))),
+        "buildClean.daemons" => Ok(json!(daemon_list(core_serve::sampler::latest_resources().as_ref().unwrap_or(&Value::Null)))),
         "backup.saveDialog" => Ok(save_dialog(app, p)),
         "backup.openDialog" => Ok(open_dialog(app)),
         "backup.confirmApply" => Ok(json!(confirm_apply(app, p))),
@@ -271,6 +320,7 @@ pub fn call(app: &AppHandle, caller: Option<&Webview>, method: &str, p: &Value) 
         "buildClean.confirm" => Ok(json!(build_confirm(app, p))),
         "mcpDesk.confirmKill" => Ok(json!(mcp_confirm_kill(app, p))),
         "mcpDesk.confirm" => Ok(json!(mcp_confirm(app, p))),
+        "mcpDesk.disk" => Ok(crate::disk_agent::call(app, p)),
         "agentData.confirm" => Ok(json!(agent_confirm(app, p))),
         "agentData.pickFolder" => Ok(agent_pick(app, p)),
         "agentData.stopCollector" => Ok(crate::collector::stop(app)),
@@ -294,6 +344,30 @@ mod tests {
         assert_eq!(num(&Value::Null), 0);
         assert_eq!(strings(&json!(["a", 1, "b"])), vec!["a".to_owned(), "b".to_owned()]);
         assert!(strings(&json!("x")).is_empty());
+    }
+
+    #[test]
+    fn build_clean_holders_come_from_servers_and_runs() {
+        let report = json!({ "servers": [
+            { "pid": 7, "name": "vite", "cwd": "/w/app/web", "kind": "server" },
+            { "pid": 8, "name": "other", "cwd": "/w/else", "kind": "server" },
+            { "pid": 9, "name": "nocwd", "kind": "server" }
+        ] });
+        let runs = vec![json!({ "cwd": "/w/app", "configName": "app run" }), json!({ "cwd": "/x", "configName": "far" })];
+        assert_eq!(running_in("/w/app", &report, &runs), vec!["vite (7)".to_owned(), "app run".to_owned()]);
+        assert!(running_in("/w/app", &Value::Null, &[]).is_empty());
+    }
+
+    #[test]
+    fn gradle_and_kotlin_daemons_with_a_start_are_listed() {
+        let report = json!({ "servers": [
+            { "pid": 1, "name": "g", "kind": "daemon", "start": "10", "daemon": { "type": "gradle" } },
+            { "pid": 2, "name": "k", "kind": "daemon", "start": "11", "daemon": { "type": "kotlin" } },
+            { "pid": 3, "name": "a", "kind": "daemon", "start": "12", "daemon": { "type": "avd" } },
+            { "pid": 4, "name": "n", "kind": "daemon", "start": "", "daemon": { "type": "gradle" } },
+            { "pid": 5, "name": "s", "kind": "server", "start": "13", "daemon": { "type": "gradle" } }
+        ] });
+        assert_eq!(daemon_list(&report), vec![json!({ "pid": 1, "start": "10", "name": "g" }), json!({ "pid": 2, "start": "11", "name": "k" })]);
     }
 
     #[test]

@@ -163,7 +163,7 @@ function fixture() {
     await evaluate(`document.querySelector(':is([data-pane="' + ${W}.activeKey + '"], [data-pane-of="' + ${W}.activeKey + '"]) [data-pane-split]').click()`)
     await waitFor(`!!document.querySelector('[role=menu] [role=menuitem]')`, 5000, 'split menu')
     const items = await evaluate(`[...document.querySelectorAll('[role=menu] [role=menuitem]')].map((b) => b.textContent.trim())`)
-    check('split menu: Claude / Codex / Shell / Browser', items.length === 4 && /Browser/.test(items[3]), JSON.stringify(items))
+    check('split menu: Claude / Codex / Shell / Browser / Other project', items.length === 5 && /Browser/.test(items[3]) && /Other project/.test(items[4]), JSON.stringify(items))
     await shot('browser-08-split-menu')
     await evaluate(`[...document.querySelectorAll('[role=menu] [role=menuitem]')].find((b) => /Browser/.test(b.textContent)).click()`)
     await waitFor(`${W}.activeTab && ${W}.panes.filter((p) => p.kind === 'browser').length === 2`, 5000, 'split browser')

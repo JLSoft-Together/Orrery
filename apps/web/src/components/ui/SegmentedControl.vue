@@ -70,6 +70,7 @@ function onKey(e: KeyboardEvent): void {
       :key="String(o.value)"
       type="button"
       role="radio"
+      :data-value="String(o.value)"
       :aria-checked="model === o.value"
       :aria-label="iconOnly ? o.label : undefined"
       :title="o.title ?? (iconOnly ? o.label : undefined)"

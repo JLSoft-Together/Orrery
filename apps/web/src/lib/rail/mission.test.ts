@@ -182,10 +182,11 @@ describe('mission drop', () => {
     expect(missionDrop(card, { kind: 'slot', section: 'app' })).toEqual({ drop: null, blocked: false })
   })
 
-  it('does nothing over its own tab or empty space and refuses another project', () => {
+  it('does nothing over its own tab or empty space, joins a tab of another project, refuses its new-tab slot', () => {
     expect(missionDrop(tile, { kind: 'card', tabKey: 't1', section: 'app' })).toEqual({ drop: null, blocked: false })
     expect(missionDrop(tile, null)).toEqual({ drop: null, blocked: false })
-    expect(missionDrop(tile, { kind: 'card', tabKey: 't3', section: 'notes' })).toEqual({ drop: null, blocked: true })
+    expect(missionDrop(tile, { kind: 'card', tabKey: 't3', section: 'notes' })).toEqual({ drop: { kind: 'move', paneKey: 'a', tabKey: 't3' }, blocked: false })
+    expect(missionDrop(tile, { kind: 'slot', section: 'notes' })).toEqual({ drop: null, blocked: true })
     expect(missionDrop(card, { kind: 'slot', section: 'notes' })).toEqual({ drop: null, blocked: true })
   })
 })

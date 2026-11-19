@@ -1,0 +1,6 @@
+● Which one do you want?
+
+  ❯ 1. Option one is the default
+    2. Option two is slower
+
+  Reply with the number you prefer.

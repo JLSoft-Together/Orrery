@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PaneHeader from '../next/ui/PaneHeader.vue'
+import { useUiGenStore } from '../../stores/uiGen'
 import { ArrowLeft, ArrowRight, Bug, Check, ExternalLink, FolderOpen, Globe, MonitorSmartphone, RotateCw, Send, X, Zap } from 'lucide-vue-next'
 import type { HandoffAction } from '../../lib/agentHandoff'
 import type { DeviceId } from '../../lib/browserDevices'
@@ -42,6 +44,8 @@ const emit = defineEmits<{
   handoff: [action: HandoffAction, anchor: DOMRect]
 }>()
 
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
 const { t } = useI18n()
 const draft = ref(props.address)
 const editing = ref(false)
@@ -157,7 +161,7 @@ defineExpose({ handoffButton: handoffFocus })
 </script>
 
 <template>
-  <div class="ccm-material @container flex h-9 min-w-0 shrink-0 items-center gap-0.5 border-b border-line px-1.5" role="toolbar" :aria-label="t('workspace.browser.toolbar')" data-pane-head>
+  <component :is="isNext ? PaneHeader : 'div'" class="@container" :class="isNext ? 'ccm-next-head ccm-next-viewer-head' : 'ccm-material flex h-9 min-w-0 shrink-0 items-center gap-0.5 border-b border-line px-1.5'" role="toolbar" :aria-label="t('workspace.browser.toolbar')" data-pane-head>
     <button
       type="button"
       class="ccm-btn-plain shrink-0 @max-[340px]:hidden"
@@ -265,5 +269,5 @@ defineExpose({ handoffButton: handoffFocus })
     />
     <PaneMore class="@max-[300px]:min-w-6 @max-[300px]:px-1" :entries="headMore" :label="t('workspace.paneHead.more')" @pick="pickHead" />
     <slot name="end" />
-  </div>
+  </component>
 </template>

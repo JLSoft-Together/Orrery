@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, net, Notification, powerMonitor, powerSaveBlocker, safeStorage, screen, session, shell, Tray, type Rectangle, type WebContents } from 'electron'
@@ -13,9 +14,10 @@ import { maskSecrets } from '@ccm/shared'
 import { BUG_REPORT_LIMIT, clampErrors, localFileStamp, gatherCandidates, previewItems, selectEntries, writeZipFile, zipItems, type Roots as BugRoots } from './bugReport'
 import { FatalError, type FatalReason } from './collector-host'
 import { coreServeMode, createMonitorHost, type SwitchingHost } from './core-serve-host'
-import { createServeToasts, type ServeToasts } from './serve-toast'
+import { createServeToasts, windowsToasts, type ServeToasts } from './serve-toast'
+import { createMenuToasts, electronMenuDrawer, windowsMenuDrawer, type MenuToastDrawer, type MenuToasts } from './menuToast'
 import { adoptLoginShellPath, offerMoveToApplications, setMacMenu } from './mac'
-import { errorPage, INTRO_MS, LEAVE_MS, LEAVE_SCRIPT, loadingPage, RETRY_URL } from './pages'
+import { errorPage, INTRO_MS, LEAVE_MS, LEAVE_SCRIPT, loadingPage, RETRY_URL, WINDOW_URL } from './pages'
 import { pickStartDir } from './pick-start'
 import { hardenWebviews, PREVIEW_PARTITION, registerPreviewIpc, type PreviewIpc } from './preview/ipc'
 import { claudeConfigDir } from './preview/denyRules'
@@ -36,6 +38,22 @@ import { registerRunIpc } from './run/ipc'
 import { runStandingHosts } from './run/deskHosts'
 import { DeviceHistory, DEVICES_FILE } from './devices/history'
 import { registerDevicesIpc } from './devices/ipc'
+import { createDiskMap, type DiskMap } from './diskMap/ipc'
+import { e2eAutoConfirm } from './diskMap/delete'
+import { agentDeleteBoxOptions, deleteBoxOptions } from './diskMap/dialog'
+import { createDiskAgent } from './diskMap/agent'
+import { createDiskClean, type DiskClean } from './diskClean/ipc'
+import { createOrganize, e2ePath as organizeE2ePath, e2eStableMs as organizeStableMs, type Organize } from './organize/ipc'
+import { setupDiskAppsRam } from './diskApps/wire'
+import { rawItems as organizeRawItems } from './organize/junk'
+import { systemDeps as diskCleanSystem } from './diskClean/system'
+import { macTempAllow } from './diskClean/system'
+import { runFile, sdkDeps as diskCleanSdk } from './diskClean/sdk'
+import { createDiskMove, type DiskMove } from './diskMove/ipc'
+import { fakeDev as moveFakeDev, fakeMoveSuggestions, fakePick as moveFakePick, fakeProcs as moveFakeProcs, fakeVolumes as moveFakeVolumes, moveSuggestions, toolProcs } from './diskMove/procs'
+import { toChildren, toStatus } from './diskMap/map'
+import { isUnder as isUnderPath } from './diskMap/guard'
+import { createDiskSnap, type DiskSnap } from './diskMap/snap'
 import { devicesStandingHosts } from './devices/deskHosts'
 import { ScreenRecorder } from './devices/recorder'
 import { registerApkIpc } from './apk/ipc'
@@ -166,6 +184,7 @@ Object.assign(process.env, CORE_PROCS_ENV)
 let t: Strings
 let host: SwitchingHost
 let serveToasts: ServeToasts | null = null
+let menuToasts: MenuToasts | null = null
 let ptys: PtySupervisor | null = null
 const PTY_HOST = process.env.CCM_CORE_PTY?.trim().toLowerCase() === 'node' ? 'node' : 'rust'
 let ptyFellBack = false
@@ -220,6 +239,12 @@ let disposeDisk: (() => void) | null = null
 let disposeAgentStatus: (() => void) | null = null
 let disk: DiskWatch | null = null
 let diskCtl: DiskControl | null = null
+let diskMap: DiskMap | null = null
+let diskClean: DiskClean | null = null
+let diskMove: DiskMove | null = null
+let organize: Organize | null = null
+let diskAppsRam: { dispose: () => void } | null = null
+let diskSnap: DiskSnap | null = null
 let disposeDevices: (() => void) | null = null
 let disposeApk: (() => void) | null = null
 let disposeRelease: (() => void) | null = null
@@ -370,6 +395,16 @@ function stopPreview(): Promise<void> {
   disposeAgentData = null
   disposeBuildClean?.()
   disposeBuildClean = null
+  diskClean?.dispose()
+  diskClean = null
+  diskMove?.dispose()
+  diskMove = null
+  organize?.dispose()
+  organize = null
+  diskAppsRam?.dispose()
+  diskAppsRam = null
+  diskSnap?.dispose()
+  diskSnap = null
   disposeDisk?.()
   disposeDisk = null
   disposeAgentStatus?.()
@@ -407,6 +442,13 @@ function harden(contents: WebContents): void {
     if (url === RETRY_URL) {
       event.preventDefault()
       void boot()
+      return
+    }
+    const winAction = url.startsWith(WINDOW_URL) ? url.slice(WINDOW_URL.length) : null
+    if (winAction !== null) {
+      event.preventDefault()
+      const win = BrowserWindow.fromWebContents(contents)
+      if (win && isWindowAction(winAction)) windowAction(win, winAction)
       return
     }
     if (isAppUrl(url)) return
@@ -489,18 +531,20 @@ function zoom(contents: WebContents, action: 'in' | 'out' | 'reset'): number {
   return zoomPercent(level)
 }
 
-const TITLE_BAR_H = 40
+type WindowAction = 'minimize' | 'toggle-maximize' | 'close'
+const isWindowAction = (v: unknown): v is WindowAction => v === 'minimize' || v === 'toggle-maximize' || v === 'close'
 
-function titleBarOverlay(): Electron.TitleBarOverlay {
-  const look = saved().look
-  const dark = look?.dark ?? nativeTheme.shouldUseDarkColors
-  return { color: look?.bar ?? look?.canvas ?? (dark ? '#1e1e1e' : '#ececee'), symbolColor: look?.ink ?? (dark ? '#f5f5f7' : '#1d1d1f'), height: TITLE_BAR_H }
+function windowAction(win: BrowserWindow, action: WindowAction): void {
+  if (action === 'minimize') win.minimize()
+  else if (action === 'close') win.close()
+  else if (win.isMaximized()) win.unmaximize()
+  else win.maximize()
 }
 
 function baseWindow(options: Electron.BrowserWindowConstructorOptions, prefs: Electron.WebPreferences = {}): BrowserWindow {
   const win = new BrowserWindow({
     show: false,
-    ...(IS_MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 14 } } : { titleBarStyle: 'hidden' as const, titleBarOverlay: titleBarOverlay() }),
+    ...(IS_MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 14 } } : { titleBarStyle: 'hidden' as const }),
     // macOS takes the window icon from the app bundle.
     icon: IS_MAC ? undefined : resource('ccm.ico', 'scripts/assets/ccm.ico'),
     backgroundColor: savedBackground() ?? (nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ececee'),
@@ -511,6 +555,13 @@ function baseWindow(options: Electron.BrowserWindowConstructorOptions, prefs: El
   })
   win.removeMenu()
   harden(win.webContents)
+  if (!IS_MAC) {
+    const report = (): void => {
+      if (!win.isDestroyed()) win.webContents.send('ccm:window-maximized', win.isMaximized())
+    }
+    win.on('maximize', report)
+    win.on('unmaximize', report)
+  }
   return win
 }
 
@@ -636,7 +687,7 @@ function fatalMessage(reason: FatalReason): string {
 function showError(reason: FatalReason): void {
   if (!mainWindow || quitting || showingError) return
   showingError = true
-  mainWindow.loadURL(errorPage(t, fatalMessage(reason), host.tail, saved().look)).catch(() => undefined)
+  mainWindow.loadURL(errorPage(t, fatalMessage(reason), host.tail, saved().look, !IS_MAC)).catch(() => undefined)
   showMain()
 }
 
@@ -767,7 +818,7 @@ let booting: Promise<void> | null = null
 function showIntro(): Promise<number> {
   const win = mainWindow
   if (!win) return Promise.resolve(Date.now())
-  return win.loadURL(loadingPage(t, saved().look, app.getVersion())).catch(() => undefined).then(() => Date.now())
+  return win.loadURL(loadingPage(t, saved().look, app.getVersion(), !IS_MAC)).catch(() => undefined).then(() => Date.now())
 }
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)))
 
@@ -990,7 +1041,18 @@ const deskDeps: DeskDeps = {
     const { response } = mainWindow ? await dialog.showMessageBox(mainWindow, opts) : await dialog.showMessageBox(opts)
     return response
   },
+  disk: (call) => diskAgent(call),
 }
+const diskAgent = createDiskAgent({
+  service: () => diskMap?.service ?? null,
+  platform: process.platform,
+  confirm: async ({ pane, reason, ask, second }) => {
+    if (e2eAutoConfirm(process.env, app.isPackaged)) return true
+    if (mainWindow && (!mainWindow.isVisible() || mainWindow.isMinimized())) showMain()
+    const opts = second ? deleteBoxOptions(ask, true, t.diskMap, IS_MAC) : agentDeleteBoxOptions(ask, { pane, reason }, t.diskMap, IS_MAC)
+    return confirmBox(mainWindow, opts)
+  },
+})
 const deskTs = createDesk(deskDeps)
 const desk = (call: McpDeskCall): Promise<unknown> => viaRustDesk('desk:mcp-desk', call, () => deskTs(call))
 
@@ -1055,6 +1117,7 @@ async function openLink(raw: string): Promise<void> {
   }
   if (url.protocol !== `${LINK_SCHEME}:` || !host?.ownsPort) return
   if (url.hostname === 'open') return openFromLink(raw)
+  if (url.hostname === 'menu') return handleMenuLink(raw)
   const k = url.searchParams.get('k') ?? ''
   const terminalId = url.searchParams.get('t')
   if (url.hostname === 'snooze') {
@@ -1284,6 +1347,47 @@ function setupCaptureAndAwake(): void {
     held,
     desk: deskRouter ?? undefined,
   })
+}
+
+function appFocused(): boolean {
+  const w = mainWindow
+  return !!w && !w.isDestroyed() && w.isVisible() && !w.isMinimized() && w.isFocused()
+}
+
+function handleMenuLink(raw: string): void {
+  const action = menuToasts?.activate(raw)
+  const contents = mainWindow?.webContents
+  if (!action || !contents || contents.isDestroyed() || showingError) return
+  if (action.type === 'open') showMain()
+  contents.send('ccm:menu-toast', action)
+}
+
+function setupMenuToast(): void {
+  const e2eLog = app.isPackaged ? undefined : process.env.CCM_E2E_MENU_TOAST_LOG
+  if (process.env.CCM_TOAST === '0' && !e2eLog) return
+  let real: MenuToastDrawer | null = null
+  if (process.env.CCM_TOAST !== '0' || (!app.isPackaged && process.env.CCM_E2E_MENU_TOAST_REAL === '1')) {
+    if (!IS_MAC) real = windowsMenuDrawer(windowsToasts)
+    else if (Notification.isSupported()) real = electronMenuDrawer((o) => new Notification(o), (url) => void openLink(url))
+  }
+  const drawer: MenuToastDrawer = e2eLog
+    ? {
+        show: (c) => {
+          appendFileSync(e2eLog, `${JSON.stringify({ op: 'show', ...c })}\n`)
+          return real ? real.show(c) : Promise.resolve(true)
+        },
+        hide: (tag) => {
+          appendFileSync(e2eLog, `${JSON.stringify({ op: 'hide', tag })}\n`)
+          return real ? real.hide(tag) : Promise.resolve(true)
+        },
+      }
+    : (real ?? { show: () => Promise.resolve(false), hide: () => Promise.resolve(false) })
+  const grace = Number(process.env.CCM_E2E_MENU_TOAST_GRACE_MS)
+  menuToasts = createMenuToasts({ drawer, key: randomBytes(16).toString('hex'), scheme: LINK_SCHEME, focused: appFocused, ...(e2eLog && grace > 0 ? { graceMs: grace } : {}) })
+  ipcMain.on('ccm:menu-toast-sync', (event, data: unknown) => {
+    if (isAppFrame(event)) menuToasts?.sync(data)
+  })
+  app.on('browser-window-focus', () => menuToasts?.settle())
 }
 
 function setupAgentStatus(): void {
@@ -1593,6 +1697,266 @@ function setupDisk(): void {
   })
 }
 
+function setupDiskMap(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  diskMap = createDiskMap({
+    ipcMain,
+    isAppFrame,
+    bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
+    env: process.env,
+    dataDir: DATA_DIR,
+    platform: process.platform,
+    home: os.homedir(),
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
+    autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
+    trash: (p) => shell.trashItem(p),
+    remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
+    reveal: (p) => shell.showItemInFolder(p),
+    onDone: (done) => void diskSnap?.onDone(done),
+    beforeScan: () => diskSnap?.beforeScan() ?? Promise.resolve(),
+  })
+}
+
+function setupDiskSnap(): void {
+  const dev = app.isPackaged ? null : (process.env.CCM_E2E_DISKSNAP_FAKE ?? null)
+  const sink = app.isPackaged ? null : (process.env.CCM_E2E_DISKSNAP_TG_SINK ?? null)
+  const tick = app.isPackaged ? 0 : Number(process.env.CCM_E2E_DISKSNAP_TICK ?? 0)
+  const fake = (): { idle?: number; battery?: boolean; free?: number } => {
+    try {
+      return dev ? (JSON.parse(readFileSync(dev, 'utf8')) as { idle?: number; battery?: boolean; free?: number }) : {}
+    } catch {
+      return {}
+    }
+  }
+  if (!diskMap) return
+  diskSnap = createDiskSnap({
+    ipcMain,
+    isAppFrame,
+    diskMap,
+    dataDir: DATA_DIR,
+    platform: process.platform,
+    home: os.homedir(),
+    locale: () => ((saved().locale ?? 'vi').startsWith('en') ? 'en' : 'vi'),
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    idleSeconds: () => (dev && typeof fake().idle === 'number' ? (fake().idle as number) : powerMonitor.getSystemIdleTime()),
+    onBattery: () => (dev && typeof fake().battery === 'boolean' ? (fake().battery as boolean) : powerMonitor.isOnBatteryPower()),
+    ...(Number.isFinite(tick) && tick >= 200 ? { tickMs: tick } : {}),
+    ...(dev ? { volumes: async () => (await diskMap!.service.volumes()).map((v) => (typeof fake().free === 'number' ? { ...v, free: fake().free as number } : v)) } : {}),
+    telegramOn: async () => {
+      if (sink) return process.env.CCM_E2E_DISKSNAP_TG_OFF !== '1'
+      const st = await telegram?.state()
+      return !!st?.enabled && !!st.configured
+    },
+    send: async (text) => {
+      if (sink) {
+        appendFileSync(sink, `${JSON.stringify({ text })}
+`)
+        return true
+      }
+      const st = await telegram?.state()
+      const route = st?.routes[0]
+      if (!telegram || !route) return false
+      return (await telegram.report(route.project, text)).ok
+    },
+  })
+}
+
+function setupDiskClean(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  diskClean = createDiskClean({
+    ipcMain,
+    isAppFrame,
+    platform: process.platform,
+    home: os.homedir(),
+    env: process.env,
+    system: diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, downloads: dir('downloads'), tmpdir: os.tmpdir(), fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SYS || null }),
+    sdk: diskCleanSdk({ platform: process.platform, home: os.homedir(), env: process.env, procs: toolProcs, fake: app.isPackaged ? null : process.env.CCM_E2E_DISKCLEAN_SDK || null }),
+    docker: { run: !app.isPackaged && process.env.CCM_E2E_DOCKER ? runFile(process.execPath, [process.env.CCM_E2E_DOCKER], { ...process.env, ELECTRON_RUN_AS_NODE: '1' }) : runFile('docker') },
+    allowTree: () => macTempAllow(diskCleanSystem({ platform: process.platform, home: os.homedir(), env: process.env, tmpdir: os.tmpdir() }).roots),
+    openNow: () => paneRoots(true),
+    ask: async (event, opts) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      return (win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)).response
+    },
+    locale: () => saved().locale ?? 'vi',
+    self: () => [app.getAppPath(), path.dirname(process.execPath), ...(app.isPackaged ? [] : [REPO])],
+    running: () => [
+      ...(runManager?.live() ?? []).filter((r) => r.cwd).map((r) => ({ cwd: r.cwd, lock: 'run' as const })),
+      ...(resReport?.servers ?? []).filter((s) => s.cwd && s.kind !== 'daemon').map((s) => ({ cwd: s.cwd!, lock: 'server' as const })),
+    ],
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    confirm: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
+    autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
+    trash: (p) => shell.trashItem(p),
+    remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
+    record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),
+    indexSize: async (p) => {
+      if (!diskMap?.host.running) return null
+      const st = toStatus(await diskMap.host.call('disk.status'))
+      if (!st.indexed || st.scanning || !st.roots.some((r) => isUnderPath(p, r, process.platform))) return null
+      return toChildren(await diskMap.host.call('disk.children', { path: p, limit: 0 }))?.size ?? null
+    },
+    forget: async (paths) => {
+      if (!diskMap?.host.running) return
+      await diskMap.host.call('disk.forget', { paths }).catch(() => undefined)
+      void diskMap.host.call('disk.save').catch(() => undefined)
+    },
+  })
+}
+
+function setupDiskMove(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  const fake = app.isPackaged ? null : process.env.CCM_E2E_DISKMOVE || null
+  const sdk = diskCleanSdk({ platform: process.platform, home: os.homedir(), env: process.env, procs: toolProcs })
+  diskMove = createDiskMove({
+    ipcMain,
+    isAppFrame,
+    platform: process.platform,
+    home: os.homedir(),
+    dataDir: DATA_DIR,
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    self: () => [app.getAppPath(), path.dirname(process.execPath), dir('userData'), DATA_DIR, ...(app.isPackaged ? [] : [REPO])],
+    volumes: async () => (fake ? moveFakeVolumes(fake) : ((await diskMap?.service.volumes()) ?? [])),
+    suggest: () => (fake ? fakeMoveSuggestions(fake) : moveSuggestions({ platform: process.platform, home: os.homedir(), env: process.env, sdkRoot: sdk.sdkRoot, avdHome: sdk.avdHome })),
+    holders: () => (fake ? moveFakeProcs(fake) : toolProcs()),
+    ...(fake ? { devOf: moveFakeDev(fake) } : {}),
+    trash: (p) => shell.trashItem(p),
+    record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),
+    cleanKnown: (p) => {
+      const it = diskClean?.service.known(p)
+      return it && !it.action && !it.file ? it.path : null
+    },
+    pickFolder: async (event) => {
+      if (fake) return moveFakePick(fake)
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const opts: Electron.OpenDialogOptions = { properties: ['openDirectory'] }
+      const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+      return res.canceled ? null : (res.filePaths[0] ?? null)
+    },
+    ask: async (event, opts) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      return (win ? await dialog.showMessageBox(win, opts) : await dialog.showMessageBox(opts)).response
+    },
+    locale: () => saved().locale ?? 'vi',
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    autoConfirm: e2eAutoConfirm(process.env, app.isPackaged),
+  })
+}
+
+function setupOrganize(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  const packaged = app.isPackaged
+  organize = createOrganize({
+    ipcMain,
+    isAppFrame,
+    dataDir: DATA_DIR,
+    platform: process.platform,
+    home: os.homedir(),
+    downloads: organizeE2ePath(process.env, packaged, 'DOWNLOADS') ?? dir('downloads'),
+    desktop: organizeE2ePath(process.env, packaged, 'DESKTOP') ?? dir('desktop'),
+    appDirs: [dir('userData'), DATA_DIR, path.dirname(process.execPath), app.getAppPath()],
+    locale: () => saved().locale ?? 'vi',
+    stableMs: organizeStableMs(process.env, packaged),
+    pickFolder: async (event) => {
+      const fake = organizeE2ePath(process.env, packaged, 'PICK')
+      if (fake) return fake
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const opts: Electron.OpenDialogOptions = { properties: ['openDirectory'] }
+      const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+      return res.canceled ? null : (res.filePaths[0] ?? null)
+    },
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.webContents.isDestroyed()) win.webContents.send(channel, payload)
+    },
+    junkAllow: [os.tmpdir()],
+    junk: {
+      guard: async () => {
+        if (!diskMap) return null
+        const st = await diskMap.service.status().catch(() => null)
+        if (!st?.indexed || st.scanning) return null
+        const keep = [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)]
+        return { platform: process.platform, home: os.homedir(), keep, roots: st.roots, volumes: (await diskMap.service.volumes()).map((v) => v.mount).filter(Boolean) }
+      },
+      search: async (q) => (diskMap?.host.running ? organizeRawItems(await diskMap.host.call('disk.search', q).catch(() => null)) : null),
+      readShortcut: (p) => {
+        try {
+          return shell.readShortcutLink(p).target || null
+        } catch {
+          return null
+        }
+      },
+      volumes: async () => ((await diskMap?.service.volumes()) ?? []).map((v) => ({ mount: v.mount, network: v.network })),
+    },
+  })
+}
+
+function setupDiskApps(): void {
+  const dir = (name: Parameters<typeof app.getPath>[0]): string => {
+    try {
+      return app.getPath(name)
+    } catch {
+      return ''
+    }
+  }
+  diskAppsRam = setupDiskAppsRam({
+    ipcMain,
+    isAppFrame,
+    packaged: app.isPackaged,
+    env: process.env,
+    platform: process.platform,
+    home: os.homedir(),
+    execPath: process.execPath,
+    confirm: (event, opts) => confirmBox(BrowserWindow.fromWebContents(event.sender), opts),
+    confirmDelete: (event, ask, second) => confirmBox(BrowserWindow.fromWebContents(event.sender), deleteBoxOptions(ask, second, t.diskMap, IS_MAC)),
+    keep: () => [dir('documents'), dir('desktop'), dir('downloads'), dir('pictures'), dir('music'), dir('videos'), dir('userData'), DATA_DIR, path.dirname(process.execPath)],
+    keepTree: () => [dir('userData'), DATA_DIR, path.dirname(process.execPath), app.getAppPath()].filter(Boolean),
+    locale: () => saved().locale ?? 'vi',
+    record: (e) => diskMap?.service.history.append(e) ?? Promise.resolve(),
+    indexSizes: async (paths) => (await diskMap?.service.sizes({ paths }).catch(() => null))?.sizes ?? null,
+    trash: (p) => shell.trashItem(p),
+    remove: (p) => rm(p, { recursive: true, force: false, maxRetries: 2, retryDelay: 200 }),
+    openSettings: async () => {
+      await shell.openExternal('ms-settings:appsfeatures')
+      return true
+    },
+  })
+}
+
 async function ready(): Promise<void> {
   t = stringsFor(saved().locale ?? 'vi')
   if (IS_MAC) {
@@ -1621,7 +1985,14 @@ async function ready(): Promise<void> {
   await setupAgentData()
   setupBuildClean()
   setupDisk()
+  setupDiskMap()
+  setupDiskSnap()
+  setupDiskClean()
+  setupDiskMove()
+  setupOrganize()
+  setupDiskApps()
   setupAgentStatus()
+  setupMenuToast()
   host = createMonitorHost({
     mode: coreServeMode(process.env),
     bin: CORE_PROCS_ENV.CCM_CORE_BIN ?? '',
@@ -1645,7 +2016,10 @@ async function ready(): Promise<void> {
         const episode = parsePhoneEpisode(data)
         if (episode) void phoneEpisode?.(episode).catch(() => undefined)
         if (episode?.reason === 'limit') void telegram?.alert('limit', { window: episode.window, usedPct: episode.usedPct, resetsAt: episode.resetsAt, hit: episode.hit })
-        else if (episode?.reason === 'disk') void telegram?.alert('disk', { label: episode.name, free: episode.freeBytes !== undefined ? formatGb(episode.freeBytes) : '?' })
+        else if (episode?.reason === 'disk') {
+          void telegram?.alert('disk', { label: episode.name, free: episode.freeBytes !== undefined ? formatGb(episode.freeBytes) : '?' })
+          void diskSnap?.onAlert()
+        }
       } else if (m?.type === 'telegram') {
         const episode = parseTelegramEpisode(data)
         if (episode) void telegram?.handle(episode)
@@ -1693,6 +2067,14 @@ async function ready(): Promise<void> {
     setWindowBackground(color)
     return true
   })
+  ipcMain.handle('ccm:window', (event, action: unknown) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!isAppFrame(event) || !win || IS_MAC) return null
+    if (action === 'state') return win.isMaximized()
+    if (!isWindowAction(action)) return null
+    windowAction(win, action)
+    return true
+  })
   ipcMain.handle('ccm:locale', (event, raw: unknown) => {
     if (!isAppFrame(event) || (raw !== 'en' && raw !== 'vi')) return false
     if (raw !== saved().locale) saveAppearance({ locale: raw })
@@ -1704,10 +2086,7 @@ async function ready(): Promise<void> {
     if (!look) return false
     if (JSON.stringify(look) !== JSON.stringify(saved().look)) {
       saveAppearance({ look, background: look.canvas })
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.setBackgroundColor(look.canvas)
-        if (!IS_MAC) win.setTitleBarOverlay(titleBarOverlay())
-      }
+      for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(look.canvas)
     }
     return true
   })
@@ -2454,6 +2833,7 @@ if (!app.requestSingleInstanceLock()) {
         runManager?.killAll()
         layoutIpc?.killNow()
         flutterPreview?.service.killNow()
+        diskMap?.kill()
       }
       return
     }
@@ -2472,7 +2852,7 @@ if (!app.requestSingleInstanceLock()) {
           launchUpdate()
           app.exit(0)
         }, QUIT_DEADLINE_MS)
-        stopping = Promise.allSettled([exportPageStorage(), host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview()]).then(() => {
+        stopping = Promise.allSettled([exportPageStorage(), host.stop(), ptys?.stop(), stopRuns().then(() => deskHost?.stop()), stopPreview(), diskMap?.stop()]).then(() => {
           clearTimeout(hardExit)
           stopped = true
           app.quit()

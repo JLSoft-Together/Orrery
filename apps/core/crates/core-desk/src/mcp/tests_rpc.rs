@@ -55,7 +55,7 @@ fn json_rpc_shapes_match_the_ts_handler() {
     let (_, list) = handle_mcp(&json!({ "jsonrpc": "2.0", "id": "x", "method": "tools/list" }), &h, "1", false);
     let tools = list.unwrap()["result"]["tools"].as_array().unwrap().clone();
     assert_eq!(tools[0]["name"], "open_session");
-    assert_eq!(tools.len(), 18);
+    assert_eq!(tools.len(), 21);
     assert!(!tools.iter().any(|t| t["name"] == "hand_back"));
     assert_eq!(handle_mcp(&json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }), &h, "1", false), (202, None));
     let (_, e) = handle_mcp(&json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "hand_back" } }), &h, "1", false);

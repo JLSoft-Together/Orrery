@@ -92,7 +92,7 @@ pub fn live_starts(pids: &[i64]) -> HashMap<i64, String> {
 }
 
 #[cfg(windows)]
-fn kill_tree(pid: i64) -> bool {
+pub fn kill_tree(pid: i64) -> bool {
     let root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".into());
     let exe = format!("{root}\\System32\\taskkill.exe");
     use std::os::windows::process::CommandExt;
@@ -108,7 +108,7 @@ fn kill_tree(pid: i64) -> bool {
 }
 
 #[cfg(unix)]
-fn kill_tree(pid: i64) -> bool {
+pub fn kill_tree(pid: i64) -> bool {
     let rows = core_procs::pid_parents().unwrap_or_default();
     let mut kids: HashMap<u32, Vec<u32>> = HashMap::new();
     for (p, pp) in rows {

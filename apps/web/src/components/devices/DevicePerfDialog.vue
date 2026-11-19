@@ -5,6 +5,7 @@ import { CircleAlert, Gauge, LoaderCircle, Minus, Play, RotateCcw, Sparkles, Tim
 import type { PerfErrorCode, PerfSample } from '@ccm/shared'
 import { comparable, compareSamples, defaultBase, fmtDelta, fmtValue, PERF_METRICS, perfClear, perfCold, perfHistory, perfMeasure, perfPrompt, perfReset, type PerfTrend } from '../../lib/devPerf'
 import { isPackageName } from '../../lib/deviceUiTest'
+import AppSelect from '../AppSelect.vue'
 import { relativeTime } from '../../lib/format'
 import { retireOverlay } from '../../lib/motion'
 import { useDeviceHandoff } from '../../composables/useDeviceHandoff'
@@ -54,6 +55,7 @@ const errorText = computed(() => {
 
 const when = (at: number): string => relativeTime(at, locale.value, Date.now()) ?? new Date(at).toLocaleString(locale.value)
 const stamp = (at: number): string => new Date(at).toLocaleString(locale.value, { dateStyle: 'short', timeStyle: 'short' })
+const baseOptions = computed(() => choices.value.map((s) => ({ value: s.id, label: `${stamp(s.at)} - ${t(`devPerf.kind.${s.kind}`)}` })))
 
 async function step<T>(key: string, fn: () => Promise<T>): Promise<T | null> {
   if (busy.value) return null
@@ -273,9 +275,7 @@ watch(
                 </div>
                 <label v-if="choices.length" class="mt-2 flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
                   {{ t('devPerf.compareWith') }}
-                  <select class="ccm-field max-w-72 min-w-0 text-xs" :value="base?.id ?? ''" data-perf-base @change="baseId = ($event.target as HTMLSelectElement).value">
-                    <option v-for="s in choices" :key="s.id" :value="s.id">{{ stamp(s.at) }} · {{ t(`devPerf.kind.${s.kind}`) }}</option>
-                  </select>
+                  <AppSelect :model-value="base?.id ?? ''" :options="baseOptions" :label="t('devPerf.compareWith')" size="sm" class="max-w-72" data-perf-base @update:model-value="(v) => (baseId = v)" />
                 </label>
                 <p v-else class="mt-2 text-2xs text-ink-faint" data-perf-nocompare>{{ t('devPerf.noCompare') }}</p>
 

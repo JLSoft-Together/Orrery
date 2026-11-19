@@ -8,7 +8,7 @@ const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
 const zlib = require('node:zlib')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, selPick } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const UI = `${S}.get('ui')`
@@ -86,6 +86,7 @@ async function main() {
     await waitFor(`!!${filePane(name)}`, 15000, `${name} pane`)
   }
   const startEdit = async (name) => {
+    await waitFor(`!!${filePane(name)}.querySelector('[data-file-edit]')`, 15000, `${name} edit button`)
     await evaluate(`${filePane(name)}.querySelector('[data-file-edit]')?.click()`)
     await waitFor(`!!${filePane(name)}.querySelector('.cm-editor .cm-content')`, 15000, `${name} editor`)
   }
@@ -167,11 +168,11 @@ async function main() {
       await openFile('app.log')
       await waitFor(`${filePane('app.log')}.querySelectorAll('[data-log-line]').length >= 5`, 10000, 'log lines')
       check('.log opens in the log viewer', await evaluate(`!!${filePane('app.log')}.querySelector('[data-log-view]')`))
-      await evaluate(`(() => { const s = ${filePane('app.log')}.querySelector('[data-log-level]'); s.value = '4'; s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+      await evaluate(selPick(`${filePane('app.log')}.querySelector('[data-log-level]')`, "(t, i, v) => v === '4'"))
       await waitFor(`${filePane('app.log')}.querySelectorAll('[data-log-line]').length === 1`, 5000, 'filtered').catch(() => {})
       const lines = await evaluate(`[...${filePane('app.log')}.querySelectorAll('[data-log-line]')].map((r) => r.textContent).join(' | ')`)
       check('level filter E keeps only the error line', /boom happened/.test(lines) && !/INFO/.test(lines), lines)
-      await setInput(`${filePane('app.log')}.querySelector('[data-log-level]')`, '-1')
+      await evaluate(selPick(`${filePane('app.log')}.querySelector('[data-log-level]')`, "(t, i, v) => v === '-1'"))
       await setInput(`${filePane('app.log')}.querySelector('[data-log-filter]')`, 'slow')
       await waitFor(`${filePane('app.log')}.querySelectorAll('[data-log-line]').length === 1`, 5000, 'text filter').catch(() => {})
       check('text filter narrows the lines', /slow query/.test(await evaluate(`${filePane('app.log')}.querySelector('[data-log-line]')?.textContent ?? ''`)))

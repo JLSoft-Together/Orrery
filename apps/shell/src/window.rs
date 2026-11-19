@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use serde_json::json;
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PermissionKind, PermissionResponse};
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -16,9 +16,14 @@ const SHIM: &str = include_str!("shim.js");
 const HEADER: &str = include_str!("header.js");
 const WEBVIEW: &str = include_str!("webview.js");
 
+pub fn deepseek_feature(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
 pub fn init_script(origin: &str) -> String {
     let platform = if cfg!(windows) { "win32" } else { "darwin" };
-    let shell = json!({ "platform": platform, "origin": origin, "sync": { "ccm:core-serve": "rust", "ccm:deepseek-enabled": false } });
+    let deepseek = deepseek_feature(std::env::var("CCM_DEEPSEEK_FEATURE").ok().as_deref());
+    let shell = json!({ "platform": platform, "origin": origin, "sync": { "ccm:core-serve": "rust", "ccm:deepseek-enabled": deepseek } });
     format!("(function(){{const __ccmShell={shell};if(location.origin!==__ccmShell.origin)return;\n{SHIM};\n{HEADER};\n{WEBVIEW};\n}})();")
 }
 
@@ -74,6 +79,14 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
             }
         })
         .on_page_load(|webview, payload| {
+            if webview.label() == MAIN {
+                let app_page = webview.app_handle().state::<Shell>().is_app_url(payload.url());
+                match payload.event() {
+                    PageLoadEvent::Started => crate::links::page_started(webview.app_handle()),
+                    PageLoadEvent::Finished if app_page => crate::links::page_ready(webview.app_handle()),
+                    PageLoadEvent::Finished => {}
+                }
+            }
             if payload.event() == PageLoadEvent::Started {
                 guest::close_owned(webview.app_handle(), webview.label());
                 crate::preview_ipc::release(webview.app_handle(), webview.label());
@@ -93,12 +106,12 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
     }
     #[cfg(windows)]
     {
-        b = b.decorations(false).shadow(true).disable_drag_drop_handler();
+        b = b.decorations(false).shadow(true);
     }
     if let Some(args) = crate::remote::awake::browser_args(app) {
         b = b.additional_browser_args(args);
     }
-    Ok(b)
+    Ok(b.disable_drag_drop_handler())
 }
 
 pub fn create_main(app: &AppHandle, hidden: bool) -> Result<WebviewWindow, String> {
@@ -182,7 +195,25 @@ pub fn show_main(app: &AppHandle) {
     }
 }
 
+fn report_maximized(window: &tauri::Window) {
+    static LAST: std::sync::Mutex<Vec<(String, bool)>> = std::sync::Mutex::new(Vec::new());
+    let now = window.is_maximized().unwrap_or(false);
+    let label = window.label().to_owned();
+    {
+        let mut last = LAST.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        match last.iter_mut().find(|(l, _)| *l == label) {
+            Some((_, v)) if *v == now => return,
+            Some((_, v)) => *v = now,
+            None => last.push((label.clone(), now)),
+        }
+    }
+    let _ = window.emit_to(label.as_str(), "ccm:window-maximized", now);
+}
+
 pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
+    if cfg!(windows) && matches!(event, WindowEvent::Resized(_)) {
+        report_maximized(window);
+    }
     if matches!(event, WindowEvent::Destroyed) {
         crate::preview_ipc::release(window.app_handle(), window.label());
         release_owners(window.app_handle(), window.label());
@@ -261,5 +292,13 @@ mod tests {
         }
         assert!(script.contains("Document.prototype.createElement"));
         assert!(script.contains("\"origin\":\"http://127.0.0.1:4419\""));
+    }
+
+    #[test]
+    fn deepseek_is_on_only_with_the_feature_flag_set_to_one() {
+        assert!(deepseek_feature(Some("1")));
+        for off in [None, Some("0"), Some(""), Some("true")] {
+            assert!(!deepseek_feature(off), "{off:?}");
+        }
     }
 }

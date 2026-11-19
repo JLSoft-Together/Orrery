@@ -6,14 +6,17 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::appearance::{is_hex, next_zoom, parse_look, zoom_percent};
 use crate::shot;
-use crate::state::{lock, Shell};
+use crate::state::{lock, Shell, MAIN};
 use crate::{desk, guest};
 use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 35] = [
+const LOCAL: [&str; 39] = [
+    "ccm:window",
     "ccm:pty-endpoint",
+    "ccm:editor-dirty",
+    "ccm:editor-save-reply",
     "ccm:pick-folder",
     "ccm:open-external",
     "ccm:zoom",
@@ -48,6 +51,7 @@ const LOCAL: [&str; 35] = [
     "ccm:remote-push-remove",
     "ccm:remote-push-device",
     "ccm:remote-guard",
+    "ccm:drop-paths",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -95,13 +99,37 @@ fn appearance(app: &AppHandle, raw: &Value) -> Value {
     json!(true)
 }
 
+pub fn endpoint_reply(ep: Result<crate::pty::Endpoint, String>) -> Value {
+    match ep {
+        Ok(ep) => json!({ "url": ep.url, "protocol": ep.protocol }),
+        Err(e) => {
+            eprintln!("[shell] pty endpoint: {e}");
+            Value::Null
+        }
+    }
+}
+
+pub fn answers_asks(label: &str) -> bool {
+    label == MAIN
+}
+
 pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec<Value>) -> Result<Value, String> {
     let shell = app.state::<Shell>();
     match channel {
         "ccm:pty-endpoint" => {
             let handle = app.clone();
-            let ep = blocking(move || handle.state::<Shell>().pty.endpoint()).await??;
-            Ok(json!({ "url": ep.url, "protocol": ep.protocol }))
+            Ok(endpoint_reply(blocking(move || handle.state::<Shell>().pty.endpoint()).await?))
+        }
+        "ccm:editor-dirty" => {
+            let (handle, label, files, auto) = (app.clone(), webview.label().to_owned(), arg(&args, 0).clone(), arg(&args, 1).clone());
+            blocking(move || crate::lifecycle::editor_dirty(&handle, &label, &files, &auto)).await?;
+            Ok(Value::Null)
+        }
+        "ccm:editor-save-reply" => {
+            if let Some(id) = arg(&args, 0).as_u64() {
+                shell.reply(&crate::lifecycle::save_reply_key(webview.label(), id), json!(arg(&args, 1) == &Value::Bool(true)));
+            }
+            Ok(Value::Null)
         }
         "ccm:pick-folder" => {
             let near = start_dir(arg(&args, 0));
@@ -158,18 +186,35 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             })
         }
         "ccm:orrery-reply" => {
-            if let Some(id) = arg(&args, 0).as_str() {
+            if let (true, Some(id)) = (answers_asks(webview.label()), arg(&args, 0).as_str()) {
                 shell.reply(id, arg(&args, 1).clone());
             }
             Ok(Value::Null)
         }
         "ccm:focus-reply" => {
-            shell.reply("focus", json!(arg(&args, 0) == &Value::Bool(true)));
+            if answers_asks(webview.label()) {
+                shell.reply("focus", json!(arg(&args, 0) == &Value::Bool(true)));
+            }
             Ok(Value::Null)
         }
         "shell:window" => {
             let window = app.get_webview_window(webview.label()).ok_or("no window")?;
             Ok(window_action(&window, arg(&args, 0).as_str().unwrap_or("")))
+        }
+        "ccm:window" => {
+            if !cfg!(windows) {
+                return Ok(Value::Null);
+            }
+            let window = app.get_webview_window(webview.label()).ok_or("no window")?;
+            let action = match arg(&args, 0).as_str() {
+                Some("state") => return Ok(json!(window.is_maximized().unwrap_or(false))),
+                Some("minimize") => "min",
+                Some("toggle-maximize") => "max",
+                Some("close") => "close",
+                _ => return Ok(Value::Null),
+            };
+            window_action(&window, action);
+            Ok(json!(true))
         }
         "shell:guest" => {
             let owner = webview.window().label().to_owned();
@@ -193,6 +238,11 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             let raw = arg(&args, 0).clone();
             Ok(json!(blocking(move || shot::clipboard_file(&raw)).await?))
         }
+        "ccm:drop-paths" => {
+            let names: Vec<String> = arg(&args, 0).as_array().map(|a| a.iter().map(|v| v.as_str().unwrap_or("").to_owned()).collect()).unwrap_or_default();
+            let handle = app.clone();
+            Ok(json!(blocking(move || crate::drop_paths::for_names(&handle, names)).await?))
+        }
         c if crate::files_ipc::handles(c) => {
             let (handle, channel) = (app.clone(), c.to_owned());
             blocking(move || crate::files_ipc::dispatch(&handle, &channel, &args)).await?
@@ -205,6 +255,30 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
                 crate::remote::dispatch_with(&handle, &channel, &args, &progress)
             })
             .await?
+        }
+        c if crate::disk_map::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_map::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_move::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_move::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_organize::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_organize::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_apps::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_apps::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_clean::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_clean::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::disk_ram::handles(c) => {
+            let (handle, channel) = (app.clone(), c.to_owned());
+            blocking(move || crate::disk_ram::dispatch(&handle, &channel, &args)).await?
         }
         c if crate::preview_ipc::handles(c) => {
             let (handle, owner, channel) = (app.clone(), webview.label().to_owned(), c.to_owned());
@@ -226,6 +300,20 @@ pub async fn ccm(app: AppHandle, webview: Webview, channel: String, args: Option
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_main_window_answers_orrery_asks() {
+        assert!(answers_asks(MAIN));
+        assert!(!answers_asks(crate::window::COMPACT));
+        assert!(!answers_asks("guest-1"));
+    }
+
+    #[test]
+    fn a_failed_pty_endpoint_answers_null() {
+        assert_eq!(endpoint_reply(Err("pty host stopped".into())), Value::Null);
+        let ep = crate::pty::Endpoint { url: "ws://127.0.0.1:1/pty".into(), protocol: "ccm.pty.x".into() };
+        assert_eq!(endpoint_reply(Ok(ep)), json!({ "url": "ws://127.0.0.1:1/pty", "protocol": "ccm.pty.x" }));
+    }
 
     #[test]
     fn the_start_dir_must_be_an_existing_absolute_folder() {

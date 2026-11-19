@@ -3,7 +3,8 @@ const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
+const OPEN_DRAWER = `if (document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))`
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const X = `${S}.get('explorer')`
@@ -56,7 +57,8 @@ async function run(app) {
   const drag = await evaluate(`(() => { const r = ${row('README.md')}; const dt = new DataTransfer(); r.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt })); return { draggable: r.draggable, root: document.querySelector('[data-explorer-tree] [role=treeitem]').draggable, path: dt.getData('application/x-ccm-path') } })()`)
   check('file rows are draggable with their path, the root row is not', drag.draggable && !drag.root && drag.path === path.join(DIR, 'README.md'), JSON.stringify(drag))
   const shellKey = await evaluate(`${W}.panes[0].key`)
-  const center = await evaluate(`(() => { const r = document.querySelector('[data-pane="${shellKey}"] .xterm')?.getBoundingClientRect(); return r && [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] })()`)
+  const at = UI === 'next' ? [0.2, 0.25] : [0.5, 0.5]
+  const center = await evaluate(`(() => { const r = document.querySelector('[data-pane="${shellKey}"] .xterm')?.getBoundingClientRect(); return r && [Math.round(r.left + r.width * ${at[0]}), Math.round(r.top + r.height * ${at[1]})] })()`)
   for (const type of ['dragEnter', 'dragOver', 'drop']) {
     await cmd('Input.dispatchDragEvent', { type, x: center[0], y: center[1], data: { items: [{ mimeType: 'application/x-ccm-path', data: drag.path }], dragOperationsMask: 1 } })
     await sleep(120)
@@ -141,7 +143,13 @@ async function run(app) {
     const overlap = rs.some((a, i) => rs.some((b, j) => j > i && a.r.right > b.r.left + 0.5 && b.r.right > a.r.left + 0.5))
     const outside = rs.some(({ r }) => r.left < bar.left - 0.5 || r.right > bar.right + 0.5)
     return { n: rs.length, overlap, outside, clipped: rs.some((x) => x.over), counts: !!document.querySelector('[data-change-totals]')?.offsetWidth, dot: !!document.querySelector('[data-change-dot]')?.offsetWidth } })()`
-  for (const width of [280, 400, 200, 520]) {
+  if (UI === 'next') {
+    await evaluate(OPEN_DRAWER)
+    await sleep(300)
+    const fit = await evaluate(tabFit)
+    check('next: Explorer view tabs fit the drawer', fit.n >= 2 && !fit.overlap && !fit.outside && !fit.clipped, JSON.stringify(fit))
+  }
+  for (const width of UI === 'next' ? [] : [280, 400, 200, 520]) {
     await evaluate(`document.querySelector('[data-explorer-panel]').style.width = '${width}px'`)
     await sleep(250)
     const fit = await evaluate(tabFit)
@@ -151,7 +159,7 @@ async function run(app) {
     fs.writeFileSync(path.join(OUT, `explorer-03b-tabs-${width}.png`), Buffer.from(img.result.data, 'base64'))
   }
   check('narrow tabs keep an accessible name and tooltip', await evaluate(`[...document.querySelectorAll('[data-explorer-tabs] [role=tab]')].every((b) => b.getAttribute('aria-label') && b.title)`))
-  await evaluate(`document.querySelector('[data-explorer-panel]').style.width = '280px'`)
+  if (UI !== 'next') await evaluate(`document.querySelector('[data-explorer-panel]').style.width = '280px'`)
   await evaluate(`document.querySelector('[data-change="src/outside.ts"]').click()`)
   await sleep(400)
   check('clicking a change opens it', await evaluate(`${W}.panes.some((p) => p.kind === 'file' && p.path.endsWith('outside.ts'))`))
@@ -160,9 +168,17 @@ async function run(app) {
   check('Open in Changes tab opens the diff pane', await evaluate(`${W}.panes.some((p) => p.kind === 'changes')`))
 
   // The toggle hides the Explorer panel and remembers it; Projects stays on the left the whole time.
-  await evaluate(`document.querySelector('[data-explorer-toggle]').click()`)
-  await sleep(300)
-  check('Explorer panel hides, Projects stays', await evaluate(`!document.querySelector('[data-explorer]') && localStorage.getItem('ccm.workspace.explorerOpen') === '0' && !!document.querySelector('[data-tour="ws-sidebar"]')`))
+  if (UI === 'next') {
+    await evaluate(OPEN_DRAWER)
+    await sleep(300)
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))`)
+    await sleep(300)
+    check('next: Ctrl+Shift+E closes the Explorer drawer, rail stays', await evaluate(`document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed' && !!document.querySelector('[data-live-rail]')`))
+  } else {
+    await evaluate(`document.querySelector('[data-explorer-toggle]').click()`)
+    await sleep(300)
+    check('Explorer panel hides, Projects stays', await evaluate(`!document.querySelector('[data-explorer]') && localStorage.getItem('ccm.workspace.explorerOpen') === '0' && !!document.querySelector('[data-tour="ws-sidebar"]')`))
+  }
 
   // Image viewer: the <img> comes from the preview server (another loopback port) and must actually decode.
   for (const name of ['ccm-256.png', 'logo.svg']) {

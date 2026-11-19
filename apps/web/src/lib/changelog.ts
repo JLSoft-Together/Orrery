@@ -18,6 +18,60 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.7',
+    date: '2026-11-16',
+    items: [
+      { en: 'Smaller minimize, maximize and close buttons that match the app theme', vi: 'Nút thu nhỏ, phóng to, đóng cửa sổ nhỏ gọn, theo màu theme của app' },
+      { en: 'New UI: the close button no longer sits on the tab bar; drag the window by its top strip', vi: 'Giao diện mới: nút đóng không còn đè thanh tab; kéo cửa sổ ở dải trên cùng' },
+      { en: 'New UI: + in the session rail opens a project folder', vi: 'Giao diện mới: nút + trên rail session để mở thư mục project' },
+      { en: 'New UI: the + menu and rail menus show above terminals, blurred and uncut', vi: 'Giao diện mới: menu + và menu trên rail hiện trên terminal, mờ kính đúng, không bị cắt' },
+      { en: 'New UI: Limits and status opens upward in full instead of being cut off', vi: 'Giao diện mới: Hạn mức và trạng thái mở lên trên, hiện đủ, không bị cắt' },
+      { en: 'New UI: the same 12px spacing around the rail, tab bar and panes', vi: 'Giao diện mới: khoảng cách 12px đều nhau quanh rail, thanh tab và pane' },
+      { en: 'Pane header: Attachments and MCP & plugins are one click, next to the branch', vi: 'Header pane: nút Đính kèm và MCP & plugin bấm thẳng, cạnh branch git' },
+    ],
+  },
+  {
+    version: '4.0.6',
+    date: '2026-11-16',
+    items: [
+      { en: 'Try the new Mist glass UI: session rail, Explorer drawer, pane drag compass, 9 palettes', vi: 'Thử giao diện Sương kính: rail session, Explorer ngăn kéo, la bàn kéo pane, 9 bảng màu' },
+      { en: 'New UI: custom theme with a color picker, light and dark made for you', vi: 'Giao diện mới: theme tự chọn với color picker, tự sinh bản sáng và tối' },
+      { en: 'Click or double click a Claude / Codex answer in the pane; Waiting chip, toasts with buttons', vi: 'Click hoặc double click đáp án Claude / Codex trong pane; chip Chờ trả lời, toast có nút' },
+      { en: 'New Disk view: scan, treemap, file search, clean up, duplicates, sort Downloads, uninstall', vi: 'Ổ đĩa mới: quét, treemap, tìm file, dọn rác, file trùng, sắp xếp Downloads, gỡ app' },
+      { en: 'Every dropdown shares one style and works from the keyboard', vi: 'Mọi dropdown dùng chung một kiểu, dùng được bằng bàn phím' },
+      { en: 'Tauri: MCP and Telegram into sessions work while the compact window is open', vi: 'Tauri: MCP và Telegram vào session chạy lại khi mở cửa sổ compact' },
+      { en: 'Tauri: asks before quitting, saves unsaved files; links open when the app is closed', vi: 'Tauri: hỏi trước khi thoát, lưu file chưa lưu; link mở được khi app chưa chạy' },
+    ],
+  },
+  {
+    version: '4.0.5',
+    date: '2026-11-13',
+    items: [
+      { en: 'Workspace: Chrome-style project groups, several projects side by side in one tab', vi: 'Workspace: nhóm project kiểu Chrome, nhiều project cạnh nhau trong một tab' },
+      { en: 'Project groups: header menu, colours, collapse, Ctrl+Alt+G, saved layouts', vi: 'Nhóm project: menu header, màu, thu gọn, Ctrl+Alt+G, lưu layout' },
+      { en: 'Sidebar: Ctrl/Shift+click several sessions, then Group / Ungroup / Close', vi: 'Sidebar: Ctrl/Shift+click chọn nhiều session rồi Group / Ungroup / Đóng' },
+      { en: 'Drag a project from the sidebar onto a pane to put it beside', vi: 'Kéo project từ sidebar thả vào pane để mở cạnh bên' },
+      { en: 'Galaxy: bigger twinkling stars and meteors, Star effect in Appearance', vi: 'Ngân hà: sao to nhấp nháy và sao băng, chọn ở Giao diện → Hiệu ứng sao' },
+      { en: 'Fix: in-app notifications were blocked on Windows', vi: 'Sửa: thông báo trong app bị chặn trên Windows' },
+      { en: 'Fix: pasted images had no preview in Attachments', vi: 'Sửa: ảnh paste không có preview trong Attachments' },
+    ],
+  },
+  {
+    version: '4.0.4',
+    date: '2026-11-13',
+    items: [
+      { en: 'Galaxy theme: stars inside Workspace panels and terminals, switch in Appearance', vi: 'Theme Ngân hà: sao trong panel Workspace và terminal, bật/tắt ở Giao diện' },
+      { en: 'Galaxy: brighter stars, thin terminal scrollbar', vi: 'Ngân hà: sao sáng hơn, scrollbar terminal mảnh' },
+    ],
+  },
+  {
+    version: '4.0.3',
+    date: '2026-11-12',
+    items: [
+      { en: 'macOS: dragging files from Finder or Explorer into a pane inserts @path again', vi: 'macOS: kéo file từ Finder hoặc Explorer vào pane lại ra @path' },
+    ],
+  },
+  {
     version: '4.0.2',
     date: '2026-11-11',
     items: [

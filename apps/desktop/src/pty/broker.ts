@@ -27,7 +27,7 @@ export const SPAWN_WAIT_MS = 10_000
 export const RESERVE_MS = 30_000
 export const PAGE_REPLY_MS = 8_000
 
-export const deskReplyMs = (tool: McpDeskCall['tool']): number => (tool === 'free_port' || tool === 'telegram_receive' ? 600_000 : tool === 'telegram_send' ? 200_000 : 40_000)
+export const deskReplyMs = (tool: McpDeskCall['tool']): number => (tool === 'free_port' || tool === 'telegram_receive' || tool === 'disk_propose_delete' ? 600_000 : tool === 'telegram_send' ? 200_000 : 40_000)
 
 
 const realpathJs = promisify(realpathCb)

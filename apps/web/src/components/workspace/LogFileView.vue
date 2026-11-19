@@ -6,6 +6,7 @@ import { appendChunk, emptyBuffer, filterLines, fromTail, levelCounts, LOG_LEVEL
 import { sameRange, uniformRange, type RowRange } from '../../lib/rowWindow'
 import { dirOf, logRead, onPreviewChanged, unwatchRoot, watchRoot, type LogChunk } from '../../lib/preview'
 import { isMac } from '../../lib/platform'
+import AppSelect from '../AppSelect.vue'
 import AccessPrompt from './AccessPrompt.vue'
 
 const props = defineProps<{ path: string; active: boolean }>()
@@ -44,6 +45,10 @@ watch(queryInput, (q) => {
 const visible = computed(() => filterLines(buf.value, minLevel.value, query.value))
 const rowCount = computed(() => visible.value?.length ?? buf.value.lines.length)
 const counts = computed(() => levelCounts(buf.value.levels))
+const levelOptions = computed(() => [
+  { value: -1, label: t('workspace.logView.allLevels') },
+  ...LOG_LEVELS.map((l, i) => ({ value: i, label: `${l} - ${levelLabel(i)}${counts.value[i] ? ` (${counts.value[i]})` : ''}` })),
+])
 const canEarlier = computed(() => buf.value.start > 0 && buf.value.end - buf.value.start < MAX_LOADED_BYTES)
 const rows = computed(() => {
   const out: Array<{ i: number; text: string; level: LevelIndex }> = []
@@ -230,10 +235,15 @@ const levelLabel = (lv: number): string => t(`workspace.logView.level.${LOG_LEVE
 <template>
   <div class="flex min-h-0 min-w-0 flex-1 flex-col" data-log-view @keydown="onKey">
     <div class="ccm-material @container flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2" role="toolbar" :aria-label="t('workspace.logView.toolbar')">
-      <select v-model.number="minLevel" class="ccm-field h-7 shrink-0 cursor-pointer pr-1 text-2xs" :aria-label="t('workspace.logView.minLevel')" :title="t('workspace.logView.minLevel')" data-log-level>
-        <option :value="-1">{{ t('workspace.logView.allLevels') }}</option>
-        <option v-for="(l, i) in LOG_LEVELS" :key="l" :value="i">{{ l }} · {{ levelLabel(i) }}{{ counts[i] ? ` (${counts[i]})` : '' }}</option>
-      </select>
+      <AppSelect
+        :model-value="minLevel as number"
+        :options="levelOptions"
+        :label="t('workspace.logView.minLevel')"
+        size="sm"
+        class="shrink-0"
+        data-log-level
+        @update:model-value="(v) => (minLevel = v as LevelIndex)"
+      />
       <label class="ccm-field flex h-7 min-w-0 max-w-72 flex-1 items-center gap-1.5">
         <Search :size="12" class="shrink-0 text-ink-faint" aria-hidden="true" />
         <input

@@ -21,7 +21,7 @@ export interface RemoteSummaryInput {
   facts: (pane: Pane) => RemotePaneFacts
 }
 
-const treeOf = (node: LayoutNode): LayoutNodeLike => ('pane' in node ? { pane: node.pane } : { dir: node.dir, ratio: node.ratio, a: treeOf(node.a), b: treeOf(node.b) })
+const treeOf = (node: LayoutNode): LayoutNodeLike => ('pane' in node ? { pane: node.pane } : 'group' in node ? treeOf(node.node) : { dir: node.dir, ratio: node.ratio, a: treeOf(node.a), b: treeOf(node.b) })
 
 const clip = (s: string): string => (s.length > REMOTE_TITLE_MAX ? s.slice(0, REMOTE_TITLE_MAX) : s)
 

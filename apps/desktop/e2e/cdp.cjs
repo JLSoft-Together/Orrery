@@ -6,6 +6,7 @@ const http = require('node:http')
 const os = require('node:os')
 const REPO = path.resolve(__dirname, '../../..')
 const WS = require(path.join(REPO, 'node_modules/ws'))
+const { uiGenFromArgs, uiGenScript } = require('./ui-gen.cjs')
 const OUT = process.env.CCM_E2E_OUT || path.join(os.tmpdir(), 'ccm-e2e')
 const PORT = Number(process.env.CCM_E2E_PORT) || 4399
 const DBG = Number(process.env.CCM_E2E_DBG) || 9333
@@ -58,6 +59,7 @@ function macKey(p) {
 }
 
 async function launch(opts = {}) {
+  if (!opts.exe && process.env.CCM_E2E_EXE) opts = { ...opts, exe: process.env.CCM_E2E_EXE }
   for (let i = 0; !opts.keep; i++) {
     try {
       fs.rmSync(TMP, { recursive: true, force: true })
@@ -144,6 +146,20 @@ async function launch(opts = {}) {
     }
     throw new Error('timeout: ' + label)
   }
+  const ui = opts.ui ?? uiGenFromArgs()
+  if (!opts.invite) {
+    await appUp()
+    await evaluate(`localStorage.getItem('ccm.next.invite') || localStorage.setItem('ccm.next.invite', 'closed')`).catch(() => null)
+  }
+  if (ui === 'next') {
+    await appUp()
+    const cur = await evaluate(`localStorage.getItem('ccm.uiGeneration')`).catch(() => null)
+    if (cur !== 'next' || opts.palette) {
+      await evaluate(uiGenScript('next', { palette: opts.palette, motion: opts.motion }))
+      await cmd('Page.reload')
+    }
+    await waitFor(`document.documentElement.dataset.ui === 'next'`, 20000, 'data-ui=next')
+  }
   const stop = () => {
     if (process.platform === 'win32') {
       try { execFileSync('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore' }) } catch {}
@@ -161,4 +177,8 @@ async function launch(opts = {}) {
   return { child, cmd, evaluate, shot, type, key, waitFor, stop, sleep }
 }
 
-module.exports = { launch, sleep, PORT, REPO, OUT, SHELL }
+const selOpen = (el) => `const el = ${el}; if (!el) return null; if (el.getAttribute('aria-expanded') !== 'true') el.click(); let list = null; for (let i = 0; i < 40 && !(list = document.getElementById(el.getAttribute('aria-controls'))); i++) await new Promise((r) => setTimeout(r, 25)); const opts = [...(list?.querySelectorAll('[role=option]') ?? [])]; const label = (o) => [...o.querySelectorAll('span')].map((s) => s.textContent.trim()).filter(Boolean).join(' ');`
+const selOptions = (el) => `(async () => { ${selOpen(el)} const out = opts.map((o) => ({ text: label(o), value: o.dataset.value, selected: o.getAttribute('aria-selected') === 'true' })); if (el.getAttribute('aria-expanded') === 'true') el.click(); return out })()`
+const selPick = (el, test) => `(async () => { ${selOpen(el)} const i = opts.findIndex((o, i) => (${test})(label(o), i, o.dataset.value)); if (i < 0) { el.click(); return false } opts[i].click(); return true })()`
+
+module.exports = { launch, sleep, PORT, REPO, OUT, SHELL, UI: uiGenFromArgs(), selOptions, selPick }

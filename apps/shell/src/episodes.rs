@@ -152,6 +152,14 @@ fn call(app: &AppHandle, channel: &str, args: Value) {
     }
 }
 
+fn disk_alert(app: &AppHandle) {
+    let Some(m) = app.try_state::<crate::disk_map::DiskState>().map(|s| s.0.clone()) else { return };
+    let app = app.clone();
+    spawn("disk-alert-report", move || {
+        m.snap.on_alert(&app, &m);
+    });
+}
+
 fn spawn(name: &str, f: impl FnOnce() + Send + 'static) {
     if let Err(e) = std::thread::Builder::new().name(name.into()).spawn(f) {
         eprintln!("[shell] {name}: {e}");
@@ -178,6 +186,9 @@ pub fn start(app: &AppHandle) {
                 if let Some(r) = episodes_app.try_state::<crate::remote::Remote>() {
                     r.note_episode(&msg);
                 }
+            }
+            if msg.get("type").and_then(Value::as_str) == Some("phone") && parse_phone(&msg).is_some_and(|p| p["reason"] == "disk") {
+                disk_alert(&episodes_app);
             }
             for (channel, args) in calls_for(&msg) {
                 if channel == PHONE_CHANNEL {

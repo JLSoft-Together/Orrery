@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { dropKept, dustIn, dustOn, dustOutAll, gatherDelay, gatherFrames, GATHER_LAYER_MS, hasKept, keepStore, layerBand, layerOf, onDustLeave, scatterFrames, scatterOf, setDustEnabled, travelOf, UNDO_MS } from './dust'
+import { dropKept, dustIn, dustOn, dustOutAll, gatherDelay, gatherFrames, GATHER_LAYER_MS, hasKept, keepStore, layerBand, layerOf, onDustLeave, scatterFrames, scatterOf, scatterTotal, setDustEnabled, travelOf, UNDO_MS } from './dust'
 
 describe('dust layers', () => {
   it('sends left pixels to early layers and right pixels to late ones', () => {
@@ -162,5 +162,12 @@ describe('dust setting', () => {
     onDustLeave(el, done)
     await vi.waitFor(() => expect(done).toHaveBeenCalledOnce())
     el.remove()
+  })
+})
+
+describe('dust timing', () => {
+  it('next scatter ends within 700ms for up to 16 layers, classic keeps its length', () => {
+    expect(scatterTotal(16, true)).toBeLessThanOrEqual(700)
+    expect(scatterTotal(16, false)).toBe(1000 + 15 * 24)
   })
 })

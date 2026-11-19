@@ -3,6 +3,7 @@ import path from 'node:path'
 import type { ResKillResult, ResKillTarget, ResourceReport } from '@ccm/shared'
 import { DESK_ERRORS, DIAG_MAX, type McpDeskCall, type McpDeskError, type McpDeskResult } from '../../../packages/shared/src/mcpDesk'
 import { isInsideOrSame } from './agentData/fsTree'
+import type { DiskDeskCall } from './diskMap/agent'
 import { SHOT_MAX_BYTES } from './capture/files'
 import type { AgentRenderOutcome } from './layout/ipc'
 import type { LayoutDevice } from './layout/types'
@@ -27,6 +28,7 @@ export interface DeskDeps {
   platform?: NodeJS.Platform
   telegram?: () => TelegramApi | null
   confirm?: (spec: { message: string; detail: string; buttons: string[] }) => Promise<number>
+  disk?: (call: DiskDeskCall) => Promise<McpDeskResult>
 }
 
 export const LAYOUT_PRESETS: Record<'phone' | 'tablet', LayoutDevice> = {
@@ -147,6 +149,10 @@ export function createDesk(deps: DeskDeps): (call: McpDeskCall) => Promise<McpDe
     if (call.tool === 'preview_layout') return previewLayout(call)
     if (call.tool === 'free_port') return freePort(call)
     if (call.tool === 'telegram_notify' || call.tool === 'telegram_send' || call.tool === 'telegram_receive') return telegram(call)
+    if (call.tool === 'disk_search' || call.tool === 'disk_usage' || call.tool === 'disk_propose_delete') {
+      if (!deps.disk) return { ok: false, error: 'unavailable' }
+      return deps.disk(call).catch((): McpDeskResult => ({ ok: false, error: 'failed' }))
+    }
     if (call.tool === 'list_servers') {
       const report = deps.report()
       if (!report) return { ok: false, error: 'no-report' }

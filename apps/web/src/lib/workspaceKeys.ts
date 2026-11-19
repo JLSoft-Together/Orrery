@@ -11,6 +11,7 @@ export type WorkspaceAction =
   | { t: 'swap'; dir: FocusDir }
   /** Jump to the next pane whose agent waits for the user (or finished unseen). */
   | { t: 'attention' }
+  | { t: 'asked' }
   /** ⌘P on macOS, Ctrl+Shift+P elsewhere: Ctrl+P is shell history. */
   | { t: 'quickOpen' }
   /** Sidebar → Explorer (⇧⌘E / Ctrl+Shift+E, as in VS Code). */
@@ -38,6 +39,10 @@ export type WorkspaceAction =
   | { t: 'dropTerm' }
   /** Go to project (⌃⌥P on macOS, Ctrl+Alt+P elsewhere); pressed again while held it steps the list, Shift steps back. */
   | { t: 'projects'; back: boolean }
+  | { t: 'groupFocus'; dir: 'left' | 'right' }
+  | { t: 'groupMove'; dir: 'left' | 'right' }
+  | { t: 'addGroup' }
+  | { t: 'detachTab' }
 
 /** Chords that still work while focus is in the drop-down terminal: they open global UI, never touch the pane behind it. */
 export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'mission', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
@@ -49,9 +54,15 @@ const PAGES: Record<string, 1 | -1> = { PageUp: -1, PageDown: 1 }
  * Windows Terminal's defaults (iTerm / Terminal.app on macOS), matched on `code` so Vietnamese IMEs and other
  * layouts keep working. Chosen to stay off the keys Claude Code and shells use (Ctrl+letter, Alt+letter).
  */
-export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boolean): WorkspaceAction | null {
+export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boolean, groups = false, next = false): WorkspaceAction | null {
   if (e.type !== 'keydown' || e.isComposing) return null
   const { ctrlKey: ctrl, shiftKey: shift, altKey: alt, metaKey: meta, code } = e
+  const side = code === 'ArrowLeft' ? 'left' : code === 'ArrowRight' ? 'right' : null
+  if (ctrl && alt && !meta && !e.getModifierState?.('AltGraph')) {
+    if (code === 'KeyG' && !shift) return { t: 'addGroup' }
+    if (code === 'KeyQ' && !shift) return { t: 'asked' }
+    if (side && groups) return shift ? { t: 'groupMove', dir: side } : { t: 'groupFocus', dir: side }
+  }
   const digit = /^Digit([1-9])$/.exec(code)
   if (code === 'F11' && shift && !ctrl && !alt && !meta) return { t: 'bookmarks' }
   if (code === 'Backquote' && ctrl && !shift && !alt && !meta) return { t: 'dropTerm' }
@@ -61,6 +72,7 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
     if (ctrl && alt && !meta && !shift && code === 'KeyN') return { t: 'notes' }
     if (ctrl && alt && !meta && code === 'KeyP') return { t: 'projects', back: shift }
     if (!meta || ctrl) return null
+    if (next && code === 'KeyT' && alt && !shift) return { t: 'detachTab' }
     if (code === 'KeyE' && !shift && !alt) return { t: 'recent' }
     if (code === 'KeyT' && !shift && !alt) return { t: 'newTab' }
     if (code === 'KeyT' && shift && !alt) return { t: 'reopen' }
@@ -102,6 +114,7 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
   // AltGr arrives as Ctrl+Alt on Windows; AltGr+digit types characters like @ { [ on many layouts.
   if (ctrl && alt && !shift && digit && !e.getModifierState?.('AltGraph')) return { t: 'tab', index: Number(digit[1]) - 1 }
   if (ctrl && alt && !shift && code === 'KeyN' && !e.getModifierState?.('AltGraph')) return { t: 'notes' }
+  if (next && ctrl && alt && !shift && code === 'KeyT' && !e.getModifierState?.('AltGraph')) return { t: 'detachTab' }
   if (ctrl && alt && code === 'KeyP' && !e.getModifierState?.('AltGraph')) return { t: 'projects', back: shift }
   if (alt && !ctrl && ARROWS[code] && multiPane) return { t: shift ? 'swap' : 'focus', dir: ARROWS[code]! }
   return null

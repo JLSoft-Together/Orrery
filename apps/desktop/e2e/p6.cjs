@@ -32,7 +32,7 @@ const ATT = process.platform === 'darwin' ? META | SHIFT : CTRL | SHIFT
     await waitFor(`${W}.panes.length === 3 && ${W}.panes.every(p => p.state === 'running')`, 25000, 'three shells')
     await sleep(800)
     const groups = await evaluate(`[...document.querySelectorAll('nav[aria-label=Projects] section h3 [data-rail-name]')].map(h => h.textContent.trim())`)
-    check('sidebar groups by project', JSON.stringify(groups) === JSON.stringify([require('node:path').basename(REPO), require('node:path').basename(require('node:os').homedir())]), JSON.stringify(groups))
+    check('sidebar groups by project', JSON.stringify(groups) === JSON.stringify([require('node:path').basename(require('node:path').dirname(require('node:child_process').execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: REPO, encoding: 'utf8' }).trim())),require('node:path').basename(require('node:os').homedir())]), JSON.stringify(groups))
     const rows = await evaluate(`document.querySelectorAll('nav[aria-label=Projects] [data-side-row]').length`)
     check('sidebar lists every pane', rows === 3, String(rows))
     await evaluate(`[...document.querySelectorAll('nav[aria-label=Projects] [data-side-row]')][1].click()`)

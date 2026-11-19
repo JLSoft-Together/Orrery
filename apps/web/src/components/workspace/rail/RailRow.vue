@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { LoaderCircle, Network, Send, X } from 'lucide-vue-next'
 import { usePaneInfo, usePeerSweep } from '../../../composables/usePaneInfo'
 import { openTelegramGlyph, useTelegramLinks, useTelegramTopicUrl } from '../../../composables/useTelegramLinks'
-import { useRailTabStop } from '../../../composables/useRail'
+import { useRailSelected, useRailTabStop } from '../../../composables/useRail'
 import { duration, now as clock } from '../../../lib/format'
 import { isBusyState, needsUser, peerSlot, rowId, rowLines, stateWord, type RailRow, type RailState } from '../../../lib/rail/railModel'
 import { waitDisplay } from '../../../lib/wait'
@@ -22,6 +22,8 @@ const topicUrlOf = useTelegramTopicUrl()
 const telegramGlyphTip = computed(() => (telegram.value ? t(topicUrlOf(props.row.pane) ? 'telegram.connect.openTopic' : 'telegram.connect.linkedTo', { where: telegram.value }) : ''))
 const telegramLabel = computed(() => (telegram.value ? t('telegram.connect.linkedTo', { where: telegram.value }) : ''))
 const stop = computed(() => (isStop(rowId(props.row.key)) ? 0 : -1))
+const isSelected = useRailSelected()
+const selected = computed(() => isSelected(props.row.key))
 
 const word = computed(() => {
   const row = props.row
@@ -113,9 +115,10 @@ const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
 
 <template>
   <div
-    class="group/row relative grid min-h-6 grid-cols-[10px_minmax(0,1fr)_auto_24px] items-center gap-x-2 rounded-inner py-px pr-0.5 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-fast) data-dragging:bg-fill data-drop-on:bg-accent-soft"
+    class="group/row relative grid min-h-6 grid-cols-[10px_minmax(0,1fr)_auto_24px] items-center gap-x-2 rounded-inner py-px pr-0.5 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-fast) data-dragging:bg-fill data-drop-on:bg-accent-soft data-rail-selected:bg-accent-soft data-rail-selected:text-ink data-rail-selected:outline-accent"
     :class="[agentClass, member ? 'pl-12' : 'pl-9 data-drop-on:outline-accent', row.focused ? 'bg-selection text-ink' : 'text-ink-muted hover:bg-fill hover:text-ink']"
     data-rail-row
+    :data-rail-selected="selected ? '' : undefined"
     :data-rail-member="member ? row.tabKey : undefined"
     :data-state="row.state"
     data-rail-drag
@@ -144,7 +147,7 @@ const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
       class="absolute inset-0 cursor-pointer rounded-inner"
       role="treeitem"
       :aria-level="member ? 3 : 2"
-      :aria-selected="row.focused"
+      :aria-selected="row.focused || selected"
       :aria-current="row.focused ? 'true' : undefined"
       :aria-label="label"
       :tabindex="stop"

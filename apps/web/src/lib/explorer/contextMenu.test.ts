@@ -27,6 +27,24 @@ describe('explorerMenu', () => {
     expect(findAction(explorerMenu(row({}), { ...ctx, mac: true }, t), 'trash')?.shortcut).toBe('⌘⌫')
     expect(findAction(explorerMenu(row({}), ctx, t), 'trash')?.shortcut).toBe('Delete')
   })
+  it('offers the Disk entries on folders only, each when its bridge exists', () => {
+    const both = { ...ctx, disk: { open: true, clean: true } }
+    expect(ids(explorerMenu(row({ directory: true }), both, t))).toEqual(expect.arrayContaining(['disk-open', 'disk-clean']))
+    expect(ids(explorerMenu(row({}), both, t))).not.toContain('disk-open')
+    expect(ids(explorerMenu(row({ directory: true, outOfRoot: true }), both, t))).not.toContain('disk-clean')
+    const onlyClean = ids(explorerMenu(row({ directory: true }), { ...ctx, disk: { open: false, clean: true } }, t))
+    expect(onlyClean).toContain('disk-clean')
+    expect(onlyClean).not.toContain('disk-open')
+    expect(ids(explorerMenu(row({ directory: true }), { ...ctx, disk: { open: false, clean: false } }, t))).toEqual(ids(explorerMenu(row({ directory: true }), ctx, t)))
+  })
+  it('offers Move to another drive on non-root folders inside the project', () => {
+    const ctxMove = { ...ctx, disk: { open: false, clean: false, move: true } }
+    expect(ids(explorerMenu(row({ directory: true }), ctxMove, t))).toContain('disk-move')
+    expect(ids(explorerMenu(row({ directory: true, depth: 0 }), ctxMove, t))).not.toContain('disk-move')
+    expect(ids(explorerMenu(row({}), ctxMove, t))).not.toContain('disk-move')
+    expect(ids(explorerMenu(row({ directory: true, outOfRoot: true }), ctxMove, t))).not.toContain('disk-move')
+    expect(ids(explorerMenu(row({ directory: true }), { ...ctx, disk: { open: true, clean: true } }, t))).not.toContain('disk-move')
+  })
   it('offers Run… on folders and project files only when the Run pane exists', () => {
     const run = { ...ctx, run: true }
     expect(ids(explorerMenu(row({ name: 'pubspec.yaml', path: 'C:\\r\\pubspec.yaml' }), run, t))).toContain('run')

@@ -1,5 +1,5 @@
 // E2E for workspace P1+P2: launch picker, shell pane typing, pane↔session link for claude.
-const { launch, REPO, OUT } = require('./cdp.cjs')
+const { launch, REPO, OUT, UI } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
@@ -18,7 +18,9 @@ const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} 
     await sleep(1500)
 
     // Open the workspace tab through the header button.
-    const clicked = await evaluate(`(() => { const b=[...document.querySelectorAll('header button, header [role=tab]')].find(x=>/Workspace|Terminal/.test(x.textContent)); b?.click(); return !!b })()`)
+    const clicked = UI === 'next'
+      ? await evaluate(`(() => { const b = document.querySelector('[data-next-seg] [data-value="workspace"]'); b?.click(); return !!b })()`)
+      : await evaluate(`(() => { const b=[...document.querySelectorAll('header button, header [role=tab]')].find(x=>/Workspace|Terminal/.test(x.textContent)); b?.click(); return !!b })()`)
     check('workspace tab present', clicked)
     await waitFor(`!!document.querySelector('[data-launch-row]') && ${S}.get('ui').view === 'workspace'`, 10000, 'launch picker')
     await shot('01-empty')

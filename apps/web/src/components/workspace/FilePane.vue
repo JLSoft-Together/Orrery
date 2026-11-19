@@ -3,8 +3,10 @@ let filePanes = 0
 </script>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PaneHeader from '../next/ui/PaneHeader.vue'
+import { useUiGenStore } from '../../stores/uiGen'
 import { Check, ChevronDown, ChevronUp, CircleAlert, Code, Columns2, Copy, Eye, FileText, FileWarning, FolderOpen, GitCommitHorizontal, GitCompare, Info, LayoutTemplate, LoaderCircle, Pencil, Save, Search, Smartphone, SquarePen, TextWrap, X, ListTree, Network, History, WandSparkles, Send } from 'lucide-vue-next'
 import { diskChangeAction, editBlock, inEditor, isEditKey, isSaveKey, isSelectAllKey, type EditBlock } from '../../lib/fileEditor'
 import { isTyping } from '../../lib/shortcuts'
@@ -37,6 +39,7 @@ import { nextStacked } from '../../lib/sideWidth'
 import { desktop } from '../../lib/desktop'
 import type { MenuEntry } from '../../lib/menu'
 import PaneMore from './PaneMore.vue'
+import { PANE_LAYOUT_MENU } from '../../lib/layoutPaneMenu'
 import ProblemBar from './ProblemBar.vue'
 import { declarationQuery, outline, type OutlineItem } from '../../lib/editor/outline'
 import type { SearchQuery } from '../../lib/preview'
@@ -82,6 +85,8 @@ const emit = defineEmits<{
   search: [query: SearchQuery]
 }>()
 
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
 const { t, locale } = useI18n()
 const settings = useSettingsStore()
 const FLASH_MS = 1200
@@ -1296,6 +1301,7 @@ function applyFormat(): void {
   if (after != null) void applyBuffer(after)
 }
 
+const layoutMenu = inject(PANE_LAYOUT_MENU, null)
 const headMore = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = []
   const text = view.value?.kind === 'text'
@@ -1326,10 +1332,13 @@ const headMore = computed<MenuEntry[]>(() => {
   out.push({ id: 'copy', label: t('workspace.viewer.copyPath'), icon: Copy })
   out.push({ id: 'reveal', label: isMac ? t('workspace.viewer.revealMac') : t('workspace.viewer.reveal'), icon: FolderOpen })
   out.push({ id: 'openEditor', label: t('workspace.viewer.openEditor'), icon: SquarePen })
+  const layout = (isNext.value && props.paneKey ? layoutMenu?.entries(props.paneKey) : null) ?? []
+  if (layout.length) out.push({ separator: true }, ...layout)
   return out
 })
 
 function pickHead(id: string): void {
+  if (props.paneKey && layoutMenu?.pick(props.paneKey, id)) return
   if (id === 'diff') showDiff()
   else if (id.startsWith('layout:')) layoutMode.value = id.slice('layout:'.length) as LayoutMode
   else if (id === 'fwp') fwpOpen.value = !fwpOpen.value
@@ -1359,8 +1368,8 @@ function pickHead(id: string): void {
 </script>
 
 <template>
-  <section ref="root" tabindex="-1" class="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-well shadow-card outline-none" :aria-label="t('workspace.viewer.title')" @focusout="onFocusOut">
-    <div class="ccm-material @container flex h-9 min-w-0 shrink-0 items-center gap-0.5 border-b border-line px-2 select-none" role="toolbar" :aria-label="t('workspace.viewer.toolbar')" data-pane-head>
+  <section ref="root" tabindex="-1" class="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-well shadow-card outline-none" :class="isNext ? 'ccm-next-viewer' : ''" :aria-label="t('workspace.viewer.title')" @focusout="onFocusOut">
+    <component :is="isNext ? PaneHeader : 'div'" class="@container select-none" :class="isNext ? 'ccm-next-head ccm-next-viewer-head' : 'ccm-material flex h-9 min-w-0 shrink-0 items-center gap-0.5 border-b border-line px-2'" role="toolbar" :aria-label="t('workspace.viewer.toolbar')" data-pane-head>
       <FileText :size="15" class="mr-1 shrink-0 text-agent-file @max-[300px]:mr-0" aria-hidden="true" />
       <span class="min-w-0 truncate text-xs font-semibold text-ink" :title="view?.path ?? path">{{ name }}</span>
       <span v-if="dirty" class="ml-1 shrink-0 text-xs leading-none text-warning" :title="t('editor.unsaved')" data-file-dirty>
@@ -1442,7 +1451,7 @@ function pickHead(id: string): void {
       </template>
       <PaneMore class="@max-[300px]:min-w-6 @max-[300px]:px-1" :entries="headMore" :label="t('workspace.paneHead.more')" @pick="pickHead" />
       <slot name="end" />
-    </div>
+    </component>
 
     <Transition name="ccm-fade">
       <div v-if="findOpen && showSource" class="ccm-material flex h-9 shrink-0 items-center gap-1 border-b border-line px-2" role="search">

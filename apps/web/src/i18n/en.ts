@@ -24,6 +24,7 @@ import v52 from './workspace-v52'
 import footerV92 from './footer-v92'
 import themeV95 from './theme-v95'
 import themeV96 from './theme-v96'
+import mistV102 from './mist-v102'
 import tabsV93 from './tabs-v93'
 import launcherV93 from './launcher-v93'
 import v52Pane from './workspace-v52-pane'
@@ -34,6 +35,9 @@ import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
 import paneV92 from './pane-v92'
+import splitV97 from './split-v97'
+import railSelectV98 from './rail-select-v98'
+import groupsV99 from './groups-v99'
 import explorerV93 from './explorer-v93'
 import paneV93 from './pane-v93'
 import boardV95 from './board-v95'
@@ -95,11 +99,22 @@ import devtoolsV75 from './devtools-v75'
 import promptSearchV75 from './promptsearch-v75'
 import sessionToolsV89 from './session-tools-v89'
 import bugReportV90 from './bug-report-v90'
+import clickMenuV100 from './click-menu-v100'
+import diskV101 from './disk-v101'
+import diskCleanV101 from './disk-clean-v101'
+import diskOrganizeV101 from './disk-organize-v101'
+import diskAppsV101 from './disk-apps-v101'
 
 export default {
   ...v25.en,
+  ...clickMenuV100.en,
+  ...diskV101.en,
+  ...diskCleanV101.en,
+  ...diskOrganizeV101.en,
+  ...diskAppsV101.en,
   ...themeV95.en,
   ...themeV96.en,
+  ...mistV102.en,
   ...footerV92.en,
   ...tabsV93.en,
   ...launcherV93.en,
@@ -113,6 +128,9 @@ export default {
   ...monitorV53.en,
   ...sessionV53.en,
   ...paneV92.en,
+  ...splitV97.en,
+  ...railSelectV98.en,
+  ...groupsV99.en,
   ...explorerV93.en,
   ...paneV93.en,
   ...boardV95.en,
@@ -728,6 +746,7 @@ export default {
       wsReopen: 'Reopen the last closed pane or tab',
       wsZoom: 'Zoom the focused pane to fill the tab, or show all panes again',
       wsAttention: 'Jump to the next pane that needs you',
+      wsAsked: 'Jump to the next pane waiting for an answer',
       wsCycle: 'Next tab of this project (add Shift to go back)',
       wsMoveTab: 'Move the tab left / right',
       wsTab: 'Tab 1–9 of this project',
@@ -743,6 +762,9 @@ export default {
       wsNavBack: 'Back to the previous location',
       wsNavForward: 'Forward to the next location',
       wsNotes: 'Project notes',
+      wsGroupAdd: 'Add another project as a group',
+      wsGroupFocus: 'Focus the project group beside it',
+      wsGroupMove: 'Move the project group left / right',
       wsProjects: 'Go to project',
       wsDropTerm: 'Drop-down terminal',
       wsExplorer: 'Show the file explorer',

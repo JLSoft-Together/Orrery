@@ -1,7 +1,11 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
+if (UI === 'next') {
+  console.log('SKIP v91-themes: classic themes only; next palettes are covered by v102-next.cjs and next/palettes.test.ts')
+  process.exit(0)
+}
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const results = []

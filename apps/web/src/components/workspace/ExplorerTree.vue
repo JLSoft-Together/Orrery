@@ -14,12 +14,14 @@ import {
   FileText,
   Folder,
   FolderOpen,
+  HardDrive,
   FolderPlus,
   GitCompare,
   Languages,
   Link2,
   Package,
   PackageSearch,
+  Eraser,
   Pencil,
   Play,
   Plus,
@@ -36,6 +38,12 @@ import { hasRun } from '../../lib/desktop'
 import { hasApkSize } from '../../lib/apkSize'
 import { hasI18nScan, hasPreview } from '../../lib/preview'
 import { hasLibsCheck } from '../../lib/libVersions'
+import { formatSize, hasDiskMap, hasDiskSizes } from '../../lib/diskMap'
+import { hasDiskClean } from '../../lib/diskClean'
+import { hasDiskMove } from '../../lib/diskMove'
+import { useDiskSizes } from '../../composables/useDiskSizes'
+import { useDiskCleanStore } from '../../stores/diskClean'
+import { useDiskMapStore } from '../../stores/diskMap'
 import { warmOnIntent } from '../../lib/layoutPreview'
 import { explorerKey, explorerMenu, type ExplorerAction } from '../../lib/explorer/contextMenu'
 import { setDragPath } from '../../lib/explorer/dragPath'
@@ -74,7 +82,7 @@ const emit = defineEmits<{
   action: [id: ExplorerAction, row: TreeRow]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const explorer = useExplorerStore()
 const runMarks = useRunMarks(() => explorer.root)
 const checks = useChecksStore()
@@ -126,6 +134,16 @@ const windowed = computed(() => {
   const last = Math.min(rows.value.length, Math.ceil((scrollTop.value + viewport.value) / ROW) + OVERSCAN)
   return rows.value.slice(first, last).map((row, i) => ({ row, index: first + i, icon: atom.value && row.depth > 0 && !row.outOfRoot ? atomIcon(row) : null }))
 })
+
+const diskSizes = useDiskSizes(() => windowed.value.filter((w) => w.row.directory && !w.row.outOfRoot).map((w) => w.row.path))
+const diskClean = useDiskCleanStore()
+const diskMap = useDiskMapStore()
+watch(() => [diskClean.report, diskMap.report], diskSizes.refresh)
+const sizeText = (row: TreeRow): string => {
+  if (!row.directory || row.outOfRoot) return ''
+  const n = diskSizes.sizeOf(row.path)
+  return n === null ? '' : formatSize(n, locale.value)
+}
 
 const rootListed = computed(() => !!explorer.root && explorer.state.listings.has(explorer.root))
 const failed = computed(() => explorer.openDirs.some((d) => explorer.state.errors.has(d)))
@@ -191,11 +209,14 @@ const MENU_ICONS: Partial<Record<string, typeof File>> = {
   'apk-size': Package,
   strings: Languages,
   'lib-updates': PackageSearch,
+  'disk-open': HardDrive,
+  'disk-clean': Eraser,
+  'disk-move': HardDrive,
 }
 const withIcons = (list: MenuEntry[]): MenuEntry[] => list.map((e) => (isSeparator(e) ? e : { ...e, icon: MENU_ICONS[e.id], children: e.children && withIcons(e.children) }))
 const compareCtx = (row: TreeRow) => (hasPreview ? { selected: props.compareSel ?? null, self: !!props.compareSel && samePath(props.compareSel.path, row.path) } : undefined)
 const menuFor = (row: TreeRow): MenuEntry[] =>
-  withIcons(explorerMenu(row, { mac: isMac, repo: !!props.repo, changed: !!gitKind(row), run: hasRun, compare: compareCtx(row), apk: hasApkSize, strings: hasI18nScan, libs: hasLibsCheck }, (k, p) => t(k, p ?? {})))
+  withIcons(explorerMenu(row, { mac: isMac, repo: !!props.repo, changed: !!gitKind(row), run: hasRun, compare: compareCtx(row), apk: hasApkSize, strings: hasI18nScan, libs: hasLibsCheck, disk: { open: hasDiskSizes && diskSizes.sizeOf(row.path) !== null, clean: hasDiskClean && hasDiskMap, move: hasDiskMove && hasDiskMap } }, (k, p) => t(k, p ?? {})))
 
 const menu = ref<{ at: DOMRect; row: TreeRow; trigger: HTMLElement | null } | null>(null)
 
@@ -398,6 +419,7 @@ const ACTION = 'inline-flex size-[18px] shrink-0 cursor-pointer items-center jus
             data-row-name
             >{{ row.name }}</span
           >
+          <span v-if="sizeText(row)" class="shrink-0 text-2xs text-ink-muted tabular-nums" data-row-size>{{ sizeText(row) }}</span>
           <GitCompare v-if="compareSel && samePath(compareSel.path, row.path)" :size="12" class="shrink-0 text-accent-ink" :title="t('workspace.explorer.menu.compareSelected')" aria-hidden="true" data-compare-selected />
           <span v-if="compareSel && samePath(compareSel.path, row.path)" class="sr-only">, {{ t('workspace.explorer.menu.compareSelected') }}</span>
           <RunProjectMark v-if="runMark(row)" :project="runMark(row)!.project" :module="runMark(row)!.module" />

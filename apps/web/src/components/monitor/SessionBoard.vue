@@ -64,7 +64,7 @@ const empty = computed(() => connection.hasData && terminals.list.length === 0)
         :key="lane.key"
         :aria-labelledby="`board-lane-${lane.key}`"
         :data-board-lane="lane.key"
-        class="flex min-w-0 flex-col gap-2 self-start rounded-card p-2"
+        class="mist-lane flex min-w-0 flex-col gap-2 self-start rounded-card p-2"
         :class="lane.needs > 0 ? 'ccm-board-needs' : 'bg-raised'"
       >
         <h3 :id="`board-lane-${lane.key}`" class="ccm-label flex items-center gap-1.5 px-0.5 text-xs font-semibold" :class="lane.needs > 0 ? 'text-warning' : 'text-ink-muted'">
@@ -101,7 +101,7 @@ const empty = computed(() => connection.hasData && terminals.list.length === 0)
           v-else
           :aria-labelledby="`board-col-${c.key}`"
           :data-board-column="c.key"
-          class="flex min-w-0 flex-col gap-2 rounded-card p-2"
+          class="mist-lane flex min-w-0 flex-col gap-2 rounded-card p-2"
           :class="c.key === 'needs' && c.ids.length > 0 ? 'ccm-board-needs' : 'bg-raised'"
         >
           <h3 :id="`board-col-${c.key}`" class="ccm-label flex items-center gap-1.5 px-0.5 text-xs font-semibold" :class="c.key === 'needs' && c.ids.length > 0 ? 'text-warning' : 'text-ink-muted'">

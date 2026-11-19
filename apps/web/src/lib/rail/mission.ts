@@ -146,7 +146,7 @@ export type MissionDrop =
 
 export function missionDrop(src: MissionDragSource, target: MissionDropTarget | null): { drop: MissionDrop | null; blocked: boolean } {
   if (!target) return { drop: null, blocked: false }
-  if (target.section !== src.section) return { drop: null, blocked: true }
+  if (target.section !== src.section && target.kind === 'slot') return { drop: null, blocked: true }
   if (target.kind === 'slot') return { drop: src.kind === 'tile' && !src.alone ? { kind: 'detach', paneKey: src.paneKey } : null, blocked: false }
   if (target.tabKey === src.tabKey) return { drop: null, blocked: false }
   return {

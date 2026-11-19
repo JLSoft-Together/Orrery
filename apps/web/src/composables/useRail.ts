@@ -2,7 +2,7 @@ import { computed, effectScope, inject, ref, type InjectionKey } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TerminalSession } from '@ccm/shared'
 import { hasRun } from '../lib/desktop'
-import { buildRail, type RailSession } from '../lib/rail/railModel'
+import { buildRail, groupTone, type RailSession } from '../lib/rail/railModel'
 import { loadRailOrder, pinAt, saveRailOrder } from '../lib/rail/railOrder'
 import { runBadge, type RunBadge } from '../lib/runUi'
 import { shellTitle } from '../lib/sidebarRows'
@@ -72,7 +72,8 @@ function createRail() {
     return (cluster?.tabKeys ?? []).filter((k) => k !== tabKey).map((k) => ({ key: k, title: tabTitleOf(k) }))
   }
 
-  return { clusters, order, move, runOf, clusterOfTab, sameProject, tabTitleOf, projectTabs }
+  const toneOf = (dir: string, tone?: number): number => groupTone(dir, factsOf, tone)
+  return { clusters, order, move, runOf, clusterOfTab, sameProject, tabTitleOf, projectTabs, toneOf }
 }
 
 export const RAIL_TAB_STOP: InjectionKey<(id: string) => boolean> = Symbol('railTabStop')
@@ -80,6 +81,20 @@ export const RAIL_TAB_STOP: InjectionKey<(id: string) => boolean> = Symbol('rail
 export function useRailTabStop(): (id: string) => boolean {
   return inject(RAIL_TAB_STOP, () => true)
 }
+
+export const RAIL_SELECTED: InjectionKey<(rowKey: string) => boolean> = Symbol('railSelected')
+
+export function useRailSelected(): (rowKey: string) => boolean {
+  return inject(RAIL_SELECTED, () => false)
+}
+
+export interface RailProjectDrag {
+  key: string
+  dir: string | null
+  name: string
+}
+
+export const RAIL_PROJECT_DRAG: InjectionKey<(e: PointerEvent, src: RailProjectDrag, el: HTMLElement) => void> = Symbol('railProjectDrag')
 
 let shared: ReturnType<typeof createRail> | undefined
 

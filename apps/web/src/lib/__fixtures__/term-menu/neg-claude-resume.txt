@@ -1,0 +1,19 @@
+ ▐▛███▛█   Claude Code v2.1.318
+▝▜██████▀  Haiku 5.5 · Claude Team
+ ▝▝   ▝▝   ~\AppData\Local\Temp\claude\0f0ce96d9ef846ae\a7e0d3ef-1718-4b6b-b855-12d1b84f1e41\scratchpad\w…
+
+
+❯ /resume
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Resume session
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ ⌕ Search…                                                                                              │
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+    proj
+
+  ❯ /model
+    39 seconds ago · HEAD · 10.4KB
+
+    Ctrl+A to show all projects · Ctrl+B to only show current branch · Space to preview · Ctrl+R to rename ·
+    Type to search · Esc to cancel

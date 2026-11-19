@@ -25,6 +25,7 @@ import v52 from './workspace-v52'
 import footerV92 from './footer-v92'
 import themeV95 from './theme-v95'
 import themeV96 from './theme-v96'
+import mistV102 from './mist-v102'
 import tabsV93 from './tabs-v93'
 import launcherV93 from './launcher-v93'
 import v52Pane from './workspace-v52-pane'
@@ -35,6 +36,9 @@ import v52Mission from './workspace-v52-mission'
 import monitorV53 from './monitor-v53'
 import sessionV53 from './session-v53'
 import paneV92 from './pane-v92'
+import splitV97 from './split-v97'
+import railSelectV98 from './rail-select-v98'
+import groupsV99 from './groups-v99'
 import explorerV93 from './explorer-v93'
 import paneV93 from './pane-v93'
 import boardV95 from './board-v95'
@@ -96,11 +100,22 @@ import devtoolsV75 from './devtools-v75'
 import promptSearchV75 from './promptsearch-v75'
 import sessionToolsV89 from './session-tools-v89'
 import bugReportV90 from './bug-report-v90'
+import clickMenuV100 from './click-menu-v100'
+import diskV101 from './disk-v101'
+import diskCleanV101 from './disk-clean-v101'
+import diskOrganizeV101 from './disk-organize-v101'
+import diskAppsV101 from './disk-apps-v101'
 
 const vi: typeof en = {
   ...v25.vi,
+  ...clickMenuV100.vi,
+  ...diskV101.vi,
+  ...diskCleanV101.vi,
+  ...diskOrganizeV101.vi,
+  ...diskAppsV101.vi,
   ...themeV95.vi,
   ...themeV96.vi,
+  ...mistV102.vi,
   ...footerV92.vi,
   ...tabsV93.vi,
   ...launcherV93.vi,
@@ -114,6 +129,9 @@ const vi: typeof en = {
   ...monitorV53.vi,
   ...sessionV53.vi,
   ...paneV92.vi,
+  ...splitV97.vi,
+  ...railSelectV98.vi,
+  ...groupsV99.vi,
   ...explorerV93.vi,
   ...paneV93.vi,
   ...boardV95.vi,
@@ -729,6 +747,7 @@ const vi: typeof en = {
       wsReopen: 'Mở lại pane hoặc tab vừa đóng',
       wsZoom: 'Phóng to pane đang chọn cho đầy tab, hoặc hiện lại mọi pane',
       wsAttention: 'Tới pane tiếp theo đang cần bạn',
+      wsAsked: 'Tới pane tiếp theo đang chờ trả lời',
       wsCycle: 'Tab kế tiếp của dự án này (thêm Shift để lùi)',
       wsMoveTab: 'Chuyển tab sang trái / phải',
       wsTab: 'Tab 1–9 của dự án này',
@@ -744,6 +763,9 @@ const vi: typeof en = {
       wsNavBack: 'Quay lại vị trí trước',
       wsNavForward: 'Tới vị trí sau',
       wsNotes: 'Ghi chú dự án',
+      wsGroupAdd: 'Thêm project khác thành nhóm',
+      wsGroupFocus: 'Chuyển focus sang nhóm project bên cạnh',
+      wsGroupMove: 'Chuyển nhóm project sang trái / phải',
       wsProjects: 'Chuyển tới dự án',
       wsDropTerm: 'Terminal thả xuống',
       wsExplorer: 'Hiện cây thư mục (Explorer)',

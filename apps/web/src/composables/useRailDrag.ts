@@ -166,5 +166,5 @@ export function useRailDrag(nav: Ref<HTMLElement | null>, labels: RailDragLabels
     window.removeEventListener('pointercancel', onCancel)
     window.removeEventListener('keydown', onKey, true)
   })
-  return { onDown }
+  return { onDown, cancel: () => finish(false) }
 }

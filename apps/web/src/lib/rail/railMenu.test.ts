@@ -28,7 +28,7 @@ describe('projectMenu', () => {
   })
   it('no DeepSeek without the feature flag', () => {
     expect(kids(projectMenu(project({ deepseek: false, viewers: { file: false, changes: false, log: false } }), t), 'new')).toEqual(['new:claude', 'new:codex', 'new:shell', 'new:browser'])
-    expect(kids(rowMenu(row({ deepseek: undefined }), t), 'split-down')).toEqual(['split:col:claude', 'split:col:codex', 'split:col:shell', 'split:col:browser'])
+    expect(kids(rowMenu(row({ deepseek: undefined }), t), 'split-down')).toEqual(['split:col:claude', 'split:col:codex', 'split:col:shell', 'split:col:browser', 'split:col:project'])
   })
   it('layouts: save always, manage + saved ones when any', () => {
     expect(kids(projectMenu(project(), t), 'layouts')).toEqual(['layout-save'])
@@ -81,7 +81,7 @@ describe('rowMenu', () => {
     expect(ids(m)).toEqual([
       'focus', '-', 'split-right', 'split-down', '-', 'rename-tab', 'move-to', 'move-out', '-', 'copy-cwd', 'explorer', 'monitor', '-', 'close', 'close-others',
     ])
-    expect(kids(m, 'split-right')).toEqual(['split:row:claude', 'split:row:codex', 'split:row:deepseek', 'split:row:shell', 'split:row:browser'])
+    expect(kids(m, 'split-right')).toEqual(['split:row:claude', 'split:row:codex', 'split:row:deepseek', 'split:row:shell', 'split:row:browser', 'split:row:project'])
     expect(kids(m, 'split-down')[0]).toBe('split:col:claude')
   })
   it('Show in Monitor only for agent rows, disabled until linked', () => {

@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT } = require('./cdp.cjs')
+const { launch, OUT, UI } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const T = `${S}.get('terminals')`
@@ -115,7 +115,7 @@ async function run(app) {
   await evaluate(`${W}.setRatio('${tab}', '', 0.5)`)
   await sleep(400)
 
-  await click(`[data-side-pane="${first}"]`, 'right')
+  await click(UI === 'next' ? `[data-live-rail] [data-drag-pane="${first}"]` : `[data-side-pane="${first}"]`, 'right')
   await waitFor(`!!document.querySelector('[data-context-menu]')`, 3000, 'row menu')
   check('A5: menu opened by mouse highlights no item', await evaluate(`!document.activeElement?.matches('[data-menu-id]') && !!document.activeElement?.closest('[data-context-menu]')`), await evaluate(`document.activeElement?.outerHTML.slice(0, 80) ?? ''`))
   await shot('v52-03-menu-mouse')
@@ -143,7 +143,7 @@ async function run(app) {
   await sleep(500)
   check('F1: focusing another pane of the tab unzooms', !(await evaluate(`${W}.tabOf('${first}').zoom`)) && (await visiblePanes()).length === 2)
 
-  const dimItem = `document.querySelector('[data-context-menu] [data-menu-id="dim"]')`
+  const dimItem = UI === 'next' ? `document.querySelector('[data-glass-menu] [data-menu-id="dim"]')` : `document.querySelector('[data-context-menu] [data-menu-id="dim"]')`
   await click('[data-more-views]')
   await waitFor(`!!${dimItem}`, 3000, 'dim menu item').catch(() => {})
   check('F6: dim toggle is in the header menu for a split tab', await evaluate(`!!${dimItem}`))

@@ -39,7 +39,7 @@ function onKey(e: KeyboardEvent): void {
       <StatusIcon status="working" :size="14" />
       <span class="tabular-nums">{{ t('boardV95.summary.running', { n: running }, running) }},{{ ' ' }}<span :class="needs ? 'text-warning' : 'text-ink-muted'"><Hand v-if="needs" :size="14" aria-hidden="true" class="mr-1 inline align-[-2px]" />{{ needs ? t('boardV95.summary.waiting', { n: needs }) : t('boardV95.summary.noneWaiting') }}</span></span>
     </h2>
-    <div ref="tabs" role="tablist" :aria-label="t('monitorV88.modes')" class="inline-flex items-center gap-0.5 rounded-control bg-raised p-0.5" @keydown="onKey">
+    <div ref="tabs" role="tablist" :aria-label="t('monitorV88.modes')" class="mist-seg inline-flex items-center gap-0.5 rounded-control bg-raised p-0.5" @keydown="onKey">
       <button
         v-for="m in MODES"
         :key="m.id"
@@ -53,7 +53,7 @@ function onKey(e: KeyboardEvent): void {
         :aria-keyshortcuts="`Alt+${m.n}`"
         :title="t('monitorV88.modeHint', { n: m.n })"
         class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-inner px-2.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus"
-        :class="ui.monitorMode === m.id ? 'bg-surface text-ink shadow-card' : 'text-ink-muted hover:text-ink'"
+        :class="ui.monitorMode === m.id ? 'mist-seg-on bg-surface text-ink shadow-card' : 'text-ink-muted hover:text-ink'"
         @click="ui.monitorMode = m.id"
       >
         <component :is="m.icon" :size="14" aria-hidden="true" />{{ t(`monitorV88.${m.id}`) }}

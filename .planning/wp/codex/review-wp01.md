@@ -1,0 +1,11 @@
+| mức | file:dòng | vấn đề | đề xuất sửa |
+|---|---|---|---|
+| vừa | `apps/web/src/stores/uiGen.ts:100-106` | Khi chuyển sang next, store ghi đè `--font-sans` và `--font-mono` ở `documentElement`; khi quay classic, vẫn giữ Manrope/JetBrains Mono với tùy chọn `system`, có thể đổi font classic ngoài ngoại lệ cho phép. | Chỉ áp biến font cho next, và khôi phục giá trị classic gốc khi chuyển về classic. |
+| vừa | `apps/web/index.html:14` | Còn comment `// Mirrors...` trong code, trái quy tắc cấm comment. | Bỏ comment này. |
+| thấp | `apps/web/src/components/next/NextShell.vue:27` | Component có màu hex `#` gián tiếp qua class Tailwind `size-[26px]` / `text-[13px]` không phải màu; không thấy màu hex trực tiếp trong component. Màu được khai báo trong token/palette CSS, đúng checklist. | Không cần sửa mục màu. |
+| vừa | `apps/web/src/components/next/ui/GlassDialog.vue:67-68` | `aria-labelledby` bị ràng theo biểu thức `title || $slots.title`; slot title có nhưng prop title không có thì Vue slot object thường truthy, tuy vậy tên accessible được nối đúng id. Dialog không có `aria-describedby` hỗ trợ nội dung phụ, nhưng tiêu chí chỉ yêu cầu aria/focus trap chung. | Không thấy lỗi chắc chắn; cân nhắc `aria-describedby` nếu dialog cần mô tả. |
+| thấp | `.planning/wp/v102-ACCEPTANCE.md:12-25` | Report ghi đã có 8 palette/9 thẻ và test contrast, nhưng checklist yêu cầu kiểm trực tiếp font offline, blur chỉ chrome/lớp nổi, focus trap, tooltip và E2E classic/next; report ghi chưa chạy E2E desktop và không nêu xác nhận font offline. | WP11 xác nhận bằng kiểm tra runtime/E2E các tiêu chí còn thiếu trước khi chốt nghiệm thu. |
+| thấp | `apps/web/src/components/next/ui/GlassMenu.vue:83-85` | `Tab` đóng menu ngay và dựa vào watcher `open=false` để trả focus; không tự chuyển focus sang phần tử kế tiếp như hành vi menu native, có thể gây trải nghiệm bàn phím không nhất quán. | Khi Tab, đóng menu và để focus tiếp tục theo thứ tự DOM; bảo đảm không giành lại focus về trigger. |
+| thấp | `apps/web/index.html:42-48` | Script prepaint chỉ cập nhật `.dark` khi `ui === 'next'`; classic khởi tạo giữ nguyên class theme ban đầu để CSS classic xử lý. Không phát hiện CSS palette/token next thiếu scope `data-ui='next'`, hay đổi `data-theme` khi classic. | Không thấy rủi ro đổi classic từ CSS next; giữ kiểm tra reload classic trong E2E. |
+
+CẦN SỬA

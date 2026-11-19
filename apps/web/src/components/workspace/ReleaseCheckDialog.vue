@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleCheck, CircleHelp, CircleX, ClipboardCheck, FileSearch, FolderOpen, KeyRound, RefreshCw, Send, Stamp, TriangleAlert, X } from 'lucide-vue-next'
 import type { ReleaseCheckResult, ReleaseFinding, ReleaseStatus, ReleaseVerifyResult } from '@ccm/shared'
 import { baseName } from '../../lib/preview'
+import AppSelect from '../AppSelect.vue'
 import { countStatus, findingKey, fixPrompt, groupFindings, releaseCheck, releaseMark, releaseRemember, releaseVerify, withCert } from '../../lib/releaseCheck'
 import { handoffPaneFor } from '../../lib/runUi'
 import { useUiStore } from '../../stores/ui'
@@ -26,6 +27,7 @@ const card = ref<HTMLElement | null>(null)
 let gen = 0
 
 const apps = computed(() => (result.value?.ok ? result.value.apps : []))
+const appOptions = computed(() => apps.value.map((a) => ({ value: a.dir as string | null, label: a.name })))
 const app = computed(() => apps.value.find((a) => a.dir === appDir.value) ?? apps.value[0] ?? null)
 const verifiedFor = ref<string | null>(null)
 const verifyOk = computed(() => (verify.value?.ok && app.value && verifiedFor.value === app.value.dir ? verify.value : null))
@@ -174,16 +176,7 @@ function onKey(e: KeyboardEvent): void {
             </template>
           </div>
           <span class="flex-1" />
-          <select
-            v-if="apps.length > 1"
-            v-model="appDir"
-            class="ccm-field h-7 max-w-48 min-w-0 shrink cursor-pointer text-xs"
-            :aria-label="t('releaseCheck.app')"
-            :title="t('releaseCheck.app')"
-            data-release-app
-          >
-            <option v-for="a in apps" :key="a.dir" :value="a.dir">{{ a.name }}</option>
-          </select>
+          <AppSelect v-if="apps.length > 1" v-model="appDir" :options="appOptions" :label="t('releaseCheck.app')" size="sm" class="max-w-48 shrink" data-release-app />
           <button v-if="app" type="button" class="ccm-btn shrink-0" :title="t('releaseCheck.fillHint')" :disabled="!counts.fail && !counts.warn" data-release-fill @click="fill">
             <Send :size="13" aria-hidden="true" />{{ t('releaseCheck.fill') }}
           </button>

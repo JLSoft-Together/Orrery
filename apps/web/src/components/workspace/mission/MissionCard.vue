@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Columns2, LoaderCircle, TriangleAlert, X } from 'lucide-vue-next'
+import { Columns2, LoaderCircle, MessageCircleQuestion, TriangleAlert, X } from 'lucide-vue-next'
 import { usePaneInfo, usePeerSweeps, type PanePeer } from '../../../composables/usePaneInfo'
 import type { MissionCard, MissionTile } from '../../../lib/rail/mission'
 import { peerSlot, stateWord, type PeerSlot, type RailState } from '../../../lib/rail/railModel'
@@ -12,9 +12,17 @@ import { useAgentStatusStore } from '../../../stores/agentStatus'
 import { isStatusStale, progressPct } from '../../../lib/agentStatus'
 import { now } from '../../../lib/format'
 import { isTerm, useWorkspaceStore, workCwd, type Pane } from '../../../stores/workspace'
+import { useUiGenStore } from '../../../stores/uiGen'
+import { useAgentsStore } from '../../../stores/agents'
+import { contextPctOf } from '../../../lib/provider'
+import Chip from '../../next/ui/Chip.vue'
+import ContextGaugeMini from '../../next/ui/ContextGaugeMini.vue'
 import StatusIcon from '../../StatusIcon.vue'
 import PaneIcon from '../PaneIcon.vue'
 import TabRenameInput from '../TabRenameInput.vue'
+import TermMenuBar from '../TermMenuBar.vue'
+import { useMenuQueueStore } from '../../../stores/menuQueue'
+import type { TermMenuItem } from '../../../lib/termMenu'
 import { tailLines, tileRows, type TileMetrics } from './missionLayout'
 import { dur, ease, flipAll, layoutBox } from './missionMotion'
 
@@ -45,6 +53,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const info = usePaneInfo()
+const isNext = computed(() => useUiGenStore().isNext)
+const agents = useAgentsStore()
 const workspace = useWorkspaceStore()
 const paneOf = (k: string): Pane | undefined => workspace.panes.find((p) => p.key === k)
 const overlap = useOverlapStore()
@@ -101,6 +111,14 @@ const relations = computed<Record<string, string[]>>(() => Object.fromEntries(pr
 const sweeps = usePeerSweeps(() => peers.value)
 const cardWord = computed(() => wordOf({ state: props.card.state, run: null, subagents: props.card.subagents }))
 const lead = computed(() => paneOf(props.card.tiles[0]?.paneKey ?? ''))
+const leadTerm = computed(() => props.card.tiles.map((x) => paneOf(x.paneKey)).find((p): p is Pane => !!p && isTerm(p)) ?? null)
+const modelName = computed(() => (leadTerm.value ? info.modelOf(leadTerm.value.terminalId) : null))
+const ctxPct = computed<number | null>(() => {
+  const id = leadTerm.value?.terminalId
+  const agent = id ? agents.mainOf(id) : undefined
+  return agent ? (contextPctOf(agent) ?? null) : null
+})
+const chipStatus = computed(() => (props.card.state === 'starting' ? undefined : badgeOf(props.card.state)))
 
 const label = computed(() => {
   const n = props.card.tiles.length
@@ -149,6 +167,27 @@ const outputs = computed<Record<string, string>>(() =>
   Object.fromEntries(props.card.tiles.map((x) => [x.paneKey, tailLines(props.snaps[x.paneKey] ?? '', tileRows(props.bodyH, x.box.h, statusOf(x.paneKey) ? { ...METRICS, head: METRICS.head + STATUS_ROW } : METRICS, props.rowCap))])),
 )
 
+const menuQueue = useMenuQueueStore()
+const asks = computed(() =>
+  props.card.tiles
+    .map((x) => menuQueue.entryOf(x.paneKey))
+    .filter((e): e is NonNullable<typeof e> => !!e)
+    .sort((a, b) => a.since - b.since),
+)
+const ask = computed(() => asks.value[0] ?? null)
+const askText = computed(() => (ask.value ? ask.value.question || t(`menuQueue.kind.${ask.value.menu.kind}`) : ''))
+const answering = ref(false)
+async function answer(item: TermMenuItem): Promise<void> {
+  const entry = ask.value
+  if (!entry || answering.value) return
+  answering.value = true
+  try {
+    await menuQueue.answer(entry.paneKey, item)
+  } finally {
+    answering.value = false
+  }
+}
+
 const root = ref<HTMLElement | null>(null)
 const tileEls = (): HTMLElement[] => [...(root.value?.querySelectorAll<HTMLElement>('[data-mission-tile]') ?? [])]
 const boxSig = computed(() => props.card.tiles.map((x) => `${x.paneKey}@${x.box.x},${x.box.y},${x.box.w},${x.box.h}`).join('|'))
@@ -192,8 +231,8 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
 <template>
   <div
     ref="root"
-    class="group/card relative flex min-w-0 origin-top-left cursor-pointer flex-col overflow-hidden rounded-card bg-surface text-left shadow-card"
-    :class="[card.current ? 'ring-2 ring-focus' : '', dragging === 'card' ? 'outline-2 outline-dashed outline-line-strong' : '']"
+    class="group/card relative flex min-w-0 origin-top-left cursor-pointer flex-col overflow-hidden text-left"
+    :class="[isNext ? 'mist-card mist-card-flat mist-mission-card' : 'rounded-card bg-surface shadow-card', card.current ? 'ring-2 ring-focus' : '', dragging === 'card' ? 'outline-2 outline-dashed outline-line-strong' : '']"
     role="group"
     :tabindex="roving ? 0 : -1"
     :aria-label="label"
@@ -208,7 +247,8 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
     @click="emit('open')"
     @contextmenu.prevent.stop="emit('menu', $event)"
   >
-    <div class="flex h-9 shrink-0 items-center gap-2 border-b border-line pr-1.5 pl-2.5" :title="headTip" data-mission-card-head>
+    <div class="flex h-9 shrink-0 items-center gap-2 border-b border-line pr-1.5 pl-2.5"
+      :class="isNext ? 'mist-mission-head' : ''" :title="headTip" data-mission-card-head>
       <kbd
         v-if="index"
         class="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-[4px] px-1 font-sans text-2xs leading-none font-normal text-ink-faint tabular ring-1 ring-line ring-inset"
@@ -236,6 +276,9 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
         @dblclick.stop="onTitleDblClick"
         >{{ card.title }}</span
       >
+      <Chip v-if="isNext && chipStatus && cardWord" :status="chipStatus" :label="cardWord" data-mission-chip />
+      <span v-if="isNext && modelName" class="max-w-24 shrink truncate text-2xs text-ink-faint" :title="modelName" data-mission-model>{{ modelName }}</span>
+      <ContextGaugeMini v-if="isNext && ctxPct !== null" :pct="ctxPct" data-mission-gauge />
       <span
         v-if="card.tiles.length > 1"
         class="inline-flex h-5 shrink-0 items-center gap-1 rounded-inner bg-fill px-1.5 text-2xs text-ink-muted tabular"
@@ -256,7 +299,8 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
         <X :size="13" aria-hidden="true" />
       </button>
     </div>
-    <div class="relative shrink-0 rounded-b-card bg-fill" :style="{ height: `${bodyH}px` }" data-mission-body>
+    <div class="relative shrink-0 bg-fill"
+      :class="isNext ? 'mist-mission-body' : 'rounded-b-card'" :style="{ height: `${bodyH}px` }" data-mission-body>
       <TransitionGroup tag="div" class="absolute inset-[2px]" :css="false" @enter="motion.enter" @leave="motion.leave">
         <button
           v-for="tile in card.tiles"
@@ -358,6 +402,28 @@ onBeforeUnmount(() => clearTimeout(clickTimer))
           />
         </button>
       </TransitionGroup>
+      <div
+        v-if="ask"
+        class="absolute inset-x-1 bottom-1 z-20 flex max-h-[75%] cursor-default flex-col overflow-hidden"
+        :class="isNext ? 'mist-mission-ask' : 'rounded-[7px] bg-surface shadow-control ring-1 ring-line-strong'"
+        role="group"
+        :aria-label="t('menuQueue.answerLabel', { question: askText })"
+        data-no-drag
+        data-mission-ask
+        :data-pane="ask.paneKey"
+        @click.stop
+        @dblclick.stop
+        @contextmenu.stop
+      >
+        <p class="flex shrink-0 items-center gap-1 px-2 pt-1 text-2xs font-medium text-ink">
+          <MessageCircleQuestion :size="11" class="shrink-0 text-st-waiting" aria-hidden="true" />
+          <span class="min-w-0 flex-1 truncate" :title="askText" data-mission-ask-text>{{ askText }}</span>
+          <span v-if="asks.length > 1" class="shrink-0 text-ink-faint tabular" data-mission-ask-more>{{ t('menuQueue.more', { n: asks.length - 1 }) }}</span>
+        </p>
+        <div class="min-h-0 overflow-y-auto">
+          <TermMenuBar :menu="ask.menu" :busy="answering" @pick="answer" />
+        </div>
+      </div>
     </div>
     <Transition name="ccm-fade">
       <span v-if="drop" class="pointer-events-none absolute inset-0 z-10 rounded-card bg-accent-soft ring-2 ring-accent ring-inset" aria-hidden="true" />

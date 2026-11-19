@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PaneHeader from '../next/ui/PaneHeader.vue'
+import { useUiGenStore } from '../../stores/uiGen'
 import { Check, CheckCheck, ChevronRight, FileWarning, GitMerge, Folder, GitBranch, GitCompare, GitGraph, ListTree, RotateCw, SlidersHorizontal, SquareArrowOutUpRight, SquareCheck, SquareMinus, SquarePlus, Undo2 } from 'lucide-vue-next'
 import { absoluteIn, dirOfRel, fileStepKey, groupChanges, type ChangeGroupKey, KIND_CLASS, KIND_LETTER, samePath, scrollSideways, stageState } from '../../lib/changesView'
 import { changesTree, type ChangesTreeRow } from '../../lib/changesTree'
@@ -38,11 +40,12 @@ import type { MenuEntry } from '../../lib/menu'
 import DiffView from './DiffView.vue'
 import DiscardConfirm from './DiscardConfirm.vue'
 import PaneMore from './PaneMore.vue'
+import { PANE_LAYOUT_MENU } from '../../lib/layoutPaneMenu'
 
 const ConflictView = defineAsyncComponent(() => import('./ConflictView.vue'))
 const ImageCompare = defineAsyncComponent(() => import('./ImageCompare.vue'))
 
-const props = withDefaults(defineProps<{ cwd: string; active?: boolean; select?: string }>(), { active: true })
+const props = withDefaults(defineProps<{ cwd: string; paneKey?: string; active?: boolean; select?: string }>(), { active: true })
 const emit = defineEmits<{
   /** Absolute path + line (new side). */
   open: [path: string, line?: number]
@@ -56,6 +59,8 @@ const emit = defineEmits<{
   log: [root: string]
 }>()
 
+const uiGen = useUiGenStore()
+const isNext = computed(() => uiGen.isNext)
 const { t } = useI18n()
 
 const TREE_KEY = 'ccm.workspace.changesTree'
@@ -674,6 +679,7 @@ const countsLabel = (e: ChangeEntry): string => t('workspace.changes.counts', { 
 const rowTabIndex = (key: string): number => (cursor.value ? (cursor.value === key ? 0 : -1) : key === visibleKeys.value[0] ? 0 : -1)
 const MENU_ROW = 'flex h-7 w-full cursor-pointer items-center gap-2 rounded-inner px-2 text-left text-xs text-ink outline-none hover:bg-fill focus-visible:bg-accent focus-visible:text-on-accent'
 
+const layoutMenu = inject(PANE_LAYOUT_MENU, null)
 const headMore = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = [
     { id: 'tree', label: t('workspace.diff.tree'), icon: treeMode.value ? Check : ListTree },
@@ -684,10 +690,13 @@ const headMore = computed<MenuEntry[]>(() => {
   if (unseenCount.value) out.push({ id: 'seen', label: t('linksV80.markSeen'), icon: CheckCheck })
   if (hasLog && repoRoot.value) out.push({ id: 'log', label: t('workspace.log.open'), icon: GitGraph })
   out.push({ id: 'refresh', label: t('workspace.changes.refresh'), icon: RotateCw })
+  const layout = (isNext.value && props.paneKey ? layoutMenu?.entries(props.paneKey) : null) ?? []
+  if (layout.length) out.push({ separator: true }, ...layout)
   return out
 })
 
 function pickHead(id: string): void {
+  if (props.paneKey && layoutMenu?.pick(props.paneKey, id)) return
   if (id === 'tree') treeMode.value = !treeMode.value
   else if (id === 'layout:inline') setOpt('layout', 'inline')
   else if (id === 'layout:split') setOpt('layout', 'split')
@@ -702,10 +711,11 @@ function pickHead(id: string): void {
     ref="rootEl"
     tabindex="-1"
     class="@container flex min-h-0 min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card outline-none"
+    :class="isNext ? 'ccm-next-viewer' : ''"
     :aria-label="t('workspace.changes.title')"
     @keydown="onKey"
   >
-    <div class="ccm-material flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2 select-none" role="toolbar" :aria-label="t('workspace.changes.toolbar')" data-pane-head>
+    <component :is="isNext ? PaneHeader : 'div'" class="select-none" :class="isNext ? 'ccm-next-head ccm-next-viewer-head' : 'ccm-material flex h-9 min-w-0 shrink-0 items-center gap-1 border-b border-line px-2'" role="toolbar" :aria-label="t('workspace.changes.toolbar')" data-pane-head>
       <GitCompare :size="15" class="mr-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
       <span class="shrink-0 text-xs font-semibold text-ink @max-[560px]:sr-only">{{ t('workspace.changes.title') }}</span>
       <span v-if="entries.length" class="shrink-0 rounded-full bg-fill px-1.5 text-2xs tabular text-ink-muted @max-[300px]:hidden">{{ entries.length }}</span>
@@ -847,7 +857,7 @@ function pickHead(id: string): void {
       </div>
       <PaneMore class="@max-[300px]:min-w-6 @max-[300px]:px-1" :entries="headMore" :label="t('workspace.paneHead.more')" @pick="pickHead" />
       <slot name="end" />
-    </div>
+    </component>
 
     <p v-if="notice" class="flex shrink-0 items-center gap-1.5 border-b border-line bg-st-waiting-soft px-3 py-1.5 text-xs text-ink" role="status">
       <FileWarning :size="13" class="shrink-0" aria-hidden="true" />

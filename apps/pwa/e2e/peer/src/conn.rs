@@ -170,6 +170,13 @@ fn pair_finish(desk: &mut Desk, responder: PairResponder, data: &[u8]) -> Vec<Ou
             return vec![Out::Close(close_code(&e))];
         }
     };
+    if desk.deny {
+        desk.deny = false;
+        eprintln!("peer: pairing denied for {}", paired.device_id);
+        let mut outs = json_out(&mut paired.transport, &json!({ "t": "pair.denied" }));
+        outs.push(Out::Close(CLOSE_NORMAL));
+        return outs;
+    }
     eprintln!("peer: paired {} ({})", paired.device_id, paired.name);
     desk.devices.insert(paired.device_id.clone(), paired.device_static);
     let token = match issue_token(&desk.relay_key, &desk.machine, &paired.device_id, now() + TOKEN_TTL) {
@@ -211,7 +218,7 @@ impl Live {
         outs
     }
 
-    fn on_data(&mut self, desk: &Desk, data: &[u8]) -> Vec<Out> {
+    fn on_data(&mut self, desk: &mut Desk, data: &[u8]) -> Vec<Out> {
         let Ok(plain) = self.transport.open(data) else {
             eprintln!("peer: decrypt failed for {}", self.device);
             return vec![Out::Close(CLOSE_HANDSHAKE)];
@@ -224,7 +231,7 @@ impl Live {
         self.respond(desk, message)
     }
 
-    fn respond(&mut self, desk: &Desk, message: Message) -> Vec<Out> {
+    fn respond(&mut self, desk: &mut Desk, message: Message) -> Vec<Out> {
         let mut tail: Vec<(u32, &[u8])> = Vec::new();
         match message.kind {
             Kind::Json => {
@@ -241,7 +248,7 @@ impl Live {
                         extra.push(data::ws_snapshot(desk));
                         json!({
                             "re": id, "ok": true, "machine": desk.machine, "name": NAME,
-                            "version": "2.3.0", "minProto": PROTO, "locale": "vi",
+                            "version": "2.3.0", "minProto": PROTO, "locale": "vi", "control": !desk.view_only,
                         })
                     }
                     Some("ws.get") => {
@@ -273,7 +280,7 @@ impl Live {
                         println!("{}", json!({"ev": "resize", "stream": value.get("stream"), "cols": value.get("cols"), "rows": value.get("rows")}));
                         json!({ "re": id, "ok": true })
                     }
-                    Some("ws.keys") | Some("ws.send") | Some("ws.open") if desk.view_only => json!({ "re": id, "ok": false, "error": "denied" }),
+                    Some("ws.keys") | Some("ws.send") | Some("ws.open") | Some("ws.close") | Some("ws.rename") | Some("ws.move") | Some("ws.reopen") | Some("ws.compact") if desk.view_only => json!({ "re": id, "ok": false, "error": "denied" }),
                     Some("ws.keys") => {
                         println!("{}", json!({"ev": "keys", "keys": value.get("keys"), "paneKey": value.get("paneKey"), "since": value.get("since")}));
                         json!({ "re": id, "ok": true })
@@ -285,6 +292,41 @@ impl Live {
                     Some("ws.open") => {
                         println!("{}", json!({"ev": "open", "preset": value.get("preset"), "cwd": value.get("cwd")}));
                         json!({ "re": id, "ok": true, "paneKey": "p1" })
+                    }
+                    Some("ws.rename") => {
+                        let name = value.get("name").and_then(Value::as_str).map(str::to_owned);
+                        println!("{}", json!({"ev": "rename", "tabKey": value.get("tabKey"), "name": value.get("name")}));
+                        desk.tab_name = name;
+                        desk.rev += 1;
+                        extra.push(data::ws_snapshot(desk));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.move") => {
+                        println!("{}", json!({"ev": "move", "paneKey": value.get("paneKey"), "tabKey": value.get("tabKey")}));
+                        desk.moved = true;
+                        desk.rev += 1;
+                        extra.push(data::ws_snapshot(desk));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.close") => {
+                        println!("{}", json!({"ev": "close", "paneKey": value.get("paneKey")}));
+                        if let Some(key) = data::pane_key(value.get("paneKey").and_then(Value::as_str)) {
+                            desk.hidden.push(key);
+                        }
+                        desk.rev += 1;
+                        extra.push(data::ws_snapshot(desk));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.reopen") => {
+                        println!("{}", json!({"ev": "reopen"}));
+                        desk.hidden.pop();
+                        desk.rev += 1;
+                        extra.push(data::ws_snapshot(desk));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.compact") => {
+                        println!("{}", json!({"ev": "compact", "paneKey": value.get("paneKey")}));
+                        json!({ "re": id, "ok": true })
                     }
                     Some("push.register") => {
                         println!("{}", json!({"ev": "push.register", "kind": value.get("kind"), "endpoint": value.get("endpoint"), "p256dh": value.get("p256dh"), "auth": value.get("auth"), "locale": value.get("locale"), "mute": value.get("mute"), "content": value.get("content")}));

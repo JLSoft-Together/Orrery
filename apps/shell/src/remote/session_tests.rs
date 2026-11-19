@@ -94,6 +94,7 @@ fn hello_gets_the_welcome_then_the_ws_snapshot_then_live_events() {
         assert_eq!(welcome["minProto"], 1);
         assert_eq!(welcome["theme"]["mode"], "dark");
         assert_eq!(welcome["locale"], "en");
+        assert_eq!(welcome["control"], true);
         assert!(welcome.get("relayToken").is_none());
         assert_eq!(recv_json(&mut ws, &mut t).await.unwrap()["t"], "push.config");
         let snap = recv_json(&mut ws, &mut t).await.unwrap();
@@ -125,6 +126,23 @@ fn hello_gets_the_welcome_then_the_ws_snapshot_then_live_events() {
     assert!(format!("{:?}", got[0]).contains("api"));
     rig.remote.enable(false);
     rt.block_on(server.shutdown());
+}
+
+#[test]
+fn hello_reports_control_off_when_the_host_is_view_only() {
+    let rig = rig("ik-view-only", "", false);
+    rig.host.view_only.store(true, std::sync::atomic::Ordering::SeqCst);
+    rig.remote.enable(true);
+    let phone = Phone::new("p");
+    paired(&rig, &phone);
+    let desktop = rig.desktop_key();
+    runtime().block_on(async {
+        let (mut ws, mut t) = session(rig.addr(), &desktop, &phone).await.unwrap();
+        let welcome = hello(&mut ws, &mut t).await;
+        assert_eq!(welcome["ok"], true);
+        assert_eq!(welcome["control"], false);
+    });
+    rig.remote.enable(false);
 }
 
 #[test]

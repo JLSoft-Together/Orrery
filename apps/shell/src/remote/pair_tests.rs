@@ -101,6 +101,8 @@ fn a_denied_confirm_sends_pair_denied_and_saves_nothing() {
     let reply = runtime().block_on(pair(rig.addr(), &qr, &Phone::new("d"))).unwrap();
     assert_eq!(reply["t"], "pair.denied");
     assert!(Devices::load(&rig.dir).list().is_empty());
+    assert_eq!(rig.remote.status()["pairEnded"], "denied");
+    assert!(rig.remote.status()["pairing"].is_null());
     rig.remote.enable(false);
 }
 
@@ -188,7 +190,7 @@ fn a_denied_confirm_over_lan_shows_the_ip_and_sends_pair_denied() {
     assert_eq!(asks.len(), 1);
     assert_eq!((asks[0].via, asks[0].ip.as_deref(), asks[0].platform.as_str()), ("lan", Some("127.0.0.1"), "android"));
     assert!(rig.remote.status()["pairing"].is_null());
-    assert!(rig.remote.status()["pairEnded"].is_null());
+    assert_eq!(rig.remote.status()["pairEnded"], "denied");
     rig.remote.enable(false);
 }
 

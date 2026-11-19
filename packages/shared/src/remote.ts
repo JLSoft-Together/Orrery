@@ -230,7 +230,7 @@ export interface RemoteDevice {
   name: string
   originalName?: string
   alias?: string
-  platform: 'android' | 'ios' | 'web' | 'unknown'
+  platform: 'android' | 'web' | 'unknown'
   pairedAt: number
   lastSeen: number
   via?: 'lan' | 'relay'
@@ -249,7 +249,7 @@ export interface RemoteStatus {
   keepAwake: boolean
   devices: RemoteDevice[]
   pairing?: { exp: number; relay: boolean } | null
-  pairEnded?: 'tries' | null
+  pairEnded?: 'tries' | 'denied' | null
   guardRev?: number
 }
 

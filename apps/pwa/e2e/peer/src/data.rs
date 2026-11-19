@@ -19,6 +19,15 @@ pub fn big_payload() -> Vec<u8> {
     out
 }
 
+pub fn pane_key(key: Option<&str>) -> Option<&'static str> {
+    match key? {
+        "p1" => Some("p1"),
+        "p2" => Some("p2"),
+        "p3" => Some("p3"),
+        _ => None,
+    }
+}
+
 pub fn ws_snapshot(desk: &Desk) -> Value {
     let (rail, wait) = if desk.asked {
         ("asked", Some("Chạy lệnh: npm test? [y/n]"))
@@ -33,18 +42,36 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
     if let Some(text) = wait {
         p1["waitText"] = json!(text);
     }
+    let p2 = json!({"key": "p2", "kind": "term", "preset": "codex", "title": "web codex", "state": "working", "rail": "working", "subagents": 0, "dirty": false, "busy": true, "sessionId": "sess-p2", "terminalId": "t2", "cwd": "D:/Code/web", "branch": "main"});
+    let p3 = json!({"key": "p3", "kind": "term", "preset": "shell", "title": "npm run dev", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p3", "terminalId": "t4", "cwd": "D:/Code/infra", "branch": "infra"});
+    let mut first = Vec::new();
+    let mut second = Vec::new();
+    for (key, pane) in [("p1", p1), ("p2", p2), ("p3", p3)] {
+        if desk.hidden.contains(&key) {
+            continue;
+        }
+        if key == "p3" && desk.moved {
+            second.push(pane);
+        } else {
+            first.push(pane);
+        }
+    }
+    let name = desk.tab_name.clone();
+    let mut tab1 = json!({"key": "tab1", "project": "api", "tree": {"pane": "p1"}, "panes": first});
+    if let Some(name) = name {
+        tab1["name"] = json!(name);
+    } else {
+        tab1["name"] = json!("api");
+    }
+    let mut tabs = vec![tab1];
+    if desk.tab2 {
+        tabs.push(json!({"key": "tab2", "name": "web", "project": "web", "panes": second}));
+    }
     json!({
         "t": "ws.snapshot",
         "rev": desk.rev,
-        "closedCount": 0,
-        "tabs": [{
-            "key": "tab1", "name": "api", "project": "api", "tree": {"pane": "p1"},
-            "panes": [
-                p1,
-                {"key": "p2", "kind": "term", "preset": "codex", "title": "web codex", "state": "working", "rail": "working", "subagents": 0, "dirty": false, "busy": true, "sessionId": "sess-p2", "terminalId": "t2", "cwd": "D:/Code/web", "branch": "main"},
-                {"key": "p3", "kind": "term", "preset": "shell", "title": "npm run dev", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p3", "terminalId": "t4", "cwd": "D:/Code/infra", "branch": "infra"}
-            ]
-        }]
+        "closedCount": desk.hidden.len(),
+        "tabs": tabs
     })
 }
 

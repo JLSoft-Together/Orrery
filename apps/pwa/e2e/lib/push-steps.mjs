@@ -82,6 +82,8 @@ export async function pushSteps(c, page, context, peer) {
     if (JSON.stringify(scopes) !== JSON.stringify(['/app/', scope].sort())) throw new Error(`scopes ${scopes}`)
     await shoot(page, join(env.qaDirPush, `settings-push-on-phone-light-${browserName}.png`))
     await home(page)
+    await c.expectStatus(page, id, 'ready')
+    await wait(1500)
     const before = peer.events.length
     await byId(page, `machine-${id}`).locator('[data-testid="machine-bell"]').click()
     const muted = await peer.waitEvent((e, i) => e.ev === 'push.register' && peer.events.indexOf(e) >= before)

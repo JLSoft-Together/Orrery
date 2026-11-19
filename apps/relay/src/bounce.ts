@@ -100,12 +100,3 @@ export function assetLinks(certs: string | undefined): Response {
   ];
   return new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
 }
-
-export function appleSiteAssociation(appId: string | undefined): Response {
-  const ids = (appId ?? "")
-    .split(",")
-    .map((c) => c.trim())
-    .filter((c) => /^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$/.test(c));
-  const body = { applinks: { details: ids.length > 0 ? [{ appIDs: ids, components: [{ "/": "/o/*" }] }] : [] } };
-  return new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
-}

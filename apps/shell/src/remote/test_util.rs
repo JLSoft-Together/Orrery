@@ -29,6 +29,7 @@ pub type Ws = WebSocketStream<MaybeTlsStream<TcpStream>>;
 pub struct TestHost {
     pub answer: AtomicBool,
     pub env_confirm: AtomicBool,
+    pub view_only: AtomicBool,
     pub asked: Mutex<Vec<String>>,
     pub pair_asks: Mutex<Vec<PairAsk>>,
     pub tap: Mutex<Option<StoreTap>>,
@@ -70,6 +71,9 @@ impl Host for TestHost {
     }
     fn welcome(&self) -> Welcome {
         Welcome { version: "9.9.9".into(), theme: json!({ "mode": "dark", "palette": { "accent": "#0a84ff" } }), locale: "en".into() }
+    }
+    fn control(&self) -> bool {
+        !self.view_only.load(Ordering::SeqCst)
     }
     fn changed(&self, _status: Value) {
         self.changes.fetch_add(1, Ordering::SeqCst);

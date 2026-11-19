@@ -162,8 +162,7 @@ pub fn clean_alias(raw: &str) -> String {
 pub fn known_platform(p: &str) -> &'static str {
     match p {
         "android" => "android",
-        "ios" => "ios",
-        "web" => "web",
+        "web" | "ios" => "web",
         _ => "unknown",
     }
 }
@@ -172,6 +171,10 @@ impl Devices {
     pub fn load(dir: &Path) -> Devices {
         let path = dir.join(DEVICES_FILE);
         let list = std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str::<File>(&t).ok()).map(|f| f.devices).unwrap_or_default();
+        let mut list = list;
+        for d in list.iter_mut().filter(|d| d.platform == "ios") {
+            d.platform = "web".to_owned();
+        }
         Devices { path, list }
     }
 

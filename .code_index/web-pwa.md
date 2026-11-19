@@ -23,6 +23,12 @@
 ## WP-60 (v98)
 - `lib/monitorModel.ts` `formatElapsed(ms, t)` nhận hàm dịch; khoá `duration.{lessThanMinute,minutes,hours,days}` trong `i18n/{vi,en}.ts` (vi `p` `g` `n`, en `m` `h` `d`); gọi từ `SessionCard.vue`, `SessionRow.vue`
 
+## WP-61a (pane actions, hello control, pair denied)
+- `lib/paneActions.ts`: `canCompact` (terminal agent, không shell), `moveTargets`, `cleanTabName` (trim, rỗng = null = tên mặc định, max 100), `renameTab` / `movePane` / `compactPane` / `reopenPane` / `closePane` (-> `{closed, asked}`; `confirm` trong reply = chờ xác nhận trên điện thoại), `viewOnlyFrom(hello, denied)`, `deniedAfterHello` (hello mới có `control !== false` xoá cờ `denied` cũ). `workspaceModel`: `WsTab.customName`, `closedCount(doc)`.
+- `components/PaneActionsSheet.vue` (menu Đổi tên tab / Chuyển pane / Compact / Mở lại / Đóng; compact + close hỏi bằng `askConfirm`), `UndoBar.vue` (Hoàn tác sau đóng = `ws.reopen`, 8 s). `WorkspaceView`: nút `ws-more` (A), `more-<pane>` (B), `TransitionGroup` chips / lưới, `Transition` đổi tên. `stores/hub.ts` `isViewOnly(machine)` (hello `control:false` hoặc `denied`).
+- Desktop: `hello` reply có `control` (`ctx.rs` `Host::control`); `pair.rs` `Pairing::deny` -> status `pairEnded: "denied"`; `apps/web` `RemotePairPanel.vue` phase `denied` + retry. Mất "đang chờ duyệt" là do panel desktop, không phải web app điện thoại (web app đã xử lý `pair.denied`).
+- E2E: `e2e/lib/pane-steps.mjs` (4 bước / browser), peer `tab2` / `viewoff` / `deny`, `ws.rename|move|close|reopen|compact`, hello `control`; ảnh -> `docs/qa/v98/WP-61a`.
+
 ## WP-56a (Web Push)
 - `public/push-sw.js`: SW push riêng mỗi máy (`/app/push-sw.js`, scope `/app/push/<machineId>/`, không precache — `vite/serviceWorker.ts` SKIP): `push` → `showNotification(title, {body, tag, data:{url}})`, bỏ khi có cửa sổ focus + visible (WebKit hiện rồi đóng); `notificationclick` → `postMessage {type:'orrery-open', url}` + focus, hoặc `openWindow`. Vì sao riêng: 1 subscription = 1 `applicationServerKey`, mỗi máy có khoá VAPID riêng.
 - `src/push/webPush.ts`: `pushSupport` (iOS cần standalone), `validKey`, `muteFor` (chuông tắt = 3 nhóm), `registerFields`, `ensureSubscription` / `dropSubscription` (`PushBrowser` để test; `find` kiểm đúng scope, không đụng SW chính).

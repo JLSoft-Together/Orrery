@@ -21,7 +21,7 @@ const lines = computed(() => {
     <span class="head">
       <AgentTile v-if="large" :provider="pane.provider" :size="40" />
       <span class="who">
-        <span class="title">{{ pane.title }}</span>
+        <Transition name="swap" mode="out-in"><span :key="pane.title" class="title">{{ pane.title }}</span></Transition>
         <span v-if="large && pane.branch" class="branch mono"><GitBranch :size="14" :stroke-width="2" aria-hidden="true" /><span class="ellipsis">{{ pane.branch }}</span></span>
       </span>
       <StatusChip v-if="large" :rail="pane.rail" :lost="lost" />
@@ -86,6 +86,21 @@ const lines = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+.swap-enter-active,
+.swap-leave-active {
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.swap-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.swap-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .large .title {

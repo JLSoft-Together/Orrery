@@ -1,5 +1,5 @@
 import { serveApp } from "./app";
-import { appleSiteAssociation, assetLinks, bouncePage } from "./bounce";
+import { assetLinks, bouncePage } from "./bounce";
 import type { Env } from "./env";
 import { WEB } from "./web-assets.generated";
 import { validMachineId, validPaneKey } from "./ids";
@@ -95,7 +95,6 @@ export default {
     }
 
     if (url.pathname === "/.well-known/assetlinks.json" && method === "GET") return assetLinks(env.ANDROID_CERT_SHA256);
-    if (url.pathname === "/.well-known/apple-app-site-association" && method === "GET") return appleSiteAssociation(env.APPLE_APP_ID);
 
     return plain(404, "not found");
   },

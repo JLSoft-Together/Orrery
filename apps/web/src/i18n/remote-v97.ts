@@ -33,6 +33,7 @@ const en = {
       expired: 'The code expired',
       confirming: 'Approve the phone in the dialog on this computer',
       tries: 'Code cancelled after 5 wrong tries',
+      denied: 'You refused the phone. Create a new code to try again.',
       viaRelay: 'Includes the relay: the phone can pair from another network',
       lanOnly: 'LAN only: the phone must be on the same Wi-Fi',
       failed: 'Could not create a code. Check that remote control is on.',
@@ -44,7 +45,7 @@ const en = {
     devices: {
       title: 'Paired phones',
       empty: 'No phones paired yet.',
-      platform: { android: 'Android', ios: 'iPhone', web: 'Web app', unknown: 'Unknown' },
+      platform: { android: 'Android', web: 'Web app (iPhone)', unknown: 'Unknown' },
       paired: 'Paired {when}',
       lastSeen: 'Last seen {when}',
       connected: 'Connected',
@@ -130,6 +131,7 @@ const vi: typeof en = {
       expired: 'Mã đã hết hạn',
       confirming: 'Duyệt điện thoại trong hộp thoại trên máy này',
       tries: 'Mã đã huỷ vì sai 5 lần',
+      denied: 'Đã từ chối điện thoại. Tạo mã mới để thử lại.',
       viaRelay: 'Có relay: điện thoại khác mạng vẫn ghép được',
       lanOnly: 'Chỉ LAN: điện thoại phải cùng Wi-Fi',
       failed: 'Không tạo được mã. Kiểm tra điều khiển từ xa đã bật chưa.',
@@ -141,7 +143,7 @@ const vi: typeof en = {
     devices: {
       title: 'Điện thoại đã ghép nối',
       empty: 'Chưa ghép nối điện thoại nào.',
-      platform: { android: 'Android', ios: 'iPhone', web: 'Web app', unknown: 'Không rõ' },
+      platform: { android: 'Android', web: 'Web app (iPhone)', unknown: 'Không rõ' },
       paired: 'Ghép nối {when}',
       lastSeen: 'Lần cuối {when}',
       connected: 'Đang kết nối',

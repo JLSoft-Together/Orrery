@@ -39,7 +39,7 @@ const view = computed(() => hub.viewOf(props.machine))
 const tabs = computed(() => parseWorkspace(view.value.workspace, parseSessions(view.value.snapshot)))
 const found = computed(() => findPane(tabs.value, props.pane))
 const online = computed(() => hub.linkOf(props.machine).status === 'ready')
-const viewOnly = computed(() => hub.viewOnly[props.machine] === true)
+const viewOnly = computed(() => hub.isViewOnly(props.machine))
 const canType = computed(() => online.value && !viewOnly.value && state.value === 'live')
 const gone = computed(() => found.value === null && (view.value.workspace !== null || waitedOut.value))
 const overlay = computed(() => {

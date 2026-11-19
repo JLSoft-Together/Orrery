@@ -70,6 +70,9 @@ pub trait Host: Send + Sync + 'static {
     fn telegram(&self, _text: &str) {}
     fn tap(&self) -> Option<StoreTap>;
     fn welcome(&self) -> Welcome;
+    fn control(&self) -> bool {
+        true
+    }
     fn changed(&self, status: Value);
     fn awake(&self, on: bool);
     fn ask(&self, action: &str, args: Value) -> Asked;
@@ -316,6 +319,7 @@ impl Ctx {
             "minProto": MIN_PROTO,
             "theme": w.theme,
             "locale": w.locale,
+            "control": self.host.control(),
         });
         let cfg = lock(&self.config);
         if cfg.relay.registered && !cfg.relay.url.is_empty() {

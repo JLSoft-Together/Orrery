@@ -80,6 +80,10 @@ impl Pairing {
         lock(&self.slot).as_ref().filter(|s| now < s.exp).map(|s| (s.exp, s.relay))
     }
 
+    pub fn deny(&self) {
+        *lock(&self.ended) = Some("denied");
+    }
+
     pub fn ended(&self) -> Option<&'static str> {
         *lock(&self.ended)
     }
@@ -262,6 +266,8 @@ pub async fn run(ctx: Arc<Ctx>, mut link: Link, msg1: Vec<u8>, deadline: Instant
     let asked = timeout(CONFIRM_TIMEOUT, tokio::task::spawn_blocking(move || host.confirm_pair(&ask))).await;
     if !matches!(asked, Ok(Ok(true))) {
         ctx.record(&link, "denied", "confirm", Some(&name));
+        ctx.pairing.deny();
+        ctx.changed();
         sec.json(&json!({ "t": "pair.denied" })).await;
         return sec.close(CLOSE_NORMAL, "denied").await;
     }

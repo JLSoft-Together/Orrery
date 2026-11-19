@@ -10,7 +10,7 @@ const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
 const remote = useRemoteStore()
 
-type Phase = 'starting' | 'waiting' | 'confirming' | 'expired' | 'tries' | 'failed' | 'paired'
+type Phase = 'starting' | 'waiting' | 'confirming' | 'expired' | 'tries' | 'denied' | 'failed' | 'paired'
 
 const phase = ref<Phase>('starting')
 const svg = ref('')
@@ -29,6 +29,7 @@ const META: Record<Phase, { icon: Component; cls: string; spin?: boolean }> = {
   confirming: { icon: ShieldCheck, cls: 'text-ink-muted' },
   expired: { icon: CircleAlert, cls: 'text-warning' },
   tries: { icon: CircleAlert, cls: 'text-warning' },
+  denied: { icon: CircleAlert, cls: 'text-warning' },
   failed: { icon: CircleAlert, cls: 'text-warning' },
   paired: { icon: CircleCheck, cls: 'text-success' },
 }
@@ -64,8 +65,12 @@ watch(left, (ms) => {
 watch(
   () => [remote.status?.pairing, remote.status?.pairEnded] as const,
   ([active, ended]) => {
+    if (ended === 'denied' && (phase.value === 'waiting' || phase.value === 'confirming')) {
+      phase.value = 'denied'
+      return
+    }
     if (phase.value !== 'waiting' || active !== null) return
-    phase.value = ended === 'tries' ? 'tries' : pairLeftMs(exp.value, Date.now()) <= 0 ? 'expired' : 'confirming'
+    phase.value = ended === 'tries' ? 'tries' : ended === 'denied' ? 'denied' : pairLeftMs(exp.value, Date.now()) <= 0 ? 'expired' : 'confirming'
   },
 )
 
@@ -120,7 +125,7 @@ onBeforeUnmount(() => {
         <span v-if="phase === 'waiting'" class="ml-auto shrink-0 font-mono text-ink tabular-nums" :aria-label="t('remoteV97.pair.left', { time: clock(left) })" data-remote-countdown>{{ clock(left) }}</span>
       </p>
       <div class="mt-auto flex flex-wrap justify-end gap-2 pt-1">
-        <button v-if="phase === 'expired' || phase === 'failed' || phase === 'tries'" type="button" class="ccm-btn ccm-btn-primary" data-remote-pair-retry @click="start">{{ t('remoteV97.pair.retry') }}</button>
+        <button v-if="phase === 'expired' || phase === 'failed' || phase === 'tries' || phase === 'denied'" type="button" class="ccm-btn ccm-btn-primary" data-remote-pair-retry @click="start">{{ t('remoteV97.pair.retry') }}</button>
         <button type="button" class="ccm-btn" data-remote-pair-cancel @click="cancel">{{ phase === 'paired' ? t('remoteV97.pair.done') : t('remoteV97.pair.cancel') }}</button>
       </div>
     </div>

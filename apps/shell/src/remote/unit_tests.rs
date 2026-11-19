@@ -232,7 +232,7 @@ fn lan_rebind_finds_gone_and_new_addresses() {
 }
 
 #[test]
-fn a_platform_outside_android_and_ios_is_stored_and_shown_as_unknown() {
+fn a_platform_outside_android_and_web_is_stored_and_shown_as_unknown_and_ios_maps_to_web() {
     let dir = temp_dir("platform");
     let mut devices = Devices::load(&dir);
     let phone = Phone::new("p");
@@ -241,7 +241,9 @@ fn a_platform_outside_android_and_ios_is_stored_and_shown_as_unknown() {
     devices.set_platform("p", "cli");
     assert_eq!(devices.list()[0].platform, "unknown");
     devices.set_platform("p", "ios");
-    assert_eq!(super::status::device_json(&devices.list()[0], None)["platform"], "ios");
+    assert_eq!(super::status::device_json(&devices.list()[0], None)["platform"], "web");
+    devices.set_platform("p", "web");
+    assert_eq!(devices.list()[0].platform, "web");
     devices.set_platform("p", "android");
     assert_eq!(devices.list()[0].platform, "android");
 }

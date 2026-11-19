@@ -3,6 +3,7 @@ import { ref, shallowRef } from 'vue'
 import { randomHex } from '../remote/bytes'
 import type { LogEntry } from '../remote/hub'
 import { EMPTY_VIEW, type MachineView } from '../remote/machineData'
+import { deniedAfterHello, viewOnlyFrom } from '../lib/paneActions'
 import { linkState } from '../remote/linkRules'
 import { RemoteCommandError, type JsonMap, type LinkState, type Machine, type RoutePolicy } from '../remote/types'
 import type { PtyStreams } from '../terminal/ptyStreams'
@@ -34,6 +35,10 @@ export const useHubStore = defineStore('hub', () => {
     return views.value[id] ?? EMPTY_VIEW
   }
 
+  function isViewOnly(id: string): boolean {
+    return viewOnlyFrom(viewOf(id).hello, viewOnly.value[id] === true)
+  }
+
   function syncAll(hub: Runtime['hub']) {
     const nextLinks: Record<string, LinkState> = {}
     const nextViews: Record<string, MachineView> = {}
@@ -57,9 +62,15 @@ export const useHubStore = defineStore('hub', () => {
         case 'link':
           links.value = { ...links.value, [event.machineId]: event.link }
           break
-        case 'view':
+        case 'view': {
+          const prev = views.value[event.machineId]?.hello
+          const next = event.view.hello
+          const was = viewOnly.value[event.machineId] === true
+          const now = deniedAfterHello(prev, next, was)
+          if (now !== was) viewOnly.value = { ...viewOnly.value, [event.machineId]: now }
           views.value = { ...views.value, [event.machineId]: event.view }
           break
+        }
         case 'rtt':
           rtt.value = { ...rtt.value, [event.machineId]: event.ms }
           break
@@ -169,5 +180,5 @@ export const useHubStore = defineStore('hub', () => {
     runtime?.hub.note(text)
   }
 
-  return { ready, bootError, machines, links, views, rtt, log, notices, viewOnly, ptyFor, command, events, onDevice, pushKey, answerConfirm, linkOf, viewOf, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
+  return { ready, bootError, machines, links, views, rtt, log, notices, viewOnly, ptyFor, command, events, onDevice, pushKey, answerConfirm, linkOf, viewOf, isViewOnly, start, pair, setPolicy, forget, rename, refresh, wipeAll, foreground, background, dismiss, note }
 })

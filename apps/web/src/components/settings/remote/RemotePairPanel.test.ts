@@ -67,6 +67,18 @@ describe('RemotePairPanel QR v2', () => {
     expect(again.find('[data-remote-pair-retry]').exists()).toBe(true)
   })
 
+  it('refusing the phone in the native dialog ends the approve step with a retry', async () => {
+    const panel = await mountPanel(true)
+    const remote = useRemoteStore()
+    remote.status = status({ pairing: null, pairEnded: null })
+    await flushPromises()
+    expect(panel.get('[data-remote-pair-status]').text()).toContain('Approve the phone')
+    remote.status = status({ pairing: null, pairEnded: 'denied' })
+    await flushPromises()
+    expect(panel.get('[data-remote-pair-status]').text()).toContain('You refused the phone')
+    expect(panel.find('[data-remote-pair-retry]').exists()).toBe(true)
+  })
+
   it('a code that ran out shows expired, not the approve step, when pairing goes null', async () => {
     const panel = await mountPanel(true)
     const later = Date.now() + 121_000

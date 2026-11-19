@@ -191,3 +191,6 @@ Cargo workspace riêng (`[workspace]` trống, `Cargo.lock` riêng, target `apps
 - Lý do (vì sao dùng chung khoá Noise, vì sao thăm dò trước khi data-only): docs §7.7, `.planning/wp/v98/WP-56b-report.md`.
 - Tests: `push_seal_tests.rs` (vector chung `apps/mobile/test/fixtures/push_seal_v2.json` qua `include_str!`, mở bằng `FixedSliceRandom` khoá thiết bị, sai byte / máy / kind / khoá, ≤ 4 KB, data-only / thăm dò / cố định qua `deliver` + fake HTTP, mute / pushOff / thu hồi, `push.register` qua phiên thật). `push_tests.rs` mở `TOKEN_A/B`, `ready` cho `pub(super)`.
 - WP-56b vòng 2: `Device.push_seal_at` (giờ `push.register` gần nhất có `sealOk`), `set_push_seal(.., now)`, `push.register` cần `seal >= SEAL_LEVEL` (2); `seal_with(eph, &StaticKeypair, ..)` / `sealed_fcm(job, &self.keys.noise, ..)`; core-remote-proto `StaticKeypair::agree` (từ chối kết quả toàn 0).
+
+## WP-61a (hello control, pair denied)
+- `ctx.rs` trait `Host::control()` (mặc định `true`; `TestHost.view_only` để test) -> `Ctx::welcome` thêm `control`. `pair.rs` `Pairing::deny()` đặt `ended = "denied"` khi hộp duyệt từ chối, `ctx.changed()` -> status `pairEnded: "denied"`. Test: `session_tests.rs` `hello_reports_control_off_when_the_host_is_view_only`, `pair_tests.rs` `a_denied_confirm_sends_pair_denied_and_saves_nothing`.

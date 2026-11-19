@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { LayoutGrid, Plus, Rows3, Send, SquareTerminal } from 'lucide-vue-next'
+import { Ellipsis, LayoutGrid, Plus, Rows3, Send, SquareTerminal } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AgentTile from '../components/AgentTile.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import LinkChip from '../components/LinkChip.vue'
 import PageBar from '../components/PageBar.vue'
+import PaneActionsSheet from '../components/PaneActionsSheet.vue'
 import PaneCard from '../components/PaneCard.vue'
 import SendSheet from '../components/SendSheet.vue'
+import UndoBar from '../components/UndoBar.vue'
+import { errorCode, reopenPane } from '../lib/paneActions'
 import { parseSessions } from '../lib/monitorModel'
-import { parseWorkspace } from '../lib/workspaceModel'
+import { closedCount, parseWorkspace } from '../lib/workspaceModel'
 import { RemoteCommandError } from '../remote/types'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
@@ -26,6 +29,8 @@ const paneKey = ref<string | null>(null)
 const filter = ref<GridFilter>('all')
 const sendOpen = ref(false)
 const newOpen = ref(false)
+const actionsOpen = ref(false)
+const undoOpen = ref(false)
 const busy = ref(false)
 const fail = ref<string | null>(null)
 let startX = 0
@@ -41,8 +46,9 @@ const tab = computed(() => tabs.value.find((x) => x.key === tabKey.value) ?? tab
 const panes = computed(() => tab.value?.panes ?? [])
 const pane = computed(() => panes.value.find((p) => p.key === paneKey.value) ?? panes.value[0] ?? null)
 const index = computed(() => (pane.value ? panes.value.indexOf(pane.value) : -1))
+const closed = computed(() => closedCount(view.value.workspace))
 const grid = computed(() => prefs.local.workspaceMode === 'grid')
-const viewOnly = computed(() => hub.viewOnly[props.machine] === true)
+const viewOnly = computed(() => hub.isViewOnly(props.machine))
 const running = computed(() => panes.value.filter((p) => p.rail === 'working').length)
 const waiting = computed(() => panes.value.filter((p) => p.rail === 'asked' || p.rail === 'failed').length)
 const shown = computed(() => panes.value.filter((p) => filter.value === 'all' || (filter.value === 'running' ? p.rail === 'working' : p.rail === 'asked' || p.rail === 'failed')))
@@ -87,6 +93,20 @@ function toggleMode(): void {
 
 function failText(error: unknown): string {
   return t(`err.${error instanceof RemoteCommandError ? error.code : 'internal'}`)
+}
+
+function openActions(key: string): void {
+  paneKey.value = key
+  actionsOpen.value = true
+}
+
+async function undo(): Promise<void> {
+  undoOpen.value = false
+  try {
+    await reopenPane((type, fields) => hub.command(props.machine, type, fields))
+  } catch (error) {
+    fail.value = t(`err.${errorCode(error)}`)
+  }
 }
 
 async function send(text: string): Promise<void> {
@@ -141,20 +161,21 @@ async function openPane(preset: 'claude' | 'codex' | 'shell'): Promise<void> {
     </div>
     <template v-else>
       <div class="tabs" role="tablist" data-testid="ws-tabs">
-        <button v-for="x in tabs" :key="x.key" type="button" role="tab" class="tab" :class="{ on: x.key === tab?.key }" :aria-selected="x.key === tab?.key" :data-testid="`ws-tab-${x.key}`" @click="((tabKey = x.key), (paneKey = null))">{{ x.name }}</button>
+        <button v-for="x in tabs" :key="x.key" type="button" role="tab" class="tab" :class="{ on: x.key === tab?.key }" :aria-selected="x.key === tab?.key" :data-testid="`ws-tab-${x.key}`" @click="((tabKey = x.key), (paneKey = null))"><Transition name="swap" mode="out-in"><span :key="x.name">{{ x.name }}</span></Transition></button>
       </div>
 
       <template v-if="!grid">
-        <div class="chips" data-testid="ws-chips">
+        <TransitionGroup tag="div" name="pane-list" class="chips" data-testid="ws-chips">
           <button v-for="p in panes" :key="p.key" type="button" class="chip" :class="[{ on: p.key === pane?.key }, `p-${p.provider}`]" :data-testid="`chip-${p.key}`" @click="paneKey = p.key">
             <span class="dot" aria-hidden="true" /><span class="chip-text">{{ chipLabels.get(p.key) }}</span>
           </button>
-        </div>
+        </TransitionGroup>
         <div v-if="pane" class="focus" data-testid="ws-focus" :data-pane="pane.key" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
           <PaneCard :pane="pane" :lost="lost" large :selected="selected === pane.key" @open="open(pane.key)" />
           <div class="actions">
             <button type="button" class="btn btn-primary full" :disabled="!pane.canAttach" data-testid="ws-open" @click="open(pane.key)"><SquareTerminal :size="20" :stroke-width="2" aria-hidden="true" />{{ t('workspace.openFull') }}</button>
             <button type="button" class="btn sendbtn" :disabled="lost || viewOnly" :aria-label="t('send.title')" data-testid="ws-send" @click="((sendOpen = true), (fail = null))"><Send :size="20" :stroke-width="2" aria-hidden="true" /></button>
+            <button type="button" class="btn sendbtn" :disabled="lost || viewOnly" :aria-label="t('paneActions.title')" data-testid="ws-more" @click="openActions(pane.key)"><Ellipsis :size="20" :stroke-width="2" aria-hidden="true" /></button>
           </div>
           <p class="hint">{{ t('workspace.swipeHint', { n: panes.length }) }}</p>
         </div>
@@ -166,14 +187,19 @@ async function openPane(preset: 'claude' | 'codex' | 'shell'): Promise<void> {
           <button type="button" class="filter" :class="{ on: filter === 'running' }" data-testid="ws-filter-running" @click="filter = 'running'">{{ t('workspace.running', { n: running }) }}</button>
           <button type="button" class="filter" :class="{ on: filter === 'waiting' }" data-testid="ws-filter-waiting" @click="filter = 'waiting'">{{ t('workspace.waiting', { n: waiting }) }}</button>
         </div>
-        <div class="grid" data-testid="ws-grid">
-          <PaneCard v-for="p in shown" :key="p.key" :pane="p" :lost="lost" :selected="selected === p.key" @open="open(p.key)" />
-        </div>
+        <TransitionGroup tag="div" name="pane-list" class="grid" data-testid="ws-grid">
+          <div v-for="p in shown" :key="p.key" class="cell">
+            <PaneCard :pane="p" :lost="lost" :selected="selected === p.key" @open="open(p.key)" />
+            <button type="button" class="more" :disabled="lost || viewOnly" :aria-label="t('paneActions.title')" :data-testid="`more-${p.key}`" @click="openActions(p.key)"><Ellipsis :size="18" :stroke-width="2" aria-hidden="true" /></button>
+          </div>
+        </TransitionGroup>
       </template>
 
       <button v-if="tab?.cwd && !viewOnly" type="button" class="fab btn btn-primary" :disabled="lost" data-testid="ws-new" @click="((newOpen = true), (fail = null))"><Plus :size="20" :stroke-width="2.2" aria-hidden="true" />{{ t('workspace.newPane') }}</button>
     </template>
 
+    <PaneActionsSheet v-if="actionsOpen && tab && pane" :machine="machine" :tab="tab" :tabs="tabs" :pane="pane" :closed="closed" @close="actionsOpen = false" @closed-pane="undoOpen = true" />
+    <Transition name="undo"><UndoBar v-if="undoOpen" :text="t('paneActions.closedToast')" :action="t('paneActions.undo')" @undo="undo" @dismiss="undoOpen = false" /></Transition>
     <SendSheet v-if="sendOpen && pane" :title="t('send.titleFor', { name: pane.title })" :busy="busy" :error="fail" @send="send" @close="sendOpen = false" />
     <BottomSheet v-if="newOpen" :title="t('workspace.newPane')" testid="new-sheet" @close="newOpen = false">
       <div class="presets">
@@ -237,6 +263,21 @@ async function openPane(preset: 'claude' | 'codex' | 'shell'): Promise<void> {
   background: transparent;
   color: var(--ccm-ink-muted);
   font-weight: 600;
+}
+
+.swap-enter-active,
+.swap-leave-active {
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.swap-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.swap-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .tab.on {
@@ -345,6 +386,50 @@ async function openPane(preset: 'claude' | 'codex' | 'shell'): Promise<void> {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.cell {
+  position: relative;
+}
+
+.more {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ccm-ink-muted);
+}
+
+.pane-list-enter-active,
+.pane-list-leave-active,
+.pane-list-move {
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+
+.pane-list-enter-from,
+.pane-list-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.pane-list-leave-active {
+  position: absolute;
+}
+
+.undo-enter-active,
+.undo-leave-active {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+.undo-enter-from,
+.undo-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 .fab {

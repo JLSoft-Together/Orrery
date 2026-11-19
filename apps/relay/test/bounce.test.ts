@@ -37,7 +37,7 @@ describe("bounce page", () => {
 });
 
 describe("well-known files", () => {
-  const baseEnv = { ANDROID_CERT_SHA256: "", APPLE_APP_ID: "" } as unknown as Env;
+  const baseEnv = { ANDROID_CERT_SHA256: "" } as unknown as Env;
 
   it("assetlinks is 404 until a certificate is configured", async () => {
     const empty = await worker.fetch(new Request("https://relay.test/.well-known/assetlinks.json"), baseEnv);
@@ -57,17 +57,9 @@ describe("well-known files", () => {
     expect(junk.status).toBe(404);
   });
 
-  it("serves apple-app-site-association", async () => {
+  it("does not serve apple-app-site-association", async () => {
     const res = await send("/.well-known/apple-app-site-association");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ applinks: { details: [] } });
-    const withId = await worker.fetch(
-      new Request("https://relay.test/.well-known/apple-app-site-association"),
-      { ...baseEnv, APPLE_APP_ID: "ABCDE12345.dev.ccm.orrery.remote" } as Env,
-    );
-    expect(await withId.json()).toEqual({
-      applinks: { details: [{ appIDs: ["ABCDE12345.dev.ccm.orrery.remote"], components: [{ "/": "/o/*" }] }] },
-    });
+    expect(res.status).toBe(404);
   });
 });
 

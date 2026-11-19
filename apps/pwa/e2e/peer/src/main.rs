@@ -36,6 +36,11 @@ pub struct Desk {
     pub title: String,
     pub view_only: bool,
     pub asked: bool,
+    pub deny: bool,
+    pub tab_name: Option<String>,
+    pub tab2: bool,
+    pub moved: bool,
+    pub hidden: Vec<&'static str>,
 }
 
 pub fn now() -> u64 {
@@ -136,6 +141,16 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
             }
         }
         "viewonly" => desk.view_only = true,
+        "viewoff" => desk.view_only = false,
+        "deny" => desk.deny = true,
+        "tab2" => {
+            desk.tab2 = true;
+            desk.rev += 1;
+            let value = data::ws_snapshot(desk);
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
         "asked" => {
             desk.asked = true;
             desk.rev += 1;
@@ -193,6 +208,11 @@ fn main() {
         title: "claude".to_owned(),
         view_only: false,
         asked: false,
+        deny: false,
+        tab_name: None,
+        tab2: false,
+        moved: false,
+        hidden: Vec::new(),
     };
 
     let ts = now();

@@ -21,7 +21,6 @@ Package riêng, cài cục bộ: `npm install --workspaces=false --include-works
 | `POST /revoke` | Ed25519 | `{machineId, deviceIds[], ts, sig}`: ghi thu hồi, đóng phone đang nối bằng `4401` |
 | `GET /o/<machineId>/<paneKey>` | không | trang bounce vi/en, nút `orrery-remote://m/<machine>/p/<pane>`; Android thêm `intent://` |
 | `GET /.well-known/assetlinks.json` | không | 404 nếu `ANDROID_CERT_SHA256` trống (nhiều fingerprint cách nhau bằng dấu phẩy) |
-| `GET /.well-known/apple-app-site-association` | không | `appIDs` từ `APPLE_APP_ID` (`TEAMID.bundle`), trống thì `details: []` |
 | `GET /app/*` (+ `HEAD`) | không | web app iPhone nhúng trong worker (`/app` → `/app/`, SPA fallback, CSP + HSTS, `/app/version.json`); 404 nếu bản dựng không có `apps/pwa/dist`. Chi tiết: `docs/remote-integration.md` §7.5 |
 | `GET /health` | không | `200 ok` |
 
@@ -51,7 +50,7 @@ Token phone (khớp byte với `core-remote-proto/src/relay.rs`, test bằng `ve
 - Free plan: 100k request DO / ngày, message WebSocket vào tính 20:1. Gộp frame ở gateway / điện thoại, không ở relay.
 - TOFU: ai đăng ký `machineId` trước thì giữ nó; `machineId` phải là chuỗi ngẫu nhiên đủ dài.
 - Chữ ký register / revoke không phủ phần thân (`relayKey`, `deviceIds`) theo đúng hợp đồng; bảo vệ dựa vào HTTPS + `ts` tăng dần.
-- `wrangler deploy` ghi đè `vars` (`ANDROID_CERT_SHA256`, `APPLE_APP_ID`) bằng giá trị trong `wrangler.jsonc`; điền thật vào file đó trước khi deploy bản chính thức.
+- `wrangler deploy` ghi đè `vars` (`ANDROID_CERT_SHA256`) bằng giá trị trong `wrangler.jsonc`; điền thật vào file đó trước khi deploy bản chính thức.
 - Chưa kiểm bằng test tự động: hibernation thật (`evictDurableObject` treo trong pool test), ping không đánh thức handler, `429` thật của `LIMITER` → `/strike`. Độ bền lệnh chặn qua restart kiểm bằng `new Room(state, env)` trên cùng storage (`test/guard.test.ts`).
 
 ## Bundle cho desktop tự dựng relay

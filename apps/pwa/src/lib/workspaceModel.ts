@@ -23,6 +23,7 @@ export interface WsPane {
 export interface WsTab {
   key: string
   name: string
+  customName: string | null
   project: string | null
   cwd: string | null
   panes: WsPane[]
@@ -93,9 +94,15 @@ export function parseWorkspace(doc: WorkspaceDoc | null, sessions: MonitorSessio
     const panes = raw.panes.filter(isItem).flatMap((p) => parsePane(p, byTerminal) ?? [])
     const project = str(raw.project)
     const cwd = panes.find((p) => p.cwd)?.cwd ?? null
-    tabs.push({ key, name: str(raw.name) ?? (project ? baseName(project) : (cwd ? baseName(cwd) : key)), project, cwd: project ?? cwd, panes })
+    const customName = str(raw.name)
+    tabs.push({ key, customName, name: customName ?? (project ? baseName(project) : (cwd ? baseName(cwd) : key)), project, cwd: project ?? cwd, panes })
   }
   return tabs
+}
+
+export function closedCount(doc: WorkspaceDoc | null): number {
+  const n = doc?.closedCount
+  return typeof n === 'number' && n > 0 ? Math.floor(n) : 0
 }
 
 export function findPane(tabs: WsTab[], key: string): { tab: WsTab; pane: WsPane } | null {

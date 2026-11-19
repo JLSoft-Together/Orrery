@@ -42,6 +42,8 @@ pub struct Desk {
     pub tab2: bool,
     pub moved: bool,
     pub hidden: Vec<&'static str>,
+    pub close_ask: bool,
+    pub close_pending: Option<&'static str>,
     pub vw: vw::Vw,
 }
 
@@ -143,7 +145,13 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
             }
         }
         "viewonly" => desk.view_only = true,
-        "diskchange" => desk.vw.disk_change(),
+        "diskchange" => {
+            let value = desk.vw.disk_change();
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
+        "closeask" => desk.close_ask = true,
         "vwreset" => desk.vw = vw::Vw::new(),
         "viewoff" => desk.view_only = false,
         "deny" => desk.deny = true,
@@ -217,6 +225,8 @@ fn main() {
         tab2: false,
         moved: false,
         hidden: Vec::new(),
+        close_ask: false,
+        close_pending: None,
         vw: vw::Vw::new(),
     };
 

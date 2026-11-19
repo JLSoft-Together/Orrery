@@ -309,6 +309,12 @@ impl Live {
                         extra.push(data::ws_snapshot(desk));
                         json!({ "re": id, "ok": true })
                     }
+                    Some("ws.close") if desk.close_ask => {
+                        desk.close_ask = false;
+                        desk.close_pending = data::pane_key(value.get("paneKey").and_then(Value::as_str));
+                        extra.push(json!({"t": "confirm.ask", "cid": "cidc", "re": "ws.close", "title": "Đóng pane?", "detail": "đang chạy", "ok": "Đóng", "cancel": "Giữ lại"}));
+                        json!({ "re": id, "ok": true, "confirm": "cidc" })
+                    }
                     Some("ws.close") => {
                         println!("{}", json!({"ev": "close", "paneKey": value.get("paneKey")}));
                         if let Some(key) = data::pane_key(value.get("paneKey").and_then(Value::as_str)) {
@@ -339,7 +345,19 @@ impl Live {
                     }
                     Some("confirm.answer") => {
                         println!("{}", json!({"ev": "confirm", "cid": value.get("cid"), "ok": value.get("ok")}));
-                        extra.extend(desk.vw.answer(value.get("ok").and_then(Value::as_bool).unwrap_or(false)));
+                        let yes = value.get("ok").and_then(Value::as_bool).unwrap_or(false);
+                        if value.get("cid").and_then(Value::as_str) == Some("cidc") {
+                            if let Some(key) = desk.close_pending.take() {
+                                if yes {
+                                    println!("{}", json!({"ev": "close", "paneKey": key}));
+                                    desk.hidden.push(key);
+                                    desk.rev += 1;
+                                    extra.push(data::ws_snapshot(desk));
+                                }
+                            }
+                        } else {
+                            extra.extend(desk.vw.answer(yes));
+                        }
                         json!({ "re": id, "ok": true })
                     }
                     Some(other) => match desk.vw.handle(desk.view_only, other, &value) {

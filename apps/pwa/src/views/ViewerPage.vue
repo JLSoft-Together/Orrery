@@ -65,7 +65,7 @@ onBeforeUnmount(() => {
     <div class="seg" role="tablist">
       <button v-for="s in segments" :key="s" type="button" role="tab" class="seg-btn" :class="{ on: segment === s }" :aria-selected="segment === s" :data-testid="`viewer-seg-${s}`" @click="pick(s)">{{ t(`viewer.seg.${s}`) }}</button>
     </div>
-    <ViewerFiles v-if="segment === 'files'" :command="command" :root="root" :editable="editable" :refresh="refresh" />
+    <ViewerFiles v-if="segment === 'files'" :command="command" :subscribe="subscribe" :root="root" :editable="editable" :refresh="refresh" />
     <ViewerChanges v-else-if="segment === 'diff'" :command="command" :root="root" :refresh="refresh" :editable="editable" />
     <ViewerLog v-else-if="segment === 'git'" :command="command" :root="root" :refresh="refresh" />
     <ViewerRun v-else :command="command" :root="root" :refresh="refresh" :editable="editable" :subscribe="subscribe" />

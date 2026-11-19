@@ -22,6 +22,7 @@ pub struct Vw {
     commits: Vec<Value>,
     sessions: Vec<Value>,
     pending: Option<String>,
+    path: String,
     next: u32,
 }
 
@@ -57,13 +58,15 @@ impl Vw {
             ],
             sessions: vec![json!({"id": "r1", "configName": "flutter run", "state": "running", "cwd": "D:/Code/api", "progress": "Hot reload 1.2s"})],
             pending: None,
+            path: String::new(),
             next: 2,
         }
     }
 
-    pub fn disk_change(&mut self) {
+    pub fn disk_change(&mut self) -> Value {
         self.mtime += 10;
         self.text.push_str("// edited on disk\n");
+        json!({"t": "fs.changed", "root": "D:/Code/api", "paths": [self.path]})
     }
 
     pub fn answer(&mut self, ok: bool) -> Vec<Value> {
@@ -110,6 +113,7 @@ impl Vw {
         match kind {
             "fs.read" => {
                 let path = value.get("path").and_then(Value::as_str).unwrap_or("");
+                self.path = path.to_owned();
                 Some(Reply::Data(json!({"kind": "text", "path": path, "size": self.text.len(), "mtimeMs": self.mtime, "text": self.text}), Vec::new()))
             }
             "fs.write" => {

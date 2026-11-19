@@ -37,13 +37,14 @@ export function reopenPane(run: Commander): Promise<JsonMap> {
 export interface CloseResult {
   closed: boolean
   asked: boolean
+  confirm: string | null
 }
 
 export async function closePane(run: Commander, paneKey: string): Promise<CloseResult> {
   const reply = await run('ws.close', { paneKey })
-  if (reply.cancelled === true) return { closed: false, asked: false }
-  if (typeof reply.confirm === 'string') return { closed: false, asked: true }
-  return { closed: true, asked: false }
+  if (reply.cancelled === true) return { closed: false, asked: false, confirm: null }
+  if (typeof reply.confirm === 'string') return { closed: false, asked: true, confirm: reply.confirm }
+  return { closed: true, asked: false, confirm: null }
 }
 
 export function errorCode(error: unknown): string {

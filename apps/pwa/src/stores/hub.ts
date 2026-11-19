@@ -158,8 +158,8 @@ export const useHubStore = defineStore('hub', () => {
     return runtime?.hub.pushKey(id)
   }
 
-  async function answerConfirm(id: string, cid: string, ok: boolean): Promise<void> {
-    await need().hub.answerConfirm(id, cid, ok)
+  async function answerConfirm(id: string, cid: string, ok: boolean): Promise<JsonMap> {
+    return need().hub.answerConfirm(id, cid, ok)
   }
 
   function foreground(): void {

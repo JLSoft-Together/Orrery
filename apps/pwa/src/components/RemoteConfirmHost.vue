@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { closeAnswered, offerUndo } from '../lib/closeUndo'
 import { REMOTE_CONFIRM_MS } from '../lib/limits'
 import { ShieldQuestion } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
@@ -25,7 +26,8 @@ async function answer(ok: boolean): Promise<void> {
   if (!current || busy.value) return
   busy.value = true
   try {
-    await hub.answerConfirm(current.machine, current.ask.cid, ok)
+    const reply = await hub.answerConfirm(current.machine, current.ask.cid, ok)
+    if (closeAnswered(current.machine, current.ask.cid, ok, reply)) offerUndo(current.machine)
   } catch {
     return
   } finally {

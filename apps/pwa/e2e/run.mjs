@@ -29,6 +29,7 @@ const qaDirB = join(root, 'docs/qa/v98/WP-55b')
 const qaDirPush = join(root, 'docs/qa/v98/WP-56a')
 const qaDirC = join(root, 'docs/qa/v98/WP-61a')
 const qaDirD = join(root, 'docs/qa/v98/WP-61b')
+const qaDirE = join(root, 'docs/qa/v98/WP-65')
 const results = []
 const videoPath = join(tmpdir(), 'orrery-pwa-fake-camera.y4m')
 
@@ -71,6 +72,7 @@ async function main() {
   mkdirSync(qaDirPush, { recursive: true })
   mkdirSync(qaDirC, { recursive: true })
   mkdirSync(qaDirD, { recursive: true })
+  mkdirSync(qaDirE, { recursive: true })
   writeBlankVideo(videoPath)
   if (!flags['no-build']) await build()
   const persist = mkdtempSync(join(tmpdir(), 'orrery-pwa-relay-'))
@@ -80,7 +82,7 @@ async function main() {
     await waitHealth(relayHttp, 90_000).catch((e) => {
       throw new Error(`${e.message}\n${relay.log.join('')}`)
     })
-    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, qaDirB, qaDirPush, qaDirC, qaDirD, videoPath, webHash: stat.state.web }
+    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, qaDirB, qaDirPush, qaDirC, qaDirD, qaDirE, videoPath, webHash: stat.state.web }
     for (const browserName of browsers) {
       try {
         await runScenario({ browserName, launch, env, record: (r) => results.push(r) })

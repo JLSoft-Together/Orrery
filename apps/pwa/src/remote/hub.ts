@@ -95,8 +95,8 @@ export class RemoteHub {
     return this.entries.get(machineId)?.connection.activeSession ?? null
   }
 
-  async answerConfirm(machineId: string, cid: string, ok: boolean): Promise<void> {
-    await this.entries.get(machineId)?.data.answerConfirm(cid, ok)
+  async answerConfirm(machineId: string, cid: string, ok: boolean): Promise<JsonMap> {
+    return (await this.entries.get(machineId)?.data.answerConfirm(cid, ok)) ?? {}
   }
 
   note(text: string, machineId?: string): void {

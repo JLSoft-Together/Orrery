@@ -55,9 +55,9 @@ describe('pane actions model', () => {
   })
 
   it('tells closed, asked (confirm on the phone) and cancelled apart', async () => {
-    expect(await closePane(recorder({ ok: true }).run, 'p1')).toEqual({ closed: true, asked: false })
-    expect(await closePane(recorder({ ok: true, confirm: 'c1' }).run, 'p1')).toEqual({ closed: false, asked: true })
-    expect(await closePane(recorder({ ok: true, cancelled: true }).run, 'p1')).toEqual({ closed: false, asked: false })
+    expect(await closePane(recorder({ ok: true }).run, 'p1')).toEqual({ closed: true, asked: false, confirm: null })
+    expect(await closePane(recorder({ ok: true, confirm: 'c1' }).run, 'p1')).toEqual({ closed: false, asked: true, confirm: 'c1' })
+    expect(await closePane(recorder({ ok: true, cancelled: true }).run, 'p1')).toEqual({ closed: false, asked: false, confirm: null })
   })
 
   it('maps errors to codes', () => {

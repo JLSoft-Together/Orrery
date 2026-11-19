@@ -11,6 +11,7 @@ import PaneChips from '../components/PaneChips.vue'
 import PaneGrid from '../components/PaneGrid.vue'
 import SendSheet from '../components/SendSheet.vue'
 import UndoBar from '../components/UndoBar.vue'
+import { undoOffer } from '../lib/closeUndo'
 import { errorCode, reopenPane } from '../lib/paneActions'
 import { parseSessions } from '../lib/monitorModel'
 import { closedCount, parseWorkspace } from '../lib/workspaceModel'
@@ -47,6 +48,13 @@ const index = computed(() => (pane.value ? panes.value.indexOf(pane.value) : -1)
 const closed = computed(() => closedCount(view.value.workspace))
 const grid = computed(() => prefs.local.workspaceMode === 'grid')
 const viewOnly = computed(() => hub.isViewOnly(props.machine))
+
+watch(
+  () => undoOffer.value.seq,
+  () => {
+    if (undoOffer.value.machine === props.machine) undoOpen.value = true
+  },
+)
 
 watch(
   tabs,

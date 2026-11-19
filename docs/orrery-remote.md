@@ -185,3 +185,7 @@ Trên máy tính: Settings → Điều khiển từ xa → khối thiết bị �
 App Orrery Remote khoá bằng vân tay / khuôn mặt hoặc PIN / mẫu hình / mật khẩu khoá màn hình của máy (`local_auth`), lớp 2 cạnh khoá ghép Noise. Bật mặc định; lần đầu mở app phải xác thực, sau đó phiên mở khoá có hạn mặc định 1 giờ (Mỗi lần mở · 15 phút · 1 giờ · 4 giờ, chỉnh ở nút khoá trên màn danh sách máy; đổi hoặc tắt phải xác thực trước).
 
 Khi khoá app đóng mọi kết nối tới máy tính (LAN và relay), không mở kết nối mới và không hiện session / terminal; tap thông báo hoặc deep link lúc đang khoá được giữ lại, xác thực xong mới mở. Android đặt `FLAG_SECURE` nên recent apps không lộ nội dung. Mốc mở khoá chỉ nằm trong RAM (đồng hồ đơn điệu + giờ máy, lấy số lớn hơn nên chỉnh giờ lùi không kéo dài phiên); process chết hoặc reboot thì khoá lại. Máy chưa đặt khoá màn hình: màn khoá báo cần đặt, có nút mở cài đặt bảo mật; chỉ ở trạng thái đó mới có nút "Tắt khoá app" kèm cảnh báo.
+
+### Web app (iPhone / iPad) (WP-65)
+
+Sau khi ghép xong máy đầu tiên, nếu thiết bị có WebAuthn platform authenticator và khoá chưa bật, web app hỏi một lần "Bật khoá Face ID?" (Face ID / Touch ID / khoá màn hình theo nền tảng): Bật tạo passkey, Để sau bỏ qua. Huỷ hoặc lỗi chỉ báo nhẹ, không chặn dùng app; đã hỏi một lần là không hỏi lại (Cài đặt vẫn bật được). Trong editor, file đang sửa mà đổi trên máy tính (`fs.changed`, đã `fs.watch` root) thì hiện banner "File đã đổi trên máy": Tải lại bỏ bản đang sửa, Giữ bản của tôi lấy mốc mới rồi cho Lưu đè.

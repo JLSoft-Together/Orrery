@@ -2,6 +2,7 @@
 import { FolderInput, Minimize2, Pencil, Undo2, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { rememberClose } from '../lib/closeUndo'
 import { askConfirm } from '../lib/confirm'
 import { canCompact, closePane, compactPane, errorCode, moveTargets, movePane, renameTab, reopenPane, TAB_NAME_MAX } from '../lib/paneActions'
 import type { WsPane, WsTab } from '../lib/workspaceModel'
@@ -70,6 +71,7 @@ function close(): Promise<void> {
     if (!ok) return
     const result = await closePane(run, props.pane.key)
     if (result.closed) emit('closedPane')
+    else if (result.confirm) rememberClose(props.machine, result.confirm)
     emit('close')
   })
 }

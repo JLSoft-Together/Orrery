@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { idbCounts, makeCtx, PHONE, wait } from './ctx.mjs'
+import { lockOfferStep } from './lock-offer-step.mjs'
 import { lockStep } from './lock-step.mjs'
 import { editSteps } from './edit-steps.mjs'
 import { helloControlStep, paneSteps, pairDeniedStep } from './pane-steps.mjs'
@@ -10,7 +11,7 @@ import { uiSteps } from './ui-steps.mjs'
 import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
 
-export const STEPS_PER_BROWSER = 40
+export const STEPS_PER_BROWSER = 43
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -183,6 +184,7 @@ export async function runScenario({ browserName, launch, env, record }) {
     })
 
     await lockStep(c)
+    await lockOfferStep(c, env)
 
     await step('no CSP violation and no unexpected console error across the whole run', async () => {
       const csp = await fresh.page.evaluate(() => window.__csp)

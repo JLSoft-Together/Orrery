@@ -6,13 +6,14 @@ import { leaveOk } from '../lib/editGuard'
 import { useAction } from '../lib/useAction'
 import { useAsync } from '../lib/useAsync'
 import { viewerData, type Commander } from '../lib/viewerApi'
+import type { JsonMap } from '../remote/types'
 import { parseDir, parseFile, relativePath, samePath, sizeText, type FileData } from '../lib/viewerModel'
 import AsyncState from './AsyncState.vue'
 import CodeLines from './CodeLines.vue'
 import FileEditor from './FileEditor.vue'
 import NoticeLine from './NoticeLine.vue'
 
-const props = defineProps<{ command: Commander; root: string; open?: string | null; editable: boolean; refresh: number }>()
+const props = defineProps<{ command: Commander; subscribe: (handler: (event: JsonMap) => void) => () => void; root: string; open?: string | null; editable: boolean; refresh: number }>()
 const emit = defineEmits<{ opened: [path: string | null] }>()
 const { t } = useI18n()
 const dir = ref(props.root)
@@ -88,7 +89,7 @@ async function up(): Promise<void> {
     </div>
     <template v-if="file">
       <AsyncState :blank="content.data.value === null" :error="content.error.value" :empty="content.data.value !== null && content.data.value.kind !== 'text'" :empty-text="t(`viewer.kind.${content.data.value?.kind ?? 'missing'}`)" @retry="content.reload">
-        <FileEditor v-if="editing && content.data.value?.text != null" :command="command" :path="content.data.value.path || file" :text="content.data.value.text" :base="content.data.value.mtimeMs" @saved="saved" @cancel="editing = false" @reload="reloadFromDisk" />
+        <FileEditor v-if="editing && content.data.value?.text != null" :command="command" :root="root" :subscribe="subscribe" :path="content.data.value.path || file" :text="content.data.value.text" :base="content.data.value.mtimeMs" @saved="saved" @cancel="editing = false" @reload="reloadFromDisk" />
         <template v-else>
           <NoticeLine :notice="notice" />
           <div class="scroll"><CodeLines v-if="content.data.value?.text !== null && content.data.value" :text="content.data.value.text ?? ''" /></div>

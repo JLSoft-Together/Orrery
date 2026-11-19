@@ -86,6 +86,8 @@ export function makeCtx({ browser, browserName, env, record, videoPath }) {
   }
   const finishPair = async (page, peer) => {
     try {
+      await page.waitForFunction(() => document.querySelector('[data-testid="monitor-view"]') || document.querySelector('[data-testid="lock-offer"]'), null, { timeout: 20000 })
+      if (await byId(page, 'lock-offer').count()) await byId(page, 'lock-offer-later').click()
       await byId(page, 'monitor-view').waitFor({ timeout: 20000 })
     } catch {
       await failPair(page, peer, errors)

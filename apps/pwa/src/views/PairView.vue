@@ -3,24 +3,29 @@ import { Check, Cloud, LoaderCircle, RefreshCw, ShieldCheck, TriangleAlert, Wifi
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageBar from '../components/PageBar.vue'
+import LockOffer from '../components/LockOffer.vue'
 import QrScanner from '../components/QrScanner.vue'
+import { shouldOfferLock } from '../lib/lockOffer'
 import { checkQrText, pairErrorKey } from '../lib/qrInput'
 import { back, navigate } from '../router'
 import { useHubStore } from '../stores/hub'
+import { useLockStore } from '../stores/lock'
 import { usePrefsStore } from '../stores/prefs'
 
 const { t } = useI18n()
 const hub = useHubStore()
 const prefs = usePrefsStore()
+const lock = useLockStore()
 
 const tab = ref<'scan' | 'paste'>('scan')
-const phase = ref<'idle' | 'working' | 'error'>('idle')
+const phase = ref<'idle' | 'working' | 'error' | 'lock'>('idle')
 const tried = ref<Array<'lan' | 'relay'>>([])
 const failure = ref<string | null>(null)
 const text = ref('')
 const pasteError = ref<string | null>(null)
 const deviceName = ref(defaultName())
 let lastQr = ''
+let pairedId = ''
 
 function defaultName(): string {
   const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
@@ -37,14 +42,26 @@ async function run(qr: string): Promise<void> {
   tried.value = []
   failure.value = null
   try {
+    const before = hub.machines.length
     const machine = await hub.pair(qr, undefined, deviceName.value.trim() || defaultName(), (route) => tried.value.push(route))
     prefs.setLastMachine(machine.id)
-    navigate({ name: 'monitor', machine: machine.id }, { replace: true })
+    pairedId = machine.id
+    const supported = await lock.checkSupport()
+    if (shouldOfferLock({ machineCount: before + 1, lockEnabled: prefs.local.lockEnabled, offered: prefs.local.lockOffered, supported })) {
+      prefs.patchLocal({ lockOffered: true })
+      phase.value = 'lock'
+      return
+    }
+    finish()
   } catch (error) {
     const code = error && typeof error === 'object' && 'code' in error ? String((error as { code: unknown }).code) : String(error)
     failure.value = pairErrorKey(code)
     phase.value = 'error'
   }
+}
+
+function finish(): void {
+  navigate({ name: 'monitor', machine: pairedId }, { replace: true })
 }
 
 function submitPaste(): void {
@@ -90,6 +107,8 @@ function other(): void {
         <p class="hint">{{ t('pair.approve') }}</p>
       </div>
     </template>
+
+    <LockOffer v-else-if="phase === 'lock'" @done="finish" />
 
     <template v-else-if="phase === 'error'">
       <div class="card alert" role="alert" data-testid="pair-error" :data-code="failure">

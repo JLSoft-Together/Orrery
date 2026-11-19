@@ -74,6 +74,40 @@ export async function paneSteps(c, page, peer) {
     if ((await chipCount(page)) !== 2) throw new Error('chips after undo')
   })
 
+  await step('Close confirmed on the phone: Undo shows after the answer, not before, and not when the answer is no', async () => {
+    peer.send('closeask')
+    await wait(150)
+    peer.events.length = 0
+    await openActions(c, page, 'p2')
+    await byId(page, 'act-close').click()
+    await byId(page, 'confirm-ok').click()
+    await byId(page, 'remote-confirm').waitFor({ timeout: 8000 })
+    await wait(300)
+    if (await byId(page, 'undo-bar').count()) throw new Error('undo shown before the answer')
+    await byId(page, 'remote-confirm-cancel').click()
+    await page.waitForFunction(() => !document.querySelector('[data-testid="remote-confirm"]'))
+    await wait(300)
+    if (await byId(page, 'undo-bar').count()) throw new Error('undo shown after a refused close')
+    if (peer.events.some((e) => e.ev === 'close')) throw new Error('closed after a refusal')
+
+    peer.send('closeask')
+    await wait(150)
+    await byId(page, 'chip-p2').click()
+    await byId(page, 'ws-more').click()
+    await byId(page, 'act-close').click()
+    await byId(page, 'confirm-ok').click()
+    await byId(page, 'remote-confirm').waitFor({ timeout: 8000 })
+    await byId(page, 'remote-confirm-ok').click()
+    await peer.waitEvent((e) => e.ev === 'close' && e.paneKey === 'p2')
+    await byId(page, 'undo-bar').waitFor({ timeout: 5000 })
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="ws-chips"] > button').length === 1)
+    await c.shoot(page, join(c.env.qaDirE, `close-undo-phone-light-${c.browserName}.png`))
+    await byId(page, 'undo-go').click()
+    await peer.waitEvent((e) => e.ev === 'reopen')
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="ws-chips"] > button').length === 2)
+    await page.waitForFunction(() => !document.querySelector('[data-testid="undo-bar"]'))
+  })
+
   await step('Pane actions screenshots: menu, phone and iPad, light and dark', async () => {
     const webkit = c.browserName === 'webkit'
     const forms = webkit ? [['phone', PHONE], ['ipad', IPAD]] : [['phone', PHONE]]

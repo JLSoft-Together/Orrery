@@ -32,6 +32,17 @@ export const en: Messages = {
     cleanTitle: 'Remove old entries?',
     cleanBody: 'Forget {n} duplicate pairings. The machine in use is not affected.',
   },
+  lockOffer: {
+    title: { faceId: 'Turn on Face ID lock?', touchId: 'Turn on Touch ID lock?', screen: 'Turn on screen lock?' },
+    body: 'Ask for it each time the app opens, so nobody else can read your sessions.',
+    note: 'You can change this later in Settings.',
+    enable: { faceId: 'Turn on Face ID', touchId: 'Turn on Touch ID', screen: 'Turn on lock' },
+    later: 'Later',
+    fail: {
+      cancelled: 'Lock not turned on because you cancelled. You can use the app as is.',
+      failed: 'Could not turn on the lock. You can try again or do it later in Settings.',
+    },
+  },
   pair: {
     title: 'Pair a machine',
     tabScan: 'Scan QR',
@@ -217,6 +228,9 @@ export const en: Messages = {
     label: 'File content',
     conflict: 'The file changed on the computer. Reload to get the new version (your edits will be lost).',
     reload: 'Reload',
+    diskChanged: 'File changed on the computer',
+    diskChangedBody: 'Reload to get the new version (your edits will be lost), or keep yours and save over it.',
+    keepMine: 'Keep mine',
     leaveTitle: 'Discard unsaved changes?',
     leaveBody: 'What you typed will be lost.',
     leaveOk: 'Discard',

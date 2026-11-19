@@ -14,6 +14,7 @@ export interface LocalPrefs {
   lockTimeout: number
   lockClose: boolean
   credentialId: string | null
+  lockOffered: boolean
   lastMachine: string | null
 }
 
@@ -26,6 +27,7 @@ export const DEFAULT_LOCAL_PREFS: LocalPrefs = {
   lockTimeout: DEFAULT_LOCK_TIMEOUT,
   lockClose: true,
   credentialId: null,
+  lockOffered: false,
   lastMachine: null,
 }
 
@@ -47,6 +49,7 @@ export function normalizeLocalPrefs(raw: unknown): LocalPrefs {
     lockTimeout: normalizeTimeout(o.lockTimeout),
     lockClose: o.lockClose !== false,
     credentialId,
+    lockOffered: o.lockOffered === true,
     lastMachine: typeof o.lastMachine === 'string' && o.lastMachine ? o.lastMachine : null,
   }
 }

@@ -30,6 +30,17 @@ export const vi = {
     cleanTitle: 'Dọn bản cũ?',
     cleanBody: 'Quên {n} bản ghép trùng tên. Máy đang dùng không bị ảnh hưởng.',
   },
+  lockOffer: {
+    title: { faceId: 'Bật khoá Face ID?', touchId: 'Bật khoá Touch ID?', screen: 'Bật khoá màn hình?' },
+    body: 'Mỗi lần mở app sẽ hỏi xác thực, để người khác không đọc được session của bạn.',
+    note: 'Có thể đổi sau trong Cài đặt.',
+    enable: { faceId: 'Bật Face ID', touchId: 'Bật Touch ID', screen: 'Bật khoá' },
+    later: 'Để sau',
+    fail: {
+      cancelled: 'Chưa bật khoá vì bạn đã huỷ. App vẫn dùng bình thường.',
+      failed: 'Không bật được khoá. Có thể thử lại hoặc bật sau trong Cài đặt.',
+    },
+  },
   pair: {
     title: 'Ghép máy',
     tabScan: 'Quét QR',
@@ -215,6 +226,9 @@ export const vi = {
     label: 'Nội dung tệp',
     conflict: 'Tệp đã đổi trên máy tính. Tải lại để lấy bản mới (bản đang sửa sẽ mất).',
     reload: 'Tải lại',
+    diskChanged: 'File đã đổi trên máy',
+    diskChangedBody: 'Tải lại để lấy bản mới (bản đang sửa sẽ mất), hoặc giữ bản của bạn rồi lưu đè lên.',
+    keepMine: 'Giữ bản của tôi',
     leaveTitle: 'Bỏ thay đổi chưa lưu?',
     leaveBody: 'Nội dung đang sửa sẽ mất.',
     leaveOk: 'Bỏ thay đổi',

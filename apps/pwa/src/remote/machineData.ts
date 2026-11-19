@@ -280,9 +280,9 @@ export class MachineData {
     if (remaining.length !== this.current.confirms.length) this.set({ confirms: remaining })
   }
 
-  async answerConfirm(cid: string, ok: boolean): Promise<void> {
+  async answerConfirm(cid: string, ok: boolean): Promise<JsonMap> {
     this.dropConfirm(cid)
-    await this.commander('confirm.answer', { cid, ok })
+    return this.commander('confirm.answer', { cid, ok })
   }
 
   private scheduleSave(): void {

@@ -141,7 +141,7 @@ Event (chỉ tới phiên đã đăng ký, gom 100 ms): `fs.changed {root, paths
 Xác nhận (4.6) dùng cho `branch.delete`, `git.discard`, `branch.push`, `git.commit` amend, `run.start` config lạ: không hộp native nào hiện trên desktop; có thể có 2 lượt `confirm.ask` liên tiếp (vd xoá nhánh chưa merge → xoá cưỡng bức). `run.start` mà build Android cần gỡ bản cũ khác key (`reinstall`) chạy ở thread runner: host nhận `origin` = owner của phiên điện thoại (`run.origin`) nên gửi event `confirm.ask {re:"run.reinstall"}` tới đúng điện thoại đó, không hộp native; `confirm.answer` đánh thức runner, không trả lời trong 60 s / phiên đóng → coi như huỷ. Từ desktop vẫn hộp native.
 
 ### 4.6 Xác nhận
-Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confirm.ask {cid, re, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}` (`cid` dùng 1 lần); từ chối / quá 60 s / phiên đóng → lệnh gốc kết thúc `{cancelled:true}`. `confirmed` chỉ gateway đặt.
+Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confirm.ask {cid, re, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}` (`cid` dùng 1 lần); từ chối / quá 60 s / phiên đóng → lệnh gốc kết thúc `{cancelled:true}`. `confirmed` chỉ gateway đặt. Trả lời `confirm.answer` ok chạy lệnh gốc rồi trả đúng phản hồi của nó (`{ok:true,...}`), từ chối trả `{ok:true, cancelled:true}`; web app dựa vào đó để hiện Hoàn tác sau `ws.close` đã xác nhận (WP-65), không có trường mới.
 
 ## 5. Giới hạn
 `ws.*` 30 / phút · `fs.write` 20 / phút · JSON 1 MiB · text prompt 2000 · max 8 kết nối chưa xác thực / IP trên LAN · thiết bị không dùng 30 ngày tự hết hạn.

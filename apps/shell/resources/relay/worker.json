@@ -1,5 +1,5 @@
 {
-  "hash": "983a54112caa3232",
+  "hash": "2272094a39c63b7e",
   "mainModule": "worker.js",
   "compatibilityDate": "2026-11-01",
   "migrations": [
@@ -29,11 +29,6 @@
       "type": "plain_text",
       "name": "ANDROID_CERT_SHA256",
       "text": "1C:73:97:FC:D7:37:54:00:04:77:4E:13:E5:47:71:45:AB:13:57:8D:95:BF:3D:9A:B9:20:30:15:88:15:D6:61"
-    },
-    {
-      "type": "plain_text",
-      "name": "APPLE_APP_ID",
-      "text": ""
     }
   ]
 }

@@ -23,4 +23,4 @@ Chủ nhân 2026-11-19: mọi phần cần test trên Mac ghi hết vào file n�
 - [ ] WP-70b: menu góc phải tắt khi click ra ngoài; chế độ gọn về lại chế độ đầy đủ được; không còn Mission Control.
 - [ ] WP-71: Explorer ghim cố định bên phải, kéo width bằng chuột (trackpad), nhớ sau khi mở lại app; cây sâu cuộn ngang được bằng trackpad.
 - [ ] WP-72: Git log xem diff dễ dùng; bấm ảnh png / webp trong thay đổi của commit xem được trước / sau.
-- [ ] WP-73: Disk trên Mac: chọn ổ / volume nào thì chỉ quét volume đó; chọn item đổi trạng thái ngay.
+- [ ] WP-73 (Disk): tick checkbox trong cây / kết quả đổi ngay (cả phím Space); tích chỉ `/Volumes/X` → chỉ X được quét, `/` không quét lại; bỏ chọn ổ đã quét → dòng "Dữ liệu cũ được giữ", quét nền / snapshot / báo cáo Telegram chỉ có ổ đang chọn; chọn thư mục con của `/` vẫn tính theo ổ cha; nút "Quét siêu nhanh" ẩn trên Mac.

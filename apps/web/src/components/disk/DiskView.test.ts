@@ -134,6 +134,33 @@ describe('DiskView', () => {
     expect(w.find('[data-disk-report]').text()).toContain('in use')
   })
 
+  it('keeps the tree checkbox ticked after a click', async () => {
+    const w = await mountView()
+    const box = w.find('[data-disk-row][data-path="C:\\\\r\\\\mid.zip"] input')
+    await box.trigger('click')
+    expect((box.element as HTMLInputElement).checked).toBe(true)
+    expect(w.find('[data-disk-row][data-path="C:\\\\r\\\\mid.zip"]').classes()).toContain('bg-accent-soft')
+    await box.trigger('click')
+    expect((box.element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('toggles the focused tree row with Space', async () => {
+    const w = await mountView()
+    const row = w.find('[data-disk-row][data-path="C:\\\\r\\\\big"]')
+    await row.trigger('keydown', { key: ' ' })
+    expect(useDiskMapStore().selected.has('C:\\r\\big')).toBe(true)
+    expect((row.find('input').element as HTMLInputElement).checked).toBe(true)
+    await row.trigger('keydown', { key: ' ' })
+    expect(useDiskMapStore().selected.size).toBe(0)
+  })
+
+  it('says which indexed drives are kept old and not rescanned', async () => {
+    api.status.mockResolvedValue(status({ roots: ['C:\\r', 'D:\\'] }))
+    const w = await mountView()
+    expect(w.find('[data-disk-stale]').text()).toContain('D:')
+    expect(w.find('[data-disk-stale]').text()).not.toContain('C:')
+  })
+
   it('keeps the selection bar hidden until something is selected', async () => {
     const w = await mountView()
     expect(w.find('[data-disk-selection]').exists()).toBe(false)

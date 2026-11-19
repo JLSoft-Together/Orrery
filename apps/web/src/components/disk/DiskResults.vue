@@ -99,10 +99,12 @@ function rowClick(e: MouseEvent, path: string): void {
           :style="{ top: `${(first + i) * ROW}px`, height: `${ROW}px` }"
           role="option"
           :aria-selected="selected.has(it.path)"
+          tabindex="0"
           data-disk-result
           :data-path="it.path"
           :title="it.path"
           @click="rowClick($event, it.path)"
+          @keydown.space.self.prevent="emit('toggle', it.path, false)"
           @contextmenu="onContext($event, it.path)"
         >
           <input type="checkbox" class="size-3.5 shrink-0 accent-[var(--ccm-accent)]" :checked="selected.has(it.path)" :aria-label="it.name" @click.stop="emit('toggle', it.path, ($event as MouseEvent).shiftKey)" />

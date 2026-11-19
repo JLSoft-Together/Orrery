@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, Pause, Play, ScanSearch, Square, Zap } from 'lucide-vue-next'
-import { DISK_LEVELS, formatDuration, formatSize } from '../../lib/diskMap'
+import { DISK_LEVELS, formatDuration, formatSize, isUnder } from '../../lib/diskMap'
 import { useDiskMapStore } from '../../stores/diskMap'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import DiskVolumeRow from './DiskVolumeRow.vue'
@@ -12,6 +12,7 @@ const store = useDiskMapStore()
 
 const levels = computed(() => DISK_LEVELS.map((l) => ({ value: l, label: t(`diskMap.level.${l}`), title: t(`diskMap.level.${l}Hint`) })))
 const busy = computed(() => store.scanning)
+const stale = computed(() => (store.status?.roots ?? []).filter((r) => store.scanRoots.length > 0 && !store.scanRoots.some((x) => isUnder(r, x))))
 const fastHint = computed(() => (store.fastDrive ? t('diskMap.fast.hint', { drive: `${store.fastDrive}:` }) : ''))
 const fastMessage = computed(() => (store.fastError ? t(`diskMap.fast.${store.fastError}`, { error: store.fastDetail }) : ''))
 </script>
@@ -32,9 +33,11 @@ const fastMessage = computed(() => (store.fastError ? t(`diskMap.fast.${store.fa
       <p v-if="!store.volumes.length" class="text-xs text-ink-muted" data-disk-novolumes>{{ t('diskMap.scan.noVolumes') }}</p>
     </div>
 
+    <p v-if="stale.length && !busy" class="mt-2 text-2xs text-ink-muted" data-disk-stale>{{ t('diskMap.scan.stale', { roots: stale.join(', ') }) }}</p>
+
     <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <SegmentedControl :model-value="store.level" :options="levels" :label="t('diskMap.level.label')" :disabled="busy" data-disk-level @update:model-value="(l: 'light' | 'balanced' | 'max') => store.setLevel(l)" />
-      <button v-if="!busy" type="button" class="ccm-btn ccm-btn-primary" :disabled="!store.roots.length" data-disk-scan @click="store.scan()">
+      <button v-if="!busy" type="button" class="ccm-btn ccm-btn-primary" :disabled="!store.scanRoots.length" data-disk-scan @click="store.scan()">
         <ScanSearch :size="14" aria-hidden="true" />{{ store.indexed ? t('diskMap.scan.rescan') : t('diskMap.scan.start') }}
       </button>
       <button v-if="!busy && store.fastDrive" type="button" class="ccm-btn" :title="fastHint" aria-describedby="disk-fast-hint" data-disk-fastscan @click="store.fastScan()">

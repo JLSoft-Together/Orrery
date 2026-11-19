@@ -28,6 +28,7 @@ const en = {
     },
     scan: {
       pick: 'Drives to scan',
+      stale: 'Old data kept, not rescanned: {roots}. Background scans and snapshots cover only the ticked drives.',
       noVolumes: 'No drives found.',
       start: 'Scan',
       rescan: 'Scan again',
@@ -240,6 +241,7 @@ const vi: typeof en = {
     },
     scan: {
       pick: 'Ổ đĩa cần quét',
+      stale: 'Dữ liệu cũ được giữ, không quét lại: {roots}. Quét nền và snapshot chỉ quét các ổ đang tick.',
       noVolumes: 'Không tìm thấy ổ đĩa nào.',
       start: 'Quét',
       rescan: 'Quét lại',

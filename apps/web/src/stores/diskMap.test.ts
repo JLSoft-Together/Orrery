@@ -111,6 +111,50 @@ describe('disk map store', () => {
     expect(s.progress).toBeNull()
   })
 
+  it('scans only the ticked drive and ignores indexed roots that are not drives', async () => {
+    api.volumes.mockResolvedValue([
+      { mount: 'C:\\', label: '', fs: 'NTFS', kind: 'fixed', network: false, total: 100, free: 40 },
+      { mount: 'D:\\', label: '', fs: 'NTFS', kind: 'fixed', network: false, total: 100, free: 40 },
+    ])
+    api.status.mockResolvedValue(status({ roots: ['D:\\', 'C:\\Users\\x'] }))
+    api.scan.mockResolvedValue(true)
+    const s = useDiskMapStore()
+    await s.init()
+    expect(s.roots).toEqual(['D:\\'])
+    s.roots = []
+    s.toggleRoot('C:\\')
+    expect(s.scanRoots).toEqual(['C:\\'])
+    await s.scan()
+    expect(api.scan).toHaveBeenCalledWith(['C:\\'], 'balanced')
+    s.roots = ['C:\\', 'E:\\hidden']
+    api.scan.mockClear()
+    api.status.mockResolvedValue(status({ scanning: false }))
+    await s.scan()
+    expect(api.scan).toHaveBeenCalledWith(['C:\\'], 'balanced')
+  })
+
+  it('remembers the ticked drives and shows the scanned drive after a merged scan', async () => {
+    api.volumes.mockResolvedValue([
+      { mount: 'C:\\', label: '', fs: 'NTFS', kind: 'fixed', network: false, total: 100, free: 40 },
+      { mount: 'D:\\', label: '', fs: 'NTFS', kind: 'fixed', network: false, total: 100, free: 40 },
+    ])
+    api.status.mockResolvedValue(status({ indexed: false, roots: [] }))
+    api.scan.mockResolvedValue(true)
+    const s = useDiskMapStore()
+    await s.init()
+    s.toggleRoot('C:\\')
+    expect(JSON.parse(localStorage.getItem('ccm.diskRoots') ?? '[]')).toEqual(['C:\\'])
+    api.status.mockResolvedValue(status({ scanning: true, indexed: false }))
+    await s.scan()
+    api.status.mockResolvedValue(status({ roots: ['D:\\', 'C:\\'] }))
+    api.done?.()
+    await vi.waitFor(() => expect(s.path).toBe('C:\\'))
+    setActivePinia(createPinia())
+    const again = useDiskMapStore()
+    await again.init()
+    expect(again.roots).toEqual(['C:\\'])
+  })
+
   it('pauses, resumes and cancels through status refresh', async () => {
     const s = useDiskMapStore()
     await s.init()

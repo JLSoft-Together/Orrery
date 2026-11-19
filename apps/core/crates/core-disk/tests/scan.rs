@@ -650,3 +650,25 @@ fn engine_summary_lists_dirs_to_depth() {
     let paths: Vec<_> = big["roots"][0]["dirs"].as_array().unwrap().iter().map(|d| d[0].clone()).collect();
     assert_eq!(paths, vec![json!(media)]);
 }
+
+#[test]
+fn scan_covers_only_the_picked_roots() {
+    let t = tmp("picked");
+    write(&t.0.join("c").join("one.txt"), 1000);
+    write(&t.0.join("d").join("two.txt"), 2000);
+    let c = t.0.join("c");
+    let d = t.0.join("d");
+    let only_c = run(&c, |_| {});
+    assert_eq!(only_c.root_paths(), vec![c.to_string_lossy().to_string()]);
+    let all: Vec<&str> = (0..only_c.len() as u32).map(|i| only_c.name(i)).collect();
+    assert!(all.contains(&"one.txt"));
+    assert!(!all.contains(&"two.txt"));
+    assert!(only_c.stats.bytes > 0);
+    let both = {
+        let mut o = ScanOptions::new(vec![c.to_string_lossy().to_string(), d.to_string_lossy().to_string()]);
+        o.threads = Some(2);
+        scan(&o, &Control::default(), &Progress::default()).unwrap()
+    };
+    assert_eq!(both.root_paths().len(), 2);
+    assert!(both.stats.bytes > only_c.stats.bytes);
+}

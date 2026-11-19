@@ -10,6 +10,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::disk_guard::{self as guard, GuardContext, Plat, RealIo};
 use crate::disk_host::DiskHost;
+use crate::disk_pick::{restrict, Picked};
 use crate::disk_snap::DiskSnap;
 use crate::disk_text::{delete_box, Ask};
 use crate::state::{lock, Shell};
@@ -411,6 +412,7 @@ pub struct DiskMap {
     pub host: DiskHost,
     pub history: History,
     data_dir: PathBuf,
+    picked: Picked,
     loaded: Mutex<bool>,
     deleting: AtomicBool,
     pub dupes_running: AtomicBool,
@@ -455,6 +457,10 @@ impl DiskMap {
         to_volumes(&self.host.call("disk.volumes", json!({})).unwrap_or(json!([])))
     }
 
+    pub fn scheduled_roots(&self, indexed: &[String]) -> Vec<String> {
+        restrict(indexed, self.picked.load().as_deref(), Plat::host())
+    }
+
     pub fn status(&self) -> Result<Value, String> {
         self.ensure_loaded()?;
         Ok(to_status(&self.host.call("disk.status", json!({}))?))
@@ -466,10 +472,12 @@ impl DiskMap {
         if self.ensure_loaded().is_err() {
             return json!({ "started": false });
         }
+        let picked: Vec<String> = clean["roots"].as_array().into_iter().flatten().filter_map(Value::as_str).map(str::to_owned).collect();
         let mut args = clean;
         args["save"] = json!(true);
         match self.host.call("disk.scan", args) {
             Ok(_) => {
+                self.picked.save(&picked);
                 self.host.mark_scanning(true);
                 json!({ "started": true })
             }
@@ -485,6 +493,7 @@ impl DiskMap {
         }
         match self.host.call("disk.mft", json!({ "drive": drive, "save": true })) {
             Ok(_) => {
+                self.picked.save(&[format!("{}:\\", drive.chars().next().unwrap_or('C').to_ascii_uppercase())]);
                 self.host.mark_scanning(true);
                 json!({ "started": true })
             }
@@ -816,6 +825,7 @@ pub fn manage(app: &AppHandle, core_bin: PathBuf) {
     let map = Arc::new(DiskMap {
         host: host.clone(),
         history: History::new(&disk_dir),
+        picked: Picked::new(&disk_dir),
         data_dir,
         loaded: Mutex::new(false),
         deleting: AtomicBool::new(false),

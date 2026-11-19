@@ -23,6 +23,9 @@ import {
   isUnder,
   loadChart,
   loadLevel,
+  loadRoots,
+  onlyMounts,
+  saveRoots,
   onDiskMapDone,
   onDiskMapProgress,
   parentPath,
@@ -62,6 +65,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   const level = ref<DiskLevel>(loadLevel())
   const chart = ref<DiskChart>(loadChart())
   const roots = ref<string[]>([])
+  let lastScan: string[] = []
   const selected = ref<Set<string>>(new Set())
   const anchor = ref<string | null>(null)
   const deleting = ref(false)
@@ -102,9 +106,10 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   const selectedItems = computed(() => listed.value.filter((i) => selected.value.has(i.path)))
   const selectedSize = computed(() => selectedItems.value.reduce((s, i) => s + i.size, 0))
   const totalFreed = computed(() => history.value.reduce((s, h) => (h.action === 'move' ? s : s + h.freed), 0))
+  const scanRoots = computed(() => (volumes.value.length ? onlyMounts(roots.value, volumes.value.map((v) => v.mount)) : [...roots.value]))
   const fastDrive = computed(() => {
-    if (!hasFastScan || roots.value.length !== 1) return null
-    const v = volumes.value.find((x) => x.mount === roots.value[0])
+    if (!hasFastScan || scanRoots.value.length !== 1) return null
+    const v = volumes.value.find((x) => x.mount === scanRoots.value[0])
     return v ? fastScanDrive(v) : null
   })
 
@@ -157,7 +162,8 @@ export const useDiskMapStore = defineStore('diskMap', () => {
           }
           void refreshStatus().then(async () => {
             await loadVolumes()
-            if (!path.value && status.value?.roots[0]) await open(status.value.roots[0])
+            const first = pickStart()
+            if (!path.value && first) await open(first)
             else await reload()
             if (mode.value !== 'browse') await runSearch()
           })
@@ -165,8 +171,14 @@ export const useDiskMapStore = defineStore('diskMap', () => {
       )
     }
     await Promise.all([loadVolumes(), refreshStatus(), loadHistory()])
-    if (roots.value.length === 0 && status.value?.roots.length) roots.value = [...status.value.roots]
-    if (!path.value && status.value?.indexed && status.value.roots[0]) await open(status.value.roots[0])
+    if (roots.value.length === 0) {
+      const mounts = volumes.value.map((v) => v.mount)
+      const saved = loadRoots()
+      const start = saved ?? status.value?.roots ?? []
+      roots.value = mounts.length ? onlyMounts(start, mounts) : saved ? [...saved] : []
+    }
+    const first = pickStart()
+    if (!path.value && status.value?.indexed && first) await open(first)
   }
 
   function dispose(): void {
@@ -177,16 +189,24 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     started = false
   }
 
+  function pickStart(): string | undefined {
+    const known = status.value?.roots ?? []
+    const scanned = lastScan.length ? known.find((r) => lastScan.some((x) => isUnder(r, x))) : undefined
+    return scanned ?? known[0]
+  }
+
   function toggleRoot(mount: string): void {
     const next = new Set(roots.value)
     if (next.has(mount)) next.delete(mount)
     else next.add(mount)
     roots.value = [...next]
+    saveRoots(roots.value)
   }
 
   async function fastScan(): Promise<boolean> {
     const drive = fastDrive.value
     if (!drive || scanning.value) return false
+    lastScan = scanRoots.value
     fastError.value = null
     fastDetail.value = ''
     progress.value = { files: 0, bytes: 0, current: `${drive}:\\`, elapsedMs: 0 }
@@ -206,10 +226,12 @@ export const useDiskMapStore = defineStore('diskMap', () => {
   }
 
   async function scan(): Promise<boolean> {
-    if (!roots.value.length || scanning.value) return false
+    const picked = scanRoots.value
+    if (!picked.length || scanning.value) return false
+    lastScan = picked
     fastError.value = null
     progress.value = { files: 0, bytes: 0, current: '', elapsedMs: 0 }
-    const ok = await diskMapScan([...roots.value], level.value)
+    const ok = await diskMapScan([...picked], level.value)
     if (!ok) {
       progress.value = null
       return false
@@ -403,6 +425,7 @@ export const useDiskMapStore = defineStore('diskMap', () => {
     level,
     chart,
     roots,
+    scanRoots,
     selected,
     deleting,
     report,

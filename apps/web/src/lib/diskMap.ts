@@ -108,6 +108,38 @@ export function loadChart(): DiskChart {
   return 'treemap'
 }
 
+const ROOTS_KEY = 'ccm.diskRoots'
+
+export function loadRoots(): string[] | null {
+  try {
+    const raw = localStorage.getItem(ROOTS_KEY)
+    if (raw === null) return null
+    const v: unknown = JSON.parse(raw)
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : null
+  } catch {
+    return null
+  }
+}
+
+export function saveRoots(roots: string[]): void {
+  try {
+    localStorage.setItem(ROOTS_KEY, JSON.stringify(roots))
+  } catch {
+    return
+  }
+}
+
+export function onlyMounts(roots: string[], mounts: string[]): string[] {
+  const key = (p: string): string => p.replace(/[\\/]+$/, '').toLowerCase()
+  const known = new Map(mounts.map((m) => [key(m), m]))
+  const out: string[] = []
+  for (const r of roots) {
+    const m = known.get(key(r))
+    if (m && !out.includes(m)) out.push(m)
+  }
+  return out
+}
+
 export function saveChart(chart: DiskChart): void {
   try {
     localStorage.setItem(CHART_KEY, chart)

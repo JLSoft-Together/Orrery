@@ -28,6 +28,7 @@ mod disk_organize_fs;
 mod disk_organize_junk;
 mod disk_organize_log;
 mod disk_organize_rules;
+mod disk_pick;
 mod disk_snap;
 mod disk_text;
 mod drop_paths;

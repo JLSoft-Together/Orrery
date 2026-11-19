@@ -438,7 +438,7 @@ impl DiskSnap {
 
     fn capture(&self, m: &DiskMap) -> Option<Snapshot> {
         let st = m.status().ok()?;
-        let roots = status_roots(&st);
+        let roots = m.scheduled_roots(&status_roots(&st));
         if st["indexed"] != json!(true) || roots.is_empty() {
             return None;
         }
@@ -644,7 +644,7 @@ impl DiskSnap {
             return;
         }
         let Ok(st) = m.status() else { return };
-        let roots = status_roots(&st);
+        let roots = m.scheduled_roots(&status_roots(&st));
         if st["indexed"] != json!(true) || st["scanning"] == json!(true) || roots.is_empty() {
             return;
         }

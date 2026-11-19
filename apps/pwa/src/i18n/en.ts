@@ -66,6 +66,7 @@ export const en: Messages = {
       expired: { title: 'The code expired', body: 'A code works for a few minutes. Make a new one on your computer and try again.' },
       badCode: { title: 'Wrong code', body: 'This code could not be read. Check that the whole string was pasted, or make a new code.' },
       noRoute: { title: 'No route to the computer', body: 'Neither the LAN nor the relay could be reached. Check the network and try again.' },
+      blocked: { title: 'Network address blocked', body: 'The computer or relay temporarily blocked this network address after too many wrong attempts. Wait a while or use another network, then try again.' },
       failed: { title: 'Pairing failed', body: 'The encrypted handshake did not complete. Make a new code on your computer and try again.' },
     },
   },

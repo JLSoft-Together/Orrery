@@ -152,6 +152,8 @@ describe('qr input', () => {
     expect(pairErrorKey('expired')).toBe('expired')
     expect(pairErrorKey('badQr')).toBe('badCode')
     expect(pairErrorKey('noRoute')).toBe('noRoute')
+    expect(pairErrorKey('4429')).toBe('blocked')
+    expect(pairErrorKey('4401')).toBe('expired')
     expect(pairErrorKey('noise')).toBe('failed')
   })
 

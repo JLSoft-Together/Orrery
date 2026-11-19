@@ -14,12 +14,15 @@ export function checkQrText(raw: string): { ok: true; text: string } | { ok: fal
   return { ok: true, text }
 }
 
-export function pairErrorKey(code: string): 'denied' | 'expired' | 'badCode' | 'noRoute' | 'failed' {
+export function pairErrorKey(code: string): 'denied' | 'expired' | 'badCode' | 'noRoute' | 'blocked' | 'failed' {
   switch (code) {
     case 'denied':
       return 'denied'
     case 'expired':
+    case '4401':
       return 'expired'
+    case '4429':
+      return 'blocked'
     case 'badQr':
     case 'badToken':
     case 'badKey':

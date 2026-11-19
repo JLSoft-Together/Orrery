@@ -64,6 +64,7 @@ export const vi = {
       expired: { title: 'Mã ghép đã hết hạn', body: 'Mã chỉ dùng được vài phút. Tạo mã mới trên máy tính rồi thử lại.' },
       badCode: { title: 'Mã không đúng', body: 'Không đọc được mã này. Kiểm tra đã dán đủ chuỗi, hoặc tạo mã mới.' },
       noRoute: { title: 'Không có đường nối', body: 'Không kết nối được qua LAN lẫn relay. Kiểm tra mạng rồi thử lại.' },
+      blocked: { title: 'Địa chỉ mạng bị chặn', body: 'Máy tính hoặc relay đã chặn tạm địa chỉ mạng này vì quá nhiều lần thử sai. Đợi một lúc hoặc dùng mạng khác rồi thử lại.' },
       failed: { title: 'Ghép thất bại', body: 'Bắt tay mã hoá không thành công. Tạo mã mới trên máy tính rồi thử lại.' },
     },
   },

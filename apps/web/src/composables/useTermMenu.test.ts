@@ -335,6 +335,25 @@ describe('useTermMenu', () => {
     m.click(item, 1)
     expect(m.sent).toEqual([])
   })
+
+  it('sends nothing while keys from a phone are still waiting for the pane', async () => {
+    const t = fakeTerm()
+    const sent: string[] = []
+    const gate = { phone: true }
+    const api = useTermMenu({ term: () => t.term, enabled: () => true, send: (k) => sent.push(k), focus: vi.fn(), blocked: () => gate.phone })
+    api.attach(t.term)
+    t.show('claude-ask-single')
+    await tick()
+    const item = api.menu.value!.items[2]!
+    await api.pick(item)
+    api.click(item, 1)
+    api.click(item, 2)
+    expect(sent).toEqual([])
+    expect(api.menu.value).not.toBeNull()
+    gate.phone = false
+    await api.pick(item)
+    expect(sent).toEqual(['3'])
+  })
 })
 
 function hidden(name?: string) {

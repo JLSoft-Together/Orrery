@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import type { RemoteStatus } from '@ccm/shared'
+import { computed, ref, watch } from 'vue'
+import type { RemoteGuardBlock, RemoteStatus } from '@ccm/shared'
+import { hasRemoteGuard, remoteGuard } from '../lib/remoteGuard'
 import { hasRemote, isConnected, onRemoteChanged, remoteDeviceRename, remoteEnable, remoteKeepAwake, remotePushDevice, remoteRevoke, remoteRevokeAll, remoteStatus, REMOTE_LOG_MAX, REMOTE_TOUCH_MS, type RemoteLogLine } from '../lib/remote'
 
 let seq = 0
@@ -10,6 +11,8 @@ export const useRemoteStore = defineStore('remote', () => {
   const log = ref<RemoteLogLine[]>([])
   const touched = ref<Record<string, { at: number; device: string }>>({})
   const sized = ref<Record<string, true>>({})
+  const blocked = ref<RemoteGuardBlock[]>([])
+  const pairWanted = ref(false)
   let off: (() => void) | null = null
 
   const supported = hasRemote
@@ -17,10 +20,27 @@ export const useRemoteStore = defineStore('remote', () => {
   const devices = computed(() => status.value?.devices ?? [])
   const connected = computed(() => devices.value.filter(isConnected).length)
 
+  async function loadGuard(): Promise<void> {
+    if (!hasRemoteGuard) return
+    const reply = await remoteGuard({ op: 'get' })
+    if (reply?.state) blocked.value = reply.state.blocked
+  }
+
+  watch(
+    () => [status.value?.guardRev, enabled.value] as const,
+    ([rev, on], [oldRev, wasOn]) => {
+      if (on && rev !== undefined && (rev !== oldRev || !wasOn)) void loadGuard()
+    },
+  )
+
   async function start(): Promise<void> {
     if (!hasRemote || off) return
     off = onRemoteChanged((next) => (status.value = next))
     status.value = await remoteStatus()
+  }
+
+  function askPair(): void {
+    pairWanted.value = true
   }
 
   function stop(): void {
@@ -80,5 +100,5 @@ export const useRemoteStore = defineStore('remote', () => {
     return sized.value[paneKey] ? (devices.value.find(isConnected)?.name ?? '') : null
   }
 
-  return { status, log, touched, sized, supported, enabled, devices, connected, start, stop, setEnabled, setKeepAwake, revoke, renameDevice, setDevicePush, revokeAll, record, setSized, watching }
+  return { status, log, touched, sized, blocked, pairWanted, supported, enabled, devices, connected, start, stop, loadGuard, askPair, setEnabled, setKeepAwake, revoke, renameDevice, setDevicePush, revokeAll, record, setSized, watching }
 })

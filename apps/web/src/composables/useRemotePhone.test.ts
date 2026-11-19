@@ -165,6 +165,21 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await call('ws.move', { paneKey: 'nope', tabKey: tabA.key })).toEqual({ ok: false, error: 'notFound' })
   })
 
+  it('move goes through the UI next layout tracker so the owner gets the Undo toast', async () => {
+    const { workspaceBridge } = await import('../lib/next/workspaceBridge')
+    const a = pane('claude', 'C:\\work\\A', 'a')
+    const b = pane('claude', 'C:\\work\\B', 'b')
+    const tabA = ws.tabOf(a.key)!
+    const kinds: string[] = []
+    workspaceBridge.value = { track: (kind: string, change: () => void) => (kinds.push(kind), change()) } as never
+    ws.activate(a.key)
+    expect(await call('ws.move', { paneKey: b.key, tabKey: tabA.key })).toEqual({ ok: true })
+    expect(kinds).toEqual(['phone'])
+    expect(ws.tabOf(b.key)).toBe(tabA)
+    expect(ws.activeKey).toBe(a.key)
+    workspaceBridge.value = null
+  })
+
   it('send submits into an idle agent and only types into a busy one; text over the limit is refused', async () => {
     const { useTerminalsStore } = await import('../stores/terminals')
     const a = pane('claude', 'C:\\work\\A', 'a')

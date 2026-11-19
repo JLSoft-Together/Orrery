@@ -440,6 +440,7 @@ const termMenu = useTermMenu({
   focus: () => term?.focus(),
   observe: () => props.pane.state === 'running' && (preset.value === 'claude' || preset.value === 'codex'),
   throttle: () => (props.visible ? MENU_THROTTLE_MS : HIDDEN_MENU_THROTTLE_MS),
+  blocked: () => !!props.pane.typeKeys,
 })
 const menuQueue = useMenuQueueStore()
 const unregisterMenu = menuQueue.register(props.pane.key, termMenu.pick)
@@ -1192,11 +1193,12 @@ watch(
 )
 
 watch(
-  () => props.pane.typeKeys,
-  (keys) => {
-    if (!keys || !conn?.isOpen || props.pane.state !== 'running') return
+  () => [props.pane.typeKeys, termMenu.busy.value] as const,
+  ([keys, menuBusy]) => {
+    if (!keys || menuBusy || !conn?.isOpen || props.pane.state !== 'running') return
     conn.write(keys)
     workspace.update(props.pane.key, { typeKeys: undefined })
+    termMenu.schedule()
   },
   { immediate: true },
 )

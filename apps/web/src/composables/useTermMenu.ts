@@ -26,6 +26,7 @@ export interface TermMenuOptions {
   focus: () => void
   observe?: () => boolean
   throttle?: () => number
+  blocked?: () => boolean
 }
 
 export interface SeenMenu {
@@ -139,7 +140,7 @@ export function useTermMenu(opts: TermMenuOptions) {
 
   async function pick(item: TermMenuItem): Promise<void> {
     const shown = menu.value ?? seen.value?.menu ?? null
-    if (busy.value || !shown) return
+    if (busy.value || !shown || opts.blocked?.()) return
     busy.value = true
     try {
       const fresh = readAct()
@@ -167,7 +168,7 @@ export function useTermMenu(opts: TermMenuOptions) {
   }
 
   function click(item: TermMenuItem, detail: number): void {
-    if (busy.value || !menu.value) return
+    if (busy.value || !menu.value || opts.blocked?.()) return
     const fresh = read()
     if (!fresh || menuLayoutKey(fresh) !== menuLayoutKey(menu.value)) {
       apply(fresh)

@@ -48,6 +48,14 @@ export interface RemotePane {
   busy: boolean
 }
 
+export interface RemotePaneGroup {
+  project: string
+  name?: string
+  tone?: number
+  folded?: boolean
+  panes: string[]
+}
+
 export interface RemoteTab {
   key: string
   name?: string
@@ -55,6 +63,7 @@ export interface RemoteTab {
   tree: LayoutNodeLike
   zoom?: string
   folded?: boolean
+  groups?: RemotePaneGroup[]
   panes: RemotePane[]
 }
 

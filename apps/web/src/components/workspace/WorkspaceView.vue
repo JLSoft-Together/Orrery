@@ -1740,6 +1740,7 @@ onMounted(() => {
     paneDrag: (e, key, el) => {
       if (isNext.value && workspace.tabOf(key)) startExternalDrag(e, { kind: 'pane', key, rail: true }, el)
     },
+    track: (kind, change) => nextLayout.track(kind, change),
   })
   // First workspace visit (or after the app's data was reset): ask for every folder once instead of per folder later.
   void fullAccess('first')

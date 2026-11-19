@@ -3,6 +3,21 @@ const TRIES = 25
 const EVERY_MS = 40
 const FLASH_MS = 1400
 
+function scroller(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    if (p.scrollHeight > p.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(p).overflowY)) return p
+  }
+  return null
+}
+
+export function centerRow(row: HTMLElement): void {
+  const box = scroller(row)
+  if (!box) return
+  const r = row.getBoundingClientRect()
+  const b = box.getBoundingClientRect()
+  box.scrollTop += r.top - b.top - Math.max(0, (b.height - r.height) / 2)
+}
+
 /** Settings opens on its page a tick or two after the request, so the row is awaited rather than assumed. */
 export function flashSettingRow(id: string, root: ParentNode = document): void {
   let tries = 0
@@ -13,7 +28,7 @@ export function flashSettingRow(id: string, root: ParentNode = document): void {
       if (++tries < TRIES) window.setTimeout(look, EVERY_MS)
       return
     }
-    row.scrollIntoView({ block: 'center' })
+    centerRow(row)
     row.classList.add('ccm-setting-flash')
     window.setTimeout(() => row.classList.remove('ccm-setting-flash'), FLASH_MS)
   }

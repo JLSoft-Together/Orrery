@@ -14,6 +14,7 @@ export interface WorkspaceBridge {
   explorer: (paneKey: string) => void
   projectDrag: (e: PointerEvent, src: RailProjectDrag, el: HTMLElement) => void
   paneDrag: (e: PointerEvent, paneKey: string, el: HTMLElement) => void
+  track?: (kind: 'phone', change: () => void) => void
 }
 
 export const workspaceBridge = shallowRef<WorkspaceBridge | null>(null)

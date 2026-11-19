@@ -17,7 +17,10 @@ export function useRemoteGuard() {
       error.value = 'invalid'
       return false
     }
-    if (reply.state) state.value = reply.state
+    if (reply.state) {
+      state.value = reply.state
+      remote.blocked = reply.state.blocked
+    }
     error.value = reply.ok ? null : reply.error
     return reply.ok
   }

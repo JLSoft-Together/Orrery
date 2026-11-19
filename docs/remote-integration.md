@@ -94,14 +94,15 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 | `ws.get` | trả `ws.snapshot` hiện tại |
 | `ws.open {cwd, preset: "claude"\|"codex"\|"shell", prompt?, submit?, resume?}` | mở pane trong tab project, không đổi focus desktop → `{paneKey}` |
 | `ws.close {paneKey}` | pane bận / file chưa lưu → event `confirm.ask` cho chính điện thoại; không hiện gì trên desktop |
-| `ws.rename {tabKey, name\|null}` · `ws.move {paneKey, tabKey}` · `ws.reopen` · `ws.compact {paneKey}` | như desktop |
+| `ws.rename {tabKey, name\|null}` · `ws.move {paneKey, tabKey}` · `ws.reopen` · `ws.compact {paneKey}` | như desktop; `ws.move` vào đúng nhóm project của tab đích, UI next hiện toast "Điện thoại đã chuyển pane" kèm Hoàn tác 5 s; pane `ws.close` đóng vào ngăn mở lại và hiện toast Hoàn tác như đóng trên desktop |
 | `ws.send {paneKey, text}` | ≤ 2000 ký tự; pane idle → gửi luôn, không idle → chỉ gõ sẵn → `{submitted}` |
 | `ws.keys {paneKey, keys, since}` | nút trả lời xin quyền; `since` lệch `statusSince` → `busy` |
 
 `timeout` của lệnh `ws.*` = kết quả chưa rõ (renderer có thể vẫn đã làm): client KHÔNG tự retry lệnh có tác dụng phụ. Gateway gửi kèm `rid` (theo phiên + `id` lệnh) cho renderer; renderer bỏ lệnh trùng `rid` (50 gần nhất, 60 s) và trả lại kết quả lần đầu.
 
 Event `ws.snapshot {rev, tabs[]}` / `ws.patch {base, rev, ops[]}` (`ops` = JSON Patch RFC 6902 trên snapshot; chỉ áp khi `base` = rev đang có, lệch → `ws.get`).
-`tabs[i] = {key, name, project, tree, zoom, folded, panes[]}`; `tree` = `{pane} | {dir, ratio, a, b}`;
+`tabs[i] = {key, name, project, tree, zoom, folded, groups?, panes[]}`; `tree` = `{pane} | {dir, ratio, a, b}` (luôn phẳng: nhóm project của UI next không lồng vào `tree`, app cũ vẫn đọc được);
+`groups[k] = {project, name?, tone?, folded?, panes[]}` (tuỳ chọn, WP-67 2026-11-19): chỉ có khi tab chia nhóm project (`GroupNode`), theo thứ tự trong `tree`; `project` = thư mục nhóm, `name` ≤ 120 ký tự đã lọc ký tự điều khiển, `tone` 0 đến 7 (8 màu nhóm), `panes` = key pane thuộc nhóm. App không biết `groups` thì bỏ qua (field lạ bị bỏ qua), vẫn vẽ đúng từ `tree`.
 `panes[j] = {key, kind, preset, agent, title, cwd, branch, state, rail, waitText, attention, subagents, sessionId, terminalId, dirty, busy}`.
 
 ### 4.4 PTY

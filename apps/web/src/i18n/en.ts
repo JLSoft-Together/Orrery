@@ -81,6 +81,7 @@ import uiV80Toast from './ui-v80-toast'
 import deepseekV81 from './deepseek-v81'
 import remoteV97 from './remote-v97'
 import remoteV98 from './remote-v98'
+import mistRemote from './mist-remote'
 import captureV76 from './capture-v76'
 import sensitiveV76 from './sensitive-v76'
 import agentDataV76 from './agentdata-v76'
@@ -182,6 +183,7 @@ export default {
   ...deepseekV81.en,
   ...remoteV97.en,
   ...remoteV98.en,
+  ...mistRemote.en,
   ...captureV76.en,
   ...sensitiveV76.en,
   ...agentDataV76.en,

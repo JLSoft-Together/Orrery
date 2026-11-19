@@ -10,6 +10,7 @@ import {
   type SessionOpenError,
 } from '@ccm/shared'
 import { i18n } from '../i18n'
+import { workspaceBridge } from '../lib/next/workspaceBridge'
 import { baseName } from '../lib/preview'
 import { useInboxStore } from '../stores/inbox'
 import { useRemoteStore } from '../stores/remote'
@@ -138,7 +139,10 @@ export function installRemotePhone(): void {
     const { cmd, device } = call
     const pane = paneOf(cmd.paneKey)
     if (!pane || !workspace.tabs.some((x) => x.key === cmd.tabKey)) return fail('notFound')
-    keepFocus(() => workspace.movePaneToTab(cmd.paneKey, cmd.tabKey))
+    const change = (): void => keepFocus(() => workspace.movePaneToTab(cmd.paneKey, cmd.tabKey))
+    const track = workspaceBridge.value?.track
+    if (track) track('phone', change)
+    else change()
     log(device, 'move', { name: nameOf(pane) }, pane)
     return { ok: true }
   }

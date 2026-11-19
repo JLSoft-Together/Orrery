@@ -13,7 +13,7 @@ import { paneLayoutEntries, paneLayoutId, PANE_LAYOUT_MENU, type PaneLayoutId } 
 import { registerLayoutUndo } from '../../../lib/next/paletteHooks'
 import type { CompassZone } from '../../../lib/next/dropCompass'
 
-export type LayoutChange = 'split' | 'swap' | 'detach' | 'merge' | 'preset' | 'even' | 'group'
+export type LayoutChange = 'split' | 'swap' | 'detach' | 'merge' | 'preset' | 'even' | 'group' | 'phone'
 
 interface Deps {
   isNext: Ref<boolean>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, type Component } from 'vue'
+import { computed, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, CircleCheck, CircleOff, LoaderCircle, Plus, Smartphone, SmartphoneNfc } from 'lucide-vue-next'
 import type { RemoteStatus } from '@ccm/shared'
@@ -74,6 +74,16 @@ async function revokeAll(): Promise<void> {
   busy.value = false
   askAll.value = false
 }
+
+watch(
+  () => remote.pairWanted && enabled.value,
+  (want) => {
+    if (!want) return
+    remote.pairWanted = false
+    pairing.value = true
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   void remote.start()
@@ -167,7 +177,7 @@ onMounted(() => {
     <template v-if="hasRemoteGuard">
       <SettingEmbed id="remoteBlocked">
         <SettingSection id="remote-blocked" :title="t('remoteV98.guard.blockedTitle')">
-          <RemoteGuardBlocked :blocked="guard.state.value.blocked" :busy="guard.busy.value" :error="guard.error.value" @run="guard.run" />
+          <RemoteGuardBlocked :blocked="remote.blocked" :busy="guard.busy.value" :error="guard.error.value" @run="guard.run" />
         </SettingSection>
       </SettingEmbed>
 

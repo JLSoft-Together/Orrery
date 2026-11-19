@@ -51,6 +51,8 @@ import {
   Focus,
   FolderPlus,
   Undo2,
+  QrCode,
+  SmartphoneNfc,
 } from 'lucide-vue-next'
 import { DEV_TOOLS } from '../lib/devTools'
 import { retireOverlay, withViewTransition } from '../lib/motion'
@@ -108,6 +110,7 @@ import { useConnectionStore } from '../stores/connection'
 import { useFavoritesStore } from '../stores/favorites'
 import { usePromptsStore } from '../stores/prompts'
 import { useInboxStore } from '../stores/inbox'
+import { useRemoteStore } from '../stores/remote'
 import { useSettingsStore } from '../stores/settings'
 import { useUiGenStore } from '../stores/uiGen'
 import { useTerminalsStore } from '../stores/terminals'
@@ -165,6 +168,7 @@ const connection = useConnectionStore()
 const prompts = usePromptsStore()
 const focusMode = useFocusMode()
 const inbox = useInboxStore()
+const remote = useRemoteStore()
 const rail = useRail()
 const projectMru = useProjectMru()
 const reveal = useRevealInWorkspace()
@@ -323,6 +327,19 @@ const items = computed<Item[]>(() => {
     ...(hasExtensions ? [{ id: 'c:extensions', group: 'nav' as const, label: t('palette.goExtensions'), icon: Puzzle, run: () => ui.setView('extensions') }] : []),
     ...(hasDevices ? [{ id: 'c:devices', group: 'nav' as const, label: t('palette.goDevices'), icon: Smartphone, run: () => ui.setView('devices') }] : []),
     ...(hasDiskMap ? [{ id: 'c:disk', group: 'nav' as const, label: t('diskMap.goDisk'), icon: HardDrive, run: () => ui.setView('disk') }] : []),
+    ...(remote.supported
+      ? [
+          { id: 'c:phone-pair', group: 'actions' as const, label: t('mistRemote.palette.pair'), sub: remote.enabled ? t('mistRemote.palette.pairSub') : t('mistRemote.palette.pairOff'), icon: QrCode, run: () => openPhone(true) },
+          {
+            id: 'c:phone-devices',
+            group: 'nav' as const,
+            label: t('mistRemote.palette.devices'),
+            sub: t('mistRemote.palette.devicesSub', { n: remote.connected, total: remote.devices.filter((d) => d.state !== 'revoked').length }),
+            icon: SmartphoneNfc,
+            run: () => openPhone(false),
+          },
+        ]
+      : []),
     ...(hasTerminals && hasLog
       ? [
           {
@@ -575,6 +592,11 @@ const localMatches = computed<Item[]>(() => {
   const known = text.value ? filterProjects(projects.value, text.value).map((h) => projectItem(h.entry, h.name)) : projectItems.value
   return [...found, ...(hasTerminals ? known : [])]
 })
+
+function openPhone(pair: boolean): void {
+  if (pair && remote.enabled) remote.askPair()
+  openSetting('remote', pair ? (remote.enabled ? 'remoteAdd' : 'remote') : 'remoteDevices')
+}
 
 function openSetting(page: SettingsPage, id: string): void {
   ui.settingsPage = page

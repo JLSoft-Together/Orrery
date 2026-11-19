@@ -1,7 +1,7 @@
-import { waitReason, type LayoutNodeLike, type RemotePane, type RemoteTab, type RemoteWorkspaceSnapshot } from '@ccm/shared'
+import { waitReason, type LayoutNodeLike, type RemotePaneGroup, type RemotePane, type RemoteTab, type RemoteWorkspaceSnapshot } from '@ccm/shared'
 import { isTerm, presetOf, workCwd, type Pane, type Tab } from '../stores/workspace'
 import type { LayoutNode } from './splitLayout'
-import { leaves } from './splitLayout'
+import { groupsOf, leaves } from './splitLayout'
 
 export const REMOTE_TITLE_MAX = 120
 
@@ -56,20 +56,34 @@ function paneOf(pane: Pane, facts: RemotePaneFacts): RemotePane {
   }
 }
 
+export function groupsOfTab(root: LayoutNode): RemotePaneGroup[] {
+  return groupsOf(root).map((g) => ({
+    project: g.project,
+    ...(g.name ? { name: clip(g.name) } : {}),
+    ...(typeof g.tone === 'number' ? { tone: g.tone } : {}),
+    ...(g.folded ? { folded: true } : {}),
+    panes: g.keys,
+  }))
+}
+
 export function buildSummary(input: RemoteSummaryInput, rev: number): RemoteWorkspaceSnapshot {
   const byKey = new Map(input.panes.map((p) => [p.key, p]))
-  const tabs: RemoteTab[] = input.tabs.map((tab) => ({
-    key: tab.key,
-    ...(tab.name ? { name: tab.name } : {}),
-    ...(tab.project ? { project: tab.project } : {}),
-    tree: treeOf(tab.root),
-    ...(tab.zoom ? { zoom: tab.zoom } : {}),
-    ...(tab.folded ? { folded: true } : {}),
-    panes: leaves(tab.root).flatMap((k) => {
-      const pane = byKey.get(k)
-      return pane ? [paneOf(pane, input.facts(pane))] : []
-    }),
-  }))
+  const tabs: RemoteTab[] = input.tabs.map((tab) => {
+    const groups = groupsOfTab(tab.root)
+    return {
+      key: tab.key,
+      ...(tab.name ? { name: tab.name } : {}),
+      ...(tab.project ? { project: tab.project } : {}),
+      tree: treeOf(tab.root),
+      ...(tab.zoom ? { zoom: tab.zoom } : {}),
+      ...(tab.folded ? { folded: true } : {}),
+      ...(groups.length ? { groups } : {}),
+      panes: leaves(tab.root).flatMap((k) => {
+        const pane = byKey.get(k)
+        return pane ? [paneOf(pane, input.facts(pane))] : []
+      }),
+    }
+  })
   return { rev, tabs, closedCount: input.closedCount }
 }
 

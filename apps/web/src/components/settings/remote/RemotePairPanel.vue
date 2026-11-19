@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col items-center gap-3 px-3 py-4 sm:flex-row sm:items-start sm:gap-5" role="group" :aria-label="t('remoteV97.pair.title')" data-remote-pair>
-    <div class="size-44 shrink-0 overflow-hidden rounded-inner bg-page p-1 [&>svg]:block [&>svg]:size-full" :class="svg ? '' : 'grid place-items-center bg-fill'">
+    <div class="size-44 shrink-0 overflow-hidden rounded-inner p-1 [&>svg]:block [&>svg]:size-full" :class="svg ? 'bg-page' : 'grid place-items-center bg-fill'" data-remote-qr-box>
       <Transition name="ccm-fade" mode="out-in">
         <div v-if="svg" :key="'qr'" class="size-full transition-opacity duration-(--ccm-dur-base)" :class="phase === 'waiting' || phase === 'paired' ? '' : 'opacity-25'" role="img" :aria-label="t('remoteV97.pair.qrLabel')" data-remote-qr v-html="svg" />
         <component :is="meta.icon" v-else :key="phase" :size="22" :class="[meta.cls, meta.spin ? 'animate-spin' : '']" aria-hidden="true" />

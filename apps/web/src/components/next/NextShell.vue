@@ -37,6 +37,7 @@ import { clampRailWidth, nextRailMode, RAIL_MAX, RAIL_MIN, railModeFor, railWidt
 import { NEXT_SHELL_KEY } from '../../lib/next/shellContext'
 import { useExtrasStore } from '../../stores/extras'
 import { useInboxStore } from '../../stores/inbox'
+import { useRemoteStore } from '../../stores/remote'
 import { useResourcesStore } from '../../stores/resources'
 import { useSettingsStore } from '../../stores/settings'
 import { useUiStore, type View } from '../../stores/ui'
@@ -49,6 +50,7 @@ import SideResizer from '../workspace/SideResizer.vue'
 import TelegramToggle from '../TelegramToggle.vue'
 import LiveRail from './rail/LiveRail.vue'
 import RailCollapseButton from './rail/RailCollapseButton.vue'
+import RailPhoneChip from './rail/RailPhoneChip.vue'
 import NextQuotaBar from './NextQuotaBar.vue'
 import GlassMenu, { type GlassMenuItem } from './ui/GlassMenu.vue'
 import GlassTooltip from './ui/GlassTooltip.vue'
@@ -66,6 +68,8 @@ const inbox = useInboxStore()
 const extras = useExtrasStore()
 const resources = useResourcesStore()
 const update = useUpdateStore()
+const remote = useRemoteStore()
+const phoneShown = computed(() => remote.supported && remote.enabled)
 
 const viewport = ref(typeof window === 'undefined' ? 1440 : window.innerWidth)
 const baseMode = ref<RailMode>(railModeFor(viewport.value))
@@ -295,7 +299,7 @@ const iconBtn =
         <LiveRail :collapsed="iconMode" />
 
         <div class="flex shrink-0 flex-col gap-1.5 border-t border-line px-2 py-2" :class="iconMode ? 'items-center' : ''" data-next-rail-foot>
-          <div v-if="(update.available || hasTelegram) && !iconMode" class="flex flex-wrap items-center gap-1">
+          <div v-if="(update.available || hasTelegram || phoneShown) && !iconMode" class="flex flex-wrap items-center gap-1" data-next-rail-channels>
             <button
               v-if="update.available"
               type="button"
@@ -310,8 +314,10 @@ const iconBtn =
               <span class="tabular-nums">{{ t('update.pill', { version: updateVersion }) }}</span>
             </button>
             <TelegramToggle v-if="hasTelegram" />
+            <RailPhoneChip v-if="remote.supported" />
           </div>
           <TelegramToggle v-if="iconMode && hasTelegram" icon-only />
+          <RailPhoneChip v-if="iconMode && remote.supported" icon-only />
           <button
             v-if="iconMode && update.available"
             type="button"

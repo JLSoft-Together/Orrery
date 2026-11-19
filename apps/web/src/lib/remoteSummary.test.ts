@@ -63,6 +63,26 @@ describe('buildSummary', () => {
     expect(s.tabs[0]!.panes[0]!.title).toHaveLength(120)
   })
 
+  it('keeps the tree flat for old apps and lists project groups beside it', () => {
+    const grouped: Tab[] = [
+      {
+        key: 'tg',
+        root: { dir: 'row', ratio: 0.6, a: { group: 'C:\\work\\A', node: { dir: 'col', ratio: 0.5, a: { pane: 'p1' }, b: { pane: 'p2' } } }, b: { group: 'C:\\work\\B', name: '  API\u0007 ', tone: 3, folded: true, node: { pane: 'p3' } } },
+        focus: 'p1',
+        project: 'C:\\work\\A',
+      },
+    ]
+    const s = buildSummary({ tabs: grouped, panes, closedCount: 0, facts: facts() }, 1)
+    const tab = s.tabs[0]!
+    expect(tab.tree).toEqual({ dir: 'row', ratio: 0.6, a: { dir: 'col', ratio: 0.5, a: { pane: 'p1' }, b: { pane: 'p2' } }, b: { pane: 'p3' } })
+    expect(tab.groups).toEqual([
+      { project: 'C:\\work\\A', panes: ['p1', 'p2'] },
+      { project: 'C:\\work\\B', name: 'API', tone: 3, folded: true, panes: ['p3'] },
+    ])
+    expect(tab.panes.map((p) => p.key)).toEqual(['p1', 'p2', 'p3'])
+    expect(buildSummary({ tabs, panes, closedCount: 0, facts: facts() }, 1).tabs.every((t) => !('groups' in t))).toBe(true)
+  })
+
   it('hashes the content, not the revision, and changes with it', () => {
     const a = buildSummary({ tabs, panes, closedCount: 0, facts: facts() }, 1)
     const b = buildSummary({ tabs, panes, closedCount: 0, facts: facts() }, 99)

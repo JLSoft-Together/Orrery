@@ -33,3 +33,21 @@ Chủ nhân 2026-11-19: mọi phần cần test trên Mac ghi hết vào file n�
 - [ ] Sheet kính nổi cách mép 8 px, không bị home indicator che; Manrope hiện đúng tiếng Việt; terminal đúng độ rộng cột; xoay ngang không che nội dung, cuộn 60 fps.
 - [ ] Hạn mức Claude Code / Codex trên thẻ máy khớp footer desktop; máy thiếu số thì không hiện; số cũ > 30 phút ghi cũ.
 - [ ] Desktop macOS: giao diện Mist không đổi sau khi tách token.
+
+### WP-68b3 (Home / Ghép / Face ID / Monitor / chi tiết)
+- [ ] Home: thẻ máy hiện tên, "Orrery x.y.z, Windows / macOS", chip Relay / LAN, số 5g / Tuần của Claude Code và Codex bằng số footer desktop; tắt bridge thì không hiện hàng hạn mức, không hiện 0%.
+- [ ] Máy tắt: thẻ chuyển nhóm "Máy khác", mờ, có "Dữ liệu cũ hh:mm"; bật lại thì quay về "Đang kết nối" có motion.
+- [ ] Nút `+` Ghép máy trên thanh trên, đủ vùng chạm 44 px, không còn nút nổi đè thẻ.
+- [ ] Ghép: quét QR trên iPhone thật (khung bo tròn), tab Nhập mã, mã sai / hết hạn / bị từ chối; sau ghép hiện bước "Bật khoá Face ID?" với "Đã ghép <máy>", Face ID mở được và "Để sau" đi tiếp.
+- [ ] Monitor: seg Project / Trạng thái nhớ qua mở lại app; thẻ project đúng nhánh; chạm session mở chi tiết; chuyển trạng thái session có animation, bật Giảm chuyển động thì đứng yên.
+- [ ] Chi tiết: session đang chờ có banner vàng + nút "Trả lời trong terminal" mở đúng pane.
+- [ ] Banner `limit` (máy có > 4 MB dữ liệu): hiện đỏ, Thử lại gửi resync; dòng `trimmed` khi bị cắt.
+- [ ] Giảm độ trong suốt của iOS: thanh trên / tab bar đặc, thẻ không đổi; cuộn Monitor 30 session vẫn 60 fps.
+- [ ] iPad: nội dung Home / Monitor / chi tiết vẫn đúng trong layout master / detail và khi b4 gắn rail.
+
+### WP-68b4 (Workspace nhóm project / dock phím / Viewer / rail iPad)
+- [ ] iPad ngang và dọc: rail trái thay tab bar; chọn session / pane mở chi tiết bên phải; thu gọn rail rồi mở lại app vẫn nhớ.
+- [ ] iPad: rail blur không làm giật khi cuộn danh sách dài; terminal output nhanh vẫn 55+ fps.
+- [ ] Desktop có tab chia nhóm project: Workspace A hiện nhãn nhóm, B hiện section gập (nhóm `folded` đóng sẵn), màu tone khớp rail desktop.
+- [ ] iPhone: dock phím đặc, không thấy chữ terminal / nền sương xuyên qua dock; bàn phím ảo mở lên dock không bị che.
+- [ ] Viewer Tệp / Diff / Git / Chạy không blur, cuộn mượt.

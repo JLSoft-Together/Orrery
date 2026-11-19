@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Check, Clock, GitBranch, Laptop, LoaderCircle, SquareTerminal, TriangleAlert } from 'lucide-vue-next'
+import { Check, Clock, GitBranch, LoaderCircle, SquareTerminal, TriangleAlert } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AgentTile from '../components/AgentTile.vue'
 import PageBar from '../components/PageBar.vue'
 import StatusChip from '../components/StatusChip.vue'
 import { activityKey, isBadActivity, parseActivity, parseSessions, type Rail } from '../lib/monitorModel'
+import { projectName, toneOf } from '../lib/projectModel'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
 
@@ -21,10 +22,9 @@ const machineName = computed(() => {
 const session = computed(() => parseSessions(view.value.snapshot).find((s) => s.id === props.terminal) ?? null)
 const lost = computed(() => hub.linkOf(props.machine).status !== 'ready')
 const activity = computed(() => parseActivity(view.value.snapshot?.activity, props.terminal))
-const project = computed(() => {
-  const cwd = session.value?.cwd
-  return cwd ? (cwd.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? cwd) : null
-})
+const project = computed(() => projectName(session.value?.cwd ?? null))
+const pageSub = computed(() => [project.value, machineName.value].filter(Boolean).join(', '))
+const tone = computed(() => toneOf(project.value ?? ''))
 const provider = computed(() => session.value?.provider ?? 'claude')
 const started = computed(() => (session.value?.since ? clock(session.value.since) : null))
 const paneKey = computed(() => {
@@ -50,6 +50,10 @@ function label(kind: string): string {
   return key ? t(`act.${key}`) : kind
 }
 
+function indent(depth: number): string {
+  return `${16 + (depth - 1) * 16}px`
+}
+
 const subIcon: Record<Rail, typeof Clock> = { working: LoaderCircle, asked: Clock, failed: TriangleAlert, done: Check, idle: Check }
 
 function openWorkspace(): void {
@@ -59,51 +63,67 @@ function openWorkspace(): void {
 
 <template>
   <section class="page" data-testid="session-view" :data-terminal="terminal">
-    <PageBar :title="session?.title ?? t('session.title')" :backless="embedded" />
+    <PageBar :title="session?.title ?? t('session.title')" :sub="pageSub" :backless="embedded" />
 
     <p v-if="!session" class="empty" data-testid="session-missing">{{ t('session.missing') }}</p>
     <template v-else>
       <div class="card hero">
         <div class="hero-head">
-          <AgentTile :provider="provider" :size="40" />
+          <AgentTile :provider="provider" :size="48" />
           <div class="who">
-            <h2 class="name">{{ t(`provider.${provider}`) }}</h2>
-            <p v-if="project" class="sub">{{ project }}</p>
+            <h2 class="name">{{ session.title }}</h2>
+            <p v-if="project" class="sub">
+              <span class="tone-mono" :data-tone="tone" aria-hidden="true">{{ project.slice(0, 1).toUpperCase() }}</span>
+              <span class="sub-text">{{ project }}</span>
+              <template v-if="session.branch">
+                <GitBranch :size="14" :stroke-width="2" aria-hidden="true" />
+                <span class="sub-text mono">{{ session.branch }}</span>
+              </template>
+            </p>
           </div>
           <StatusChip :rail="session.rail" :lost="lost" />
         </div>
-        <div class="facts">
-          <span v-if="session.branch" class="fact mono"><GitBranch :size="16" :stroke-width="2" aria-hidden="true" />{{ session.branch }}</span>
-          <span v-if="started" class="fact"><Clock :size="16" :stroke-width="2" aria-hidden="true" />{{ t('session.since', { time: started }) }}</span>
-          <span class="fact"><Laptop :size="16" :stroke-width="2" aria-hidden="true" />{{ machineName }}</span>
-        </div>
+        <dl class="facts">
+          <div class="fact"><dt>{{ t('session.agent') }}</dt><dd class="agent" :class="`p-${provider}`">{{ t(`provider.${provider}`) }}</dd></div>
+          <div v-if="started" class="fact"><dt>{{ t('session.startedAt') }}</dt><dd>{{ started }}</dd></div>
+          <div class="fact"><dt>{{ t('session.machine') }}</dt><dd>{{ machineName }}</dd></div>
+        </dl>
         <p v-if="session.tool" class="tool mono" data-testid="session-tool-detail">▸ {{ session.toolSummary ? `${session.tool} · ${session.toolSummary}` : session.tool }}</p>
-        <p v-else-if="session.waitingFor" class="tool mono">▸ {{ session.waitingFor }}</p>
       </div>
 
+      <Transition name="ask">
+        <div v-if="session.rail === 'asked'" class="ask" role="status" data-testid="session-ask">
+          <p class="ask-text">
+            <Clock :size="22" :stroke-width="2.2" aria-hidden="true" />
+            <span><strong>{{ t('session.waitingTitle') }}</strong><template v-if="session.waitingFor">: {{ session.waitingFor }}</template></span>
+          </p>
+          <button type="button" class="btn btn-primary" data-testid="session-answer" @click="openWorkspace"><SquareTerminal :size="20" :stroke-width="2" aria-hidden="true" />{{ t('session.answer') }}</button>
+        </div>
+      </Transition>
+
       <template v-if="session.subagents.length">
-        <h2 class="label head">{{ t('session.subagents', { n: session.subagents.length }) }}</h2>
-        <div class="card list" data-testid="session-subagents">
-          <div v-for="sub in session.subagents" :key="sub.id" class="sub-row" :style="{ paddingLeft: `${14 + (sub.depth - 1) * 16}px` }">
-            <component :is="subIcon[sub.rail]" :size="18" :stroke-width="2.2" class="sub-icon" :class="`tone-${sub.rail}`" aria-hidden="true" />
+        <h2 class="sec">{{ t('session.subagents', { n: session.subagents.length }) }}</h2>
+        <TransitionGroup name="srow" tag="div" class="card list" data-testid="session-subagents">
+          <div v-for="sub in session.subagents" :key="sub.id" class="sub-row" :data-depth="sub.depth" :style="{ paddingLeft: indent(sub.depth) }">
+            <component :is="subIcon[sub.rail]" :size="20" :stroke-width="2.2" class="sub-icon" :class="`tone-${sub.rail}`" aria-hidden="true" />
             <span class="sub-name">{{ sub.name ?? t('session.subagent') }}</span>
             <StatusChip :rail="sub.rail" />
           </div>
-        </div>
+        </TransitionGroup>
       </template>
 
-      <h2 class="label head">{{ t('session.activity') }}</h2>
+      <h2 class="sec">{{ t('session.activity') }}</h2>
       <p v-if="activity.length === 0" class="empty" data-testid="session-activity-empty">{{ t('session.activityEmpty') }}</p>
-      <ul v-else class="card list activity" data-testid="session-activity">
+      <TransitionGroup v-else name="srow" tag="ul" class="card list activity" data-testid="session-activity">
         <li v-for="item in activity" :key="item.id" class="act" :class="{ bad: isBadActivity(item.kind) }">
+          <span class="mono clock">{{ clock(item.at) }}</span>
           <span class="dot" aria-hidden="true" />
           <span class="act-text">
             <span class="act-label">{{ label(item.kind) }}</span>
             <span v-if="item.detail" class="act-detail mono">{{ item.detail }}</span>
           </span>
-          <span class="mono clock">{{ clock(item.at) }}</span>
         </li>
-      </ul>
+      </TransitionGroup>
 
       <div class="actions">
         <button type="button" class="btn btn-primary open" data-testid="open-terminal" @click="openWorkspace">
@@ -125,8 +145,8 @@ function openWorkspace(): void {
 .hero {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
+  gap: 14px;
+  padding: 16px;
 }
 
 .hero-head {
@@ -142,32 +162,73 @@ function openWorkspace(): void {
 
 .name {
   margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 700;
+  font-size: 1.1875rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .sub {
-  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 4px 0 0;
   font-size: 0.8125rem;
   color: var(--ccm-ink-muted);
+}
+
+.sub svg {
+  flex: none;
+}
+
+.sub-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.sub .tone-mono {
+  width: 22px;
+  height: 22px;
+  font-size: 0.75rem;
+}
+
 .facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  color: var(--ccm-ink-muted);
-  font-size: 0.8125rem;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
 }
 
 .fact {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fact dt {
+  color: var(--ccm-ink-muted);
+}
+
+.fact dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.agent {
+  color: var(--ccm-agent-claude);
+}
+
+.agent.p-codex {
+  color: var(--ccm-agent-codex);
+}
+
+.agent.p-shell {
+  color: var(--ccm-agent-shell);
 }
 
 .mono {
@@ -177,18 +238,48 @@ function openWorkspace(): void {
 
 .tool {
   margin: 0;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-inner);
   background: var(--ccm-raised);
   color: var(--ccm-ink-muted);
   overflow-wrap: anywhere;
 }
 
-.head {
-  margin: 8px 0 0;
+.ask {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid color-mix(in srgb, var(--ccm-waiting) 42%, transparent);
+  background: color-mix(in srgb, var(--ccm-waiting) 12%, var(--ccm-glass));
+}
+
+.ask-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--ccm-ink);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.ask-text svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ccm-waiting);
+}
+
+.sec {
+  margin: 8px 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 800;
 }
 
 .list {
+  position: relative;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -199,8 +290,8 @@ function openWorkspace(): void {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
-  padding: 8px 14px;
+  min-height: 52px;
+  padding: 8px 16px;
   border-top: 1px solid var(--ccm-line);
 }
 
@@ -211,7 +302,7 @@ function openWorkspace(): void {
 .sub-name {
   flex: 1;
   min-width: 0;
-  font-weight: 500;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -237,8 +328,8 @@ function openWorkspace(): void {
 .act {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 12px 16px;
   border-top: 1px solid var(--ccm-line);
 }
 
@@ -246,10 +337,17 @@ function openWorkspace(): void {
   border-top: 0;
 }
 
+.clock {
+  flex: none;
+  width: 4.5rem;
+  margin-top: 2px;
+  color: var(--ccm-ink-faint);
+}
+
 .dot {
   width: 8px;
   height: 8px;
-  margin-top: 6px;
+  margin-top: 7px;
   border-radius: 50%;
   background: var(--ccm-agent-claude);
   flex: none;
@@ -267,8 +365,8 @@ function openWorkspace(): void {
 }
 
 .act-label {
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .act.bad .act-label {
@@ -278,11 +376,6 @@ function openWorkspace(): void {
 .act-detail {
   color: var(--ccm-ink-muted);
   overflow-wrap: anywhere;
-}
-
-.clock {
-  color: var(--ccm-ink-faint);
-  flex: none;
 }
 
 .actions {
@@ -299,5 +392,32 @@ function openWorkspace(): void {
   margin: 16px 0;
   text-align: center;
   color: var(--ccm-ink-muted);
+}
+
+.srow-enter-active,
+.srow-leave-active,
+.ask-enter-active,
+.ask-leave-active {
+  transition:
+    opacity var(--ccm-dur-slow) var(--ccm-ease-enter),
+    transform var(--ccm-dur-slow) var(--ccm-ease-enter);
+}
+
+.srow-move {
+  transition: transform var(--ccm-dur-slow) var(--ccm-ease-enter);
+}
+
+.srow-enter-from,
+.srow-leave-to,
+.ask-enter-from,
+.ask-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.srow-leave-active {
+  position: absolute;
+  left: 0;
+  right: 0;
 }
 </style>

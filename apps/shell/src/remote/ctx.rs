@@ -317,6 +317,7 @@ impl Ctx {
             "version": w.version,
             "proto": PROTO,
             "minProto": MIN_PROTO,
+            "os": std::env::consts::OS,
             "theme": w.theme,
             "locale": w.locale,
             "control": self.host.control(),

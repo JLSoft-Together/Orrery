@@ -59,7 +59,7 @@ export function makeCtx({ browser, browserName, env, record, videoPath }) {
     page.on('pageerror', (e) => errors.push(String(e)))
     return { context, page, base }
   }
-  const byId = (page, id) => page.locator(`[data-testid="${id}"]`)
+const byId = (page, id) => page.locator(id.startsWith("machine-") && !id.startsWith("machine-bell") ? `[data-testid="${id}"]:not(.mlist-leave-active)` : `[data-testid="${id}"]`)
   const ready = (page) => page.waitForSelector('.shell[data-ready="1"]', { timeout: 15000 })
   const open = async (page, base = env.base, path = '/app/') => {
     await page.goto(`${base}${path}`)
@@ -109,9 +109,9 @@ export function makeCtx({ browser, browserName, env, record, videoPath }) {
     await byId(page, 'qr-scanner').waitFor({ timeout: 5000 })
     await finishPair(page, peer)
   }
-  const status = (page, id) => byId(page, `machine-${id}`).locator('[data-testid="link-chip"]')
+  const status = (page, id) => page.locator(`[data-testid="machine-${id}"]:not(.mlist-leave-active)`).locator('[data-testid="link-chip"]')
   const expectStatus = async (page, id, value, timeout = 15000) => {
-    await page.waitForFunction(([sel, v]) => document.querySelector(sel)?.getAttribute('data-status') === v, [`[data-testid="machine-${id}"] [data-testid="link-chip"]`, value], { timeout })
+    await page.waitForFunction(([sel, v]) => document.querySelector(sel)?.getAttribute('data-status') === v, [`[data-testid="machine-${id}"]:not(.mlist-leave-active) [data-testid="link-chip"]`, value], { timeout })
   }
   const shoot = async (page, file) => {
     const before = { csp: await page.evaluate(() => window.__csp.length), errors: errors.length }

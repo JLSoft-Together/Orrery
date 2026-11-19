@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Cloud, LoaderCircle, RefreshCw, ShieldCheck, TriangleAlert, Wifi, X } from 'lucide-vue-next'
+import { Check, Cloud, Keyboard, LoaderCircle, QrCode, RefreshCw, ShieldCheck, TriangleAlert, Wifi, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageBar from '../components/PageBar.vue'
@@ -26,6 +26,7 @@ const pasteError = ref<string | null>(null)
 const deviceName = ref(defaultName())
 let lastQr = ''
 let pairedId = ''
+const pairedName = ref('')
 
 function defaultName(): string {
   const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
@@ -46,6 +47,7 @@ async function run(qr: string): Promise<void> {
     const machine = await hub.pair(qr, undefined, deviceName.value.trim() || defaultName(), (route) => tried.value.push(route))
     prefs.setLastMachine(machine.id)
     pairedId = machine.id
+    pairedName.value = machine.alias ?? machine.name
     const supported = await lock.checkSupport()
     if (shouldOfferLock({ machineCount: before + 1, lockEnabled: prefs.local.lockEnabled, offered: prefs.local.lockOffered, supported })) {
       prefs.patchLocal({ lockOffered: true })
@@ -108,7 +110,7 @@ function other(): void {
       </div>
     </template>
 
-    <LockOffer v-else-if="phase === 'lock'" @done="finish" />
+    <LockOffer v-else-if="phase === 'lock'" :name="pairedName" @done="finish" />
 
     <template v-else-if="phase === 'error'">
       <div class="card alert" role="alert" data-testid="pair-error" :data-code="failure">
@@ -126,8 +128,8 @@ function other(): void {
 
     <template v-else>
       <div class="seg" role="tablist">
-        <button type="button" role="tab" class="seg-btn" :class="{ on: tab === 'scan' }" :aria-selected="tab === 'scan'" data-testid="pair-tab-scan" @click="tab = 'scan'">{{ t('pair.tabScan') }}</button>
-        <button type="button" role="tab" class="seg-btn" :class="{ on: tab === 'paste' }" :aria-selected="tab === 'paste'" data-testid="pair-tab-paste" @click="tab = 'paste'">{{ t('pair.tabPaste') }}</button>
+        <button type="button" role="tab" class="seg-btn" :class="{ on: tab === 'scan' }" :aria-selected="tab === 'scan'" data-testid="pair-tab-scan" @click="tab = 'scan'"><QrCode :size="18" :stroke-width="2.2" aria-hidden="true" />{{ t('pair.tabScan') }}</button>
+        <button type="button" role="tab" class="seg-btn" :class="{ on: tab === 'paste' }" :aria-selected="tab === 'paste'" data-testid="pair-tab-paste" @click="tab = 'paste'"><Keyboard :size="18" :stroke-width="2.2" aria-hidden="true" />{{ t('pair.tabPaste') }}</button>
       </div>
 
       <template v-if="showScanner">
@@ -178,26 +180,32 @@ function other(): void {
   display: flex;
   padding: 3px;
   border-radius: var(--radius-control);
-  background: var(--ccm-raised);
+  background: var(--ccm-fill);
+  border: 1px solid var(--ccm-glass-edge);
 }
 
 .seg-btn {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 44px;
   border: 0;
-  border-radius: calc(var(--radius-control) - 2px);
+  border-radius: calc(var(--radius-control) - 3px);
   background: transparent;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ccm-ink-muted);
   transition:
-    background-color 180ms var(--ease-out),
-    color 180ms var(--ease-out);
+    background-color var(--ccm-dur-base) var(--ccm-ease-standard),
+    color var(--ccm-dur-base) var(--ccm-ease-standard),
+    box-shadow var(--ccm-dur-base) var(--ccm-ease-standard);
 }
 
 .seg-btn.on {
   background: var(--ccm-surface);
   color: var(--ccm-ink);
-  box-shadow: 0 0 0 1px var(--ccm-line);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ccm-ink) 16%, transparent);
 }
 
 .cap {
@@ -217,19 +225,17 @@ function other(): void {
 .alert {
   display: flex;
   gap: 12px;
-  padding: 14px;
+  padding: 16px;
 }
 
 .info {
-  color: var(--ccm-info);
-  border-color: color-mix(in srgb, var(--ccm-info) 38%, transparent);
-  background: color-mix(in srgb, var(--ccm-info) 8%, var(--ccm-surface));
+  color: var(--ccm-done);
 }
 
 .alert {
   color: var(--ccm-error);
   border-color: color-mix(in srgb, var(--ccm-error) 38%, transparent);
-  background: color-mix(in srgb, var(--ccm-error) 8%, var(--ccm-surface));
+  background: color-mix(in srgb, var(--ccm-error) 10%, var(--ccm-glass));
 }
 
 .info-text,

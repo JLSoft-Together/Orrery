@@ -35,7 +35,7 @@ fn activity() -> Value {
 }
 
 fn snapshot_event(desk: &Desk) -> Value {
-    json!({"t": "snapshot", "seq": desk.seq, "data": {"terminals": terminals(desk), "agents": agents(), "activity": activity()}})
+    json!({"t": "snapshot", "seq": desk.seq, "data": {"terminals": terminals(desk), "agents": agents(), "activity": activity(), "limits": {"fiveHour": {"usedPct": 42.4, "resetsAt": "2099-01-01T00:00:00.000Z"}, "sevenDay": {"usedPct": 91, "resetsAt": "2099-01-05T00:00:00.000Z"}}, "codexLimits": {"fiveHour": {"usedPct": 7, "resetsAt": "2099-01-01T00:00:00.000Z"}}}})
 }
 
 const PAIR_MSG1_LEN: usize = 50;
@@ -249,7 +249,7 @@ impl Live {
                         extra.push(data::ws_snapshot(desk));
                         json!({
                             "re": id, "ok": true, "machine": desk.machine, "name": NAME,
-                            "version": "2.3.0", "minProto": PROTO, "locale": "vi", "control": !desk.view_only,
+                            "version": "2.3.0", "os": "windows", "minProto": PROTO, "locale": "vi", "control": !desk.view_only,
                         })
                     }
                     Some("ws.get") => {

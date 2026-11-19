@@ -40,6 +40,7 @@ pub struct Desk {
     pub deny: bool,
     pub tab_name: Option<String>,
     pub tab2: bool,
+    pub groups: bool,
     pub moved: bool,
     pub hidden: Vec<&'static str>,
     pub close_ask: bool,
@@ -128,6 +129,12 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
                 outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
             }
         }
+        "limit" => {
+            let value = json!({"t": "limit", "what": "snapshot", "bytes": 6710886, "max": 4194304});
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
         "big" => {
             for (id, conn) in conns.iter_mut() {
                 outs.extend(conn.big().into_iter().map(|o| (*id, o)));
@@ -155,6 +162,22 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
         "vwreset" => desk.vw = vw::Vw::new(),
         "viewoff" => desk.view_only = false,
         "deny" => desk.deny = true,
+        "groups" => {
+            desk.groups = true;
+            desk.rev += 1;
+            let value = data::ws_snapshot(desk);
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
+        "ungroups" => {
+            desk.groups = false;
+            desk.rev += 1;
+            let value = data::ws_snapshot(desk);
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
         "tab2" => {
             desk.tab2 = true;
             desk.rev += 1;
@@ -223,6 +246,7 @@ fn main() {
         deny: false,
         tab_name: None,
         tab2: false,
+        groups: false,
         moved: false,
         hidden: Vec::new(),
         close_ask: false,

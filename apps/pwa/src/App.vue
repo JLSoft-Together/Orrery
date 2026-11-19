@@ -3,10 +3,12 @@ import { TriangleAlert, X } from 'lucide-vue-next'
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ConfirmHost from './components/ConfirmHost.vue'
+import IpadRail from './components/IpadRail.vue'
 import RemoteConfirmHost from './components/RemoteConfirmHost.vue'
 import TabBar, { type TabId } from './components/TabBar.vue'
 import UpdateBar from './components/UpdateBar.vue'
 import { isWaiting, parseSessions } from './lib/monitorModel'
+import { railShown } from './lib/railModel'
 import { useWide } from './lib/useWide'
 import { navigate, route, routeDirection, type Route } from './router'
 import { useHubStore } from './stores/hub'
@@ -47,6 +49,8 @@ const tabMachine = computed(() => {
   const last = prefs.local.lastMachine
   return last && hub.machines.some((m) => m.id === last) ? last : (hub.machines[0]?.id ?? null)
 })
+const hasDetail = computed(() => sessionRoute.value !== null || paneRoute.value !== null)
+const railOn = computed(() => railShown(wide.value, route.value.name, tabMachine.value))
 const activeTab = computed<TabId | null>(() => {
   switch (master.value.name) {
     case 'monitor':
@@ -59,7 +63,7 @@ const activeTab = computed<TabId | null>(() => {
       return null
   }
 })
-const showTabs = computed(() => !fullTerminal.value && activeTab.value !== null && (activeTab.value === 'settings' ? tabMachine.value !== null : true))
+const showTabs = computed(() => !railOn.value && !fullTerminal.value && activeTab.value !== null && (activeTab.value === 'settings' ? tabMachine.value !== null : true))
 const badge = computed(() => (tabMachine.value ? parseSessions(hub.viewOf(tabMachine.value).snapshot).filter((s) => isWaiting(s.rail)).length : 0))
 
 function selectTab(tab: TabId): void {
@@ -93,8 +97,9 @@ watch(
         <button type="button" class="notice-close" :aria-label="t('notice.dismiss')" @click="hub.dismiss(notice.id)"><X :size="18" :stroke-width="2.2" aria-hidden="true" /></button>
       </div>
     </div>
-    <div class="body">
-      <div class="master">
+    <div class="body" :class="{ railed: railOn }">
+      <IpadRail v-if="railOn && tabMachine && activeTab" :machine="tabMachine" :active="activeTab" :terminal="sessionRoute?.terminal" :pane="paneRoute?.pane" />
+      <div class="master" :class="{ split: wide && !railOn, off: railOn && hasDetail }">
         <main class="scroll" :class="{ fill: fullTerminal, tabbed: showTabs }">
           <div v-if="renderReady" :key="viewKey" class="view" :class="[routeDirection, { fill: fullTerminal }]">
             <HomeView v-if="master.name === 'home'" />
@@ -109,7 +114,7 @@ watch(
         </main>
         <TabBar v-if="showTabs" :active="activeTab" :badge="badge" @select="selectTab" />
       </div>
-      <aside v-if="wide" class="detail" data-testid="detail-pane">
+      <aside v-if="wide && (!railOn || hasDetail)" class="detail" :class="{ roomy: railOn }" data-testid="detail-pane">
         <SessionView v-if="sessionRoute" :key="sessionRoute.terminal" :machine="sessionRoute.machine" :terminal="sessionRoute.terminal" embedded />
         <TerminalView v-else-if="paneRoute" :key="paneRoute.pane" :machine="paneRoute.machine" :pane="paneRoute.pane" embedded />
         <p v-else class="placeholder">{{ t('machines.detailEmpty') }}</p>
@@ -235,9 +240,13 @@ watch(
 }
 
 @media (min-width: 768px) {
-  .master {
+  .master.split {
     flex: 0 0 380px;
     border-right: 1px solid var(--ccm-line);
+  }
+
+  .master.off {
+    display: none;
   }
 
   .detail {
@@ -245,6 +254,10 @@ watch(
     min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+
+  .detail.roomy {
+    padding-bottom: var(--ccm-safe-bottom);
   }
 
   .placeholder {

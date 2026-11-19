@@ -10,8 +10,10 @@ import { screenshotSteps } from './shots.mjs'
 import { uiSteps } from './ui-steps.mjs'
 import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
+import { mistHomeSteps } from './mist-home-steps.mjs'
+import { mistWorkspaceSteps } from './mist-ws-steps.mjs'
 
-export const STEPS_PER_BROWSER = 44
+export const STEPS_PER_BROWSER = 48
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -93,7 +95,7 @@ export async function runScenario({ browserName, launch, env, record }) {
       const counts = await text(byId(page, `machine-${id}`).locator('[data-testid="machine-counts"]'))
       if (!/1 chờ bạn/.test(counts) || !/1 rảnh/.test(counts)) throw new Error(`counts ${counts}`)
       if ((await byId(page, `machine-${id}`).locator('[data-testid="machine-freshness"]').getAttribute('data-stale')) !== '0') throw new Error('stale')
-      if (!(await text(byId(page, `machine-${id}`))).includes('Orrery 2.3.0')) throw new Error('version missing')
+      if (!(await text(byId(page, `machine-${id}`))).includes('Orrery 2.3.0, Windows')) throw new Error('version and OS missing')
     })
 
     await uiSteps(c, page, peer)
@@ -117,8 +119,10 @@ export async function runScenario({ browserName, launch, env, record }) {
     })
 
     await screenshotSteps(c, page, peer)
+    await mistHomeSteps(c, page, peer)
     await workspaceSteps(c, page, peer)
     await workspaceShots(c, page, peer)
+    await mistWorkspaceSteps(c, page, peer)
     await paneSteps(c, page, peer)
     await viewOnlyStep(c, page, peer)
     await helloControlStep(c, page, peer)
@@ -137,7 +141,7 @@ export async function runScenario({ browserName, launch, env, record }) {
       await shoot(page, join(env.qaDir, `home-stale-phone-light-${browserName}.png`))
       await byId(page, `machine-${id}`).locator('[data-testid="machine-open"]').click()
       await byId(page, 'monitor-offline').waitFor({ timeout: 5000 })
-      if ((await page.locator('[data-testid="monitor-list"] > button').count()) !== 4) throw new Error('cached sessions missing')
+      if ((await page.locator('[data-testid="monitor-list"] button[data-testid^="session-"]').count()) !== 4) throw new Error('cached sessions missing')
       await shoot(page, join(env.qaDir, `monitor-offline-phone-light-${browserName}.png`))
       await byId(page, 'back').click()
       await byId(page, 'machines-view').waitFor()

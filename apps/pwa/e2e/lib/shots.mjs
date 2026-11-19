@@ -28,7 +28,7 @@ export async function screenshotSteps(c, page, peer) {
           await byId(page, screen.name.startsWith('monitor') ? 'monitor-view' : screen.waitFor).waitFor({ timeout: 8000 })
           if (screen.name.startsWith('monitor')) {
             const mode = await byId(page, 'monitor-view').getAttribute('data-mode')
-            if (mode !== want) await byId(page, 'mode-toggle').click()
+            if (mode !== want) await byId(page, want === 'groups' ? 'mode-groups' : 'mode-cards').click()
             await byId(page, screen.waitFor).waitFor({ timeout: 5000 })
           }
           if (screen.after) await screen.after()
@@ -46,7 +46,7 @@ export async function screenshotSteps(c, page, peer) {
     await page.setViewportSize(PHONE)
     await page.emulateMedia({ colorScheme: 'light' })
     await go(page, `/app/m/${id}`)
-    if ((await byId(page, 'monitor-view').getAttribute('data-mode')) === 'groups') await byId(page, 'mode-toggle').click()
+    if ((await byId(page, 'monitor-view').getAttribute('data-mode')) === 'groups') await byId(page, 'mode-cards').click()
     await go(page, '/app/')
     await byId(page, 'machines-view').waitFor()
   })

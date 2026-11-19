@@ -11,28 +11,32 @@ export async function go(page, path) {
 export async function uiSteps(c, page, peer) {
   const { step, byId, expectText, shoot } = c
   const id = peer.info.machine
-  const cards = () => page.locator('[data-testid="monitor-list"] > button')
+  const cards = () => page.locator('[data-testid="monitor-list"] button[data-testid^="session-"]')
+
+  const settleCount = async (n, label) => {
+    await page.waitForFunction((k) => document.querySelectorAll('[data-testid="monitor-list"] button[data-testid^="session-"]:not([class*="leave"] *):not([class*="leave"])').length === k, n, { timeout: 4000 }).catch(() => { throw new Error(label) })
+  }
 
   await step('Home card opens Monitor A: cards sorted by state, tool line, filters', async () => {
     await byId(page, `machine-${id}`).locator('[data-testid="machine-open"]').click()
     await byId(page, 'monitor-view').waitFor({ timeout: 5000 })
     if ((await byId(page, 'monitor-view').getAttribute('data-mode')) !== 'cards') throw new Error('Monitor A is not the default')
-    await page.waitForFunction(() => document.querySelectorAll('[data-testid="monitor-list"] > button').length === 4)
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="monitor-list"] button[data-testid^="session-"]').length === 4)
     const first = await c.text(cards().first())
     if (!/docs/.test(first) || !/Chờ bạn/.test(first)) throw new Error(`first card ${first}`)
     const t2 = await c.text(byId(page, 'session-t2'))
     if (!/Edit · src\/app\.ts/.test(t2) || !/Đang chạy/.test(t2)) throw new Error(`t2 card ${t2}`)
     if ((await byId(page, 'session-t2').locator('[data-testid="status-chip"] svg').count()) !== 1) throw new Error('chip icon missing')
     await byId(page, 'filter-running').click()
-    if ((await cards().count()) !== 2) throw new Error('running filter')
+    await settleCount(2, 'running filter')
     await byId(page, 'filter-waiting').click()
-    if ((await cards().count()) !== 1) throw new Error('waiting filter')
+    await settleCount(1, 'waiting filter')
     await byId(page, 'filter-all').click()
     if ((await byId(page, 'tab-badge').textContent())?.trim() !== '1') throw new Error('waiting badge')
   })
 
   await step('Monitor B groups by state; the mode survives a reload', async () => {
-    await byId(page, 'mode-toggle').click()
+    await byId(page, 'mode-groups').click()
     await byId(page, 'monitor-groups').waitFor()
     const groups = await page.locator('[data-testid="monitor-groups"] > section').evaluateAll((els) => els.map((e) => e.getAttribute('data-rail')))
     if (groups.join(',') !== 'asked,working,idle') throw new Error(`groups ${groups}`)
@@ -55,7 +59,7 @@ export async function uiSteps(c, page, peer) {
     await byId(page, 'session-view').waitFor()
     await byId(page, 'back').click()
     await byId(page, 'monitor-view').waitFor()
-    await byId(page, 'mode-toggle').click()
+    await byId(page, 'mode-cards').click()
     await byId(page, 'monitor-list').waitFor()
   })
 
@@ -118,11 +122,17 @@ export async function uiSteps(c, page, peer) {
     await c.home(page)
     const bell = byId(page, `machine-${id}`).locator('[data-testid="machine-bell"]')
     if ((await bell.getAttribute('aria-pressed')) !== 'true') throw new Error('bell default on')
+    await c.expectStatus(page, id, 'ready')
     await bell.click()
-    await wait(300)
+    await page.waitForFunction((sel) => document.querySelector(sel)?.getAttribute('aria-pressed') === 'false', `[data-testid="machine-${id}"]:not(.mlist-leave-active) [data-testid="machine-bell"]`, { timeout: 4000 }).catch(() => { throw new Error('bell click ignored') })
+    await wait(800)
     await c.reload(page)
     if ((await byId(page, `machine-${id}`).locator('[data-testid="machine-bell"]').getAttribute('aria-pressed')) !== 'false') throw new Error('bell not saved')
+    await c.expectStatus(page, id, 'ready')
+    await wait(400)
     await byId(page, `machine-${id}`).locator('[data-testid="machine-bell"]').click()
+    await page.waitForFunction((sel) => document.querySelector(sel)?.getAttribute('aria-pressed') === 'true', `[data-testid="machine-${id}"]:not(.mlist-leave-active) [data-testid="machine-bell"]`, { timeout: 4000 }).catch(() => { throw new Error('bell not restored') })
+    await wait(800)
     await byId(page, 'home-settings').click()
     await byId(page, 'rename-start').click()
     await byId(page, 'rename-input').fill('Máy văn phòng')

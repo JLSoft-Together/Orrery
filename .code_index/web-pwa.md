@@ -61,3 +61,18 @@
 - Khung: `TabBar.vue` viên nổi (absolute trong `.master`, `.scroll.tabbed` chừa chỗ), `PageBar.vue` sticky kính, `BottomSheet` / `ConfirmHost` / `RemoteConfirmHost` sheet kính, `App.vue` `.shell::before` dải kính dưới status bar.
 - E2E: `ui-steps.mjs` bước palette + reduce transparency (ảnh `docs/qa/v98/WP-68b1`), `STEPS_PER_BROWSER` 44.
 - `lib/quotaModel.ts` (v98 WP-68b2): `quotaOf(snapshot, now)` đọc `snapshot.limits` / `codexLimits` thành `RemoteQuota[]`; `formatPct` / `formatReset` theo locale + `duration.*`; i18n `quota.*`. Màn dùng (WP-68b3) gọi `quotaOf(view.snapshot, now)` theo từng máy.
+
+## WP-68b3 (v98, Sương kính: Home / Ghép / Monitor / chi tiết)
+- `lib/projectModel.ts` (+ test): `groupByProject` (project = tên thư mục cuối của `cwd`, thứ tự xuất hiện đầu), `railCounts`, `cardState`, `machineSubtitle` / `osLabel` (hello `version` + `os`, không có `os` thì chỉ phiên bản), `quotaTone` (>=65 warn, >=85 bad), `toneOf` / `letterOf`.
+- `components/QuotaBars.vue` (thanh hạn mức 5g / Tuần theo agent, thiếu số không vẽ, `stale` mờ + "Dữ liệu cũ"), `MachineCard.vue` (tên, Orrery + OS, LinkChip, chip trạng thái 5 loại, hạn mức, "Cập nhật" / "Dữ liệu cũ", route, chuông), `HomeView.vue` (thanh kính, nút `+` Ghép máy trên thanh trên `pair-fab`, `TransitionGroup` `mlist`).
+- `SessionRow.vue` (icon trạng thái + tên + thời gian, dòng 2 agent / trạng thái / tool; `prefix` `session` hoặc `row`), `MonitorView.vue` (seg Project / Trạng thái `mode-cards` / `mode-groups`, chip lọc có icon, thẻ project `project-<tên>`, banner offline / `limit` nút Thử lại, dòng `trimmed`), `SessionView.vue` (thẻ đầu, facts, banner Chờ bạn `session-ask` + `session-answer`, sub-agent, hoạt động). `PageBar` thêm prop `sub` + slot `below`. `SessionCard.vue` đã xoá.
+- `PairView` seg có icon, khung quét bo tròn (`QrScanner`), `LockOffer` thẻ kính + "Đã ghép <máy>" (`name`).
+- Desktop: `apps/shell/src/remote/ctx.rs` `welcome()` thêm `os` (`std::env::consts::OS`).
+- E2E: `e2e/lib/mist-home-steps.mjs` (peer: hạn mức + `os` trong `conn.rs`, lệnh `limit` trong `main.rs`), `STEPS_PER_BROWSER` +1; ảnh -> `docs/qa/v98/WP-68b3`.
+
+
+## WP-68b4 Workspace nhóm project, dock, iPad rail
+- `workspaceModel.parseWorkspace` đọc `tabs[].groups` ({project, name?, tone?, folded?, panes[]}) thành `WsTab.groups` (tone 0-7, pane lạ / trùng bỏ, pane thừa vào nhóm `~rest`); không có `groups` thì `groups = []` và UI vẽ như cũ.
+- A: `PaneChips` thêm nhãn nhóm (`chip-group-<project>`) trước chip của nhóm; B: `PaneGrid` section `ws-group-<project>` (`data-folded`, nút `ws-group-toggle-<project>`, gập local, mặc định theo `folded`).
+- iPad (>= 768px, route monitor / session / workspace / settings có máy): `IpadRail` thay `TabBar`; chi tiết session / pane thay cột master (`.master.off`, `aside.detail.roomy`). Home / Ghép giữ master + detail cũ. Chân rail dùng `QuotaBars` của WP-68b3.
+- Blur chỉ ở rail (glass-bar); dock phím `--ccm-material` đặc, terminal `--ccm-term-bg`.

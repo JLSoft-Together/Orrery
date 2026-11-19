@@ -102,7 +102,7 @@ onBeforeUnmount(stop)
   width: 100%;
   overflow: hidden;
   border-radius: var(--radius-card);
-  background: var(--ccm-scanner);
+  background: radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--ccm-accent) 16%, var(--ccm-scanner)), var(--ccm-scanner));
   display: grid;
   place-items: center;
 }
@@ -121,46 +121,26 @@ onBeforeUnmount(stop)
 
 .frame {
   position: absolute;
-  inset: 12%;
+  inset: 17%;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  border-radius: 28px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
+  animation: frame-in var(--ccm-dur-slow, 220ms) var(--ccm-ease-enter, ease-out) both;
 }
 
 .corner {
-  position: absolute;
-  width: 36px;
-  height: 36px;
-  border: 0 solid var(--ccm-accent);
+  display: none;
 }
 
-.tl {
-  top: 0;
-  left: 0;
-  border-top-width: 5px;
-  border-left-width: 5px;
-  border-top-left-radius: var(--radius-card);
-}
-
-.tr {
-  top: 0;
-  right: 0;
-  border-top-width: 5px;
-  border-right-width: 5px;
-  border-top-right-radius: var(--radius-card);
-}
-
-.bl {
-  bottom: 0;
-  left: 0;
-  border-bottom-width: 5px;
-  border-left-width: 5px;
-  border-bottom-left-radius: var(--radius-card);
-}
-
-.br {
-  bottom: 0;
-  right: 0;
-  border-bottom-width: 5px;
-  border-right-width: 5px;
-  border-bottom-right-radius: var(--radius-card);
+@keyframes frame-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .fallback {

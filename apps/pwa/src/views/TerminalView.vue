@@ -147,8 +147,10 @@ onBeforeUnmount(() => {
         <p v-if="overlay" class="overlay" role="status" data-testid="term-overlay"><component :is="overlay.icon" :size="18" :stroke-width="2.2" aria-hidden="true" />{{ overlay.text }}</p>
         <p v-if="toast" class="toast" role="status" data-testid="term-toast">{{ toast }}</p>
       </div>
-      <KeyBar :ctrl="mods.ctrl" :alt="mods.alt" :disabled="!canType" @key="onKey" @ctrl="mods.toggleCtrl()" @alt="mods.toggleAlt()" />
-      <InputBar :enabled="canType" :direct="direct" @direct="toggleDirect" @send="(text) => surface?.sendLine(text)" />
+      <div class="dock" data-testid="dock">
+        <KeyBar :ctrl="mods.ctrl" :alt="mods.alt" :disabled="!canType" @key="onKey" @ctrl="mods.toggleCtrl()" @alt="mods.toggleAlt()" />
+        <InputBar :enabled="canType" :direct="direct" @direct="toggleDirect" @send="(text) => surface?.sendLine(text)" />
+      </div>
       <PaneSwitchSheet v-if="sheet && found" :title="t('term.panesIn', { tab: found.tab.name })" :panes="found.tab.panes" :current="pane" @pick="pick" @close="sheet = false" />
       <ViewerPage v-if="viewer && found?.pane.cwd" :machine="machine" :root="found.pane.cwd" :title="found.pane.title" @close="viewer = false" />
     </template>
@@ -254,7 +256,20 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  margin: 4px 12px 10px;
+  overflow: hidden;
+  border: 1px solid var(--ccm-term-line);
+  border-radius: var(--radius-card);
   background: var(--ccm-term-bg);
+}
+
+.dock {
+  flex: none;
+  padding-top: 6px;
+  background: var(--ccm-material);
+  border-top: 1px solid var(--ccm-line);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .overlay,

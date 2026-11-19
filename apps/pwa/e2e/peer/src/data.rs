@@ -63,6 +63,21 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
     } else {
         tab1["name"] = json!("api");
     }
+    if desk.groups {
+        let mut groups = Vec::new();
+        let mut keys: Vec<&str> = first.iter().filter_map(|p| p["key"].as_str()).collect();
+        keys.sort();
+        if keys.contains(&"p1") {
+            groups.push(json!({"project": "D:/Code/api", "name": "api", "tone": 0, "panes": ["p1"]}));
+        }
+        if keys.contains(&"p2") {
+            groups.push(json!({"project": "D:/Code/web", "name": "web", "tone": 2, "panes": ["p2"]}));
+        }
+        if keys.contains(&"p3") {
+            groups.push(json!({"project": "D:/Code/infra", "name": "infra", "tone": 4, "folded": true, "panes": ["p3"]}));
+        }
+        tab1["groups"] = json!(groups);
+    }
     let mut tabs = vec![tab1];
     if desk.tab2 {
         tabs.push(json!({"key": "tab2", "name": "web", "project": "web", "panes": second}));

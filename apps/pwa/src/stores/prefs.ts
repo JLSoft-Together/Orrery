@@ -53,6 +53,10 @@ export const usePrefsStore = defineStore('prefs', () => {
     patchLocal({ workspaceMode })
   }
 
+  function setRailCollapsed(railCollapsed: boolean): void {
+    patchLocal({ railCollapsed })
+  }
+
   function setLastMachine(id: string | null): void {
     if (local.value.lastMachine !== id) patchLocal({ lastMachine: id })
   }
@@ -87,5 +91,5 @@ export const usePrefsStore = defineStore('prefs', () => {
     notify.value = { ...DEFAULT_NOTIFY, bells: {} }
   }
 
-  return { local, notify, events, patchLocal, attach, setLanguage, setTheme, setPalette, setReduceTransparency, setMonitorMode, setWorkspaceMode, setLastMachine, setNotify, bell, setBell, dropMachine, resetAll }
+  return { local, notify, events, patchLocal, attach, setLanguage, setTheme, setPalette, setReduceTransparency, setMonitorMode, setWorkspaceMode, setRailCollapsed, setLastMachine, setNotify, bell, setBell, dropMachine, resetAll }
 })

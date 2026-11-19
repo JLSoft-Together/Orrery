@@ -154,3 +154,26 @@ button {
     transition-duration: 0.001ms !important;
   }
 }
+
+.tone-mono {
+  --tone: var(--ccm-agent-claude);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--tone) 20%, var(--ccm-surface));
+  color: var(--tone);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.tone-mono[data-tone='1'] { --tone: var(--ccm-agent-codex); }
+.tone-mono[data-tone='2'] { --tone: var(--ccm-working); }
+.tone-mono[data-tone='3'] { --tone: var(--ccm-agent-shell); }
+.tone-mono[data-tone='4'] { --tone: var(--ccm-success); }
+.tone-mono[data-tone='5'] { --tone: var(--ccm-peer); }
+.tone-mono[data-tone='6'] { --tone: var(--ccm-warning); }
+.tone-mono[data-tone='7'] { --tone: var(--ccm-accent); }

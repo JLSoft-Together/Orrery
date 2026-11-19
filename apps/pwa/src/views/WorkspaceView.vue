@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ellipsis, LayoutGrid, Plus, Rows3, Send, SquareTerminal } from 'lucide-vue-next'
+import { CircleHelp, Ellipsis, LayoutGrid, Plus, Rows3, Send, SquareTerminal } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LinkChip from '../components/LinkChip.vue'
@@ -14,7 +14,7 @@ import UndoBar from '../components/UndoBar.vue'
 import { undoOffer } from '../lib/closeUndo'
 import { errorCode, reopenPane } from '../lib/paneActions'
 import { parseSessions } from '../lib/monitorModel'
-import { closedCount, parseWorkspace } from '../lib/workspaceModel'
+import { closedCount, monogram, parseWorkspace } from '../lib/workspaceModel'
 import { RemoteCommandError } from '../remote/types'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
@@ -62,6 +62,8 @@ watch(
     if (tabKey.value && !list.some((x) => x.key === tabKey.value)) tabKey.value = null
   },
 )
+
+const attention = (x: { panes: { rail: string }[] }): number => x.panes.filter((p) => p.rail === 'asked' || p.rail === 'failed').length
 
 function open(key: string): void {
   navigate({ name: 'workspace', machine: props.machine, pane: key })
@@ -143,11 +145,11 @@ async function send(text: string): Promise<void> {
     </div>
     <template v-else>
       <div class="tabs" role="tablist" data-testid="ws-tabs">
-        <button v-for="x in tabs" :key="x.key" type="button" role="tab" class="tab" :class="{ on: x.key === tab?.key }" :aria-selected="x.key === tab?.key" :data-testid="`ws-tab-${x.key}`" @click="((tabKey = x.key), (paneKey = null))"><Transition name="swap" mode="out-in"><span :key="x.name">{{ x.name }}</span></Transition></button>
+        <button v-for="x in tabs" :key="x.key" type="button" role="tab" class="tab" :class="{ on: x.key === tab?.key }" :aria-selected="x.key === tab?.key" :data-testid="`ws-tab-${x.key}`" @click="((tabKey = x.key), (paneKey = null))"><span class="tone-mono" :data-tone="x.groups[0]?.tone ?? 0" aria-hidden="true">{{ monogram(x.name) }}</span><Transition name="swap" mode="out-in"><span :key="x.name" class="tab-name">{{ x.name }}</span></Transition><span v-if="attention(x) > 0" class="attn" :data-testid="`ws-attn-${x.key}`" :aria-label="t('workspace.attention', { n: attention(x) })"><CircleHelp :size="13" :stroke-width="2.4" aria-hidden="true" />{{ attention(x) }}</span></button>
       </div>
 
       <template v-if="!grid">
-        <PaneChips :panes="panes" :current="pane?.key" @pick="paneKey = $event" />
+        <PaneChips :panes="panes" :current="pane?.key" :groups="tab?.groups" @pick="paneKey = $event" />
         <div v-if="pane" class="focus" data-testid="ws-focus" :data-pane="pane.key" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
           <PaneCard :pane="pane" :lost="lost" large :selected="selected === pane.key" @open="open(pane.key)" />
           <div class="actions">
@@ -159,7 +161,7 @@ async function send(text: string): Promise<void> {
         </div>
       </template>
 
-      <PaneGrid v-else :panes="panes" :lost="lost" :view-only="viewOnly" :selected="selected" @open="open" @actions="openActions" />
+      <PaneGrid v-else :panes="panes" :groups="tab?.groups" :lost="lost" :view-only="viewOnly" :selected="selected" @open="open" @actions="openActions" />
 
       <button v-if="tab?.cwd && !viewOnly" type="button" class="fab btn btn-primary" :disabled="lost" data-testid="ws-new" @click="newOpen = true"><Plus :size="20" :stroke-width="2.2" aria-hidden="true" />{{ t('workspace.newPane') }}</button>
     </template>
@@ -207,21 +209,38 @@ async function send(text: string): Promise<void> {
 
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  border-bottom: 1px solid var(--ccm-line);
 }
 
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   flex: none;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
+  min-height: 48px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--ccm-glass-edge);
+  border-radius: var(--radius-chip);
+  background: var(--ccm-glass);
   color: var(--ccm-ink-muted);
-  font-weight: 600;
+  font-weight: 700;
+  transition:
+    background-color var(--ccm-dur-base) var(--ccm-ease-standard),
+    border-color var(--ccm-dur-base) var(--ccm-ease-standard);
+}
+
+.attn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--ccm-waiting) 18%, var(--ccm-surface));
+  color: var(--ccm-waiting);
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
 .swap-enter-active,
@@ -241,7 +260,8 @@ async function send(text: string): Promise<void> {
 
 .tab.on {
   color: var(--ccm-ink);
-  border-bottom-color: var(--ccm-accent);
+  border-color: color-mix(in srgb, var(--ccm-accent) 55%, transparent);
+  background: var(--ccm-accent-soft);
 }
 
 .focus {

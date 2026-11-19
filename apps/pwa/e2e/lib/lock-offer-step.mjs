@@ -1,4 +1,5 @@
-import { join } from 'node:path'
+import { mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { PHONE, wait } from './ctx.mjs'
 import { startPeer } from './procs.mjs'
 
@@ -38,11 +39,15 @@ export async function lockOfferStep(c, env) {
         if ((await prefs(a.page)).lockOffered === true) throw new Error('marked as asked without asking')
         return
       }
+      const mist = join(dirname(env.qaDirE), 'WP-68b3')
+      mkdirSync(mist, { recursive: true })
       await wait(400)
       await shoot(a.page, join(env.qaDirE, `lock-offer-phone-light-${browserName}.png`))
+      await shoot(a.page, join(mist, `lock-phone-light-${browserName}.png`))
       await a.page.emulateMedia({ colorScheme: 'dark' })
       await wait(300)
       await shoot(a.page, join(env.qaDirE, `lock-offer-phone-dark-${browserName}.png`))
+      await shoot(a.page, join(mist, `lock-phone-dark-${browserName}.png`))
       await a.page.emulateMedia({ colorScheme: 'light' })
 
       await cdp.send('WebAuthn.setUserVerified', { authenticatorId, isUserVerified: false })

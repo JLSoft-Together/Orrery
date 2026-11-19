@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { Bell, BellOff, ChevronRight, Clock, Laptop, LoaderCircle, MoonStar } from 'lucide-vue-next'
+import { Bell, BellOff, Check, ChevronDown, ChevronRight, CircleAlert, Clock, Laptop, LoaderCircle, MoonStar } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { parseSessions } from '../lib/monitorModel'
+import { cardState, machineSubtitle, railCounts } from '../lib/projectModel'
+import { quotaOf } from '../lib/quotaModel'
 import type { MachineView } from '../remote/machineData'
-import { statusCounts } from '../remote/summary'
 import type { LinkState, Machine, RoutePolicy } from '../remote/types'
 import LinkChip from './LinkChip.vue'
+import QuotaBars from './QuotaBars.vue'
 
-const props = defineProps<{ machine: Machine; link: LinkState; view: MachineView; rtt?: number; bell: boolean }>()
+const props = defineProps<{ machine: Machine; link: LinkState; view: MachineView; rtt?: number; bell: boolean; now: number }>()
 const emit = defineEmits<{ open: []; policy: [policy: RoutePolicy]; bell: [on: boolean] }>()
 const { t, locale } = useI18n()
 
-const counts = computed(() => statusCounts(props.view.snapshot))
+const counts = computed(() => railCounts(parseSessions(props.view.snapshot)))
+const quota = computed(() => quotaOf(props.view.snapshot, props.now))
 const title = computed(() => props.machine.alias ?? props.machine.name)
-const subtitle = computed(() => {
-  const version = typeof props.view.hello?.version === 'string' ? props.view.hello.version : null
-  return version ? `Orrery ${version}` : t('machines.paired', { date: formatDate(props.machine.pairedAt) })
-})
+const subtitle = computed(() => machineSubtitle(props.view.hello) ?? t('machines.paired', { date: formatDate(props.machine.pairedAt) }))
 const when = computed(() => (props.view.updatedAt ? formatTime(props.view.updatedAt) : null))
+const state = computed(() => cardState(props.link.status, props.view.snapshot !== null))
+const old = computed(() => props.view.stale && when.value !== null)
 const policies: RoutePolicy[] = ['auto', 'lan', 'relay']
 
 function formatTime(ms: number): string {
@@ -34,7 +37,7 @@ function onPolicy(event: Event): void {
 </script>
 
 <template>
-  <article class="card machine" :data-testid="`machine-${machine.id}`">
+  <article class="card machine" :class="{ lost: state === 'lost' }" :data-state="state" :data-testid="`machine-${machine.id}`">
     <button type="button" class="open" data-testid="machine-open" @click="emit('open')">
       <span class="head">
         <span class="avatar" aria-hidden="true"><Laptop :size="20" :stroke-width="2" /></span>
@@ -48,22 +51,31 @@ function onPolicy(event: Event): void {
       <span class="counts" data-testid="machine-counts">
         <template v-if="view.snapshot">
           <span v-if="counts.working" class="count c-working"><LoaderCircle :size="14" :stroke-width="2.2" aria-hidden="true" />{{ t('machines.working', { n: counts.working }) }}</span>
-          <span v-if="counts.waiting" class="count c-waiting"><Clock :size="14" :stroke-width="2.2" aria-hidden="true" />{{ t('machines.waiting', { n: counts.waiting }) }}</span>
+          <span v-if="counts.asked" class="count c-waiting"><Clock :size="14" :stroke-width="2.2" aria-hidden="true" />{{ t('machines.waiting', { n: counts.asked }) }}</span>
+          <span v-if="counts.failed" class="count c-error"><CircleAlert :size="14" :stroke-width="2.2" aria-hidden="true" />{{ t('machines.failed', { n: counts.failed }) }}</span>
+          <span v-if="counts.done" class="count c-done"><Check :size="14" :stroke-width="2.4" aria-hidden="true" />{{ t('machines.done', { n: counts.done }) }}</span>
           <span v-if="counts.idle" class="count c-idle"><MoonStar :size="14" :stroke-width="2.2" aria-hidden="true" />{{ t('machines.idle', { n: counts.idle }) }}</span>
         </template>
         <span v-else class="muted" data-testid="machine-nodata">{{ t('machines.noData') }}</span>
       </span>
-      <span v-if="when" class="note" :class="{ stale: view.stale }" data-testid="machine-freshness" :data-stale="view.stale ? '1' : '0'">
-        {{ view.stale ? t('machines.stale', { time: when }) : t('machines.live', { time: when }) }}
-      </span>
-      <span v-if="link.reason !== 'none' && link.status !== 'ready'" class="note warn" data-testid="machine-reason">{{ t(`reason.${link.reason}`) }}</span>
     </button>
+    <div v-if="quota.length" class="quota-wrap" data-testid="machine-quota">
+      <QuotaBars :rows="quota" :now="now" />
+    </div>
     <footer class="foot">
+      <span class="note-col">
+        <span v-if="link.reason !== 'none' && link.status !== 'ready'" class="note warn" data-testid="machine-reason">{{ t(`reason.${link.reason}`) }}</span>
+        <span v-if="when" class="note" :class="{ stale: old }" data-testid="machine-freshness" :data-stale="view.stale ? '1' : '0'">
+          <Clock v-if="old" :size="14" :stroke-width="2.2" aria-hidden="true" />
+          {{ view.stale ? t('machines.stale', { time: when }) : t('machines.live', { time: when }) }}
+        </span>
+      </span>
       <label class="route">
-        <span class="label">{{ t('machines.route') }}</span>
-        <select :value="machine.policy" data-testid="route-select" @change="onPolicy">
+        <span class="sr-only">{{ t('machines.route') }}</span>
+        <select :value="machine.policy" :aria-label="t('machines.route')" data-testid="route-select" @change="onPolicy">
           <option v-for="policy in policies" :key="policy" :value="policy">{{ t(`policy.${policy}`) }}</option>
         </select>
+        <ChevronDown :size="16" :stroke-width="2.2" class="sel-chev" aria-hidden="true" />
       </label>
       <button type="button" class="bell" :class="{ on: bell }" :aria-pressed="bell" :aria-label="t(bell ? 'machines.bellOn' : 'machines.bellOff')" data-testid="machine-bell" @click="emit('bell', !bell)">
         <component :is="bell ? Bell : BellOff" :size="20" :stroke-width="2" aria-hidden="true" />
@@ -76,15 +88,21 @@ function onPolicy(event: Event): void {
 .machine {
   display: flex;
   flex-direction: column;
-  transition: border-color 180ms var(--ease-out);
+  transition:
+    opacity var(--ccm-dur-slow) var(--ccm-ease-standard),
+    border-color var(--ccm-dur-base) var(--ccm-ease-standard);
+}
+
+.machine.lost {
+  opacity: 0.74;
 }
 
 .open {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 14px 14px 8px;
+  padding: 16px 16px 14px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -100,10 +118,10 @@ function onPolicy(event: Event): void {
 .avatar {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-control);
-  background: var(--ccm-selection);
+  background: var(--ccm-accent-soft);
   color: var(--ccm-accent-ink);
   flex: none;
 }
@@ -116,27 +134,25 @@ function onPolicy(event: Event): void {
 }
 
 .name {
-  font-size: 1.0625rem;
-  font-weight: 700;
+  font-size: 1.1875rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sub,
-.note {
+.sub {
   font-size: 0.8125rem;
   color: var(--ccm-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chev {
   color: var(--ccm-ink-faint);
   flex: none;
-}
-
-.note.stale,
-.note.warn {
-  color: var(--ccm-warning);
 }
 
 .counts {
@@ -149,11 +165,13 @@ function onPolicy(event: Event): void {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
+  min-height: 28px;
+  padding: 0 11px;
   border-radius: var(--radius-chip);
-  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
+  animation: chip-in var(--ccm-dur-base) var(--ccm-ease-enter) both;
 }
 
 .c-working {
@@ -162,6 +180,14 @@ function onPolicy(event: Event): void {
 
 .c-waiting {
   color: var(--ccm-waiting);
+}
+
+.c-error {
+  color: var(--ccm-error);
+}
+
+.c-done {
+  color: var(--ccm-done);
 }
 
 .c-idle {
@@ -173,26 +199,62 @@ function onPolicy(event: Event): void {
   font-size: 0.8125rem;
 }
 
+.quota-wrap {
+  padding: 12px 16px;
+  border-top: 1px solid var(--ccm-line);
+}
+
 .foot {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 14px 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--ccm-line);
+}
+
+.note-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--ccm-ink-muted);
+}
+
+.note.stale,
+.note.warn {
+  color: var(--ccm-warning);
 }
 
 .route {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
 }
 
 select {
+  appearance: none;
+  -webkit-appearance: none;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 32px 0 14px;
   border-radius: var(--radius-control);
   border: 1px solid var(--ccm-line-strong);
   background: var(--ccm-control);
+  font-weight: 600;
+}
+
+.sel-chev {
+  position: absolute;
+  right: 10px;
+  color: var(--ccm-ink-muted);
+  pointer-events: none;
 }
 
 .bell {
@@ -200,14 +262,28 @@ select {
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: var(--radius-control);
+  border-radius: 50%;
   border: 1px solid var(--ccm-line-strong);
   background: var(--ccm-control);
   color: var(--ccm-ink-muted);
+  transition:
+    color var(--ccm-dur-base) var(--ccm-ease-standard),
+    border-color var(--ccm-dur-base) var(--ccm-ease-standard);
 }
 
 .bell.on {
   color: var(--ccm-accent-ink);
   border-color: var(--ccm-accent);
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

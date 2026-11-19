@@ -19,6 +19,7 @@ export interface LocalPrefs {
   credentialId: string | null
   lockOffered: boolean
   lastMachine: string | null
+  railCollapsed: boolean
 }
 
 export const DEFAULT_LOCAL_PREFS: LocalPrefs = {
@@ -34,6 +35,7 @@ export const DEFAULT_LOCAL_PREFS: LocalPrefs = {
   credentialId: null,
   lockOffered: false,
   lastMachine: null,
+  railCollapsed: false,
 }
 
 const KEY = 'ccm.pwa.prefs'
@@ -58,6 +60,7 @@ export function normalizeLocalPrefs(raw: unknown): LocalPrefs {
     credentialId,
     lockOffered: o.lockOffered === true,
     lastMachine: typeof o.lastMachine === 'string' && o.lastMachine ? o.lastMachine : null,
+    railCollapsed: o.railCollapsed === true,
   }
 }
 

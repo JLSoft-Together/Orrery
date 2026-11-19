@@ -1,4 +1,5 @@
 import type { WorkspaceDoc } from '../remote/machineData'
+import { letterOf, toneOf } from './projectModel'
 import { providerOf, type MonitorSession, type Provider, type Rail } from './monitorModel'
 
 export interface WsPane {
@@ -20,6 +21,15 @@ export interface WsPane {
   since: number | null
 }
 
+export interface WsGroup {
+  key: string
+  project: string
+  name: string
+  tone: number
+  folded: boolean
+  panes: WsPane[]
+}
+
 export interface WsTab {
   key: string
   name: string
@@ -27,7 +37,12 @@ export interface WsTab {
   project: string | null
   cwd: string | null
   panes: WsPane[]
+  groups: WsGroup[]
 }
+
+export const TONES = 8
+export const toneOfProject = toneOf
+export const monogram = letterOf
 
 type Item = Record<string, unknown>
 
@@ -83,6 +98,33 @@ function parsePane(raw: Item, sessions: Map<string, MonitorSession>): WsPane | n
   }
 }
 
+function parseGroups(raw: unknown, panes: WsPane[]): WsGroup[] {
+  if (!Array.isArray(raw)) return []
+  const byKey = new Map(panes.map((p) => [p.key, p]))
+  const taken = new Set<string>()
+  const groups: WsGroup[] = []
+  for (const item of raw) {
+    if (!isItem(item)) continue
+    const project = str(item.project)
+    if (!project || !Array.isArray(item.panes)) continue
+    const members = item.panes.flatMap((k) => {
+      const pane = typeof k === 'string' ? byKey.get(k) : undefined
+      if (!pane || taken.has(pane.key)) return []
+      taken.add(pane.key)
+      return [pane]
+    })
+    if (members.length === 0) continue
+    const tone = typeof item.tone === 'number' && Number.isFinite(item.tone) ? Math.abs(Math.trunc(item.tone)) % TONES : toneOfProject(project)
+    groups.push({ key: project, project, name: str(item.name) ?? baseName(project), tone, folded: item.folded === true, panes: members })
+  }
+  const rest = panes.filter((p) => !taken.has(p.key))
+  if (groups.length > 0 && rest.length > 0) {
+    const project = rest.find((p) => p.cwd)?.cwd ?? ''
+    groups.push({ key: `~rest`, project, name: project ? baseName(project) : '', tone: toneOfProject(project), folded: false, panes: rest })
+  }
+  return groups
+}
+
 export function parseWorkspace(doc: WorkspaceDoc | null, sessions: MonitorSession[]): WsTab[] {
   if (!doc || !Array.isArray(doc.tabs)) return []
   const byTerminal = new Map(sessions.map((s) => [s.id, s]))
@@ -95,7 +137,7 @@ export function parseWorkspace(doc: WorkspaceDoc | null, sessions: MonitorSessio
     const project = str(raw.project)
     const cwd = panes.find((p) => p.cwd)?.cwd ?? null
     const customName = str(raw.name)
-    tabs.push({ key, customName, name: customName ?? (project ? baseName(project) : (cwd ? baseName(cwd) : key)), project, cwd: project ?? cwd, panes })
+    tabs.push({ key, customName, name: customName ?? (project ? baseName(project) : (cwd ? baseName(cwd) : key)), project, cwd: project ?? cwd, panes, groups: parseGroups(raw.groups, panes) })
   }
   return tabs
 }

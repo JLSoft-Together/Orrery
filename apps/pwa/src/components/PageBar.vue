@@ -8,7 +8,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <header class="bar">
+  <header class="bar glass-bar">
     <button v-if="!backless" type="button" class="back" :aria-label="t('common.back')" data-testid="back" @click="back()">
       <ChevronLeft :size="24" :stroke-width="2" aria-hidden="true" />
     </button>
@@ -19,11 +19,16 @@ const { t } = useI18n()
 
 <style scoped>
 .bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 4px;
   min-height: 56px;
-  padding: 0 8px 0 4px;
+  margin: 0 -16px;
+  padding: 0 24px 0 20px;
+  border-bottom: 1px solid var(--ccm-glass-edge);
 }
 
 .back {
@@ -43,7 +48,7 @@ const { t } = useI18n()
   margin: 0;
   padding-left: 8px;
   font-size: 1.0625rem;
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

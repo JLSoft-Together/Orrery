@@ -67,6 +67,17 @@ export interface RemoteTab {
   panes: RemotePane[]
 }
 
+export type RemoteQuotaAgent = 'claude' | 'codex'
+export type RemoteQuotaWindow = '5h' | 'week'
+
+export interface RemoteQuota {
+  agent: RemoteQuotaAgent
+  window: RemoteQuotaWindow
+  pct: number
+  resetAt: number | null
+  stale: boolean
+}
+
 export interface RemoteWorkspaceSnapshot {
   rev: number
   tabs: RemoteTab[]

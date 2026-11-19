@@ -1,105 +1,35 @@
 :root {
-  color-scheme: light dark;
-  --ccm-canvas: #f3f3f6;
-  --ccm-surface: #ffffff;
-  --ccm-raised: #ececf1;
-  --ccm-control: #ffffff;
-  --ccm-ink: #17171c;
-  --ccm-ink-muted: #55555f;
-  --ccm-ink-faint: #61616c;
-  --ccm-line: color-mix(in srgb, var(--ccm-ink) 9%, transparent);
-  --ccm-line-strong: color-mix(in srgb, var(--ccm-ink) 18%, transparent);
-  --ccm-accent: #bd5128;
-  --ccm-accent-ink: #b04a24;
-  --ccm-on-accent: #ffffff;
-  --ccm-selection: #f6dccf;
-  --ccm-focus: #bd5128;
-  --ccm-working: #b02f00;
-  --ccm-waiting: #7f5500;
-  --ccm-idle: #61616c;
-  --ccm-done: #1b6f30;
-  --ccm-error: #c4001a;
-  --ccm-warning: #b02f00;
-  --ccm-info: #0b5cad;
-  --ccm-agent-claude: #c15f3c;
-  --ccm-agent-codex: #6a4fc9;
-  --ccm-agent-shell: #0f7f78;
-  --ccm-scanner: #101014;
-  --radius-card: 10px;
-  --radius-control: 8px;
-  --radius-inner: 4px;
+  --font-sans: 'Manrope Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --radius-chip: 999px;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
-  --ccm-label-font: var(--font-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --ccm-canvas: #000000;
-    --ccm-surface: #08080a;
-    --ccm-raised: #0d0d10;
-    --ccm-control: #16161a;
-    --ccm-ink: #ececf1;
-    --ccm-ink-muted: #a6a6b0;
-    --ccm-ink-faint: #85858f;
-    --ccm-accent: #e8835d;
-    --ccm-accent-ink: #f0946f;
-    --ccm-on-accent: #1a110d;
-    --ccm-selection: #35261f;
-    --ccm-focus: #f0946f;
-    --ccm-working: #f5a524;
-    --ccm-waiting: #f7d046;
-    --ccm-idle: #8e8e9a;
-    --ccm-done: #4cc38a;
-    --ccm-error: #ff6b6b;
-    --ccm-warning: #f5a524;
-    --ccm-info: #6ea8fe;
-    --ccm-agent-claude: #d97757;
-    --ccm-agent-codex: #9d8cf8;
-    --ccm-agent-shell: #4cc2b8;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --ccm-canvas: #000000;
-  --ccm-surface: #08080a;
-  --ccm-raised: #0d0d10;
-  --ccm-control: #16161a;
-  --ccm-ink: #ececf1;
-  --ccm-ink-muted: #a6a6b0;
-  --ccm-ink-faint: #85858f;
-  --ccm-accent: #e8835d;
-  --ccm-accent-ink: #f0946f;
-  --ccm-on-accent: #1a110d;
-  --ccm-selection: #35261f;
-  --ccm-focus: #f0946f;
-  --ccm-working: #f5a524;
-  --ccm-waiting: #f7d046;
-  --ccm-idle: #8e8e9a;
-  --ccm-done: #4cc38a;
-  --ccm-error: #ff6b6b;
-  --ccm-warning: #f5a524;
-  --ccm-info: #6ea8fe;
-  --ccm-agent-claude: #d97757;
-  --ccm-agent-codex: #9d8cf8;
-  --ccm-agent-shell: #4cc2b8;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-}
-
-:root {
+  --ccm-scanner: #101014;
   --ccm-term-bg: #121216;
   --ccm-term-ink: #e6e6ea;
   --ccm-term-faint: #8d8d98;
   --ccm-term-line: #2a2a31;
-  --ccm-diff-add: #4cc38a;
-  --ccm-diff-add-fill: rgba(76, 195, 138, 0.16);
-  --ccm-diff-del: #ff6b6b;
-  --ccm-diff-del-fill: rgba(255, 107, 107, 0.17);
-  --ccm-diff-hunk-fill: #1b2233;
-  --ccm-diff-hunk: #8ea4d6;
+  --ccm-term-add: #4cc38a;
+  --ccm-term-add-fill: rgba(76, 195, 138, 0.16);
+  --ccm-term-del: #ff6b6b;
+  --ccm-term-del-fill: rgba(255, 107, 107, 0.17);
+  --ccm-term-hunk-fill: #1b2233;
+  --ccm-term-hunk: #8ea4d6;
+}
+
+:root[data-ui='next'] {
+  --ease-out: var(--ccm-ease-enter);
+  --radius-chip: var(--radius-pill);
+  --ccm-info: var(--ccm-working);
+  --ccm-agent-shell: var(--ccm-agent-shell-mark);
+  --ccm-glass-blur: blur(14px) saturate(1.5);
+  --ccm-glass-pop-blur: blur(16px) saturate(1.6);
+  --ccm-bar: color-mix(in srgb, var(--ccm-material) 78%, transparent);
+  --ccm-safe-top: env(safe-area-inset-top);
+  --ccm-safe-bottom: env(safe-area-inset-bottom);
+  --ccm-tabbar-h: 64px;
+  --ccm-tabbar-gap: 10px;
+}
+
+:root[data-ui='next'][data-glass='reduced'] {
+  --ccm-bar: var(--ccm-material);
 }

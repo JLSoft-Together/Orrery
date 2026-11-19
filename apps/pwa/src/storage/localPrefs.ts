@@ -1,3 +1,4 @@
+import { isNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT } from '@ccm/mist-tokens'
 import { DEFAULT_LOCK_TIMEOUT, normalizeTimeout } from '../lib/lockPolicy'
 
 export type LanguagePref = 'auto' | 'vi' | 'en'
@@ -8,6 +9,8 @@ export type WorkspaceMode = 'focus' | 'grid'
 export interface LocalPrefs {
   language: LanguagePref
   theme: ThemePref
+  palette: string
+  reduceTransparency: boolean
   monitorMode: MonitorMode
   workspaceMode: WorkspaceMode
   lockEnabled: boolean
@@ -21,6 +24,8 @@ export interface LocalPrefs {
 export const DEFAULT_LOCAL_PREFS: LocalPrefs = {
   language: 'auto',
   theme: 'auto',
+  palette: NEXT_PALETTE_DEFAULT,
+  reduceTransparency: false,
   monitorMode: 'cards',
   workspaceMode: 'focus',
   lockEnabled: false,
@@ -43,6 +48,8 @@ export function normalizeLocalPrefs(raw: unknown): LocalPrefs {
   return {
     language: pick(o.language, ['auto', 'vi', 'en'], 'auto'),
     theme: pick(o.theme, ['auto', 'light', 'dark'], 'auto'),
+    palette: isNextPaletteId(o.palette) && o.palette !== NEXT_PALETTE_CUSTOM ? o.palette : NEXT_PALETTE_DEFAULT,
+    reduceTransparency: o.reduceTransparency === true,
     monitorMode: pick(o.monitorMode, ['cards', 'groups'], 'cards'),
     workspaceMode: pick(o.workspaceMode, ['focus', 'grid'], 'focus'),
     lockEnabled: o.lockEnabled === true && credentialId !== null,

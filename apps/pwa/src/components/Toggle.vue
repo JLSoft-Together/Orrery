@@ -13,13 +13,13 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 .switch {
   position: relative;
   flex: none;
-  width: 52px;
-  height: 32px;
+  width: 51px;
+  height: 31px;
   padding: 0;
   border: 0;
   border-radius: 16px;
-  background: var(--ccm-line-strong);
-  transition: background-color 200ms var(--ease-out);
+  background: var(--ccm-fill-strong);
+  transition: background-color var(--ccm-dur-base) var(--ccm-ease-standard);
 }
 
 .switch::after {
@@ -38,13 +38,14 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
 .thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 26px;
-  height: 26px;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
   border-radius: 50%;
   background: #ffffff;
-  transition: transform 200ms var(--ease-out);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
+  transition: transform var(--ccm-dur-base) var(--ccm-ease-enter);
 }
 
 .on .thumb {

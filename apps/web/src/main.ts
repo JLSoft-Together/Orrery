@@ -6,8 +6,9 @@ import { installErrorLog } from './lib/errorLog'
 import './style.css'
 import './themes.css'
 import './fonts.css'
+import '@ccm/mist-tokens/tokens.css'
 import './next/tokens.css'
-import './next/palettes.css'
+import '@ccm/mist-tokens/palettes.css'
 
 installErrorLog()
 

@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { wait } from './ctx.mjs'
 
 export async function go(page, path) {
@@ -8,7 +9,7 @@ export async function go(page, path) {
 }
 
 export async function uiSteps(c, page, peer) {
-  const { step, byId, expectText } = c
+  const { step, byId, expectText, shoot } = c
   const id = peer.info.machine
   const cards = () => page.locator('[data-testid="monitor-list"] > button')
 
@@ -64,15 +65,53 @@ export async function uiSteps(c, page, peer) {
     await byId(page, 'language-select').selectOption('en')
     await expectText(page, '[data-testid="page-title"]', /^Settings$/)
     await byId(page, 'theme-select').selectOption('dark')
-    await page.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'dark')
+    await page.waitForFunction(() => document.documentElement.classList.contains('dark'))
     await c.reload(page)
     await expectText(page, '[data-testid="page-title"]', /^Settings$/)
-    if ((await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) !== 'dark') throw new Error('theme lost')
+    if (!(await page.evaluate(() => document.documentElement.classList.contains('dark')))) throw new Error('theme lost')
     if ((await page.evaluate(() => document.documentElement.lang)) !== 'en') throw new Error('lang attr')
     await byId(page, 'language-select').selectOption('vi')
     await byId(page, 'theme-select').selectOption('auto')
     await expectText(page, '[data-testid="page-title"]', /^Cài đặt$/)
-    await page.waitForFunction(() => !document.documentElement.hasAttribute('data-theme'))
+    await page.waitForFunction(() => !document.documentElement.classList.contains('dark'))
+  })
+
+  await step('Settings: palette cards and Reduce transparency apply at once and persist; the phone blur stays at 16px or less', async () => {
+    await byId(page, 'tab-settings').click()
+    await byId(page, 'palette-cards').waitFor()
+    const root = () => page.evaluate(() => ({ ui: document.documentElement.dataset.ui, theme: document.documentElement.dataset.nextTheme, dark: document.documentElement.classList.contains('dark'), glass: document.documentElement.dataset.glass }))
+    const first = await root()
+    if (first.ui !== 'next' || first.theme !== 'mist' || first.glass !== 'full') throw new Error(`default appearance ${JSON.stringify(first)}`)
+    const blur = await page.evaluate(() => {
+      const s = getComputedStyle(document.querySelector('[data-testid="tab-bar"]'))
+      return s.backdropFilter || s.webkitBackdropFilter || ''
+    })
+    const px = Number(/blur\((\d+)px/.exec(blur)?.[1] ?? 99)
+    if (px > 16) throw new Error(`tab bar blur ${blur}`)
+    for (const pal of ['mist', 'nebula', 'aurora', 'graphite', 'dawn', 'galaxy', 'orrery', 'console']) {
+      await byId(page, `palette-${pal}`).click()
+      await page.waitForFunction((p) => document.documentElement.dataset.nextTheme === p, pal)
+      await wait(480)
+      await c.noOverflow(page, `settings ${pal}`)
+      await shoot(page, join(c.env.qaDirF, `settings-palette-${pal}-phone-${c.browserName}.png`))
+    }
+    await page.waitForFunction(() => document.documentElement.classList.contains('dark'))
+    await byId(page, 'palette-mist').click()
+    await byId(page, 'reduce-transparency').click()
+    await page.waitForFunction(() => document.documentElement.dataset.glass === 'reduced')
+    const none = await page.evaluate(() => {
+      const s = getComputedStyle(document.querySelector('[data-testid="tab-bar"]'))
+      return (s.backdropFilter || s.webkitBackdropFilter || 'none') === 'none'
+    })
+    if (!none) throw new Error('reduce transparency still blurs')
+    await wait(480)
+    await shoot(page, join(c.env.qaDirF, `settings-reduced-phone-${c.browserName}.png`))
+    await c.reload(page)
+    await byId(page, 'palette-cards').waitFor()
+    const after = await root()
+    if (after.theme !== 'mist' || after.glass !== 'reduced') throw new Error(`appearance lost ${JSON.stringify(after)}`)
+    await byId(page, 'reduce-transparency').click()
+    await page.waitForFunction(() => document.documentElement.dataset.glass === 'full')
   })
 
   await step('Bell is saved per machine in IndexedDB; display name can be changed and cleared', async () => {

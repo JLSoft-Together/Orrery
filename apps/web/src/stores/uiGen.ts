@@ -19,7 +19,7 @@ import {
   type RailGroup,
   type UiGeneration,
 } from '../lib/uiGeneration'
-import { isNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, nextPalette, nextSchemeFor, type NextPaletteId, type NextScheme } from '../next/palettes'
+import { isNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, nextPalette, nextSchemeFor, type NextPaletteId, type NextScheme } from '@ccm/mist-tokens'
 import {
   applyCustomVars,
   buildCustomTheme,

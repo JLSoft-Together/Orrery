@@ -1,0 +1,13 @@
+{
+  "name": "@ccm/mist-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./palettes.ts",
+  "types": "./palettes.ts",
+  "exports": {
+    ".": "./palettes.ts",
+    "./tokens.css": "./tokens.css",
+    "./palettes.css": "./palettes.css"
+  }
+}

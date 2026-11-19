@@ -1,4 +1,4 @@
-import { isNextPaletteId, NEXT_PALETTE_DEFAULT, nextSchemeFor, type NextPaletteId } from '../next/palettes'
+import { isNextPaletteId, NEXT_PALETTE_DEFAULT, nextSchemeFor, type NextPaletteId } from '@ccm/mist-tokens'
 
 export type UiGeneration = 'classic' | 'next'
 export type NextMotion = 'full' | 'reduced' | 'off'

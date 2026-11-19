@@ -10,6 +10,31 @@ body,
   height: 100%;
 }
 
+html {
+  background: var(--ccm-canvas);
+}
+
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--ccm-sky, none), var(--ccm-bg-image, none);
+  background-size: var(--ccm-sky-size, auto), auto;
+  background-repeat: repeat, no-repeat;
+}
+
+html[data-fade] *,
+html[data-fade] *::before,
+html[data-fade] *::after {
+  transition:
+    background-color var(--ccm-dur-slow) var(--ccm-ease-standard),
+    color var(--ccm-dur-slow) var(--ccm-ease-standard),
+    border-color var(--ccm-dur-slow) var(--ccm-ease-standard),
+    fill var(--ccm-dur-slow) var(--ccm-ease-standard) !important;
+}
+
 @supports (font: -apple-system-body) {
   html {
     font: -apple-system-body;
@@ -18,7 +43,7 @@ body,
 
 body {
   margin: 0;
-  background: var(--ccm-canvas);
+  background: transparent;
   color: var(--ccm-ink);
   font-family: var(--font-sans);
   font-size: 0.9375rem;
@@ -58,15 +83,30 @@ button {
 .label {
   font-family: var(--ccm-label-font);
   font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: var(--ccm-label-tracking, 0.04em);
+  text-transform: var(--ccm-label-case, uppercase);
   color: var(--ccm-ink-faint);
 }
 
 .card {
-  background: var(--ccm-surface);
-  border: 1px solid var(--ccm-line);
+  background: var(--ccm-glass);
+  border: 1px solid var(--ccm-glass-edge);
   border-radius: var(--radius-card);
+  box-shadow: var(--ccm-card-shadow);
+}
+
+.glass-bar {
+  background: var(--ccm-bar);
+  -webkit-backdrop-filter: var(--ccm-glass-blur);
+  backdrop-filter: var(--ccm-glass-blur);
+}
+
+.glass-sheet {
+  background: var(--ccm-glass-pop);
+  -webkit-backdrop-filter: var(--ccm-glass-pop-blur);
+  backdrop-filter: var(--ccm-glass-pop-blur);
+  border: 1px solid var(--ccm-glass-edge);
+  box-shadow: var(--ccm-shadow-pop), inset 0 1px 0 var(--ccm-glass-edge);
 }
 
 .btn {
@@ -79,11 +119,20 @@ button {
   border-radius: var(--radius-control);
   border: 1px solid var(--ccm-line-strong);
   background: var(--ccm-control);
-  font-weight: 600;
+  font-weight: 700;
+  transition:
+    transform var(--ccm-dur-press) var(--ccm-ease-standard),
+    background-color var(--ccm-dur-fast) var(--ccm-ease-standard);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(var(--ccm-motion-scale, 0.98));
 }
 
 .btn-primary {
-  background: var(--ccm-accent);
+  background-color: var(--ccm-accent);
+  background-image: var(--ccm-accent-grad);
+  box-shadow: var(--ccm-shadow-accent);
   border-color: transparent;
   color: var(--ccm-on-accent);
 }

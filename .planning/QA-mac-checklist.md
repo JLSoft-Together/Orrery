@@ -18,9 +18,18 @@ Chủ nhân 2026-11-19: mọi phần cần test trên Mac ghi hết vào file n�
 - [ ] Từ chối ghép trên hộp native → bảng QR hiện "đã từ chối" + nút tạo mã mới.
 - [ ] Tắt relay rồi bật lại → desktop nối lại trong ≤ ~15 s.
 
+- [ ] WP-67: chip "Điện thoại" ở chân rail (chưa nối / N điện thoại / Chặn N IP), bấm mở Settings đúng mục; Cmd+K "Ghép điện thoại" mở QR; điện thoại chuyển / đóng pane → toast Hoàn tác; Settings → Điều khiển từ xa trên nền kính sáng / tối không vỡ.
+
 ## v103 UI next (điền dần khi từng gói xong)
 - [ ] WP-70a: nút "Explorer" có chữ + icon cây thư mục; không còn hộp "Cần bạn xử lý"; session lùi vào dưới project; nút thu gọn đầu rail + Cmd+Shift+B (cả khi đang focus terminal), tắt mở app vẫn nhớ; footer hạn mức ở đáy (Claude Code + Codex, giờ reset theo locale 12h / 24h); không cuộn trang, đáy pane còn bo góc, footer không đè dải title bar Mac; cửa sổ hẹp (icon / overlay) vẫn đúng.
 - [ ] WP-70b: menu "…" tắt khi click ra ngoài / Esc / Cmd+Tab sang app khác; Tray → Compact window rồi "Full view" → cửa sổ chính hiện, không sinh cửa sổ thứ 2; Esc thoát compact (không đụng Cmd+W), Cmd+K mở palette trong compact; nút "Đầy đủ" không bị vùng kéo title bar che; không còn Mission Control (Cmd+Shift+O, Cmd+K, chuột phải project); máy đang classic → lần đầu mở vào next, không nháy UI cũ, chọn lại classic thì restart vẫn classic.
 - [ ] WP-71 (Explorer): Cmd+Shift+E bật / tắt (cả khi đang ghim); ghim → cột đặc bên phải, pane co lại, cả cửa sổ 1280–1440; kéo mép trái bằng trackpad, double click về 288, mở lại app nhớ width; cửa sổ hẹp → nút ghim bị chặn kèm tooltip; cây sâu cuộn ngang hai ngón (scrollbar overlay macOS), dòng tên project + nút đứng yên; tên dài đủ chữ với font Mac; cột ghim không làm trang cuộn.
 - [ ] WP-72 (Git log): chọn commit thấy ngay diff preview dưới bảng; Alt+↑ / Alt+↓ đổi commit, j / k trong bảng; ảnh png / webp / svg trong commit: Side by side / Slider / Onion skin; ảnh đổi tên, ảnh thêm / xoá hiện 1 bên; Cmd thay Ctrl ở mọi phím tắt.
 - [ ] WP-73 (Disk): tick checkbox trong cây / kết quả đổi ngay (cả phím Space); tích chỉ `/Volumes/X` → chỉ X được quét, `/` không quét lại; bỏ chọn ổ đã quét → dòng "Dữ liệu cũ được giữ", quét nền / snapshot / báo cáo Telegram chỉ có ổ đang chọn; chọn thư mục con của `/` vẫn tính theo ổ cha; nút "Quét siêu nhanh" ẩn trên Mac.
+
+## Web app Sương kính (WP-68b, iPhone / iPad thật)
+- [ ] Nền sương hiện đủ khi cuộn dài, không trượt theo cuộn; thanh trên liền dải status bar; tab bar viên nổi cách home indicator, 3 tab đủ vùng bấm.
+- [ ] Cài đặt → Giao diện: 8 bảng màu đổi tức thì; Ngân hà / Console luôn tối; sáng / tối / theo máy; bật iOS Giảm độ trong suốt → web app tự đặc.
+- [ ] Sheet kính nổi cách mép 8 px, không bị home indicator che; Manrope hiện đúng tiếng Việt; terminal đúng độ rộng cột; xoay ngang không che nội dung, cuộn 60 fps.
+- [ ] Hạn mức Claude Code / Codex trên thẻ máy khớp footer desktop; máy thiếu số thì không hiện; số cũ > 30 phút ghi cũ.
+- [ ] Desktop macOS: giao diện Mist không đổi sau khi tách token.

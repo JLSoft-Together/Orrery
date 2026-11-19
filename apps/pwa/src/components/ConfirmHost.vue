@@ -4,7 +4,7 @@ import { answerConfirm, pendingConfirm } from '../lib/confirm'
 
 <template>
   <div v-if="pendingConfirm" class="scrim" data-testid="confirm" @click.self="answerConfirm(false)">
-    <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="sheet glass-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
       <h2 id="confirm-title" class="title">{{ pendingConfirm.title }}</h2>
       <p v-if="pendingConfirm.body" class="body">{{ pendingConfirm.body }}</p>
       <div class="buttons">
@@ -24,16 +24,14 @@ import { answerConfirm, pendingConfirm } from '../lib/confirm'
   align-items: end;
   justify-items: center;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--ccm-scrim);
   animation: fade 160ms var(--ease-out);
 }
 
 .sheet {
   width: min(100%, 420px);
   padding: 20px;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--ccm-line);
-  background: var(--ccm-surface);
+  border-radius: var(--radius-window);
   animation: rise 260ms var(--ease-out);
 }
 

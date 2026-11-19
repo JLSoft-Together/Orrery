@@ -97,7 +97,7 @@ export function makeCtx({ browser, browserName, env, record, videoPath }) {
   }
   const pairPaste = async (page, peer, deviceName = 'iPhone E2E') => {
     await startPair(page)
-    await byId(page, 'pair-tab-paste').click()
+    await byId(page, 'pair-tab-paste').dispatchEvent('click')
     await byId(page, 'pair-code').fill(peer.info.qr)
     await byId(page, 'pair-name').fill(deviceName)
     await byId(page, 'pair-submit').click()

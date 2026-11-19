@@ -1,11 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isNextPaletteId, NEXT_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_THEME_IDS, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from './palettes'
+import { isNextPaletteId, NEXT_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_THEME_IDS, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from '@ccm/mist-tokens'
 import { startNext, startUi, UI_MIGRATION } from '../lib/uiGeneration'
 
-const tokensCss = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8')
-const palettesCss = readFileSync(new URL('./palettes.css', import.meta.url), 'utf8')
+const pkgDir = new URL('../../../../packages/mist-tokens/', import.meta.url)
+const tokensCss = readFileSync(new URL('tokens.css', pkgDir), 'utf8') + '\n' + readFileSync(new URL('./tokens.css', import.meta.url), 'utf8')
+const palettesCss = readFileSync(new URL('palettes.css', pkgDir), 'utf8')
 const indexHtml = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 const themesCss = readFileSync(new URL('../themes.css', import.meta.url), 'utf8')

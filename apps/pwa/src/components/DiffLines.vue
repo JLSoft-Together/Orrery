@@ -54,27 +54,27 @@ defineProps<{ lines: DiffLine[] }>()
 }
 
 .add {
-  background: var(--ccm-diff-add-fill);
+  background: var(--ccm-term-add-fill);
 }
 
 .add .sign {
-  color: var(--ccm-diff-add);
+  color: var(--ccm-term-add);
 }
 
 .del {
-  background: var(--ccm-diff-del-fill);
+  background: var(--ccm-term-del-fill);
 }
 
 .del .sign,
 .del .no {
-  color: var(--ccm-diff-del);
+  color: var(--ccm-term-del);
 }
 
 .hunk {
   margin: 4px 0;
   padding-top: 2px;
   padding-bottom: 2px;
-  background: var(--ccm-diff-hunk-fill);
-  color: var(--ccm-diff-hunk);
+  background: var(--ccm-term-hunk-fill);
+  color: var(--ccm-term-hunk);
 }
 </style>

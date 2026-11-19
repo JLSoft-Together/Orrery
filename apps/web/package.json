@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ccm/habblaud": "*",
+    "@ccm/mist-tokens": "*",
     "@ccm/shared": "*",
     "@codemirror/autocomplete": "6.20.3",
     "@codemirror/commands": "6.11.1",

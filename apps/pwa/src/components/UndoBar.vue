@@ -25,7 +25,7 @@ onBeforeUnmount(() => {
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: calc(140px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ccm-tabbar-h) + var(--ccm-tabbar-gap) + 78px + var(--ccm-safe-bottom));
   z-index: 6;
   display: flex;
   align-items: center;

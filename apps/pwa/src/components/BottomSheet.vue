@@ -5,7 +5,7 @@ const emit = defineEmits<{ close: [] }>()
 
 <template>
   <div class="scrim" :data-testid="testid" @click.self="emit('close')">
-    <div class="sheet" role="dialog" aria-modal="true" :aria-label="title">
+    <div class="sheet glass-sheet" role="dialog" aria-modal="true" :aria-label="title">
       <span class="grab" aria-hidden="true" />
       <h2 class="title">{{ title }}</h2>
       <slot />
@@ -21,19 +21,18 @@ const emit = defineEmits<{ close: [] }>()
   display: grid;
   align-items: end;
   justify-items: center;
-  background: rgba(0, 0, 0, 0.45);
-  animation: fade 160ms var(--ease-out);
+  background: var(--ccm-scrim);
+  animation: fade var(--ccm-dur-fast) var(--ease-out);
 }
 
 .sheet {
-  width: min(100%, 520px);
+  width: min(calc(100% - 16px), 520px);
   max-height: 80%;
+  margin-bottom: calc(8px + env(safe-area-inset-bottom));
   overflow-y: auto;
-  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
-  border-radius: 20px 20px 0 0;
-  border: 1px solid var(--ccm-line);
-  background: var(--ccm-surface);
-  animation: rise 260ms var(--ease-out);
+  padding: 8px 16px 20px;
+  border-radius: 28px;
+  animation: rise var(--ccm-dur-slow) var(--ease-out);
 }
 
 .grab {

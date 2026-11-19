@@ -2,7 +2,7 @@ import { createPinia } from 'pinia'
 import { createApp, watch } from 'vue'
 import App from './App.vue'
 import { createAppI18n } from './i18n'
-import { applyTheme, resolveLocale } from './lib/appearance'
+import { resolveLocale, startAppearance } from './lib/appearance'
 import { createRuntime } from './runtime'
 import { startRouter } from './router'
 import { useHubStore } from './stores/hub'
@@ -13,6 +13,9 @@ import { useUpdateStore } from './stores/update'
 import { DEFAULT_CONFIG } from './remote/types'
 import { registerServiceWorker } from './update/serviceWorker'
 import { UpdateChecker } from './update/version'
+import '@ccm/mist-tokens/tokens.css'
+import '@ccm/mist-tokens/palettes.css'
+import './styles/fonts.css'
 import './styles/tokens.css'
 import './styles/base.css'
 
@@ -31,9 +34,9 @@ function applyLanguage(): void {
 }
 
 applyLanguage()
-applyTheme(prefs.local.theme)
+const appearance = startAppearance(() => prefs.local)
 watch(() => prefs.local.language, applyLanguage)
-watch(() => prefs.local.theme, (theme) => applyTheme(theme))
+watch(() => [prefs.local.theme, prefs.local.palette, prefs.local.reduceTransparency], appearance.refresh)
 startRouter()
 app.mount('#app')
 

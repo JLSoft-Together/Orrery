@@ -285,7 +285,7 @@ async function send(text: string): Promise<void> {
 .fab {
   position: fixed;
   right: 16px;
-  bottom: calc(76px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ccm-tabbar-h) + var(--ccm-tabbar-gap) + 14px + var(--ccm-safe-bottom));
   min-height: 52px;
   padding: 0 20px;
   border-radius: 26px;

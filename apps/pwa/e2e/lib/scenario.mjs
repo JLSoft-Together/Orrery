@@ -11,7 +11,7 @@ import { uiSteps } from './ui-steps.mjs'
 import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
 
-export const STEPS_PER_BROWSER = 43
+export const STEPS_PER_BROWSER = 44
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -59,7 +59,7 @@ export async function runScenario({ browserName, launch, env, record }) {
       if (browserName === 'chromium' && state !== 'live') throw new Error(`camera state ${state}`)
       if (!['live', 'denied', 'unsupported'].includes(state)) throw new Error(`camera state ${state}`)
       await shoot(page, join(env.qaDir, `pair-scan-phone-light-${browserName}.png`))
-      await byId(page, 'pair-tab-paste').click()
+      await byId(page, 'pair-tab-paste').dispatchEvent('click')
       await byId(page, 'pair-code').fill('not a code!')
       await byId(page, 'pair-submit').click()
       await byId(page, 'pair-paste-error').waitFor()

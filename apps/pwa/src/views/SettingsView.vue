@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Bell, BellOff, BellRing, Bug, Check, Clock, EyeOff, Fingerprint, Globe, Lock, Moon, SquarePlus, Trash2, TriangleAlert, ChevronRight } from 'lucide-vue-next'
+import { Bell, BellOff, BellRing, Bug, Check, Clock, EyeOff, Fingerprint, Globe, Layers, Lock, Moon, SquarePlus, Trash2, TriangleAlert, ChevronRight } from 'lucide-vue-next'
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageBar from '../components/PageBar.vue'
+import PaletteCards from '../components/PaletteCards.vue'
 import SettingsMachines from '../components/SettingsMachines.vue'
 import Toggle from '../components/Toggle.vue'
 import { askConfirm } from '../lib/confirm'
 import { LOCK_TIMEOUTS } from '../lib/lockPolicy'
+import { useScheme } from '../lib/useScheme'
 import { DEFAULT_CONFIG } from '../remote/types'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
@@ -22,6 +24,7 @@ const lock = useLockStore()
 const prefs = usePrefsStore()
 const update = useUpdateStore()
 const push = usePushStore()
+const scheme = useScheme()
 
 const timeoutKey: Record<number, string> = { 60000: 'm1', 900000: 'm15', 3600000: 'h1', 14400000: 'h4' }
 const notifyRows: Array<{ key: NotifyKey; icon: typeof Bell; label: string }> = [
@@ -172,6 +175,15 @@ function setTheme(event: Event): void {
           <option value="dark">{{ t('settings.themeDark') }}</option>
         </select>
       </label>
+      <PaletteCards :model-value="prefs.local.palette" :scheme="scheme" @update:model-value="prefs.setPalette" />
+      <div class="row">
+        <Layers :size="20" :stroke-width="2" class="ico" aria-hidden="true" />
+        <div class="text">
+          <span class="name">{{ t('settings.reduceTransparency') }}</span>
+          <span class="desc">{{ t('settings.reduceTransparencyDesc') }}</span>
+        </div>
+        <Toggle :model-value="prefs.local.reduceTransparency" :label="t('settings.reduceTransparency')" data-testid="reduce-transparency" @update:model-value="prefs.setReduceTransparency" />
+      </div>
     </div>
 
     <h2 class="label head">{{ t('settings.machines') }}</h2>

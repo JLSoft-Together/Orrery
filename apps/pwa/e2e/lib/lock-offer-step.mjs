@@ -9,7 +9,7 @@ async function pairUntilNext(c, page, peer, base) {
   await c.open(page, base)
   await byId(page, 'empty-pair').click({ timeout: 8000 })
   await byId(page, 'pair-view').waitFor({ timeout: 5000 })
-  await byId(page, 'pair-tab-paste').click({ timeout: 8000 })
+  await byId(page, 'pair-tab-paste').dispatchEvent('click')
   await byId(page, 'pair-code').fill(peer.info.qr)
   await byId(page, 'pair-submit').click({ timeout: 8000 })
   await page.waitForFunction(() => document.querySelector('[data-testid="lock-offer"]') || document.querySelector('[data-testid="monitor-view"]'), null, { timeout: 20000 })

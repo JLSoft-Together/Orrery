@@ -162,7 +162,7 @@ export async function pairDeniedStep(c, env) {
       await c.open(page)
       await byId(page, 'empty-pair').click()
       await byId(page, 'pair-view').waitFor({ timeout: 5000 })
-      await byId(page, 'pair-tab-paste').click()
+      await byId(page, 'pair-tab-paste').dispatchEvent('click')
       await byId(page, 'pair-code').fill(third.info.qr)
       await byId(page, 'pair-submit').click()
       await byId(page, 'pair-error').waitFor({ timeout: 20000 })

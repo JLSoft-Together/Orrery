@@ -37,6 +37,14 @@ export const usePrefsStore = defineStore('prefs', () => {
     patchLocal({ theme })
   }
 
+  function setPalette(palette: string): void {
+    patchLocal({ palette })
+  }
+
+  function setReduceTransparency(reduceTransparency: boolean): void {
+    patchLocal({ reduceTransparency })
+  }
+
   function setMonitorMode(monitorMode: MonitorMode): void {
     patchLocal({ monitorMode })
   }
@@ -79,5 +87,5 @@ export const usePrefsStore = defineStore('prefs', () => {
     notify.value = { ...DEFAULT_NOTIFY, bells: {} }
   }
 
-  return { local, notify, events, patchLocal, attach, setLanguage, setTheme, setMonitorMode, setWorkspaceMode, setLastMachine, setNotify, bell, setBell, dropMachine, resetAll }
+  return { local, notify, events, patchLocal, attach, setLanguage, setTheme, setPalette, setReduceTransparency, setMonitorMode, setWorkspaceMode, setLastMachine, setNotify, bell, setBell, dropMachine, resetAll }
 })

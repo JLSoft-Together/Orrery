@@ -38,7 +38,7 @@ async function answer(ok: boolean): Promise<void> {
 
 <template>
   <div v-if="pending" class="scrim" data-testid="remote-confirm" :data-cid="pending.ask.cid">
-    <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="rc-title">
+    <div class="sheet glass-sheet" role="alertdialog" aria-modal="true" aria-labelledby="rc-title">
       <p class="from"><ShieldQuestion :size="18" :stroke-width="2.2" aria-hidden="true" />{{ t('confirm.from', { name: pending.name }) }}</p>
       <h2 id="rc-title" class="title" data-testid="remote-confirm-title">{{ pending.ask.title }}</h2>
       <p v-if="pending.ask.detail" class="detail mono" data-testid="remote-confirm-detail">{{ pending.ask.detail }}</p>
@@ -60,16 +60,14 @@ async function answer(ok: boolean): Promise<void> {
   align-items: end;
   justify-items: center;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--ccm-scrim);
   animation: fade 160ms var(--ease-out);
 }
 
 .sheet {
   width: min(100%, 440px);
   padding: 20px;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--ccm-line);
-  background: var(--ccm-surface);
+  border-radius: var(--radius-window);
   animation: rise 260ms var(--ease-out);
 }
 

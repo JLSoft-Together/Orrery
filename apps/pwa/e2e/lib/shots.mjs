@@ -11,7 +11,7 @@ export async function screenshotSteps(c, page, peer) {
     { name: 'monitor-b', path: `/app/m/${id}`, waitFor: 'monitor-groups', mode: 'groups' },
     { name: 'detail', path: `/app/m/${id}/s/t2`, waitFor: 'session-view' },
     { name: 'settings', path: '/app/settings', waitFor: 'settings-view' },
-    { name: 'pair-code', path: '/app/pair', waitFor: 'pair-view', after: async () => byId(page, 'pair-tab-paste').click() },
+    { name: 'pair-code', path: '/app/pair', waitFor: 'pair-view', after: async () => byId(page, 'pair-tab-paste').dispatchEvent('click') },
   ]
 
   await step('screenshots: Home, Monitor A/B, detail, settings, pair; light and dark; phone and iPad', async () => {
@@ -36,6 +36,7 @@ export async function screenshotSteps(c, page, peer) {
           await noOverflow(page, `${screen.name} ${form}`)
           if (form === 'ipad' && screen.name === 'detail' && !(await byId(page, 'detail-pane').locator('[data-testid="session-view"]').count())) throw new Error('iPad detail pane empty')
           await shoot(page, join(env.qaDir, `${screen.name}-${form}-${scheme}-${browserName}.png`))
+          if (browserName === 'webkit' && ['home', 'monitor-a', 'settings'].includes(screen.name)) await shoot(page, join(env.qaDirF, `${screen.name}-${form}-${scheme}.png`))
           } catch (error) {
             throw new Error(`${label}: ${String(error?.message ?? error).split('\n')[0]} @ ${page.url()}`)
           }

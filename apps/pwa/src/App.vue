@@ -95,7 +95,7 @@ watch(
     </div>
     <div class="body">
       <div class="master">
-        <main class="scroll" :class="{ fill: fullTerminal }">
+        <main class="scroll" :class="{ fill: fullTerminal, tabbed: showTabs }">
           <div v-if="renderReady" :key="viewKey" class="view" :class="[routeDirection, { fill: fullTerminal }]">
             <HomeView v-if="master.name === 'home'" />
             <PairView v-else-if="master.name === 'pair'" />
@@ -121,6 +121,20 @@ watch(
 </template>
 
 <style scoped>
+.shell::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  height: var(--ccm-safe-top);
+  background: var(--ccm-bar);
+  -webkit-backdrop-filter: var(--ccm-glass-blur);
+  backdrop-filter: var(--ccm-glass-blur);
+  pointer-events: none;
+}
+
 .shell {
   display: flex;
   flex-direction: column;
@@ -140,8 +154,8 @@ watch(
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background: var(--ccm-surface);
-  border-bottom: 1px solid var(--ccm-line);
+  background: var(--ccm-glass-pop);
+  border-bottom: 1px solid var(--ccm-glass-edge);
   color: var(--ccm-error);
   font-weight: 600;
 }
@@ -168,6 +182,7 @@ watch(
 }
 
 .master {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -183,6 +198,10 @@ watch(
 
 .scroll.fill {
   overflow: hidden;
+}
+
+.scroll.tabbed {
+  padding-bottom: calc(var(--ccm-tabbar-h) + var(--ccm-tabbar-gap) + var(--ccm-safe-bottom) + 16px);
 }
 
 .view {

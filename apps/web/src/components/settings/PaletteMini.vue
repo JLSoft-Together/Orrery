@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NextPreview } from '../../next/palettes'
+import type { NextPreview } from '@ccm/mist-tokens'
 
 defineProps<{ preview: NextPreview; stars?: boolean }>()
 </script>

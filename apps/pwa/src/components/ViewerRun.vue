@@ -236,7 +236,7 @@ async function reload(s: RunSession, hot: boolean): Promise<void> {
 }
 
 .line.error {
-  color: var(--ccm-diff-del);
+  color: var(--ccm-term-del);
 }
 
 .none {

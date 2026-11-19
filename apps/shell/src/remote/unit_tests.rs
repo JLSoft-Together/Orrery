@@ -129,6 +129,18 @@ fn the_gate_counts_pending_connections_per_ip() {
 }
 
 #[test]
+fn plan_limits_reach_the_phone_in_the_snapshot_and_in_events() {
+    let limits = json!({ "fiveHour": { "usedPct": 41.6, "resetsAt": "2026-11-19T12:00:00.000Z" }, "updatedAt": "2026-11-19T09:55:00.000Z" });
+    let snap = json!({ "seq": 3, "events": [{ "type": "snapshot", "payload": { "terminals": [], "limits": limits, "codexLimits": limits } }] }).to_string();
+    let (_, ev) = snapshot_event(&snap).unwrap();
+    assert_eq!(ev["data"]["limits"], limits);
+    assert_eq!(ev["data"]["codexLimits"], limits);
+    let batch = json!({ "seq": 4, "events": [{ "type": "limits.updated", "payload": limits }, { "type": "codexLimits.updated", "payload": limits }] }).to_string();
+    let (_, ev) = events_event(&batch).unwrap();
+    assert_eq!(ev["events"].as_array().unwrap().len(), 2);
+}
+
+#[test]
 fn phone_messages_map_the_ws_wire() {
     let snap = r#"{"seq":7,"events":[{"type":"snapshot","payload":{"terminals":[]}}]}"#;
     assert_eq!(snapshot_event(snap).unwrap(), (7, json!({ "t": "snapshot", "seq": 7, "data": { "terminals": [] } })));

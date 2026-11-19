@@ -1,4 +1,4 @@
-import { nextPalette, nextPaletteCards, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, type NextPreview, type NextScheme } from '../../next/palettes'
+import { nextPalette, nextPaletteCards, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, type NextPreview, type NextScheme } from '@ccm/mist-tokens'
 
 export type Rgb = [number, number, number]
 export interface Oklch {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, BellOff, ChevronRight, Database, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Settings2, SlidersHorizontal, X } from 'lucide-vue-next'
+import { Bell, BellOff, ChevronRight, Database, Smartphone, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Settings2, SlidersHorizontal, X } from 'lucide-vue-next'
 import { clampDialogSize, readDialogSize, saveDialogSize, type DialogSize } from '../lib/dialogSize'
 import { retireOverlay } from '../lib/motion'
 import { isMac } from '../lib/platform'
@@ -29,6 +29,7 @@ import SettingsGeneral from './settings/SettingsGeneral.vue'
 import PageData from './settings/PageData.vue'
 import PageIntegrations from './settings/PageIntegrations.vue'
 import PageNotify from './settings/PageNotify.vue'
+import SettingsRemote from './settings/SettingsRemote.vue'
 import PageWorkspace from './settings/PageWorkspace.vue'
 import { SETTINGS_PAGES, entries, resolvePage, loadPage, pageAvailable, nextEntries, savePage, searchSettings, takeLegacyReminders, type SettingsEnv, type SettingsPage } from './settings'
 
@@ -115,6 +116,7 @@ const pageIcons: Record<SettingsPage, Component> = {
   appearance: Palette,
   workspace: LayoutPanelLeft,
   notify: Bell,
+  remote: Smartphone,
   integrations: Plug,
   data: Database,
   about: Info,
@@ -388,6 +390,7 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                   <SettingsAppearance v-else-if="page === 'appearance'" />
                   <PageWorkspace v-else-if="page === 'workspace'" />
                   <PageNotify v-else-if="page === 'notify'" />
+                  <SettingsRemote v-else-if="page === 'remote'" />
                   <PageIntegrations v-else-if="page === 'integrations'" />
                   <PageData v-else-if="page === 'data'" />
                   <SettingsAbout v-else-if="page === 'about'" />

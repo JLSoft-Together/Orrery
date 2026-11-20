@@ -116,7 +116,7 @@ const BLOCK = { key: '203.0.113.7', source: 'relay', why: 'token', count: 6, at:
     await waitFor(`!!document.querySelector('[data-settings-remote]')`, 8000, 'settings remote')
     await sleep(700)
     const page = await json(`(() => { const d = document.querySelector('.mist-settings'); const r = document.querySelector('[data-settings-remote]'); return { glass: !!d, current: document.querySelector('[data-settings-page][aria-current="page"]')?.dataset.settingsPage ?? null, rows: document.querySelectorAll('[data-remote-devices] > *').length, bell: !!document.querySelector('[data-setting-row="remoteDevices"]'), blocked: !!document.querySelector('[data-setting-row="remoteBlocked"]'), flash: !!document.querySelector('[data-setting-row="remoteBlocked"].ccm-setting-flash'), over: r ? r.scrollWidth - r.clientWidth : -1 } })()`)
-    check('chip click opens Settings on the Phone page in the glass dialog', page.glass && page.current === 'notify', JSON.stringify(page))
+    check('chip click opens Settings on the Phone page in the glass dialog', page.glass && page.current === 'remote', JSON.stringify(page))
     check('Phone page lists the 3 paired phones and the blocked list', page.rows === 3 && page.bell && page.blocked, JSON.stringify(page))
     check('alert chip lands on the blocked IP section', page.flash, JSON.stringify(page))
     check('Phone page does not scroll sideways', page.over <= 0, JSON.stringify(page))

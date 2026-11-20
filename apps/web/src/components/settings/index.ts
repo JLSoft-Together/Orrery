@@ -1,12 +1,11 @@
 import type { ToastKind } from '@ccm/shared'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'workspace', 'notify', 'integrations', 'data', 'about'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'workspace', 'notify', 'remote', 'integrations', 'data', 'about'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
 
 export const LEGACY_PAGES = {
   editor: 'workspace',
   telegram: 'notify',
-  remote: 'notify',
   github: 'integrations',
   deepseek: 'integrations',
   access: 'data',
@@ -95,7 +94,7 @@ export interface SettingsEntry {
   needs?: keyof SettingsEnv
 }
 
-const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = {}
+const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { remote: 'remote' }
 
 export const pageVisible = (page: SettingsPage, env: SettingsEnv): boolean => {
   const need = PAGE_NEEDS[page]

@@ -158,18 +158,18 @@ describe('remembered page', () => {
     expect(pageAvailable('general', all, false)).toBe(true)
   })
 
-  it('has 7 pages and old page ids resolve to the merged page', () => {
-    expect([...SETTINGS_PAGES]).toEqual(['general', 'appearance', 'workspace', 'notify', 'integrations', 'data', 'about'])
-    const old = { editor: 'workspace', telegram: 'notify', remote: 'notify', github: 'integrations', deepseek: 'integrations', access: 'data', disk: 'data' }
+  it('has 8 pages with Remote on its own and old page ids resolve to the merged page', () => {
+    expect([...SETTINGS_PAGES]).toEqual(['general', 'appearance', 'workspace', 'notify', 'remote', 'integrations', 'data', 'about'])
+    const old = { editor: 'workspace', telegram: 'notify', github: 'integrations', deepseek: 'integrations', access: 'data', disk: 'data' }
     for (const [from, to] of Object.entries(old)) expect(resolvePage(from)).toBe(to)
     expect(resolvePage('nope')).toBeNull()
     localStorage.setItem('ccm.settings.page', 'remote')
-    expect(loadPage()).toBe('notify')
+    expect(loadPage()).toBe('remote')
   })
 
   it('every entry sits on a current page and keeps its id', () => {
     const find = (id: string) => entries(false).find((e) => e.id === id)?.page
-    expect(find('remoteRelay')).toBe('notify')
+    expect(find('remoteRelay')).toBe('remote')
     expect(find('telegram')).toBe('notify')
     expect(find('github')).toBe('integrations')
     expect(find('dsKey')).toBe('integrations')

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Orrery Update UI</title>
+<meta name="description" content="5 chỗ nên update giao diện Orrery desktop và web app điện thoại, kèm wireframe Trước / Sau bấm thử được.">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/suggest/suggest.css">
+<link rel="stylesheet" href="/suggest/wireframes.css">
+<link rel="stylesheet" href="/ui/ui.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="Mục lục">
+  <div class="wrap">
+    <a class="home" href="/" aria-label="Về trang tổng quan"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="4.2" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-24 12 12)"/><circle cx="20.2" cy="8.4" r="1.6" fill="currentColor"/></svg></span><b>Orrery</b></a>
+    <div class="seg" id="seg">
+      <a href="#ban-do">Bản đồ</a>
+      <a href="#de-xuat">Đề xuất</a>
+      <a href="#thu-tu">Thứ tự</a>
+      <a class="out" href="/suggest/">Đề xuất UX</a>
+      <a class="out" href="/">Dashboard</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+<header class="hero">
+  <p class="eyebrow">Update giao diện, <span id="updated">20/11/2026</span></p>
+  <h1>5 chỗ nên update UI</h1>
+  <p class="lede" id="lede">Đang tải dữ liệu.</p>
+</header>
+
+<section id="ban-do" aria-labelledby="h-bd">
+  <h2 id="h-bd">Nằm ở đâu trên app</h2>
+  <p class="sub">Bấm một điểm để tới đề xuất. Màu xanh là desktop, tím là web app điện thoại.</p>
+  <div class="map" id="map">
+    <div class="map-desk" aria-hidden="true">
+      <div class="md-rail"><i></i><i></i><i class="on"></i><i></i><div class="md-foot"><s></s><s></s><s></s><s></s><s></s><s></s></div></div>
+      <div class="md-main"><div class="md-tabs"><s></s><s></s></div><div class="md-panes"><div class="md-pane"></div><div class="md-pane"></div><div class="md-exp"><s></s><s></s><s></s><s></s></div></div><div class="md-quota"><s></s><s></s><s></s></div></div>
+    </div>
+    <div class="map-phone" aria-hidden="true">
+      <div class="mp-top"></div><div class="mp-card"></div><div class="mp-card"></div><div class="mp-term"></div><div class="mp-keys"></div>
+    </div>
+    <a class="hot d" href="#rail-row" style="left:8%;top:34%">U1<span>Dòng session</span></a>
+    <a class="hot d" href="#quota" style="left:38%;top:89%">U2<span>Quota</span></a>
+    <a class="hot d" href="#labels" style="left:8%;top:80%">U3<span>Nút chỉ icon</span></a>
+    <a class="hot p" href="#phone-cards" style="left:82%;top:30%">U4<span>Thẻ pane</span></a>
+    <a class="hot p" href="#phone-term" style="left:82%;top:70%">U5<span>Terminal</span></a>
+  </div>
+</section>
+
+<section id="de-xuat" aria-labelledby="h-dx">
+  <h2 id="h-dx">Đề xuất</h2>
+  <p class="sub">Mỗi wireframe có nút Hiện tại / Đề xuất. Chỉ minh hoạ bố cục và hành vi, không phải giao diện cuối.</p>
+  <div class="props" id="props" aria-live="polite"></div>
+</section>
+
+<section id="thu-tu" aria-labelledby="h-tt">
+  <h2 id="h-tt">Thứ tự làm</h2>
+  <p class="sub">3 việc desktop cỡ S làm trước, gộp được 1 bản. 2 việc điện thoại cần QA trên iPhone thật.</p>
+  <div class="card tw"><table><thead><tr><th>#</th><th>Đề xuất</th><th>Nơi</th><th>Công sức</th><th>Rủi ro</th></tr></thead><tbody id="order"></tbody></table></div>
+</section>
+</main>
+
+<footer class="wrap"><p>Nguồn: ảnh <code>docs/qa/v103/</code>, <code>docs/qa/v98/WP-68b4/</code>, code <code>apps/web/src/components/next/</code>, <code>apps/pwa/src/</code>. Dữ liệu ở <a href="/data/ui.json"><code>/data/ui.json</code></a>.</p><p class="copy">© <span id="yr">2026</span> Jin Vũ. All rights reserved.</p></footer>
+
+<script src="/site.js"></script>
+<script src="/ui/ui.js"></script>
+</body>
+</html>

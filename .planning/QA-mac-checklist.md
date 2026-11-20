@@ -55,3 +55,46 @@ Chủ nhân 2026-11-19: mọi phần cần test trên Mac ghi hết vào file n�
 ### WP-68b5
 - [ ] Đo cuộn danh sách dài Monitor / Workspace trên Safari iPhone thật (WebKit Windows p50 155 ms/frame, không đại diện)
 - [ ] 4 sửa bố cục (màu tên session, ô chữ project, chip Relay, nút màn Bật khoá ở đáy) trên iPhone + iPad
+
+## v104 (2026-11-20)
+
+### WP-104d
+- [ ] Settings → Thông báo: dòng "Cảnh báo 2 agent sửa cùng file" mặc định tắt.
+- [ ] Bật, 2 session Claude cùng project sửa 1 file: chip "Đụng file" trên 2 dòng rail + 2 header pane, toast 1 lần.
+- [ ] Đưa Orrery xuống nền rồi tái hiện: có `Notification` của webview Tauri không (Q1); không có thì ghi lại.
+- [ ] Popover header: "Xem diff" mở Changes đúng file; "Bỏ qua file này" tắt chip, Undo trả lại; "Tách worktree" mở menu worktree.
+- [ ] Đường dẫn macOS (case-sensitive / `/Users/...`): tên file tương đối đúng trong toast và tooltip.
+
+### WP-104e
+- [ ] ⇧⌘A mở / đóng Inbox ở Workspace và Monitor. ⌃⌥Q nhảy mục kế, panel không mở.
+- [ ] Chip `Inbox N` có kbd ⌃⌥Q (UI next). Màu: vàng khi có menu / quyền / hỏi, đỏ khi chỉ có lỗi, cam khi chỉ có đụng file, xám khi chỉ có Xong / Ghi chú.
+- [ ] Mở Inbox từ nút rail foot thì panel nằm trọn trong cửa sổ.
+- [ ] Phím S hoãn 15 phút có toast Hoàn tác. E đánh dấu đã xem. Enter mở pane.
+- [ ] Toast trả lời menu (v100) vẫn hiện khi app ở nền (dock badge / alert theo `CCM_TOAST_BACKEND`).
+
+### WP-104g
+- Chạy `CCM_DEEPSEEK_FEATURE=1`: Settings -> DeepSeek mở không lỗi; không cờ thì không có trang DeepSeek.
+
+### WP-104h
+- [ ] 2 session Claude cùng repo, mỗi bên sửa 1 file bằng Edit, 1 file đổi bằng lệnh shell: Changes hiện thanh "Theo session", lọc từng session đúng file, "Không rõ" có file shell.
+- [ ] Chờ hơn 2 phút sau khi session xong: bộ lọc session vẫn còn tới khi bấm "Đánh dấu đã xem lượt này".
+- [ ] Toast "{name} xong, đổi {n} file" (Settings: thông báo + Xong bật) bấm "Xem thay đổi" mở Changes đã lọc; đưa app xuống nền, `Notification` của webview Tauri bấm vào làm cùng việc (nếu webview có hiện).
+- [ ] Rail chuột phải trên session: "Xem thay đổi của lượt này" mở đúng bộ lọc; session chưa sửa file thì mục bị tắt.
+- [ ] Ctrl+K "Xem thay đổi lượt của session đang chọn" khi pane agent đang active.
+- [ ] Path macOS phân biệt hoa thường (`/Users/...`): file khớp đúng session, rename (`git mv`) vẫn khớp.
+- [ ] Pane Changes hẹp: dropdown, không cuộn ngang; sáng / tối.
+
+### WP-104k
+- [ ] `npm run desktop` (hoặc bản dist Tauri) chạy; cửa sổ chính, đèn đỏ / vàng / xanh, tray, đóng cửa sổ thì ẩn vào tray.
+- [ ] Terminal: Claude, Codex, Shell mở được, resize, `cd` đổi nhánh pane, đóng pane, `--resume`.
+- [ ] Explorer, Git Log, Changes, mở file, kéo thả file từ Finder vào pane.
+- [ ] Deep link `agent-monitor://open?agent=shell&cwd=<thư mục>` mở đúng pane; `agent-monitor://focus` đưa app lên.
+- [ ] Chụp ảnh child webview (Browser pane) và hiệu ứng dust (`takeSnapshot`, chưa từng biên dịch chạy trên Mac).
+- [ ] Keychain: token GitHub / Telegram từ bản Electron cũ đọc được (`Orrery Safe Storage`).
+- [ ] Không có (đã ghi thiếu, đừng báo lỗi): menu app macOS, PATH login shell, "Move to Applications", dock badge, toast OS khi Orrery ở nền, keep awake.
+- [ ] Cập nhật: `hdiutil` + thay app (`update_host.rs` `mac_script`).
+
+### WP-104m
+- [ ] Keep awake: agent chạy -> badge `[data-awake]` "working", `pmset -g assertions` có `caffeinate`; hết việc -> grace 2 phút rồi nhả; rút sạc với chế độ "Chỉ khi cắm sạc" -> nhả sau max 30 s.
+- [ ] Thoát app khi đang giữ máy thức -> không còn process `caffeinate` của Orrery.
+- [ ] Không có (đừng báo lỗi): toast OS khi Orrery ở nền, toast menu có nút, dock badge.

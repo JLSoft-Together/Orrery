@@ -1,0 +1,92 @@
+{
+  "updated": "2026-11-20",
+  "source": "docs/qa/v103/WP-70a, WP-71; docs/qa/v98/WP-68b4; apps/web/src/components/next; apps/pwa/src",
+  "lede": "5 chỗ nên update giao diện, xếp theo lợi ích trên công sức. Không trùng 7 đề xuất UX đang làm ở v104 (Inbox, Settings search, gỡ classic, gỡ Electron, dọn code, cảnh báo đụng file, Changes theo session). Mỗi chỗ có ảnh hoặc file:line làm bằng chứng và wireframe Trước / Sau bấm thử được.",
+  "items": [
+    {
+      "id": "U1", "anchor": "rail-row", "area": "desktop", "title": "Dòng session trên rail: nói agent đang làm gì, không lặp tên project", "effort": "S", "rank": 1,
+      "problem": [
+        "Tên dòng mặc định là tên project, dòng 2 lại in tên project lần nữa: rail 264px chỉ còn \"ccm-e2e-v103-71-...\" hai lần, không phân biệt được 2 pane cùng project (ảnh WP-71/03, WP-70a/01: \"dauph\" và \"dauph 2\").",
+        "Trạng thái chỉ là glyph 14px; chữ trạng thái và tool đang chạy dùng text-2xs 12px màu ink-faint, khó đọc trên nền kính.",
+        "Thời gian chạy (\"3s\", \"11s\") đứng cạnh tên, không nói là thời gian của việc gì."
+      ],
+      "proposal": [
+        "Dòng 1: tên pane do chủ nhân đặt, nếu chưa đặt thì agent + số thứ tự (\"Claude 2\"). Tên project chỉ hiện ở header nhóm.",
+        "Dòng 2: chip trạng thái chữ + màu (Đang chạy, Chờ bạn, Rảnh, Lỗi) rồi tool đang chạy (\"Edit src/app.ts\"), cỡ 12px màu ink-muted.",
+        "Thời gian chuyển xuống cuối dòng 2 và gắn với trạng thái: \"chờ 4 phút\", \"chạy 38s\". Hover hiện 2 action: focus, đóng."
+      ],
+      "impact": "Nhìn rail biết ngay pane nào cần mình, không phải mở từng pane; 6 đến 10 pane cùng project vẫn phân biệt được.",
+      "risk": "Thấp. Tên dòng đổi theo, E2E bắt theo text tên dòng (data-drag-title) phải cập nhật.",
+      "files": ["components/next/rail/RailRowItem.vue:72-82", "docs/qa/v103/WP-71/03-dark-pinned.png"],
+      "wireframe": "railRow", "wfHint": "Đổi trạng thái, hover dòng"
+    },
+    {
+      "id": "U2", "anchor": "quota", "area": "desktop", "title": "Thanh quota: báo cái sắp hết, không bày đều mọi cửa sổ", "effort": "S", "rank": 2,
+      "problem": [
+        "Footer cao 24px, chữ 12px, 3 agent x 2 cửa sổ trên 1 dòng: \"Week 91%\" đỏ đứng ngang hàng \"Codex 5h 7%\".",
+        "Reset ghi giờ tuyệt đối 12h (\"reset Sun 07:47 PM\"), phải tự trừ ra còn bao lâu.",
+        "Thanh tiến độ rộng 40px, cao 4px; màu là tín hiệu chính, người mù màu khó đọc mức."
+      ],
+      "proposal": [
+        "Sắp theo mức rủi ro: cửa sổ vượt 70% mở rộng thành \"Claude tuần 91%, còn 9%, reset sau 2 ngày 3 giờ\"; cửa sổ dưới 70% gom thành chip nhỏ.",
+        "Bấm chip mở popover đủ các cửa sổ, có vạch 70% và 90%, giờ reset tương đối + tuyệt đối.",
+        "Mức hiển thị bằng chữ (Ổn, Gần hết, Sắp chạm limit) cạnh màu."
+      ],
+      "impact": "Chủ nhân biết trước khi chạm limit để chuyển việc sang Codex; footer gọn hơn trên màn 1280px.",
+      "risk": "Thấp. Ngưỡng 70 / 90 phải khớp QUOTA_TONE hiện có; không bịa số khi chưa có dữ liệu (giữ dòng noQuota).",
+      "files": ["components/next/NextQuotaBar.vue:25-39", "docs/qa/v103/WP-70a/01-light-full.png"],
+      "wireframe": "quota", "wfHint": "Kéo thanh mức dùng, bấm chip"
+    },
+    {
+      "id": "U3", "anchor": "labels", "area": "desktop", "title": "Chân rail và tab Explorer: có chữ khi đủ chỗ, chỉ icon khi hẹp", "effort": "S", "rank": 3,
+      "problem": [
+        "Chân rail là 6 nút chỉ có icon (trạng thái, Inbox, Usage, History, Settings, Thêm) dù rail rộng 264px; tên chỉ có trong title gốc của trình duyệt, hover khoảng 1 giây mới hiện.",
+        "Explorer có 5 tab chỉ icon (Files, Changes, Search, TODO, Checks), tên chỉ nằm trong title; root ghi chữ in hoa \"CCM-E2E-V103-71-PROJ-28736\" chiếm cả dòng.",
+        "Toast bị cắt ở 1 dòng: \"Not enough room to pin: the canvas nee...\" (ảnh WP-71/03), nội dung chính nằm ở phần bị cắt."
+      ],
+      "proposal": [
+        "Chân rail: 3 nút hay dùng có chữ (Inbox, Usage, Settings), còn lại vào menu Thêm. Rail thu 56px thì về icon + GlassTooltip hiện ngay.",
+        "Tab Explorer theo độ rộng panel: rộng từ 360px có chữ, hẹp hơn chỉ icon + tooltip. Root giữ chữ thường, cắt giữa (\"ccm-e2e...28736\").",
+        "Toast tối đa 3 dòng, không cắt; câu lỗi kèm việc cần làm (\"Kéo rộng cửa sổ hoặc bỏ ghim Explorer\")."
+      ],
+      "impact": "Người mới tìm được Usage / History không phải rê từng icon; bớt bấm nhầm tab Explorer.",
+      "risk": "Thấp. Ngưỡng độ rộng phải chạy theo container query, không theo viewport, để Explorer ghim và drawer cùng đúng.",
+      "files": ["components/next/NextShell.vue:331-372", "components/workspace/ExplorerPanel.vue:77, 330-341", "docs/qa/v103/WP-71/03-dark-pinned.png"],
+      "wireframe": "labels", "wfHint": "Kéo độ rộng panel, hover nút"
+    },
+    {
+      "id": "U4", "anchor": "phone-cards", "area": "phone", "title": "Workspace trên điện thoại: thẻ pane full ngang, trả lời ngay trên thẻ", "effort": "M", "rank": 4,
+      "problem": [
+        "Lưới thẻ luôn 2 cột, kể cả trên iPhone 390px và khi nhóm chỉ có 1 pane: thẻ chiếm nửa trái, nửa phải trống (ảnh ws-b-groups-phone).",
+        "Preview chỉ 1 dòng bị cắt (\"Chạy lệnh: npm test...\"), không thấy agent hỏi gì.",
+        "Thẻ \"Chờ bạn\" phải mở pane full mới trả lời được: 2 lần chạm + chờ attach terminal."
+      ],
+      "proposal": [
+        "Dưới 600px lưới 1 cột; từ 600px auto-fill minmax(280px, 1fr).",
+        "Preview 3 dòng cuối; thẻ Chờ bạn hiện câu hỏi đầy đủ + nút đáp án đọc từ menu (Có, Không, Mở pane).",
+        "Bấm đáp án gửi đúng phím như terminal view, toast \"Đã gửi\" có Hoàn tác trong 3 giây trước khi gửi thật."
+      ],
+      "impact": "Trả lời 1 câu hỏi từ điện thoại còn 1 chạm thay vì 3; thấy được nhiều ngữ cảnh hơn trên cùng màn.",
+      "risk": "Trung bình. Phải giữ luật \"mọi phím đều sau một click của chủ nhân\" (ngoại lệ 6 và 7); thẻ cũ quá 30 giây thì đọc lại menu trước khi gửi.",
+      "files": ["apps/pwa/src/components/PaneGrid.vue:83-87", "apps/pwa/src/components/PaneCard.vue:13", "docs/qa/v98/WP-68b4/ws-b-groups-phone-mist-light-webkit.png"],
+      "wireframe": "phoneCards", "wfHint": "Bấm Có / Không, Hoàn tác"
+    },
+    {
+      "id": "U5", "anchor": "phone-term", "area": "phone", "title": "Terminal trên điện thoại: chế độ Đọc, chữ không nhỏ hơn 12px", "effort": "M", "rank": 5,
+      "problem": [
+        "Terminal giữ đúng số cột desktop rồi thu chữ để vừa: min 9px, dòng dài vẫn bị cắt mép phải (ảnh term-phone: \"line 00874 abcdefghij...\").",
+        "Thẻ câu hỏi to chiếm khoảng 20% chiều cao, cố định khi đọc log.",
+        "Dải phím (Esc, Tab, Ctrl, Alt, ^C, ↑) tràn mép phải mà không có dấu hiệu còn phím."
+      ],
+      "proposal": [
+        "Nút chuyển \"Desktop / Đọc\": chế độ Đọc ngắt dòng theo bề ngang điện thoại, chữ 13px, chỉ xem; gõ phím thì về Desktop.",
+        "Thẻ câu hỏi thu thành thanh 1 dòng khi cuộn log, chạm để mở lại.",
+        "Dải phím có mép mờ + chấm trang; giữ phím Ctrl hiện hàng 2 (C, D, L, R)."
+      ],
+      "impact": "Đọc được log và diff trên điện thoại mà không phải zoom; bớt bấm nhầm phím.",
+      "risk": "Trung bình. Chế độ Đọc dựng từ buffer xterm, TUI vẽ theo vị trí (menu, thanh tiến độ) có thể lệch; mặc định vẫn Desktop.",
+      "files": ["apps/pwa/src/components/TerminalSurface.vue:29, 97-107", "docs/qa/v98/WP-68b4/term-phone-mist-light-webkit.png"],
+      "wireframe": "phoneTerm", "wfHint": "Đổi chế độ, cuộn log, kéo dải phím"
+    }
+  ]
+}

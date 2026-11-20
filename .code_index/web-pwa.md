@@ -85,3 +85,12 @@
 - Badge: `App.vue` `badge` (TabBar `tab-badge`) và `IpadRail` `waiting` (`rail-badge`) = `inboxCount(workspace)`; không có ws doc thì 0 (không đoán).
 - i18n `inbox.*` (title, open, empty, group.<g>, reason.<r> với {file} {peer}) en + vi.
 - E2E: `e2e/lib/inbox-steps.mjs` (+3 step, `STEPS_PER_BROWSER` 52); peer lệnh `inbox` / `inboxold` / `inboxoff` (`Desk.inbox`, `data.rs` `ws_snapshot` thêm p4 + `inbox: true`); ảnh -> `docs/qa/v104/WP-104e` (`qaDirH`); `ui-steps` bước badge nay kỳ vọng không badge khi chưa có inbox.
+
+## WP U5 (v105, terminal view)
+- `terminal/readMode.ts` (`nextMode`, `bufferParagraphs` / `readerText` join xterm wrapped rows, `loadMode` / `saveMode` localStorage `ccm.pwa.termMode.<session>` try/catch, default desk): `TerminalSurface` toggle `term-mode` (Desktop / Đọc), reader `<pre term-reader>` 13px pre-wrap refreshed from the xterm buffer (200 ms), any `sendBytes` / `sendKey` / typed data -> back to desk; emits `scrolled` -> `TerminalView` collapses `PermissionBar` to `permission-mini` until tapped.
+- `KeyBar`: mask-image fade on the side with more keys, `key-dots` pages, long-press Ctrl (500 ms) opens `key-row` (`key-row-ctrlC|D|L|R`, `keys.ts` ctrlD/L/R), closes after a send or 8 s. Tests `terminal/readMode.test.ts`.
+
+## WP U4 (v105, workspace cards)
+- `PaneGrid` 1 cột < 600px, từ 600px `repeat(auto-fill, minmax(280px, 1fr))`; `PaneCard` giờ là `div.card` (`pane-<key>`) + nút `pane-open-<key>`, preview `previewLines(pane, recent, label)` = 3 dòng cuối từ `snapshot.activity` (`parseActivity`) + tool + subagents, bỏ key thô `permission|question|other` của `waitText`; pane `asked` có khối `pane-ask-<key>`: câu hỏi (i18n `workspace.ask.*`, chữ thật nếu `waitText` không phải key) + Có / Không (`approve` / `deny`, chỉ permission; menu không có nhãn lựa chọn trong protocol nên chỉ Mở pane) + `pane-answer-<key>-open`.
+- `lib/paneAnswer.ts` `createAnswerFlow`: bấm -> nếu `view.updatedAt` cũ > 30s (hoặc stale) thì `ws.get` + `resync` rồi so `askSignature`, đổi thì không gửi; UndoBar `answer-undo` "Đã gửi" 3s, Hoàn tác huỷ; hết 3s so chữ ký lần nữa rồi `ws.keys {paneKey, keys, since}` như TerminalView; rời WorkspaceView = huỷ. Test `lib/paneAnswer.test.ts`, `lib/workspace.test.ts`.
+- v105 main: `components/KeyBar.vue` ResizeObserver đo lại trong requestAnimationFrame (WebKit báo lỗi ResizeObserver loop khi đo đồng bộ).

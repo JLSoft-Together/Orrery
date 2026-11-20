@@ -1,10 +1,15 @@
 {
   "updated": "2026-11-20",
-  "source": "docs/qa/v103/WP-70a, WP-71; docs/qa/v98/WP-68b4; apps/web/src/components/next; apps/pwa/src",
-  "lede": "5 chỗ nên update giao diện, xếp theo lợi ích trên công sức. Không trùng 7 đề xuất UX đang làm ở v104 (Inbox, Settings search, gỡ classic, gỡ Electron, dọn code, cảnh báo đụng file, Changes theo session). Mỗi chỗ có ảnh hoặc file:line làm bằng chứng và wireframe Trước / Sau bấm thử được.",
+  "source": "ccm-qa-fast (E2E Tauri 20/11): rail, explorer, diff, v104-*; apps/pwa/e2e/.out (WP-68b3, shots-55a); docs/qa/v103, v104; apps/web/src/components/next; apps/pwa/src",
+  "lede": "Đợt 2: 5 chỗ nên update tiếp, xếp theo lợi ích trên công sức. Đợt 1 (U1 đến U5: dòng session, quota, nhãn chân rail, thẻ pane điện thoại, terminal chế độ Đọc) đã làm, gom ở cuối trang. Không trùng các việc v104 đã xong (Inbox, Settings 14 trang, cảnh báo đụng file, Changes theo session). Mỗi chỗ có ảnh E2E hôm nay hoặc file:line làm bằng chứng và wireframe Trước / Sau bấm thử được.",
   "items": [
     {
-      "id": "U1", "anchor": "rail-row", "area": "desktop", "title": "Dòng session trên rail: nói agent đang làm gì, không lặp tên project", "effort": "S", "rank": 1,
+      "id": "U1",
+      "anchor": "rail-row",
+      "area": "desktop",
+      "title": "Dòng session trên rail: nói agent đang làm gì, không lặp tên project",
+      "effort": "S",
+      "rank": 1,
       "problem": [
         "Tên dòng mặc định là tên project, dòng 2 lại in tên project lần nữa: rail 264px chỉ còn \"ccm-e2e-v103-71-...\" hai lần, không phân biệt được 2 pane cùng project (ảnh WP-71/03, WP-70a/01: \"dauph\" và \"dauph 2\").",
         "Trạng thái chỉ là glyph 14px; chữ trạng thái và tool đang chạy dùng text-2xs 12px màu ink-faint, khó đọc trên nền kính.",
@@ -17,11 +22,22 @@
       ],
       "impact": "Nhìn rail biết ngay pane nào cần mình, không phải mở từng pane; 6 đến 10 pane cùng project vẫn phân biệt được.",
       "risk": "Thấp. Tên dòng đổi theo, E2E bắt theo text tên dòng (data-drag-title) phải cập nhật.",
-      "files": ["components/next/rail/RailRowItem.vue:72-82", "docs/qa/v103/WP-71/03-dark-pinned.png"],
-      "wireframe": "railRow", "wfHint": "Đổi trạng thái, hover dòng"
+      "files": [
+        "components/next/rail/RailRowItem.vue:72-82",
+        "docs/qa/v103/WP-71/03-dark-pinned.png"
+      ],
+      "wireframe": "railRow",
+      "wfHint": "Đổi trạng thái, hover dòng",
+      "status": "done",
+      "round": 1
     },
     {
-      "id": "U2", "anchor": "quota", "area": "desktop", "title": "Thanh quota: báo cái sắp hết, không bày đều mọi cửa sổ", "effort": "S", "rank": 2,
+      "id": "U2",
+      "anchor": "quota",
+      "area": "desktop",
+      "title": "Thanh quota: báo cái sắp hết, không bày đều mọi cửa sổ",
+      "effort": "S",
+      "rank": 2,
       "problem": [
         "Footer cao 24px, chữ 12px, 3 agent x 2 cửa sổ trên 1 dòng: \"Week 91%\" đỏ đứng ngang hàng \"Codex 5h 7%\".",
         "Reset ghi giờ tuyệt đối 12h (\"reset Sun 07:47 PM\"), phải tự trừ ra còn bao lâu.",
@@ -34,11 +50,22 @@
       ],
       "impact": "Chủ nhân biết trước khi chạm limit để chuyển việc sang Codex; footer gọn hơn trên màn 1280px.",
       "risk": "Thấp. Ngưỡng 70 / 90 phải khớp QUOTA_TONE hiện có; không bịa số khi chưa có dữ liệu (giữ dòng noQuota).",
-      "files": ["components/next/NextQuotaBar.vue:25-39", "docs/qa/v103/WP-70a/01-light-full.png"],
-      "wireframe": "quota", "wfHint": "Kéo thanh mức dùng, bấm chip"
+      "files": [
+        "components/next/NextQuotaBar.vue:25-39",
+        "docs/qa/v103/WP-70a/01-light-full.png"
+      ],
+      "wireframe": "quota",
+      "wfHint": "Kéo thanh mức dùng, bấm chip",
+      "status": "done",
+      "round": 1
     },
     {
-      "id": "U3", "anchor": "labels", "area": "desktop", "title": "Chân rail và tab Explorer: có chữ khi đủ chỗ, chỉ icon khi hẹp", "effort": "S", "rank": 3,
+      "id": "U3",
+      "anchor": "labels",
+      "area": "desktop",
+      "title": "Chân rail và tab Explorer: có chữ khi đủ chỗ, chỉ icon khi hẹp",
+      "effort": "S",
+      "rank": 3,
       "problem": [
         "Chân rail là 6 nút chỉ có icon (trạng thái, Inbox, Usage, History, Settings, Thêm) dù rail rộng 264px; tên chỉ có trong title gốc của trình duyệt, hover khoảng 1 giây mới hiện.",
         "Explorer có 5 tab chỉ icon (Files, Changes, Search, TODO, Checks), tên chỉ nằm trong title; root ghi chữ in hoa \"CCM-E2E-V103-71-PROJ-28736\" chiếm cả dòng.",
@@ -51,11 +78,23 @@
       ],
       "impact": "Người mới tìm được Usage / History không phải rê từng icon; bớt bấm nhầm tab Explorer.",
       "risk": "Thấp. Ngưỡng độ rộng phải chạy theo container query, không theo viewport, để Explorer ghim và drawer cùng đúng.",
-      "files": ["components/next/NextShell.vue:331-372", "components/workspace/ExplorerPanel.vue:77, 330-341", "docs/qa/v103/WP-71/03-dark-pinned.png"],
-      "wireframe": "labels", "wfHint": "Kéo độ rộng panel, hover nút"
+      "files": [
+        "components/next/NextShell.vue:331-372",
+        "components/workspace/ExplorerPanel.vue:77, 330-341",
+        "docs/qa/v103/WP-71/03-dark-pinned.png"
+      ],
+      "wireframe": "labels",
+      "wfHint": "Kéo độ rộng panel, hover nút",
+      "status": "done",
+      "round": 1
     },
     {
-      "id": "U4", "anchor": "phone-cards", "area": "phone", "title": "Workspace trên điện thoại: thẻ pane full ngang, trả lời ngay trên thẻ", "effort": "M", "rank": 4,
+      "id": "U4",
+      "anchor": "phone-cards",
+      "area": "phone",
+      "title": "Workspace trên điện thoại: thẻ pane full ngang, trả lời ngay trên thẻ",
+      "effort": "M",
+      "rank": 4,
       "problem": [
         "Lưới thẻ luôn 2 cột, kể cả trên iPhone 390px và khi nhóm chỉ có 1 pane: thẻ chiếm nửa trái, nửa phải trống (ảnh ws-b-groups-phone).",
         "Preview chỉ 1 dòng bị cắt (\"Chạy lệnh: npm test...\"), không thấy agent hỏi gì.",
@@ -68,11 +107,23 @@
       ],
       "impact": "Trả lời 1 câu hỏi từ điện thoại còn 1 chạm thay vì 3; thấy được nhiều ngữ cảnh hơn trên cùng màn.",
       "risk": "Trung bình. Phải giữ luật \"mọi phím đều sau một click của chủ nhân\" (ngoại lệ 6 và 7); thẻ cũ quá 30 giây thì đọc lại menu trước khi gửi.",
-      "files": ["apps/pwa/src/components/PaneGrid.vue:83-87", "apps/pwa/src/components/PaneCard.vue:13", "docs/qa/v98/WP-68b4/ws-b-groups-phone-mist-light-webkit.png"],
-      "wireframe": "phoneCards", "wfHint": "Bấm Có / Không, Hoàn tác"
+      "files": [
+        "apps/pwa/src/components/PaneGrid.vue:83-87",
+        "apps/pwa/src/components/PaneCard.vue:13",
+        "docs/qa/v98/WP-68b4/ws-b-groups-phone-mist-light-webkit.png"
+      ],
+      "wireframe": "phoneCards",
+      "wfHint": "Bấm Có / Không, Hoàn tác",
+      "status": "done",
+      "round": 1
     },
     {
-      "id": "U5", "anchor": "phone-term", "area": "phone", "title": "Terminal trên điện thoại: chế độ Đọc, chữ không nhỏ hơn 12px", "effort": "M", "rank": 5,
+      "id": "U5",
+      "anchor": "phone-term",
+      "area": "phone",
+      "title": "Terminal trên điện thoại: chế độ Đọc, chữ không nhỏ hơn 12px",
+      "effort": "M",
+      "rank": 5,
       "problem": [
         "Terminal giữ đúng số cột desktop rồi thu chữ để vừa: min 9px, dòng dài vẫn bị cắt mép phải (ảnh term-phone: \"line 00874 abcdefghij...\").",
         "Thẻ câu hỏi to chiếm khoảng 20% chiều cao, cố định khi đọc log.",
@@ -85,8 +136,158 @@
       ],
       "impact": "Đọc được log và diff trên điện thoại mà không phải zoom; bớt bấm nhầm phím.",
       "risk": "Trung bình. Chế độ Đọc dựng từ buffer xterm, TUI vẽ theo vị trí (menu, thanh tiến độ) có thể lệch; mặc định vẫn Desktop.",
-      "files": ["apps/pwa/src/components/TerminalSurface.vue:29, 97-107", "docs/qa/v98/WP-68b4/term-phone-mist-light-webkit.png"],
-      "wireframe": "phoneTerm", "wfHint": "Đổi chế độ, cuộn log, kéo dải phím"
+      "files": [
+        "apps/pwa/src/components/TerminalSurface.vue:29, 97-107",
+        "docs/qa/v98/WP-68b4/term-phone-mist-light-webkit.png"
+      ],
+      "wireframe": "phoneTerm",
+      "wfHint": "Đổi chế độ, cuộn log, kéo dải phím",
+      "status": "done",
+      "round": 1
+    },
+    {
+      "id": "U6",
+      "round": 2,
+      "anchor": "rail-tools",
+      "area": "desktop",
+      "title": "Rail: pane file, diff, Changes không giả làm session agent",
+      "effort": "S",
+      "rank": 1,
+      "problem": [
+        "Pane file (main.ts, README.md), diff và Changes hiện trên rail như session: vòng nét đứt + chip \"Idle\" / \"Rảnh\" + \"idle 3s\" (ảnh explorer-03-changes, v104h-03-narrow-light). Với file thì trạng thái này không có nghĩa gì.",
+        "Project 1 agent + 3 file đếm thành 4; rail dài ra, agent đang chờ bị đẩy xuống dưới.",
+        "Không thấy file nào chưa lưu: thông tin cần nhất của pane file lại không có trên rail."
+      ],
+      "proposal": [
+        "Pane không phải agent dùng icon theo loại (file, diff, Changes), bỏ chip trạng thái; dòng 2 là thông tin của chính nó: \"Chưa lưu\", \"+1 -1\", \"3 file mới\".",
+        "Gom các pane này vào dòng \"Công cụ N\" cuối mỗi project, thu gọn mặc định; số trên header project chỉ đếm agent + shell.",
+        "File chưa lưu thì dòng Công cụ hiện chấm + chữ \"1 chưa lưu\" kể cả khi thu gọn."
+      ],
+      "impact": "Rail chỉ còn các pane cần theo dõi; 4 đến 6 file mở cùng lúc không đẩy agent đang chờ ra khỏi màn.",
+      "risk": "Thấp. Kéo thả dòng (data-drag-kind) và Ctrl+K phải vẫn tìm được pane file; nhóm Công cụ nhớ trạng thái mở theo project.",
+      "files": [
+        "components/next/rail/RailRowItem.vue:96",
+        "lib/next/railLive.ts:36",
+        "ccm-qa-fast/explorer/explorer-03-changes.png",
+        "ccm-qa-fast/v104-turn-changes/v104h-03-narrow-light.png"
+      ],
+      "wireframe": "railTools",
+      "wfHint": "Thu gọn Công cụ, sửa file"
+    },
+    {
+      "id": "U7",
+      "round": 2,
+      "anchor": "inbox-sheet",
+      "area": "phone",
+      "title": "Inbox trên điện thoại: sheet nền đặc, vuốt để Đã xem / Hoãn",
+      "effort": "S",
+      "rank": 2,
+      "problem": [
+        "Sheet Inbox nền kính trong: chữ list phía sau (\"web 322n\", \"Claude Rảnh\", \"infra\") hiện xuyên qua và chồng lên tên hàng (ảnh pwa-inbox-light).",
+        "Hàng chỉ bấm để mở pane; desktop có E đã xem, S hoãn nhưng điện thoại không có cách tương đương.",
+        "Thời gian \"<1p\" đứng cạnh mũi tên trái nhìn như ký hiệu \"<\" của nút."
+      ],
+      "proposal": [
+        "Sheet dùng nền đặc (token surface), scrim đậm hơn; kính chỉ giữ cho thanh tiêu đề.",
+        "Vuốt trái hàng: Đã xem; vuốt phải: Hoãn 15 phút; có Hoàn tác 3 giây. Thêm nút \"...\" cho người không vuốt (VoiceOver).",
+        "Thời gian ghi chữ: \"vừa xong\", \"5 phút\", \"2 giờ\"."
+      ],
+      "impact": "Đọc được Inbox trên mọi nền; dọn 4 đến 6 mục từ điện thoại không phải mở từng pane.",
+      "risk": "Thấp. Vuốt ngang không được đụng cử chỉ back của iOS (bắt đầu cách mép trái từ 24px); Đã xem / Hoãn dùng chung store với desktop.",
+      "files": [
+        "apps/pwa/src/components/BottomSheet.vue:28-36",
+        "apps/pwa/src/styles/base.css:105-107",
+        "apps/pwa/src/components/InboxSheet.vue:45-51",
+        "docs/qa/v104/WP-104e/pwa-inbox-light.png"
+      ],
+      "wireframe": "inboxSheet",
+      "wfHint": "Vuốt hàng, bấm Hoàn tác"
+    },
+    {
+      "id": "U8",
+      "round": 2,
+      "anchor": "rail-fit",
+      "area": "desktop",
+      "title": "Rail 264px tiếng Việt: hết chữ bị cắt ở đầu và chân rail",
+      "effort": "S",
+      "rank": 3,
+      "problem": [
+        "Chữ bị cắt ở 5 chỗ trên rail 264px: \"Worksp...\", \"Trạng th...\", \"Tìm session, projec...\", chân rail \"Thố... Li... Cà...\" (nhãn U3 không vừa tiếng Việt), tên project \"ccm-e2e-turn... ma...\" (ảnh desktop-inbox-light, v104h-03).",
+        "Dòng 2 của session: chip + thời gian chiếm chỗ, tool còn 1 đến 2 ký tự (\"Chờ bạn C...\", \"Waiting Ne...\", ảnh rail-03-needs).",
+        "Nhãn bị cắt khó đọc hơn chỉ icon: không đoán được \"Li...\" là Lịch sử."
+      ],
+      "proposal": [
+        "Chân rail: nhãn nằm cạnh icon khi đủ chỗ, không đủ thì xuống dưới icon (chữ 11px, kiểu tab bar), hẹp nữa mới về icon + GlassTooltip. Không bao giờ cắt giữa từ; đo theo container, không theo viewport.",
+        "Segment đầu rail có icon + chữ ngắn (Workspace, Giám sát); segment Nhóm ghi \"Project\" / \"Trạng thái\" xuống icon khi hẹp. Ô tìm kiếm ghi \"Tìm... Ctrl+K\".",
+        "Dòng session: thời gian lên dòng 1 bên phải tên, dòng 2 để chip + tool đủ chỗ."
+      ],
+      "impact": "Rail đọc được ở cả 2 ngôn ngữ, không còn nhãn nửa chừng; tool đang chạy thấy được trên rail.",
+      "risk": "Thấp. Chỉ là bố cục; E2E bắt data-foot-label phải chấp nhận cả 2 chế độ.",
+      "files": [
+        "components/next/NextShell.vue:259, 292, 340-352",
+        "components/next/rail/RailRowItem.vue:94-100",
+        "ccm-qa-fast/v104-inbox/desktop-inbox-light.png",
+        "ccm-qa-fast/rail/rail-03-needs.png"
+      ],
+      "wireframe": "railFit",
+      "wfHint": "Kéo độ rộng rail, đổi ngôn ngữ"
+    },
+    {
+      "id": "U9",
+      "round": 2,
+      "anchor": "phone-monitor",
+      "area": "phone",
+      "title": "Giám sát trên điện thoại: project 1 session gộp 1 dòng, thời gian đọc được",
+      "effort": "S",
+      "rank": 4,
+      "problem": [
+        "Mỗi project là 1 thẻ có header + 1 dòng session cùng tên (\"docs\" / \"docs\", \"web\" / \"web\"): 4 session chiếm trọn màn iPhone (ảnh monitor-a-phone).",
+        "Thời gian viết tắt \"322n\", \"5g\", \"<1p\": \"n\" không rõ là ngày hay phút.",
+        "Session Chờ bạn không lên đầu khi lọc Tất cả; phải đổi sang tab Trạng thái."
+      ],
+      "proposal": [
+        "Project chỉ có 1 session thì gộp thành 1 dòng: tên + nhánh git ở dòng 2; project từ 2 session mới thành thẻ có header.",
+        "Thời gian ghi đủ: \"5 phút\", \"3 giờ\", quá 7 ngày thì ghi ngày (\"từ 03/01\").",
+        "Dòng Chờ bạn và Lỗi nổi lên đầu list, có nút \"Trả lời\" mở thẳng thẻ trả lời (U4), không tự gửi phím."
+      ],
+      "impact": "Thấy 8 đến 10 session trên 1 màn thay vì 4; đọc thời gian không phải đoán.",
+      "risk": "Thấp. Đổi formatElapsed ảnh hưởng mọi chỗ dùng (Inbox, iPad rail); test monitorModel phải cập nhật.",
+      "files": [
+        "apps/pwa/src/views/MonitorView.vue:122-134",
+        "apps/pwa/src/lib/monitorModel.ts:164-170",
+        "apps/pwa/src/i18n/vi.ts:86",
+        "apps/pwa/e2e/.out/shots-55a/monitor-a-phone-light-webkit.png"
+      ],
+      "wireframe": "phoneMonitor",
+      "wfHint": "Thêm session vào project"
+    },
+    {
+      "id": "U10",
+      "round": 2,
+      "anchor": "drawer",
+      "area": "desktop",
+      "title": "Explorer drawer: đẩy pane khi đủ chỗ, không đè lên diff",
+      "effort": "M",
+      "rank": 5,
+      "problem": [
+        "Drawer Explorer mở đè lên pane bên phải: nút Inline / Split và dòng \"Show 10 unchanged lines\" của diff bị che (ảnh diff-02-viewer).",
+        "Scrim trong suốt nên không thấy là đang có lớp phủ; bấm vào pane để làm tiếp thì drawer đóng mất.",
+        "Màn 1360px vẫn đủ chỗ cho Explorer 285px cạnh pane nhưng drawer vẫn đè."
+      ],
+      "proposal": [
+        "Còn đủ 640px cho vùng pane thì drawer đẩy pane sang trái (như ghim tạm), không phủ.",
+        "Không đủ chỗ thì vẫn phủ nhưng scrim tối nhẹ + mép bóng để thấy rõ là lớp trên; Esc hoặc bấm ra ngoài đóng.",
+        "Nhớ chế độ đẩy / phủ theo độ rộng, không bắt chủ nhân bấm ghim mỗi lần."
+      ],
+      "impact": "Mở Explorer để tra file mà vẫn thấy đủ diff hoặc terminal; bớt bấm ghim / bỏ ghim.",
+      "risk": "Trung bình. Đẩy pane làm terminal resize (SIGWINCH) mỗi lần mở drawer; cần debounce và giữ cột khi drawer chỉ mở dưới 1 giây.",
+      "files": [
+        "components/next/explorer/ExplorerDrawer.vue:300-302",
+        "lib/next/explorerPin.ts",
+        "ccm-qa-fast/diff/diff-02-viewer.png"
+      ],
+      "wireframe": "drawer",
+      "wfHint": "Kéo độ rộng cửa sổ, mở Explorer"
     }
   ]
 }

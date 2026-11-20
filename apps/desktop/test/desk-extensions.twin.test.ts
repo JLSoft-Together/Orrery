@@ -154,6 +154,19 @@ describe.skipIf(!HAVE_DESK)('extensions: TS handler and orrery-core desk give th
       out.push(readFileSync(claudeJson, 'utf8'), readFileSync(local, 'utf8'))
       out.push(await t(call, 'mcp', 'figma', true), await t(call, 'plugin', 'a@m', true))
       out.push(readFileSync(claudeJson, 'utf8'), readFileSync(local, 'utf8'))
+      const batch = (changes: unknown) => call('ccm:ext-project-toggle', { dir: project, changes })
+      out.push(await batch([{ kind: 'mcp', name: 'figma', enabled: false }, { kind: 'mcp', name: 'shared', enabled: false }, { kind: 'plugin', name: 'a@m', enabled: false }, { kind: 'plugin', name: 'b@m', enabled: false }]))
+      out.push(readFileSync(claudeJson, 'utf8'), readFileSync(local, 'utf8'))
+      out.push(await batch([]), await batch({}), await batch([{ kind: 'mcp', name: 'orrery', enabled: true }]), await batch([{ kind: 'mcp', name: '-x', enabled: true }]))
+      out.push(await batch([{ kind: 'mcp', name: 'figma', enabled: true }, { kind: 'mcp', name: 'shared', enabled: true }, { kind: 'plugin', name: 'a@m', enabled: true }, { kind: 'plugin', name: 'b@m', enabled: true }]))
+      out.push(readFileSync(claudeJson, 'utf8'), readFileSync(local, 'utf8'))
+      const sid = '0f0ce96d-9ef8-46ae-8a9d-b13f5a00464b'
+      const tdir = path.join(home, '.claude', 'projects', 'F--p')
+      mkdirSync(path.join(tdir, sid, 'subagents'), { recursive: true })
+      const use = (id: string, name: string, input: unknown = {}) => JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name, input }] } })
+      writeFileSync(path.join(tdir, `${sid}.jsonl`), [use('a', 'mcp__figma__x'), use('a', 'mcp__figma__x'), use('b', 'Skill', { skill: 'p:s' }), use('c', 'Read', { file_path: 'secret' }), ''].join('\n'))
+      writeFileSync(path.join(tdir, sid, 'subagents', 'x.jsonl'), use('d', 'mcp__claude_ai_Gmail__y') + '\n')
+      out.push(await call('ccm:ext-session-usage', sid), await call('ccm:ext-session-usage', 'bad/id'), await call('ccm:ext-session-usage', '11111111-2222'))
       return out
     })) as unknown[]
     expect(JSON.stringify(a[13])).toContain('claude.ai Google Drive')

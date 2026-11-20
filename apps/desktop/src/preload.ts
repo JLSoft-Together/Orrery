@@ -248,6 +248,7 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   extMcp: (dir?: string, fresh?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:ext-mcp', dir, fresh),
   extProject: (dir: string, refresh?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:ext-project', dir, refresh),
   extProjectToggle: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-project-toggle', req),
+  extSessionUsage: (sessionId: string): Promise<unknown> => ipcRenderer.invoke('ccm:ext-session-usage', sessionId),
   extInstall: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-install', req),
   extRemove: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-remove', req),
   extSource: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:ext-source', req),

@@ -15,7 +15,7 @@ export function useSessionTools() {
   function open(term: TerminalSession): void {
     if (!term.cwd) return
     const pane = workspace.panes.find((p) => p.terminalId === term.id)
-    ui.sessionTools = { dir: term.cwd, ...(pane ? { paneKey: pane.key } : {}) }
+    ui.sessionTools = { dir: term.cwd, ...(pane ? { paneKey: pane.key } : {}), ...(term.claudeSessionId ? { sessionId: term.claudeSessionId } : {}) }
   }
 
   return { available, open }

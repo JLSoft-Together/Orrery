@@ -194,3 +194,41 @@ describe('ccm:ext-project-toggle', () => {
     expect(await always('ccm:ext-project-toggle', { dir: project, kind: 'mcp', name: 'figma', enabled: false })).toEqual({ ok: false, code: 'conflict' })
   })
 })
+
+describe('ccm:ext-project-toggle with changes', () => {
+  it('writes each file once and settles once for the whole batch', async () => {
+    put(claudeJson, base({ history: [] }))
+    put(local, { model: 'x', enabledPlugins: { 'b@m': false } })
+    let settles = 0
+    const call = setup({ settle: async () => void settles++ })
+    const apply = (changes: unknown) => call('ccm:ext-project-toggle', { dir: project, changes })
+    const res = await apply([
+      { kind: 'mcp', name: 'figma', enabled: false },
+      { kind: 'mcp', name: 'loc', enabled: false },
+      { kind: 'mcp', name: 'gone', enabled: false },
+      { kind: 'mcp', name: 'gone', enabled: true },
+      { kind: 'plugin', name: 'a@m', enabled: false },
+      { kind: 'plugin', name: 'b@m', enabled: true },
+    ])
+    expect(res).toEqual({ ok: true })
+    expect(settles).toBe(1)
+    const j = JSON.parse(read(claudeJson))
+    expect(j.projects[key].disabledMcpServers).toEqual(['figma', 'loc'])
+    expect(j.projects['/other']).toEqual({ disabledMcpServers: ['z'], x: 1 })
+    expect(JSON.parse(read(local))).toEqual({ model: 'x', enabledPlugins: { 'a@m': false } })
+    expect(await apply([{ kind: 'mcp', name: 'figma', enabled: false }])).toEqual({ ok: true })
+    expect(settles).toBe(1)
+    const before = read(claudeJson)
+    expect(await apply([{ kind: 'mcp', name: 'orrery', enabled: true }])).toEqual({ ok: false, code: 'locked' })
+    expect(await apply([])).toEqual({ ok: false, code: 'badArg' })
+    expect(await apply({ kind: 'mcp' })).toEqual({ ok: false, code: 'badArg' })
+    expect(await apply([{ kind: 'mcp', name: '-x', enabled: true }])).toEqual({ ok: false, code: 'badArg' })
+    expect(await apply(Array.from({ length: 501 }, (_, i) => ({ kind: 'mcp', name: `s${i}`, enabled: true })))).toEqual({ ok: false, code: 'badArg' })
+    expect(read(claudeJson)).toBe(before)
+    expect(await apply([{ kind: 'mcp', name: 'figma', enabled: true }, { kind: 'mcp', name: 'loc', enabled: true }])).toEqual({ ok: true })
+    expect(JSON.parse(read(claudeJson)).projects[key]).toEqual({ history: [] })
+    writeFileSync(local, '{ nope')
+    expect(await apply([{ kind: 'plugin', name: 'a@m', enabled: true }, { kind: 'mcp', name: 'figma', enabled: false }])).toEqual({ ok: false, code: 'io' })
+    expect(JSON.parse(read(claudeJson)).projects[key]).toEqual({ history: [] })
+  })
+})

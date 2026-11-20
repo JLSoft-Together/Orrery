@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { AvailablePlugin, ExtInstallRequest, ExtProject, ExtProjectToggle, ExtRemoveRequest, ExtResult, ExtScope, ExtSourceRequest, ExtStatus, McpServerRow } from '@ccm/shared'
+import type { AvailablePlugin, ExtInstallRequest, ExtProject, ExtProjectToggle, ExtSessionUsage, ExtRemoveRequest, ExtResult, ExtScope, ExtSourceRequest, ExtStatus, McpServerRow } from '@ccm/shared'
 import { findClaudeCli, type CliRun } from '../../../collector/src/job-stop'
 import { maskSecrets } from '@ccm/shared'
 import { deskHandle, type DeskRouter } from '../desk/forward'
@@ -21,7 +21,8 @@ import {
   showCommand,
   type CliStep,
 } from './commands'
-import { readProject, toggleMcp, togglePlugin, validName } from './project'
+import { applyChanges, parseChanges, readProject, toggleMcp, togglePlugin, validName } from './project'
+import { SessionUsage } from './usage'
 import { claudeJsonFile, claudeRoot, listSkills, probePrereqs, readConfigured, sameDir } from './status'
 
 export type ExtRunner = (file: string, args: string[], opts: { cwd: string; timeout: number }) => Promise<CliRun & { timedOut?: boolean }>
@@ -85,7 +86,7 @@ export async function checkDir(dir: unknown): Promise<string | null | 'bad'> {
   }
 }
 
-const CHANNELS = ['ccm:ext-status', 'ccm:ext-mcp', 'ccm:ext-install', 'ccm:ext-remove', 'ccm:ext-source', 'ccm:ext-login', 'ccm:ext-project', 'ccm:ext-project-toggle']
+const CHANNELS = ['ccm:ext-status', 'ccm:ext-mcp', 'ccm:ext-install', 'ccm:ext-remove', 'ccm:ext-source', 'ccm:ext-login', 'ccm:ext-project', 'ccm:ext-project-toggle', 'ccm:ext-session-usage']
 
 const isScope = (v: unknown): v is ExtScope => v === 'user' || v === 'project' || v === 'local'
 
@@ -274,6 +275,10 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
     return readProject(projectPaths, dir, (mcpCache.get(dir)?.servers ?? []).map((s) => s.name))
   })
 
+  const usage = new SessionUsage(() => claudeRoot(env, home))
+
+  handle('ccm:ext-session-usage', async (event, sessionId: unknown): Promise<ExtSessionUsage> => (isAppFrame(event) ? usage.read(sessionId) : { ok: false, code: 'badArg' }))
+
   handle('ccm:ext-project-toggle', async (event, raw: unknown): Promise<ExtProjectToggle> => {
     if (!isAppFrame(event)) return { ok: false, code: 'badArg' }
     if (busy) return { ok: false, code: 'busy' }
@@ -283,10 +288,17 @@ export function registerExtensionsIpc(deps: ExtensionsDeps): () => void {
       if (!o) return { ok: false, code: 'badArg' }
       const dir = await checkDir(o.dir)
       if (dir === 'bad' || dir === null) return { ok: false, code: 'badArg' }
+      const settle = deps.settle ?? (() => new Promise<void>((resolve) => setTimeout(resolve, deps.settleMs ?? 1500)))
+      if ('changes' in o) {
+        const changes = parseChanges(o.changes)
+        if (!changes) return { ok: false, code: 'badArg' }
+        if (changes.some((c) => c.kind === 'mcp' && c.name === 'orrery')) return { ok: false, code: 'locked' }
+        return await applyChanges(projectPaths, dir, changes, settle)
+      }
       if (!validName(o.name) || typeof o.enabled !== 'boolean' || (o.kind !== 'mcp' && o.kind !== 'plugin')) return { ok: false, code: 'badArg' }
       if (o.kind === 'plugin') return togglePlugin(dir, o.name, o.enabled)
       if (o.name === 'orrery') return { ok: false, code: 'locked' }
-      return await toggleMcp(projectPaths, dir, o.name, o.enabled, deps.settle ?? (() => new Promise<void>((resolve) => setTimeout(resolve, deps.settleMs ?? 1500))))
+      return await toggleMcp(projectPaths, dir, o.name, o.enabled, settle)
     } finally {
       busy = false
     }

@@ -316,7 +316,20 @@ export interface ExtProjectToggleRequest {
   enabled: boolean
 }
 
+export interface ExtProjectChange {
+  kind: 'mcp' | 'plugin'
+  name: string
+  enabled: boolean
+}
+
+export interface ExtProjectApplyRequest {
+  dir: string
+  changes: ExtProjectChange[]
+}
+
 export type ExtProjectToggle = { ok: true } | { ok: false; code: ExtProjectErrorCode }
+
+export type ExtSessionUsage = { ok: true; total: number; servers: Record<string, number>; namespaces: Record<string, number> } | { ok: false; code: 'badArg' | 'missing' }
 
 export interface AvailablePlugin {
   id: string

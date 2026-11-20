@@ -12,6 +12,8 @@ import type {
   ExtProject,
   ExtProjectToggle,
   ExtProjectToggleRequest,
+  ExtProjectApplyRequest,
+  ExtSessionUsage,
   PtyEndpoint,
   RemotePairStart,
   RemoteStatus,
@@ -194,7 +196,8 @@ interface DesktopBridge {
   extStatus?: (dir?: string) => Promise<ExtStatus | null>
   extMcp?: (dir?: string, fresh?: boolean) => Promise<{ servers: McpServerRow[]; at: number } | null>
   extProject?: (dir: string, refresh?: boolean) => Promise<ExtProject>
-  extProjectToggle?: (req: ExtProjectToggleRequest) => Promise<ExtProjectToggle>
+  extProjectToggle?: (req: ExtProjectToggleRequest | ExtProjectApplyRequest) => Promise<ExtProjectToggle>
+  extSessionUsage?: (sessionId: string) => Promise<ExtSessionUsage>
   extInstall?: (req: ExtInstallRequest) => Promise<ExtResult>
   extRemove?: (req: ExtRemoveRequest) => Promise<ExtResult>
   extSource?: (req: ExtSourceRequest) => Promise<(ExtResult & { marketplace?: string; plugins?: AvailablePlugin[] }) | null>

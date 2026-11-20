@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
     <component :is="diagnostics.Comp" v-if="diagnostics.mounted.value" />
     <component :is="resourcesDialog.Comp" v-if="resourcesDialog.mounted.value" />
     <BuildCleanDialog v-if="ui.buildClean && hasBuildClean && !diskCleanOn":dir="ui.buildClean.dir" @close="ui.buildClean = null" />
-    <SessionToolsSheet v-if="ui.sessionTools" :key="`${ui.sessionTools.dir}|${ui.sessionTools.paneKey ?? ''}`" :dir="ui.sessionTools.dir" :pane-key="ui.sessionTools.paneKey" @close="ui.sessionTools = null" />
+    <SessionToolsSheet v-if="ui.sessionTools" :key="`${ui.sessionTools.dir}|${ui.sessionTools.paneKey ?? ''}`" :dir="ui.sessionTools.dir" :pane-key="ui.sessionTools.paneKey" :session-id="ui.sessionTools.sessionId" @close="ui.sessionTools = null" />
     <QuickSetup />
     <OnboardingTour />
     <WhatsNewDialog />

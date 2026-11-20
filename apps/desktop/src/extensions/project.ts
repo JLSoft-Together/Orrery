@@ -1,6 +1,6 @@
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import type { ExtProject, ExtProjectErrorCode, ExtProjectToggle, ProjectMcpRow, ProjectMcpScope, ProjectPluginRow } from '@ccm/shared'
+import type { ExtProject, ExtProjectChange, ExtProjectErrorCode, ExtProjectToggle, ProjectMcpRow, ProjectMcpScope, ProjectPluginRow } from '@ccm/shared'
 import { readConfigured, sameDir } from './status'
 
 const LOCKED = 'orrery'
@@ -172,25 +172,81 @@ export async function toggleMcp(paths: ProjectPaths, dir: string, name: string, 
   return fail('conflict')
 }
 
-export function togglePlugin(dir: string, name: string, enabled: boolean): ExtProjectToggle {
+function editPlugin(root: Obj, name: string, enabled: boolean): boolean {
+  if (enabled) {
+    if (!('enabledPlugins' in root)) return false
+    const ep = root.enabledPlugins
+    if (!isObj(ep)) throw new Error('shape')
+    if (!(name in ep)) return false
+    delete ep[name]
+    if (Object.keys(ep).length === 0) delete root.enabledPlugins
+    return true
+  }
+  if (!('enabledPlugins' in root)) root.enabledPlugins = {}
+  const ep = root.enabledPlugins
+  if (!isObj(ep)) throw new Error('shape')
+  if (ep[name] === false) return false
+  ep[name] = false
+  return true
+}
+
+function writePlugins(dir: string, changes: readonly ExtProjectChange[]): ExtProjectToggle {
   const file = path.join(dir, '.claude', 'settings.local.json')
   const l = load(file)
   if (l.state === 'bad') return fail('io')
   const root: Obj = l.state === 'ok' ? l.root : {}
   const newline = l.state === 'ok' ? l.newline : true
-  if (enabled) {
-    if (!('enabledPlugins' in root)) return { ok: true }
-    const ep = root.enabledPlugins
-    if (!isObj(ep)) return fail('io')
-    if (!(name in ep)) return { ok: true }
-    delete ep[name]
-    if (Object.keys(ep).length === 0) delete root.enabledPlugins
-  } else {
-    if (!('enabledPlugins' in root)) root.enabledPlugins = {}
-    const ep = root.enabledPlugins
-    if (!isObj(ep)) return fail('io')
-    if (ep[name] === false) return { ok: true }
-    ep[name] = false
+  let changed = false
+  try {
+    for (const c of changes) changed = editPlugin(root, c.name, c.enabled) || changed
+  } catch {
+    return fail('io')
   }
-  return writeAtomic(file, render(root, newline), existsSync(file)) ? { ok: true } : fail('io')
+  return !changed || writeAtomic(file, render(root, newline), existsSync(file)) ? { ok: true } : fail('io')
+}
+
+export const togglePlugin = (dir: string, name: string, enabled: boolean): ExtProjectToggle => writePlugins(dir, [{ kind: 'plugin', name, enabled }])
+
+export const CHANGES_MAX = 500
+
+export function parseChanges(raw: unknown): ExtProjectChange[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > CHANGES_MAX) return null
+  const out: ExtProjectChange[] = []
+  for (const item of raw) {
+    if (!isObj(item) || (item.kind !== 'mcp' && item.kind !== 'plugin') || !validName(item.name) || typeof item.enabled !== 'boolean') return null
+    out.push({ kind: item.kind, name: item.name, enabled: item.enabled })
+  }
+  return out
+}
+
+export async function applyChanges(paths: ProjectPaths, dir: string, changes: readonly ExtProjectChange[], settle: (attempt: number) => Promise<void>): Promise<ExtProjectToggle> {
+  const plugins = changes.filter((c) => c.kind === 'plugin')
+  const mcp = changes.filter((c) => c.kind === 'mcp')
+  if (plugins.length) {
+    const res = writePlugins(dir, plugins)
+    if (!res.ok) return res
+  }
+  if (!mcp.length) return { ok: true }
+  const wanted = new Map(mcp.map((c) => [c.name, c.enabled]))
+  const file = paths.claudeJson
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const l = load(file)
+    if (l.state !== 'ok') return fail('io')
+    let changed = false
+    try {
+      for (const c of mcp) changed = editMcp(l.root, dir, c.name, c.enabled, paths.platform) || changed
+    } catch {
+      return fail('io')
+    }
+    if (changed) {
+      if (!writeAtomic(file, render(l.root, l.newline), true)) return fail('io')
+      await settle(attempt)
+    }
+    const again = load(file)
+    if (again.state === 'ok') {
+      const off = disabledNames(again.root, dir, paths.platform)
+      if ([...wanted].every(([name, enabled]) => off.includes(name) !== enabled)) return { ok: true }
+    }
+  }
+  return fail('conflict')
 }

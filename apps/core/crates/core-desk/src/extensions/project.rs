@@ -202,6 +202,13 @@ impl ExtService {
         let Some(_busy) = self.take() else { return fail("busy") };
         let Some(o) = req.as_object() else { return fail("badArg") };
         let DirArg::Dir(dir) = check_dir(o.get("dir").unwrap_or(&Value::Null)) else { return fail("badArg") };
+        if let Some(list) = o.get("changes") {
+            let Some(changes) = parse_changes(list) else { return fail("badArg") };
+            if changes.iter().any(|c| c.mcp && c.name == LOCKED) {
+                return fail("locked");
+            }
+            return self.apply_changes(&dir, &changes);
+        }
         let kind = o.get("kind").and_then(Value::as_str);
         let Some(name) = o.get("name").and_then(Value::as_str).filter(|n| valid_name(n)) else { return fail("badArg") };
         let Some(enabled) = o.get("enabled").and_then(Value::as_bool) else { return fail("badArg") };
@@ -242,43 +249,132 @@ impl ExtService {
     }
 
     fn toggle_plugin(&self, dir: &str, name: &str, enabled: bool) -> Value {
+        self.write_plugins(dir, &[Change { mcp: false, name: name.to_string(), enabled }])
+    }
+
+    fn write_plugins(&self, dir: &str, changes: &[Change]) -> Value {
         let file = PathBuf::from(dir).join(".claude").join("settings.local.json");
         let (mut root, newline) = match load(&file) {
             Load::Missing => (Map::new(), true),
             Load::Bad => return fail("io"),
             Load::Ok(m, nl) => (m, nl),
         };
-        if enabled {
-            let mut changed = false;
-            match root.get_mut("enabledPlugins") {
-                Some(Value::Object(ep)) => {
-                    changed = ep.shift_remove(name).is_some();
-                    if changed && ep.is_empty() {
-                        root.shift_remove("enabledPlugins");
-                    }
-                }
-                Some(_) => return fail("io"),
-                None => {}
+        let mut changed = false;
+        for c in changes {
+            match edit_plugin(&mut root, &c.name, c.enabled) {
+                Err(()) => return fail("io"),
+                Ok(hit) => changed |= hit,
             }
-            if !changed {
-                return json!({"ok": true});
-            }
-        } else {
-            if !root.contains_key("enabledPlugins") {
-                root.insert("enabledPlugins".into(), Value::Object(Map::new()));
-            }
-            let Some(Value::Object(ep)) = root.get_mut("enabledPlugins") else { return fail("io") };
-            if ep.get(name) == Some(&Value::Bool(false)) {
-                return json!({"ok": true});
-            }
-            ep.insert(name.to_string(), Value::Bool(false));
         }
-        if claude::write_with_backup(&file, &render(root, newline)) {
+        if !changed || claude::write_with_backup(&file, &render(root, newline)) {
             json!({"ok": true})
         } else {
             fail("io")
         }
     }
+
+    fn apply_changes(&self, dir: &str, changes: &[Change]) -> Value {
+        let (mcp, plugins): (Vec<Change>, Vec<Change>) = changes.iter().cloned().partition(|c| c.mcp);
+        if !plugins.is_empty() {
+            let res = self.write_plugins(dir, &plugins);
+            if res["ok"] != Value::Bool(true) {
+                return res;
+            }
+        }
+        if mcp.is_empty() {
+            return json!({"ok": true});
+        }
+        let file = self.sys.claude_json();
+        let win = self.sys.win;
+        for attempt in 0..2u32 {
+            let Load::Ok(mut root, newline) = load(&file) else { return fail("io") };
+            let mut changed = false;
+            for c in &mcp {
+                match edit_mcp(&mut root, dir, &c.name, c.enabled, win) {
+                    Err(()) => return fail("io"),
+                    Ok(hit) => changed |= hit,
+                }
+            }
+            if changed {
+                if !claude::write_atomic(&file, &render(root, newline), true) {
+                    return fail("io");
+                }
+                (self.settle)(attempt);
+            }
+            if let Load::Ok(root, _) = load(&file) {
+                if final_mcp(&mcp).iter().all(|(name, enabled)| mcp_state_holds(&root, dir, name, *enabled, win)) {
+                    return json!({"ok": true});
+                }
+            }
+        }
+        fail("conflict")
+    }
+}
+
+const CHANGES_MAX: usize = 500;
+
+#[derive(Clone)]
+struct Change {
+    mcp: bool,
+    name: String,
+    enabled: bool,
+}
+
+fn parse_changes(list: &Value) -> Option<Vec<Change>> {
+    let Value::Array(items) = list else { return None };
+    if items.is_empty() || items.len() > CHANGES_MAX {
+        return None;
+    }
+    items
+        .iter()
+        .map(|item| {
+            let o = item.as_object()?;
+            let mcp = match o.get("kind").and_then(Value::as_str)? {
+                "mcp" => true,
+                "plugin" => false,
+                _ => return None,
+            };
+            let name = o.get("name").and_then(Value::as_str).filter(|n| valid_name(n))?;
+            let enabled = o.get("enabled").and_then(Value::as_bool)?;
+            Some(Change { mcp, name: name.to_string(), enabled })
+        })
+        .collect()
+}
+
+fn final_mcp(changes: &[Change]) -> Vec<(String, bool)> {
+    let mut out: Vec<(String, bool)> = Vec::new();
+    for c in changes {
+        match out.iter_mut().find(|(n, _)| *n == c.name) {
+            Some(slot) => slot.1 = c.enabled,
+            None => out.push((c.name.clone(), c.enabled)),
+        }
+    }
+    out
+}
+
+fn edit_plugin(root: &mut Map<String, Value>, name: &str, enabled: bool) -> Result<bool, ()> {
+    if enabled {
+        return match root.get_mut("enabledPlugins") {
+            Some(Value::Object(ep)) => {
+                let removed = ep.shift_remove(name).is_some();
+                if removed && ep.is_empty() {
+                    root.shift_remove("enabledPlugins");
+                }
+                Ok(removed)
+            }
+            Some(_) => Err(()),
+            None => Ok(false),
+        };
+    }
+    if !root.contains_key("enabledPlugins") {
+        root.insert("enabledPlugins".into(), Value::Object(Map::new()));
+    }
+    let Some(Value::Object(ep)) = root.get_mut("enabledPlugins") else { return Err(()) };
+    if ep.get(name) == Some(&Value::Bool(false)) {
+        return Ok(false);
+    }
+    ep.insert(name.to_string(), Value::Bool(false));
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -467,6 +563,78 @@ mod tests {
         std::fs::remove_file(e.cj()).unwrap();
         assert_eq!(e.toggle("mcp", "a", false), json!({"ok": false, "code": "io"}));
         assert!(!e.cj().exists());
+    }
+
+    #[test]
+    fn batch_writes_each_file_once_with_one_settle() {
+        let mut e = env("batch", false);
+        e.put(&e.cj(), base(&e.key(), json!({"history": []})), true);
+        e.put(&e.local(), json!({"model": "x", "enabledPlugins": {"b@m": false}}), true);
+        let calls = Arc::new(AtomicU32::new(0));
+        let c = calls.clone();
+        e.svc.settle = Box::new(move |_| {
+            c.fetch_add(1, Ordering::SeqCst);
+        });
+        let apply = |e: &Env, changes: Value| e.svc.project_toggle(&json!({"dir": e.proj, "changes": changes}));
+        let out = apply(
+            &e,
+            json!([
+                {"kind": "mcp", "name": "figma", "enabled": false},
+                {"kind": "mcp", "name": "loc", "enabled": false},
+                {"kind": "mcp", "name": "gone", "enabled": false},
+                {"kind": "mcp", "name": "gone", "enabled": true},
+                {"kind": "plugin", "name": "a@m", "enabled": false},
+                {"kind": "plugin", "name": "b@m", "enabled": true},
+            ]),
+        );
+        assert_eq!(out, json!({"ok": true}));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        let v: Value = serde_json::from_str(&e.read(&e.cj())).unwrap();
+        assert_eq!(v["projects"][e.key().as_str()]["disabledMcpServers"], json!(["figma", "loc"]));
+        assert_eq!(v["projects"]["/other"], json!({"disabledMcpServers": ["z"], "x": 1}));
+        let l: Value = serde_json::from_str(&e.read(&e.local())).unwrap();
+        assert_eq!(l, json!({"model": "x", "enabledPlugins": {"a@m": false}}));
+        assert_eq!(apply(&e, json!([{"kind": "plugin", "name": "a@m", "enabled": false}])), json!({"ok": true}));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(apply(&e, json!([{"kind": "mcp", "name": "figma", "enabled": false}])), json!({"ok": true}));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        let before = e.read(&e.cj());
+        assert_eq!(apply(&e, json!([{"kind": "mcp", "name": "figma", "enabled": true}, {"kind": "mcp", "name": "orrery", "enabled": true}])), json!({"ok": false, "code": "locked"}));
+        assert_eq!(apply(&e, json!([])), json!({"ok": false, "code": "badArg"}));
+        assert_eq!(apply(&e, json!({"kind": "mcp"})), json!({"ok": false, "code": "badArg"}));
+        assert_eq!(apply(&e, json!([{"kind": "mcp", "name": "figma", "enabled": true}, {"kind": "mcp", "name": "-x", "enabled": true}])), json!({"ok": false, "code": "badArg"}));
+        assert_eq!(apply(&e, json!([{"kind": "x", "name": "figma", "enabled": true}])), json!({"ok": false, "code": "badArg"}));
+        let many: Vec<Value> = (0..501).map(|i| json!({"kind": "mcp", "name": format!("s{i}"), "enabled": true})).collect();
+        assert_eq!(apply(&e, Value::Array(many)), json!({"ok": false, "code": "badArg"}));
+        assert_eq!(e.read(&e.cj()), before);
+        assert_eq!(apply(&e, json!([{"kind": "mcp", "name": "figma", "enabled": true}, {"kind": "mcp", "name": "loc", "enabled": true}])), json!({"ok": true}));
+        let v: Value = serde_json::from_str(&e.read(&e.cj())).unwrap();
+        assert_eq!(v["projects"][e.key().as_str()], json!({"history": []}));
+        std::fs::write(e.local(), "{ nope").unwrap();
+        assert_eq!(apply(&e, json!([{"kind": "plugin", "name": "a@m", "enabled": true}, {"kind": "mcp", "name": "figma", "enabled": false}])), json!({"ok": false, "code": "io"}));
+        let v: Value = serde_json::from_str(&e.read(&e.cj())).unwrap();
+        assert_eq!(v["projects"][e.key().as_str()], json!({"history": []}));
+    }
+
+    #[test]
+    fn batch_race_is_retried_once_then_reported() {
+        let mut e = env("brace", false);
+        let original = e.put(&e.cj(), base(&e.key(), json!({})), true);
+        let file = e.cj();
+        let (f, o) = (file.clone(), original.clone());
+        e.svc.settle = Box::new(move |attempt| {
+            if attempt == 0 {
+                std::fs::write(&f, &o).unwrap();
+            }
+        });
+        let req = json!({"dir": e.proj, "changes": [{"kind": "mcp", "name": "figma", "enabled": false}, {"kind": "mcp", "name": "b", "enabled": false}]});
+        assert_eq!(e.svc.project_toggle(&req), json!({"ok": true}));
+        let v: Value = serde_json::from_str(&e.read(&file)).unwrap();
+        assert_eq!(v["projects"][e.key().as_str()]["disabledMcpServers"], json!(["figma", "b"]));
+        std::fs::write(&file, &original).unwrap();
+        let (f, o) = (file.clone(), original.clone());
+        e.svc.settle = Box::new(move |_| std::fs::write(&f, &o).unwrap());
+        assert_eq!(e.svc.project_toggle(&req), json!({"ok": false, "code": "conflict"}));
     }
 
     #[test]

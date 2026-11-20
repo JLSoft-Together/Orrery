@@ -24,3 +24,16 @@ Chủ nhân chốt 2026-11-20 (grilling 2 vòng).
 - [x] G3 về (đầu pane: REVEAL hover cho 4/5/14/15/26/27, context chỉ từ 70%, SubagentOrbit flat, peer/coord badge trên chip trạng thái; 7 overlap chỉ thu icon, 18 giữ). 25 test.
 - [x] G2 về (bỏ chip project / chuông / '2 pane', Lỗi + chờ thành chấm, Bố cục ẩn hover, màn trống 1 dòng, U11 chip project chỉ khi nhiều project; Inbox phím ẩn, dòng 2 chỉ thời gian). G1 sửa xong Telegram/điện thoại luôn hiện. Chờ G6 + mockup v2.
 - [x] Gate + E2E desktop v107: 24 file, pass hết trừ v101-diskmap-ui (lỗi có từ trước: test gán roots nhưng UI không chọn ổ; không đụng code Disk). v89-pane sửa theo quyết định bỏ số token. Mockup chat v2 kiểu app Claude đã deploy.
+
+## Chốt mockup (chủ nhân 2026-11-20)
+- Chọn **bản lai** `/chat-lai/` (GPT + Claude + Gemini), nhưng bớt gradient và bỏ icon sparkle kiểu Gemini. Accent màu đặc.
+
+## Gói (manager)
+| WP | Model | Việc | Phụ thuộc |
+|---|---|---|---|
+| C0 | haiku | Mockup lai: bỏ gradient + sparkle | - |
+| C1 | opus | Spec giao thức chat (`.planning/SPEC-v107-chat-protocol.md`) + type TS `packages/shared/src/remote.ts` + Dart model | - |
+| C2 | sonnet | Bỏ luật chỉ submit khi rảnh (remote + Telegram), sửa CLAUDE.md ngoại lệ 3/5/7 + docs | - |
+| C3 | opus | Desktop: phát nội dung chat + nhãn menu theo spec (`apps/shell/src/remote`) | C1 |
+| C4 | opus | PWA: hộp thư chat + màn chat theo mockup lai, U14, U16, U17 bước 1 | C1 |
+| C5 | opus | Android: như C4 | C1 |

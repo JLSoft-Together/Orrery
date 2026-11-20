@@ -1,107 +1,34 @@
 # Orrery
 
-App desktop (Windows, macOS) theo dõi realtime mọi session Claude Code CLI đang chạy, kèm các lần Codex CLI do chúng gọi. Có thêm **Workspace**: terminal, editor, Git và Run ngay trong app.
+App desktop (Windows, macOS) để theo dõi và chạy các session Claude Code CLI cùng các lần Codex CLI do chúng gọi, ngay trong một Workspace có terminal, editor, Git và Run. Chạy hoàn toàn trên máy, không gọi API.
 
-Từ **4.0** app chạy hoàn toàn bằng Rust: vỏ Tauri + `orrery-core`, không còn Electron và Node.
+Từ 4.0 app chạy bằng Tauri + Rust (`orrery-core`), RAM khoảng một nửa bản Electron cũ (số đo ở `docs/perf/`). Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm; mã nội bộ giữ nguyên (`dev.ccm.monitor`, data `ccm`, biến `CCM_*`) nên bản cũ cập nhật thẳng.
 
-Tên cũ: Claude Code Monitor, Agent Monitor, GolAIm. Mã nội bộ giữ nguyên (`dev.ccm.monitor`, data `ccm`, biến `CCM_*`) nên bản cũ cập nhật thẳng, không mất cài đặt.
+![Workspace với rail session theo project](docs/qa/v108/workspace-mono-dark.png)
 
-Từ **4.0.2** theme mặc định là **Ngân hà**: nền đen sâu, sao mờ tĩnh, panel đặc; màu pane theo agent (Claude cam, Codex tím, shell xanh ngọc).
-
-![Giám sát › Bảng: session theo Cần chủ nhân / Đang chạy / Rảnh](docs/screenshots/monitor.png)
-
-| Quỹ đạo: mỗi project một hệ, subagent là hành tinh | Workspace: terminal, editor, Explorer |
-|---|---|
-| ![Quỹ đạo](docs/screenshots/orbit.png) | ![Workspace](docs/screenshots/workspace.png) |
-| **Changes: diff, stage từng đoạn** | **Run pane: bắt crash, điền vào agent** |
-| ![Changes](docs/screenshots/changes.png) | ![Run pane](docs/screenshots/run-pane.png) |
-| **Có gì mới** | |
-| ![What's new](docs/screenshots/whats-new.png) | |
-
-## Hiệu năng: 4.0 (Tauri + Rust) so với Electron + Node
-
-Đo trên MacBook Pro M5 (24 GB RAM, 1 TB SSD), cùng code giao diện, 60 giây sau 20 giây chờ, demo `scripts/demo-fixture.mjs --seed=8704`. RAM = tổng RSS mọi process của app (macOS: gồm 3 process WebKit). CPU = % một core. Số thô: `docs/perf/4.0.0-tauri-darwin.json`, `docs/perf/4.0.0-electron-node-darwin.json`.
-
-| Kịch bản | RAM Electron + Node | RAM 4.0 | CPU Electron + Node | CPU 4.0 |
-|---|---|---|---|---|
-| Monitor, không session | 651 MB | **291 MB** (−55%) | 0,6% | **0,3%** |
-| 6 session × 3 subagent | 672 MB | **314 MB** (−53%) | 6,2% | **2,5%** (−60%) |
-| 30 session × 6 subagent | 755 MB | **308 MB** (−59%) | 19,0% | **5,4%** (−72%) |
-
-| | 3.4.0 (Electron) | 4.0 |
-|---|---|---|
-| Bộ cài macOS arm64 | 147 MB | **24 MB** (−84%) |
-| Bộ cài Windows (Setup) | 147 MB | **19 MB** (−87%) |
-| App đã cài (macOS) | 325 MB | **54 MB** |
-| Quét usage lần đầu (4,29 GB transcript) | 6,70 CPU-giây | **2,17 CPU-giây** (nhanh hơn 3,1 lần) |
-
-## Nguyên tắc
-
-- **Chỉ quan sát**: đọc file local của Claude Code / Codex (session, transcript, hook).
-- Không gọi API, không gửi prompt, không chạy LLM khác: **không tốn thêm token**. Ngoại lệ do bạn yêu cầu: **Compact…** và lệnh bạn gửi qua **bot Telegram** (chỉ tài khoản đã ghép hoặc thành viên bạn thêm).
-- **Chỉ local**: collector bind `127.0.0.1`, từ chối request không mang khoá của app.
-- Không đưa nội dung prompt, tham số tool, env hay secret ra giao diện. Token chỉ hiện khi có số liệu thật.
-- Không gửi gì ra ngoài, trừ **Báo ra điện thoại** (Cài đặt › Thông báo) và **Telegram** (Cài đặt › Telegram), cả hai mặc định tắt; nội dung gửi đi luôn che bí mật.
-
-## Tính năng
-
-**Giám sát**
-- **Bảng**: thẻ session theo Cần chủ nhân / Đang chạy / Rảnh (hoặc nhóm theo project / agent): tool đang chạy, nhánh, thước context, Mở trong Workspace / Xem diff, dòng thời gian Xong hôm nay.
-- **Quỹ đạo**: bản đồ sao, mỗi project một hệ, session là mặt trời, subagent là hành tinh; Codex CLI do Claude gọi hiện thành node con.
-- Thanh đáy: agent đang chạy / chờ, cổng dev, token hôm nay.
-- Usage (token, chi phí ước tính, giới hạn gói) và History (heatmap, recap, tìm session cũ rồi Resume).
-- Thông báo khi session chờ bạn; báo ra điện thoại qua ntfy / Discord khi bạn rời máy.
-- Office pixel-art: mỗi dự án một phòng, mỗi agent một nhân vật.
-- Session DeepSeek CLI (Codewhale) hiện trong Monitor khi Codewhale bật `[lifecycle_outbox]` (chỉ đọc file, không gọi DeepSeek).
-
-**Telegram** (Cài đặt › Telegram, mặc định tắt; bot của riêng bạn trong group có topic)
-- Báo cáo về topic của từng dự án hoặc từng session: xong việc, chờ bạn, xin quyền, câu hỏi của Claude; tin ghim trạng thái, tổng kết cuối ngày, gom báo xong.
-- Ra lệnh từ điện thoại: `status`, `new`, `stop`, `last`, `tail`, `resume`, `run`, `all`, `screen`, menu "/"; nút Cho phép / Từ chối, chọn đáp án câu hỏi, chọn session.
-- Gửi ảnh, file, album vào session; agent gửi lại file (APK…) bằng `telegram_send`, tới 2 GB khi bật File lớn (`api_id` / `api_hash`).
-- Nối topic với session hoặc dự án từ menu chuột phải hoặc ngay trong Telegram; reply tin của bot là vào đúng session.
-- Chỉ tài khoản đã ghép ra lệnh; thêm thành viên mức Xem / Đầy đủ; người lạ nhận câu trả lời cố định. Lệnh gửi lúc app tắt được hỏi trước khi chạy.
+## Tính năng chính
 
 **Workspace**
-- Terminal trong app (Claude Code / Codex / shell): tab, chia ô, nhóm tab, phóng ô, hoàn tác đóng, Mission Control, worktree.
-- Header pane: subagent đang chạy, thước context; thẻ file của lượt vừa rồi; tab nhóm theo project, chế độ tập trung `Ctrl+.`, launcher khi mở tab mới; Explorer đánh dấu file agent đang sửa / đọc.
-- Khôi phục workspace sau khi khởi động lại hoặc app tắt bất thường (`--resume`).
-- Chuyển dự án nhanh `Ctrl+Alt+P` (macOS `⌃⌥P`); `Ctrl K` tìm session, dự án, file, cài đặt và lệnh.
-- Changes đưa file chưa xem lên đầu; History có nút Tiếp tục session đã kết thúc.
+- Pane Claude Code, Codex, shell: tab, chia ô, phóng ô, hoàn tác đóng (`--resume`), khôi phục sau khi tắt app.
+- Rail session sống theo project hoặc trạng thái; Inbox (`Ctrl+Shift+A`) gom xin quyền, câu hỏi, lỗi; `Ctrl+K` tìm session, file, lệnh.
+- Trả lời menu chọn của Claude / Codex bằng chuột ngay trên pane.
+- Bảng **MCP & plugin** trong menu session: bật / tắt theo project, số lần gọi trong session, một nút Áp dụng.
 
-**Tool cho agent** (MCP `orrery`, Claude Code và Codex trong pane; không gửi prompt, không tốn token)
-- Mở session mới thành pane, báo chủ nhân, mở file / diff, hỏi ai đang sửa file.
-- Chạy / reload app, đọc log Run, chụp màn thiết bị, dựng layout XML.
-- Xem và dừng cổng do chính pane mở (hỏi xác nhận trước).
-- Editor có tô màu cú pháp, tự lưu (tuỳ chọn), Outline, Local History; Explorer icon Atom Material.
-- Tìm / thay trong nhiều file, TODO, pane Trình duyệt, ghi chú dự án, Plan board.
+**Giám sát**
+- Bảng session theo Cần chủ nhân / Đang chạy / Rảnh, Quỹ đạo (subagent quanh agent chính), Usage và History.
 
-**Git**
-- Changes: diff hai cột, stage / commit, blame, bỏ từng đoạn, giải xung đột theo khối.
-- Log: đồ thị, nhánh; push / pull bằng nhiều tài khoản GitHub (token cất trong keychain).
-- Checkpoint theo lượt agent; so sánh và gộp worktree.
+**Explorer, Git, Run**
+- Explorer icon Atom Material, editor có tự lưu, Changes (diff, stage từng đoạn), Git Log và nhánh, push / pull bằng nhiều tài khoản GitHub.
+- Run pane Android / Flutter bắt crash, XML Layout Preview, tab Thiết bị (adb qua USB / Wi-Fi).
 
-**Run và thiết bị**
-- Run pane Android / Flutter: bắt crash, ANR; **Điền vào agent** (đã che bí mật).
-- Tab Thiết bị: kết nối Android qua USB / Wi-Fi, chụp / quay màn, emulator, xem SQLite / SharedPreferences.
-- Đo hiệu năng app, kiểm trợ năng, duyệt file trên máy.
-- Phân tích dung lượng APK / AAB; Kiểm phát hành Android / Flutter.
+**Remote**
+- App Android và web app iPhone / iPad: hộp thư session, màn chat (gửi thẳng vào session, nút Dừng, bấm nút để trả lời xin quyền), xem terminal.
+- Kết nối LAN hoặc qua relay Cloudflare của chính bạn, mã hoá đầu cuối (Noise); relay dựng 1 chạm bằng wrangler.
+- Push có nội dung đã che secret; Telegram bot nhận báo cáo và lệnh.
 
-**Preview**
-- XML Layout Preview và Flutter Widget Preview.
-- Xem trước Markdown, cây JSON / YAML, xem log, gửi request `.http`.
-
-**Tiện ích**
-- **Tài nguyên**: RAM / CPU từng session, server, daemon; báo và tắt thứ bị bỏ quên; bản đồ cổng.
-- Dữ liệu agent: đo, dọn cache, chuyển sang ổ khác; Dọn đồ build; cảnh báo ổ sắp đầy.
-- Canh nhạy cảm: cảnh báo sửa `.env`, keystore, `git push --force`, xoá đệ quy; Chặn lần sau.
-- Thư viện prompt, hàng chờ prompt, hỏi quyền theo dự án, cảnh báo nhiều agent cùng sửa một file.
-- Extensions: cài MCP server / plugin, quản lý hook Claude Code.
-- Cập nhật trong app từ GitHub Releases (kiểm SHA-256).
-
-**Cài đặt**
-- Cửa sổ Cài đặt có ô tìm; giao diện sáng / tối, nhiều theme, đổi font, tiếng Việt / English.
-- Giữ máy thức khi agent đang làm; thư mục chụp / quay riêng.
-- Sao lưu: xuất / nhập cấu hình sang máy khác (không xuất token).
+**Khác**
+- Disk: quét, tìm, dọn ổ đĩa (xoá luôn qua hộp xác nhận, mặc định vào Thùng rác).
+- Giao diện Sương kính, bảng màu Sương kính, Than chì, Đen trắng, Ngân hà, Orrery, Tuỳ chỉnh, Ngẫu nhiên (mỗi lần mở app trộn 1 bảng màu mới); tiếng Việt / English.
 
 ## Cài đặt
 
@@ -109,56 +36,54 @@ Tải bản mới nhất ở [GitHub Releases](https://github.com/JLSoft-Togethe
 
 | Hệ điều hành | File |
 |---|---|
-| Windows 10 / 11 | `Orrery-Setup-<ver>.exe` (từ 4.0 không còn bản Portable) |
+| Windows 10 / 11 | `Orrery-Setup-<ver>.exe` (NSIS, không có bản Portable từ 4.0) |
 | macOS Apple Silicon / Intel | `Orrery-<ver>-arm64.dmg` / `Orrery-<ver>-x64.dmg` |
 
-- **Yêu cầu**: Claude Code CLI `2.1.289` (bản khác vẫn chạy, có cảnh báo). Git, VS Code không bắt buộc.
-- Mở app rồi chạy `claude` ở terminal bất kỳ: session hiện lên trong khoảng 1 giây.
-- **Windows**: exe chưa ký số. SmartScreen cảnh báo lần đầu → **More info → Run anyway**. Đóng cửa sổ = ẩn xuống tray.
-- **macOS**: app ký ad-hoc, chưa notarize. Kéo vào **Applications**, mở → bị chặn → **System Settings → Privacy & Security → Open Anyway** (hoặc `xattr -dr com.apple.quarantine "/Applications/Orrery.app"`).
-- Từ 3.x lên 4.0: cập nhật trong app như bình thường; cài đặt, layout và token GitHub được giữ (macOS có thể hỏi quyền Keychain 1 lần). Tài khoản Telegram cần đăng nhập lại 1 lần. Windows tự gỡ bản Electron cũ, dữ liệu giữ nguyên.
-- Đã cài bản tên cũ: cài đè (Windows) hoặc xoá `GolAIm.app` / `Agent Monitor.app` / `Claude Code Monitor.app` sau khi chép bản mới (macOS).
-- **Giới hạn gói**: bật ở Cài đặt → Status line, chép lệnh vào `~/.claude/settings.json`.
+- **Windows**: exe chưa ký số. SmartScreen cảnh báo lần đầu: **More info > Run anyway**. Đóng cửa sổ = ẩn xuống tray.
+- **macOS**: app ký ad-hoc, chưa notarize. Kéo vào Applications, mở, bị chặn thì **System Settings > Privacy & Security > Open Anyway**, hoặc `xattr -dr com.apple.quarantine "/Applications/Orrery.app"`.
+- Cần Claude Code CLI `2.1.289` (bản khác vẫn chạy, có cảnh báo). Mở app rồi chạy `claude` ở terminal bất kỳ, session hiện lên trong khoảng 1 giây.
+- **Điện thoại**: Cài đặt > Thông báo & Remote > Điều khiển từ xa: bật, thẻ **Cài app lên điện thoại** (Android: QR tải APK qua Wi-Fi; iPhone: QR mở `<relay>/app/`, rồi Thêm vào MH chính), sau đó **Thêm điện thoại** để ghép bằng QR. Chi tiết: `docs/orrery-remote.md`.
+
+Gặp lỗi: Cài đặt > Cập nhật & trợ giúp > Chẩn đoán, lưu file log để gửi kèm.
+
+## Build từ source
+
+Cần Node.js `20.19+` hoặc `22.12+`, Rust stable (`rustup`); macOS thêm Xcode Command Line Tools.
+
+```sh
+npm install
+npm run shell:dev   # build web rồi chạy app Tauri (dev)
+npm run dev         # chỉ làm UI: collector --dev + Vite (127.0.0.1:5173)
+npm run qa          # gate nhanh theo git diff: typecheck, vitest related, cargo test, E2E liên quan
+npm run dist        # đóng gói cho OS đang chạy (Windows: NSIS, macOS: dmg arm64 + x64), không cross build
+```
+
+Bộ cài ra `apps/shell/release/`. Cấu trúc repo, E2E, app điện thoại (`apps/mobile`), relay (`apps/relay`) và mọi lệnh khác: `CLAUDE.md`.
 
 ## Biến môi trường
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `CCM_PORT` | `4317` | Port collector |
 | `CLAUDE_CONFIG_DIR` | `~/.claude` | Thư mục data Claude Code |
 | `CODEX_HOME` / `CCM_CODEX` | `~/.codex` / `1` | Data Codex; `CCM_CODEX=0` tắt theo dõi Codex |
-| `CCM_DATA_DIR` | `%LOCALAPPDATA%/ccm` (macOS `~/Library/Application Support/ccm`) | Cache, tên session, lịch sử |
+| `CCM_DATA_DIR` | `%LOCALAPPDATA%/ccm` (macOS `~/Library/Application Support/ccm`) | Cache, tên session, log |
+| `CCM_PORT` | `4317` | Port collector |
+| `CCM_REMOTE_PORT` | `4320` | Port LAN cho điện thoại |
 | `CCM_TOAST` | `1` | `0` = tắt toast / cảnh báo hệ thống |
-| `CCM_DEEPSEEK` | `1` | `0` = không đọc outbox Codewhale (Monitor) |
-| `CCM_DEEPSEEK_FEATURE` | tắt | `1` = bật thử nghiệm DeepSeek CLI: pane Codewhale, Cài đặt › DeepSeek, MCP `hand_back` |
 
-Gặp lỗi: mở **Cài đặt → Chẩn đoán**, **Lưu file log…** để gửi kèm.
+Các biến còn lại (chọn core Rust / Node, DeepSeek, test): `CLAUDE.md`.
 
-## Build từ source
+## Nguyên tắc
 
-Cần Node.js `20.19+` hoặc `22.12+` (build giao diện, test) và Rust stable (`rustup`).
-
-```powershell
-npm install
-npm run shell:dev     # build web rồi chạy app Tauri (dev)
-npm run desktop       # bản Electron cũ (dev, để so sánh / fallback)
-npm test              # Vitest mọi workspace
-npm run typecheck     # tsc / vue-tsc
-npm run dist          # đóng gói Tauri theo OS (không cross build); bản Electron: npm run dist:electron
-```
-
-```
-apps/collector      Node.js + TS: đọc session, transcript, hook; WebSocket
-apps/web            Vue 3 + Vite + Tailwind + Pinia + vue-i18n + Vue Flow + xterm.js
-apps/desktop        Electron: collector + PTY host, tray, Run, thiết bị, Git, đóng gói
-apps/core           Rust: orrery-core (collector, terminal, desk), orrery-bridge
-apps/shell          Tauri 2: cửa sổ, tray, webview, đóng gói 4.0
-packages/shared     Kiểu dữ liệu + protocol dùng chung
-```
+- **Chỉ local**: collector bind `127.0.0.1` và từ chối request không mang khoá của app; điện thoại chỉ nối sau khi ghép và được bạn cho phép.
+- **Không tốn thêm token**: không gọi API, không chạy LLM khác. Chỉ gửi prompt khi bạn yêu cầu (Compact, tin từ điện thoại hoặc Telegram, nút trả lời menu); danh sách ngoại lệ ở `CLAUDE.md`.
+- **Secret không rời máy**: env, khoá app, token PTY không gửi ra ngoài; nội dung push, Telegram, chat điện thoại đều che secret. Token GitHub, relay cất trong Keychain / Credential Manager.
+- Token chỉ hiện khi có số liệu thật; Remote, Telegram, push mặc định tắt.
 
 ## Ghi công
 
 - [Habblaud](https://github.com/marmottajr/habblaud) (MIT): Office pixel-art, vendored trong `packages/habblaud`.
 - [GramJS](https://github.com/gram-js/gramjs) (MIT): gửi file lớn qua Telegram MTProto.
 - [Atom Material Icons](https://github.com/AtomMaterialUI/iconGenerator) (MIT): icon file / thư mục.
+- [escrcpy](https://github.com/viarotel-org/escrcpy) (Apache-2.0): tham khảo cho tab Thiết bị, bản sao trong `src/escrcpy`, không build vào app.
 - Font mở kèm app: SIL OFL / Ubuntu Font Licence, xem `apps/web/public/fonts-LICENSES.txt`.

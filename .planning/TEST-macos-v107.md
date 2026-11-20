@@ -1,10 +1,10 @@
-# Test macOS: v104 đến v107 (+ v108 nếu đã có)
+# Test macOS: v104 đến v108
 
-Cách dùng: làm lần lượt, `[x]` khi đúng, lỗi thì ghi ngay dưới dòng và điền bảng ở mục 12. Mục "(nếu đã có trong bản build)" bỏ qua được khi chưa thấy tính năng. Danh sách test Mac cũ hơn: `.planning/QA-mac-checklist.md`.
+Cách dùng: làm lần lượt, `[x]` khi đúng, lỗi thì ghi ngay dưới dòng và điền bảng ở mục 12. Danh sách test Mac cũ hơn: `.planning/QA-mac-checklist.md`.
 
 ## 0. Chuẩn bị
-Nguồn: `package.json` scripts, `scripts/dist-tauri.mjs`, `README.md:118`, `apps/shell/tauri.release.json:34`.
-- [ ] `git pull` nhánh `feat/v98-pwa` -> `git log -1` thấy commit `73b8f2ea` hoặc mới hơn.
+Nguồn: `package.json` scripts, `scripts/dist-tauri.mjs`, `README.md` mục Cài đặt, `apps/shell/tauri.release.json:34`.
+- [ ] `git pull` nhánh `feat/v98-pwa` -> `git log -1` thấy commit `d651529b` hoặc mới hơn (có `a4bc9031` bảng màu v108 và `cb8b207e` rà chữ).
 - [ ] `npm install` -> không lỗi.
 - [ ] Chạy thử nhanh: `npm run shell:dev` (build web, rồi `cargo run`). Cần Rust + Xcode CLT. -> cửa sổ Orrery mở.
 - [ ] Bản cài: `npm run dist:mac` (cần Rust target `aarch64-apple-darwin` + `x86_64-apple-darwin`, và `apps/layout-daemon/kit.json` đã pin). -> có `apps/shell/release/Orrery-<ver>-arm64.dmg` (và `-x64.dmg`).
@@ -48,14 +48,20 @@ Nguồn: `.planning/DECISION-v107-declutter.md`.
 - [ ] Ô tìm setting tìm ra mục nằm trong trang gộp, bấm đi đúng chỗ.
 
 ## 5. Bảng MCP và plugin (header session)
-- [ ] Mở bảng ở header session -> checklist, lưới nhiều cột, lọc, bật / tắt cả nhóm.
-- [ ] Tick vài mục -> chỉ 1 nút "Áp dụng"; bấm -> 1 lần ghi, không chờ 1.5 s mỗi mục.
-- [ ] Mỗi mục có số lần gọi theo session; mục không dùng có gợi ý "tắt".
+Nguồn: `apps/web/src/i18n/session-tools-v89.ts`, `components/workspace/SessionToolsSheet.vue`, nút `data-pane-tools` trong `TermPane.vue`.
+- [ ] Hover đầu pane Claude -> hiện nút icon khối, tooltip "MCP & plugin…"; bấm -> bảng "MCP server & plugin", dòng phụ "Chỉ áp dụng cho <project>. Project khác giữ cấu hình riêng."
+- [ ] Bảng có 2 nhóm "MCP server" và "Plugin", ô "Lọc theo tên", mỗi nhóm 1 nút đổi giữa "Bật hết" / "Tắt hết", "Làm mới", "Đóng". Lọc không khớp -> "Không có kết quả khớp."
+- [ ] Server `orrery` không tắt được, tooltip "Orrery cần server này để mở và quản lý session, nên luôn bật."
+- [ ] Chưa tick gì -> dòng "Bật / tắt server và plugin, rồi áp dụng một lần." Tick vài mục -> "N thay đổi chưa áp dụng", mục đã đổi gắn "Chưa áp dụng", nút "Huỷ thay đổi".
+- [ ] Bấm "Áp dụng" -> "Đang áp dụng…" rồi "Đã lưu. Thay đổi áp dụng khi khởi động lại session."; 1 lần ghi, không chờ 1.5 s mỗi mục.
+- [ ] Mỗi mục có "N lần" (tooltip "Đã gọi N lần trong session này"); mục chưa gọi có "chưa dùng". Nút "Tắt các mục chưa dùng (N)" (chỉ hiện khi có mục chưa dùng) tắt các MCP server đó, chưa lưu tới khi bấm Áp dụng.
+- [ ] Có thay đổi chưa áp dụng rồi đóng bảng -> toast "Đã bỏ N thay đổi chưa áp dụng" + "Hoàn tác" khôi phục lại.
+- [ ] Nút "Khởi động lại (--resume)" chỉ bấm được khi session idle (không thì cạnh nút có dòng "Chỉ bật khi session đang idle.").
 - [ ] Mở lại bảng -> trạng thái khớp lệnh `claude mcp list` / `claude plugin list`.
 
 ## 6. Remote: bật, QR cài app, relay
 Nguồn: `apps/shell/src/remote/relay_wrangler.rs:66-82`, `relay_setup.rs:74`.
-- [ ] Settings > Remote: bật. -> cổng LAN 4320 lắng nghe, chip điện thoại ở chân rail đổi trạng thái.
+- [ ] Settings > Thông báo & Remote > Điều khiển từ xa: bật. -> cổng LAN 4320 lắng nghe, chip điện thoại ở chân rail đổi trạng thái.
 - [ ] Thẻ cài app bằng QR: Android hiện QR APK qua Wi-Fi (token 10 phút), iPhone hiện link `/app/` của relay riêng. Không có relay thì iPhone báo cần cài relay trước.
 - [ ] Android: quét QR -> tải đủ ~40 MB trên Wi-Fi; hết 10 phút link không tải được.
 - [ ] Relay 1 chạm bằng wrangler: bấm -> máy có Node + npx thì tự chạy `wrangler@4.160.1`, mở trình duyệt login Cloudflare lần đầu, deploy xong hiện URL + "Jin" (tên account).
@@ -103,17 +109,22 @@ iPhone: Safari mở `<relay>/app/` > Share > Add to Home Screen > mở từ icon
 - [ ] Click menu v100 (hover, click, double click) trên menu của Claude / Codex.
 - [ ] Git Log, Changes (lọc theo session), Explorer icon Atom Material.
 
-## 10. Bảng màu v108 (nếu đã có trong bản build)
-Nguồn: `.planning/DECISION-v108-colors.md`. Lúc viết, `apps/web/src/lib/themes.ts` chưa có `mono`: chưa vào code.
-- [ ] Settings > Giao diện có "Đen trắng"; UI next còn: Sương kính, Than chì, Ngân hà, Orrery, Tự chọn.
-- [ ] Máy đang dùng Tinh vân / Cực quang / Bình minh sương / Console / theme classic cũ -> lần đầu mở tự chuyển sang bảng gần nhất, chỉ 1 lần.
-- [ ] Ngẫu nhiên: bật -> mỗi lần mở app ra 1 bảng màu mới, chữ đọc rõ (AA), không trùng bộ có sẵn.
-- [ ] "Trộn lại" ra bảng khác ngay; "Giữ màu này" -> mở lại app vẫn đúng màu đó, danh sách "đã giữ" có mục mới.
-- [ ] Lúc mở app không nháy sai màu (không flash trắng / màu cũ rồi mới đổi).
-- [ ] Sáng / tối / theo hệ thống: đổi Dark Mode macOS -> app theo.
+## 10. Bảng màu v108
+Nguồn: commit `a4bc9031`, `.planning/DECISION-v108-colors.md`, `apps/web/src/components/settings/SettingsMistAppearance.vue`, `RandomPaletteBar.vue`, `i18n/mist-v102.ts`, `packages/mist-tokens/palettes.ts` (`NEXT_REMOVED_PALETTES`), `apps/web/src/lib/themes.ts` (`REMOVED_THEMES`).
+- [ ] Máy chưa chọn gì (data dir mới) -> bảng màu mặc định vẫn là Sương kính; Ngẫu nhiên không tự bật.
+- [ ] Settings > Giao diện > mục "Bảng màu": 8 thẻ theo thứ tự "Sương kính, Sáng", "Sương kính, Tối", Than chì, Đen trắng, Ngân hà, Orrery, Ngẫu nhiên, Tuỳ chỉnh. Không còn Tinh vân, Cực quang, Bình minh sương, Console.
+- [ ] Thẻ Đen trắng: mô tả "Xám trơn, không màu nhấn, phẳng và dịu mắt."; chọn -> app xám trơn, chữ đọc rõ ở cả sáng và tối.
+- [ ] Phím mũi tên trên lưới thẻ chuyển bảng màu, thẻ đang chọn có dấu tick.
+- [ ] Máy đang dùng bảng cũ -> lần đầu mở bản này tự chuyển, chỉ 1 lần: Tinh vân / Cực quang -> Sương kính, Bình minh sương -> Orrery, Console -> Than chì; theme classic sáng (Apple, Xcode, GitHub, Solarized, Islands) -> Orrery sáng, tối (Monokai, Dracula, Material, One Dark...) -> Ngân hà. Chọn lại bảng khác rồi mở lại app -> không bị chuyển lần nữa.
+- [ ] Bấm thẻ "Ngẫu nhiên" (mô tả "Mỗi lần mở Orrery tự trộn 1 bảng màu dịu mới.") -> dưới lưới hiện thanh với nút "Trộn lại", "Giữ màu này" và dòng "Lần mở app sau sẽ có màu mới."
+- [ ] "Trộn lại" -> đổi màu ngay, chữ vẫn đọc rõ (AA). Tắt mở app -> ra màu khác.
+- [ ] "Giữ màu này" -> nút thành "Đã giữ" (không bấm được), dòng chữ thành "Giữ nguyên màu này tới khi bấm Trộn lại."; hiện dải "Màu đã giữ" với ô số 1 (2 chấm màu). Tắt mở app -> vẫn đúng màu đó.
+- [ ] Bấm ô số trong "Màu đã giữ" -> dùng lại màu đó; nút X cạnh ô -> bỏ màu đã giữ.
+- [ ] Lúc mở app (cả khi đang Ngẫu nhiên hoặc đã giữ màu) không nháy sai màu: không flash trắng / màu cũ rồi mới đổi.
+- [ ] "Sáng / tối": Theo hệ thống / Sáng / Tối. Theo hệ thống + đổi Dark Mode macOS -> app theo. Ngân hà chỉ có nền tối (nút Sáng bị khoá).
 
-## 11. Rà chữ (nếu đã có trong bản build)
-- [ ] Lướt rail, Settings, Inbox, Ctrl+K, bảng MCP, màn chat điện thoại: không còn dấu chấm giữa làm ngăn cách, không em dash. Ghi chỗ còn sót (chụp ảnh).
+## 11. Rà chữ (commit `cb8b207e`)
+- [ ] Lướt rail, Settings, Inbox, Ctrl+K, bảng MCP, toast, tray menu, màn chat điện thoại (web app + Android): không còn dấu chấm giữa làm ngăn cách, không em dash. Ghi chỗ còn sót (chụp ảnh).
 - [ ] Không còn chữ "trần" chỉ giới hạn trên (phải là "max").
 
 ## 12. Báo lỗi
@@ -133,4 +144,4 @@ Chụp và gửi:
 - Tên thật của nút Telegram / tên mục menu trong i18n từng mục (các nhãn ở trên theo DECISION, có thể lệch chữ).
 - Cmd có thay Ctrl cho Ctrl+K trên Mac không (README chỉ nói `Ctrl+Alt+P` thành `⌃⌥P`).
 - macOS có hỏi quyền clipboard khi `arboard` đọc không; đường dẫn `pty.log`.
-- Themes v108 và rà em dash / chấm giữa: chưa có trong code lúc viết.
+- Thứ tự thẻ bảng màu và nhãn bảng MCP đọc từ code (`nextPaletteCards()`, `session-tools-v89.ts`), chưa đối chiếu màn thật.

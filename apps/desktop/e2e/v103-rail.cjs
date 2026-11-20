@@ -91,7 +91,7 @@ async function fixture() {
     await evaluate(`(() => { const e = ${S}.get('extras'); const iso = (m) => new Date(Date.now() + m * 60000).toISOString(); e.limits = { updatedAt: new Date().toISOString(), fiveHour: { usedPct: 42, resetsAt: iso(95) }, sevenDay: { usedPct: 91, resetsAt: iso(3 * 1440) } }; e.codexLimits = { updatedAt: new Date().toISOString(), fiveHour: { usedPct: 7, resetsAt: iso(200) } } })()`)
     await sleep(500)
     const q = JSON.parse(await evaluate(`JSON.stringify([...document.querySelectorAll('[data-quota-agent]')].map((a) => ({ id: a.dataset.quotaAgent, text: a.textContent.replace(/\\s+/g, ' ').trim() })))`))
-    check('footer shows Claude Code and Codex clusters with percent and reset', q.length === 2 && /Claude Code.*42%.*reset.*91%.*reset/.test(q[0].text) && /Codex.*7%.*reset/.test(q[1].text), JSON.stringify(q))
+    check('footer shows Claude and Codex icon clusters with percent only', q.length === 2 && /42%.*91%/.test(q[0].text) && /7%/.test(q[1].text) && !/reset/.test(q[0].text), JSON.stringify(q))
     check('footer fits one line without page scroll', await evaluate(`document.querySelector('[data-next-footer]').getBoundingClientRect().height <= 32 && document.documentElement.scrollWidth <= document.documentElement.clientWidth`))
     await evaluate(`${S}.get('settings').setThemeMode('light')`)
     await sleep(500)

@@ -139,7 +139,7 @@ const en = {
       close: 'Close Explorer',
       resize: 'Explorer width',
       resizeTip: 'Drag to resize, double click to reset',
-      pinNoRoomCanvas: 'Not enough room to pin: the canvas needs {min}px, Explorer stays a drawer.',
+      pinNoRoomCanvas: 'Not enough room to pin: the canvas needs {min}px. Widen the window or collapse the rail, Explorer stays a drawer until then.',
     },
     shell: {
       rail: 'Sidebar',
@@ -381,7 +381,7 @@ const vi: typeof en = {
       close: 'Đóng Explorer',
       resize: 'Độ rộng Explorer',
       resizeTip: 'Kéo để chỉnh độ rộng, bấm đúp để về mặc định',
-      pinNoRoomCanvas: 'Không đủ chỗ để ghim: canvas cần {min}px, Explorer giữ dạng drawer.',
+      pinNoRoomCanvas: 'Không đủ chỗ để ghim: canvas cần {min}px. Kéo rộng cửa sổ hoặc thu rail, Explorer giữ dạng drawer đến lúc đó.',
     },
     shell: {
       rail: 'Thanh bên',

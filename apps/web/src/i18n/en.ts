@@ -104,11 +104,17 @@ import diskCleanV101 from './disk-clean-v101'
 import diskOrganizeV101 from './disk-organize-v101'
 import diskAppsV101 from './disk-apps-v101'
 import v104Ux from './v104-ux'
+import v105U1 from './v105-u1'
+import v105U3 from './v105-u3'
+import v105U2 from './v105-u2'
 
 export default {
   ...v25.en,
   ...clickMenuV100.en,
   ...v104Ux.en,
+  ...v105U1.en,
+  ...v105U3.en,
+  ...v105U2.en,
   ...diskV101.en,
   ...diskCleanV101.en,
   ...diskOrganizeV101.en,

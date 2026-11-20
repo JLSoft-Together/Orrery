@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlanLimits } from '@ccm/shared'
-import { quotaAgents, resetLabel } from './quotaBar'
+import { quotaAgents, resetLabel, resetRelative } from './quotaBar'
 
 const NOW = new Date(2026, 10, 19, 10, 0, 0).getTime()
 const fresh = new Date(NOW - 60_000).toISOString()
@@ -50,5 +50,28 @@ describe('resetLabel', () => {
   it('is empty without a future reset', () => {
     expect(resetLabel(null, NOW, 'en')).toBe('')
     expect(resetLabel(NOW - 1, NOW, 'en')).toBe('')
+  })
+})
+
+describe('resetRelative', () => {
+  const en = { d: 'd', h: 'h', min: 'min', lessThanMin: 'under 1 min' }
+  const vi = { d: 'ngày', h: 'giờ', min: 'phút', lessThanMin: 'dưới 1 phút' }
+  const at = (ms: number): number => NOW + ms
+
+  it('gives hours and minutes', () => {
+    expect(resetRelative(at(2 * 3_600_000 + 5 * 60_000), NOW, en)).toBe('2 h 5 min')
+    expect(resetRelative(at(2 * 3_600_000 + 5 * 60_000), NOW, vi)).toBe('2 giờ 5 phút')
+  })
+
+  it('gives minutes only, whole hours and days without minutes', () => {
+    expect(resetRelative(at(45 * 60_000), NOW, en)).toBe('45 min')
+    expect(resetRelative(at(3 * 3_600_000), NOW, en)).toBe('3 h')
+    expect(resetRelative(at(26 * 3_600_000 + 30 * 60_000), NOW, en)).toBe('1 d 2 h')
+  })
+
+  it('rounds seconds up and handles missing or past times', () => {
+    expect(resetRelative(at(20_000), NOW, en)).toBe('1 min')
+    expect(resetRelative(null, NOW, en)).toBe('')
+    expect(resetRelative(at(-1), NOW, en)).toBe('')
   })
 })

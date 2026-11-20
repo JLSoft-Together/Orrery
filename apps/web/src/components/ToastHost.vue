@@ -59,7 +59,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey))
           <component :is="iconOf(toast)" v-else-if="iconOf(toast)" :size="16" class="mt-0.5 shrink-0" :class="toast.kind === 'info' ? 'text-ink-muted' : 'text-warning'" aria-hidden="true" />
           <div class="min-w-0 flex-1">
             <h2 v-if="toast.title" class="text-sm font-semibold">{{ toast.title }}</h2>
-            <p class="text-sm text-ink" :class="[toast.title ? 'mt-0.5 leading-relaxed text-ink-muted' : '', inline(toast) ? 'truncate' : '']">{{ toast.text }}</p>
+            <p class="text-sm text-ink" :class="[toast.title ? 'mt-0.5 leading-relaxed text-ink-muted' : '', inline(toast) ? 'line-clamp-3 break-words' : '']">{{ toast.text }}</p>
             <p v-if="toast.detail" class="truncate text-2xs text-ink-muted" :class="inline(toast) ? '' : 'mt-1'">{{ toast.detail }}</p>
           </div>
           <template v-if="inline(toast)">

@@ -154,6 +154,9 @@ const sizeText = (row: TreeRow): string => {
   return n === null ? '' : formatSize(n, locale.value)
 }
 
+function rootLabel(name: string): string {
+  return name.length > 22 ? `${name.slice(0, 12)}…${name.slice(-8)}` : name
+}
 const rootListed = computed(() => !!explorer.root && explorer.state.listings.has(explorer.root))
 const failed = computed(() => explorer.openDirs.some((d) => explorer.state.errors.has(d)))
 const loading = computed(() => explorer.state.rootExpanded && !rootListed.value && !failed.value)
@@ -425,11 +428,11 @@ const ACTION = 'inline-flex size-[18px] shrink-0 cursor-pointer items-center jus
           </template>
           <span
             class="min-w-0 flex-1 truncate"
-            :class="[row.depth === 0 ? 'text-2xs tracking-wide uppercase' : '', !isActive(row) && gitKind(row) ? KIND_CLASS[gitKind(row)!] : '', !isActive(row) && gitDir(row) ? 'text-diff-mod' : '', problemOf(row) ? PROBLEM_CLASS[problemOf(row)!] : '']"
+            :class="[row.depth === 0 ? 'text-2xs' : '', !isActive(row) && gitKind(row) ? KIND_CLASS[gitKind(row)!] : '', !isActive(row) && gitDir(row) ? 'text-diff-mod' : '', problemOf(row) ? PROBLEM_CLASS[problemOf(row)!] : '']"
             :data-problem="problemOf(row)"
             :data-git="gitKind(row) ?? (gitDir(row) ? 'dir' : undefined)"
             data-row-name
-            >{{ row.name }}</span
+            >{{ row.depth === 0 ? rootLabel(row.name) : row.name }}</span
           >
           <span v-if="sizeText(row)" class="shrink-0 text-2xs text-ink-muted tabular-nums" data-row-size>{{ sizeText(row) }}</span>
           <GitCompare v-if="compareSel && samePath(compareSel.path, row.path)" :size="12" class="shrink-0 text-accent-ink" :title="t('workspace.explorer.menu.compareSelected')" aria-hidden="true" data-compare-selected />

@@ -323,11 +323,11 @@ const statusText = computed(() => {
 </script>
 
 <template>
-  <section class="flex min-h-0 flex-1 flex-col gap-1" :aria-label="t('workspace.explorer.title')" data-explorer @keydown="onPanelKey">
+  <section class="@container flex min-h-0 flex-1 flex-col gap-1" :aria-label="t('workspace.explorer.title')" data-explorer @keydown="onPanelKey">
     <p v-if="!hasExplorer" class="px-2 py-3 text-xs text-ink-muted">{{ t('workspace.explorer.unavailable') }}</p>
     <p v-else-if="!explorer.root" class="px-2 py-3 text-xs text-ink-muted">{{ t('workspace.explorer.noRoot') }}</p>
     <template v-else>
-      <div ref="tabs" class="ccm-seg @container flex shrink-0 rounded-inner p-0.5" role="tablist" :aria-label="t('workspace.explorer.views')" data-explorer-tabs @keydown="onTabKey">
+      <div ref="tabs" class="ccm-seg flex shrink-0 rounded-inner p-0.5" role="tablist" :aria-label="t('workspace.explorer.views')" data-explorer-tabs @keydown="onTabKey">
         <button
           v-for="v in VIEWS"
           :key="v"

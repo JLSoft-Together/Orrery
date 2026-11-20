@@ -29,6 +29,7 @@ import { contextPctOf } from '../../../lib/provider'
 import { monogram, projectTone } from '../../../lib/rail/projectRow'
 import type { RailDragSource } from '../../../lib/rail/railDrag'
 import { isMenuKey, projectMenu as buildProjectMenu, rowMenu } from '../../../lib/rail/railMenu'
+import { folderName } from '../../../lib/sidebarRows'
 import { rowLines, type RailCluster, type RailRow } from '../../../lib/rail/railModel'
 import { clickSelect, extendSelect, NO_SELECTION, pruneSelection, selectionFacts, selectionMenu, selectionPanes, type RailSelection } from '../../../lib/rail/railSelect'
 import { railMoveIndexes } from '../../../lib/rail/railView'
@@ -64,6 +65,14 @@ const turnEdits = useTurnEditsStore()
 const turnChanges = useTurnChanges()
 const shell = inject(NEXT_SHELL_KEY, null)
 
+function rowTitle(row: RailRow): string {
+  const pane = row.pane
+  const first = rowLines(row, '').first
+  const dir = workCwd(pane)
+  if (!dir || !isTerm(pane) || (row.task ?? row.agent) !== folderName(dir)) return first
+  return [t(`workspace.preset.${presetOf(pane)}`), row.twin].filter(Boolean).join(' ')
+}
+
 function extrasOf(row: RailRow): LiveExtras {
   const pane = row.pane
   const session = info.sessionOf(pane)
@@ -78,7 +87,7 @@ function extrasOf(row: RailRow): LiveExtras {
     waitReason: session?.status === 'waiting' ? waitReason(session.waitingFor) : null,
     waitText: display?.text ?? null,
     stateText: isTerm(pane) ? info.stateText(pane) : null,
-    title: rowLines(row, '').first,
+    title: rowTitle(row),
     clash: id ? clashOf(id, workCwd(pane)) : null,
   }
 }
@@ -682,6 +691,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
                 @menu="onRowMenu"
                 @renamed="onRenamed"
                 @key="onRowKey"
+                @close="closeRowTab"
               />
             </div>
           </section>
@@ -703,6 +713,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
                 @menu="onRowMenu"
                 @renamed="onRenamed"
                 @key="onRowKey"
+                @close="closeRowTab"
               />
             </div>
           </section>

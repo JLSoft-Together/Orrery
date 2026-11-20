@@ -58,3 +58,24 @@ export function resetLabel(resetsAt: number | null, nowMs: number, locale: strin
 }
 
 export const QUOTA_TONE_CLASS: Record<LimitLevel, string> = { ok: 'bg-accent', warn: 'bg-warning', critical: 'bg-st-error' }
+
+export interface RelativeUnits {
+  d: string
+  h: string
+  min: string
+  lessThanMin: string
+}
+
+export function resetRelative(resetsAt: number | null, nowMs: number, units: RelativeUnits): string {
+  if (resetsAt === null || resetsAt <= nowMs) return ''
+  const mins = Math.ceil((resetsAt - nowMs) / 60_000)
+  if (mins < 1) return units.lessThanMin
+  const d = Math.floor(mins / 1440)
+  const h = Math.floor((mins % 1440) / 60)
+  const m = mins % 60
+  const parts: string[] = []
+  if (d) parts.push(`${d} ${units.d}`)
+  if (h) parts.push(`${h} ${units.h}`)
+  if (m && !d) parts.push(`${m} ${units.min}`)
+  return parts.join(' ')
+}

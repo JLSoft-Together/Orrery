@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CheckCircle2, CircleDashed, CircleHelp, FileWarning, Lock, LoaderCircle, Moon, XCircle, type LucideIcon } from 'lucide-vue-next'
+import { CheckCircle2, CircleDashed, CircleHelp, Crosshair, FileWarning, Lock, LoaderCircle, Moon, X, XCircle, type LucideIcon } from 'lucide-vue-next'
 import { now } from '../../../lib/format'
-import { detailOf, isSignalEdge, SIGNAL_MS, timeLabel, type LiveRow } from '../../../lib/next/railLive'
+import { isSignalEdge, SIGNAL_MS, type LiveRow } from '../../../lib/next/railLive'
+import { elapsedParts, rowStatusOf, rowToolLine } from '../../../lib/next/rowText'
+import { statusMeta } from '../../../lib/status'
 import type { RailState } from '../../../lib/rail/railModel'
 import TabRenameInput from '../../workspace/TabRenameInput.vue'
 import ContextGaugeMini from '../ui/ContextGaugeMini.vue'
 
 const props = defineProps<{ row: LiveRow; selected?: boolean; renaming?: boolean; showProject?: boolean; tabStop?: boolean }>()
-const emit = defineEmits<{ open: [row: LiveRow]; menu: [row: LiveRow, e: MouseEvent]; renamed: [tabKey: string, saved: boolean]; key: [row: LiveRow, e: KeyboardEvent] }>()
+const emit = defineEmits<{ open: [row: LiveRow]; menu: [row: LiveRow, e: MouseEvent]; renamed: [tabKey: string, saved: boolean]; key: [row: LiveRow, e: KeyboardEvent]; close: [row: LiveRow] }>()
 
 const { t } = useI18n()
 
@@ -27,8 +29,15 @@ const ICONS: Record<RailState, { icon: LucideIcon; tone: string; spin?: boolean 
 
 const glyph = computed(() => (props.row.attn === 'permission' ? { icon: Lock, tone: 'text-st-waiting', spin: false } : ICONS[props.row.state]))
 const word = computed(() => props.row.stateText ?? '')
-const time = computed(() => timeLabel(props.row, now.value))
-const detail = computed(() => detailOf(props.row))
+const status = computed(() => rowStatusOf(props.row.state))
+const meta = computed(() => statusMeta(status.value))
+const statusWord = computed(() => t(`v105u1.status.${status.value}`))
+const time = computed(() => {
+  if (props.row.since <= 0) return ''
+  const p = elapsedParts(now.value - props.row.since)
+  return p ? t(`v105u1.since.${status.value}`, { t: t(`v105u1.unit.${p.unit}`, { n: p.n }) }) : ''
+})
+const detail = computed(() => rowToolLine(props.row))
 const label = computed(() => t('mist.rail.row', { name: props.row.title, state: word.value || props.row.agent }))
 const gauge = computed(() => props.row.ctxPct !== null && !props.row.shell)
 const clashLabel = computed(() => (props.row.clash ? (props.row.clash.n > 1 ? t('v104.clash.chipN', { n: props.row.clash.n }) : t('v104.clash.chip')) : ''))
@@ -74,7 +83,7 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
     <span class="min-w-0">
       <span class="flex min-w-0 items-baseline gap-2">
         <TabRenameInput v-if="renaming" :tab-key="row.tabKey" :initial="row.title" @done="(saved) => emit('renamed', row.tabKey, saved)" />
-        <span v-else class="min-w-0 flex-1 truncate text-xs" :class="row.focused ? 'font-semibold text-ink' : 'font-medium text-ink'">{{ row.title }}</span>
+        <span v-else class="min-w-0 flex-1 truncate text-xs" :class="row.focused ? 'font-semibold text-ink' : 'font-medium text-ink'" :title="row.title">{{ row.title }}</span>
         <span
           v-if="row.clash"
           class="inline-flex max-w-[55%] min-w-0 shrink-0 items-center gap-0.5 self-center rounded-inner bg-warning-soft px-1 text-2xs font-medium text-warning"
@@ -82,13 +91,13 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
         >
           <FileWarning :size="11" class="shrink-0" aria-hidden="true" /><span class="min-w-0 truncate">{{ clashLabel }}</span>
         </span>
-        <span v-if="time" class="ccm-tabular shrink-0 text-2xs text-ink-faint">{{ time }}</span>
       </span>
       <span class="flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
-        <span class="shrink-0 font-semibold">{{ row.agent }}</span>
-        <span v-if="row.model" class="min-w-0 shrink truncate" data-rail-model>{{ row.model }}</span>
-        <span v-if="detail" class="min-w-0 flex-1 truncate" :class="row.attn ? (row.attn === 'error' ? 'text-st-error' : 'text-st-waiting') : 'text-ink-faint'">{{ detail }}</span>
-        <span v-if="showProject" class="min-w-0 truncate text-ink-faint">{{ row.clusterName }}</span>
+        <span class="inline-flex shrink-0 items-center rounded-inner px-1.5 font-medium" :class="[meta.chip, meta.text]" data-rail-status>{{ statusWord }}</span>
+        <span v-if="detail" class="min-w-0 flex-1 truncate" :class="row.attn === 'error' ? 'text-st-error' : row.attn ? 'text-st-waiting' : 'text-ink-muted'" :title="detail" data-rail-tool>{{ detail }}</span>
+        <span v-else-if="showProject" class="min-w-0 flex-1 truncate" data-rail-project>{{ row.clusterName }}</span>
+        <span v-else class="flex-1" />
+        <span v-if="time" class="ccm-tabular shrink-0 text-ink-muted" data-rail-time>{{ time }}</span>
       </span>
     </span>
     <span class="justify-self-end">
@@ -106,6 +115,28 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
       @click="emit('open', row)"
       @keydown="emit('key', row, $event)"
     />
+    <span class="ccm-next-rail-actions absolute top-1 right-1 z-2 flex items-center gap-0.5 rounded-inner bg-raised p-0.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" data-no-drag>
+      <button
+        type="button"
+        class="inline-grid size-6 cursor-pointer place-items-center rounded-inner text-ink-muted outline-none hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+        :aria-label="t('v105u1.focus')"
+        :title="t('v105u1.focus')"
+        data-rail-focus
+        @click.stop="emit('open', row)"
+      >
+        <Crosshair :size="13" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="inline-grid size-6 cursor-pointer place-items-center rounded-inner text-ink-muted outline-none hover:bg-fill hover:text-st-error focus-visible:outline-2 focus-visible:outline-focus"
+        :aria-label="t('v105u1.close')"
+        :title="t('v105u1.close')"
+        data-rail-close
+        @click.stop="emit('close', row)"
+      >
+        <X :size="13" aria-hidden="true" />
+      </button>
+    </span>
   </div>
 </template>
 

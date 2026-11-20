@@ -105,11 +105,17 @@ import diskCleanV101 from './disk-clean-v101'
 import diskOrganizeV101 from './disk-organize-v101'
 import diskAppsV101 from './disk-apps-v101'
 import v104Ux from './v104-ux'
+import v105U1 from './v105-u1'
+import v105U2 from './v105-u2'
+import v105U3 from './v105-u3'
 
 const vi: typeof en = {
   ...v25.vi,
   ...clickMenuV100.vi,
   ...v104Ux.vi,
+  ...v105U1.vi,
+  ...v105U2.vi,
+  ...v105U3.vi,
   ...diskV101.vi,
   ...diskCleanV101.vi,
   ...diskOrganizeV101.vi,

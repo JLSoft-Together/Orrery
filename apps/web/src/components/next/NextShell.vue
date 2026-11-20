@@ -242,6 +242,7 @@ function onIconKey(e: KeyboardEvent): void {
   void nextTick(() => group.querySelector<HTMLElement>(`[data-view-switch="${next.value}"]`)?.focus())
 }
 
+const footBtn = computed(() => (iconMode.value ? iconBtn : iconBtn.replace('size-8 shrink-0', 'h-8 w-full min-w-0 gap-1 px-1.5 text-2xs font-medium')))
 const iconBtn =
   'relative inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--ccm-dur-fast) outline-none hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus'
 </script>
@@ -331,32 +332,43 @@ const iconBtn =
             <CircleArrowDown :size="16" class="text-accent-ink" aria-hidden="true" />
           </button>
 
-          <div class="flex items-center gap-0.5" :class="iconMode ? 'flex-col' : 'justify-between'">
+          <div class="flex items-center gap-0.5" :class="iconMode ? 'flex-col' : 'w-full'">
             <div class="ccm-next-status"><HeaderStatusPopover /></div>
-            <button type="button" :class="[iconBtn, ui.view === 'usage' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.usage')" :title="t('nav.usage')" :aria-current="ui.view === 'usage' ? 'page' : undefined" data-view-switch="usage" @click="ui.setView('usage')">
-              <ChartColumnBig :size="16" aria-hidden="true" />
-            </button>
-            <button type="button" :class="[iconBtn, ui.view === 'history' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.history')" :title="t('nav.history')" :aria-current="ui.view === 'history' ? 'page' : undefined" data-view-switch="history" @click="ui.setView('history')">
-              <History :size="16" aria-hidden="true" />
-            </button>
-            <button type="button" :class="[iconBtn, ui.settingsOpen ? 'bg-fill text-ink' : '']" data-tour="settings" :aria-label="t('settings.title')" :title="t('settings.title')" :aria-expanded="ui.settingsOpen" aria-controls="settings-panel" data-next-settings @click="ui.settingsOpen = !ui.settingsOpen">
-              <Settings2 :size="16" aria-hidden="true" />
-              <span v-if="update.available" class="absolute top-1 right-1 size-2 rounded-full bg-accent ring-2 ring-canvas" aria-hidden="true" data-update-dot />
-            </button>
-            <button
-              ref="moreBtn"
-              type="button"
-              :class="[iconBtn, moreOpen ? 'bg-fill text-ink' : '']"
-              data-tour="compact"
-              data-more-views
-              :aria-label="t('nav.more')"
-              :title="t('nav.more')"
-              aria-haspopup="menu"
-              :aria-expanded="moreOpen"
-              @click="toggleMore"
-            >
-              <Ellipsis :size="16" aria-hidden="true" />
-            </button>
+            <GlassTooltip :text="t('nav.usage')" :delay="0" :disabled="!iconMode" :class="iconMode ? '' : 'min-w-0 flex-1'">
+              <button type="button" :class="[footBtn, ui.view === 'usage' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.usage')" :aria-current="ui.view === 'usage' ? 'page' : undefined" data-view-switch="usage" @click="ui.setView('usage')">
+                <ChartColumnBig :size="16" class="shrink-0" aria-hidden="true" />
+                <span v-if="!iconMode" class="min-w-0 truncate" data-foot-label>{{ t('nav.usage') }}</span>
+              </button>
+            </GlassTooltip>
+            <GlassTooltip :text="t('nav.history')" :delay="0" :disabled="!iconMode" :class="iconMode ? '' : 'min-w-0 flex-1'">
+              <button type="button" :class="[footBtn, ui.view === 'history' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.history')" :aria-current="ui.view === 'history' ? 'page' : undefined" data-view-switch="history" @click="ui.setView('history')">
+                <History :size="16" class="shrink-0" aria-hidden="true" />
+                <span v-if="!iconMode" class="min-w-0 truncate" data-foot-label>{{ t('nav.history') }}</span>
+              </button>
+            </GlassTooltip>
+            <GlassTooltip :text="t('settings.title')" :delay="0" :disabled="!iconMode" :class="iconMode ? '' : 'min-w-0 flex-1'">
+              <button type="button" :class="[footBtn, ui.settingsOpen ? 'bg-fill text-ink' : '']" data-tour="settings" :aria-label="t('settings.title')" :aria-expanded="ui.settingsOpen" aria-controls="settings-panel" data-next-settings @click="ui.settingsOpen = !ui.settingsOpen">
+                <Settings2 :size="16" class="shrink-0" aria-hidden="true" />
+                <span v-if="!iconMode" class="min-w-0 truncate" data-foot-label>{{ t('v105u3.railSettings') }}</span>
+                <span v-if="update.available" class="absolute top-1 right-1 size-2 rounded-full bg-accent ring-2 ring-canvas" aria-hidden="true" data-update-dot />
+              </button>
+            </GlassTooltip>
+            <GlassTooltip :text="t('nav.more')" :delay="0" :disabled="!iconMode">
+              <button
+                ref="moreBtn"
+                type="button"
+                :class="[iconBtn, moreOpen ? 'bg-fill text-ink' : '']"
+                data-tour="compact"
+                data-more-views
+                :aria-label="t('nav.more')"
+                :title="iconMode ? undefined : t('nav.more')"
+                aria-haspopup="menu"
+                :aria-expanded="moreOpen"
+                @click="toggleMore"
+              >
+                <Ellipsis :size="16" aria-hidden="true" />
+              </button>
+            </GlassTooltip>
           </div>
         </div>
       </aside>

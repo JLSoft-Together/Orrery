@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import {
   AArrowDown,
   AArrowUp,
+  FileDiff,
   ListChecks,
   ListTodo,
   Type,
@@ -70,7 +71,7 @@ import { useFocusMode } from '../composables/useFocusMode'
 import { useTipsStore } from '../stores/tips'
 import { now, relativeTime, shortPath } from '../lib/format'
 import { highlightRuns } from '../lib/fuzzy'
-import { entries as settingsEntries, searchSettings, type SettingsPage } from './settings'
+import { entries as settingsEntries, nextEntries as settingsNextEntries, searchSettings, type SettingsPage } from './settings'
 import { cap, fold, joinPath, listSettings, matchFiles, matchText, parsePrefix, prefixOf, searchable, type PaletteMode, type Searchable } from '../lib/paletteSearch'
 import { listFiles, changesStatus, type FileList } from '../lib/preview'
 import { filterProjects, landingTab, projectEntries, type ProjectEntry } from '../lib/projectSwitcher'
@@ -110,6 +111,8 @@ import { useConnectionStore } from '../stores/connection'
 import { useFavoritesStore } from '../stores/favorites'
 import { usePromptsStore } from '../stores/prompts'
 import { useInboxStore } from '../stores/inbox'
+import { useTurnEditsStore } from '../stores/turnEdits'
+import { useTurnChanges } from '../composables/useTurnChanges'
 import { useRemoteStore } from '../stores/remote'
 import { useSettingsStore } from '../stores/settings'
 import { useUiGenStore } from '../stores/uiGen'
@@ -156,6 +159,12 @@ interface MoreRow {
 const { t, locale } = useI18n()
 const ui = useUiStore()
 const workspace = useWorkspaceStore()
+const turnEdits = useTurnEditsStore()
+const turnChanges = useTurnChanges()
+const turnPaneId = computed(() => {
+  const id = workspace.active?.terminalId
+  return id && turnEdits.countOf(id) ? id : null
+})
 const tips = useTipsStore()
 const terminals = useTerminalsStore()
 const favorites = useFavoritesStore()
@@ -258,11 +267,13 @@ async function loadFiles(): Promise<void> {
   fileState.value = res ? 'idle' : 'failed'
 }
 
+const inboxNeeds = computed(() => new Map(inbox.items.filter((i) => i.terminalId && i.reason !== 'note' && i.reason !== 'done').map((i) => [i.terminalId!, i.since] as const)))
+
 const items = computed<Item[]>(() => {
   const next = isNext.value
   const ranked = next
     ? terminals.list
-        .map((x) => ({ x, bucket: bucketOf({ status: x.status, attention: workspace.paneByTerminal.get(x.id)?.attention }), since: x.statusSince }))
+        .map((x) => ({ x, bucket: bucketOf({ status: x.status, attention: workspace.paneByTerminal.get(x.id)?.attention, needs: inboxNeeds.value.has(x.id) }), since: inboxNeeds.value.get(x.id) ?? x.statusSince }))
         .sort(compareSessions)
     : [...terminals.list].sort((a, b) => (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9)).map((x) => ({ x, bucket: undefined, since: undefined }))
   const sessions: Item[] = ranked
@@ -522,7 +533,10 @@ const items = computed<Item[]>(() => {
         ]
       : []),
     { id: 'c:compact', group: 'nav', label: ui.compact ? t('compact.exit') : t('compact.enter'), icon: Minimize2, run: () => (ui.compact ? ui.leaveCompact() : ui.toggleCompact()) },
-    { id: 'c:inbox', group: 'actions', label: t('inbox.palette'), sub: t('inbox.button', { n: inbox.items.length }, inbox.items.length), icon: Inbox, run: () => (inbox.open = true) },
+    { id: 'c:inbox', group: 'actions', label: t('inbox.palette'), sub: t('inbox.button', { n: inbox.items.length }, inbox.items.length), icon: Inbox, run: () => !inbox.open && inbox.toggle() },
+    ...(turnPaneId.value
+      ? [{ id: 'c:turnChanges', group: 'actions' as const, label: t('v104.turnChanges.command'), sub: String(turnEdits.countOf(turnPaneId.value)), icon: FileDiff, run: () => turnPaneId.value && turnChanges.open(turnPaneId.value) }]
+      : []),
     { id: 'c:recap', group: 'actions', label: t('palette.recap'), icon: FileDown, run: () => ui.openRecap() },
     ...DEV_TOOLS.map((id) => ({
       id: `c:tool:${id}`,
@@ -606,7 +620,7 @@ function openSetting(page: SettingsPage, id: string): void {
 
 const settingItems = computed<Item[]>(() => {
   if (!wantSettings.value) return []
-  const all = settingsEntries(isMac)
+  const all = uiGen.isNext ? settingsNextEntries(isMac) : settingsEntries(isMac)
   const tr = (k: string): string => t(k)
   const hits = text.value ? searchSettings(text.value, all, settingsEnv.value, tr) : listSettings(all, settingsEnv.value, tr)
   return hits.map((h) => ({

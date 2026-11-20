@@ -1,7 +1,8 @@
 import { computed, watch } from 'vue'
-import { REMOTE_SUMMARY_DEBOUNCE_MS, type RemoteWorkspaceSnapshot } from '@ccm/shared'
+import { REMOTE_SUMMARY_DEBOUNCE_MS, type RemoteInbox, type RemoteWorkspaceSnapshot } from '@ccm/shared'
 import { remotePublish } from '../lib/remote'
 import { buildSummary, summaryHash, type RemotePaneFacts } from '../lib/remoteSummary'
+import { useInboxStore } from '../stores/inbox'
 import { useRemoteStore } from '../stores/remote'
 import { isTerm, useWorkspaceStore, type Pane } from '../stores/workspace'
 import { handleOrrery, hasOrrery } from './useOrreryApi'
@@ -17,6 +18,15 @@ export function installRemoteSummary(): void {
   const workspace = useWorkspaceStore()
   const remote = useRemoteStore()
   const info = usePaneInfo()
+  const inbox = useInboxStore()
+  const inboxByPane = computed(() => {
+    const out = new Map<string, RemoteInbox>()
+    for (const i of inbox.items) {
+      if (!i.paneKey || out.has(i.paneKey)) continue
+      out.set(i.paneKey, { reason: i.reason, ...(i.since ? { since: i.since } : {}), ...(i.file ? { file: i.file } : {}), ...(i.peer ? { peer: i.peer } : {}) })
+    }
+    return out
+  })
 
   let rev = Math.floor(Date.now() / 1000)
   let lastHash = ''
@@ -35,7 +45,7 @@ export function installRemoteSummary(): void {
     }
   }
 
-  const build = (at: number): RemoteWorkspaceSnapshot => buildSummary({ tabs: workspace.tabs, panes: workspace.panes, closedCount: workspace.closedStack.length, facts }, at)
+  const build = (at: number): RemoteWorkspaceSnapshot => buildSummary({ tabs: workspace.tabs, panes: workspace.panes, closedCount: workspace.closedStack.length, facts, inbox: (p) => inboxByPane.value.get(p.key) }, at)
 
   const hashed = computed(() => (remote.connected > 0 ? summaryHash(build(0)) : ''))
 

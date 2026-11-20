@@ -3,7 +3,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, REPO, OUT } = require('./cdp.cjs')
+const { launch, REPO, OUT, SHELL, secondInstance } = require('./cdp.cjs')
 const { paneProbe } = require('./pane-probe.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -42,7 +42,8 @@ const call = (port, token, args) =>
   request(port, { headers: { Authorization: `Bearer ${token}` }, body: { jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: 'open_session', arguments: args } } }).then((r) => r.json?.result?.structuredContent)
 
 const fireLink = (link) => {
-  const p = spawn(require(path.join(REPO, 'node_modules/electron')), [`--user-data-dir=${path.join(OUT, 'run', 'ud')}`, path.join(REPO, 'apps/desktop/stage'), link], { stdio: 'ignore' })
+  const p = secondInstance(link)
+  if (!p) return Promise.resolve()
   return new Promise((resolve) => { p.on('exit', resolve); setTimeout(() => { try { p.kill() } catch {} resolve() }, 20000) })
 }
 
@@ -156,16 +157,17 @@ const fireLink = (link) => {
     await evaluate(`${S}.get('ui').setView('monitor')`)
     const docs = path.join(REPO, 'docs')
     const link = (agent) => `agent-monitor://open?agent=${agent}&cwd=${encodeURIComponent(docs)}&prompt=ignored&name=ignored`
+    if (SHELL) console.log('SKIP deeplink via a second instance: Tauri E2E runs isolated without single-instance (links.rs has unit tests)')
     await fireLink(link('shell'))
-    const opened = await waitFor(`${W}.panes.length > ${before} && ${S}.get('ui').view === 'workspace'`, 15000, 'deeplink pane').then(() => true, () => false)
+    const opened = SHELL ? false : await waitFor(`${W}.panes.length > ${before} && ${S}.get('ui').view === 'workspace'`, 15000, 'deeplink pane').then(() => true, () => false)
     const last = await evaluate(`(() => { const p = ${W}.panes.at(-1); return { preset: p.preset, cwd: p.cwd, prefill: p.prefill ?? null, resume: p.resume ?? null } })()`)
-    check('deeplink opens the pane without asking and shows the workspace', opened && last.preset === 'shell' && same(last.cwd, docs) && last.prefill === null && last.resume === null, JSON.stringify(last))
+    if (!SHELL) check('deeplink opens the pane without asking and shows the workspace', opened && last.preset === 'shell' && same(last.cwd, docs) && last.prefill === null && last.resume === null, JSON.stringify(last))
     await fireLink(link('shell'))
     await fireLink(link('shell'))
     await fireLink(link('shell'))
     await sleep(4000)
     const count = await evaluate(`${W}.panes.length`)
-    check('deeplink queue opens every link', count === before + 4, `${count - before} opened`)
+    if (!SHELL) check('deeplink queue opens every link', count === before + 4, `${count - before} opened`)
     await shot('v49-03-deeplink')
 
     const pids = await evaluate(`${W}.panes.map(p => p.pid).filter(Boolean)`)

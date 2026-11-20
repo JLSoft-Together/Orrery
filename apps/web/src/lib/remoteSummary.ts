@@ -1,4 +1,4 @@
-import { waitReason, type LayoutNodeLike, type RemotePaneGroup, type RemotePane, type RemoteTab, type RemoteWorkspaceSnapshot } from '@ccm/shared'
+import { waitReason, type LayoutNodeLike, type RemoteInbox, type RemotePaneGroup, type RemotePane, type RemoteTab, type RemoteWorkspaceSnapshot } from '@ccm/shared'
 import { isTerm, presetOf, workCwd, type Pane, type Tab } from '../stores/workspace'
 import type { LayoutNode } from './splitLayout'
 import { groupsOf, leaves } from './splitLayout'
@@ -19,6 +19,7 @@ export interface RemoteSummaryInput {
   panes: readonly Pane[]
   closedCount: number
   facts: (pane: Pane) => RemotePaneFacts
+  inbox?: (pane: Pane) => RemoteInbox | undefined
 }
 
 const treeOf = (node: LayoutNode): LayoutNodeLike => ('pane' in node ? { pane: node.pane } : 'group' in node ? treeOf(node.node) : { dir: node.dir, ratio: node.ratio, a: treeOf(node.a), b: treeOf(node.b) })
@@ -32,7 +33,12 @@ function viewTitle(pane: Pane, fallback: string): string {
   return fallback
 }
 
-function paneOf(pane: Pane, facts: RemotePaneFacts): RemotePane {
+function inboxOf(x: RemoteInbox | undefined): RemoteInbox | undefined {
+  if (!x) return undefined
+  return { reason: x.reason, ...(x.since ? { since: x.since } : {}), ...(x.file ? { file: clip(x.file) } : {}), ...(x.peer ? { peer: clip(x.peer) } : {}) }
+}
+
+function paneOf(pane: Pane, facts: RemotePaneFacts, inbox?: RemoteInbox): RemotePane {
   const term = isTerm(pane)
   const cwd = term || pane.kind === 'run' || pane.kind === 'changes' || pane.kind === 'log' ? (term ? workCwd(pane) : (pane.root ?? pane.cwd)) : undefined
   const branch = facts.branch ?? pane.branch
@@ -53,6 +59,7 @@ function paneOf(pane: Pane, facts: RemotePaneFacts): RemotePane {
     ...(pane.terminalId ? { terminalId: pane.terminalId } : {}),
     dirty: !!pane.dirty,
     busy: facts.busy,
+    ...(inbox ? { inbox } : {}),
   }
 }
 
@@ -80,11 +87,11 @@ export function buildSummary(input: RemoteSummaryInput, rev: number): RemoteWork
       ...(groups.length ? { groups } : {}),
       panes: leaves(tab.root).flatMap((k) => {
         const pane = byKey.get(k)
-        return pane ? [paneOf(pane, input.facts(pane))] : []
+        return pane ? [paneOf(pane, input.facts(pane), inboxOf(input.inbox?.(pane)))] : []
       }),
     }
   })
-  return { rev, tabs, closedCount: input.closedCount }
+  return { rev, tabs, closedCount: input.closedCount, ...(input.inbox ? { inbox: true as const } : {}) }
 }
 
-export const summaryHash = (s: Pick<RemoteWorkspaceSnapshot, 'tabs' | 'closedCount'>): string => JSON.stringify([s.tabs, s.closedCount])
+export const summaryHash = (s: Pick<RemoteWorkspaceSnapshot, 'tabs' | 'closedCount' | 'inbox'>): string => JSON.stringify([s.tabs, s.closedCount, s.inbox ?? false])

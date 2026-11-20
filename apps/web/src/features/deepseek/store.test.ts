@@ -1,20 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import type { DeepSeekStatus } from '../lib/desktop'
+import type { DeepSeekStatus } from '../../lib/desktop'
 
 const bridge = vi.hoisted(() => ({ status: vi.fn() }))
 
-vi.mock('../lib/desktop', async (original) => ({
-  ...(await original<typeof import('../lib/desktop')>()),
+vi.mock('../../lib/desktop', async (original) => ({
+  ...(await original<typeof import('../../lib/desktop')>()),
   desktop: { platform: 'win32', deepseekStatus: (fresh?: boolean) => bridge.status(fresh) },
   hasDeepSeek: true,
 }))
 
-import { autoSyncAfterLogin, deepseekBlocker, setupSteps } from '../lib/deepseekGate'
-import { STATUS_TTL_MS, useDeepSeekStore } from './deepseek'
-import { useToastsStore } from './toasts'
-import { useUiStore } from './ui'
-import { useWorkspaceStore } from './workspace'
+import { autoSyncAfterLogin, deepseekBlocker, setupSteps } from './gate'
+import { loadDeepSeek } from './index'
+import { STATUS_TTL_MS, useDeepSeekStore } from './store'
+import { useToastsStore } from '../../stores/toasts'
+import { useUiStore } from '../../stores/ui'
+import { useWorkspaceStore } from '../../stores/workspace'
 
 const status = (over: Partial<DeepSeekStatus> = {}): DeepSeekStatus => ({
   installed: true,
@@ -52,11 +53,12 @@ describe('deepseekGate', () => {
 })
 
 describe('useDeepSeekStore', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
     sessionStorage.clear()
     setActivePinia(createPinia())
     bridge.status.mockReset()
+    await loadDeepSeek()
   })
 
   it('asks main at most once a minute unless a level is given', async () => {

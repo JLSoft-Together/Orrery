@@ -78,7 +78,7 @@ async function main() {
   })
   await new Promise((r) => server.listen(0, '127.0.0.1', r))
   fixture(server.address().port)
-  const app = await launch({ exe: process.argv[2] })
+  const app = await launch({ exe: process.argv[2], ui: 'classic' })
   const { evaluate, waitFor, shot, sleep, cmd, key, type } = app
   const filePane = (name) => `document.querySelector('[data-pane="' + ${W}.panes.findLast((p) => p.kind === 'file' && p.path.endsWith(${JSON.stringify(name)}))?.key + '"]')`
   const openFile = async (name, line) => {

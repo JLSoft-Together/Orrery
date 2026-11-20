@@ -79,7 +79,7 @@ import uiV80Links from './ui-v80-links'
 import uiV80Palette from './ui-v80-palette'
 import uiV80Wp1 from './ui-v80-wp1'
 import uiV80Toast from './ui-v80-toast'
-import deepseekV81 from './deepseek-v81'
+import deepseekLaunch from './deepseek-launch'
 import remoteV97 from './remote-v97'
 import remoteV98 from './remote-v98'
 import mistRemote from './mist-remote'
@@ -104,10 +104,12 @@ import diskV101 from './disk-v101'
 import diskCleanV101 from './disk-clean-v101'
 import diskOrganizeV101 from './disk-organize-v101'
 import diskAppsV101 from './disk-apps-v101'
+import v104Ux from './v104-ux'
 
 const vi: typeof en = {
   ...v25.vi,
   ...clickMenuV100.vi,
+  ...v104Ux.vi,
   ...diskV101.vi,
   ...diskCleanV101.vi,
   ...diskOrganizeV101.vi,
@@ -181,7 +183,7 @@ const vi: typeof en = {
   ...uiV80Palette.vi,
   ...uiV80Wp1.vi,
   ...uiV80Toast.vi,
-  ...deepseekV81.vi,
+  ...deepseekLaunch.vi,
   ...remoteV97.vi,
   ...remoteV98.vi,
   ...mistRemote.vi,
@@ -388,8 +390,8 @@ const vi: typeof en = {
     },
   },
   inbox: {
-    title: 'Cần chủ nhân',
-    palette: 'Mở hộp cần chủ nhân (agent đang cần bạn)',
+    title: 'Inbox',
+    palette: 'Mở Inbox (agent đang cần bạn)',
     button: 'Cần chủ nhân: không có | Cần chủ nhân: {n} agent | Cần chủ nhân: {n} agent',
     keys: 'J/K · Enter · E đã xem',
     empty: 'Không có agent nào cần chủ nhân lúc này.',
@@ -744,8 +746,8 @@ const vi: typeof en = {
       wsClose: 'Đóng pane đang chọn',
       wsReopen: 'Mở lại pane hoặc tab vừa đóng',
       wsZoom: 'Phóng to pane đang chọn cho đầy tab, hoặc hiện lại mọi pane',
-      wsAttention: 'Tới pane tiếp theo đang cần bạn',
-      wsAsked: 'Tới pane tiếp theo đang chờ trả lời',
+      wsAttention: 'Mở hoặc đóng Inbox',
+      wsAsked: 'Tới mục kế trong Inbox',
       wsCycle: 'Tab kế tiếp của dự án này (thêm Shift để lùi)',
       wsMoveTab: 'Chuyển tab sang trái / phải',
       wsTab: 'Tab 1–9 của dự án này',

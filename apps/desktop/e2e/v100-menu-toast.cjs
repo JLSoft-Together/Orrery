@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const { launch, REPO, OUT } = require('./cdp.cjs')
+const { launch, REPO, OUT, SHELL } = require('./cdp.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const FIX = path.join(REPO, 'apps/web/src/lib/__fixtures__/term-menu')
@@ -31,7 +31,9 @@ const NOTIFY = JSON.stringify({ toast: 'on', kinds: { waiting: true, done: false
     await sleep(300)
     await key('Enter', 'Enter', 13)
   }
+  let minimized = false
   const setState = async (windowState) => {
+    minimized = windowState === 'minimized'
     const code = windowState === 'minimized' ? 6 : 9
     const ps = `Add-Type -Name W -Namespace U -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int c); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);'; $h=(Get-Process -Id ${app.child.pid}).MainWindowHandle; [U.W]::ShowWindow($h, ${code}) | Out-Null; if (${code} -eq 9) { [U.W]::SetForegroundWindow($h) | Out-Null }`
     spawnSync('powershell', ['-NoProfile', '-Command', ps], { timeout: 20000 })
@@ -48,7 +50,10 @@ const NOTIFY = JSON.stringify({ toast: 'on', kinds: { waiting: true, done: false
     await sleep(2000)
     await evaluate(`${W}.update(${JSON.stringify(k)}, { agent: 'claude' })`)
     await evaluate(`${W}.panes.forEach((p) => ${W}.update(p.key, { agent: 'claude' }))`)
-    await enter(`node ${SCRIPT} ${path.join(FIX, fixture).replace(/\\/g, '/')} ${KEYS(agentKey)}`)
+    const delayed = SHELL && minimized
+    if (delayed) await setState('normal')
+    await enter(`${delayed ? 'Start-Sleep -Seconds 5; ' : ''}node ${SCRIPT} ${path.join(FIX, fixture).replace(/\\/g, '/')} ${KEYS(agentKey)}`)
+    if (delayed) await setState('minimized')
     return k
   }
   try {
@@ -82,6 +87,9 @@ const NOTIFY = JSON.stringify({ toast: 'on', kinds: { waiting: true, done: false
     await sleep(2500)
     check('no repeat toast for the same menus', shows().length === 2, String(shows().length))
 
+    if (SHELL) {
+      console.log('SKIP toast links via a second instance: Tauri E2E runs isolated without single-instance (menu_toast.rs + links.rs unit tests cover key, sig, option and hide)')
+    } else {
     const badKey = first.answers[1].url.replace(/k=[0-9a-f]{32}/, 'k=' + '0'.repeat(32))
     forward(badKey)
     await sleep(1200)
@@ -106,6 +114,7 @@ const NOTIFY = JSON.stringify({ toast: 'on', kinds: { waiting: true, done: false
     await waitFor(`${W}.activeKey === ${JSON.stringify(b)}`, 10000, 'open jumped to pane B')
     check('Open link focuses the app and jumps to the pane', true)
     await sleep(800)
+    }
 
     await evaluate(`${S}.get('settings').menuToast = false`)
     await sleep(500)

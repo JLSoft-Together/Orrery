@@ -78,7 +78,7 @@ import uiV80Links from './ui-v80-links'
 import uiV80Palette from './ui-v80-palette'
 import uiV80Wp1 from './ui-v80-wp1'
 import uiV80Toast from './ui-v80-toast'
-import deepseekV81 from './deepseek-v81'
+import deepseekLaunch from './deepseek-launch'
 import remoteV97 from './remote-v97'
 import remoteV98 from './remote-v98'
 import mistRemote from './mist-remote'
@@ -103,10 +103,12 @@ import diskV101 from './disk-v101'
 import diskCleanV101 from './disk-clean-v101'
 import diskOrganizeV101 from './disk-organize-v101'
 import diskAppsV101 from './disk-apps-v101'
+import v104Ux from './v104-ux'
 
 export default {
   ...v25.en,
   ...clickMenuV100.en,
+  ...v104Ux.en,
   ...diskV101.en,
   ...diskCleanV101.en,
   ...diskOrganizeV101.en,
@@ -180,7 +182,7 @@ export default {
   ...uiV80Palette.en,
   ...uiV80Wp1.en,
   ...uiV80Toast.en,
-  ...deepseekV81.en,
+  ...deepseekLaunch.en,
   ...remoteV97.en,
   ...remoteV98.en,
   ...mistRemote.en,
@@ -387,7 +389,7 @@ export default {
     },
   },
   inbox: {
-    title: 'Needs you',
+    title: 'Inbox',
     palette: 'Open the inbox (agents that need you)',
     button: 'Needs you: nothing | Needs you: {n} agent | Needs you: {n} agents',
     keys: 'J/K · Enter · E seen',
@@ -743,8 +745,8 @@ export default {
       wsClose: 'Close the focused pane',
       wsReopen: 'Reopen the last closed pane or tab',
       wsZoom: 'Zoom the focused pane to fill the tab, or show all panes again',
-      wsAttention: 'Jump to the next pane that needs you',
-      wsAsked: 'Jump to the next pane waiting for an answer',
+      wsAttention: 'Open or close the Inbox',
+      wsAsked: 'Jump to the next item in the Inbox',
       wsCycle: 'Next tab of this project (add Shift to go back)',
       wsMoveTab: 'Move the tab left / right',
       wsTab: 'Tab 1–9 of this project',

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '../../stores/settings'
+import { useUiGenStore } from '../../stores/uiGen'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import SegmentedControl from '../ui/SegmentedControl.vue'
 import SettingRow from './SettingRow.vue'
@@ -9,6 +10,7 @@ import SettingSection from './SettingSection.vue'
 
 const { t } = useI18n()
 const settings = useSettingsStore()
+const uiGen = useUiGenStore()
 const fileIconStyles = computed(() => [
   { value: 'atom' as const, label: t('settings.fileIconsAtom') },
   { value: 'simple' as const, label: t('settings.fileIconsSimple') },
@@ -17,7 +19,7 @@ const fileIconStyles = computed(() => [
 
 <template>
   <div data-settings-workspace>
-    <SettingSection id="clickMenuGroup" :title="t('mist.settings.clickMenuGroup')">
+    <SettingSection v-if="uiGen.isNext" id="clickMenuGroup" :title="t('mist.settings.clickMenuGroup')">
       <ToggleSwitch
         v-model="settings.clickMenu"
         :label="t('clickMenu.setting')"
@@ -36,8 +38,9 @@ const fileIconStyles = computed(() => [
       />
     </SettingSection>
     <SettingSection id="panes" :title="t('mist.settings.panesGroup')">
-      <ToggleSwitch v-model="settings.dimInactive" :label="t('workspace.dim.setting')" :info="t('workspace.dim.settingHint')" class="px-3" data-setting-row="dim" />
+      <ToggleSwitch v-if="uiGen.isNext" v-model="settings.dimInactive" :label="t('workspace.dim.setting')" :info="t('workspace.dim.settingHint')" class="px-3" data-setting-row="dim" />
       <ToggleSwitch
+        v-if="uiGen.isNext"
         v-model="settings.compactAuto"
         :label="t('workspace.compact.auto.setting')"
         :info="t('workspace.compact.auto.settingHint')"
@@ -46,6 +49,7 @@ const fileIconStyles = computed(() => [
         data-setting-row="compactAuto"
       />
       <ToggleSwitch
+        v-if="uiGen.isNext"
         v-model="settings.agentShim"
         :label="t('shellMarks.agentShim')"
         :info="t('shellMarks.agentShimHint')"

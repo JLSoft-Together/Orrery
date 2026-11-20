@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, HardDrive, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, SquareTerminal, Timer, X } from 'lucide-vue-next'
+import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, HardDrive, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, SquareTerminal, X } from 'lucide-vue-next'
 import { clampDialogSize, readDialogSize, saveDialogSize, type DialogSize } from '../lib/dialogSize'
 import { retireOverlay } from '../lib/motion'
 import { isMac } from '../lib/platform'
@@ -18,6 +18,7 @@ import { hasGrants } from '../lib/preview'
 import { hasUpdater } from '../lib/update'
 import { useExtrasStore } from '../stores/extras'
 import { useSettingsStore } from '../stores/settings'
+import { useToastsStore } from '../stores/toasts'
 import { useUiGenStore } from '../stores/uiGen'
 import { useUiStore } from '../stores/ui'
 import { useUpdateStore } from '../stores/update'
@@ -30,15 +31,16 @@ import SettingsAppearance from './settings/SettingsAppearance.vue'
 import SettingsData from './settings/SettingsData.vue'
 import SettingsDisk from './settings/SettingsDisk.vue'
 import SettingsWorkspace from './settings/SettingsWorkspace.vue'
-import SettingsDeepSeek from './settings/SettingsDeepSeek.vue'
+import { loadSettingsDeepSeek } from '../features/deepseek'
 import SettingsEditor from './settings/SettingsEditor.vue'
 import SettingsGeneral from './settings/SettingsGeneral.vue'
 import SettingsIntegrations from './settings/SettingsIntegrations.vue'
 import SettingsNotify from './settings/SettingsNotify.vue'
-import SettingsReminders from './settings/SettingsReminders.vue'
 import SettingsRemote from './settings/SettingsRemote.vue'
 import SettingEmbed from './settings/SettingEmbed.vue'
-import { SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageAvailable, nextEntries, savePage, searchSettings, type SettingsEnv, type SettingsPage } from './settings'
+import { SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageAvailable, nextEntries, savePage, searchSettings, takeLegacyReminders, type SettingsEnv, type SettingsPage } from './settings'
+
+const SettingsDeepSeek = defineAsyncComponent(loadSettingsDeepSeek)
 
 const { t } = useI18n()
 const settings = useSettingsStore()
@@ -46,6 +48,7 @@ const extras = useExtrasStore()
 const ui = useUiStore()
 const uiGen = useUiGenStore()
 const update = useUpdateStore()
+const toasts = useToastsStore()
 
 const panel = ref<HTMLElement | null>(null)
 
@@ -114,6 +117,7 @@ const page = ref<SettingsPage>('general')
 const query = ref('')
 let restoreFocus: HTMLElement | null = null
 let flashTimer: number | undefined
+const REMINDER_IDS = ['break', 'stuck', 'contextWarn', 'budget']
 
 const pageIcons: Record<SettingsPage, Component> = {
   general: SlidersHorizontal,
@@ -122,7 +126,6 @@ const pageIcons: Record<SettingsPage, Component> = {
   notify: Bell,
   telegram: Send,
   remote: Smartphone,
-  reminders: Timer,
   github: GitBranch,
   integrations: Plug,
   deepseek: Bot,
@@ -156,6 +159,7 @@ const env = computed<SettingsEnv>(() => ({
   deepseek: hasDeepSeek,
   xmlPreview: hasXmlInstall,
   bugReport: Boolean(desktop?.bugReportSave),
+  desktop: Boolean(desktop),
 }))
 const pages = computed(() => SETTINGS_PAGES.filter((p) => pageAvailable(p, env.value, uiGen.isNext)))
 const allEntries = computed(() => (uiGen.isNext ? nextEntries(isMac) : entries(isMac)))
@@ -184,8 +188,15 @@ async function flash(id: string): Promise<void> {
     content.value?.querySelector<HTMLElement>('[data-notify-more][aria-expanded="false"]')?.click()
     await nextTick()
   }
+  if (REMINDER_IDS.includes(id)) {
+    content.value?.querySelector<HTMLElement>('[data-reminders-more][aria-expanded="false"]')?.click()
+    await nextTick()
+  }
   const row = content.value?.querySelector<HTMLElement>(`[data-setting-row="${id}"]`)
-  if (!row) return
+  if (!row) {
+    toasts.push({ id: 'settings-not-found', kind: 'info', text: t('v104.settings.notFound'), attrs: { 'data-settings-not-found': id } })
+    return
+  }
   row.scrollIntoView({ block: 'center' })
   row.classList.add('ccm-setting-flash')
   window.clearTimeout(flashTimer)
@@ -244,8 +255,10 @@ watch(
     if (open) {
       restoreFocus = document.activeElement as HTMLElement | null
       query.value = ''
+      const legacy = takeLegacyReminders()
       page.value = pageAvailable(loadPage(), env.value, uiGen.isNext) ? loadPage() : 'general'
       takeRequestedPage()
+      if (legacy && page.value === 'notify') void flash('break')
       await nextTick()
       panel.value?.querySelector<HTMLElement>('[aria-current="page"]')?.focus()
     } else {
@@ -388,7 +401,6 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                   <SettingsNotify v-else-if="page === 'notify'" />
                   <SettingEmbed v-else-if="page === 'telegram'" id="telegram"><TelegramSettings :open="ui.settingsOpen" /></SettingEmbed>
                   <SettingsRemote v-else-if="page === 'remote'" />
-                  <SettingsReminders v-else-if="page === 'reminders'" />
                   <SettingEmbed v-else-if="page === 'github'" id="github"><GitHubAccountsSettings :open="ui.settingsOpen" /></SettingEmbed>
                   <SettingsIntegrations v-else-if="page === 'integrations'" />
                   <SettingsDeepSeek v-else-if="page === 'deepseek'" />

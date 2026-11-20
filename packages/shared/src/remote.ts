@@ -1,4 +1,5 @@
 import { isAgentSessionId } from './pty'
+import type { RemoteInbox } from './inbox'
 import type { LayoutNodeLike } from './remoteLayout'
 
 export const REMOTE_PROTO = 1
@@ -46,6 +47,7 @@ export interface RemotePane {
   terminalId?: string
   dirty: boolean
   busy: boolean
+  inbox?: RemoteInbox
 }
 
 export interface RemotePaneGroup {
@@ -82,6 +84,7 @@ export interface RemoteWorkspaceSnapshot {
   rev: number
   tabs: RemoteTab[]
   closedCount: number
+  inbox?: true
 }
 
 export interface RemotePatchOp {

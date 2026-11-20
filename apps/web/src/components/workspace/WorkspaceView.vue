@@ -85,9 +85,7 @@ import ViewPaneControls from './ViewPaneControls.vue'
 import WorkspaceSidebar from './WorkspaceSidebar.vue'
 import SideResizer from './SideResizer.vue'
 import RailColumn from './rail/RailColumn.vue'
-import AttentionPopover from './AttentionPopover.vue'
-import MenuQueueChip from './MenuQueueChip.vue'
-import { useMenuQueueStore } from '../../stores/menuQueue'
+import InboxChip from '../inbox/InboxChip.vue'
 import TabRenameInput from './TabRenameInput.vue'
 import { useToastsStore } from '../../stores/toasts'
 import ContextMenu from '../ui/ContextMenu.vue'
@@ -105,7 +103,6 @@ import RunCloseDialog from './view/RunCloseDialog.vue'
 import { hasRun } from '../../lib/desktop'
 import { latestPeer, type RailCluster } from '../../lib/rail/railModel'
 import { projectTabKeys, spaceIndexes, spaceLabel } from '../../lib/rail/spaces'
-import { buildAttentionList } from '../../lib/rail/attentionList'
 import { RAIL_PROJECT_DRAG, useRail } from '../../composables/useRail'
 import { useRunStore } from '../../stores/run'
 import { useExplorerStore } from '../../stores/explorer'
@@ -125,7 +122,6 @@ const props = defineProps<{ visible: boolean }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
-const menuQueue = useMenuQueueStore()
 useWorkspaceLinks(() => props.visible)
 installMcpCalls()
 installTelegramInbound()
@@ -621,32 +617,6 @@ function onPlusClick(): void {
   void openMenu()
 }
 
-/** Needs-you list: failed then asked, oldest first, every project. The chord still jumps straight to the next one. */
-const needs = computed(() => buildAttentionList(rail.clusters.value))
-const chipCount = computed(() => needs.value.entries.length)
-const attentionChip = ref<HTMLButtonElement | null>(null)
-const needsAnchor = ref<DOMRect | null>(null)
-
-function onAttentionClick(): void {
-  tips.mouse('attention')
-  needsAnchor.value = needsAnchor.value ? null : (attentionChip.value?.getBoundingClientRect() ?? null)
-}
-
-function closeNeeds(refocus: boolean): void {
-  needsAnchor.value = null
-  if (refocus) attentionChip.value?.focus()
-}
-watch(chipCount, (n) => {
-  if (!n) needsAnchor.value = null
-})
-watch(
-  () => props.visible,
-  (shown) => {
-    if (shown) return
-    needsAnchor.value = null
-  },
-)
-
 const KEY_TIP: Partial<Record<string, TipAction>> = { newTab: 'newTab', split: 'split', closePane: 'closePane', attention: 'attention', cycleTab: 'tab', tab: 'tab', focus: 'focus' }
 
 // Help: shortcuts list + this view's guide (ShortcutsDialog / OnboardingTour live in App.vue).
@@ -1117,7 +1087,7 @@ function onGlobalKey(e: KeyboardEvent): void {
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.target as Element | null)?.closest?.('[data-side-head]')) return
   if (inEditor(e.target) && editorKeepsKey(e, isMac)) return
   const action = workspaceAction(e, isMac, multiPane.value, !!workspace.activeTab && groupsOf(workspace.activeTab.root).length > 1, isNext.value)
-  if (!action) return
+  if (!action || action.t === 'attention' || action.t === 'asked') return
   // The drop-down terminal floats over the active pane: chords aimed at that pane stay with the shell.
   if (!DROP_TERM_KEYS.has(action.t) && (e.target as Element | null)?.closest?.('[data-drop-term]')) return
   // ⌃- is readline undo in a macOS terminal.
@@ -1137,14 +1107,6 @@ function onGlobalKey(e: KeyboardEvent): void {
     case 'closePane':
       if (workspace.activeKey) closePanes([workspace.activeKey])
       break
-    case 'attention':
-      workspace.nextAttention()
-      break
-    case 'asked': {
-      const target = menuQueue.next(workspace.activeKey)
-      if (target) workspace.activate(target)
-      break
-    }
     case 'cycleTab':
       workspace.cycleTab(action.step, visibleTabKeys.value)
       break
@@ -2040,27 +2002,7 @@ onBeforeUnmount(() => {
       </div>
       <LayoutMenu v-if="isNext && workspace.activeTab" :disabled="presetDisabled" :current="currentPreset" @preset="nextLayout.applyPreset" @even="nextLayout.evenOut" />
       <div ref="paneBar" class="flex min-w-0 shrink-0 items-center empty:hidden" data-pane-bar />
-      <button
-        v-if="chipCount"
-        ref="attentionChip"
-        type="button"
-        class="ccm-btn shrink-0"
-        :class="needs.entries.some((e) => e.state === 'failed') ? 'text-st-error!' : 'text-st-waiting!'"
-        :title="t('workspace.rail.needsList.chipTip', { keys: isMac ? '⇧⌘A' : 'Ctrl+Shift+A' })"
-        aria-haspopup="listbox"
-        :aria-expanded="!!needsAnchor"
-        data-attention-chip
-        @click="onAttentionClick"
-      >
-        <BellRing :size="14" aria-hidden="true" />
-        <span>{{ t('workspace.attention.chip', { n: chipCount }, chipCount) }}</span>
-      </button>
-      <MenuQueueChip />
-      <Teleport to="body">
-        <Transition name="ccm-menu" @before-leave="retireOverlay">
-          <AttentionPopover v-if="needsAnchor" :anchor="needsAnchor" :list="needs" :trigger="attentionChip" @close="closeNeeds" />
-        </Transition>
-      </Teleport>
+      <InboxChip />
       <span v-if="!focusOn" class="mx-0.5 hidden h-4 w-px shrink-0 bg-line md:block" aria-hidden="true" data-explorer-divider />
       <button
         v-if="!focusOn"
@@ -2249,8 +2191,10 @@ onBeforeUnmount(() => {
             :pane-key="pane.key"
             :cwd="pane.cwd!"
             :select="pane.select"
+            :session-filter="pane.sessionFilter"
             :active="visible && tabBoxes.has(pane.key)"
             @selected="workspace.update(pane.key, { select: undefined })"
+            @filter="(session) => workspace.update(pane.key, { sessionFilter: session ?? undefined })"
             @open="(path, line) => workspace.openFile(path, line, { cwd: pane.root ?? pane.cwd })"
             @count="(count) => workspace.update(pane.key, { count })"
             @root="(root) => workspace.update(pane.key, { root })"

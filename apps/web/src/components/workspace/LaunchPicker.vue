@@ -13,7 +13,7 @@ import { useExtrasStore } from '../../stores/extras'
 import { dirKey, useFavoritesStore } from '../../stores/favorites'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useWorkspaceStore } from '../../stores/workspace'
-import { useDeepSeekStore } from '../../stores/deepseek'
+import { deepseekStore, warmDeepSeek } from '../../features/deepseek'
 
 const props = defineProps<{ cwd?: string; pickOnly?: boolean }>()
 const emit = defineEmits<{ launch: [cwd: string | undefined]; browser: [url: string]; openFile: []; changes: []; log: []; resumed: []; resume: [item: ResumeItem] }>()
@@ -23,10 +23,13 @@ const workspace = useWorkspaceStore()
 const favorites = useFavoritesStore()
 const terminals = useTerminalsStore()
 const extras = useExtrasStore()
-const deepseek = useDeepSeekStore()
-if (hasDeepSeek) void deepseek.refresh().catch(() => null)
+const dsAttention = computed(() => {
+  const s = deepseekStore()
+  return s ? (s.blocker ?? (s.stale ? 'stale' : null)) : null
+})
+const openDsSetup = (): void => deepseekStore()?.showSetup(dsAttention.value ?? 'stale')
+if (hasDeepSeek) warmDeepSeek(0)
 
-const dsAttention = computed(() => deepseek.blocker ?? (deepseek.stale ? 'stale' : null))
 const dsNote = computed(() => (hasDeepSeek && workspace.preset === 'deepseek' && dsAttention.value ? t(`deepseekSetup.launchNote.${dsAttention.value}`) : null))
 
 const clock = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -185,7 +188,7 @@ defineExpose({ focusFirst })
     <p v-if="dsNote" class="flex items-start gap-1.5 px-1 text-2xs text-ink-muted" role="status" data-launch-deepseek-note>
       <CircleAlert :size="12" class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
       <span class="min-w-0 flex-1">{{ dsNote }}</span>
-      <button type="button" class="ccm-btn-plain -my-0.5 shrink-0 text-2xs" data-launch-deepseek-setup @click="deepseek.showSetup(deepseek.blocker ?? 'stale')">
+      <button type="button" class="ccm-btn-plain -my-0.5 shrink-0 text-2xs" data-launch-deepseek-setup @click="openDsSetup">
         {{ t('deepseekSetup.openSetup') }}
       </button>
     </p>

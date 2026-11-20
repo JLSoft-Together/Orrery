@@ -79,15 +79,15 @@ async function run(app) {
   await sleep(200)
   await evaluate(`${W}.update(${W}.panes[1].key, { attention: 'waiting' }); ${W}.update(${W}.panes[2].key, { attention: 'waiting' })`)
   await sleep(300)
-  await evaluate(`document.querySelector('[data-attention-chip]').click()`)
-  await waitFor(`!!document.querySelector('[data-attention-popover] [role=listbox]')`, 5000, 'needs list')
-  check('chip opens a list of who needs you', (await evaluate(`document.querySelectorAll('[data-attention-popover] [role=option]').length`)) === 2, await evaluate(`JSON.stringify({ opts: [...document.querySelectorAll('[data-attention-popover] [role=option]')].map((o) => o.textContent.trim().slice(0, 60)), panes: ${W}.panes.map((p) => [p.kind, p.preset, p.state, p.attention]) })`))
+  await evaluate(`document.querySelector('[data-inbox-chip]').click()`)
+  await waitFor(`!!document.querySelector('[data-inbox] [role=listbox]')`, 5000, 'needs list')
+  check('chip opens a list of who needs you', (await evaluate(`document.querySelectorAll('[data-inbox] [role=option]').length`)) === 2, await evaluate(`JSON.stringify({ opts: [...document.querySelectorAll('[data-inbox] [role=option]')].map((o) => o.textContent.trim().slice(0, 60)), panes: ${W}.panes.map((p) => [p.kind, p.preset, p.state, p.attention]) })`))
   await shot('rail-03-needs')
-  const second = await evaluate(`(() => { const o = document.querySelectorAll('[data-attention-popover] [role=option]')[1]; return o.id })()`)
+  const second = await evaluate(`(() => { const o = document.querySelectorAll('[data-inbox] [role=option]')[1]; return o.dataset.pane })()`)
   await key('ArrowDown', 'ArrowDown', 40)
   await key('Enter', 'Enter', 13)
   await sleep(300)
-  check('↓ + Enter focuses the second entry', !!second && !(await evaluate(`!!document.querySelector('[data-attention-popover]')`)) && [await evaluate(`${W}.panes[1].key`), await evaluate(`${W}.panes[2].key`)].includes(await evaluate(`${W}.activeKey`)))
+  check('↓ + Enter focuses the second entry', !!second && !(await evaluate(`!!document.querySelector('[data-inbox]')`)) && [await evaluate(`${W}.panes[1].key`), await evaluate(`${W}.panes[2].key`)].includes(await evaluate(`${W}.activeKey`)))
 
   // --- Waiting sessions from the collector (agent rows), oldest first ---
   const T = `${S}.get('terminals')`
@@ -100,9 +100,9 @@ async function run(app) {
     ${W}.update(${W}.panes[2].key, { preset: 'claude', terminalId: 'e2e-older' })
   })()`)
   await sleep(400)
-  await evaluate(`document.querySelector('[data-attention-chip]').click()`)
-  await waitFor(`!!document.querySelector('[data-attention-popover] [role=listbox]')`, 5000, 'needs list (sessions)')
-  const order = await evaluate(`[...document.querySelectorAll('[data-attention-popover] [role=option]')].map((o) => o.textContent.match(/e2e-(?:older|newer)/)?.[0] ?? '')`)
+  await evaluate(`document.querySelector('[data-inbox-chip]').click()`)
+  await waitFor(`!!document.querySelector('[data-inbox] [role=listbox]')`, 5000, 'needs list (sessions)')
+  const order = await evaluate(`[...document.querySelectorAll('[data-inbox] [role=option]')].map((o) => o.textContent.match(/e2e-(?:older|newer)/)?.[0] ?? '')`)
   check('waiting sessions are listed oldest first', JSON.stringify(order) === JSON.stringify(['e2e-older', 'e2e-newer']), JSON.stringify(order))
   await key('Escape', 'Escape', 27)
   await evaluate(`(() => {

@@ -1,4 +1,4 @@
-import type { DeepSeekStatus } from './desktop'
+import type { DeepSeekStatus } from '../../lib/desktop'
 
 export type DeepSeekBlocker = 'install' | 'download' | 'login'
 

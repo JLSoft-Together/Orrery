@@ -57,6 +57,21 @@ describe('buildSummary', () => {
     expect(idle.tabs[0]!.panes[0]).not.toHaveProperty('waitText')
   })
 
+  it('carries the inbox reason per pane, flags the snapshot and hashes the change', () => {
+    const plain = buildSummary({ tabs, panes, closedCount: 0, facts: facts() }, 1)
+    expect(plain).not.toHaveProperty('inbox')
+    expect(plain.tabs[0]!.panes[0]).not.toHaveProperty('inbox')
+    const inbox = (p: Pane) => (p.key === 'p1' ? { reason: 'clash' as const, since: '2026-11-20T01:00:00Z', file: `src/${'a'.repeat(200)}.ts`, peer: 'B' } : undefined)
+    const s = buildSummary({ tabs, panes, closedCount: 0, facts: facts(), inbox }, 1)
+    expect(s.inbox).toBe(true)
+    expect(s.tabs[0]!.panes[0]!.inbox).toMatchObject({ reason: 'clash', since: '2026-11-20T01:00:00Z', peer: 'B' })
+    expect(s.tabs[0]!.panes[0]!.inbox!.file!.length).toBe(120)
+    expect(s.tabs[0]!.panes[1]).not.toHaveProperty('inbox')
+    const empty = buildSummary({ tabs, panes, closedCount: 0, facts: facts(), inbox: () => undefined }, 1)
+    expect(summaryHash(empty)).not.toBe(summaryHash(s))
+    expect(summaryHash(empty)).not.toBe(summaryHash(plain))
+  })
+
   it('skips leaves whose pane is gone and clips long titles', () => {
     const s = buildSummary({ tabs, panes: [panes[0]!], closedCount: 0, facts: facts({ title: 'x'.repeat(500) }) }, 1)
     expect(s.tabs[0]!.panes.map((p) => p.key)).toEqual(['p1'])

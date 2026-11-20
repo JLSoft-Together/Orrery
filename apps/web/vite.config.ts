@@ -27,6 +27,13 @@ export default defineConfig({
   },
   // ES worker: the highlight worker lazy-loads shiki grammars (code splitting is not possible in an iife worker).
   worker: { format: 'es' },
+  build: {
+    rollupOptions: {
+      output: {
+        chunkFileNames: (chunk) => (chunk.moduleIds.some((id) => id.includes('/features/deepseek/') && !id.endsWith('/index.ts')) && !chunk.moduleIds.some((id) => id.endsWith('/main.ts')) ? 'assets/deepseek-[name]-[hash].js' : 'assets/[name]-[hash].js'),
+      },
+    },
+  },
   test: {
     environment: 'happy-dom',
   },

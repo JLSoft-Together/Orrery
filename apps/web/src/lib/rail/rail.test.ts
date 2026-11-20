@@ -2,7 +2,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useWorkspaceStore, type Pane } from '../../stores/workspace'
 import { lastRows, registerSnapshot, snapshotOf } from '../paneSnapshots'
-import { buildAttentionList } from './attentionList'
 import { avatarInitials } from './avatars'
 import { projectTabKeys, spaceIndexes, spaceLabel } from './spaces'
 import {
@@ -346,14 +345,6 @@ describe('rail groups', () => {
     expect(idle.paneKeys).toContain(idle.lead)
   })
 
-  it('counts subagent waits as working in the needs-you footer', () => {
-    const ws = useWorkspaceStore()
-    const a = ws.open('claude', 'C:\\work\\app', undefined, { tab: true })
-    ws.update(a.key, { state: 'running' })
-    const list = buildAttentionList(buildRail(input({ sessionOf: () => ({ status: 'idle', title: 'A', subagents: 1 }) })))
-    expect(list.footer.working).toBe(1)
-    expect(list.footer.idle).toBe(0)
-  })
 })
 
 describe('row twins', () => {
@@ -566,35 +557,6 @@ describe('pane snapshots', () => {
     expect(snapshotOf('p1', 2)).toBe('l2\nl3')
     off()
     expect(snapshotOf('p1', 2)).toBe('')
-  })
-})
-
-describe('needs-you list', () => {
-  it('lists failed before asked, oldest first, with a footer of the rest', () => {
-    const ws = useWorkspaceStore()
-    const a = ws.open('claude', 'C:\\work\\app', undefined, { tab: true })
-    const b = ws.open('claude', 'C:\\work\\app', undefined, { tab: true })
-    const c = ws.open('claude', 'D:\\notes', undefined, { tab: true })
-    ws.update(a.key, { attention: 'waiting', state: 'running' })
-    ws.update(b.key, { state: 'error' })
-    ws.update(c.key, { state: 'running' })
-    const sessions: Record<string, RailSession> = {
-      [a.key]: { status: 'waiting', title: 'A', since: '2026-10-15T10:00:00Z', subagents: 0 },
-      [c.key]: { status: 'working', title: 'C', subagents: 0 },
-    }
-    const list = buildAttentionList(buildRail(input({ sessionOf: (p) => sessions[p.key] })))
-    expect(list.entries.map((e) => [e.paneKey, e.state])).toEqual([
-      [b.key, 'failed'],
-      [a.key, 'asked'],
-    ])
-    expect(list.footer.working).toBe(1)
-  })
-
-  it('lists a failed run', () => {
-    const ws = useWorkspaceStore()
-    const r = ws.openRun('C:\\work\\app')
-    const list = buildAttentionList(buildRail(input({ runOf: () => 'failed' })))
-    expect(list.entries).toMatchObject([{ paneKey: r.key, state: 'failed', run: 'failed' }])
   })
 })
 

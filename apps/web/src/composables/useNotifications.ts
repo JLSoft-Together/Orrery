@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CONTEXT_THRESHOLDS, inQuietHours, remindersDue, type TerminalSession, type TerminalStatus, type ToastKind } from '@ccm/shared'
-import { TriangleAlert } from 'lucide-vue-next'
+import { FileDiff, FileWarning, TriangleAlert } from 'lucide-vue-next'
 import { quietFor } from '../lib/attention'
 import { contextCrossings, loadWarned, saveWarned } from '../lib/contextWarn'
 import { compactNumber, duration, now } from '../lib/format'
@@ -10,22 +10,29 @@ import { playChime } from '../lib/sound'
 import { displayTitle } from '../lib/title'
 import { waitDisplay } from '../lib/wait'
 import { useAgentsStore } from '../stores/agents'
+import { useAgentTouchesStore } from '../stores/agentTouches'
 import { useAttentionStore } from '../stores/attention'
 import { useConnectionStore } from '../stores/connection'
 import { useExtrasStore } from '../stores/extras'
 import { useSettingsStore } from '../stores/settings'
 import { useSnoozeStore } from '../stores/snooze'
 import { useTerminalsStore } from '../stores/terminals'
+import { useTurnEditsStore } from '../stores/turnEdits'
 import { useUsageStore } from '../stores/usage'
 import { useUiStore } from '../stores/ui'
 import { useToastsStore } from '../stores/toasts'
 import { useWorkspaceStore } from '../stores/workspace'
+import { clashToastId, useClashActions } from './useClashActions'
 import { useCompact } from './useCompact'
 import { useRevealInWorkspace } from './useRevealInWorkspace'
+import { useTurnChanges } from './useTurnChanges'
 
-export type NotifyKind = 'waiting' | 'done' | 'reminder' | 'context' | 'stuck' | 'job' | 'limit' | 'loop'
+export type NotifyKind = 'waiting' | 'done' | 'reminder' | 'context' | 'stuck' | 'job' | 'limit' | 'loop' | 'clash'
 
 const THROTTLE_MS = 30_000
+const CLASH_TOAST_MS = 15_000
+const DONE_TOAST_MS = 10_000
+export const turnToastId = (terminalId: string): string => `turn-done-${terminalId}`
 export { LONG_WAIT_MS, MAX_REMINDERS, remindersDue } from '@ccm/shared'
 
 export function transitionKind(before: TerminalStatus | undefined, after: TerminalStatus): NotifyKind | null {
@@ -52,6 +59,10 @@ export function useNotifications(): void {
   const toasts = useToastsStore()
   const workspace = useWorkspaceStore()
   const compactFlow = useCompact()
+  const touches = useAgentTouchesStore()
+  const clashActions = useClashActions()
+  const turnEdits = useTurnEditsStore()
+  const turnChanges = useTurnChanges()
   const baseTitle = document.title
 
   const waiting = computed(
@@ -86,6 +97,7 @@ export function useNotifications(): void {
     if (kind === 'stuck') return settings.notifyStuck
     if (kind === 'limit') return settings.notifyLimit
     if (kind === 'loop') return settings.notifyLoop
+    if (kind === 'clash') return settings.clashWarn
     return settings.notifyWaiting
   }
 
@@ -96,7 +108,7 @@ export function useNotifications(): void {
     else if (kind === 'stuck' || kind === 'loop' || kind === 'limit') playChime('alert')
   }
 
-  function notify(terminal: TerminalSession | null, kind: NotifyKind, title: string, body: string, key = terminal?.id ?? ''): void {
+  function notify(terminal: TerminalSession | null, kind: NotifyKind, title: string, body: string, key = terminal?.id ?? '', onClick?: () => void): void {
     const tag = `${key}|${kind}`
     const at = Date.now()
     if (at - (lastSent.get(tag) ?? 0) < THROTTLE_MS) return
@@ -114,7 +126,8 @@ export function useNotifications(): void {
       const n = new Notification(title, { body, tag, icon: '/favicon.svg' })
       n.onclick = () => {
         window.focus()
-        if (!terminal || !useRevealInWorkspace().show(terminal.id)) {
+        if (onClick) onClick()
+        else if (!terminal || !useRevealInWorkspace().show(terminal.id)) {
           ui.setView('monitor')
           if (terminal) ui.focusTerminal(terminal.id)
         }
@@ -145,12 +158,41 @@ export function useNotifications(): void {
         const x = terminals.byId[id]
         if (!kind || !x) continue
         if (kind === 'waiting') notify(x, kind, t('notify.waitingTitle', { title: nameOf(x) }), waitingBody(x))
-        else notify(x, kind, t('notify.doneTitle', { title: nameOf(x) }), t('notify.doneBody'))
+        else {
+          const changed = turnEdits.countOf(id) > 0
+          notify(x, kind, t('notify.doneTitle', { title: nameOf(x) }), t('notify.doneBody'), id, changed ? () => turnChanges.open(id) : undefined)
+          if (changed) doneToast(x)
+        }
       }
       for (const id of prevStatus.keys()) if (!alive.has(id)) prevStatus.delete(id)
     },
     { immediate: true },
   )
+
+  function doneToast(x: TerminalSession): void {
+    const at = new Date()
+    if (!settings.notifyEnabled || !settings.notifyDone || snooze.isSnoozed(x, at.getTime()) || inQuietHours(extras.notify?.quiet, at)) return
+    const id = turnToastId(x.id)
+    toasts.push({
+      id,
+      kind: 'info',
+      text: t('v104.turnChanges.doneToast', { name: nameOf(x), n: turnEdits.countOf(x.id) }),
+      icon: FileDiff,
+      timeoutMs: DONE_TOAST_MS,
+      attrs: { 'data-turn-toast': x.id },
+      actions: [
+        {
+          label: t('v104.turnChanges.view'),
+          primary: true,
+          attrs: { 'data-turn-toast-view': '' },
+          run: () => {
+            toasts.remove(id)
+            turnChanges.open(x.id)
+          },
+        },
+      ],
+    })
+  }
 
   const stuckSent = new Set<string>()
   const prevJobs = new Map<string, string>()
@@ -288,6 +330,43 @@ export function useNotifications(): void {
       }
     },
     { immediate: true },
+  )
+
+  watch(
+    () => touches.clashes,
+    () => {
+      if (!connection.hasData) return
+      const fresh = touches.takeNew()
+      if (!fresh.length || inQuietHours(extras.notify?.quiet, new Date())) return
+      for (const c of fresh) {
+        const [first, ...rest] = c.peers
+        if (!first || !rest.length) continue
+        const file = clashActions.fileName(c, first.terminalId)
+        const title = t('v104.clash.toastTitle', { a: first.name, b: rest.map((p) => p.name).join(', '), file })
+        toasts.push({
+          id: clashToastId(c.fileKey),
+          kind: 'warning',
+          text: title,
+          detail: t('v104.clash.toastDetail'),
+          icon: FileWarning,
+          timeoutMs: CLASH_TOAST_MS,
+          attrs: { 'data-clash-toast': c.fileKey },
+          actions: [
+            {
+              label: t('v104.clash.viewDiff'),
+              primary: true,
+              attrs: { 'data-clash-toast-diff': '' },
+              run: () => {
+                toasts.remove(clashToastId(c.fileKey))
+                clashActions.viewDiff(c, first.terminalId)
+              },
+            },
+            { label: t('v104.clash.ignore'), attrs: { 'data-clash-toast-ignore': '' }, run: () => clashActions.ignore(c, first.terminalId) },
+          ],
+        })
+        notify(null, 'clash', title, t('v104.clash.toastDetail'), `clash-${c.fileKey}`)
+      }
+    },
   )
 
   const critical = new Set<string>()

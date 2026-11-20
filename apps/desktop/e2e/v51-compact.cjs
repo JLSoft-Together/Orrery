@@ -8,17 +8,13 @@ const T = `${S}.get('terminals')`
 const NAV = `document.querySelector('nav[aria-label=Projects]')`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
-const CTRL = 2, SHIFT = 8
 
 const BASE = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-v51-')))
+const REC = path.join(__dirname, 'fixtures', 'stdin-rec.cjs')
+const REC_OUT = path.join(BASE, 'stdin.txt')
 
 async function run(app) {
   const { evaluate, waitFor, shot, sleep, cmd, key } = app
-  const chord = async (k, code, vk, mods) => {
-    await cmd('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods })
-    await cmd('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods })
-    await sleep(300)
-  }
   await waitFor(`!!window.ccmDesktop && !!${S}.get('ui')`, 30000, 'app ready')
   await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','en'); localStorage.setItem('ccm.whatsNew.seen','${require('../package.json').version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.theme','light'); localStorage.setItem('ccm.workspace.sidebar','1'); localStorage.setItem('ccm.tips', JSON.stringify({ off: true, learned: [], shown: {} }))`)
   await cmd('Page.reload')
@@ -31,6 +27,11 @@ async function run(app) {
   const pane = await evaluate(`${W}.open('shell', ${JSON.stringify(BASE)}, undefined, { tab: true }).key`)
   await waitFor(`${W}.panes[0]?.state === 'running'`, 20000, 'shell running')
   await sleep(1500)
+  await evaluate(`[...document.querySelectorAll('.xterm-helper-textarea')].find((t) => t.offsetParent !== null)?.focus()`)
+  await app.type(`node ${REC.replace(/\\/g, '/')} ${REC_OUT.replace(/\\/g, '/')}`)
+  await sleep(300)
+  await key('Enter', 'Enter', 13)
+  for (let i = 0; i < 40 && !fs.existsSync(REC_OUT); i++) await sleep(250)
   const fake = (patch) => evaluate(`${T}.upsert({ id: 'e2e-v51', title: 'e2e-v51', status: 'idle', cwd: ${JSON.stringify(BASE)}, compactions: 0, ...${JSON.stringify(patch)} })`)
   await fake({})
   await evaluate(`${W}.update('${pane}', { preset: 'claude', terminalId: 'e2e-v51' })`)
@@ -46,14 +47,11 @@ async function run(app) {
     await sleep(200)
   }
   const output = async () => {
-    await evaluate(`document.querySelector('.xterm-helper-textarea')?.focus()`)
-    await chord('O', 'KeyO', 79, CTRL | SHIFT)
-    await waitFor(`!!document.querySelector('[data-mission][role=dialog]')`, 5000, 'mission open')
-    await sleep(600)
-    const text = await evaluate(`document.querySelector('[data-mission-tile="${pane}"] [data-mission-output]')?.textContent ?? ''`)
-    await key('Escape', 'Escape', 27)
-    await waitFor(`!document.querySelector('[data-mission]')`, 5000, 'mission closed')
-    return text
+    try {
+      return fs.readFileSync(REC_OUT, 'utf8').replace(/\x1b\[20[01]~/g, '')
+    } catch {
+      return ''
+    }
   }
 
   await fake({ status: 'working' })
@@ -75,11 +73,12 @@ async function run(app) {
   check('handoff prompt sent (prefill consumed)', await evaluate(`!${W}.panes.find((p) => p.key === '${pane}').prefill`))
   check('pane header shows "writing" chip', await evaluate(`!!document.querySelector(':is([data-pane="${pane}"], [data-pane-of="${pane}"]) [data-compact-step="writing"]')`))
   let sent = ''
-  for (let i = 0; i < 15 && !/CommandNotFoundException|not recognized/i.test(sent); i++) {
+  for (let i = 0; i < 15 && !/handoff[\s\S]*\r/i.test(sent); i++) {
     await sleep(1000)
     sent = await output()
   }
-  check('prompt text reached the pane and was submitted (shell ran it)', /handoff|CommandNotFoundException|not recognized/i.test(sent), sent.slice(-200))
+  check('prompt text reached the pane and was submitted (Enter followed it)', /handoff[\s\S]*\r$/i.test(sent), JSON.stringify(sent.slice(-200)))
+  const submitted = sent.length
   await shot('v51-02-writing')
 
   await fake({ status: 'working' })
@@ -97,16 +96,16 @@ async function run(app) {
   check('file written + idle: step "compact"', await evaluate(`${W}.panes.find((p) => p.key === '${pane}').compact?.step === 'compact'`))
   check('chip says the handoff is ready', await evaluate(`!!document.querySelector(':is([data-pane="${pane}"], [data-pane-of="${pane}"]) [data-compact-step="compact"]')`))
   await sleep(800)
-  check('/compact typed into the input, not submitted', /\/compact\s*$/.test((await output()).trimEnd()), '')
+  const typed = (await output()).slice(submitted)
+  check('/compact typed into the input, not submitted', /\/compact[ ]*$/.test(typed), JSON.stringify(typed.slice(-80)))
   await shot('v51-03-compact-typed')
 
   await fake({ status: 'idle', compactions: 1 })
   await waitFor(`!${W}.panes.find((p) => p.key === '${pane}').compact`, 5000, 'flow ends').catch(() => {})
   check('compaction seen: flow ends', await evaluate(`!${W}.panes.find((p) => p.key === '${pane}').compact`))
   await sleep(800)
-  const after = await output()
-  const tail = after.trimEnd().split('\n').slice(-3).join('')
-  check('resume line prefilled at the prompt (after /compact), not submitted', /\/compact\s*Read\b/.test(tail.replace(/\s+/g, ' ')) && /continue\.$/.test(tail), tail.slice(-160))
+  const tail = (await output()).slice(submitted)
+  check('resume line prefilled at the prompt (after /compact), not submitted', /\/compact[\s\S]*Read\b[\s\S]*continue\.$/.test(tail), JSON.stringify(tail.slice(-160)))
   check('chip cleared', await evaluate(`!document.querySelector(':is([data-pane="${pane}"], [data-pane-of="${pane}"]) [data-compact-step]')`))
   await shot('v51-04-resume')
 

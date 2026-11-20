@@ -11,7 +11,7 @@ const OUT = process.env.CCM_E2E_OUT || path.join(os.tmpdir(), 'ccm-e2e')
 const PORT = Number(process.env.CCM_E2E_PORT) || 4399
 const DBG = Number(process.env.CCM_E2E_DBG) || 9333
 const TMP = path.join(OUT, 'run')
-const SHELL = process.env.CCM_E2E_SHELL === 'tauri' || process.argv.includes('--shell=tauri')
+const SHELL = !(process.env.CCM_E2E_SHELL === 'electron' || process.argv.includes('--shell=electron'))
 const SHELL_EXE = process.env.CCM_E2E_SHELL_EXE || path.join(REPO, 'apps/shell/target/debug', process.platform === 'win32' ? 'orrery-shell.exe' : 'orrery-shell')
 fs.mkdirSync(OUT, { recursive: true })
 
@@ -59,6 +59,7 @@ function macKey(p) {
 }
 
 async function launch(opts = {}) {
+  if (opts.exe && opts.exe.startsWith('--')) opts = { ...opts, exe: undefined }
   if (!opts.exe && process.env.CCM_E2E_EXE) opts = { ...opts, exe: process.env.CCM_E2E_EXE }
   for (let i = 0; !opts.keep; i++) {
     try {
@@ -78,7 +79,7 @@ async function launch(opts = {}) {
   const env = { ...process.env, ...opts.env, CCM_PORT: String(PORT), CCM_DATA_DIR: path.join(TMP, 'data'), CCM_TOAST: '0', ...(process.platform === 'win32' ? { APPDATA: path.join(TMP, 'appdata') } : {}) }
   const stdio = ['ignore', fs.openSync(path.join(OUT, 'electron.log'), 'w'), fs.openSync(path.join(OUT, 'electron.err'), 'w')]
   const child = SHELL
-    ? spawn(SHELL_EXE, opts.args ?? [], { env: { ...env, CCM_SHELL_WEBVIEW_DIR: path.join(TMP, 'ud'), CCM_E2E_DEVTOOLS: '1', CCM_KEYRING_SERVICE: env.CCM_KEYRING_SERVICE || 'Orrery E2E', CCM_ELECTRON_USER_DATA: env.CCM_ELECTRON_USER_DATA || path.join(TMP, 'electron-ud'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${DBG}`, ...flags].join(' ') }, stdio })
+    ? spawn(opts.exe ?? SHELL_EXE, opts.args ?? [], { env: { ...env, CCM_SHELL_WEBVIEW_DIR: path.join(TMP, 'ud'), CCM_E2E_DEVTOOLS: '1', CCM_KEYRING_SERVICE: env.CCM_KEYRING_SERVICE || 'Orrery E2E', CCM_ELECTRON_USER_DATA: env.CCM_ELECTRON_USER_DATA || path.join(TMP, 'electron-ud'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${DBG}`, ...flags].join(' ') }, stdio })
     : spawn(opts.exe ?? require(path.join(REPO, 'node_modules/electron')), [`--user-data-dir=${path.join(TMP, 'ud')}`, `--remote-debugging-port=${DBG}`, ...flags, ...(opts.args ?? []), ...(opts.exe ? [] : [path.join(REPO, 'apps/desktop/stage')])], { env, stdio })
   let target
   for (let i = 0; i < 120 && !target; i++) {
@@ -190,4 +191,9 @@ const selOpen = (el) => `const el = ${el}; if (!el) return null; if (el.getAttri
 const selOptions = (el) => `(async () => { ${selOpen(el)} const out = opts.map((o) => ({ text: label(o), value: o.dataset.value, selected: o.getAttribute('aria-selected') === 'true' })); if (el.getAttribute('aria-expanded') === 'true') el.click(); return out })()`
 const selPick = (el, test) => `(async () => { ${selOpen(el)} const i = opts.findIndex((o, i) => (${test})(label(o), i, o.dataset.value)); if (i < 0) { el.click(); return false } opts[i].click(); return true })()`
 
-module.exports = { launch, sleep, PORT, REPO, OUT, SHELL, UI: uiGenFromArgs(), selOptions, selPick }
+function secondInstance(link, exe) {
+  if (SHELL) return null
+  return spawn(exe ?? require(path.join(REPO, 'node_modules/electron')), [`--user-data-dir=${path.join(OUT, 'run', 'ud')}`, ...(exe ? [] : [path.join(REPO, 'apps/desktop/stage')]), link], { stdio: 'ignore' })
+}
+
+module.exports = { launch, sleep, PORT, REPO, OUT, SHELL, secondInstance, UI: uiGenFromArgs(), selOptions, selPick }

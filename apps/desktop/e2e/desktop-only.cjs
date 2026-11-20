@@ -1,7 +1,6 @@
 // Desktop only: the collector refuses anything without the app key; toast links reach the running app.
-const { spawn } = require('node:child_process')
 const path = require('node:path')
-const { launch, REPO, OUT, PORT, sleep } = require('./cdp.cjs')
+const { launch, REPO, PORT, SHELL, sleep, secondInstance } = require('./cdp.cjs')
 const WS = require(path.join(REPO, 'node_modules/ws'))
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const results = []
@@ -29,10 +28,12 @@ const socketOpens = () =>
 
     // A toast button launches the exe again with agent-monitor://…; the single-instance lock hands it to this app.
     await evaluate(`${S}.get('ui').setView('usage')`)
-    const args = [`--user-data-dir=${path.join(OUT, 'run', 'ud')}`, ...(exe ? [] : [path.join(REPO, 'apps/desktop/stage')]), 'agent-monitor://focus?k=wrong&t=nope']
-    spawn(exe ?? require(path.join(REPO, 'node_modules/electron')), args, { stdio: 'ignore' })
-    await waitFor(`${S}.get('ui').view === 'monitor'`, 15000, 'link shows the session in Monitor')
-    check('toast link reaches the running app', true)
+    if (SHELL) console.log('SKIP toast link via a second instance: Tauri E2E runs isolated without single-instance (links.rs has unit tests)')
+    else {
+      secondInstance('agent-monitor://focus?k=wrong&t=nope', exe)
+      await waitFor(`${S}.get('ui').view === 'monitor'`, 15000, 'link shows the session in Monitor')
+      check('toast link reaches the running app', true)
+    }
     await shot('desktop-only')
   } catch (e) {
     check('run', false, e.message)

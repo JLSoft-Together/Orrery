@@ -395,6 +395,9 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   animation: ccm-explorer-in var(--ccm-dur-base, 180ms) ease-out;
 }
+:root[data-ui='next'] .ccm-next-canvas:has([data-next-tabs]) .ccm-explorer-card:not(.is-pinned) {
+  top: 48px;
+}
 :root[data-ui='next'] .ccm-explorer-bar {
   display: flex;
   align-items: center;

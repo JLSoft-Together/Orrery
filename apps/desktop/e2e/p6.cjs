@@ -5,9 +5,9 @@ const W = `${S}.get('workspace')`
 const T = `${S}.get('terminals')`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
-const CTRL = 2, META = 4, SHIFT = 8
+const ALT = 1, CTRL = 2, META = 4, SHIFT = 8
 const MOD = process.platform === 'darwin' ? META : CTRL | SHIFT
-const ATT = process.platform === 'darwin' ? META | SHIFT : CTRL | SHIFT
+const NEXT = CTRL | ALT
 
 ;(async () => {
   const app = await launch()
@@ -44,8 +44,8 @@ const ATT = process.platform === 'darwin' ? META | SHIFT : CTRL | SHIFT
     await evaluate(`${T}.patch({ id: 'fake-1', status: 'waiting' })`)
     await sleep(400)
     check('waiting latches attention on unseen pane', await evaluate(`${W}.panes[0].attention === 'waiting'`))
-    const chip = await evaluate(`[...document.querySelectorAll('button')].find(b => /need/.test(b.textContent))?.textContent.trim() ?? null`)
-    check('attention chip shows count', chip === '1 needs you', String(chip))
+    const chip = await evaluate(`document.querySelector('[data-inbox-chip]')?.textContent.match(/Inbox\\s*\\d+/)?.[0] ?? null`)
+    check('Inbox chip shows count', chip === 'Inbox 1', String(chip))
     await evaluate(`${T}.patch({ id: 'fake-1', status: 'working' })`)
     await sleep(300)
     check('answered elsewhere clears waiting', await evaluate(`!${W}.panes[0].attention`))
@@ -56,9 +56,9 @@ const ATT = process.platform === 'darwin' ? META | SHIFT : CTRL | SHIFT
     await sleep(300)
     await shot('p6-01-attention')
     await evaluate(`document.querySelectorAll('.xterm-helper-textarea')[2].focus()`)
-    await chord('A', 'KeyA', 65, ATT)
+    await chord('q', 'KeyQ', 81, NEXT)
     await sleep(300)
-    check('Ctrl+Shift+A jumps to waiting pane and clears it', await evaluate(`${W}.activeKey === ${W}.panes[0].key && !${W}.panes[0].attention`))
+    check('Ctrl+Alt+Q jumps to waiting pane and clears it', await evaluate(`${W}.activeKey === ${W}.panes[0].key && !${W}.panes[0].attention`))
 
     // Close: linked agent pane asks first; plain shell closes at once.
     await evaluate(`[...document.querySelectorAll('[data-pane-head] [data-pane-close]')].filter(b => b.offsetParent)[0].click()`)

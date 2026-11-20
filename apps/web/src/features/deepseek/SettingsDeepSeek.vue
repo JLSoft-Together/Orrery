@@ -2,12 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleArrowUp, Circle, CircleAlert, CircleCheck, CircleDashed, CircleDot, Download, ExternalLink, FolderSync, Info, KeyRound, LoaderCircle, LogOut, RefreshCw } from 'lucide-vue-next'
-import { autoSyncAfterLogin, setupSteps } from '../../lib/deepseekGate'
+import { autoSyncAfterLogin, setupSteps } from './gate'
 import { desktop, type DeepSeekEvent, type DeepSeekResult, type DeepSeekSyncResult, type DeepSeekUpdateCheck } from '../../lib/desktop'
 import { now, relativeTime } from '../../lib/format'
-import { useDeepSeekStore } from '../../stores/deepseek'
-import ToggleSwitch from '../ToggleSwitch.vue'
-import SettingSection from './SettingSection.vue'
+import { useDeepSeekStore } from './store'
+import ToggleSwitch from '../../components/ToggleSwitch.vue'
+import SettingSection from '../../components/settings/SettingSection.vue'
 
 const KEYS_URL = 'https://platform.deepseek.com/api_keys'
 

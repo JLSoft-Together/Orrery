@@ -129,7 +129,7 @@ function onKey(e: KeyboardEvent): void {
           </span>
           <span class="min-w-0 flex-1 truncate">{{ it.label }}</span>
           <span v-if="it.hint" class="shrink-0 truncate text-2xs text-ink-faint">{{ it.hint }}</span>
-          <kbd v-if="it.kbd" class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[10px] font-semibold text-ink-muted">{{ it.kbd }}</kbd>
+          <kbd v-if="it.kbd" class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[11px] font-semibold text-ink-muted">{{ it.kbd }}</kbd>
         </button>
       </template>
     </div>

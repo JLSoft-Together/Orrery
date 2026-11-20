@@ -18,6 +18,12 @@ export interface LiveExtras {
   waitText: string | null
   stateText: string | null
   title: string
+  clash?: RowClash | null
+}
+
+export interface RowClash {
+  n: number
+  tip: string
 }
 
 export interface LiveRow {
@@ -41,6 +47,7 @@ export interface LiveRow {
   shell: boolean
   focused: boolean
   src: RailRow
+  clash?: RowClash
 }
 
 export interface LayoutSection {
@@ -149,6 +156,7 @@ export function buildLiveRows(clusters: readonly RailCluster[], extrasOf: (row: 
           shell,
           focused: r.focused,
           src: r,
+          ...(x.clash ? { clash: x.clash } : {}),
         })
       }
   }

@@ -15,8 +15,8 @@ async function setUiGeneration(evaluate, gen = 'next', opts = {}) {
 
 function uiGenFromArgs(argv = process.argv, env = process.env) {
   const flag = argv.find((a) => a.startsWith('--ui='))
-  const gen = flag ? flag.slice(5) : env.CCM_E2E_UI || 'classic'
-  return UI_GENERATIONS.includes(gen) ? gen : 'classic'
+  const gen = flag ? flag.slice(5) : env.CCM_E2E_UI || 'next'
+  return UI_GENERATIONS.includes(gen) ? gen : 'next'
 }
 
 async function currentUiGeneration(evaluate) {

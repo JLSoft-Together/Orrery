@@ -26,6 +26,7 @@ export interface AgentTouch {
 export type TouchState = 'edit' | 'read' | 'conflict'
 
 export interface FileTouchInfo {
+  path: string
   state: TouchState
   touches: AgentTouch[]
   editors: number
@@ -63,6 +64,7 @@ function ancestors(key: string): string[] {
 
 export function buildTouchIndex(spans: readonly ToolSpan[], terms: ReadonlyMap<string, TouchTerminal>, now: number, keyOf: (p: string) => string = pathKey): TouchIndex {
   const perFile = new Map<string, Map<string, AgentTouch>>()
+  const pathOf = new Map<string, string>()
   for (const span of spans) {
     if (!span.path || (span.access !== 'edit' && span.access !== 'read')) continue
     const term = terms.get(span.terminalId)
@@ -73,6 +75,7 @@ export function buildTouchIndex(spans: readonly ToolSpan[], terms: ReadonlyMap<s
       if (perFile.size >= MAX_FILES) continue
       byTerm = new Map()
       perFile.set(key, byTerm)
+      pathOf.set(key, span.path)
     }
     const at = Date.parse(span.start)
     const prev = byTerm.get(span.terminalId)
@@ -88,7 +91,7 @@ export function buildTouchIndex(spans: readonly ToolSpan[], terms: ReadonlyMap<s
     const touches = [...byTerm.values()].sort((a, b) => Number(b.kind === 'edit') - Number(a.kind === 'edit') || b.at - a.at)
     const editors = touches.filter((t) => t.kind === 'edit').length
     const state: TouchState = editors >= 2 ? 'conflict' : editors === 1 ? 'edit' : 'read'
-    files.set(key, { state, touches, editors })
+    files.set(key, { path: pathOf.get(key) ?? key, state, touches, editors })
     for (const dir of ancestors(key)) {
       const cur = dirs.get(dir)
       if (!cur || RANK[state] > RANK[cur.state]) dirs.set(dir, { state })

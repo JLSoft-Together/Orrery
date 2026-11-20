@@ -8,7 +8,7 @@ const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
 
 async function main() {
-  const app = await launch({ exe: process.argv[2] })
+  const app = await launch({ exe: process.argv[2], ui: 'classic' })
   const { evaluate, waitFor, shot, sleep } = app
   const click = (sel) => evaluate(`document.querySelector(${JSON.stringify(sel)}).click()`)
   try {

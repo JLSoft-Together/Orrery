@@ -32,6 +32,7 @@ const all: SettingsEnv = {
   deepseek: true,
   xmlPreview: true,
   bugReport: true,
+  desktop: true,
 }
 
 function translator(locale: 'en' | 'vi') {

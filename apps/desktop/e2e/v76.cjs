@@ -10,7 +10,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT, REPO, selOptions, selPick } = require('./cdp.cjs')
+const { launch, OUT, REPO, SHELL, selOptions, selPick } = require('./cdp.cjs')
 const WS = require(path.join(REPO, 'node_modules/ws'))
 const INSPECT = Number(process.env.CCM_E2E_INSPECT) || (Number(process.env.CCM_E2E_DBG) || 9333) + 7
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
@@ -113,7 +113,15 @@ function serve() {
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
+function shellConfirms() {
+  const log = path.join(DATA, 'e2e-confirms.log')
+  const answerFile = path.join(DATA, 'e2e-confirm-answer')
+  const asked = async () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean) : [])
+  return { answer: async (n) => fs.writeFileSync(answerFile, n === 0 ? 'ok' : 'cancel'), asked, close: () => {} }
+}
+
 async function mainInspector() {
+  if (SHELL) return shellConfirms()
   let list = null
   for (let i = 0; i < 40 && !list; i++) {
     list = await new Promise((r) => http.get(`http://127.0.0.1:${INSPECT}/json/list`, (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { try { r(JSON.parse(b)) } catch { r(null) } }) }).on('error', () => r(null)))
@@ -154,8 +162,9 @@ async function main() {
     CCM_E2E_CAPTURE_DIR: CAPDIR,
     CCM_PHONE_URL_OVERRIDE: `http://127.0.0.1:${server.address().port}/phone`,
     CCM_E2E_IDLE_S: '900',
+    ...(SHELL ? { CCM_E2E_CONFIRM: 'ok' } : {}),
   }
-  const app = await launch({ env, args: [`--inspect=${INSPECT}`] })
+  const app = await launch({ env, args: SHELL ? [] : [`--inspect=${INSPECT}`] })
   const { evaluate, waitFor, shot, sleep, cmd, key } = app
   const esc = () => key('Escape', 'Escape', 27)
   const click = (sel) => evaluate(`(() => { const b = document.querySelector(${JSON.stringify(sel)}); if (!b) throw new Error('no ' + ${JSON.stringify(sel)}); b.click() })()`)

@@ -19,7 +19,7 @@ const NAME = path.basename(DIR)
 const HOME = path.basename(os.homedir())
 
 ;(async () => {
-  const app = await launch()
+  const app = await launch({ ui: 'classic' })
   const { evaluate, waitFor, shot, sleep, cmd, type, key } = app
   const chord = async (k, code, vk, mods) => {
     await cmd('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods })

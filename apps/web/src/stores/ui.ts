@@ -8,7 +8,6 @@ import type { NodeSize, Point } from '../lib/layout'
 import { hasExtensions, hasTerminals } from '../lib/desktop'
 import { hasDevices } from '../lib/devices'
 import { hasDiskMap } from '../lib/diskMap'
-import { WINDOWS, type WindowMin } from '../lib/toolTimeline'
 import { parseGroupBy, type BoardGroupBy } from '../lib/boardV95'
 
 export type View = 'monitor' | 'workspace' | 'usage' | 'history' | 'extensions' | 'devices' | 'disk'
@@ -70,15 +69,6 @@ function initialMapView(): MapView {
     return v === 'office' ? v : 'map'
   } catch {
     return 'map'
-  }
-}
-
-function initialTimelineWindow(): WindowMin {
-  try {
-    const n = Number(localStorage.getItem('ccm.timelineWindow'))
-    return WINDOWS.find((w) => w === n) ?? 15
-  } catch {
-    return 15
   }
 }
 
@@ -339,15 +329,6 @@ export const useUiStore = defineStore('ui', () => {
     }
   })
 
-  const timelineWindow = ref<WindowMin>(initialTimelineWindow())
-  watch(timelineWindow, (value) => {
-    try {
-      localStorage.setItem('ccm.timelineWindow', String(value))
-    } catch {
-      return
-    }
-  })
-
   watch(compact, (value) => {
     try {
       const url = new URL(location.href)
@@ -525,7 +506,6 @@ export const useUiStore = defineStore('ui', () => {
     cmdPanelOpen,
     monitorProject,
     launchTerminal,
-    timelineWindow,
     compact,
     toggleCompact,
     leaveCompact,

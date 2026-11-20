@@ -239,7 +239,7 @@ async function run(app) {
 
 ;(async () => {
   fixture()
-  const app = await launch(process.argv[2] ? { exe: process.argv[2] } : {})
+  const app = await launch(process.argv[2] ? { exe: process.argv[2], ui: 'classic' } : { ui: 'classic' })
   try {
     await run(app)
   } catch (e) {

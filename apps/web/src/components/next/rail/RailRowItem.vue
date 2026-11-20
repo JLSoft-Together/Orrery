@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CheckCircle2, CircleDashed, CircleHelp, Lock, LoaderCircle, Moon, XCircle, type LucideIcon } from 'lucide-vue-next'
+import { CheckCircle2, CircleDashed, CircleHelp, FileWarning, Lock, LoaderCircle, Moon, XCircle, type LucideIcon } from 'lucide-vue-next'
 import { now } from '../../../lib/format'
 import { detailOf, isSignalEdge, SIGNAL_MS, timeLabel, type LiveRow } from '../../../lib/next/railLive'
 import type { RailState } from '../../../lib/rail/railModel'
@@ -31,6 +31,8 @@ const time = computed(() => timeLabel(props.row, now.value))
 const detail = computed(() => detailOf(props.row))
 const label = computed(() => t('mist.rail.row', { name: props.row.title, state: word.value || props.row.agent }))
 const gauge = computed(() => props.row.ctxPct !== null && !props.row.shell)
+const clashLabel = computed(() => (props.row.clash ? (props.row.clash.n > 1 ? t('v104.clash.chipN', { n: props.row.clash.n }) : t('v104.clash.chip')) : ''))
+const openTitle = computed(() => [[props.row.title, word.value, props.row.model].filter(Boolean).join(', '), props.row.clash?.tip].filter(Boolean).join('\n'))
 
 const signal = ref<RailState | null>(null)
 let signalTimer: ReturnType<typeof setTimeout> | undefined
@@ -73,6 +75,13 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
       <span class="flex min-w-0 items-baseline gap-2">
         <TabRenameInput v-if="renaming" :tab-key="row.tabKey" :initial="row.title" @done="(saved) => emit('renamed', row.tabKey, saved)" />
         <span v-else class="min-w-0 flex-1 truncate text-xs" :class="row.focused ? 'font-semibold text-ink' : 'font-medium text-ink'">{{ row.title }}</span>
+        <span
+          v-if="row.clash"
+          class="inline-flex max-w-[55%] min-w-0 shrink-0 items-center gap-0.5 self-center rounded-inner bg-warning-soft px-1 text-2xs font-medium text-warning"
+          :data-clash-chip="row.clash.n"
+        >
+          <FileWarning :size="11" class="shrink-0" aria-hidden="true" /><span class="min-w-0 truncate">{{ clashLabel }}</span>
+        </span>
         <span v-if="time" class="ccm-tabular shrink-0 text-2xs text-ink-faint">{{ time }}</span>
       </span>
       <span class="flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
@@ -91,8 +100,8 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
       :class="renaming ? 'pointer-events-none' : ''"
       :tabindex="tabStop ? 0 : -1"
       :aria-current="row.focused ? 'true' : undefined"
-      :aria-label="label"
-      :title="[row.title, word, row.model].filter(Boolean).join(', ')"
+      :aria-label="row.clash ? `${label}, ${clashLabel}` : label"
+      :title="openTitle"
       data-rail-open
       @click="emit('open', row)"
       @keydown="emit('key', row, $event)"

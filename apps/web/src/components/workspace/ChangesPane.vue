@@ -40,12 +40,17 @@ import type { MenuEntry } from '../../lib/menu'
 import DiffView from './DiffView.vue'
 import DiscardConfirm from './DiscardConfirm.vue'
 import PaneMore from './PaneMore.vue'
+import SessionFilterBar from './SessionFilterBar.vue'
+import { filterEntries, splitBySession, UNKNOWN_FILTER, validFilter } from '../../lib/turnEdits'
+import { useTurnEditsStore } from '../../stores/turnEdits'
+import { useSettingsStore } from '../../stores/settings'
+import { useTerminalsStore } from '../../stores/terminals'
 import { PANE_LAYOUT_MENU } from '../../lib/layoutPaneMenu'
 
 const ConflictView = defineAsyncComponent(() => import('./ConflictView.vue'))
 const ImageCompare = defineAsyncComponent(() => import('./ImageCompare.vue'))
 
-const props = withDefaults(defineProps<{ cwd: string; paneKey?: string; active?: boolean; select?: string }>(), { active: true })
+const props = withDefaults(defineProps<{ cwd: string; paneKey?: string; active?: boolean; select?: string; sessionFilter?: string }>(), { active: true })
 const emit = defineEmits<{
   /** Absolute path + line (new side). */
   open: [path: string, line?: number]
@@ -57,6 +62,7 @@ const emit = defineEmits<{
   selected: []
   /** Open the Log pane for this repo. */
   log: [root: string]
+  filter: [session: string | null]
 }>()
 
 const uiGen = useUiGenStore()
@@ -128,17 +134,53 @@ watch(
   () => void loadDiff(true),
 )
 
+const turnEdits = useTurnEditsStore()
+const settings = useSettingsStore()
+const terminals = useTerminalsStore()
+const turnSplit = computed(() => splitBySession(repoRoot.value ?? props.cwd, entries.value, turnEdits.turns))
+const showFilter = computed(() => turnSplit.value.sessions.length > 0)
+const filter = computed<string | null>({
+  get: () => (showFilter.value ? validFilter(turnSplit.value, props.sessionFilter) : null),
+  set: (v) => emit('filter', v),
+})
+const shown = computed(() => filterEntries(turnSplit.value, entries.value, filter.value))
+const sessionChoices = computed(() => turnSplit.value.sessions.map((s) => ({ id: s.terminalId, name: s.name, status: terminals.byId[s.terminalId]?.status ?? 'unknown', count: s.entries.length })))
+const turnSession = computed(() => (filter.value && filter.value !== UNKNOWN_FILTER ? filter.value : null))
+const turnName = (id: string): string => turnSplit.value.sessions.find((s) => s.terminalId === id)?.name ?? id
+function alsoBy(e: ChangeEntry): string | null {
+  const owner = turnSession.value
+  if (!owner) return null
+  const peers = (turnSplit.value.owners.get(e.path) ?? []).filter((id) => id !== owner)
+  return peers.length ? t('v104.turnChanges.alsoBy', { peer: peers.map(turnName).join(', ') }) : null
+}
+function markTurnSeen(): void {
+  const id = turnSession.value
+  const root = repoRoot.value
+  if (!id || !root) return
+  for (const e of shown.value) markSeen(root, e)
+  seenMap.value = readSeen(root)
+  turnEdits.markSeen(id)
+}
+
 const seenMap = ref<Record<string, string>>({})
-const reviewSplit = computed(() => splitUnseen(entries.value, seenMap.value))
+const reviewSplit = computed(() => splitUnseen(shown.value, seenMap.value))
+const repoUnseen = computed(() => (filter.value ? splitUnseen(entries.value, seenMap.value).unseen.length : reviewSplit.value.unseen.length))
 const unseenCount = computed(() => reviewSplit.value.unseen.length)
 // With nothing seen yet every file is unseen: a lone "Unseen" group would only hide the usual grouping.
-const unseenGroup = computed(() => unseenCount.value > 0 && unseenCount.value < entries.value.filter((e) => e.kind !== 'conflict').length)
+const unseenGroup = computed(() => unseenCount.value > 0 && unseenCount.value < shown.value.filter((e) => e.kind !== 'conflict').length)
 const groups = computed<{ key: ChangeGroupKey | 'unseen'; items: ChangeEntry[] }[]>(() =>
-  unseenGroup.value ? [...groupChanges(reviewSplit.value.rest.filter((e) => e.kind === 'conflict')), { key: 'unseen', items: reviewSplit.value.unseen }, ...groupChanges(reviewSplit.value.rest.filter((e) => e.kind !== 'conflict'))] : groupChanges(entries.value),
+  unseenGroup.value ? [...groupChanges(reviewSplit.value.rest.filter((e) => e.kind === 'conflict')), { key: 'unseen', items: reviewSplit.value.unseen }, ...groupChanges(reviewSplit.value.rest.filter((e) => e.kind !== 'conflict'))] : groupChanges(shown.value),
 )
-watch(unseenCount, (n) => repoRoot.value && setUnseenCount(repoRoot.value, n), { immediate: true })
+watch(repoUnseen, (n) => repoRoot.value && setUnseenCount(repoRoot.value, n), { immediate: true })
 function markAllReviewed(): void {
-  if (repoRoot.value) seenMap.value = markAllSeen(repoRoot.value, entries.value)
+  const root = repoRoot.value
+  if (!root) return
+  if (!filter.value) {
+    seenMap.value = markAllSeen(root, entries.value)
+    return
+  }
+  for (const e of shown.value) markSeen(root, e)
+  seenMap.value = readSeen(root)
 }
 /** Files in display order (tree order when grouped by folder, folded folders included): F7 / [ ] walk this. */
 const ordered = computed(() =>
@@ -151,6 +193,9 @@ const treeGroups = computed(() =>
 )
 const rowKey = (g: string, r: ChangesTreeRow): string => (r.kind === 'dir' ? `d:${g}:${r.path}` : `f:${r.entry.path}`)
 const visibleKeys = computed(() => treeGroups.value.flatMap((g) => g.rows.map((r) => rowKey(g.key, r))))
+watch(filter, () => {
+  if (!shown.value.some((e) => e.path === selected.value)) selected.value = ordered.value[0]?.path ?? null
+})
 
 const selectedEntry = computed(() => entries.value.find((e) => e.path === selected.value) ?? null)
 const imageEntry = computed(() => {
@@ -871,6 +916,12 @@ function pickHead(id: string): void {
       <button type="button" class="ccm-btn h-6 shrink-0 text-2xs" :disabled="aborting" data-merge-abort @click="abortMerge()">{{ t('workspace.conflicts.abort') }}</button>
     </div>
 
+    <SessionFilterBar v-if="showFilter && !loading && !statusError" v-model="filter" :sessions="sessionChoices" :unknown="turnSplit.unknown.length" :total="entries.length">
+      <button v-if="turnSession && turnEdits.last.has(turnSession)" type="button" class="ccm-btn h-6 shrink-0 gap-1 text-2xs" :title="t('v104.turnChanges.markSeen')" data-turn-mark-seen @click="markTurnSeen()">
+        <CheckCheck :size="12" aria-hidden="true" /><span class="@max-[560px]:sr-only">{{ t('v104.turnChanges.markSeen') }}</span>
+      </button>
+    </SessionFilterBar>
+
     <div v-if="unseenCount && !loading && !statusError" class="flex shrink-0 items-center gap-2 border-b border-line bg-fill px-3 py-1 text-xs text-ink" role="status" data-review-bar>
       <span class="min-w-0 flex-1 truncate">{{ t('linksV80.unseenCount', { n: unseenCount }, unseenCount) }}</span>
       <button type="button" class="ccm-btn h-6 shrink-0 gap-1 text-2xs" data-review-mark-seen @click="markAllReviewed()">
@@ -943,6 +994,10 @@ function pickHead(id: string): void {
                 }}</span>
                 <span class="sr-only">{{ t(`workspace.changes.kind.${r.entry.kind}`) }}{{ r.entry.staged ? `, ${t('workspace.changes.staged')}` : '' }}:</span>
                 <span class="min-w-0 flex-1 truncate font-medium">{{ baseName(r.entry.path) }}</span>
+                <template v-if="alsoBy(r.entry)">
+                  <span v-if="settings.clashWarn" class="inline-flex shrink-0 text-warning" :title="alsoBy(r.entry)!" data-turn-also><FileWarning :size="12" aria-hidden="true" /><span class="sr-only">{{ alsoBy(r.entry) }}</span></span>
+                  <span v-else class="max-w-24 shrink-0 truncate text-2xs text-ink-faint" :title="alsoBy(r.entry)!" data-turn-also>{{ alsoBy(r.entry) }}</span>
+                </template>
                 <span v-if="!r.entry.binary && (r.entry.added || r.entry.removed)" class="shrink-0 text-2xs tabular" :aria-label="countsLabel(r.entry)">
                   <span v-if="r.entry.added" class="text-diff-add">+{{ r.entry.added }}</span>
                   <span v-if="r.entry.removed" class="ml-1 text-diff-del">−{{ r.entry.removed }}</span>
@@ -973,6 +1028,10 @@ function pickHead(id: string): void {
                   ><bdi>{{ dirOfRel(e.path) }}</bdi></span
                 >
               </span>
+              <template v-if="alsoBy(e)">
+                <span v-if="settings.clashWarn" class="inline-flex shrink-0 text-warning" :title="alsoBy(e)!" data-turn-also><FileWarning :size="12" aria-hidden="true" /><span class="sr-only">{{ alsoBy(e) }}</span></span>
+                <span v-else class="max-w-24 shrink-0 truncate text-2xs text-ink-faint" :title="alsoBy(e)!" data-turn-also>{{ alsoBy(e) }}</span>
+              </template>
               <span v-if="!e.binary && (e.added || e.removed)" class="shrink-0 text-2xs tabular" :aria-label="countsLabel(e)">
                 <span v-if="e.added" class="text-diff-add">+{{ e.added }}</span>
                 <span v-if="e.removed" class="ml-1 text-diff-del">−{{ e.removed }}</span>

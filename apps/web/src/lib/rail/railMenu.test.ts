@@ -87,6 +87,15 @@ describe('rowMenu', () => {
     expect(ids(rowMenu(row({ agent: false }), t))).not.toContain('monitor')
     expect(findAction(rowMenu(row({ linked: false }), t), 'monitor')).toMatchObject({ disabled: true, hint: 'notLinked' })
   })
+  it("View this turn's changes: agent rows with a linked terminal, disabled without edits", () => {
+    expect(ids(rowMenu(row(), t))).not.toContain('changesOfTurn')
+    const m = rowMenu(row({ turnChanges: 2 }), t)
+    expect(ids(m).indexOf('changesOfTurn')).toBe(ids(m).indexOf('monitor') - 1)
+    expect(findAction(m, 'changesOfTurn')).toMatchObject({ label: 'menu', disabled: false, hint: '2' })
+    expect(findAction(rowMenu(row({ turnChanges: 0 }), t), 'changesOfTurn')).toMatchObject({ disabled: true, hint: 'menuNone' })
+    expect(findAction(rowMenu(row({ turnChanges: 3, cwd: null }), t), 'changesOfTurn')?.disabled).toBe(true)
+    expect(ids(rowMenu(row({ agent: false, turnChanges: 2 }), t))).not.toContain('changesOfTurn')
+  })
   it('tab rows close the tab; Close others needs other panes', () => {
     const tab = rowMenu(row({ tabRow: true }), t)
     expect(findAction(tab, 'close')?.label).toBe('closeTab')

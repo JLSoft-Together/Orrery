@@ -39,6 +39,7 @@ import { fromPath, useAttachmentsStore, type NewAttachment } from '../../stores/
 import { useSettingsStore } from '../../stores/settings'
 import { NEXT_CODE_FONT, useUiGenStore } from '../../stores/uiGen'
 import PaneHeader from '../next/ui/PaneHeader.vue'
+import ClashChip from './ClashChip.vue'
 import { useTerminalsStore } from '../../stores/terminals'
 import { useTipsStore } from '../../stores/tips'
 import { useUiStore } from '../../stores/ui'
@@ -1317,6 +1318,7 @@ onBeforeUnmount(() => {
       </Teleport>
       <div class="ml-auto flex min-w-0 items-center gap-1">
         <RemotePhoneChip :pane-key="pane.key" />
+        <ClashChip v-if="isNext && pane.terminalId" :terminal-id="pane.terminalId" :can-worktree="!!cwd && pane.state === 'running'" @worktree="wtAnchor || toggleWorktrees()" />
         <SubagentOrbit v-if="isClaude" :agents="orbitAgents" data-pane-chip />
         <ContextGauge v-if="context" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
         <ContextTokens class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />

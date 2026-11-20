@@ -1,4 +1,5 @@
 const HIDDEN_ROWS = new Set(['disk', 'phone'])
+const REMINDER_ROWS = new Set(['break', 'stuck', 'contextWarn', 'budget'])
 const TRIES = 25
 const EVERY_MS = 40
 const FLASH_MS = 1400
@@ -23,6 +24,7 @@ export function flashSettingRow(id: string, root: ParentNode = document): void {
   let tries = 0
   const look = (): void => {
     if (HIDDEN_ROWS.has(id)) root.querySelector<HTMLElement>('[data-notify-more][aria-expanded="false"]')?.click()
+    if (REMINDER_ROWS.has(id)) root.querySelector<HTMLElement>('[data-reminders-more][aria-expanded="false"]')?.click()
     const row = root.querySelector<HTMLElement>(`[data-setting-row="${id}"]`)
     if (!row) {
       if (++tries < TRIES) window.setTimeout(look, EVERY_MS)

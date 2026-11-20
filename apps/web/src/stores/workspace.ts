@@ -55,7 +55,7 @@ import {
 } from '../lib/splitLayout'
 import type { SavedLayout } from '../lib/projects'
 import { hasDeepSeek, presetEnabled } from '../lib/desktop'
-import { useDeepSeekStore } from './deepseek'
+import { gateDeepSeek } from '../features/deepseek'
 import { dirKey } from './favorites'
 import { openedLinkId, usePeersStore } from './peers'
 import { useTerminalsStore } from './terminals'
@@ -93,6 +93,7 @@ export interface Pane {
   count?: number
   /** Changes: absolute path of the file to select; Log: commit hash to select. Runtime only, cleared once shown. */
   select?: string
+  sessionFilter?: string
   /** Browser page title / favicon, runtime only. */
   title?: string
   favicon?: string | null
@@ -749,15 +750,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   /** One Changes pane per repo (git toplevel once known, else the folder it was opened for); `select` = file to show. */
-  function openChanges(cwd: string, opts: { split?: Placement; select?: string } = {}): Pane {
+  function openChanges(cwd: string, opts: { split?: Placement; select?: string; session?: string } = {}): Pane {
     const same = panes.value.find((p) => p.kind === 'changes' && (sameDir(p.root, cwd) || sameDir(p.cwd, cwd)))
     if (same) {
       if (opts.select) same.select = opts.select
+      if (opts.session) same.sessionFilter = opts.session
       activate(same.key)
       return same
     }
     const pane = addView({ kind: 'changes' }, cwd)
     if (opts.select) pane.select = opts.select
+    if (opts.session) pane.sessionFilter = opts.session
     placeNew(pane, opts.split)
     return pane
   }
@@ -899,7 +902,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const policy = OPEN_POLICY[caller.source]
     const { preset, cwd } = input
     if (!isPtyPreset(preset) || !presetEnabled(preset, hasDeepSeek)) return fail('preset')
-    if (preset === 'deepseek' && (caller.source === 'menu' || caller.source === 'palette' ? useDeepSeekStore().gate(preset) : !!caller.setupBlocked)) return fail('setup')
+    if (preset === 'deepseek' && (caller.source === 'menu' || caller.source === 'palette' ? gateDeepSeek(preset) : !!caller.setupBlocked)) return fail('setup')
     // The limited sources come from outside the app and must name a folder; in-app callers may open the home folder.
     if (policy.limit ? typeof cwd !== 'string' || !cwd.trim() : cwd !== undefined && typeof cwd !== 'string') return fail('cwd')
     const resume = input.resume === undefined || input.resume === '' ? undefined : preset !== 'shell' && isAgentSessionId(input.resume) ? input.resume : null
@@ -1111,7 +1114,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const target = panes.value.find((p) => p.key === targetKey)
     if (!tab || !target) return null
     const chosen: PaneSpec = spec ?? { kind: 'term', preset: isTerm(target) ? target.preset : preset.value }
-    if (chosen.kind === 'term' && (!presetEnabled(chosen.preset, hasDeepSeek) || useDeepSeekStore().gate(chosen.preset))) return null
+    if (chosen.kind === 'term' && (!presetEnabled(chosen.preset, hasDeepSeek) || gateDeepSeek(chosen.preset))) return null
     if (opts.resume) {
       const running = panes.value.find((p) => holdsSession(p, opts.resume!))
       if (running) {
@@ -1828,7 +1831,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     if (!dir) return null
     const kind = preset.value
-    if (!presetEnabled(kind, hasDeepSeek) || useDeepSeekStore().gate(kind)) return null
+    if (!presetEnabled(kind, hasDeepSeek) || gateDeepSeek(kind)) return null
     const pane = addPane(kind, dir)
     remember(dir)
     unzoom(to)

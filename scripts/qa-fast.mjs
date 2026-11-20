@@ -36,6 +36,11 @@ const E2E_MAP = [
   [/useCompact|compact/i, ['v51-compact']],
   [/themes|style\.css|ThemePicker|Appearance/, ['v91-themes']],
   [/termIme|TermPane\.vue|DropTerminal\.vue/, ['term-ime']],
+  [/features[\\/]deepseek[\\/]|deepseek|DeepSeek/, ['v104-deepseek-lazy']],
+  [/clash|Clash|agentTouches|RailRowItem|railLive/, ['v104-clash']],
+  [/inbox|Inbox|menuQueue|MenuToast|useInboxGlobal|remoteSummary/, ['v104-inbox', 'v100-menu-queue']],
+  [/turnEdits|turnEdges|TurnChanges|SessionFilterBar|ChangesPane|reviewQueue/, ['v104-turn-changes']],
+  [/apps[\\/]shell[\\/]src[\\/](toast|menu_toast|power|episodes)\.rs/, ['v76', 'v100-menu-toast']],
 ]
 if (flag('all-e2e-map')) {
   for (const [re, list] of E2E_MAP) console.log(`${re.source}  →  ${list.join(', ')}`)

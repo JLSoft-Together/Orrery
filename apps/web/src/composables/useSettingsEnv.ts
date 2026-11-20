@@ -40,5 +40,6 @@ export function useSettingsEnv() {
     deepseek: hasDeepSeek,
     xmlPreview: hasXmlInstall,
     bugReport: Boolean(desktop?.bugReportSave),
+    desktop: Boolean(desktop),
   }))
 }

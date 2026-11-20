@@ -1,19 +1,31 @@
 import type { ToastKind } from '@ccm/shared'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'remote', 'reminders', 'github', 'integrations', 'deepseek', 'access', 'data', 'about', 'workspace', 'disk'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'remote', 'github', 'integrations', 'deepseek', 'access', 'data', 'about', 'workspace', 'disk'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
 
-export const NEXT_ONLY_PAGES: readonly SettingsPage[] = ['workspace', 'disk']
+export const NEXT_ONLY_PAGES: readonly SettingsPage[] = ['disk']
 
 export const pageAvailable = (page: SettingsPage, env: SettingsEnv, next: boolean): boolean => (next || !NEXT_ONLY_PAGES.includes(page)) && pageVisible(page, env)
 
 export const isSettingsPage = (v: unknown): v is SettingsPage => typeof v === 'string' && (SETTINGS_PAGES as readonly string[]).includes(v)
 
 const PAGE_KEY = 'ccm.settings.page'
+const LEGACY_REMINDERS = 'reminders'
+
+export function takeLegacyReminders(): boolean {
+  try {
+    if (localStorage.getItem(PAGE_KEY) !== LEGACY_REMINDERS) return false
+    localStorage.setItem(PAGE_KEY, 'notify')
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function loadPage(): SettingsPage {
   try {
     const v = localStorage.getItem(PAGE_KEY)
+    if (v === LEGACY_REMINDERS) return 'notify'
     if (isSettingsPage(v)) return v
   } catch {
     return 'general'
@@ -53,6 +65,7 @@ export interface SettingsEnv {
   deepseek: boolean
   xmlPreview: boolean
   bugReport: boolean
+  desktop: boolean
 }
 
 export interface SettingsEntry {
@@ -103,8 +116,8 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'appearance', id: 'codeFont', labelKey: 'fonts.code', hintKey: 'fonts.codeHint' },
   { page: 'appearance', id: 'codesize', labelKey: 'fonts.size', hintKey: mac ? 'fonts.sizeHintMac' : 'fonts.sizeHint' },
   { page: 'appearance', id: 'appzoom', labelKey: 'fonts.zoom', hintKey: mac ? 'fonts.zoomHintMac' : 'fonts.zoomHint', needs: 'zoom' },
-  { page: 'appearance', id: 'fileIcons', labelKey: 'settings.fileIcons', hintKey: 'settings.fileIconsHint', needs: 'terminals' },
-  { page: 'appearance', id: 'dust', labelKey: 'settings.dust', hintKey: 'settings.dustHint', needs: 'terminals' },
+  { page: 'workspace', id: 'fileIcons', labelKey: 'settings.fileIcons', hintKey: 'settings.fileIconsHint', needs: 'terminals' },
+  { page: 'workspace', id: 'dust', labelKey: 'settings.dust', hintKey: 'settings.dustHint', needs: 'terminals' },
 
   { page: 'editor', id: 'autoSave', labelKey: 'settings.autoSave', hintKey: 'settings.autoSaveHint', needs: 'terminals' },
   { page: 'editor', id: 'minimap', labelKey: 'settings.minimap', hintKey: 'settings.minimapHint', needs: 'terminals' },
@@ -125,6 +138,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
     hintKey: `settings.toastKind.${r.kind}`,
     needs: r.inApp ? undefined : 'toast',
   })),
+  { page: 'notify', id: 'clash', labelKey: 'v104.clash.setting', hintKey: 'v104.clash.settingHint', needs: 'terminals' },
   { page: 'notify', id: 'sound', labelKey: 'settings.sound', hintKey: 'settings.soundHint' },
   { page: 'notify', id: 'quiet', labelKey: 'settings.quiet', hintKey: 'settings.quietHint', needs: 'notifyData' },
   { page: 'notify', id: 'idle', labelKey: 'resources.idleSetting', hintKey: 'resources.idleSettingHint', needs: 'notifyData' },
@@ -142,11 +156,11 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'remote', id: 'remoteTrusted', labelKey: 'remoteV98.guard.trustedTitle', hintKey: 'remoteV98.guard.trusted.hint', needs: 'remote' },
   { page: 'remote', id: 'remoteAccess', labelKey: 'remoteV98.guard.logTitle', hintKey: 'remoteV98.guard.log.hint', needs: 'remote' },
 
-  { page: 'reminders', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
-  { page: 'reminders', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },
-  { page: 'reminders', id: 'contextWarn', labelKey: 'settings.contextWarn', hintKey: 'settings.contextWarnHint' },
+  { page: 'notify', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
+  { page: 'notify', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },
+  { page: 'notify', id: 'contextWarn', labelKey: 'settings.contextWarn', hintKey: 'settings.contextWarnHint' },
   { page: 'about', id: 'bugReportNudge', labelKey: 'bugReport.nudge', hintKey: 'bugReport.nudgeHint', needs: 'bugReport' },
-  { page: 'reminders', id: 'budget', labelKey: 'settings.budget', hintKey: 'settings.budgetHint' },
+  { page: 'notify', id: 'budget', labelKey: 'settings.budget', hintKey: 'settings.budgetHint' },
 
   { page: 'github', id: 'github', labelKey: 'github.section', needs: 'github' },
 
@@ -177,7 +191,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'about', id: 'help-wsTour', labelKey: 'wsHelp.tour', needs: 'terminals' },
   { page: 'about', id: 'bugReport', labelKey: 'bugReport.section', hintKey: 'bugReport.hint', needs: 'bugReport' },
   { page: 'about', id: 'help-diag', labelKey: 'diag.open', hintKey: 'settings.diagHint' },
-  { page: 'about', id: 'help-setup', labelKey: 'setup.open', hintKey: 'setup.openHint' },
+  { page: 'about', id: 'help-setup', labelKey: 'setup.open', hintKey: 'setup.openHint', needs: 'desktop' },
   { page: 'about', id: 'help-fonts', labelKey: 'fonts.licenses', hintKey: 'fonts.licensesHint' },
   { page: 'about', id: 'help-fileIcons', labelKey: 'settings.fileIconsLicense', hintKey: 'settings.fileIconsLicenseHint', needs: 'terminals' },
   { page: 'about', id: 'help-habblaud', labelKey: 'settings.habblaudLicense', hintKey: 'settings.habblaudLicenseHint' },
@@ -189,8 +203,6 @@ const NEXT_PAGE_OF: Record<string, SettingsPage> = {
   dim: 'workspace',
   compactAuto: 'workspace',
   agentShim: 'workspace',
-  dust: 'workspace',
-  fileIcons: 'workspace',
   diskMap: 'disk',
   disk: 'disk',
 }

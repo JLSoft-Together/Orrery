@@ -11,7 +11,6 @@ import {
   GraduationCap,
   HardDrive,
   History,
-  Inbox,
   Keyboard,
   Maximize2,
   Minimize2,
@@ -164,12 +163,14 @@ const view = computed<View>({
   set: (value) => ui.setView(value),
 })
 
-const inboxBtn = ref<HTMLButtonElement | null>(null)
 const inboxAt = ref<DOMRect | null>(null)
-const inboxCount = computed(() => inbox.items.length)
+function inboxAnchor(): DOMRect {
+  const el = inbox.trigger ?? document.querySelector<HTMLElement>('[data-inbox-chip]')
+  return el?.getBoundingClientRect() ?? new DOMRect(window.innerWidth - 12, 0, 0, 40)
+}
 watch(
   () => inbox.open,
-  (o) => (inboxAt.value = o ? (inboxBtn.value?.getBoundingClientRect() ?? null) : null),
+  (o) => (inboxAt.value = o ? inboxAnchor() : null),
 )
 
 const searchKeys = computed(() => formatKeys(['Mod', 'K'], isMac).join(isMac ? '' : '+'))
@@ -288,7 +289,7 @@ const iconBtn =
         >
           <Search :size="14" class="shrink-0" aria-hidden="true" />
           <span class="min-w-0 flex-1 truncate">{{ t('mist.shell.search') }}</span>
-          <kbd class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[10px] font-semibold text-ink-muted">{{ searchKeys }}</kbd>
+          <kbd class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[11px] font-semibold text-ink-muted">{{ searchKeys }}</kbd>
         </button>
         <GlassTooltip v-else :text="t('palette.open')" side="bottom">
           <button type="button" :class="[iconBtn, 'mx-auto mb-1']" :aria-label="t('palette.open')" data-tour="palette" data-next-search @click="ui.paletteOpen = true">
@@ -332,26 +333,6 @@ const iconBtn =
 
           <div class="flex items-center gap-0.5" :class="iconMode ? 'flex-col' : 'justify-between'">
             <div class="ccm-next-status"><HeaderStatusPopover /></div>
-            <button
-              ref="inboxBtn"
-              type="button"
-              :class="[iconBtn, inbox.open ? 'bg-fill text-ink' : '']"
-              :aria-label="t('inbox.button', { n: inboxCount }, inboxCount)"
-              :title="t('inbox.button', { n: inboxCount }, inboxCount)"
-              aria-haspopup="dialog"
-              :aria-expanded="inbox.open"
-              data-inbox-button
-              @click="inbox.open = !inbox.open"
-            >
-              <Inbox :size="16" aria-hidden="true" />
-              <span
-                v-if="inboxCount"
-                class="absolute top-0.5 right-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-accent px-0.5 text-[10px] leading-none font-bold text-on-accent tabular-nums"
-                aria-hidden="true"
-                data-inbox-badge
-                >{{ inboxCount > 99 ? '99+' : inboxCount }}</span
-              >
-            </button>
             <button type="button" :class="[iconBtn, ui.view === 'usage' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.usage')" :title="t('nav.usage')" :aria-current="ui.view === 'usage' ? 'page' : undefined" data-view-switch="usage" @click="ui.setView('usage')">
               <ChartColumnBig :size="16" aria-hidden="true" />
             </button>
@@ -403,7 +384,7 @@ const iconBtn =
     <NextQuotaBar v-if="!railHidden" />
 
     <div hidden aria-hidden="true"><SettingsMenu /></div>
-    <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inboxBtn" @close="inbox.open = false" />
+    <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inbox.trigger" @close="inbox.close()" />
     <GlassMenu :open="moreOpen" :items="moreItems" :label="t('nav.more')" :width="MENU_W" :x="moreAt.x" :y="moreAt.y" @select="pickMore" @close="closeMore" />
   </div>
 </template>

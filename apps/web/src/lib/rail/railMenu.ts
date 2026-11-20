@@ -103,6 +103,7 @@ export interface RowMenuCtx {
   telegram?: 'linked' | 'unlinked'
   /** The linked topic has a t.me link. */
   telegramOpen?: boolean
+  turnChanges?: number
 }
 
 const splitKids = (dir: 'row' | 'col', deepseek: boolean, t: T): MenuEntry[] => [
@@ -131,6 +132,8 @@ export function rowMenu(ctx: RowMenuCtx, t: T): MenuEntry[] {
     { id: 'copy-cwd', label: t(`${M}copyCwd`), disabled: !ctx.cwd },
   ]
   if (ctx.explorer) entries.push({ id: 'explorer', label: t(`${M}showExplorer`), disabled: !ctx.cwd })
+  if (ctx.agent && ctx.turnChanges !== undefined)
+    entries.push({ id: 'changesOfTurn', label: t('v104.turnChanges.menu'), disabled: !ctx.turnChanges || !ctx.cwd, hint: ctx.turnChanges ? String(ctx.turnChanges) : t('v104.turnChanges.menuNone') })
   if (ctx.agent) entries.push({ id: 'monitor', label: t(`${M}showInMonitor`), disabled: !ctx.linked, hint: ctx.linked ? undefined : t(`${M}notLinked`) })
   if (ctx.context && ctx.cwd) entries.push({ id: 'context', label: t('ctxSources.open') })
   if (ctx.telegram) entries.push({ id: 'telegram-link', label: t(ctx.telegram === 'linked' ? 'telegram.connect.menuLinked' : 'telegram.connect.menu') })

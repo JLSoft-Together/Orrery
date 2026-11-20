@@ -11,7 +11,7 @@ import { useConnectionStore } from './stores/connection'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useWorkspaceStore } from './stores/workspace'
-import { useDeepSeekStore } from './stores/deepseek'
+import { gateDeepSeekAgent, warmDeepSeek } from './features/deepseek'
 import AppHeader from './components/AppHeader.vue'
 import NextShell from './components/next/NextShell.vue'
 import ExplorerDrawer from './components/next/explorer/ExplorerDrawer.vue'
@@ -41,6 +41,7 @@ import { useRevealInWorkspace } from './composables/useRevealInWorkspace'
 import { handleOrrery, installOrreryApi } from './composables/useOrreryApi'
 import { installRemotePhone } from './composables/useRemotePhone'
 import { installRemoteSummary } from './composables/useRemoteSummary'
+import { useInboxGlobal } from './composables/useInboxGlobal'
 import { useRemoteStore } from './stores/remote'
 import { useTurnCheckpoints } from './composables/useTurnCheckpoints'
 import { isMac } from './lib/platform'
@@ -98,6 +99,7 @@ const workspaceOpened = ref(false)
 watch(showWorkspace, (shown) => shown && (workspaceOpened.value = true), { immediate: true })
 const remote = useRemoteStore()
 if (hasTerminals && !ui.compact) {
+  useInboxGlobal()
   void remote.start()
   installRemotePhone()
   installRemoteSummary()
@@ -115,12 +117,11 @@ watch(
 )
 
 const workspace = useWorkspaceStore()
-const deepseek = useDeepSeekStore()
 // Warm the launch gate's cache in the background (three short codewhale runs, only when it is installed).
-if (hasDeepSeek && !ui.compact) window.setTimeout(() => void deepseek.refresh().catch(() => null), 4_000)
+if (hasDeepSeek) window.setTimeout(() => warmDeepSeek(ui.compact ? null : 4_000), 0)
 installOrreryApi()
 handleOrrery('session.open', async (req, caller) => {
-  const setupBlocked = hasDeepSeek && req.preset === 'deepseek' && (await deepseek.gateAgent())
+  const setupBlocked = hasDeepSeek && req.preset === 'deepseek' && (await gateDeepSeekAgent())
   // Only open_session has a host ticket behind its id; a link's id is just a request id, so its pane mints its own session id.
   const result = workspace.openSession(caller.source === 'mcp' ? req : { ...req, id: undefined }, { source: caller.source, setupBlocked })
   if (!result.ok) return result

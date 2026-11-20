@@ -23,10 +23,11 @@ export const scopeOfMode = (mode: NextPrefixMode): NextScope => mode
 export interface BucketInput {
   status: TerminalStatus
   attention?: 'waiting' | 'done'
+  needs?: boolean
 }
 
 export function bucketOf(s: BucketInput): SessionBucket {
-  if (s.status === 'waiting' || s.status === 'error' || s.attention === 'waiting') return 'needs'
+  if (s.needs ?? (s.status === 'waiting' || s.status === 'error' || s.attention === 'waiting')) return 'needs'
   if (s.status === 'working') return 'running'
   if (s.attention === 'done') return 'doneUnseen'
   return 'recent'

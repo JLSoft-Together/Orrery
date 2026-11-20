@@ -11,11 +11,13 @@ import { usePaneActions } from '../../../composables/usePaneActions'
 import { usePaneInfo } from '../../../composables/usePaneInfo'
 import { useRail } from '../../../composables/useRail'
 import { useRailDrag, type RailDrop } from '../../../composables/useRailDrag'
+import { useTurnChanges } from '../../../composables/useTurnChanges'
 import { hasBuildClean } from '../../../lib/buildClean'
 import { hasCtxSources } from '../../../lib/ctxSources'
 import { hasDeepSeek } from '../../../lib/desktop'
 import type { MenuEntry } from '../../../lib/menu'
-import { buildLiveRows, collapsedProjects, freezeLayout, layoutOf, type LayoutSection, type LiveExtras, type LiveRow } from '../../../lib/next/railLive'
+import { othersOf, relPath, summarize } from '../../../lib/clash'
+import { buildLiveRows, collapsedProjects, freezeLayout, layoutOf, type LayoutSection, type LiveExtras, type LiveRow, type RowClash } from '../../../lib/next/railLive'
 import { forgetSnoozed, isSnoozed } from '../../../lib/next/railSnooze'
 import { NEXT_SHELL_KEY } from '../../../lib/next/shellContext'
 import { leftRail, workspaceBridge, type DragHandoff } from '../../../lib/next/workspaceBridge'
@@ -33,7 +35,9 @@ import { railMoveIndexes } from '../../../lib/rail/railView'
 import { leaves, type SplitDir } from '../../../lib/splitLayout'
 import { waitDisplay } from '../../../lib/wait'
 import { useAgentsStore } from '../../../stores/agents'
+import { useAgentTouchesStore } from '../../../stores/agentTouches'
 import { useRunStore } from '../../../stores/run'
+import { useTurnEditsStore } from '../../../stores/turnEdits'
 import { useUiStore } from '../../../stores/ui'
 import { useUiGenStore } from '../../../stores/uiGen'
 import { isTerm, presetOf, useWorkspaceStore, workCwd, type SplitChoice } from '../../../stores/workspace'
@@ -51,10 +55,13 @@ const uigen = useUiGenStore()
 const { available: openable, picking, openProject } = useOpenProject()
 const info = usePaneInfo()
 const agents = useAgentsStore()
+const touches = useAgentTouchesStore()
 const run = useRunStore()
 const rail = useRail()
 const paneActions = usePaneActions()
 const compactFlow = useCompact()
+const turnEdits = useTurnEditsStore()
+const turnChanges = useTurnChanges()
 const shell = inject(NEXT_SHELL_KEY, null)
 
 function extrasOf(row: RailRow): LiveExtras {
@@ -72,7 +79,16 @@ function extrasOf(row: RailRow): LiveExtras {
     waitText: display?.text ?? null,
     stateText: isTerm(pane) ? info.stateText(pane) : null,
     title: rowLines(row, '').first,
+    clash: id ? clashOf(id, workCwd(pane)) : null,
   }
+}
+
+function clashOf(id: string, cwd: string | undefined): RowClash | null {
+  const list = touches.clashesOf.get(id)
+  if (!list?.length) return null
+  const lines = list.map((c) => t('v104.clash.tip', { peer: othersOf(c, id).map((p) => p.name).join(', '), file: relPath(c.path, cwd) }))
+  const { shown, more } = summarize(lines)
+  return { n: list.length, tip: [...shown, ...(more ? [t('v104.clash.more', { n: more })] : [])].join('\n') }
 }
 
 const rows = computed(() => buildLiveRows(rail.clusters.value, extrasOf, (c) => projectTone(c.key)))
@@ -328,6 +344,7 @@ function showRowMenu(row: LiveRow, at: DOMRect, trigger: HTMLElement | null): vo
         deepseek: hasDeepSeek,
         telegram: paneActions.telegramOf(pane),
         telegramOpen: paneActions.telegramOpenOf(pane),
+        turnChanges: isTerm(pane) && pane.terminalId && hasChanges ? turnEdits.countOf(pane.terminalId) : undefined,
       },
       t,
     ),
@@ -375,6 +392,9 @@ function pickRow(id: string, row: LiveRow, cwd: string | null): void {
     flash(t('workspace.paneDrop.detached', { pane: row.title }))
   } else if (id === 'explorer') {
     workspaceBridge.value?.explorer(row.paneKey)
+    shell?.closeRail()
+  } else if (id === 'changesOfTurn' && row.src.pane.terminalId) {
+    turnChanges.open(row.src.pane.terminalId, cwd ?? undefined)
     shell?.closeRail()
   } else if (id === 'context' && cwd) ui.contextSources = { cwd, terminalId: row.src.pane.terminalId ?? null }
 }

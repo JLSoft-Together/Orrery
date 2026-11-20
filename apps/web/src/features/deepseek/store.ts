@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { PtyPreset } from '@ccm/shared'
-import { i18n } from '../i18n'
-import { deepseekBlocker, type DeepSeekBlocker } from '../lib/deepseekGate'
-import { desktop, type DeepSeekStatus } from '../lib/desktop'
-import { useToastsStore } from './toasts'
-import { useUiStore } from './ui'
+import { i18n } from '../../i18n'
+import { deepseekBlocker, type DeepSeekBlocker } from './gate'
+import { desktop, type DeepSeekStatus } from '../../lib/desktop'
+import { useToastsStore } from '../../stores/toasts'
+import { useUiStore } from '../../stores/ui'
 
 export const STATUS_TTL_MS = 60_000
 

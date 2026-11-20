@@ -325,8 +325,7 @@
   font-weight: 700;
 }
 
-:root[data-ui='next'] [data-menu-queue-chip],
-:root[data-ui='next'] [data-attention-chip] {
+:root[data-ui='next'] [data-inbox-chip] {
   height: 24px;
   gap: 6px;
   padding: 0 10px;
@@ -338,11 +337,19 @@
   box-shadow: none;
 }
 
-:root[data-ui='next'] [data-attention-chip][class*='text-st-error'] {
+:root[data-ui='next'] [data-inbox-chip][data-tone='error'] {
   background: var(--ccm-error-soft);
 }
 
-:root[data-ui='next'] [data-menu-queue-chip] .ccm-next-kbd {
+:root[data-ui='next'] [data-inbox-chip][data-tone='warning'] {
+  background: var(--ccm-warning-soft);
+}
+
+:root[data-ui='next'] [data-inbox-chip][data-tone='muted'] {
+  background: var(--ccm-fill);
+}
+
+:root[data-ui='next'] [data-inbox-chip] .ccm-next-kbd {
   display: inline-flex;
   align-items: center;
   height: 16px;

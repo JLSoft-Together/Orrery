@@ -31,6 +31,7 @@ const env: SettingsEnv = {
   deepseek: true,
   xmlPreview: true,
   bugReport: true,
+  desktop: true,
 }
 
 describe('parsePrefix', () => {

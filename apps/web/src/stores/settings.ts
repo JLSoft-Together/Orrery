@@ -87,6 +87,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const notifyStuck = ref(read('ccm.notify.stuck') !== '0')
   const notifyLimit = ref(read('ccm.notify.limit') !== '0')
   const notifyLoop = ref(read('ccm.notify.loop') !== '0')
+  const clashWarn = ref(read('ccm.notify.clash') === '1')
   const notifyPermission = ref<NotifyPermission>(permissionNow())
   const sound = ref(read('ccm.sound') === '1')
   const stuckMinutes = ref((STUCK_CHOICES as readonly number[]).includes(Number(read('ccm.stuckMin'))) ? Number(read('ccm.stuckMin')) : 10)
@@ -130,6 +131,7 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(notifyStuck, (value) => persist('ccm.notify.stuck', value ? '1' : '0'))
   watch(notifyLimit, (value) => persist('ccm.notify.limit', value ? '1' : '0'))
   watch(notifyLoop, (value) => persist('ccm.notify.loop', value ? '1' : '0'))
+  watch(clashWarn, (value) => persist('ccm.notify.clash', value ? '1' : '0'))
   watch(sound, (value) => persist('ccm.sound', value ? '1' : '0'))
   watch(stuckMinutes, (value) => persist('ccm.stuckMin', String(value)))
   watch(contextWarnTokens, (value) => persist('ccm.contextWarn', String(clampContextWarn(value))))
@@ -294,6 +296,7 @@ export const useSettingsStore = defineStore('settings', () => {
     notifyStuck,
     notifyLimit,
     notifyLoop,
+    clashWarn,
     notifyPermission,
     sound,
     stuckMinutes,

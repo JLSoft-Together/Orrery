@@ -38,7 +38,7 @@ const inboxAt = ref<DOMRect | null>(null)
 const inboxCount = computed(() => inbox.items.length)
 watch(
   () => inbox.open,
-  (o) => (inboxAt.value = o ? (inboxBtn.value?.getBoundingClientRect() ?? null) : null),
+  (o) => (inboxAt.value = o ? ((inbox.trigger ?? inboxBtn.value)?.getBoundingClientRect() ?? null) : null),
 )
 
 const primary = computed(() => [
@@ -184,7 +184,7 @@ function onTabKey(e: KeyboardEvent): void {
           aria-haspopup="dialog"
           :aria-expanded="inbox.open"
           data-inbox-button
-          @click="inbox.open = !inbox.open"
+          @click="inbox.toggle()"
         >
           <Inbox :size="15" aria-hidden="true" />
           <span
@@ -210,7 +210,7 @@ function onTabKey(e: KeyboardEvent): void {
       </div>
       <WindowControls class="ml-1 border-l border-line pl-1.5" />
     </div>
-    <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inboxBtn" @close="inbox.open = false" />
+    <InboxPanel v-if="inbox.open && inboxAt" :anchor="inboxAt" :trigger="inbox.trigger ?? inboxBtn" @close="inbox.close()" />
     <ContextMenu v-if="moreAt" :at="moreAt" :entries="moreEntries" :label="t('nav.more')" :trigger="moreBtn" @pick="pickMore" @close="closeMore" />
     <Transition name="ccm-fade">
       <div

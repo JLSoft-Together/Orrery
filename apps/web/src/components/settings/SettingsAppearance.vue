@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Minus, Plus } from 'lucide-vue-next'
 import { CODE_SIZE_MAX, CODE_SIZE_MIN } from '../../lib/fonts'
-import { desktop, hasTerminals } from '../../lib/desktop'
+import { desktop } from '../../lib/desktop'
 import { isMac } from '../../lib/platform'
 import { hasStars } from '../../lib/themes'
 import { stepCodeSize, zoomApp, zoomHud } from '../../composables/useWheelZoom'
@@ -60,11 +60,6 @@ const starsFxOptions = computed(() => [
   { value: 'twinkle' as const, label: t('themeV95.starsFxTwinkle') },
   { value: 'meteors' as const, label: t('themeV95.starsFxMeteors') },
 ])
-
-const fileIconStyles = computed(() => [
-  { value: 'atom' as const, label: t('settings.fileIconsAtom') },
-  { value: 'simple' as const, label: t('settings.fileIconsSimple') },
-])
 </script>
 
 <template>
@@ -80,6 +75,7 @@ const fileIconStyles = computed(() => [
           {{ uiGen.isNext ? t('mist.switch.backClassic') : t('mist.switch.tryNext') }}
         </button>
       </SettingRow>
+      <p v-if="!uiGen.isNext" class="px-3 pb-2 text-xs ccm-label" data-setting-hint="classic-sunset">{{ t('v104.classic.sunset') }}</p>
     </SettingSection>
     <SettingSection v-if="!uiGen.isNext" id="theme" :title="t('settings.theme')">
       <div class="px-3 py-2" data-setting-row="theme"><ThemePicker /></div>
@@ -136,13 +132,6 @@ const fileIconStyles = computed(() => [
           </button>
         </div>
       </SettingRow>
-    </SettingSection>
-
-    <SettingSection v-if="hasTerminals && !uiGen.isNext" id="look">
-      <SettingRow :label="t('settings.fileIcons')" :info="t('settings.fileIconsHint')" data-setting-row="fileIcons">
-        <SegmentedControl v-model="settings.fileIcons" :options="fileIconStyles" :label="t('settings.fileIcons')" data-setting="file-icons" />
-      </SettingRow>
-      <ToggleSwitch v-model="settings.dustEffect" :label="t('settings.dust')" :info="t('settings.dustHint')" class="px-3" data-setting-row="dust" />
     </SettingSection>
   </div>
 </template>

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, Send } from 'lucide-vue-next'
 import AppSelect from '../AppSelect.vue'
 import { DEFAULT_IDLE_MINUTES, DEFAULT_QUIET, IDLE_CHOICES, isHm, type QuietHours, type ToastKind } from '@ccm/shared'
+import { hasTerminals } from '../../lib/desktop'
 import { hasPhone } from '../../lib/phone'
 import { isMac } from '../../lib/platform'
 import { playChime } from '../../lib/sound'
@@ -15,6 +16,7 @@ import PhoneSettings from '../PhoneSettings.vue'
 import ToggleSwitch from '../ToggleSwitch.vue'
 import InfoHint from './InfoHint.vue'
 import SettingEmbed from './SettingEmbed.vue'
+import SettingsReminders from './SettingsReminders.vue'
 import SettingRow from './SettingRow.vue'
 import SettingSection from './SettingSection.vue'
 import { NOTIFY_ROWS } from './index'
@@ -47,6 +49,7 @@ const sound = computed({
 })
 
 const moreOpen = ref(false)
+const remindersOpen = ref(false)
 const rows = computed(() => NOTIFY_ROWS.filter((r) => toastAvailable.value || r.inApp))
 const toastDisabled = computed(() => !toast.value || offline.value)
 const notifyDisabled = computed(() => !settings.notifyEnabled)
@@ -170,6 +173,14 @@ onBeforeUnmount(() => extras.setToastTest(null))
           </div>
         </div>
       </div>
+      <ToggleSwitch
+        v-if="hasTerminals"
+        v-model="settings.clashWarn"
+        :label="t('v104.clash.setting')"
+        :info="t('v104.clash.settingHint')"
+        class="border-t-[0.5px] border-line px-3"
+        data-setting-row="clash"
+      />
     </SettingSection>
 
     <SettingSection id="sound" :title="t('settingsV79.soundGroup')">
@@ -234,6 +245,20 @@ onBeforeUnmount(() => extras.setToastTest(null))
         </button>
       </div>
     </SettingSection>
+    <SettingSection id="reminders-toggle" :title="t('v104.settings.reminders')">
+      <div class="flex items-center gap-3 px-3 py-2" data-reminders-row>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm">{{ t('v104.settings.reminders') }}</p>
+          <p class="mt-0.5 text-2xs text-ink-faint">{{ t('settings.section.reminders') }}</p>
+        </div>
+        <button type="button" class="ccm-btn" :aria-expanded="remindersOpen" aria-controls="notify-reminders" data-reminders-more @click="remindersOpen = !remindersOpen">
+          {{ remindersOpen ? t('v104.settings.remindersClose') : t('v104.settings.remindersOpen') }}
+        </button>
+      </div>
+    </SettingSection>
+    <div v-show="remindersOpen" id="notify-reminders" class="mt-4" data-reminders-body>
+      <SettingsReminders />
+    </div>
     <div v-show="moreOpen" id="notify-more" class="mt-4">
       <SettingEmbed v-if="hasPhone" id="phone"><PhoneSettings :open="ui.settingsOpen" /></SettingEmbed>
     </div>

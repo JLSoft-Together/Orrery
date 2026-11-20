@@ -20,6 +20,7 @@ describe('buildTouchIndex', () => {
   it('marks edit and read per file, case-insensitive on Windows drives, and aggregates folders', () => {
     const idx = buildTouchIndex([span('1', 't1', 'F:/Work/App/src/A.ts', 'edit'), span('2', 't1', 'F:/work/app/src/b.ts', 'read')], terms({ t1: working('main') }), NOW)
     expect(idx.files.get('f:/work/app/src/a.ts')?.state).toBe('edit')
+    expect(idx.files.get('f:/work/app/src/a.ts')?.path).toBe('F:/Work/App/src/A.ts')
     expect(idx.files.get('f:/work/app/src/b.ts')?.state).toBe('read')
     expect(idx.dirs.get('f:/work/app/src')?.state).toBe('edit')
     expect(idx.dirs.get('f:/work')?.state).toBe('edit')

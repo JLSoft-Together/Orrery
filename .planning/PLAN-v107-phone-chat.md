@@ -37,3 +37,12 @@ Chủ nhân chốt 2026-11-20 (grilling 2 vòng).
 | C3 | opus | Desktop: phát nội dung chat + nhãn menu theo spec (`apps/shell/src/remote`) | C1 |
 | C4 | opus | PWA: hộp thư chat + màn chat theo mockup lai, U14, U16, U17 bước 1 | C1 |
 | C5 | opus | Android: như C4 | C1 |
+
+## Mặc định đang giữ (C1 hỏi, chủ nhân chưa trả lời)
+- Thẻ file đã sửa: +/- ước lượng từ input tool, bấm vào xem `git.diff` hiện tại của file (không phải diff riêng từng lượt).
+- Menu mục "Other": bản 1 chỉ nút mở terminal.
+- Câu cuối trên hộp thư: đoạn cuối câu trả lời đã xong, max 160 ký tự; agent đang chạy thì hiện tool đang chạy.
+| C6 | opus | Relay cài 1 chạm: wrangler (login OAuth / dùng login sẵn) + dự phòng link token điền sẵn quyền, tự đọc clipboard, 1 account tự deploy (chủ nhân chọn cả 2, 2026-11-20) | - |
+| C8 | opus | Bảng MCP / plugin ở header session: checklist + 1 nút Áp dụng, bỏ chờ 3-5 s, lưới nhiều cột | - |
+| T1 | opus | Mockup 3-5 bảng màu hài hoà + danh sách theme Giữ / Bỏ + chế độ Ngẫu nhiên (`/mau/`), chờ chủ nhân chọn rồi mới code | - |
+| R1 | - | **Task cuối**: viết lại README (cũ, dài), làm sau khi xong hết | mọi gói |

@@ -191,6 +191,8 @@ fn main() {
             }));
             window::create_main(&handle, hidden).map_err(std::io::Error::other)?;
             tray::create(&handle)?;
+            #[cfg(target_os = "macos")]
+            tray::install_app_menu(&handle)?;
             let links_app = handle.clone();
             app.deep_link().on_open_url(move |event| {
                 for url in event.urls() {
@@ -213,6 +215,8 @@ fn main() {
             }
         }
         RunEvent::Exit => app.state::<Shell>().shutdown(),
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { has_visible_windows: false, .. } => window::show_main(app),
         _ => {}
     });
 }

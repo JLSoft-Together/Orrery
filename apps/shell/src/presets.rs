@@ -134,7 +134,7 @@ pub fn child_env(vars: impl Iterator<Item = (String, String)>) -> Vec<(String, S
             let u = k.to_ascii_uppercase();
             !(["CCM_", "ORRERY_", "GOLAIM_", "ELECTRON_", "WEBVIEW2_"].iter().any(|p| u.starts_with(p)) || u == "NODE_OPTIONS" || AGENT_SESSION_VARS.contains(&u.as_str()))
         })
-        .filter(|(k, _)| !["TERM", "COLORTERM", "FORCE_HYPERLINK"].contains(&k.as_str()))
+        .filter(|(k, _)| !["TERM", "COLORTERM", "FORCE_HYPERLINK", "TERM_PROGRAM", "TERM_PROGRAM_VERSION", "TERM_SESSION_ID"].contains(&k.as_str()))
         .collect();
     out.push(("TERM".into(), "xterm-256color".into()));
     out.push(("COLORTERM".into(), "truecolor".into()));
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn child_env_drops_our_secrets_and_agent_vars() {
-        let vars = [("CCM_APP_KEY", "k"), ("Path", "p"), ("ORRERY_TOKEN", "t"), ("CLAUDECODE", "1"), ("NODE_OPTIONS", "x"), ("TERM", "dumb"), ("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "y")];
+        let vars = [("CCM_APP_KEY", "k"), ("Path", "p"), ("ORRERY_TOKEN", "t"), ("CLAUDECODE", "1"), ("NODE_OPTIONS", "x"), ("TERM", "dumb"), ("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "y"), ("TERM_PROGRAM", "Apple_Terminal"), ("TERM_PROGRAM_VERSION", "455"), ("TERM_SESSION_ID", "s")];
         let out = child_env(vars.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())));
         let keys: Vec<&str> = out.iter().map(|(k, _)| k.as_str()).collect();
         assert_eq!(keys, ["Path", "TERM", "COLORTERM", "FORCE_HYPERLINK"]);

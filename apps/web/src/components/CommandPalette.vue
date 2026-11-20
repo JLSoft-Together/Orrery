@@ -82,6 +82,7 @@ import { useRail } from '../composables/useRail'
 import { useRevealInWorkspace } from '../composables/useRevealInWorkspace'
 import { useSettingsEnv } from '../composables/useSettingsEnv'
 import { isMac } from '../lib/platform'
+import { isPaletteKey } from '../lib/paletteKey'
 import { keyCombo } from '../lib/shortcuts'
 import { statusMeta } from '../lib/status'
 import { APP_VERSION } from '../lib/changelog'
@@ -809,8 +810,7 @@ function onKey(e: KeyboardEvent): void {
 
 function onGlobalKey(e: KeyboardEvent): void {
   // Inside a terminal Ctrl+K belongs to the shell / agent (kill line).
-  if ((e.target as Element | null)?.closest?.('.xterm')) return
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+  if (isPaletteKey(e, !!(e.target as Element | null)?.closest?.('.xterm'), isMac)) {
     e.preventDefault()
     ui.paletteOpen = !ui.paletteOpen
   }

@@ -86,7 +86,7 @@ impl Deps for TestDeps {
 
 fn tmp_root() -> PathBuf {
     let n = SEQ.fetch_add(1, Ordering::SeqCst);
-    let p = std::env::temp_dir().join(format!("orrery-move-{}-{}-{n}", std::process::id(), crate::config::random_hex(4)));
+    let p = crate::config::test_temp_dir().join(format!("orrery-move-{}-{}-{n}", std::process::id(), crate::config::random_hex(4)));
     std::fs::create_dir_all(&p).unwrap();
     std::fs::canonicalize(&p).map(|c| tree::plain_target(&c)).unwrap()
 }

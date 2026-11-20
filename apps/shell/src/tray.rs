@@ -48,6 +48,30 @@ pub fn refresh(app: &AppHandle) {
 
 static CONFIRMING: AtomicBool = AtomicBool::new(false);
 
+#[cfg(target_os = "macos")]
+const APP_QUIT: &str = "app-quit";
+
+#[cfg(target_os = "macos")]
+pub fn install_app_menu(app: &AppHandle) -> tauri::Result<()> {
+    use tauri::menu::MenuItemKind;
+    let menu = Menu::default(app)?;
+    if let Some(MenuItemKind::Submenu(sub)) = menu.items()?.into_iter().next() {
+        let items = sub.items()?;
+        if let Some(MenuItemKind::Predefined(last)) = items.last() {
+            let text = last.text()?;
+            sub.remove(last)?;
+            sub.append(&MenuItem::with_id(app, APP_QUIT, text, true, Some("CmdOrCtrl+Q"))?)?;
+        }
+    }
+    app.set_menu(menu)?;
+    app.on_menu_event(|app, event| {
+        if event.id().as_ref() == APP_QUIT {
+            quit(app);
+        }
+    });
+    Ok(())
+}
+
 pub fn quit(app: &AppHandle) {
     if app.state::<Shell>().quitting.load(Ordering::SeqCst) || CONFIRMING.swap(true, Ordering::SeqCst) {
         return;

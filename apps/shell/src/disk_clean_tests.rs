@@ -8,7 +8,7 @@ use crate::disk_clean_dev::{avd_images, build_dir_kind, docker_bytes, junk_kind,
 use crate::disk_clean_sys::{installer_name, is_forbidden, parse_lsappinfo, sys_roots, SysIo};
 
 fn tmp_root(tag: &str) -> String {
-    let base = std::env::temp_dir().join(format!("ccm-clean-test-{tag}-{}-{}", std::process::id(), crate::disk_map::now_ms()));
+    let base = crate::config::test_temp_dir().join(format!("ccm-clean-test-{tag}-{}-{}", std::process::id(), crate::disk_map::now_ms()));
     std::fs::create_dir_all(&base).unwrap();
     let real = std::fs::canonicalize(&base).unwrap();
     guard::plain_canonical(&real.to_string_lossy(), Plat::host()).unwrap()
@@ -254,9 +254,10 @@ fn scan_finds_project_junk_and_delete_only_takes_known_unlocked_paths() {
 fn temp_members_skip_new_and_locked_files_and_one_tap_deletes_them() {
     let root = tmp_root("sys");
     let fake = guard::join(&root, "fake", Plat::host());
-    let old = write(&fake, "Temp/old.log", 400, 3);
-    let newer = write(&fake, "Temp/new.log", 100, 0);
-    let held = write(&fake, "Temp/locked.tmp", 100, 4);
+    let t = if cfg!(target_os = "macos") { "var/T" } else { "Temp" };
+    let old = write(&fake, &format!("{t}/old.log"), 400, 3);
+    let newer = write(&fake, &format!("{t}/new.log"), 100, 0);
+    let held = write(&fake, &format!("{t}/locked.tmp"), 100, 4);
     let roots = sys_roots(Plat::host(), "C:\\Users\\nobody", &|_| None, None, "", Some(&fake));
     let system = SysDeps { roots, io: Box::new(NoSys) };
     let svc = Service::new(Fake { home: "C:\\Users\\nobody".into(), answer: true, ..Default::default() }, Some(system), None, None);

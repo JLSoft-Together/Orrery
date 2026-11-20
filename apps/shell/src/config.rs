@@ -30,6 +30,15 @@ pub fn random_hex(bytes: usize) -> String {
     })
 }
 
+#[cfg(test)]
+pub fn test_temp_dir() -> PathBuf {
+    if cfg!(target_os = "macos") {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target").join("test-tmp")
+    } else {
+        std::env::temp_dir()
+    }
+}
+
 pub fn uuid() -> String {
     let h = random_hex(16);
     let v = format!("4{}", &h[13..16]);

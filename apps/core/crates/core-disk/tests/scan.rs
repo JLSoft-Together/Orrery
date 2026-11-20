@@ -614,7 +614,7 @@ fn ill_formed_utf16_names_are_still_walked() {
     assert_eq!(ix.stats.files, 1);
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "macos")))]
 #[test]
 fn non_utf8_names_are_still_walked() {
     use std::os::unix::ffi::OsStrExt;

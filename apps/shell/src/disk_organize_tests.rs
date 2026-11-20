@@ -4,7 +4,7 @@ use crate::disk_organize_log::{is_run_id, parse_run, summarize};
 use crate::disk_organize_rules::{classify, clean_patch, clean_rule, kind_of, with_suffix};
 
 fn tmp(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("orrery-org-test-{tag}-{}", hex(4)));
+    let d = crate::config::test_temp_dir().join(format!("orrery-org-test-{tag}-{}", hex(4)));
     std::fs::create_dir_all(&d).unwrap();
     d
 }
@@ -84,6 +84,7 @@ fn plan_run_and_undo_move_only_settled_top_level_files_and_never_overwrite() {
     put(&dl, "c.zip", 3000);
     put(&dl, "video.mp4.crdownload", 50);
     put(&dl, "desktop.ini", 5);
+    std::thread::sleep(Duration::from_millis(5));
     let events = Arc::new(Mutex::new(Vec::new()));
     let o = org(&data, &dl, events.clone());
     let st = o.state();
@@ -125,6 +126,7 @@ fn auto_pass_moves_only_files_newer_than_the_switch_and_broadcasts() {
     let data = tmp("data2");
     let dl = tmp("dl2");
     put(&dl, "old.png", 10);
+    std::thread::sleep(Duration::from_millis(5));
     let events = Arc::new(Mutex::new(Vec::new()));
     let o = org(&data, &dl, events.clone());
     o.patch(&json!({ "auto": true }));

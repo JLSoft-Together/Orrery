@@ -43,7 +43,7 @@ fn segments(p: &str) -> Vec<&str> {
 }
 
 fn is_xml(name: &str) -> bool {
-    name.len() >= 4 && name[name.len() - 4..].eq_ignore_ascii_case(".xml")
+    name.len() >= 4 && name.as_bytes()[name.len() - 4..].eq_ignore_ascii_case(b".xml")
 }
 
 pub fn drawable_folder_kind(path: &str) -> Option<DrawableKind> {
@@ -345,6 +345,8 @@ mod tests {
         assert!(is_loose_layout_xml("/x/a.xml", Some(ns)));
         assert!(!is_loose_layout_xml("/x/a.xml", Some("<Project/>")));
         assert!(is_layout_target("/x/scratch.xml", Some(ns), || None));
+        assert!(!is_xml("/p/res/layout/日本"));
+        assert!(is_xml("/p/res/layout/日本.XML"));
     }
 
     #[test]

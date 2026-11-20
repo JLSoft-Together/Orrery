@@ -196,7 +196,8 @@ fn a_claimed_phone_that_stops_reading_never_stalls_the_desktop_pane() {
         }
         tx.send(ToHub::Input(Vec::new(), true)).await.unwrap();
         desk_until(&mut d, |m| matches!(m, Message::Text(t) if t.as_str().contains("\"resized\"") && t.as_str().contains("50"))).await;
-        d.send(Message::Binary(b"1..150000 | % { \"flood$_\" }; 'done-' + 'mark'\r".to_vec().into())).await.unwrap();
+        let flood: &[u8] = if cfg!(windows) { b"1..150000 | % { \"flood$_\" }; 'done-' + 'mark'\r" } else { b"seq -f 'flood%g' 1 150000; echo done-''mark\r" };
+        d.send(Message::Binary(flood.to_vec().into())).await.unwrap();
         let mut last = std::time::Instant::now();
         let mut gap = Duration::ZERO;
         let mut tail = String::new();

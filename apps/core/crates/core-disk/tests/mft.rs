@@ -1,9 +1,11 @@
+#[cfg(windows)]
 use core_disk::index::flag;
 use core_disk::mft::record::{apply_fixup, data_runs, parse, Parsed, RecordError, Run, NS_DOS, NS_WIN32};
 use core_disk::mft::sample::{self, Data, Spec, EXPECTED_BYTES, RECORD};
 use core_disk::mft::tree::{Table, TreeError};
 use core_disk::mft::wire::{self, check_hello, hello, parse_helper_args, write_frame, Frame, FrameError, KIND_ERROR, KIND_INDEX, KIND_PROGRESS, PIPE_PREFIX};
 use core_disk::mft::{accept, consume, drive_letter, produce, MemorySource, MftError};
+#[cfg(windows)]
 use core_disk::Index;
 
 fn table() -> Table {
@@ -13,10 +15,12 @@ fn table() -> Table {
     t
 }
 
+#[cfg(windows)]
 fn index() -> Index {
     table().build("Q:\\").unwrap()
 }
 
+#[cfg(windows)]
 fn node(ix: &Index, path: &str) -> core_disk::Node {
     ix.nodes[ix.find(path).unwrap_or_else(|| panic!("missing {path}")) as usize]
 }
@@ -106,6 +110,7 @@ fn data_runs_handle_negative_offsets_and_reject_garbage() {
 }
 
 #[test]
+#[cfg(windows)]
 fn tree_builds_paths_sizes_and_flags() {
     let ix = index();
     assert_eq!(ix.root_paths(), vec!["Q:\\".to_string()]);
@@ -153,6 +158,7 @@ fn tree_needs_the_root_record() {
 }
 
 #[test]
+#[cfg(windows)]
 fn tree_survives_directory_cycles() {
     let mut list = sample::records();
     list.retain(|(n, _)| *n != 16 && *n != 17);
@@ -182,6 +188,7 @@ fn tree_counts_torn_records() {
 }
 
 #[test]
+#[cfg(windows)]
 fn tree_respects_record_limit() {
     let mut img = sample::image();
     let mut t = Table::with_limit(20);

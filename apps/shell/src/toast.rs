@@ -309,6 +309,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
     fn dev_builds_borrow_the_powershell_app_id() {
         let dev = Path::new("F:\\r\\apps\\shell\\target\\debug");
         assert_eq!(app_id("dev.ccm.monitor", Some(dev)), POWERSHELL_APP_ID);

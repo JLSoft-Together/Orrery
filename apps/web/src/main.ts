@@ -2,7 +2,10 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { i18n } from './i18n'
+import { installClickFocus } from './lib/clickFocus'
+import { installDialogEscape } from './lib/dialogEscape'
 import { installErrorLog } from './lib/errorLog'
+import { isMac } from './lib/platform'
 import './style.css'
 import './themes.css'
 import './fonts.css'
@@ -11,6 +14,8 @@ import './next/tokens.css'
 import '@ccm/mist-tokens/palettes.css'
 
 installErrorLog()
+if (isMac) installClickFocus()
+installDialogEscape()
 
 createApp(App).use(createPinia()).use(i18n).mount('#app')
 

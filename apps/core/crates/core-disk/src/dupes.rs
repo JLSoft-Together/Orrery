@@ -254,7 +254,7 @@ struct Quick {
 }
 
 fn skip_dir(name: &str) -> bool {
-    SKIP_DIRS.iter().any(|d| eq_name(name, d)) || (cfg!(target_os = "macos") && name.len() > 4 && name[name.len() - 4..].eq_ignore_ascii_case(".app"))
+    SKIP_DIRS.iter().any(|d| eq_name(name, d)) || (cfg!(target_os = "macos") && name.len() > 4 && name.as_bytes()[name.len() - 4..].eq_ignore_ascii_case(b".app"))
 }
 
 fn collect(ix: &Index, opts: &Options, control: &Control, progress: &DupeProgress) -> Result<Vec<(u64, u32)>, Error> {

@@ -118,7 +118,7 @@ class _SpikePageState extends State<SpikePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Orrery Remote — spike')),
+      appBar: AppBar(title: const Text('Orrery Remote - spike')),
       body: SafeArea(
         child: Column(
           children: [

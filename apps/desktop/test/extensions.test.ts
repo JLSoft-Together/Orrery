@@ -27,7 +27,7 @@ plugin:claude-mem:mcp-search: node -e const a=1; const b = a - 1; require('x') -
 gitlab: https://gitlab.com/api/v4/mcp (HTTP) - ⚠ Needs authentication
 discord: docker run --rm -i -e DISCORD_TOKEN saseq/discord-mcp:latest - ✗ Failed to connect
 team: npx team-mcp - ⏸ Pending approval (run \`claude\` to approve)
-gh2: https://api.githubcopilot.com/mcp/ (HTTP) - ✘ Failed to connect — Server rejected the configured Authorization header (HTTP 401). Check the token - OAuth fallback is disabled
+gh2: https://api.githubcopilot.com/mcp/ (HTTP) - ✘ Failed to connect - Server rejected the configured Authorization header (HTTP 401). Check the token - OAuth fallback is disabled
 `
 
 describe('catalog', () => {

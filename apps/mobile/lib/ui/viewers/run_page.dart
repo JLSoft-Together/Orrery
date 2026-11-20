@@ -153,7 +153,7 @@ class _RunPageState extends ConsumerState<RunPage> {
     final sessions = _sessions.values.toList()
       ..sort((a, b) => (b.live ? 1 : 0).compareTo(a.live ? 1 : 0));
     return Scaffold(
-      appBar: AppBar(title: Text('${l.vRun} · ${baseName(widget.root)}')),
+      appBar: AppBar(title: Text('${l.vRun}, ${baseName(widget.root)}')),
       body: _error != null && _configs.isEmpty
           ? ErrorState(message: viewerErrorText(l, _error!), onRetry: _load)
           : _loading && _configs.isEmpty

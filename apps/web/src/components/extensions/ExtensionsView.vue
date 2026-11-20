@@ -241,7 +241,7 @@ watch(() => ext.mode, () => void ext.refresh())
                 <component :is="serverMeta(row).icon" :size="12" aria-hidden="true" />{{ ext.mcpLoading && row.state === 'unknown' ? t('ext.state.checking') : t(`ext.state.${row.state}`) }}
               </span>
               <span class="ml-auto hidden shrink-0 truncate text-2xs text-ink-faint sm:inline">
-                {{ row.connector ? t('ext.other.connector') : row.plugin ? t('ext.other.plugin', { name: row.plugin }) : row.scopes.map((s) => t(`ext.scopeChip.${s}`)).join(' · ') }}
+                {{ row.connector ? t('ext.other.connector') : row.plugin ? t('ext.other.plugin', { name: row.plugin }) : row.scopes.map((s) => t(`ext.scopeChip.${s}`)).join(', ') }}
               </span>
               <button
                 v-if="row.state === 'needsAuth' && !row.connector"

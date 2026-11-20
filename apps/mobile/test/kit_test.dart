@@ -249,7 +249,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('LAN · 12 ms'), findsOneWidget);
+      expect(find.text('LAN, 12 ms'), findsOneWidget);
       expect(find.text('Relay'), findsOneWidget);
     });
   });

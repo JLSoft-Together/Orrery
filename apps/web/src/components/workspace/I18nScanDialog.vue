@@ -167,7 +167,7 @@ function onKey(e: KeyboardEvent): void {
                 <div v-for="k in I18N_ISSUES.filter((x) => l[x].length)" :key="k" class="pb-1" :data-i18n-kind="k">
                   <p class="flex items-center gap-1 py-0.5 pr-3 pl-10 text-2xs font-medium" :class="ISSUE[k].cls">
                     <component :is="ISSUE[k].icon" :size="12" aria-hidden="true" />{{ t(`workspace.i18nScan.kind.${k}`) }}
-                    <span class="text-ink-faint">· {{ t(`workspace.i18nScan.hint.${k}`) }}</span>
+                    <span class="text-ink-faint">- {{ t(`workspace.i18nScan.hint.${k}`) }}</span>
                   </p>
                   <ul class="pr-3 pl-14" role="list">
                     <li v-for="e in l[k]" :key="e.key">

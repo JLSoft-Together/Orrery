@@ -255,7 +255,7 @@ function onKey(e: KeyboardEvent): void {
                 <td class="max-w-0 border-b border-line px-2 py-1">
                   <button type="button" class="block w-full min-w-0 cursor-pointer truncate text-left font-mono text-ink" :title="t('libUpdates.openFile', { line: r.line })" @click="openLine(r)">{{ label(r) }}</button>
                   <div v-if="r.plugin || r.ref" class="truncate text-2xs text-ink-faint">
-                    {{ r.plugin ? t('libUpdates.plugin') : '' }}{{ r.plugin && r.ref ? ' · ' : '' }}{{ r.ref ? t('libUpdates.ref', { ref: r.ref }) : '' }}
+                    {{ r.plugin ? t('libUpdates.plugin') : '' }}{{ r.plugin && r.ref ? ', ' : '' }}{{ r.ref ? t('libUpdates.ref', { ref: r.ref }) : '' }}
                   </div>
                 </td>
                 <td class="border-b border-line px-2 py-1 font-mono whitespace-nowrap text-ink-muted tabular" :title="r.spec">{{ r.spec }}</td>
@@ -291,14 +291,14 @@ function onKey(e: KeyboardEvent): void {
                     <component :is="opened.has(rowId(r)) ? ChevronDown : ChevronRight" :size="12" aria-hidden="true" />
                     <ShieldAlert :size="12" aria-hidden="true" />
                     <span class="tabular">{{ t('libVulns.count', { n: vulnsOf(r).length }, vulnsOf(r).length) }}</span>
-                    <span>· {{ t(`libVulns.severity.${worstSeverity(vulnsOf(r)) ?? 'unknown'}`) }}</span>
+                    <span>- {{ t(`libVulns.severity.${worstSeverity(vulnsOf(r)) ?? 'unknown'}`) }}</span>
                   </button>
                   <div v-if="vulnsOf(r).length" class="pl-4 font-mono text-2xs text-ink-faint" data-lib-vulns-fixed>
                     {{ fixedAll(vulnsOf(r)) ? t('libVulns.fixedIn', { v: fixedAll(vulnsOf(r)) }) : t('libVulns.noFix') }}
                   </div>
                   <span v-else-if="rowVulns(r, vmap)?.ok" class="inline-flex items-center gap-1 text-success"><ShieldCheck :size="12" aria-hidden="true" />{{ t('libVulns.clean') }}</span>
                   <span v-else-if="vulnChecking" class="text-ink-faint">…</span>
-                  <span v-else class="text-ink-faint">—</span>
+                  <span v-else class="text-ink-faint">-</span>
                 </td>
                 <td class="border-b border-line pr-2 text-right">
                   <button type="button" class="ccm-btn-plain" :title="t('libUpdates.open', { name: label(r) })" :aria-label="t('libUpdates.open', { name: label(r) })" data-lib-open @click="openPage(r)">
@@ -313,7 +313,7 @@ function onKey(e: KeyboardEvent): void {
                     <li v-for="v in sortVulns(vulnsOf(r))" :key="v.id" class="flex min-w-0 items-baseline gap-2" :data-lib-advisory="v.id">
                       <span class="w-24 shrink-0 text-2xs" :class="sevClass(v.severity)">{{ t(`libVulns.severity.${v.severity}`) }}</span>
                       <button type="button" class="shrink-0 cursor-pointer font-mono text-link hover:underline" :title="t('libVulns.openAdvisory', { id: v.id })" @click="openAdvisory(v.id)">{{ v.id }}</button>
-                      <span class="min-w-0 flex-1 truncate" :class="v.summary ? 'text-ink' : 'text-ink-faint'" :title="[v.summary, ...v.aliases].filter(Boolean).join(' · ')">{{ v.summary || t('libVulns.noSummary') }}</span>
+                      <span class="min-w-0 flex-1 truncate" :class="v.summary ? 'text-ink' : 'text-ink-faint'" :title="[v.summary, ...v.aliases].filter(Boolean).join(', ')">{{ v.summary || t('libVulns.noSummary') }}</span>
                       <span class="shrink-0 font-mono text-2xs text-ink-faint">{{ v.fixed ? t('libVulns.fixedIn', { v: v.fixed }) : t('libVulns.noFix') }}</span>
                     </li>
                   </ul>

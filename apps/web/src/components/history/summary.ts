@@ -11,5 +11,5 @@ export function summaryLine(
     .filter((k) => totals[k] > 0)
     .map((k) => label[k](fmt(totals[k])))
     .filter(Boolean)
-    .join(' · ')
+    .join(', ')
 }

@@ -90,7 +90,7 @@ describe('project model + compare helpers', () => {
   })
 
   it('suggests the project model only for framework-only renders with missing classes', () => {
-    const missing = [{ severity: 'error' as const, message: 'Class not found: com.google.android.material.button.MaterialButton — build the project' }]
+    const missing = [{ severity: 'error' as const, message: 'Class not found: com.google.android.material.button.MaterialButton - build the project' }]
     expect(needsModelNotice(true, missing)).toBe(true)
     expect(needsModelNotice(false, missing)).toBe(false)
     expect(needsModelNotice(true, [{ severity: 'warning', message: 'other' }])).toBe(false)

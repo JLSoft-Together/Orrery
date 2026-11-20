@@ -157,7 +157,7 @@ const area = 'ccm-field ccm-scroll h-auto w-full resize-none py-1.5 font-mono le
               <dl v-if="jwt.times.length" class="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                 <template v-for="x in jwt.times" :key="x.claim">
                   <dt class="text-ink-muted">{{ t(`workspace.devTools.jwt.claim.${x.claim}`) }}</dt>
-                  <dd class="tabular min-w-0 truncate text-ink" :title="new Date(x.ms).toISOString()">{{ fmtDate(x.ms) }} · {{ x.seconds }}</dd>
+                  <dd class="tabular min-w-0 truncate text-ink" :title="new Date(x.ms).toISOString()">{{ fmtDate(x.ms) }}, {{ x.seconds }}</dd>
                 </template>
               </dl>
               <section v-for="(text, part) in jwtJson" :key="part" class="mt-3">

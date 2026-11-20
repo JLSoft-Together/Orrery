@@ -12,7 +12,7 @@ export function useLiveAnnounce(nameOf: (terminalId: string) => string) {
   let liveTimer = 0
 
   function say(items: LiveItem[]): void {
-    const text = items.map((x) => t('peer.live', { from: nameOf(x.from), to: nameOf(x.to), n: x.n }, x.n)).join(' · ')
+    const text = items.map((x) => t('peer.live', { from: nameOf(x.from), to: nameOf(x.to), n: x.n }, x.n)).join(', ')
     liveText.value = ''
     void nextTick(() => (liveText.value = text))
   }

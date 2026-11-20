@@ -116,8 +116,8 @@ describe('a11yCheck', () => {
     const text = a11yPrompt(nodes, r.findings, 'Pixel 7', new Map([[1, ['app/src/main/res/layout/main.xml:12']]]))
     expect(text.split('\n')).toEqual([
       'Fix these accessibility problems found on Pixel 7 (Orrery check of the view tree and screenshot):',
-      '- @id/share (ImageButton) · no text or contentDescription for screen readers · @app/src/main/res/layout/main.xml:12',
-      '- @id/share (ImageButton) · touch target 32×32 dp, needs 48×48 dp · @app/src/main/res/layout/main.xml:12',
+      '- @id/share (ImageButton), no text or contentDescription for screen readers, @app/src/main/res/layout/main.xml:12',
+      '- @id/share (ImageButton), touch target 32×32 dp, needs 48×48 dp, @app/src/main/res/layout/main.xml:12',
     ])
     const many = Array.from({ length: 200 }, () => r.findings[0]!)
     const long = a11yPrompt(nodes, many, 'P', new Map())

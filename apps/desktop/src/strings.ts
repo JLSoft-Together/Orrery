@@ -50,7 +50,7 @@ const en = {
     [
       'This configuration comes from the repository (shared or imported). Run it only if you trust its author.',
       `Folder: ${cwd}`,
-      `Command: ${command || '—'}`,
+      `Command: ${command || '-'}`,
       ...(before.length ? ['Before launch:', ...before.map((l) => `  ${l}`)] : []),
       ...(envKeys.length ? [`Environment variables: ${envKeys.join(', ')}`] : []),
       'You are asked again whenever the configuration changes.',
@@ -367,7 +367,7 @@ const vi: typeof en = {
     [
       'Cấu hình này đến từ repository (dùng chung hoặc được import). Chỉ chạy khi bạn tin người viết nó.',
       `Thư mục: ${cwd}`,
-      `Lệnh: ${command || '—'}`,
+      `Lệnh: ${command || '-'}`,
       ...(before.length ? ['Trước khi chạy:', ...before.map((l) => `  ${l}`)] : []),
       ...(envKeys.length ? [`Biến môi trường: ${envKeys.join(', ')}`] : []),
       'Mỗi khi cấu hình thay đổi, app sẽ hỏi lại.',

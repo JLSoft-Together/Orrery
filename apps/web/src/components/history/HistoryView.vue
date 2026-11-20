@@ -77,14 +77,14 @@ watch(pages, (n) => page.value > n - 1 && (page.value = n - 1))
 const rows = computed(() =>
   filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE).map((r) => ({
     ...r,
-    ended: Number.isFinite(Date.parse(r.endedAt)) ? dateFormat.value.format(Date.parse(r.endedAt)) : '—',
+    ended: Number.isFinite(Date.parse(r.endedAt)) ? dateFormat.value.format(Date.parse(r.endedAt)) : '-',
     endedAgo: relativeTime(r.endedAt, locale.value, now.value) ?? '',
-    ran: r.startedAt ? (duration(r.startedAt, Date.parse(r.endedAt)) ?? '—') : '—',
+    ran: r.startedAt ? (duration(r.startedAt, Date.parse(r.endedAt)) ?? '-') : '-',
     tokens: compactNumber(r.inputTokens + r.outputTokens),
-    model: r.model ? (modelLabel(r.model, undefined, extras.modelNames) ?? r.model) : '—',
+    model: r.model ? (modelLabel(r.model, undefined, extras.modelNames) ?? r.model) : '-',
     work: r.workingMs ? (duration(new Date(0).toISOString(), r.workingMs) ?? '') : '',
     wait: r.waitingMs ? (duration(new Date(0).toISOString(), r.waitingMs) ?? '') : '',
-    cost: r.costUsd !== undefined ? formatCost(r.costUsd, locale.value) : '—',
+    cost: r.costUsd !== undefined ? formatCost(r.costUsd, locale.value) : '-',
   })),
 )
 const openPane = (id: string) => workspace.panes.find((p) => p.agentSessionId === id && (p.state === 'running' || p.state === 'starting'))
@@ -201,7 +201,7 @@ const rangeLabel = computed(() => {
               <td class="min-w-0 px-4 py-2.5 sm:px-5">
                 <p class="truncate font-medium" :title="r.title">{{ r.title }}</p>
                 <p class="truncate font-mono text-2xs text-ink-faint" :title="r.cwd">
-                  {{ shortPath(r.cwd) }}<template v-if="r.gitBranch"> · {{ r.gitBranch }}</template>
+                  {{ shortPath(r.cwd) }}<template v-if="r.gitBranch">, {{ r.gitBranch }}</template>
                 </p>
               </td>
               <td class="px-3 py-2.5 tabular">
@@ -214,7 +214,7 @@ const rangeLabel = computed(() => {
               <td class="hidden px-3 py-2.5 text-xs tabular sm:table-cell">
                 <span v-if="r.work" class="block text-st-working">{{ t('history.worked', { d: r.work }) }}</span>
                 <span v-if="r.wait" class="block text-st-waiting">{{ t('history.waited', { d: r.wait }) }}</span>
-                <span v-if="!r.work && !r.wait" class="text-ink-faint">—</span>
+                <span v-if="!r.work && !r.wait" class="text-ink-faint">-</span>
               </td>
               <td class="hidden px-3 py-2.5 text-right text-ink-muted tabular md:table-cell">{{ r.cost }}</td>
               <td class="px-3 py-2 text-right">

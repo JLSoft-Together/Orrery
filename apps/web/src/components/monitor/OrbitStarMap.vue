@@ -277,7 +277,7 @@ function statusText(s: Sun): string {
   if (!term) return ''
   const waited = s.group === 'needs' && term.statusSince ? duration(term.statusSince, now.value) : null
   const text = s.group === 'needs' ? t('orbitV95.waitingLabel') : t(statusMeta(term.status).labelKey)
-  return waited ? `${text} · ${waited}` : text
+  return waited ? `${text}, ${waited}` : text
 }
 
 function subSummary(s: Sun): string {

@@ -6,7 +6,7 @@ const fmt = (ms: number) => `${Math.round(ms / 1000)}s`
 
 describe('summaryLine', () => {
   it('joins the three states in fixed order', () => {
-    expect(summaryLine({ working: 86_000, waiting: 161_000, idle: 20_000 }, fmt, label)).toBe('làm 86s · chờ 161s · rảnh 20s')
+    expect(summaryLine({ working: 86_000, waiting: 161_000, idle: 20_000 }, fmt, label)).toBe('làm 86s, chờ 161s, rảnh 20s')
   })
 
   it('leaves out states with no time', () => {

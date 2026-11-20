@@ -3,7 +3,7 @@ const en = {
   monitorV79: {
     group: { needs: 'Needs you', running: 'Running', idle: 'Idle', ended: 'Ended' },
     strip: {
-      label: 'Needs you · {n}',
+      label: 'Needs you, {n}',
       oldest: '{title} waited {waited}',
       open: 'Open the sessions list',
     },
@@ -21,7 +21,7 @@ const vi = {
   monitorV79: {
     group: { needs: 'Cần chủ nhân', running: 'Đang chạy', idle: 'Rảnh', ended: 'Đã đóng' },
     strip: {
-      label: 'Cần chủ nhân · {n}',
+      label: 'Cần chủ nhân, {n}',
       oldest: '{title} đã chờ {waited}',
       open: 'Mở danh sách session',
     },

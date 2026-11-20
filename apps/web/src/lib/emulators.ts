@@ -10,7 +10,7 @@ export const emulatorKey = (devices: AdbDevice[]): string =>
 
 /** `API 34 · x86_64 · pixel_7`, parts that are known only. */
 export function avdDetails(a: AvdInfo, apiLabel: (n: number) => string): string {
-  return [a.api !== null ? apiLabel(a.api) : null, a.abi, a.device].filter(Boolean).join(' · ')
+  return [a.api !== null ? apiLabel(a.api) : null, a.abi, a.device].filter(Boolean).join(', ')
 }
 
 export type AvdRowState = 'running' | 'starting' | 'stopped'

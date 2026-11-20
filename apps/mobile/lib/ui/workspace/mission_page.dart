@@ -62,7 +62,7 @@ class _MissionBodyState extends ConsumerState<MissionBody> {
       MissionFilter.done => l.filterDone,
       MissionFilter.idle => l.filterIdle,
     };
-    return '$name · $n';
+    return '$name, $n';
   }
 
   Widget? _leading(MissionFilter f) {

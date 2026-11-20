@@ -81,7 +81,7 @@ const progressText = computed(() => {
   const p = progress.value
   if (!p) return running.value ? t(`agentData.phase.${running.value}`) : ''
   const label = t(`agentData.phase.${p.phase ?? p.op}`)
-  return p.totalBytes ? `${label} — ${t('agentData.of', { done: bytes(p.bytes), total: bytes(p.totalBytes) })}` : `${label} — ${bytes(p.bytes)}`
+  return p.totalBytes ? `${label} - ${t('agentData.of', { done: bytes(p.bytes), total: bytes(p.totalBytes) })}` : `${label} - ${bytes(p.bytes)}`
 })
 
 function toggle(agent: DataAgent, id: string): void {

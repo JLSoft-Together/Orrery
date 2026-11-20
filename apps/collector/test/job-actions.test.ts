@@ -29,7 +29,7 @@ describe('claude stop runner', () => {
     const missing = async () => ({ code: 1, stdout: "No job matching 'x'. Run 'claude agents'", stderr: '' })
     expect(await stopBackgroundJob('9261d07b', { findCli: async () => 'c', run: missing })).toBe('notFound')
     expect(await stopBackgroundJob('9261d07b', { findCli: async () => 'c', run: async () => ({ code: 2, stdout: '', stderr: 'boom' }) })).toBe('failed')
-    const unconfirmed = async () => ({ code: 1, stdout: "couldn't confirm 9261d07b was stopped — the background service may be restarting. Try again in a moment.", stderr: '' })
+    const unconfirmed = async () => ({ code: 1, stdout: "couldn't confirm 9261d07b was stopped - the background service may be restarting. Try again in a moment.", stderr: '' })
     expect(await stopBackgroundJob('9261d07b', { findCli: async () => 'c', run: unconfirmed })).toBe('unconfirmed')
     expect(await stopBackgroundJob('9261d07b', { findCli: async () => null, run })).toBe('noCli')
   })

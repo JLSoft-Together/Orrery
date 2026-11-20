@@ -105,7 +105,7 @@ const line = computed(() => {
   if (needs.value) {
     const w = waitDisplay(term.waitingFor, main.value?.currentTool, t)
     const waited = term.statusSince ? duration(term.statusSince, now.value) : null
-    return [w?.text ?? t(meta.value.labelKey), waited].filter(Boolean).join(uiGen.isNext ? ', ' : ' · ')
+    return [w?.text ?? t(meta.value.labelKey), waited].filter(Boolean).join(uiGen.isNext ? ', ' : ', ')
   }
   const tool = main.value?.currentTool
   if (working.value && tool) {

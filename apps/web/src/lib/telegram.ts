@@ -52,7 +52,7 @@ export const onTelegram = (handler: (event: TelegramEvent) => void): (() => void
 export const projectLabel = (dir: string): string => dir.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || dir
 
 export const topicText = (r: { chatId: string; threadId: number | null; where?: string }, general: string): string =>
-  r.where ?? `${r.chatId} · ${r.threadId === null ? general : `#${r.threadId}`}`
+  r.where ?? `${r.chatId}, ${r.threadId === null ? general : `#${r.threadId}`}`
 
 export function countdown(until: number | null, at: number): string | null {
   if (until === null) return null

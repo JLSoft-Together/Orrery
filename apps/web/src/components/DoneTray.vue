@@ -31,7 +31,7 @@ const label = computed(() => (open.value ? t('mapV53.tray.close', { n: count.val
 
 function toDot(a: Agent): Dot {
   const name = a.type ?? a.name ?? t('agent.subagent')
-  return { id: a.id, cancelled: a.status === 'cancelled', title: a.description ? `${name} — ${a.description}` : name }
+  return { id: a.id, cancelled: a.status === 'cancelled', title: a.description ? `${name} - ${a.description}` : name }
 }
 </script>
 

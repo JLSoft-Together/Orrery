@@ -102,7 +102,7 @@ describe('question buttons', () => {
     expect(String(msg.body.text)).toContain('Which database?')
     expect(String(msg.body.text)).toContain('2. SQLite')
     const keys = buttons(msg)
-    expect(keys.map((k) => k.text)).toEqual(['🔹 1 · Postgres', '🔹 2 · SQLite', '🔹 3 · MySQL', '⎋ Esc', '📜 20 dòng cuối'])
+    expect(keys.map((k) => k.text)).toEqual(['🔹 1, Postgres', '🔹 2, SQLite', '🔹 3, MySQL', '⎋ Esc', '📜 20 dòng cuối'])
     expect(keys.slice(0, 3).every((k) => k.callback_data.startsWith('qa:'))).toBe(true)
     await tg.onUpdate(cbUpdate(keys[1]!.callback_data))
     expect(asked).toHaveLength(1)

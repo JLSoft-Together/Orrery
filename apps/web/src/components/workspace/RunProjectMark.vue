@@ -22,7 +22,7 @@ const label = computed(() => {
 const title = computed(() => {
   const reason = props.module ? (props.module.guessed ? 'guessed' : null) : mark.value.reason
   const parts = [label.value, reason ? t(`run.project.reason.${reason}`) : '']
-  return parts.filter(Boolean).join(' — ')
+  return parts.filter(Boolean).join(' - ')
 })
 </script>
 

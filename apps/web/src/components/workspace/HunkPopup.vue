@@ -114,7 +114,7 @@ const BTN = 'ccm-btn-plain shrink-0'
       <div class="flex h-8 min-w-0 shrink-0 items-center gap-0.5 border-b border-line px-1.5" role="toolbar" :aria-label="t('workspace.gutter.popup', { n: index + 1, total })">
         <span class="mr-1 inline-flex size-2 shrink-0 rounded-full" :class="`dot-${block.type}`" aria-hidden="true" />
         <span class="min-w-0 flex-1 truncate text-xs font-medium text-ink">
-          {{ t(`workspace.gutter.kind.${block.type}`) }} · <span class="tabular text-ink-muted">{{ t('workspace.gutter.popup', { n: index + 1, total }) }}</span>
+          {{ t(`workspace.gutter.kind.${block.type}`) }}, <span class="tabular text-ink-muted">{{ t('workspace.gutter.popup', { n: index + 1, total }) }}</span>
         </span>
         <button type="button" :class="BTN" :disabled="total < 2" :title="t('workspace.gutter.prev', { key: prevKey })" :aria-label="t('workspace.gutter.prev', { key: prevKey })" @click="emit('step', -1)">
           <ChevronUp :size="14" aria-hidden="true" />

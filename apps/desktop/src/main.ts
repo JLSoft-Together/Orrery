@@ -767,7 +767,7 @@ async function confirmUnsaved(): Promise<boolean> {
   const opts: Electron.MessageBoxOptions = {
     type: 'warning',
     message: t.quitUnsavedTitle(files.length),
-    detail: `${t.quitUnsavedDetail}\n${files.map((f) => `• ${f.name} — ${f.path}`).join('\n')}`,
+    detail: `${t.quitUnsavedDetail}\n${files.map((f) => `• ${f.name} - ${f.path}`).join('\n')}`,
     buttons: [t.quitUnsavedSave, t.quitUnsavedDiscard, t.quitCancel],
     defaultId: 0,
     cancelId: 2,
@@ -797,8 +797,8 @@ async function confirmQuit(forUpdate = false): Promise<boolean> {
     return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
   }
   const short = (p: string): string => (underHome(p) ? path.join('~', path.relative(home, p)) : p)
-  const lines = live.map((s) => `• ${s.preset} — ${short(s.cwd)}`)
-  const runLines = runs.map((s) => `• ${s.configName}${s.deviceName ? ` → ${s.deviceName}` : ''} — ${short(s.cwd)}`)
+  const lines = live.map((s) => `• ${s.preset} - ${short(s.cwd)}`)
+  const runLines = runs.map((s) => `• ${s.configName}${s.deviceName ? ` → ${s.deviceName}` : ''} - ${short(s.cwd)}`)
   if (mainWindow && !mainWindow.isVisible()) showMain()
   const terms = census?.length !== 0
   const detail = [terms ? (lines.length ? `${t.quitDetail}\n${lines.join('\n')}` : t.quitDetail) : '', runLines.length ? `${t.quitRuns}\n${runLines.join('\n')}` : '']

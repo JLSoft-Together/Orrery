@@ -32,7 +32,7 @@ class SessionCard extends StatelessWidget {
       return session.waitingFor;
     }
     if (session.tool != null) {
-      return [session.tool!, ?session.toolSummary].join(' · ');
+      return [session.tool!, ?session.toolSummary].join(', ');
     }
     return null;
   }
@@ -169,7 +169,7 @@ class SessionRow extends StatelessWidget {
       ?session.branch,
       if (session.subagents.isNotEmpty)
         context.l10n.subagentsCount(session.subagents.length),
-    ].join(' · ');
+    ].join(', ');
     return DecoratedBox(
       decoration: BoxDecoration(
         border: first ? null : Border(top: BorderSide(color: c.line)),

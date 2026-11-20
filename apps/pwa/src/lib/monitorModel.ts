@@ -183,7 +183,7 @@ function detailOf(kind: string, data: Item): string | null {
   else parts = [data.title, data.description, data.error]
   const text = parts
     .filter((p): p is string => typeof p === 'string' && p !== '')
-    .join(' · ')
+    .join(', ')
     .replace(/\s+/g, ' ')
   if (!text) return null
   return text.length > 160 ? `${text.slice(0, 160)}…` : text

@@ -94,7 +94,7 @@ defineExpose({
         class="flex h-[22px] min-w-0 cursor-pointer items-center gap-1 rounded-inner pr-2 text-xs outline-none hover:bg-fill focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
         :class="[(r.kind === 'ref' && r.ref === branch) || (r.kind === 'section' && r.section === 'head' && branch === 'HEAD') ? 'bg-selection' : '', r.kind === 'section' ? 'font-semibold text-ink' : 'text-ink']"
         :style="{ paddingLeft: `${6 + r.depth * 14}px` }"
-        :title="r.kind === 'ref' ? [r.name, r.tracked ? t('workspace.log.refs.tracked') : ''].filter(Boolean).join(' · ') : undefined"
+        :title="r.kind === 'ref' ? [r.name, r.tracked ? t('workspace.log.refs.tracked') : ''].filter(Boolean).join(', ') : undefined"
         :data-ref="r.kind === 'ref' ? r.ref : undefined"
         @focus="focusId = r.id"
         @click="focusId = r.id; activate(r)"

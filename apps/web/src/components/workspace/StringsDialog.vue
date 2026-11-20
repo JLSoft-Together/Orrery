@@ -256,7 +256,7 @@ function onKey(e: KeyboardEvent): void {
             data-strings-set
             @update:model-value="changeSet"
           />
-          <span v-else-if="set" class="min-w-0 shrink truncate text-2xs text-ink-faint">{{ t(`stringsTable.kind.${set.kind}`) }} · {{ set.dir || '.' }}</span>
+          <span v-else-if="set" class="min-w-0 shrink truncate text-2xs text-ink-faint">{{ t(`stringsTable.kind.${set.kind}`) }}, {{ set.dir || '.' }}</span>
           <span v-if="columns.length" class="tabular inline-flex shrink-0 items-center gap-1 text-2xs" :class="total ? 'text-warning' : 'text-ink-faint'" data-strings-total>
             <CircleAlert v-if="total" :size="12" aria-hidden="true" />{{ t('stringsTable.missingCount', { n: total }, total) }}
           </span>
@@ -340,7 +340,7 @@ function onKey(e: KeyboardEvent): void {
                   <template v-else>
                     <span v-if="c.state === 'missing'" class="inline-flex items-center gap-1 text-warning"><CircleAlert :size="12" aria-hidden="true" />{{ t('stringsTable.missing') }}</span>
                     <span v-else-if="c.state === 'fixed'" class="text-ink-faint" :title="t('stringsTable.fixedHint')">{{ t('stringsTable.fixed') }}</span>
-                    <span v-else-if="c.state === 'absent'" class="text-ink-faint">—</span>
+                    <span v-else-if="c.state === 'absent'" class="text-ink-faint">-</span>
                     <button
                       v-else
                       type="button"

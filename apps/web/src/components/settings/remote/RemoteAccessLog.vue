@@ -40,8 +40,8 @@ const whyText = (why: string): string => {
         </span>
         <span class="shrink-0 font-mono text-2xs" :title="line.ip">{{ line.ip }}<template v-if="line.country"> [{{ line.country }}]</template></span>
         <span class="shrink-0 text-2xs text-ink-faint">{{ t(`remoteV98.guard.log.via.${line.via}`) }}</span>
-        <span class="min-w-0 flex-1 truncate text-ink-muted" :title="line.device ? `${line.device} · ${whyText(line.why)}` : whyText(line.why)">
-          <template v-if="line.device">{{ line.device }} · </template>{{ whyText(line.why) }}
+        <span class="min-w-0 flex-1 truncate text-ink-muted" :title="line.device ? `${line.device}, ${whyText(line.why)}` : whyText(line.why)">
+          <template v-if="line.device">{{ line.device }}, </template>{{ whyText(line.why) }}
         </span>
       </li>
     </ol>

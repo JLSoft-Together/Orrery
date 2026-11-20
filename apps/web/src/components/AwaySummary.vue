@@ -88,7 +88,7 @@ function open(id: string): void {
           </ul>
         </div>
       </div>
-      <p v-if="facts.length" class="mt-2 text-xs text-ink-muted">{{ facts.join(' · ') }}</p>
+      <p v-if="facts.length" class="mt-2 text-xs text-ink-muted">{{ facts.join(', ') }}</p>
       <button
         type="button"
         class="ccm-btn-plain absolute top-1.5 right-1.5"

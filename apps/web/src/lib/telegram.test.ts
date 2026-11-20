@@ -13,8 +13,8 @@ describe('telegram helpers', () => {
   })
 
   it('shows General for a route without a thread', () => {
-    expect(topicText({ chatId: '-1001234567', threadId: null }, 'General')).toBe('-1001234567 · General')
-    expect(topicText({ chatId: '-1001234567', threadId: 42 }, 'General')).toBe('-1001234567 · #42')
+    expect(topicText({ chatId: '-1001234567', threadId: null }, 'General')).toBe('-1001234567, General')
+    expect(topicText({ chatId: '-1001234567', threadId: 42 }, 'General')).toBe('-1001234567, #42')
   })
 
   it('counts the pair code down to zero', () => {

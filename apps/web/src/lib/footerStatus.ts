@@ -45,7 +45,7 @@ export function devPorts(servers: readonly Pick<ServerRes, 'kind' | 'cwd' | 'ses
 }
 
 export function portsLabel(ports: readonly number[], max = PORTS_MAX): string {
-  const shown = ports.slice(0, max).join(' · ')
+  const shown = ports.slice(0, max).join(', ')
   return ports.length > max ? `${shown} +${ports.length - max}` : shown
 }
 

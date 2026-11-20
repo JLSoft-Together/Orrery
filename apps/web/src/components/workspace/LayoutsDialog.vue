@@ -134,7 +134,7 @@ function summary(l: SavedLayout): string {
   const c = layoutCounts(l)
   const parts = [t('workspace.layouts.summary', { n: c.tabs }, c.tabs)]
   if (c.agents) parts.push(t('workspace.layouts.agents', { n: c.agents }, c.agents))
-  return parts.join(' · ')
+  return parts.join(', ')
 }
 
 const ICON_BTN =
@@ -208,7 +208,7 @@ const ICON_BTN =
                   type="button"
                   :class="ICON_BTN"
                   :aria-pressed="!!l.openOnStart"
-                  :title="`${t('workspace.layouts.onStart')} — ${t('workspace.layouts.onStartHint')}`"
+                  :title="`${t('workspace.layouts.onStart')} - ${t('workspace.layouts.onStartHint')}`"
                   :aria-label="t('workspace.layouts.onStart')"
                   data-layout-start
                   @click="toggleStart(l)"

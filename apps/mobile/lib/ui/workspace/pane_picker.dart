@@ -48,7 +48,7 @@ class PanePickerButton extends StatelessWidget {
                 const SizedBox(width: 8),
                 Flexible(
                   child: AnimatedRename(
-                    text: '${agentLabel(pane.agent)} · $tabName',
+                    text: '${agentLabel(pane.agent)}, $tabName',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,

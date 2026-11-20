@@ -17,7 +17,7 @@ const episode = (patch: Partial<PhoneEpisodeMessage> = {}): PhoneEpisodeMessage 
 describe('payload', () => {
   it('carries only name, reason, tool and minutes, masked', () => {
     const msg = phoneText(episode({ name: 'C:\\Users\\me\\proj token=abcdef123456' }), 'en', 5 * 60_000, 'C:\\Users\\me', 'win32')
-    expect(msg.title).toBe('Orrery · ~\\proj token=[masked]')
+    expect(msg.title).toBe('Orrery, ~\\proj token=[masked]')
     expect(msg.body).toBe('Needs approval: Bash (5 min)')
     expect(phoneText(episode({ reason: 'done', since: 0 }), 'vi', 12 * 60_000, '', 'linux').body).toBe('Đã xong sau 12 phút làm việc')
   })

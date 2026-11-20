@@ -248,7 +248,7 @@ const resultText = computed(() => {
 
             <p v-if="resultText" class="flex items-start gap-1 text-xs leading-relaxed" :class="result?.ok === false && result.code === 'cancelled' ? 'text-ink-faint' : 'text-warning'" role="alert">
               <CircleAlert :size="13" class="mt-0.5 shrink-0" aria-hidden="true" />
-              <span class="min-w-0 break-words">{{ resultText }}<template v-if="result && !result.ok && result.detail"> — <span class="font-mono text-2xs">{{ result.detail }}</span></template></span>
+              <span class="min-w-0 break-words">{{ resultText }}<template v-if="result && !result.ok && result.detail"> - <span class="font-mono text-2xs">{{ result.detail }}</span></template></span>
             </p>
 
             <div class="-mx-5 -mb-4 flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3">

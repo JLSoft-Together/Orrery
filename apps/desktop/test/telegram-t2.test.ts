@@ -218,7 +218,7 @@ describe('/compact, /close, /focus', () => {
     await ready(tg)
     await tg.onUpdate(inTopic('@orrery_bot close'))
     const pick = keysOf(lastOf(sent, 'sendMessage'))
-    expect(pick.map((k) => k.text)).toEqual(['🗑 Đóng A #1 · rảnh · vừa xong', '🗑 Đóng A #2 · đang làm · vừa xong'])
+    expect(pick.map((k) => k.text)).toEqual(['🗑 Đóng A #1, rảnh, vừa xong', '🗑 Đóng A #2, đang làm, vừa xong'])
     gone = true
     await tg.onUpdate(press(pick[1]!.callback_data))
     expect(asked.at(-1)).toMatchObject({ action: 'close', target: { kind: 'terminal', terminalId: 'term-2' } })

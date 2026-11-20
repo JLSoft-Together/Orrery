@@ -122,7 +122,7 @@ const starsFxOptions = computed(() => [
             type="button"
             class="ccm-btn-plain h-7 min-w-14 justify-center px-1.5 text-sm tabular"
             :title="t('fonts.reset')"
-            :aria-label="`${row.value} · ${t('fonts.reset')}`"
+            :aria-label="`${row.value}, ${t('fonts.reset')}`"
             @click="row.step(0)"
           >
             {{ row.value }}

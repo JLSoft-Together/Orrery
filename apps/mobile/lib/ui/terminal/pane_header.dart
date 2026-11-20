@@ -151,9 +151,9 @@ class PaneHeader extends StatelessWidget {
           final detail = facts.toolSummary;
           final time = since == null
               ? ''
-              : ' · ${elapsedText(context.l10n, now.difference(since))}';
+              : ', ${elapsedText(context.l10n, now.difference(since))}';
           return Text(
-            '${facts.tool}${detail == null ? '' : ' · $detail'}$time',
+            '${facts.tool}${detail == null ? '' : ', $detail'}$time',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: style,
@@ -167,7 +167,7 @@ class PaneHeader extends StatelessWidget {
     ];
     if (parts.isEmpty) return const SizedBox(height: 16);
     return Text(
-      parts.join(' · '),
+      parts.join(', '),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: style,

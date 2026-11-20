@@ -12,7 +12,7 @@ const en = {
     resumeFor: 'in {project}',
     resumeAria: 'Resume {name}, ended {when}',
     resumeNone: 'No ended session to resume here.',
-    keys: '← → agent · ↑ ↓ list · Enter open · Esc close',
+    keys: '← → agent, ↑ ↓ list, Enter open, Esc close',
     more: 'More',
   },
 }
@@ -31,7 +31,7 @@ const vi: typeof en = {
     resumeFor: 'trong {project}',
     resumeAria: 'Resume {name}, kết thúc {when}',
     resumeNone: 'Không có session đã kết thúc để resume ở đây.',
-    keys: '← → agent · ↑ ↓ danh sách · Enter mở · Esc đóng',
+    keys: '← → agent, ↑ ↓ danh sách, Enter mở, Esc đóng',
     more: 'Khác',
   },
 }

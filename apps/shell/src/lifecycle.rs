@@ -120,13 +120,13 @@ pub fn quit_prompt(t: &QuitText, census: Option<&[Value]>, runs: &[Value], home:
     }
     let live = live.unwrap_or_default();
     let terms = census.is_none() || !live.is_empty();
-    let lines: Vec<String> = live.iter().map(|s| format!("• {} — {}", text(s, "preset"), short(text(s, "cwd"), home))).collect();
+    let lines: Vec<String> = live.iter().map(|s| format!("• {} - {}", text(s, "preset"), short(text(s, "cwd"), home))).collect();
     let run_lines: Vec<String> = runs
         .iter()
         .map(|r| {
             let device = text(r, "deviceName");
             let to = if device.is_empty() { String::new() } else { format!(" → {device}") };
-            format!("• {}{to} — {}", text(r, "configName"), short(text(r, "cwd"), home))
+            format!("• {}{to} - {}", text(r, "configName"), short(text(r, "cwd"), home))
         })
         .collect();
     let mut detail = Vec::new();
@@ -141,7 +141,7 @@ pub fn quit_prompt(t: &QuitText, census: Option<&[Value]>, runs: &[Value], home:
 }
 
 pub fn unsaved_prompt(t: &QuitText, files: &[Value]) -> (String, String) {
-    let lines: Vec<String> = files.iter().map(|f| format!("• {} — {}", text(f, "name"), text(f, "path"))).collect();
+    let lines: Vec<String> = files.iter().map(|f| format!("• {} - {}", text(f, "name"), text(f, "path"))).collect();
     (t.unsaved_title(files.len()), format!("{}\n{}", t.unsaved_detail(), lines.join("\n")))
 }
 
@@ -415,7 +415,7 @@ mod tests {
         let (message, detail) = quit_prompt(&t, Some(&census), &runs, &home).unwrap();
         assert_eq!(message, "Quit and close 2 terminals?");
         let app = Path::new("~").join("app").to_string_lossy().into_owned();
-        assert_eq!(detail, format!("{}\n• claude — {app}\n• shell — /opt\n\n{}\n• app → Pixel — {app}", t.detail(), t.runs()));
+        assert_eq!(detail, format!("{}\n• claude - {app}\n• shell - /opt\n\n{}\n• app → Pixel - {app}", t.detail(), t.runs()));
     }
 
     #[test]
@@ -425,7 +425,7 @@ mod tests {
         let runs = vec![json!({"configName": "web", "cwd": "/w"})];
         let (message, detail) = quit_prompt(&t, Some(&[]), &runs, home).unwrap();
         assert_eq!(message, "Thoát và dừng 1 app đang chạy?");
-        assert_eq!(detail, format!("{}\n• web — /w", t.runs()));
+        assert_eq!(detail, format!("{}\n• web - /w", t.runs()));
         let (message, detail) = quit_prompt(&t, None, &[], home).unwrap();
         assert_eq!(message, "Thoát và đóng các terminal đang mở?");
         assert_eq!(detail, t.detail());
@@ -455,7 +455,7 @@ mod tests {
         let t = QuitText::of("en");
         let (message, detail) = unsaved_prompt(&t, &[json!({"name": "a.ts", "path": "/w/a.ts"})]);
         assert_eq!(message, "Save changes to 1 file before quitting?");
-        assert_eq!(detail, "Edited in Orrery and not saved yet:\n• a.ts — /w/a.ts");
+        assert_eq!(detail, "Edited in Orrery and not saved yet:\n• a.ts - /w/a.ts");
     }
 
     #[test]

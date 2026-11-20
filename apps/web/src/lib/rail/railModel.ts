@@ -202,14 +202,14 @@ export function runState(badge: RunBadge | null | undefined): RailState {
 
 function plainLines(row: Pick<RailRow, 'kind' | 'agent' | 'task' | 'ordinal'>, word: string): { first: string; second: string } {
   if (row.kind === 'other') return { first: row.agent, second: word }
-  if (row.kind === 'shell') return row.task && row.task !== row.agent ? { first: row.task, second: `${row.agent} · ${word}` } : { first: row.agent, second: word }
-  return row.task === null ? { first: row.ordinal, second: `${row.agent} · ${word}` } : { first: row.task, second: `${row.ordinal} · ${word}` }
+  if (row.kind === 'shell') return row.task && row.task !== row.agent ? { first: row.task, second: `${row.agent}, ${word}` } : { first: row.agent, second: word }
+  return row.task === null ? { first: row.ordinal, second: `${row.agent}, ${word}` } : { first: row.task, second: `${row.ordinal}, ${word}` }
 }
 
 /** Visible lines of a row; `word` is the translated state word (or wait label). */
 export function rowLines(row: Pick<RailRow, 'kind' | 'agent' | 'task' | 'ordinal' | 'twin' | 'project'>, word: string): { first: string; second: string } {
   const lines = plainLines(row, word)
-  const second = row.project ? `${row.project} · ${lines.second}` : lines.second
+  const second = row.project ? `${row.project}, ${lines.second}` : lines.second
   return { first: row.twin ? `${lines.first} ${row.twin}` : lines.first, second }
 }
 
@@ -280,7 +280,7 @@ function markTwins(rows: readonly RailRow[]): void {
     if (list.length < 2) continue
     const dirs = list.map((r) => folderOf(r.pane))
     if (dirs.every((d) => !!d && d !== first) && new Set(dirs.map((d) => d!.toLowerCase())).size === dirs.length) {
-      list.forEach((r, i) => (r.twin = `· ${dirs[i]}`))
+      list.forEach((r, i) => (r.twin = `- ${dirs[i]}`))
       continue
     }
     let n = 2
@@ -417,7 +417,7 @@ export function buildRail(input: RailInput): RailCluster[] {
       const task = named ?? (session?.title || null)
       checkout.rows.push({
         key: pane.key, paneKey: pane.key, tabKey: tab.key, kind: 'agent', pane, preset, agent, task,
-        ordinal: claim(task ? `${task} · ` : '', agent), state: paneState(pane, session), subagents, run: null, since, focused, tabActive, group, ...peerOf(pane),
+        ordinal: claim(task ? `${task}, ` : '', agent), state: paneState(pane, session), subagents, run: null, since, focused, tabActive, group, ...peerOf(pane),
       })
     }
     if (group) {

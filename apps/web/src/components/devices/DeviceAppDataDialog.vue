@@ -402,7 +402,7 @@ watch(
                   <button v-if="queryResult" type="button" class="ccm-btn-plain shrink-0" :title="t('appData.close')" :aria-label="t('appData.close')" @click="queryResult = null"><X :size="13" aria-hidden="true" /></button>
                 </form>
                 <p v-if="queryResult" class="shrink-0 px-3 pt-1 text-2xs text-ink-muted">
-                  {{ t('appData.db.queryRows', { n: queryResult.rows.length }) }}<template v-if="queryResult.truncated"> · {{ t('appData.db.truncated', { n: queryResult.rows.length }) }}</template>
+                  {{ t('appData.db.queryRows', { n: queryResult.rows.length }) }}<template v-if="queryResult.truncated">, {{ t('appData.db.truncated', { n: queryResult.rows.length }) }}</template>
                 </p>
                 <div class="m-3 min-h-0 flex-1 overflow-auto rounded-control border border-line" data-appdata-grid>
                   <p v-if="shown && !shown.rows.length" class="px-3 py-2 text-xs text-ink-faint">{{ t('appData.db.empty') }}</p>

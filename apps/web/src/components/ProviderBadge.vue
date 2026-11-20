@@ -28,6 +28,6 @@ const chip = computed(() => (deepseek.value ? 'bg-fill text-ink' : 'bg-agent-cod
     <component :is="icon" :size="12" :stroke-width="2.25" aria-hidden="true" />
   </span>
   <span v-else class="inline-flex shrink-0 items-center gap-1 rounded-inner px-1.5 py-px text-2xs font-medium" :class="chip" :title="title">
-    <component :is="icon" :size="11" :stroke-width="2.25" aria-hidden="true" />{{ label }}<span v-if="variant === 'full' && modeLabel" class="font-normal text-ink-faint">· {{ modeLabel }}</span>
+    <component :is="icon" :size="11" :stroke-width="2.25" aria-hidden="true" />{{ label }}<span v-if="variant === 'full' && modeLabel" class="font-normal text-ink-faint">- {{ modeLabel }}</span>
   </span>
 </template>

@@ -156,8 +156,8 @@ const actionTitle = (a: Attachment): string =>
             <span class="flex min-w-0 items-center gap-1 text-2xs" :class="STATE[a.state].cls">
               <component :is="STATE[a.state].icon" :size="11" class="shrink-0" :class="a.state === 'inserting' ? 'ccm-spin' : ''" aria-hidden="true" />
               <span class="shrink-0">{{ t(`attach.state.${a.state}`) }}</span>
-              <span v-if="a.token" class="min-w-0 truncate font-mono text-ink-muted" :title="a.token">· {{ a.token }}</span>
-              <span v-else-if="a.error" class="min-w-0 truncate" :title="t(`attach.error.${a.error}`)">· {{ t(`attach.error.${a.error}`) }}</span>
+              <span v-if="a.token" class="min-w-0 truncate font-mono text-ink-muted" :title="a.token">- {{ a.token }}</span>
+              <span v-else-if="a.error" class="min-w-0 truncate" :title="t(`attach.error.${a.error}`)">- {{ t(`attach.error.${a.error}`) }}</span>
             </span>
           </span>
           </component>

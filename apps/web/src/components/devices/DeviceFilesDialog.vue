@@ -388,7 +388,7 @@ watch(
               </div>
             </div>
             <span class="shrink-0 text-2xs text-ink-muted tabular-nums" data-files-bytes>
-              {{ transfer.p ? fmtBytes(transfer.p.done) : '' }}<template v-if="transfer.p?.total"> / {{ fmtBytes(transfer.p.total) }}</template><template v-else-if="transfer.p"> · {{ t('devFiles.unknownSize') }}</template>
+              {{ transfer.p ? fmtBytes(transfer.p.done) : '' }}<template v-if="transfer.p?.total"> / {{ fmtBytes(transfer.p.total) }}</template><template v-else-if="transfer.p">, {{ t('devFiles.unknownSize') }}</template>
             </span>
             <button type="button" class="ccm-btn shrink-0" data-files-cancel @click="cancelTransfer">{{ t('devFiles.cancelTransfer') }}</button>
           </div>

@@ -109,7 +109,7 @@ impl Tg {
                     for (i, o) in ask["options"].as_array().cloned().unwrap_or_default().iter().enumerate() {
                         let label = self.deps.masker.clean(o.as_str().unwrap_or(""));
                         let key = self.add_action(Entry { kind: "qa".into(), extra: Some((i + 1).to_string()), label: Some(label.clone()), ..entry.clone() });
-                        rows.push(vec![cell_t("qa", &key, &format!("{} · {label}", i + 1))]);
+                        rows.push(vec![cell_t("qa", &key, &format!("{}, {label}", i + 1))]);
                     }
                 }
                 rows.push(esc_tail());

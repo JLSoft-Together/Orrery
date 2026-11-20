@@ -255,7 +255,7 @@ export class AgentDataService {
     const plan = await cleanPlan(root, req, this.now, signal, this.win)
     if (!plan.files.length) return fail('nothing')
     const t = this.deps.texts()
-    const lines = req.groups.map((id) => `• ${t.group(id)} — ${groupRule(req.agent, id)?.names.join(', ') ?? id}`)
+    const lines = req.groups.map((id) => `• ${t.group(id)} - ${groupRule(req.agent, id)?.names.join(', ') ?? id}`)
     const answer = await this.deps.confirm({ message: t.cleanTitle(plan.files.length, fmtBytes(plan.bytes)), detail: t.cleanDetail(lines, req.olderDays), buttons: [t.cleanConfirm, t.cancel] })
     if (answer !== 0) return fail('cancelled')
     let files = 0

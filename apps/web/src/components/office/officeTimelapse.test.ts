@@ -106,12 +106,12 @@ describe('OfficeTimelapse days', () => {
   it('lists the recorded days with today first, then yesterday, then a weekday date', async () => {
     await mountBar()
     const trigger = w!.find('[role=combobox]')
-    expect(trigger.text()).toMatch(/^Today · /)
+    expect(trigger.text()).toMatch(/^Today, /)
     await trigger.trigger('click')
     const opts = [...document.body.querySelectorAll<HTMLElement>('[role=option]')]
     expect(opts).toHaveLength(3)
-    expect(opts[0]!.textContent).toMatch(/Today · /)
-    expect(opts[1]!.textContent).toMatch(/Yesterday · /)
+    expect(opts[0]!.textContent).toMatch(/Today, /)
+    expect(opts[1]!.textContent).toMatch(/Yesterday, /)
     const weekday = new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric', month: 'short' }).format(dayStart(older))
     expect(opts[2]!.textContent!.trim().startsWith(weekday)).toBe(true)
     expect(opts.map((o) => o.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false'])
@@ -124,8 +124,8 @@ describe('OfficeTimelapse days', () => {
     await mountBar()
     await w!.find('[role=combobox]').trigger('click')
     const opts = [...document.body.querySelectorAll<HTMLElement>('[role=option]')]
-    expect(opts[0]!.textContent).toMatch(/Hôm nay · /)
-    expect(opts[1]!.textContent).toMatch(/Hôm qua · /)
+    expect(opts[0]!.textContent).toMatch(/Hôm nay, /)
+    expect(opts[1]!.textContent).toMatch(/Hôm qua, /)
   })
 
   it('sorts days newest first and ignores order from the server', () => {

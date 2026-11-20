@@ -281,7 +281,7 @@ const sessionLinks = computed((): SessionLink[] =>
 const closedLinks = computed(() => sessionLinks.value.filter((r) => !r.pane))
 const topicRows = computed(() => (state.value?.routes.length ?? 0) + sessionLinks.value.length)
 const scannedTopics = computed(() => (tg.chats ?? []).reduce((n, c) => n + c.topics.length, 0))
-const whereText = (r: { chatId: string; threadId: number | null; where?: string }): string => r.where ?? (tg.chats ? `${chatTitle(r.chatId)} · ${topicName(r)}` : topicText(r, t('telegram.general')))
+const whereText = (r: { chatId: string; threadId: number | null; where?: string }): string => r.where ?? (tg.chats ? `${chatTitle(r.chatId)}, ${topicName(r)}` : topicText(r, t('telegram.general')))
 const inChat = (r: { chatId: string }): boolean => !!tg.chat && r.chatId === tg.chat.chatId
 
 const topicGone = (r: { chatId: string; threadId: number | null }): boolean => {
@@ -744,7 +744,7 @@ watch(
 )
 const linkCount = computed(() => (state.value?.routes.length ?? 0) + (state.value?.sessionRoutes.length ?? 0))
 const tabOptions = computed(() =>
-  (['connect', 'topics', 'receive', 'report'] as const).map((v) => ({ value: v, label: v === 'topics' && linkCount.value ? `${t('telegram.tabs.topics')} · ${linkCount.value}` : t(`telegram.tabs.${v}`) })),
+  (['connect', 'topics', 'receive', 'report'] as const).map((v) => ({ value: v, label: v === 'topics' && linkCount.value ? `${t('telegram.tabs.topics')}, ${linkCount.value}` : t(`telegram.tabs.${v}`) })),
 )
 // Each step opens the tab where it is done, so the strip doubles as a setup checklist.
 const steps = computed(() => {
@@ -764,7 +764,7 @@ const overview = computed(() => {
   const parts = [t('telegram.setup.routes', { n: s.routes.length }, s.routes.length)]
   parts.push(s.owner ? t('telegram.setup.paired', { name: s.owner.name }) : t('telegram.setup.unpaired'))
   if (s.bigFiles.enabled && s.bigFiles.apiId && s.bigFiles.hasHash) parts.push(t('telegram.setup.big'))
-  return parts.join(' · ')
+  return parts.join(', ')
 })
 </script>
 
@@ -1236,7 +1236,7 @@ const overview = computed(() => {
       </div>
       <template v-if="unrouted.length">
         <div class="mt-4 mb-1.5 flex items-center gap-2 px-3">
-          <h4 class="text-2xs font-semibold text-ink-muted">{{ t('telegram.unrouted.title') }} · {{ unrouted.length }}</h4>
+          <h4 class="text-2xs font-semibold text-ink-muted">{{ t('telegram.unrouted.title') }}, {{ unrouted.length }}</h4>
           <button v-if="bulkSuggest.length > 1" type="button" class="ccm-btn-plain ml-auto text-2xs" :disabled="bulkBusy" :title="t('telegram.unrouted.allHint')" data-telegram-unrouted-all @click="routeAllSuggested">
             <Link2 :size="12" aria-hidden="true" />{{ t('telegram.unrouted.all', { n: bulkSuggest.length }) }}
           </button>
@@ -1264,7 +1264,7 @@ const overview = computed(() => {
                     :key="x.key"
                     type="button"
                     class="inline-flex max-w-48 items-center gap-1 hover:underline"
-                    :title="`${x.name} · ${x.live.word}`"
+                    :title="`${x.name}, ${x.live.word}`"
                     @click="showSession(x.key)"
                   >
                     <StatusIcon :status="x.live.badge" :size="11" /><span class="truncate">{{ x.name }}</span>
@@ -1429,7 +1429,7 @@ const overview = computed(() => {
               <div class="min-w-0 flex-1">
                 <p class="truncate text-xs" :title="s.name">{{ s.name }}</p>
                 <p class="truncate text-2xs text-ink-faint tabular-nums" :title="s.chat || t('telegram.members.private')">
-                  {{ t('telegram.members.id', { id: s.id }) }} · {{ s.chat || t('telegram.members.private') }} · {{ relativeTime(Math.min(s.at, now), locale, now) }}
+                  {{ t('telegram.members.id', { id: s.id }) }}, {{ s.chat || t('telegram.members.private') }}, {{ relativeTime(Math.min(s.at, now), locale, now) }}
                 </p>
               </div>
               <button type="button" class="ccm-btn shrink-0 text-xs" :disabled="membersFull" data-telegram-add-read @click="addMember(s, 'read')">
@@ -1522,7 +1522,7 @@ const overview = computed(() => {
           </dl>
           <p class="flex flex-wrap items-center gap-1 text-2xs tabular-nums" data-telegram-health-today>
             <span class="text-ink-muted">{{ t('telegram.health.today', { n: state.health.sentToday }, state.health.sentToday) }}</span>
-            <span class="text-ink-faint" aria-hidden="true">·</span>
+            <span class="text-ink-faint" aria-hidden="true">|</span>
             <span v-if="state.health.errorsToday > 0" class="inline-flex items-center gap-1 text-warning" data-telegram-health-errors>
               <TriangleAlert :size="12" aria-hidden="true" />{{ t('telegram.health.errors', { n: state.health.errorsToday }, state.health.errorsToday) }}
             </span>

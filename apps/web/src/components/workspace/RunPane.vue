@@ -65,7 +65,7 @@ onBeforeUnmount(() => release?.())
 const detectedProjects = computed(() => run.projectsFor(props.root))
 function markText(p: (typeof detectedProjects.value)[number]): string {
   const m = projectMark(p)
-  return `${t(`run.project.${m.label}`)} · ${p.name}`
+  return `${t(`run.project.${m.label}`)}, ${p.name}`
 }
 const reasonOf = (p: (typeof detectedProjects.value)[number]): string | null => {
   const r = projectMark(p).reason
@@ -272,8 +272,8 @@ function sessionLabel(s: RunSession): string {
           v-if="androidDevice"
           type="button"
           class="ccm-btn-plain shrink-0"
-          :title="`${t('deviceTools.capture.button')} · ${androidDevice.name}`"
-          :aria-label="`${t('deviceTools.capture.button')} · ${androidDevice.name}`"
+          :title="`${t('deviceTools.capture.button')}, ${androidDevice.name}`"
+          :aria-label="`${t('deviceTools.capture.button')}, ${androidDevice.name}`"
           data-run-capture
           @click="captureOpen = true"
         >

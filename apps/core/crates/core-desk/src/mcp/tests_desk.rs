@@ -84,7 +84,7 @@ fn list_servers_and_free_port() {
     });
     let host = Fake::with_desk(desk_ok(raw));
     let r = call(&host, "list_servers", json!({}));
-    let want = "Sample of 2026-01-01T00:00:00.000Z.\nAgent servers (6):\n- [mine] node (dev-server, pid 10) :5173 — idle 10 min\n  node vite\n- java (daemon, pid 11) no port — busy, session ended\n- a (daemon, pid 12) :1, :2 — idle 45 s\n- b (daemon, pid 13) :3 — idle 1.3 h\n- c (daemon, pid 14) :3 — idle 1.5 h\n- d (daemon, pid 15) :3 — idle 2 min\nPorts held outside every agent (cannot be freed from Orrery):\n- :8080 java";
+    let want = "Sample of 2026-01-01T00:00:00.000Z.\nAgent servers (6):\n- [mine] node (dev-server, pid 10) :5173 - idle 10 min\n  node vite\n- java (daemon, pid 11) no port - busy, session ended\n- a (daemon, pid 12) :1, :2 - idle 45 s\n- b (daemon, pid 13) :3 - idle 1.3 h\n- c (daemon, pid 14) :3 - idle 1.5 h\n- d (daemon, pid 15) :3 - idle 2 min\nPorts held outside every agent (cannot be freed from Orrery):\n- :8080 java";
     assert_eq!(text(&r), want);
     assert_eq!(host.takes.lock().unwrap()[0], ("servers".to_string(), 20, 60_000));
     let host = Fake::with_desk(desk_ok(json!({ "ok": true, "servers": [], "outside": [] })));

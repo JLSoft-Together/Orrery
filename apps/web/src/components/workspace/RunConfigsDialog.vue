@@ -237,7 +237,7 @@ async function apply(): Promise<boolean> {
   const bad = list.find((c) => configIssues(c, rows.value[c.id] ?? []).length)
   if (bad) {
     selectedId.value = bad.id
-    notice.value = { text: t('run.configs.saveFailed', { name: bad.name || '—' }), error: true }
+    notice.value = { text: t('run.configs.saveFailed', { name: bad.name || '-' }), error: true }
     return false
   }
   const { save, remove: gone } = configChanges(original.value, list)
@@ -388,7 +388,7 @@ const ICON_BTN =
                     :data-config="c.name"
                     @click="selectedId = c.id"
                   >
-                    <span class="min-w-0 flex-1 truncate" :class="c.id === selectedId ? 'font-medium' : ''">{{ c.name || '—' }}</span>
+                    <span class="min-w-0 flex-1 truncate" :class="c.id === selectedId ? 'font-medium' : ''">{{ c.name || '-' }}</span>
                     <span v-if="isDirty(c)" class="shrink-0 text-2xs text-ink-faint">{{ t('run.configs.modified') }}</span>
                   </button>
                 </template>

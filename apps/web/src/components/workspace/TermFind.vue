@@ -74,7 +74,7 @@ const status = computed(() => {
   const r = result.value
   if (!query.value || !r) return ''
   if (!r.count) return t('workspace.termFind.none')
-  const current = r.index >= 0 ? r.index + 1 : '–'
+  const current = r.index >= 0 ? r.index + 1 : '-'
   return r.count >= HIGHLIGHT_LIMIT ? t('workspace.termFind.countMany', { current, total: HIGHLIGHT_LIMIT }) : t('workspace.termFind.count', { current, total: r.count })
 })
 

@@ -52,7 +52,7 @@ const minutes = (ms: number): number => Math.max(0, Math.round(ms / 60_000))
 
 const TEXT: Record<PhoneLocale, { [K in PhoneEpisodeMessage['reason']]: (m: PhoneEpisodeMessage, waited: number | null) => string } & { test: string; title: (name: string) => string }> = {
   en: {
-    title: (name) => `Orrery · ${name}`,
+    title: (name) => `Orrery, ${name}`,
     waiting: (_, w) => (w ? `Waiting for your input for ${w} min` : 'Waiting for your input'),
     question: (_, w) => (w ? `Asking you a question (${w} min)` : 'Asking you a question'),
     permission: (m, w) => `${m.tool ? `Needs approval: ${m.tool}` : 'Needs approval'}${w ? ` (${w} min)` : ''}`,
@@ -64,7 +64,7 @@ const TEXT: Record<PhoneLocale, { [K in PhoneEpisodeMessage['reason']]: (m: Phon
     test: 'Test from Orrery: phone notifications work.',
   },
   vi: {
-    title: (name) => `Orrery · ${name}`,
+    title: (name) => `Orrery, ${name}`,
     waiting: (_, w) => (w ? `Đang chờ chủ nhân trả lời ${w} phút` : 'Đang chờ chủ nhân trả lời'),
     question: (_, w) => (w ? `Đang hỏi chủ nhân (${w} phút)` : 'Đang hỏi chủ nhân'),
     permission: (m, w) => `${m.tool ? `Cần duyệt: ${m.tool}` : 'Cần duyệt'}${w ? ` (${w} phút)` : ''}`,

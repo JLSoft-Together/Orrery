@@ -22,9 +22,9 @@ describe('memory doctor (page)', () => {
   it('builds a capped cleanup prompt', () => {
     const text = doctorPrompt(list, 'C:/p', 'C:/h')!
     expect(text.split('\n').slice(1)).toEqual([
-      '- CLAUDE.md:3 — mentions apps/x.ts, which no longer exists in the project',
-      '- ~/.claude/projects/p/memory/a.md:7 — [[ghost]] points to no memory',
-      '- CLAUDE.md:1 — 41000 characters (over 40000)',
+      '- CLAUDE.md:3 - mentions apps/x.ts, which no longer exists in the project',
+      '- ~/.claude/projects/p/memory/a.md:7 - [[ghost]] points to no memory',
+      '- CLAUDE.md:1 - 41000 characters (over 40000)',
     ])
     expect(text).toContain('Ask before deleting')
     expect(doctorPrompt([], 'C:/p', null)).toBeNull()

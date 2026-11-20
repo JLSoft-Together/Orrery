@@ -17,7 +17,7 @@ const en = {
     home: 'Home folder',
     all: 'Tick all',
     none: 'Untick all',
-    run: 'Restore · start {n} | Restore · start {n}',
+    run: 'Restore, start {n} | Restore, start {n}',
     layoutOnly: 'Restore layout',
   },
 }
@@ -41,7 +41,7 @@ const vi: typeof en = {
     home: 'Thư mục home',
     all: 'Tích hết',
     none: 'Bỏ tích hết',
-    run: 'Khôi phục · chạy {n} | Khôi phục · chạy {n}',
+    run: 'Khôi phục, chạy {n} | Khôi phục, chạy {n}',
     layoutOnly: 'Khôi phục bố cục',
   },
 }

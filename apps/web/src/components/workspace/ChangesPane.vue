@@ -1050,7 +1050,7 @@ function pickHead(id: string): void {
           <span v-if="blocks.length" class="shrink-0 text-2xs tabular text-well-ink" aria-live="polite" data-diff-position>{{
             t('workspace.diff.change', { n: currentBlock + 1, total: blocks.length })
           }}</span>
-          <span class="hidden shrink-0 text-2xs text-well-ink @3xl:inline">· {{ t('workspace.diff.keysHint') }}</span>
+          <span class="hidden shrink-0 text-2xs text-well-ink @3xl:inline">- {{ t('workspace.diff.keysHint') }}</span>
           <button
             v-if="selectedEntry.kind !== 'deleted'"
             type="button"

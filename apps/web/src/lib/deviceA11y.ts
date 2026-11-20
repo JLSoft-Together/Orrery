@@ -221,7 +221,7 @@ export function a11yPrompt(nodes: readonly DevUiNode[], findings: readonly A11yF
     const n = nodes[f.node]
     if (!n) continue
     const files = hits.get(f.node) ?? []
-    const line = `- ${nodeRef(n)} (${shortClass(n.cls) || 'view'}) · ${problem(f)}${files.length ? ` · ${files.map((p) => `@${p}`).join(', ')}` : ''}`
+    const line = `- ${nodeRef(n)} (${shortClass(n.cls) || 'view'}), ${problem(f)}${files.length ? `, ${files.map((p) => `@${p}`).join(', ')}` : ''}`
     if (size + line.length + 1 > PROMPT_MAX - 40) break
     lines.push(line)
     size += line.length + 1

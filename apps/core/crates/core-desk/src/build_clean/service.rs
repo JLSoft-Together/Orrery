@@ -242,7 +242,7 @@ impl BuildCleanService {
         let lines: Vec<String> = live
             .iter()
             .take(LINES_MAX)
-            .map(|p| format!("• {}{} — {}", if several { format!("{}/", util::basename(&p.root)) } else { String::new() }, p.dir.rel, fmt_bytes(p.dir.bytes)))
+            .map(|p| format!("• {}{} - {}", if several { format!("{}/", util::basename(&p.root)) } else { String::new() }, p.dir.rel, fmt_bytes(p.dir.bytes)))
             .collect();
         let spec = json!({
             "dirs": live.len(),

@@ -15,7 +15,7 @@ describe('emulators', () => {
   })
 
   it('joins the known details', () => {
-    expect(avdDetails(avd(), (n) => `API ${n}`)).toBe('API 34 · x86_64 · pixel_7')
+    expect(avdDetails(avd(), (n) => `API ${n}`)).toBe('API 34, x86_64, pixel_7')
     expect(avdDetails(avd({ api: null, device: null }), (n) => `API ${n}`)).toBe('x86_64')
   })
 

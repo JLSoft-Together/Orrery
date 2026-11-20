@@ -172,7 +172,7 @@ describe('v85 tail', () => {
     await tg.onUpdate(msg('@orrery_bot tail'))
     expect(asked.map((a) => a.action)).toEqual(['status'])
     const keys = keysOf(sent)
-    expect(keys.map((k) => k.text)).toEqual(['📜 A · rảnh', '📜 A 2 · đang làm'])
+    expect(keys.map((k) => k.text)).toEqual(['📜 A, rảnh', '📜 A 2, đang làm'])
     await tg.onUpdate(cb(keys[1]!.callback_data))
     expect(asked.at(-1)).toMatchObject({ action: 'tail', lines: 30, target: { kind: 'terminal', terminalId: 't2' } })
     expect(lastText(sent)).toContain('<pre>line</pre>')

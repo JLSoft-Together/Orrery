@@ -2,7 +2,7 @@
 const en = {
   run: {
     title: 'Run',
-    titleIn: 'Run · {name}',
+    titleIn: 'Run, {name}',
     open: 'Run…',
     toolbar: 'Run controls',
     config: {
@@ -37,7 +37,7 @@ const en = {
       restart: 'Hot restart',
       devtools: 'Open DevTools',
       flutterOnly: 'Only while a Flutter debug run is running',
-      runNoDevice: 'Run — choose a device first',
+      runNoDevice: 'Run - choose a device first',
     },
     session: {
       label: 'Session',
@@ -170,7 +170,7 @@ const en = {
       copyName: '{name} (copy)',
       duplicate: 'Duplicate',
       remove: 'Delete',
-      autoNoRemove: 'Detected from the project — it comes back after deleting. Edit it instead.',
+      autoNoRemove: 'Detected from the project - it comes back after deleting. Edit it instead.',
       empty: 'No configurations. Add one with +.',
       noSelection: 'Select a configuration on the left, or add one.',
       modified: 'Changed',
@@ -323,7 +323,7 @@ const en = {
 const vi: typeof en = {
   run: {
     title: 'Chạy',
-    titleIn: 'Chạy · {name}',
+    titleIn: 'Chạy, {name}',
     open: 'Chạy…',
     toolbar: 'Điều khiển chạy',
     config: {
@@ -358,7 +358,7 @@ const vi: typeof en = {
       restart: 'Hot restart',
       devtools: 'Mở DevTools',
       flutterOnly: 'Chỉ khi một phiên Flutter debug đang chạy',
-      runNoDevice: 'Chạy — hãy chọn thiết bị trước',
+      runNoDevice: 'Chạy - hãy chọn thiết bị trước',
     },
     session: {
       label: 'Phiên',
@@ -491,7 +491,7 @@ const vi: typeof en = {
       copyName: '{name} (bản sao)',
       duplicate: 'Nhân bản',
       remove: 'Xoá',
-      autoNoRemove: 'Tự phát hiện từ project — xoá xong sẽ hiện lại. Hãy sửa thay vì xoá.',
+      autoNoRemove: 'Tự phát hiện từ project - xoá xong sẽ hiện lại. Hãy sửa thay vì xoá.',
       empty: 'Chưa có cấu hình. Thêm bằng nút +.',
       noSelection: 'Chọn một cấu hình bên trái, hoặc thêm mới.',
       modified: 'Đã sửa',

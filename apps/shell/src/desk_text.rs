@@ -160,7 +160,7 @@ impl DeskText {
                     None => String::new(),
                 };
                 let session = if i["session"] == serde_json::Value::Bool(true) { format!(" ({word})") } else { String::new() };
-                format!("• {}{session} — {ram}, pid {}{cmd}", i["name"].as_str().unwrap_or(""), i["pid"])
+                format!("• {}{session} - {ram}, pid {}{cmd}", i["name"].as_str().unwrap_or(""), i["pid"])
             })
             .collect()
     }
@@ -204,7 +204,7 @@ impl DeskText {
                     .iter()
                     .map(|id| {
                         let names = core_desk::agent_data::rules::group_rule(agent, id).map_or_else(|| (*id).to_owned(), |r| r.names.join(", "));
-                        format!("• {} — {names}", self.agent_group(id))
+                        format!("• {} - {names}", self.agent_group(id))
                     })
                     .collect();
                 let (files, size, days) = (n("files"), s("size"), n("days"));
@@ -296,7 +296,7 @@ mod agent_data_tests {
         let en = desk_text("en");
         let (t, d, b) = en.agent_data_spec(&json!({"kind": "clean", "agent": "claude", "groups": ["debugLogs"], "files": 1, "size": "2 KB", "days": 30})).unwrap();
         assert_eq!(t, "Delete 1 cache file (2 KB)?");
-        assert!(d.starts_with("• Debug logs — debug, logs, telemetry"));
+        assert!(d.starts_with("• Debug logs - debug, logs, telemetry"));
         assert!(d.contains("Only files not changed for 30 days."));
         assert_eq!(b, vec!["Delete".to_owned(), "Cancel".to_owned()]);
         let (_, _, b) = en.agent_data_spec(&json!({"kind": "undo", "folder": "/a", "target": "/b", "newFiles": 2, "copyBack": true})).unwrap();
@@ -348,6 +348,6 @@ mod mcp_tests {
         assert!(en.free_port_detail(&["• x".into()]).starts_with("• x\n\nThe agent asked through Orrery's free_port tool."));
         assert_eq!(desk_text("vi").tg_receive_title("app"), "Agent ở “app” muốn bật nhận lệnh Telegram");
         let lines = en.kill_lines(&[serde_json::json!({"name": "vite", "ramBytes": 2147483648u64, "cmd": "node", "session": true, "pid": 7}), serde_json::json!({"name": "x", "ramBytes": null, "cmd": "", "session": false, "pid": 8})]);
-        assert_eq!(lines, vec!["• vite (agent session) — 2.0 GB, pid 7\n   node".to_owned(), "• x — ?, pid 8".to_owned()]);
+        assert_eq!(lines, vec!["• vite (agent session) - 2.0 GB, pid 7\n   node".to_owned(), "• x - ?, pid 8".to_owned()]);
     }
 }

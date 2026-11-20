@@ -47,7 +47,7 @@ export function doctorPrompt(findings: readonly MemFinding[], cwd: string, home:
   const lines: string[] = []
   let size = head.length
   for (const f of findings) {
-    const line = `- ${displayPath(f.file, cwd, home)}:${f.line} — ${WHAT[f.kind](f)}`
+    const line = `- ${displayPath(f.file, cwd, home)}:${f.line} - ${WHAT[f.kind](f)}`
     if (size + line.length + 1 > PROMPT_MAX) {
       lines.push(`- … ${findings.length - lines.length} more`)
       break

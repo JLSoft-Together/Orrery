@@ -48,7 +48,7 @@ const subs = computed(() => (agents.byTerminal[props.terminalId] ?? []).filter((
 function subLine(a: (typeof subs.value)[number]): string {
   if (a.status === 'working' && a.currentTool) {
     const time = a.currentToolStartedAt ? duration(a.currentToolStartedAt, now.value) : null
-    return time ? `${a.currentTool} · ${time}` : a.currentTool
+    return time ? `${a.currentTool}, ${time}` : a.currentTool
   }
   if (a.status === 'waiting') return t('monitorV88.orbit.subIdle')
   if (a.status === 'working') return t(statusMeta(a.status).labelKey)
@@ -77,7 +77,7 @@ watch(() => props.terminalId, load)
           <span class="min-w-0 truncate" :title="displayTitle(terminal)" data-detail-title>{{ displayTitle(terminal) }}</span>
         </span>
         <span class="flex items-center gap-1.5 font-medium tabular-nums" :class="needs ? 'text-warning' : meta.text" data-detail-status>
-          <StatusIcon :status="terminal.status" :size="14" />{{ t(meta.labelKey) }}<template v-if="elapsed"> · {{ elapsed }}</template>
+          <StatusIcon :status="terminal.status" :size="14" />{{ t(meta.labelKey) }}<template v-if="elapsed">, {{ elapsed }}</template>
         </span>
       </div>
       <button v-if="closable" type="button" class="ccm-btn-plain ccm-press shrink-0" :aria-label="t('monitorV88.orbit.closeDetail')" :title="t('monitorV88.orbit.closeDetail')" data-detail-close @click="emit('close')">

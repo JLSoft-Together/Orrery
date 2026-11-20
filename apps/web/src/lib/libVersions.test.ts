@@ -153,7 +153,7 @@ describe('rows, links and prompt', () => {
     expect(fixedAll([{ ...vulns[0]!, fixed: null }])).toBeNull()
     const lines = upgradePrompt('package.json', rows, map)!.split('\n')
     expect(lines[0]).toContain('known vulnerabilities come first')
-    expect(lines[1]).toBe('- b: 1.0.0 → 2.0.0 (major) — SECURITY: 2 known vulnerabilities (worst critical: GHSA-crit, GHSA-low), fixed in 1.1.0')
+    expect(lines[1]).toBe('- b: 1.0.0 → 2.0.0 (major) - SECURITY: 2 known vulnerabilities (worst critical: GHSA-crit, GHSA-low), fixed in 1.1.0')
     expect(lines[2]).toBe('- a: ^1.0.0 → 1.5.0 (minor)')
     expect(osvPage('GHSA-1')).toBe('https://osv.dev/vulnerability/GHSA-1')
     expect(osvPage('../x')).toBeNull()

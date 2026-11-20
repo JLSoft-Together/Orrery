@@ -106,7 +106,7 @@ describe('RemoteAccessLog', () => {
     expect(lines[0]!.text()).toContain('Blocked')
     expect(lines[0]!.text()).toContain('203.0.113.9 [VN]')
     expect(lines[0]!.find('svg').exists()).toBe(true)
-    expect(lines[1]!.text()).toContain('Pixel 9 · Session opened')
+    expect(lines[1]!.text()).toContain('Pixel 9, Session opened')
     await w.get('[data-remote-access-refresh]').trigger('click')
     expect(w.emitted('refresh')).toHaveLength(1)
   })

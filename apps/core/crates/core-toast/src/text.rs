@@ -123,8 +123,8 @@ impl Text {
     }
 
     pub fn sensitive_body(self, rule: &str, tool: &str, path: Option<&str>) -> String {
-        let path = path.filter(|p| !p.is_empty()).map(|p| format!(" · {p}")).unwrap_or_default();
-        format!("{tool} · {}{path}", rule_label(rule, self.0))
+        let path = path.filter(|p| !p.is_empty()).map(|p| format!(", {p}")).unwrap_or_default();
+        format!("{tool}, {}{path}", rule_label(rule, self.0))
     }
 
     pub fn disk_title(self, label: &str, free: &str) -> String {
@@ -188,7 +188,7 @@ mod tests {
         assert_eq!(rule_label("rm-rf", ToastLocale::En), "rm -rf outside the project");
         assert_eq!(rule_label("custom:*.pem", ToastLocale::En), "*.pem");
         let en = Text(ToastLocale::En);
-        assert_eq!(en.sensitive_body("git-clean", "Bash", Some("x")), "Bash · git clean -fd · x");
+        assert_eq!(en.sensitive_body("git-clean", "Bash", Some("x")), "Bash, git clean -fd, x");
         assert_eq!(en.idle_title(1, "2 GB"), "1 forgotten item uses 2 GB");
         assert_eq!(en.idle_title(2, "2 GB"), "2 forgotten items use 2 GB");
     }

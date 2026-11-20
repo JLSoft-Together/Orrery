@@ -164,7 +164,7 @@ function close(): void {
                 {{ report ? t('apkSize.title', { name: report.name }) : t('apkSize.titleEmpty') }}
               </h2>
               <p v-if="report" class="truncate text-2xs text-ink-faint">
-                {{ report.kind.toUpperCase() }}<template v-if="versionText"> · {{ versionText }}</template> · {{ t('apkSize.fileSize') }} {{ size(report.fileSize) }} ·
+                {{ report.kind.toUpperCase() }}<template v-if="versionText">, {{ versionText }}</template>, {{ t('apkSize.fileSize') }} {{ size(report.fileSize) }},
                 {{ t('apkSize.entries', { n: report.entries.toLocaleString(locale) }) }}
               </p>
             </div>
@@ -250,7 +250,7 @@ function close(): void {
                 <template v-else>
                   <p class="mt-1.5 text-2xs text-ink-muted">
                     {{ t('apkSize.compare.against', { name: diff.before.name }) }}
-                    <template v-if="mode === 'previous' && previous"> · {{ t('apkSize.compare.previousHint', { name: previous.versionName ?? previous.name, when: previousWhen }) }}</template>
+                    <template v-if="mode === 'previous' && previous">, {{ t('apkSize.compare.previousHint', { name: previous.versionName ?? previous.name, when: previousWhen }) }}</template>
                   </p>
                   <table class="mt-1 w-full table-fixed text-xs" data-apk-diff>
                     <thead class="text-2xs text-ink-faint">
@@ -272,8 +272,8 @@ function close(): void {
                         <td class="truncate py-1">
                           <span class="mr-1.5 inline-block size-2.5 rounded-sm align-middle" :class="groupColor(g.kind)" aria-hidden="true" />{{ groupName(g) }}
                         </td>
-                        <td class="py-1 text-right text-ink-muted tabular-nums">{{ g.before ? size(g.before[by]) : '—' }}</td>
-                        <td class="py-1 text-right tabular-nums">{{ g.after ? size(g.after[by]) : '—' }}</td>
+                        <td class="py-1 text-right text-ink-muted tabular-nums">{{ g.before ? size(g.before[by]) : '-' }}</td>
+                        <td class="py-1 text-right tabular-nums">{{ g.after ? size(g.after[by]) : '-' }}</td>
                         <td class="py-1 text-right tabular-nums" :class="deltaClass(groupDelta(g))">{{ delta(groupDelta(g)) }}</td>
                       </tr>
                     </tbody>
@@ -317,16 +317,16 @@ function close(): void {
                 <p v-if="!report.manifest" class="mt-1 text-2xs text-ink-faint">{{ t('apkSize.manifest.missing') }}</p>
                 <dl v-else class="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
                   <dt class="text-ink-muted">{{ t('apkSize.manifest.pkg') }}</dt>
-                  <dd class="truncate font-mono">{{ report.manifest.pkg ?? '—' }}</dd>
+                  <dd class="truncate font-mono">{{ report.manifest.pkg ?? '-' }}</dd>
                   <dt class="text-ink-muted">{{ t('apkSize.manifest.version') }}</dt>
                   <dd class="truncate">
-                    {{ versionText ?? '—' }}
+                    {{ versionText ?? '-' }}
                     <span v-if="report.manifest.debuggable" class="ml-1.5 rounded-full bg-warning-soft px-1.5 text-2xs text-ink">{{ t('apkSize.manifest.debuggable') }}</span>
                   </dd>
                   <dt class="text-ink-muted">{{ t('apkSize.manifest.sdk') }}</dt>
                   <dd class="truncate">
                     {{ t('apkSize.manifest.sdkValue', { min: report.manifest.minSdk ?? '?', target: report.manifest.targetSdk ?? '?' }) }}
-                    <template v-if="report.manifest.compileSdk"> · {{ t('apkSize.manifest.compile', { n: report.manifest.compileSdk }) }}</template>
+                    <template v-if="report.manifest.compileSdk">, {{ t('apkSize.manifest.compile', { n: report.manifest.compileSdk }) }}</template>
                   </dd>
                 </dl>
                 <details v-if="report.manifest" class="mt-2 rounded-control bg-fill px-2 py-1" data-apk-perms>

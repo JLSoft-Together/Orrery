@@ -1287,10 +1287,10 @@ export class TelegramNotifier {
     const min = p.since ? Math.max(0, Math.floor((this.now - p.since) / 60_000)) : null
     const vi = locale === 'vi'
     const age = min === null ? '' : min < 1 ? (vi ? 'vừa xong' : 'just now') : min < 60 ? (vi ? `${min} phút` : `${min}m`) : min < 1440 ? (vi ? `${Math.floor(min / 60)} giờ` : `${Math.floor(min / 60)}h`) : vi ? `${Math.floor(min / 1440)} ngày` : `${Math.floor(min / 1440)}d`
-    const tail = [paneStatus(p.status, locale), age].filter(Boolean).join(' · ')
+    const tail = [paneStatus(p.status, locale), age].filter(Boolean).join(', ')
     const room = 48 - [...tail].length - 3
     const name = [...p.name]
-    return `${name.length > room ? `${name.slice(0, Math.max(1, room - 1)).join('')}…` : p.name} · ${tail}`
+    return `${name.length > room ? `${name.slice(0, Math.max(1, room - 1)).join('')}…` : p.name}, ${tail}`
   }
 
   private pickMarkup(kind: 'st' | 'lt' | 'tl' | 'np' | 'cp' | 'cl' | 'fc', panes: TelegramPaneInfo[], project: string, msg: TgMessage, text?: string): Markup {
@@ -2274,7 +2274,7 @@ export class TelegramNotifier {
         if (ask && !ask.multi && !ask.more && e.since !== undefined)
           for (const [i, o] of ask.options.entries()) {
             const label = clean(o, this.masker)
-            rows.push([['qa', this.addAction({ kind: 'qa', ...entry, extra: String(i + 1), label }), `${i + 1} · ${label}`]])
+            rows.push([['qa', this.addAction({ kind: 'qa', ...entry, extra: String(i + 1), label }), `${i + 1}, ${label}`]])
           }
         keys = markup(locale, [...rows, escTail])
       } else if (e.reason === 'permission') {

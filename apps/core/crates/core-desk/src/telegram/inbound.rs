@@ -77,11 +77,11 @@ impl Tg {
             Some(m) if m < 1440 => if vi { format!("{} giờ", m / 60) } else { format!("{}h", m / 60) },
             Some(m) => if vi { format!("{} ngày", m / 1440) } else { format!("{}d", m / 1440) },
         };
-        let tail = [pane_status(p["status"].as_str().unwrap_or(""), vi), age].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ");
+        let tail = [pane_status(p["status"].as_str().unwrap_or(""), vi), age].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(", ");
         let room = 48 - tail.chars().count() as i64 - 3;
         let name: Vec<char> = p["name"].as_str().unwrap_or("").chars().collect();
         let shown = if name.len() as i64 > room { format!("{}…", name.iter().take((room - 1).max(1) as usize).collect::<String>()) } else { name.iter().collect() };
-        format!("{shown} · {tail}")
+        format!("{shown}, {tail}")
     }
 
     pub fn pick_markup(&self, kind: &str, panes: &[Value], project: &str, msg: &TgMessage, text: Option<&str>) -> Value {

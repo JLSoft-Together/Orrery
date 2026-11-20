@@ -115,7 +115,7 @@ const issueText = (i: { code: string; detail?: string }, groups: string[]): stri
               <div class="ccm-group flex min-w-0 items-center gap-2 px-3 py-2">
                 <p class="min-w-0 flex-1 truncate font-mono text-2xs text-ink-muted" :title="env?.kind === 'flutter' ? (env.sdk ?? undefined) : undefined">
                   <template v-if="env?.kind === 'flutter' && env.sdk">
-                    {{ t('run.projectSdk.inUse', { path: env.sdk }) }}<span v-if="env.source" class="font-sans"> · {{ t(`run.projectSdk.source.${env.source}`) }}</span>
+                    {{ t('run.projectSdk.inUse', { path: env.sdk }) }}<span v-if="env.source" class="font-sans">, {{ t(`run.projectSdk.source.${env.source}`) }}</span>
                   </template>
                   <template v-else>{{ t('run.projectSdk.none') }}</template>
                 </p>
@@ -144,7 +144,7 @@ const issueText = (i: { code: string; detail?: string }, groups: string[]): stri
                   <component :is="ICON[c.status]" :size="14" class="mt-0.5 shrink-0" :class="TONE[c.status]" aria-hidden="true" />
                   <div class="min-w-0 flex-1">
                     <p class="text-sm text-ink">
-                      {{ checkName(c.name) }} <span class="text-2xs" :class="TONE[c.status]">· {{ t(`run.toolchain.status.${c.status}`) }}</span>
+                      {{ checkName(c.name) }} <span class="text-2xs" :class="TONE[c.status]">- {{ t(`run.toolchain.status.${c.status}`) }}</span>
                     </p>
                     <p v-if="c.summary" class="truncate text-2xs text-ink-muted" :title="c.summary">{{ c.summary }}</p>
                     <ul v-if="c.messages.length" class="mt-1 flex flex-col gap-0.5">

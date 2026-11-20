@@ -116,7 +116,7 @@ const tagClass = (k: TodoTag): string => (k === 'TODO' ? 'text-accent-ink' : 'te
       <template v-else-if="scanned">
         <span v-if="items.length">{{ t('workspace.todo.summary', { n: shownItems.length, files }, shownItems.length) }}</span>
         <span v-else>{{ t('workspace.todo.none') }}</span>
-        <span v-if="truncated">· {{ t('workspace.search.truncated') }}</span>
+        <span v-if="truncated">- {{ t('workspace.search.truncated') }}</span>
       </template>
       <span v-else>{{ t('workspace.todo.scanning') }}</span>
     </p>

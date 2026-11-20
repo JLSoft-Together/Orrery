@@ -72,7 +72,7 @@ function cancel(): void {
       type="button"
       class="inline-flex h-5 max-w-full min-w-6 cursor-pointer items-center gap-1 rounded-inner px-1.5 text-2xs font-medium whitespace-nowrap transition-colors duration-(--ccm-dur-fast) ease-out-quint hover:text-ink"
       :class="entry ? 'bg-accent-soft text-accent-ink' : 'bg-warning-soft text-warning'"
-      :title="entry ? label : `${label} · ${t('limitResume.schedule')}`"
+      :title="entry ? label : `${label}, ${t('limitResume.schedule')}`"
       :aria-label="entry ? label : `${label}. ${t('limitResume.schedule')}`"
       aria-haspopup="dialog"
       :aria-expanded="!!anchor"

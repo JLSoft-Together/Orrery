@@ -50,15 +50,15 @@ const edge = computed(() => {
 const tip = computed(() => {
   const a = agent.value
   if (!a) return ''
-  const lines = [`${name.value} · ${t(meta.value.labelKey)}`]
+  const lines = [`${name.value}, ${t(meta.value.labelKey)}`]
   if (a.description) lines.push(a.description)
   if (a.currentTool && working.value) lines.push(t('terminal.running', { tool: a.currentTool }))
   const model = modelLabel(a.model, a.contextWindow, extras.modelNames)
   const effort = effortLabel(a.effort, t)
-  if (model) lines.push(effort ? `${model} · ${effort}` : model)
+  if (model) lines.push(effort ? `${model}, ${effort}` : model)
   if (a.totalTokens !== undefined)
     lines.push(
-      `${t('terminal.tokens', { total: compactNumber(a.totalTokens, locale.value) })} · ${t('agent.inShort', { n: compactNumber(a.inputTokens ?? 0, locale.value) })} · ${t('agent.outShort', { n: compactNumber(a.outputTokens ?? 0, locale.value) })}`,
+      `${t('terminal.tokens', { total: compactNumber(a.totalTokens, locale.value) })}, ${t('agent.inShort', { n: compactNumber(a.inputTokens ?? 0, locale.value) })}, ${t('agent.outShort', { n: compactNumber(a.outputTokens ?? 0, locale.value) })}`,
     )
   return lines.join('\n')
 })
@@ -75,7 +75,7 @@ const tip = computed(() => {
         :tabindex="tabbable ? 0 : -1"
         role="group"
         :aria-roledescription="t('mapV53.node.sub')"
-        :aria-label="`${name} · ${t(meta.labelKey)}`"
+        :aria-label="`${name}, ${t(meta.labelKey)}`"
         :aria-describedby="`${flowId}-keys`"
         class="group/node relative flex items-center gap-1.5 rounded-full border bg-surface pr-3 pl-3 text-xs transition-[opacity,border-color,box-shadow] duration-(--ccm-dur-base) ease-out-quint focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-focus"
         :style="{ width: `${PILL_WIDTH}px`, height: `${PILL_HEIGHT}px` }"

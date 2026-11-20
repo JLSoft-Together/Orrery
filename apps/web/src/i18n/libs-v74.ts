@@ -3,7 +3,7 @@ const en = {
   libUpdates: {
     menu: 'Check for updates',
     title: 'Library updates',
-    titleOf: 'Library updates · {name}',
+    titleOf: 'Library updates, {name}',
     lib: 'Library',
     current: 'In use',
     latest: 'Latest stable',
@@ -53,7 +53,7 @@ const vi: typeof en = {
   libUpdates: {
     menu: 'Kiểm bản mới',
     title: 'Bản mới của thư viện',
-    titleOf: 'Bản mới của thư viện · {name}',
+    titleOf: 'Bản mới của thư viện, {name}',
     lib: 'Thư viện',
     current: 'Đang dùng',
     latest: 'Mới nhất (ổn định)',

@@ -192,7 +192,7 @@ describeCore('SessionTracker: Node ↔ Rust parity', () => {
           assistant('r1', '2026-10-07T10:02:01.000Z', [{ type: 'text', text: 'second part' }], 'end_turn') +
           assistant('a1', '2026-10-07T10:03:00.000Z', [use('toolu_ask', 'AskUserQuestion', ask), use('toolu_adb', 'Bash', { command: 'adb devices' })], 'tool_use') +
           result('2026-10-07T10:03:01.000Z', 'toolu_adb', { error: true }).replace('"x', '"Error: listen EADDRINUSE: address already in use :::3000 x') +
-          line({ type: 'assistant', timestamp: '2026-10-07T10:04:00.000Z', isApiErrorMessage: true, error: 'rate_limit', message: { id: 'lim', model: '<synthetic>', content: [{ type: 'text', text: "You've hit your limit · resets 3pm" }] } }),
+          line({ type: 'assistant', timestamp: '2026-10-07T10:04:00.000Z', isApiErrorMessage: true, error: 'rate_limit', message: { id: 'lim', model: '<synthetic>', content: [{ type: 'text', text: "You've hit your limit, resets 3pm" }] } }),
       )
       await tracker.sync(false)
       tracker.drainPeers()

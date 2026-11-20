@@ -79,7 +79,7 @@ const speedOptions = computed(() =>
 const ready = computed(() => status.value === 'ready' && !!replay.value)
 const message = computed(() => (messageKey.value ? t(`officeV60.timelapse.${messageKey.value}`) : ''))
 const time = computed(() => (replay.value ? hhmm(clock.value) : '--:--'))
-const span = computed(() => (replay.value ? `${hhmm(replay.value.from)}–${hhmm(replay.value.to)}` : ''))
+const span = computed(() => (replay.value ? `${hhmm(replay.value.from)}-${hhmm(replay.value.to)}` : ''))
 const maxSec = computed(() => (replay.value ? Math.max(0, Math.round((replay.value.to - replay.value.from) / 1000)) : 0))
 const progress = computed(() => {
   const r = replay.value

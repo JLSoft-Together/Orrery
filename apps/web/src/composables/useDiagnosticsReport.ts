@@ -13,7 +13,7 @@ export function useDiagnosticsReport() {
   const terminals = useTerminalsStore()
   const connection = useConnectionStore()
 
-  const ago = (iso: string | undefined) => relativeTime(iso, locale.value, now.value) ?? '—'
+  const ago = (iso: string | undefined) => relativeTime(iso, locale.value, now.value) ?? '-'
 
   const rows = computed(() => {
     const d = extras.diagnostics
@@ -28,7 +28,7 @@ export function useDiagnosticsReport() {
       {
         key: 'claudeRoot',
         level: (d.claudeRootFound && d.watchers.sessions && d.watchers.projects ? 'ok' : 'warn') as DiagLevel,
-        value: d.claudeRootFound ? t('diag.watching', { list: [d.watchers.sessions && 'sessions', d.watchers.projects && 'projects'].filter(Boolean).join(', ') || '—' }) : t('diag.notFound'),
+        value: d.claudeRootFound ? t('diag.watching', { list: [d.watchers.sessions && 'sessions', d.watchers.projects && 'projects'].filter(Boolean).join(', ') || '-' }) : t('diag.notFound'),
         detail: d.claudeRoot,
       },
       {
@@ -52,7 +52,7 @@ export function useDiagnosticsReport() {
       {
         key: 'usage',
         level: (usage?.state === 'ready' ? 'ok' : usage?.state === 'scanning' ? 'warn' : 'off') as DiagLevel,
-        value: usage ? t(`diag.usage.${usage.state}`, { done: usage.filesDone, total: usage.filesTotal }) : '—',
+        value: usage ? t(`diag.usage.${usage.state}`, { done: usage.filesDone, total: usage.filesTotal }) : '-',
         detail: '',
       },
       ...(codex

@@ -567,7 +567,7 @@ describe('usage limit records (Claude Code 2.1.294)', () => {
     apiError: 'usage_limit_reached',
     error: 'rate_limit',
     quotaLimits: { status: 'rejected', resetsAt: 1793227200, rateLimitType: 'five_hour' },
-    message: { id: 'x', model: '<synthetic>', role: 'assistant', content: [{ type: 'text', text: "You've hit your session limit · resets 5:40am" }] },
+    message: { id: 'x', model: '<synthetic>', role: 'assistant', content: [{ type: 'text', text: "You've hit your session limit, resets 5:40am" }] },
   }
   const notice = (content: string) => ({ type: 'system', subtype: 'informational', level: 'notice', content })
 
@@ -577,7 +577,7 @@ describe('usage limit records (Claude Code 2.1.294)', () => {
     expect(s.limitHit).toEqual({ at: hit.timestamp, resetsAt: new Date(1793227200 * 1000).toISOString(), window: 'five_hour', autoResume: undefined })
     s.apply(extractSignals(notice('Usage limit reached · continuing automatically at 5:40am · esc to cancel')))
     expect(s.limitHit?.autoResume).toBe(true)
-    s.apply(extractSignals(notice('Automatic continue cancelled · /rate-limit-options to re-arm')))
+    s.apply(extractSignals(notice('Automatic continue cancelled, /rate-limit-options to re-arm')))
     expect(s.limitHit?.autoResume).toBe(false)
     s.apply(extractSignals({ type: 'assistant', timestamp: 'x', message: { id: 'y', model: 'claude-opus-5-5', content: [] } }))
     expect(s.limitHit).toBeUndefined()

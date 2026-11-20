@@ -138,7 +138,7 @@ describe('TelegramNotifier inbound', () => {
     await paired(tg)
     tg.set({ receiving: true })
     await tg.onUpdate(update('@orrery_bot status'))
-    expect(String(sent[sent.length - 1]!.body.text)).toContain('<b>A</b> — đang làm')
+    expect(String(sent[sent.length - 1]!.body.text)).toContain('<b>A</b> - đang làm')
     tg.stop()
   })
 })

@@ -101,7 +101,7 @@ const elapsed = (ms: number): string => duration(new Date(0).toISOString(), ms) 
           <span :class="okResult.code === 0 && !counts.errors ? 'text-ink-muted' : 'text-st-error'">
             {{ okResult.code === 0 && !counts.errors ? t('workspace.checks.passed') : t('workspace.checks.failed', { code: okResult.code ?? '?' }) }}
           </span>
-          <span class="text-ink-faint">· {{ t('workspace.checks.counts', counts) }} · {{ elapsed(okResult.ms) }}</span>
+          <span class="text-ink-faint">- {{ t('workspace.checks.counts', counts) }}, {{ elapsed(okResult.ms) }}</span>
           <button type="button" class="ms-auto cursor-pointer text-accent-ink hover:underline" :aria-expanded="showLog" @click="showLog = !showLog">
             {{ showLog ? t('workspace.checks.hideLog') : t('workspace.checks.showLog') }}
           </button>

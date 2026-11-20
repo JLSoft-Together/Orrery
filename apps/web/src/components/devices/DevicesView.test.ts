@@ -145,7 +145,7 @@ describe('Devices view', () => {
     api.avdStart.mockResolvedValue({ ok: true })
     await mountWith({ adb: '/adb', devices: [], autoConnect: true })
     expect(w!.get('[data-avd-row="Pixel_7"]').attributes('data-avd-state')).toBe('running')
-    expect(w!.get('[data-avd-row="Pixel_7"]').text()).toContain('API 34 · x86_64 · pixel_7')
+    expect(w!.get('[data-avd-row="Pixel_7"]').text()).toContain('API 34, x86_64, pixel_7')
     const acts = (n: string) => w!.get(`[data-avd-row="${n}"]`).findAll('[data-avd-action]').map((b) => b.attributes('data-avd-action'))
     expect(acts('Pixel_7')).toEqual(['stop'])
     expect(acts('Small')).toEqual(['start', 'cold', 'wipe'])

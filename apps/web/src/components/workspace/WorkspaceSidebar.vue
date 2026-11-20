@@ -495,7 +495,7 @@ async function showProjectMenu(shownCluster: RailCluster, k: RailCheckout | unde
     },
     t,
   )
-  const name = k && k.path && k.path !== headDir(c) ? `${nameOf(c)} · ${k.branch ?? k.path}` : nameOf(c)
+  const name = k && k.path && k.path !== headDir(c) ? `${nameOf(c)}, ${k.branch ?? k.path}` : nameOf(c)
   ctxMenu.value = { at, trigger, label: t('workspace.rail.menu.label', { name }), entries, pick: (id) => void pickProject(id, c, dir, anchor, layouts ?? []) }
 }
 

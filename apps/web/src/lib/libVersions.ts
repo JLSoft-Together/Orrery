@@ -308,7 +308,7 @@ export function upgradePrompt(file: string, rows: readonly LibRow[], vulns: Vuln
     const base = `- ${r.plugin ? `plugin ${r.plugin}` : r.name}: ${r.spec} → ${r.latest} (${r.bump})${r.ref ? ` [version.ref "${r.ref}"]` : ''}`
     if (!v.length) return base
     const fix = fixedAll(v)
-    return `${base} — SECURITY: ${v.length} known ${v.length === 1 ? 'vulnerability' : 'vulnerabilities'} (worst ${worstSeverity(v)}: ${sortVulns(v)
+    return `${base} - SECURITY: ${v.length} known ${v.length === 1 ? 'vulnerability' : 'vulnerabilities'} (worst ${worstSeverity(v)}: ${sortVulns(v)
       .slice(0, 5)
       .map((x) => x.id)
       .join(', ')})${fix ? `, fixed in ${fix}` : ''}`

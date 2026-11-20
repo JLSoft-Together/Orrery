@@ -74,7 +74,7 @@ Widget sheet() => Builder(
                 Expanded(child: Text('DESKTOP-DAUPH')),
                 OrreryChip(
                   tone: ChipTone.info,
-                  label: 'Relay · 84 ms',
+                  label: 'Relay, 84 ms',
                   icon: Icons.cloud_outlined,
                 ),
               ],

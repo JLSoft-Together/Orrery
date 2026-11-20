@@ -23,7 +23,7 @@ function apply(res: GhAccountsResult): boolean {
     accounts.value = res.accounts
     return true
   }
-  if (res.error !== 'cancelled') error.value = [t(`github.error.${res.error}`), res.detail].filter(Boolean).join(' — ')
+  if (res.error !== 'cancelled') error.value = [t(`github.error.${res.error}`), res.detail].filter(Boolean).join(' - ')
   return false
 }
 
@@ -83,7 +83,7 @@ const initial = (login: string): string => login.slice(0, 1).toUpperCase()
             <span class="truncate" :title="t('github.noRepoScope')">{{ t('github.noRepoScope') }}</span>
           </p>
           <p v-else class="mt-0.5 truncate text-2xs text-ink-faint" :title="a.scopes ? a.scopes.join(', ') : t('github.fineGrained')">
-            {{ [a.name, a.scopes ? a.scopes.join(', ') : t('github.fineGrained')].filter(Boolean).join(' · ') }}
+            {{ [a.name, a.scopes ? a.scopes.join(', ') : t('github.fineGrained')].filter(Boolean).join(', ') }}
           </p>
         </div>
         <button v-if="!a.isDefault" type="button" class="ccm-btn-plain shrink-0 text-xs" @click="makeDefault(a)">{{ t('github.makeDefault') }}</button>

@@ -73,7 +73,7 @@ class RunSessionCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  [?session.deviceName, ?session.progress].join(' · '),
+                  [?session.deviceName, ?session.progress].join(', '),
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
                     fontSize: 13,

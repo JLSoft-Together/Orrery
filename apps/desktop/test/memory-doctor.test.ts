@@ -26,7 +26,7 @@ describe('memory doctor lint', () => {
     const existing = new Set([at(MEM, 'a.md'), at(MEM, 'b.md'), at(MEM, 'c.md'), at(P, 'apps'), at(P, 'apps', 'web', 'ok.ts'), at(P, '.planning'), at(P, 'pkg', 'lib'), at(P, 'pkg', 'lib', 'x', 'y.ts')].map((p) => path.resolve(p)))
     const docs: LintDoc[] = [
       { path: at(P, 'CLAUDE.md'), role: 'instructions', text: 'Use apps/web/ok.ts and apps/web/gone.ts\n@docs/missing.md\n```\napps/web/fenced.ts\n```\nlib/x/y.ts lib/gone2.ts\n' + 'z'.repeat(LARGE_CHARS), bytes: 0, inProject: true },
-      { path: at(MEM, 'MEMORY.md'), role: 'memory-index', text: '- [A](a.md) — x\n- [Gone](gone.md) — y\n- [[b]]\n' + '- l\n'.repeat(INDEX_LINES), bytes: 0, inProject: false },
+      { path: at(MEM, 'MEMORY.md'), role: 'memory-index', text: '- [A](a.md) - x\n- [Gone](gone.md) - y\n- [[b]]\n' + '- l\n'.repeat(INDEX_LINES), bytes: 0, inProject: false },
       { path: at(MEM, 'a.md'), role: 'memory', text: '---\nname: same\ndescription: d\nmetadata:\n  type: user\n---\nSee [[b]] and [[nowhere]], .planning/old.md\n', bytes: 0, inProject: false },
       { path: at(MEM, 'b.md'), role: 'memory', text: '---\nname: same\ntype: project\n---\n', bytes: 0, inProject: false },
       { path: at(MEM, 'c.md'), role: 'memory', text: 'no frontmatter', bytes: 0, inProject: false },

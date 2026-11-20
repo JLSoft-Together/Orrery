@@ -165,7 +165,7 @@ export class BuildCleanService {
     }
     const total = live.reduce((n, p) => n + p.dir.bytes, 0)
     const several = new Set(live.map((p) => p.project)).size > 1
-    const lines = live.slice(0, LINES_MAX).map((p) => `• ${several ? `${path.basename(p.project.root)}/` : ''}${p.dir.rel} — ${fmtBytes(p.dir.bytes)}`)
+    const lines = live.slice(0, LINES_MAX).map((p) => `• ${several ? `${path.basename(p.project.root)}/` : ''}${p.dir.rel} - ${fmtBytes(p.dir.bytes)}`)
     const t = this.deps.texts()
     const answer = await this.deps.confirm({
       message: t.title(live.length, fmtBytes(total)),

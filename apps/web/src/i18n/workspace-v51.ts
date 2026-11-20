@@ -18,8 +18,8 @@ const en = {
     step: {
       writing: 'Writing handoff…',
       missing: 'No handoff file yet',
-      compact: 'Handoff ready · Enter runs /compact',
-      compactAuto: 'Handoff ready · running /compact',
+      compact: 'Handoff ready, Enter runs /compact',
+      compactAuto: 'Handoff ready, running /compact',
     },
     said: {
       started: 'Asked {name} to write a handoff',
@@ -55,8 +55,8 @@ const vi: typeof en = {
     step: {
       writing: 'Đang viết handoff…',
       missing: 'Chưa thấy file handoff',
-      compact: 'Handoff xong · Enter để chạy /compact',
-      compactAuto: 'Handoff xong · đang chạy /compact',
+      compact: 'Handoff xong, Enter để chạy /compact',
+      compactAuto: 'Handoff xong, đang chạy /compact',
     },
     said: {
       started: 'Đã yêu cầu {name} viết handoff',

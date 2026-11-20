@@ -66,7 +66,7 @@ describe('IsoReveal', () => {
     expect(r.alpha('unknown')).toBe(1)
   })
 
-  it('keeps the whole reveal around 600–900 ms for a typical office', () => {
+  it('keeps the whole reveal around 600-900 ms for a typical office', () => {
     const c = clock()
     for (const n of [6, 8, 10, 12]) {
       const r = new IsoReveal(false, c.now)

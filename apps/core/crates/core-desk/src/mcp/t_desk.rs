@@ -136,7 +136,7 @@ fn server_line(s: &Value) -> String {
         Some(c) => format!("\n  {c}"),
         None => String::new(),
     };
-    format!("- {mine}{} ({}, pid {}) {ports} — {}{orphan}{cmd}", str_of(s, "name"), str_of(s, "kind"), num_text(s.get("pid")), idle(as_int(s.get("idleSec"))))
+    format!("- {mine}{} ({}, pid {}) {ports} - {}{orphan}{cmd}", str_of(s, "name"), str_of(s, "kind"), num_text(s.get("pid")), idle(as_int(s.get("idleSec"))))
 }
 
 pub fn servers_text(res: &Value) -> String {

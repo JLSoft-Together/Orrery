@@ -127,13 +127,13 @@ class SessionFacts extends StatelessWidget {
     final asked = session.rail == RailState.asked && session.waitingFor != null;
     final tool = session.tool == null
         ? null
-        : [session.tool!, ?session.toolSummary].join(' · ');
+        : [session.tool!, ?session.toolSummary].join(', ');
     final pct = session.contextPct;
     final meta = [
       ?session.model,
       if (session.totalTokens != null)
         l.vTokens(_compact(session.totalTokens!)),
-    ].join(' · ');
+    ].join(', ');
     if (!asked && tool == null && pct == null && meta.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -255,7 +255,7 @@ class SessionSubagents extends StatelessWidget {
             if (a.contextPct != null) context.l10n.vContextPct(a.contextPct!),
             if (a.totalTokens != null)
               context.l10n.vTokens(_compact(a.totalTokens!)),
-          ].join(' · ');
+          ].join(', ');
           return DecoratedBox(
             decoration: BoxDecoration(
               border: a == session.subagents.first

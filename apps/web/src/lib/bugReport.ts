@@ -14,7 +14,7 @@ export interface ItemGroup {
 }
 
 export function formatBytes(bytes: number, locale = 'en'): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '—'
+  if (!Number.isFinite(bytes) || bytes < 0) return '-'
   if (bytes < 1024) return `${bytes} B`
   const fmt = (n: number, digits: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(n)
   if (bytes < 1024 ** 2) return `${fmt(bytes / 1024, 0)} KB`

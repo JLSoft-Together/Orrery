@@ -262,7 +262,7 @@ class _Grouped extends StatelessWidget {
                   Icon(look.icon, size: 16, color: tint),
                   const SizedBox(width: 6),
                   Text(
-                    '${look.label} · ${g.$2.length}'.toUpperCase(),
+                    '${look.label}, ${g.$2.length}'.toUpperCase(),
                     style: TextStyle(
                       fontSize: 12,
                       height: 16 / 12,

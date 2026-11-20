@@ -56,7 +56,7 @@ watch(
           <GitCommitHorizontal :size="20" :stroke-width="2" class="ico" aria-hidden="true" />
           <span class="body">
             <span class="subject">{{ c.subject }}</span>
-            <span class="meta mono">{{ c.short }} · {{ c.author }} · {{ when(c.time) }}</span>
+            <span class="meta mono">{{ c.short }}, {{ c.author }}, {{ when(c.time) }}</span>
             <span v-if="c.refs.length" class="refs"><span v-for="r in c.refs" :key="r" class="ref mono">{{ r }}</span></span>
           </span>
         </li>

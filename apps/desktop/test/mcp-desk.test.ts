@@ -83,7 +83,7 @@ describe('list_servers / free_port tools', () => {
         outside: [{ port: 8080, name: 'java' }],
       })),
     )
-    expect(text(res)).toContain('[mine] node (dev-server, pid 10) :5173 — idle 10 min')
+    expect(text(res)).toContain('[mine] node (dev-server, pid 10) :5173 - idle 10 min')
     expect(text(res)).toContain(':8080 java')
   })
 

@@ -15,7 +15,7 @@ const { t, locale } = useI18n()
 const clean = useDiskCleanStore()
 const sizes = useDiskSizes(() => props.groups.map((g) => g.dir).filter(Boolean))
 function hintOf(g: ProjectGroup): string {
-  const base = g.waiting ? `${g.sessions} · ${t('sessions.projects.waiting', { n: g.waiting })}` : String(g.sessions)
+  const base = g.waiting ? `${g.sessions}, ${t('sessions.projects.waiting', { n: g.waiting })}` : String(g.sessions)
   if (!g.dir) return base
   const parts = [base]
   const size = sizes.sizeOf(g.dir)

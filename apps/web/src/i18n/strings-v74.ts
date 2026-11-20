@@ -2,7 +2,7 @@
 const en = {
   stringsTable: {
     title: 'Strings',
-    titleOf: 'Strings · {name}',
+    titleOf: 'Strings, {name}',
     menu: 'Open strings table',
     palette: 'Strings table',
     paletteSub: 'Translations of this project as a key × locale grid',
@@ -82,7 +82,7 @@ const en = {
 const vi: typeof en = {
   stringsTable: {
     title: 'Chuỗi',
-    titleOf: 'Chuỗi · {name}',
+    titleOf: 'Chuỗi, {name}',
     menu: 'Mở bảng chuỗi',
     palette: 'Bảng chuỗi đa ngữ',
     paletteSub: 'Bản dịch của project này dạng bảng key × ngôn ngữ',

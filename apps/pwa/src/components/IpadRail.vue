@@ -47,8 +47,8 @@ const toggle = (key: string): void => {
 }
 const since = (s: { since: number | null }): string => (s.since ? formatElapsed(now.value - s.since, t) : '')
 const groupName = (n: string | null): string => n || t('rail.noProject')
-const paneLine = (p: WsPane): string => `${t(`provider.${p.provider}`)} · ${t(`status.${p.rail}`)}`
-const sessionLine = (s: MonitorSession): string => `${t(`provider.${s.provider}`)} · ${t(`status.${s.rail}`)}`
+const paneLine = (p: WsPane): string => `${t(`provider.${p.provider}`)}, ${t(`status.${p.rail}`)}`
+const sessionLine = (s: MonitorSession): string => `${t(`provider.${s.provider}`)}, ${t(`status.${s.rail}`)}`
 
 function go(target: 'monitor' | 'workspace'): void {
   navigate(target === 'monitor' ? { name: 'monitor', machine: props.machine } : { name: 'workspace', machine: props.machine }, { replace: true })

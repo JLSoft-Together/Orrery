@@ -43,7 +43,7 @@ const rows = computed(() =>
         j.tokens ? t('jobs.tokens', { n: compactNumber(j.tokens) }) : null,
       ].filter(Boolean)
       const terminalId = j.sessionId ? terminalBySession.value.get(j.sessionId) : undefined
-      return { ...j, title: j.name ?? j.id, icon: ICON[j.state], status: t(`jobs.state.${j.state}`), time, extra: extra.join(' · '), terminalId }
+      return { ...j, title: j.name ?? j.id, icon: ICON[j.state], status: t(`jobs.state.${j.state}`), time, extra: extra.join(', '), terminalId }
     }),
 )
 
@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
             <span class="block truncate text-sm font-medium" :title="j.title">{{ j.title }}</span>
             <span class="block truncate text-2xs text-ink-faint">
               <span :class="j.state === 'blocked' ? 'font-medium text-st-waiting' : ''">{{ j.status }}</span
-              ><template v-if="j.time"> · {{ j.time }}</template><template v-if="j.extra"> · {{ j.extra }}</template>
+              ><template v-if="j.time">, {{ j.time }}</template><template v-if="j.extra">, {{ j.extra }}</template>
             </span>
           </span>
         </component>

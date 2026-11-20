@@ -291,7 +291,7 @@ watch(
                         <td class="py-1 pl-3">
                           <span v-if="deltas.get(m.key)" class="inline-flex items-center gap-1 text-2xs tabular-nums" :class="TREND[deltas.get(m.key)!.trend].cls" :data-perf-trend="deltas.get(m.key)!.trend">
                             <component :is="TREND[deltas.get(m.key)!.trend].icon" :size="12" aria-hidden="true" />
-                            <template v-if="deltas.get(m.key)!.trend !== 'same'">{{ fmtDelta(deltas.get(m.key)!.delta, m.unit) }} · </template>{{ t(`devPerf.trend.${deltas.get(m.key)!.trend}`) }}
+                            <template v-if="deltas.get(m.key)!.trend !== 'same'">{{ fmtDelta(deltas.get(m.key)!.delta, m.unit) }}, </template>{{ t(`devPerf.trend.${deltas.get(m.key)!.trend}`) }}
                           </span>
                         </td>
                       </tr>
@@ -325,7 +325,7 @@ watch(
                 </span>
                 <span class="truncate pl-4.5 text-2xs text-ink-muted tabular-nums">
                   <template v-if="s.frames">{{ fmtValue(s.frames.jankyPct, 'pct') }}</template>
-                  <template v-if="s.memory"> · {{ fmtValue(s.memory.totalPss, 'kb') }}</template>
+                  <template v-if="s.memory">, {{ fmtValue(s.memory.totalPss, 'kb') }}</template>
                   <template v-if="s.coldStart?.totalMs != null">{{ fmtValue(s.coldStart.totalMs, 'ms') }}</template>
                 </span>
               </button>

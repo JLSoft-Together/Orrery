@@ -12,8 +12,8 @@ export function blameRows(res: Extract<BlameResult, { ok: true }>, locale: strin
   const date = new Intl.DateTimeFormat(locale, { year: '2-digit', month: '2-digit', day: '2-digit' })
   return res.lines.map((hash, i) => {
     const c = hash ? res.commits[hash] : undefined
-    const label = hash && c ? `${c.author} · ${c.time ? date.format(c.time) : ''}` : uncommitted
-    const title = hash && c ? `${hash.slice(0, 8)} ${c.summary}\n${c.author}${c.time ? ` · ${new Date(c.time).toLocaleString(locale)}` : ''}` : uncommitted
+    const label = hash && c ? `${c.author}, ${c.time ? date.format(c.time) : ''}` : uncommitted
+    const title = hash && c ? `${hash.slice(0, 8)} ${c.summary}\n${c.author}${c.time ? `, ${new Date(c.time).toLocaleString(locale)}` : ''}` : uncommitted
     return { text: i > 0 && res.lines[i - 1] === hash ? '' : label, title, hash }
   })
 }

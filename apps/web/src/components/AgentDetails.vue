@@ -40,13 +40,13 @@ const rows = computed(() => {
   const a = agent.value
   if (!a) return []
   const out: { label: string; value: string; title?: string; mono?: boolean }[] = []
-  out.push({ label: t('agent.session'), value: terminalTitle.value || '—' })
+  out.push({ label: t('agent.session'), value: terminalTitle.value || '-' })
   if (codex.value) {
     const mode = codexMode(a.role === 'main' ? (terminal.value?.entrypoint ?? a.type) : a.type)
-    out.push({ label: t('agent.type'), value: mode ? `${t('provider.codex')} · ${t(`provider.mode.${mode}`)}` : t('provider.codex') })
+    out.push({ label: t('agent.type'), value: mode ? `${t('provider.codex')}, ${t(`provider.mode.${mode}`)}` : t('provider.codex') })
     if (terminal.value?.codexVersion) out.push({ label: t('agent.version'), value: terminal.value.codexVersion, mono: true })
   } else if (a.role === 'subagent') {
-    out.push({ label: t('agent.type'), value: a.type ?? '—', mono: true })
+    out.push({ label: t('agent.type'), value: a.type ?? '-', mono: true })
     if (a.description) out.push({ label: t('agent.currentTask'), value: a.description })
   }
   out.push({ label: t('agent.currentTool'), value: a.currentTool ?? t('agent.none'), mono: true })
@@ -196,7 +196,7 @@ const origin = computed(() => {
                 <span class="min-w-0 flex-1 truncate font-mono text-2xs" :title="row.tool">{{ row.tool }}</span>
                 <span class="shrink-0 text-2xs" :class="toolClass[row.state]">{{ t(`tools.outcome.${row.state}`) }}</span>
               </div>
-              <p class="tabular text-2xs text-ink-faint">{{ clockTime(row.start, locale) }}{{ row.ms === null ? '' : ` · ${formatMs(row.ms)}` }}</p>
+              <p class="tabular text-2xs text-ink-faint">{{ clockTime(row.start, locale) }}{{ row.ms === null ? '' : `, ${formatMs(row.ms)}` }}</p>
             </div>
           </li>
         </ul>

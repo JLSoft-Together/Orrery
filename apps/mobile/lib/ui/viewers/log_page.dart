@@ -264,7 +264,7 @@ class CommitRow extends StatelessWidget {
                       ),
                     const SizedBox(height: 4),
                     Text(
-                      '${commit.shortHash} · ${commit.author} · ${relativeTime(context.l10n, commit.time)}',
+                      '${commit.shortHash}, ${commit.author}, ${relativeTime(context.l10n, commit.time)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

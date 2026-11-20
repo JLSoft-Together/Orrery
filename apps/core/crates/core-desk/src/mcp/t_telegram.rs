@@ -120,7 +120,7 @@ fn send_text(code: &str) -> &'static str {
         "missing" => "That file does not exist.",
         "folder" => "That is a folder; give a file.",
         "secret" => "That file looks like a secret (.env, keystore, credentials) and is never sent.",
-        "buttons" => "buttons must be 1–6 items of {label: 1–32 characters, value: 1–200 characters}.",
+        "buttons" => "buttons must be 1-6 items of {label: 1-32 characters, value: 1-200 characters}.",
         "buttons-file" => "buttons cannot go with file; send the file in its own telegram_send.",
         "not-paired" => "Buttons need a paired Telegram account; the user pairs one in Orrery Settings › Notifications › Telegram.",
         "rate" => "Too many Telegram reports from this session in the last minute; wait a little.",

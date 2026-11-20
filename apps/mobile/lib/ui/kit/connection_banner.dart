@@ -36,7 +36,7 @@ class LinkPill extends StatelessWidget {
         link.status == LinkStatus.ready &&
             link.route == LinkRoute.lan &&
             ms != null
-        ? '$base · $ms ms'
+        ? '$base, $ms ms'
         : base;
     return OrreryChip(tone: tone, icon: icon, label: label, pulse: pulse);
   }

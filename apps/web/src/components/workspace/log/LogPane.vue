@@ -255,7 +255,7 @@ const shortRef = (ref: string): string => ref.replace(/^refs\/(heads|remotes|tag
 
 function report(res: BranchOpResult, okKey: string, name = ''): void {
   if (res.ok) branchNotice.value = { text: t(`workspace.log.branches.done.${okKey}`, { name }), failed: false }
-  else if (res.error !== 'cancelled') branchNotice.value = { text: [t(`workspace.log.branches.error.${res.error}`, { name }), res.detail].filter(Boolean).join(' — '), failed: true }
+  else if (res.error !== 'cancelled') branchNotice.value = { text: [t(`workspace.log.branches.error.${res.error}`, { name }), res.detail].filter(Boolean).join(' - '), failed: true }
   void log.reload()
 }
 

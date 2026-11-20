@@ -158,7 +158,7 @@ describe('agentHandoff', () => {
     for (let i = 0; i < 60; i++) list = pushConsole(list, { ...e, message: `m${i}` })
     expect(list).toHaveLength(50)
     const block = formatConsoleBlock([e, { level: 'warning', message: 'w', at: 2 }], 'http://localhost:5173/page?q=1')
-    expect(block).toBe('Browser console on http://localhost:5173/page — 1 error, 1 warning:\n- [error] Uncaught TypeError: x (/src/main.ts:3)\n- [warning] w')
+    expect(block).toBe('Browser console on http://localhost:5173/page - 1 error, 1 warning:\n- [error] Uncaught TypeError: x (/src/main.ts:3)\n- [warning] w')
   })
 
   it('validates and formats an element pick', () => {

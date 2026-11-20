@@ -149,7 +149,7 @@ const saveTitle = computed(() => {
   const hint = t('editor.saveHint', { key: saveKey })
   const mode = settings.autoSave
   if (mode === 'off') return hint
-  return `${hint} · ${t(`editor.autoSave.${mode}`, { s: settings.autoSaveDelay / 1000 })}`
+  return `${hint}, ${t(`editor.autoSave.${mode}`, { s: settings.autoSaveDelay / 1000 })}`
 })
 
 // Change markers vs HEAD (IntelliJ gutter): bars beside the line numbers, popup with the old text.
@@ -1287,7 +1287,7 @@ async function runFormat(): Promise<void> {
   const res = await formatText(filePath(), before)
   if (formatting.value !== state) return
   if (res.ok) {
-    formatting.value = { ...state, busy: false, after: res.text, source: `${res.tool} · ${t(res.local ? 'workspace.format.local' : 'workspace.format.global')}` }
+    formatting.value = { ...state, busy: false, after: res.text, source: `${res.tool}, ${t(res.local ? 'workspace.format.local' : 'workspace.format.global')}` }
     return
   }
   const tool = res.tool ?? ''
@@ -1384,7 +1384,7 @@ function pickHead(id: string): void {
         v-if="changes.blocks.value.length && changes.ok.value"
         type="button"
         class="ccm-btn-plain shrink-0 gap-1 text-2xs tabular @max-[480px]:hidden"
-        :title="`${t('workspace.gutter.showDiff')} — ${t('workspace.gutter.summary', changeTotals)}`"
+        :title="`${t('workspace.gutter.showDiff')} - ${t('workspace.gutter.summary', changeTotals)}`"
         :aria-label="`${t('workspace.gutter.showDiff')}, ${t('workspace.gutter.summary', changeTotals)}`"
         data-file-show-diff
         data-more="diff"

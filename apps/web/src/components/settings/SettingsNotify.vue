@@ -169,7 +169,7 @@ onBeforeUnmount(() => extras.setToastTest(null))
               :aria-label="`${t(`settingsV79.events.${r.kind}`)}: ${t('settingsV79.colApp')}`"
               :data-notify-app="r.kind"
             />
-            <span v-else class="text-ink-faint" :title="t('settingsV79.toastOnly')" aria-hidden="true">–</span>
+            <span v-else class="text-ink-faint" :title="t('settingsV79.toastOnly')" aria-hidden="true">-</span>
           </div>
         </div>
       </div>

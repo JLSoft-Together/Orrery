@@ -27,7 +27,7 @@ const fmt = computed(() => (usage.metric === 'cost' ? (v: number) => formatCost(
 const percent = computed(() => new Intl.NumberFormat(locale.value, { style: 'percent', maximumFractionDigits: 0 }))
 
 function share(v: number): string {
-  if (total.value <= 0) return '—'
+  if (total.value <= 0) return '-'
   const k = v / total.value
   return k > 0 && k < 0.01 ? `<${percent.value.format(0.01)}` : percent.value.format(k)
 }

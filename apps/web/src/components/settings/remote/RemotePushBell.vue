@@ -30,7 +30,7 @@ function detail(d: RemoteDevice): string {
     parts.push(t(`remoteV98.push.channel.${d.push}`))
     if (d.push === 'web') parts.push(t(`remoteV98.push.content.${d.pushContent === false ? 'off' : 'on'}`))
   }
-  return parts.join(' · ')
+  return parts.join(', ')
 }
 
 function flip(d: RemoteDevice): void {

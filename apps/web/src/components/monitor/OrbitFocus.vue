@@ -195,7 +195,7 @@ const wide = computed(() => !ui.narrow)
           <span class="truncate" :title="projectName" data-focus-title>{{ displayTitle(terminal) }}</span>
         </span>
         <span v-if="terminal" class="flex shrink-0 items-center gap-1 font-medium tabular-nums" :class="group === 'needs' ? 'text-warning' : meta.text" data-focus-status>
-          <StatusIcon :status="terminal.status" :size="13" />{{ t(meta.labelKey) }}<template v-if="elapsed"> · {{ elapsed }}</template>
+          <StatusIcon :status="terminal.status" :size="13" />{{ t(meta.labelKey) }}<template v-if="elapsed">, {{ elapsed }}</template>
         </span>
         <OpenPaneButton v-if="terminal" :terminal-id="terminal.id" :reply="group === 'needs'" compact class="ml-auto" />
       </div>
@@ -234,10 +234,10 @@ const wide = computed(() => !ui.narrow)
       <ul v-else class="flex flex-col gap-1">
         <li v-for="r in feed" :key="r.id" class="flex min-w-0 items-baseline gap-2 tabular-nums" :class="r.state === 'running' ? 'text-accent-ink' : 'text-ink'" data-focus-row>
           <span class="shrink-0 font-mono text-2xs text-ink-muted">{{ clockTime(r.start, locale) }}</span>
-          <span class="min-w-0 flex-1 truncate" :title="`${r.tool} · ${agentName(agentOf(r.agentId))}`">
-            {{ r.tool }}<span v-if="agentOf(r.agentId)?.role !== 'main'" class="text-ink-muted"> · {{ agentName(agentOf(r.agentId)) }}</span>
+          <span class="min-w-0 flex-1 truncate" :title="`${r.tool}, ${agentName(agentOf(r.agentId))}`">
+            {{ r.tool }}<span v-if="agentOf(r.agentId)?.role !== 'main'" class="text-ink-muted">, {{ agentName(agentOf(r.agentId)) }}</span>
           </span>
-          <span class="shrink-0 text-ink-muted" :class="r.state === 'error' ? 'text-st-error' : ''">{{ r.ms !== null ? formatMs(r.ms) : t(`monitorV88.orbit.outcome.${r.state}`) }}<template v-if="r.state === 'error' || r.state === 'interrupted'"> · {{ t(`monitorV88.orbit.outcome.${r.state}`) }}</template></span>
+          <span class="shrink-0 text-ink-muted" :class="r.state === 'error' ? 'text-st-error' : ''">{{ r.ms !== null ? formatMs(r.ms) : t(`monitorV88.orbit.outcome.${r.state}`) }}<template v-if="r.state === 'error' || r.state === 'interrupted'">, {{ t(`monitorV88.orbit.outcome.${r.state}`) }}</template></span>
         </li>
       </ul>
     </aside>

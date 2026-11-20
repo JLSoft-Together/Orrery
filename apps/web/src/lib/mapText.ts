@@ -32,7 +32,7 @@ export function agentName(agent: Agent, terminal: Term | undefined, labels: Pick
 export function agentKind(agent: Agent, labels: Pick<MapTextLabels, 'main' | 'subagent' | 'codexRun'>): string {
   if (agent.role === 'main') return labels.main
   if (isCodex(agent)) return labels.codexRun
-  return agent.type ? `${labels.subagent} · ${agent.type}` : labels.subagent
+  return agent.type ? `${labels.subagent}, ${agent.type}` : labels.subagent
 }
 
 /** Running agents count up to `nowMs`; finished ones stop at their end (completedAt, else last update). */
@@ -71,7 +71,7 @@ function treeLine(agent: Agent, terminal: Term | undefined, labels: MapTextLabel
   if (agent.model) parts.push(agent.model)
   if (agent.currentTool && (agent.status === 'working' || agent.status === 'waiting')) parts.push(agent.currentTool)
   if (agent.role !== 'main' && agent.description) parts.push(agent.description)
-  return parts.join(' · ')
+  return parts.join(', ')
 }
 
 /** Indented tree, one block per session: header (title, cwd, branch) then main agent and subagents by depth. */
@@ -82,7 +82,7 @@ export function mapTree(sessions: { terminal: Term | undefined; agents: Agent[] 
     const head = [displayTitle(terminal) || labels.main]
     if (terminal?.cwd) head.push(terminal.cwd)
     if (terminal?.gitBranch) head.push(`(${terminal.gitBranch})`)
-    const lines = [head.join(' — ')]
+    const lines = [head.join(' - ')]
     const main = agents.find((a) => a.role === 'main')
     if (main) lines.push(`- ${treeLine(main, terminal, labels)}`)
     for (const { agent, depth } of treeOrder(agents)) lines.push(`${'  '.repeat(main ? depth : depth - 1)}- ${treeLine(agent, terminal, labels)}`)

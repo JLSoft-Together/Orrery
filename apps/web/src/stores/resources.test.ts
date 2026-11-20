@@ -76,7 +76,7 @@ describe('resources lib', () => {
   it('formats sizes, CPU and spans; knows a building daemon', () => {
     expect(formatBytes(512 * 1024 ** 2, 'en')).toBe('512 MB')
     expect(formatBytes(2.5 * 1024 ** 3, 'vi')).toBe('2,5 GB')
-    expect(formatBytes(null, 'en')).toBe('—')
+    expect(formatBytes(null, 'en')).toBe('-')
     expect(formatCpu(0.25, 'en')).toBe('0.3 %')
     expect(spanParts(45 * 60_000)).toEqual({ unit: 'min', a: 45, b: 0 })
     expect(spanParts(125 * 60_000)).toEqual({ unit: 'hm', a: 2, b: 5 })

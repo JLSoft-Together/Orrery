@@ -31,7 +31,7 @@ const en = {
   },
   subagentState: {
     waiting: 'Waiting on {n} subagent | Waiting on {n} subagents',
-    working: 'Working · {n} subagent | Working · {n} subagents',
+    working: 'Working, {n} subagent | Working, {n} subagents',
     count: '{n} subagent running | {n} subagents running',
   },
 }
@@ -69,7 +69,7 @@ const vi: typeof en = {
   },
   subagentState: {
     waiting: 'Chờ {n} subagent',
-    working: 'Đang chạy · {n} subagent',
+    working: 'Đang chạy, {n} subagent',
     count: '{n} subagent đang chạy',
   },
 }

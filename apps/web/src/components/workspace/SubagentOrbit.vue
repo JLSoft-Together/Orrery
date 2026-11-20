@@ -99,7 +99,7 @@ const since = (iso: string | undefined): string | null => duration(iso, now.valu
           <span class="flex min-w-0 flex-1 flex-col">
             <span class="truncate font-medium text-ink">{{ e.name || e.type || t('paneV93.orbit.unnamed') }}</span>
             <span class="truncate text-2xs text-ink-muted">
-              <span v-if="e.type && e.name">{{ e.type }} · </span>{{ e.tool ?? t('paneV93.orbit.idleTool') }}
+              <span v-if="e.type && e.name">{{ e.type }}, </span>{{ e.tool ?? t('paneV93.orbit.idleTool') }}
             </span>
           </span>
           <span v-if="since(e.since)" class="shrink-0 text-2xs text-ink-faint tabular-nums">{{ since(e.since) }}</span>

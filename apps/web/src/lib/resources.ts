@@ -47,7 +47,7 @@ export function portRows(report: ResourceReport | null): PortRow[] {
 const byteFormats = new Map<string, Intl.NumberFormat>()
 
 export function formatBytes(bytes: number | null | undefined, locale: string): string {
-  if (bytes === null || bytes === undefined) return '—'
+  if (bytes === null || bytes === undefined) return '-'
   const gb = bytes / 1024 ** 3
   const key = `${locale}|${gb >= 1 ? 1 : 0}`
   let f = byteFormats.get(key)
@@ -56,7 +56,7 @@ export function formatBytes(bytes: number | null | undefined, locale: string): s
 }
 
 export function formatCpu(pct: number | null | undefined, locale: string): string {
-  if (pct === null || pct === undefined) return '—'
+  if (pct === null || pct === undefined) return '-'
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: pct < 10 ? 1 : 0 }).format(pct)} %`
 }
 

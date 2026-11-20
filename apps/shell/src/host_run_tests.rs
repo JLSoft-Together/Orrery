@@ -49,7 +49,7 @@ fn trust_config_lists_folder_command_steps_and_env_keys() {
     let bare = json!({"name": "x", "cwd": "/p", "command": ""}).to_string();
     let vi = run_confirm_spec(true, "trust-config", Some(&bare)).unwrap();
     assert_eq!(vi.message, "Chạy \"x\" từ file của project?");
-    assert_eq!(vi.detail.lines().collect::<Vec<_>>()[1..], ["Thư mục: /p", "Lệnh: —", "Mỗi khi cấu hình thay đổi, app sẽ hỏi lại."]);
+    assert_eq!(vi.detail.lines().collect::<Vec<_>>()[1..], ["Thư mục: /p", "Lệnh: -", "Mỗi khi cấu hình thay đổi, app sẽ hỏi lại."]);
 }
 
 #[test]

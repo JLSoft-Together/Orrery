@@ -55,7 +55,7 @@ describe('agentSummary', () => {
   })
   it('subagent: task and session title', () => {
     const text = agentSummary(sub, term, labels, NOW)
-    expect(text).toContain('kind: Subagent · Explore')
+    expect(text).toContain('kind: Subagent, Explore')
     expect(text).toContain('task: Find the files')
     expect(text).toContain('session: My session')
     expect(text).not.toContain('tool:')
@@ -65,7 +65,7 @@ describe('agentSummary', () => {
 describe('mapTree', () => {
   it('indents by depth under a session header', () => {
     expect(mapTree([{ terminal: term, agents: [deep, sub, main] }], labels)).toBe(
-      ['My session — F:\\work\\repo — (main)', '- Main agent [WORKING] · claude-opus · Bash', '  - Explore [COMPLETED] · Find the files', '    - Subagent [WORKING]'].join('\n'),
+      ['My session - F:\\work\\repo - (main)', '- Main agent [WORKING], claude-opus, Bash', '  - Explore [COMPLETED], Find the files', '    - Subagent [WORKING]'].join('\n'),
     )
   })
   it('separates sessions and skips empty ones', () => {

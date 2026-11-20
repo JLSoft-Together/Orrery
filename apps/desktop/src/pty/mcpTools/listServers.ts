@@ -23,7 +23,7 @@ const idle = (sec: number | null): string => (sec === null ? 'busy' : sec < 60 ?
 
 function serverLine(s: AgentServer): string {
   const ports = s.ports.length ? `:${s.ports.join(', :')}` : 'no port'
-  return `- ${s.mine ? '[mine] ' : ''}${s.name} (${s.kind}, pid ${s.pid}) ${ports} — ${idle(s.idleSec)}${s.orphan ? ', session ended' : ''}${s.cmd ? `\n  ${s.cmd}` : ''}`
+  return `- ${s.mine ? '[mine] ' : ''}${s.name} (${s.kind}, pid ${s.pid}) ${ports} - ${idle(s.idleSec)}${s.orphan ? ', session ended' : ''}${s.cmd ? `\n  ${s.cmd}` : ''}`
 }
 
 export function serversText(res: Extract<McpDeskResult, { tool: 'list_servers' }>): string {

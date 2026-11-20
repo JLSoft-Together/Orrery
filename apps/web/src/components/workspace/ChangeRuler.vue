@@ -15,7 +15,7 @@ const ticks = computed(() => {
     type: b.type,
     top: `${(b.line1 / n) * 100}%`,
     height: `max(3px, ${((Math.max(b.line2, b.line1 + 1) - b.line1) / n) * 100}%)`,
-    label: `${t(`workspace.gutter.kind.${b.type}`)} — ${t('workspace.gutter.popup', { n: i + 1, total: props.blocks.length })}`,
+    label: `${t(`workspace.gutter.kind.${b.type}`)} - ${t('workspace.gutter.popup', { n: i + 1, total: props.blocks.length })}`,
   }))
 })
 </script>

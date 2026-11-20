@@ -102,7 +102,7 @@ function busyList(): BuildBusy[] {
   for (const s of terminals.list) if (s.cwd && s.status !== 'stale' && !s.endedAt) out.push({ name: displayTitle(s), cwd: s.cwd })
   for (const p of workspace.panes) {
     const cwd = isTerm(p) ? workCwd(p) : undefined
-    if (cwd && isTerm(p) && p.state === 'running') out.push({ name: `${t(`workspace.preset.${p.agent ?? p.preset}`)} · ${baseName(cwd)}`, cwd })
+    if (cwd && isTerm(p) && p.state === 'running') out.push({ name: `${t(`workspace.preset.${p.agent ?? p.preset}`)}, ${baseName(cwd)}`, cwd })
   }
   return out.slice(0, 200)
 }
@@ -183,7 +183,7 @@ const projectIds = computed(() => uniqueDirs(roots.value))
         <header class="flex h-11 shrink-0 items-center gap-2 border-b border-line pr-1.5 pl-3">
           <Hammer :size="14" class="shrink-0 text-ink-muted" aria-hidden="true" />
           <h2 class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-            {{ props.dir ? `${t('buildClean.title')} · ${baseName(props.dir)}` : t('buildClean.title') }}
+            {{ props.dir ? `${t('buildClean.title')}, ${baseName(props.dir)}` : t('buildClean.title') }}
           </h2>
           <button type="button" class="ccm-btn shrink-0" :disabled="!!running || !projectIds.length" data-build-measure @click="measure">
             {{ projects ? t('buildClean.measureAgain') : t('buildClean.measure') }}

@@ -2,7 +2,7 @@
 const en = {
   appData: {
     button: 'App data',
-    title: 'App data · {name}',
+    title: 'App data, {name}',
     pkg: 'Package',
     pkgPlaceholder: 'com.example.app',
     load: 'Load',
@@ -21,8 +21,8 @@ const en = {
       table: 'Table',
       rows: '{n} rows',
       view: 'view',
-      page: 'Rows {from}–{to} of {total}',
-      pageNoTotal: 'Rows {from}–{to}',
+      page: 'Rows {from}-{to} of {total}',
+      pageNoTotal: 'Rows {from}-{to}',
       prev: 'Previous page',
       next: 'Next page',
       schema: 'Schema',
@@ -77,7 +77,7 @@ const en = {
 const vi: typeof en = {
   appData: {
     button: 'Dữ liệu app',
-    title: 'Dữ liệu app · {name}',
+    title: 'Dữ liệu app, {name}',
     pkg: 'Package',
     pkgPlaceholder: 'com.example.app',
     load: 'Tải',
@@ -96,8 +96,8 @@ const vi: typeof en = {
       table: 'Bảng',
       rows: '{n} hàng',
       view: 'view',
-      page: 'Hàng {from}–{to} / {total}',
-      pageNoTotal: 'Hàng {from}–{to}',
+      page: 'Hàng {from}-{to} / {total}',
+      pageNoTotal: 'Hàng {from}-{to}',
       prev: 'Trang trước',
       next: 'Trang sau',
       schema: 'Schema',

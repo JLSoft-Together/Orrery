@@ -232,7 +232,7 @@ function sortBy(key: SortKey): void {
 
 const ariaSort = (key: SortKey) => (sortKey.value === key ? (sortDesc.value ? 'descending' : 'ascending') : 'none')
 const share = (r: ProjectRow) => (grandTotal.value > 0 ? ((usage.metric === 'cost' ? r.cost : r.tokens) / grandTotal.value) * 100 : 0)
-const cost = (r: ProjectRow) => (r.cost > 0 || r.unpriced === 0 ? formatCost(r.cost, locale.value) : '—')
+const cost = (r: ProjectRow) => (r.cost > 0 || r.unpriced === 0 ? formatCost(r.cost, locale.value) : '-')
 
 function cell(r: ProjectRow, key: SortKey): string {
   switch (key) {
@@ -396,7 +396,7 @@ defineExpose({ focus: () => searchInput.value?.focus() })
                 <div class="min-w-0 flex-1">
                   <p class="font-medium" :class="[wrapText, usage.project === r.id ? 'text-accent-ink' : '']" :title="r.id">{{ baseName(r.id) }}</p>
                   <p v-if="density !== 'compact'" class="font-mono text-2xs text-ink-faint" :class="wrapText" :title="r.id">
-                    {{ r.id }}<template v-if="r.folders > 1"> · {{ t('projects.folders', { n: r.folders }) }}</template>
+                    {{ r.id }}<template v-if="r.folders > 1">, {{ t('projects.folders', { n: r.folders }) }}</template>
                   </p>
                 </div>
               </div>

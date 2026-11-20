@@ -251,7 +251,7 @@ fn reply_buttons_answer_once_and_only_for_the_owner() {
     w.tg.on_callback(&json!({"id": "c3", "from": {"id": OWNER}, "data": data}));
     assert_eq!(w.asks.lock().unwrap().len(), 1);
     let answers: Vec<String> = w.http.calls.lock().unwrap().iter().filter(|(m, _)| m == "answerCallbackQuery").filter_map(|(_, b)| b["text"].as_str().map(str::to_string)).collect();
-    assert_eq!(answers, vec!["Only the paired account can use these buttons.", "✓ Yes — sent to the session.", "Already answered: Yes"]);
+    assert_eq!(answers, vec!["Only the paired account can use these buttons.", "✓ Yes - sent to the session.", "Already answered: Yes"]);
     w.tg.lock().data.owner = None;
     let none = w.tg.report(&proj("/p/app"), "x", None, Some("pane-1"), Some(vec![("A".into(), "a".into())]));
     assert_eq!(none, json!({"ok": false, "error": "not-paired"}));

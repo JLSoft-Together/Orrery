@@ -82,7 +82,7 @@ const showHours = ref(false)
 
 const short = (msVal: number) => {
   const min = Math.round(msVal / 60_000)
-  if (min <= 0) return msVal > 0 ? t('history.dur.lt1') : '–'
+  if (min <= 0) return msVal > 0 ? t('history.dur.lt1') : '-'
   const h = Math.floor(min / 60)
   return h ? t('history.dur.hm', { h, m: min % 60 }) : t('history.dur.m', { m: min })
 }
@@ -110,7 +110,7 @@ const summary = computed(() =>
     : '',
 )
 
-const range = (s: Seg) => `${clock.value.format(s.from)} – ${s.open ? t('history.now') : clock.value.format(s.to)}`
+const range = (s: Seg) => `${clock.value.format(s.from)} - ${s.open ? t('history.now') : clock.value.format(s.to)}`
 </script>
 
 <template>

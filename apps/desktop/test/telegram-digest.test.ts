@@ -61,7 +61,7 @@ describe('digest of finished reports', () => {
     const edit = only(sent, 'editMessageText')
     expect(edit).toHaveLength(1)
     expect(edit[0]!.body.message_id).toBe(100)
-    expect(String(edit[0]!.body.text)).toContain('done 2 times · 10:00')
+    expect(String(edit[0]!.body.text)).toContain('done 2 times, 10:00')
     await tg.handle(ep('done'))
     expect(String(only(sent, 'editMessageText')[1]!.body.text)).toContain('done 3 times')
   })

@@ -170,4 +170,4 @@ const termDemo =
     '  \x1b[32m+ 214\x1b[0m \x1b[31m- 0\x1b[0m\r\n'
     '\x1b[31m●\x1b[0m \x1b[1mBash\x1b[0m(npm run typecheck)\r\n'
     '  ⎿ 0 lỗi, 2 cảnh báo\r\n\r\n'
-    '\x1b[33m✻\x1b[0m Đang dựng khung… (2m 14s · esc)\r\n';
+    '\x1b[33m✻\x1b[0m Đang dựng khung… (2m 14s, esc)\r\n';

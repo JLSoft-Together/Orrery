@@ -285,7 +285,7 @@ const chipBase = computed(() => {
 })
 const chipText = computed(() => {
   const b = borrowed.value
-  return b && !appOptions.value.length ? `${chipBase.value} · ${t('layout.model.via', { app: b.app })}` : chipBase.value
+  return b && !appOptions.value.length ? `${chipBase.value}, ${t('layout.model.via', { app: b.app })}` : chipBase.value
 })
 const chipTitle = computed(() => {
   const b = borrowed.value
@@ -906,12 +906,12 @@ onBeforeUnmount(() => {
       </template>
       <template v-else-if="error">
         <CircleAlert :size="13" class="shrink-0 text-st-error" aria-hidden="true" />
-        <span class="truncate" :title="error.detail || errorText">{{ t('layout.status.error') }} · {{ errorText }}</span>
+        <span class="truncate" :title="error.detail || errorText">{{ t('layout.status.error') }}, {{ errorText }}</span>
       </template>
       <template v-else-if="renderMs !== null">
         <CircleCheck :size="13" class="shrink-0 text-success" aria-hidden="true" />
         <span class="tabular">{{ cached ? t('layout.status.cached') : t('layout.status.done', { ms: renderMs }) }}</span>
-        <span v-if="selected" class="ml-auto truncate">{{ nodeLabel(selected) }} · {{ t('layout.view.line', { line: selected.line }) }}</span>
+        <span v-if="selected" class="ml-auto truncate">{{ nodeLabel(selected) }}, {{ t('layout.view.line', { line: selected.line }) }}</span>
       </template>
     </p>
   </section>

@@ -147,7 +147,7 @@ const badge = computed(() => {
   }
   const opened = props.data.kind === 'opened' ? { by: props.data.a, to: props.data.b } : props.data.opened
   if (opened) parts.push(t('peer.activityOpened', { from: nameOf(opened.by), to: nameOf(opened.to) }))
-  return parts.join(' · ')
+  return parts.join(', ')
 })
 </script>
 

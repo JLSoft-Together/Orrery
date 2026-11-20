@@ -132,7 +132,7 @@ pub fn phone_text(m: &Value, en: bool, now_ms: f64, home: &str, platform: &str) 
     let waited = m.get("since").and_then(Value::as_f64).map(|s| js_round((now_ms - s) / 60_000.0).max(0.0));
     let name = m.get("name").and_then(Value::as_str).unwrap_or("");
     let body = if en { body_en(m, reason, waited) } else { body_vi(m, reason, waited) };
-    Text { title: mask(&format!("Orrery · {name}"), home, platform), body: mask(&body, home, platform), link: None, link_label: "" }
+    Text { title: mask(&format!("Orrery, {name}"), home, platform), body: mask(&body, home, platform), link: None, link_label: "" }
 }
 
 pub fn test_text(en: bool) -> Text {
@@ -208,7 +208,7 @@ mod tests {
         assert_eq!(format_gb(150.4 * 1024f64.powi(3)), "150 GB");
         let m = json!({"reason": "permission", "name": "proj", "tool": "Bash", "since": 0});
         let t = phone_text(&m, true, 150_000.0, "/h", "darwin");
-        assert_eq!(t.title, "Orrery · proj");
+        assert_eq!(t.title, "Orrery, proj");
         assert_eq!(t.body, "Needs approval: Bash (3 min)");
         let dest = Dest { channel: "ntfy", url: "https://ntfy.sh".into(), topic: Some("t".into()) };
         let plain: Value = serde_json::from_str(&build_request(&dest, &t, None).1).unwrap();

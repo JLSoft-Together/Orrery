@@ -10,7 +10,7 @@ const { t } = useI18n()
 const meta = computed(() => {
   const { status, route } = props.link
   if (status === 'ready' && route === 'lan') {
-    const ms = props.rtt === undefined ? '' : ` · ${props.rtt} ms`
+    const ms = props.rtt === undefined ? '' : `, ${props.rtt} ms`
     return { icon: Wifi, tone: 'done', text: `${t('link.lan')}${ms}` }
   }
   if (status === 'ready') return { icon: Cloud, tone: 'info', text: t('link.relay') }

@@ -11,8 +11,8 @@ const en = {
     step1: {
       title: 'Create a Cloudflare token',
       body: 'The permissions are filled in. Press Continue, then Create Token, then Copy. Orrery reads it when you come back.',
-      permScripts: 'Account · Workers Scripts · Edit',
-      permAccount: 'Account · Account Settings · Read',
+      permScripts: 'Account, Workers Scripts, Edit',
+      permAccount: 'Account, Account Settings, Read',
       open: 'Create token',
     },
     quick: {
@@ -170,8 +170,8 @@ const vi: typeof en = {
     step1: {
       title: 'Tạo token Cloudflare',
       body: 'Quyền đã điền sẵn. Bấm Continue, Create Token rồi Copy. Quay lại đây là Orrery tự đọc.',
-      permScripts: 'Account · Workers Scripts · Edit',
-      permAccount: 'Account · Account Settings · Read',
+      permScripts: 'Account, Workers Scripts, Edit',
+      permAccount: 'Account, Account Settings, Read',
       open: 'Tạo token',
     },
     quick: {

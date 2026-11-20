@@ -38,7 +38,7 @@ export function agentDataConfirmSpec(p: unknown, t: ReturnType<AgentDataDeskDeps
       if (!isDataAgent(agent)) return null
       const raw = field(p, 'groups')
       const ids = Array.isArray(raw) ? raw.filter((g): g is string => typeof g === 'string') : []
-      const lines = ids.map((id) => `• ${t.group(id)} — ${groupRule(agent, id)?.names.join(', ') ?? id}`)
+      const lines = ids.map((id) => `• ${t.group(id)} - ${groupRule(agent, id)?.names.join(', ') ?? id}`)
       return { message: t.cleanTitle(num(field(p, 'files')), str(field(p, 'size'))), detail: t.cleanDetail(lines, num(field(p, 'days'))), buttons: [t.cleanConfirm, t.cancel] }
     }
     case 'strip':

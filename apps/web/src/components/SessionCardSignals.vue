@@ -124,7 +124,7 @@ const usage = computed(() => {
           <span class="min-w-0 flex-1 truncate text-ink">{{ ruleText(e.data?.rule, t) }}</span>
           <time :datetime="e.at" class="shrink-0 font-mono text-2xs text-ink-faint tabular">{{ clockTime(e.at, locale) }}</time>
         </p>
-        <p v-if="e.data?.tool || e.data?.path" class="truncate text-2xs text-ink-faint" :title="e.data?.path">{{ [e.data?.tool, e.data?.path].filter(Boolean).join(' · ') }}</p>
+        <p v-if="e.data?.tool || e.data?.path" class="truncate text-2xs text-ink-faint" :title="e.data?.path">{{ [e.data?.tool, e.data?.path].filter(Boolean).join(', ') }}</p>
         <SensitiveActions :event="e" />
       </div>
     </li>

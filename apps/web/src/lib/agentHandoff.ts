@@ -88,7 +88,7 @@ export function formatConsoleBlock(entries: readonly ConsoleEntry[], pageUrl: st
     const src = shortSource(e.source, pageUrl)
     return `- [${e.level}] ${e.message}${src ? ` (${src}${e.line ? `:${e.line}` : ''})` : ''}`
   })
-  return [`Browser console on ${pageLabel(pageUrl)} — ${counts}:`, ...lines].join('\n')
+  return [`Browser console on ${pageLabel(pageUrl)} - ${counts}:`, ...lines].join('\n')
 }
 
 export function formatElementBlock(pick: ElementPick): string {

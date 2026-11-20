@@ -68,7 +68,7 @@ const configTitle = computed(() => {
     if (guessed) parts.push(t('run.project.reason.guessed'))
   }
   if (locked.value) parts.push(t('run.config.locked'))
-  return parts.join(' — ')
+  return parts.join(' - ')
 })
 const hiddenDevices = computed(() => (config.value?.type === 'flutter' ? run.devices.filter((d) => d.source === 'flutter').length - devices.value.length : 0))
 const pairLive = computed(() => !!pair.value && isRunLive(pair.value.state))
@@ -239,7 +239,7 @@ const launchingName = computed(() => run.emulators.find((e) => e.id === launchin
         aria-haspopup="menu"
         :aria-expanded="menu === 'device'"
         :disabled="!config || locked"
-        :title="locked ? `${t('run.device.label')} — ${t('run.config.locked')}` : device ? `${t('run.device.label')}: ${device.name}` : t('run.device.choose')"
+        :title="locked ? `${t('run.device.label')} - ${t('run.config.locked')}` : device ? `${t('run.device.label')}: ${device.name}` : t('run.device.choose')"
         data-run-menu-button="device"
         @click="toggle('device')"
       >
@@ -316,7 +316,7 @@ const launchingName = computed(() => run.emulators.find((e) => e.id === launchin
       type="button"
       class="ccm-btn-plain shrink-0"
       :disabled="!canReload"
-      :title="canReload ? t('run.action.reload') : `${t('run.action.reload')} — ${t('run.action.flutterOnly')}`"
+      :title="canReload ? t('run.action.reload') : `${t('run.action.reload')} - ${t('run.action.flutterOnly')}`"
       :aria-label="t('run.action.reload')"
       data-run-reload
       @click="reload(false)"
@@ -327,7 +327,7 @@ const launchingName = computed(() => run.emulators.find((e) => e.id === launchin
       type="button"
       class="ccm-btn-plain shrink-0"
       :disabled="!canReload"
-      :title="canReload ? t('run.action.restart') : `${t('run.action.restart')} — ${t('run.action.flutterOnly')}`"
+      :title="canReload ? t('run.action.restart') : `${t('run.action.restart')} - ${t('run.action.flutterOnly')}`"
       :aria-label="t('run.action.restart')"
       data-run-restart
       @click="reload(true)"

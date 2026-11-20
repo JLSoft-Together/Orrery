@@ -70,7 +70,7 @@ void main() {
     expect(find.text('beta'), findsOneWidget);
     expect(find.text('tests'), findsOneWidget);
     expect(find.text('refactor'), findsNothing);
-    expect(find.text('2 panes in this tab · swipe to switch'), findsOneWidget);
+    expect(find.text('2 panes in this tab, swipe to switch'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tab-t2')));
     await tester.pumpAndSettle();
     expect(find.text('docs'), findsOneWidget);
@@ -89,7 +89,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('pane-open-full')));
       await tester.pumpAndSettle();
       expect(find.byType(TabPage), findsOneWidget);
-      expect(find.text('Claude · alpha'), findsOneWidget);
+      expect(find.text('Claude, alpha'), findsOneWidget);
       expect(find.text('Waiting for you'), findsWidgets);
       expect(h.api.attached, ['b']);
     },
@@ -157,7 +157,7 @@ void main() {
     );
     expect(find.byTooltip('Mở pane'), findsWidgets);
     expect(
-      find.text('Vuốt ngang để đổi pane · 2 pane trong tab'),
+      find.text('Vuốt ngang để đổi pane, 2 pane trong tab'),
       findsOneWidget,
     );
   });
@@ -170,7 +170,7 @@ void main() {
       tester,
       const TabPage(machineId: 'm1', tabKey: 't1', paneKey: 'a'),
     );
-    expect(find.text('Claude · alpha'), findsOneWidget);
+    expect(find.text('Claude, alpha'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('pane-picker')));
     await tester.pumpAndSettle();
     expect(find.text('refactor'), findsOneWidget);

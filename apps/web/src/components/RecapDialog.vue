@@ -40,7 +40,7 @@ const buckets = computed(() => Object.values(usage.buckets))
 const weekly = computed(() => span.value > 1)
 const periodLabel = computed(() => {
   const d = recap.value.days
-  return weekly.value ? `${formatDay(d[0]!, locale.value, 'long')} – ${formatDay(d.at(-1)!, locale.value, 'long')}` : formatDay(day.value, locale.value, 'long')
+  return weekly.value ? `${formatDay(d[0]!, locale.value, 'long')} - ${formatDay(d.at(-1)!, locale.value, 'long')}` : formatDay(day.value, locale.value, 'long')
 })
 
 const recap = computed<Recap>(() =>
@@ -86,7 +86,7 @@ const stats = computed(() => {
       ? { label: t('recap.working'), value: ms(r.time.working), hint: t('recap.waitingHint', { d: ms(r.time.waiting) }) }
       : null,
     r.response && r.response.count
-      ? { label: t('dashboard.response'), value: r.response.medianMs !== undefined ? ms(r.response.medianMs) : '—', hint: t('dashboard.responseSub', { n: r.response.count, long: r.response.longWaits }) }
+      ? { label: t('dashboard.response'), value: r.response.medianMs !== undefined ? ms(r.response.medianMs) : '-', hint: t('dashboard.responseSub', { n: r.response.count, long: r.response.longWaits }) }
       : null,
   ].filter((x) => x !== null)
 })
@@ -111,7 +111,7 @@ function markdown(): string {
     lines.push('', `## ${t('recap.endedTitle')}`, '')
     for (const s of r.ended) {
       const ran = s.startedAt ? duration(s.startedAt, Date.parse(s.endedAt)) : null
-      lines.push(`- ${s.title.replace(/[*_`[\]]/g, '\\$&')}${ran ? ` — ${ran}` : ''} · ${compactNumber(s.inputTokens + s.outputTokens)} ${t('recap.tokensUnit')}`)
+      lines.push(`- ${s.title.replace(/[*_`[\]]/g, '\\$&')}${ran ? ` - ${ran}` : ''}, ${compactNumber(s.inputTokens + s.outputTokens)} ${t('recap.tokensUnit')}`)
     }
   }
   lines.push('', `_${t('recap.note')}_`)
@@ -211,7 +211,7 @@ watch(
             </dl>
 
             <section v-if="weekly">
-              <h3 class="mb-1.5 text-sm font-semibold">{{ t('recap.byDay') }} <span class="text-xs font-normal text-ink-muted">· {{ periodLabel }}</span></h3>
+              <h3 class="mb-1.5 text-sm font-semibold">{{ t('recap.byDay') }} <span class="text-xs font-normal text-ink-muted">- {{ periodLabel }}</span></h3>
               <ul class="space-y-1 text-sm">
                 <li v-for="d in recap.perDay" :key="d.day" class="flex min-w-0 items-center gap-2">
                   <span class="w-28 shrink-0 truncate text-xs text-ink-muted">{{ formatDay(d.day, locale, 'long') }}</span>

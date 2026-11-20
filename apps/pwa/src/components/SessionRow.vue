@@ -13,7 +13,7 @@ const canAnswer = computed(() => props.answer === true && !props.lost && props.s
 const activeSubs = computed(() => props.session.subagents.filter((s) => isRunning(s.rail)).length)
 const detail = computed(() => {
   const s = props.session
-  if (s.tool) return s.toolSummary ? `${s.tool} · ${s.toolSummary}` : s.tool
+  if (s.tool) return s.toolSummary ? `${s.tool}, ${s.toolSummary}` : s.tool
   if (s.waitingFor) return s.waitingFor
   if (activeSubs.value > 0) return t('monitor.subagentsRunning', { n: activeSubs.value })
   return null

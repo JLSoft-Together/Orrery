@@ -50,7 +50,7 @@ function show(): void {
     type="button"
     class="inline-flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-full text-2xs font-semibold whitespace-nowrap"
     :class="[TONE[badge], compact ? 'w-5 justify-center' : 'px-1.5']"
-    :title="compact ? `${t(`run.badge.${badge}`)} · ${t('run.badge.open', { name: baseName(dir) })}` : t('run.badge.open', { name: baseName(dir) })"
+    :title="compact ? `${t(`run.badge.${badge}`)}, ${t('run.badge.open', { name: baseName(dir) })}` : t('run.badge.open', { name: baseName(dir) })"
     :data-run-badge="badge"
     @click.stop="show"
   >

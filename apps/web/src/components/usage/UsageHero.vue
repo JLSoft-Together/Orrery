@@ -69,7 +69,7 @@ const legend = computed(() =>
       on: !usage.hidden.includes(key),
       name: t(`usage.series.${key}`),
       value,
-      share: allSeries.value > 0 ? pct(value / allSeries.value) : '—',
+      share: allSeries.value > 0 ? pct(value / allSeries.value) : '-',
       extra: key === 'cacheRead' && hit.value !== null ? t('usageV53.cacheRate', { pct: pct(hit.value) }) : null,
     }
   }),
@@ -98,7 +98,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
           <div class="flex min-h-6 items-center gap-1">
             <p id="usage-hero-title" class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm text-ink-muted" aria-live="polite">
               <span>{{ t(`usageV53.measure.${usage.metric}`) }}</span>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true">|</span>
               <Transition name="ccm-fade" mode="out-in">
                 <span :key="scope" :class="usage.selectedDay ? 'font-medium text-ink' : ''">{{ scope }}</span>
               </Transition>
@@ -170,7 +170,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
               <CountNum :key="usage.metric" :value="item.value" :format="fmt" />
             </span>
             <span class="text-2xs text-ink-faint">{{ item.share }}</span>
-            <span v-if="item.extra" class="text-2xs text-ink-faint">· {{ item.extra }}</span>
+            <span v-if="item.extra" class="text-2xs text-ink-faint">- {{ item.extra }}</span>
           </span>
         </button>
       </div>

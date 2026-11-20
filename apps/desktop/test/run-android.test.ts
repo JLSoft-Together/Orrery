@@ -212,7 +212,7 @@ describe('detectAndroid', () => {
     expect(u!.modules[0]).toMatchObject({ type: 'unknown', launcher: false, guessed: false })
   })
 
-  it('scans 1–2 levels down, skipping node_modules / build / hidden folders', async () => {
+  it('scans 1-2 levels down, skipping node_modules / build / hidden folders', async () => {
     const app = { 'settings.gradle': `include ':app'`, 'app/build.gradle': `apply plugin: 'com.android.application'` }
     const prefix = (p: string, files: Record<string, string>): Record<string, string> =>
       Object.fromEntries(Object.entries(files).map(([k, v]) => [`${p}/${k}`, v]))

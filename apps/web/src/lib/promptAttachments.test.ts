@@ -12,7 +12,7 @@ const screen = (prompt: string[]) => [
   ...prompt,
   RULE,
   '  Opus 5.5 (1M context) | $0.00',
-  '  ⏵⏵ auto mode on (shift+tab to cycle) · ← for agents',
+  '  ⏵⏵ auto mode on (shift+tab to cycle), ← for agents',
 ]
 
 describe('prompt attachments', () => {

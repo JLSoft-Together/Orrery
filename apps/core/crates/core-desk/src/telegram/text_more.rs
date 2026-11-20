@@ -98,9 +98,9 @@ pub fn pin_line(vi: bool, n: &str, s: &str, tool: Option<&str>, min: Option<i64>
         (true, "closed") => "đã đóng",
         (true, _) => "không rõ",
     };
-    let t = tool.filter(|t| !t.is_empty()).map(|t| format!(" · {}", esc(t))).unwrap_or_default();
-    let m = min.map(|m| if vi { format!(" · {m} phút") } else { format!(" · {m} min") }).unwrap_or_default();
-    format!("{icon} {} — {word}{t}{m}", esc(n))
+    let t = tool.filter(|t| !t.is_empty()).map(|t| format!(", {}", esc(t))).unwrap_or_default();
+    let m = min.map(|m| if vi { format!(", {m} phút") } else { format!(", {m} min") }).unwrap_or_default();
+    format!("{icon} {} - {word}{t}{m}", esc(n))
 }
 
 pub fn more(vi: bool, key: &str) -> &'static str {
@@ -176,9 +176,9 @@ pub fn project_pick(vi: bool, p: bool) -> String {
 
 pub fn where_session(vi: bool, n: &str, p: &str, open: bool, keep: bool) -> String {
     if vi {
-        format!("🔗 Topic này đang nối với session <b>{}</b> — {} trong Orrery.\n<code>{}</code>{}", esc(n), if open { "đang mở" } else { "chưa mở" }, esc(p), if keep { "\nGiữ nối cả khi session kết thúc." } else { "" })
+        format!("🔗 Topic này đang nối với session <b>{}</b> - {} trong Orrery.\n<code>{}</code>{}", esc(n), if open { "đang mở" } else { "chưa mở" }, esc(p), if keep { "\nGiữ nối cả khi session kết thúc." } else { "" })
     } else {
-        format!("🔗 This topic is connected to session <b>{}</b> — {} in Orrery.\n<code>{}</code>{}", esc(n), if open { "open" } else { "not open" }, esc(p), if keep { "\nKept after the session ends." } else { "" })
+        format!("🔗 This topic is connected to session <b>{}</b> - {} in Orrery.\n<code>{}</code>{}", esc(n), if open { "open" } else { "not open" }, esc(p), if keep { "\nKept after the session ends." } else { "" })
     }
 }
 
@@ -235,13 +235,13 @@ pub fn via_telegram(text: &str, vi: bool) -> String {
 
 pub fn reply_text(vi: bool, key: &str, l: &str) -> String {
     match (vi, key) {
-        (false, "sent") => format!("✓ {l} — sent to the session."),
-        (false, "typed") => format!("✓ {l} — typed into the session; it is not idle, so it was not submitted."),
+        (false, "sent") => format!("✓ {l} - sent to the session."),
+        (false, "typed") => format!("✓ {l} - typed into the session; it is not idle, so it was not submitted."),
         (false, "already") => format!("Already answered: {l}"),
         (false, "closed") => "That session is closed; nothing was typed.".into(),
         (false, _) => "That session already has a prompt waiting; try again in a moment.".into(),
-        (true, "sent") => format!("✓ {l} — đã gửi vào session."),
-        (true, "typed") => format!("✓ {l} — đã gõ vào session; session đang bận nên chưa gửi."),
+        (true, "sent") => format!("✓ {l} - đã gửi vào session."),
+        (true, "typed") => format!("✓ {l} - đã gõ vào session; session đang bận nên chưa gửi."),
         (true, "already") => format!("Đã trả lời rồi: {l}"),
         (true, "closed") => "Session đó đã đóng; không gõ gì.".into(),
         (true, _) => "Session đó đang có prompt chờ gửi, chủ nhân thử lại sau giây lát.".into(),

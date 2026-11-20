@@ -61,7 +61,7 @@ describe('planKill', () => {
     })
     if (!plan.ok) throw new Error('plan')
     const lines = confirmLines(plan.items, 'agent session')
-    expect(lines[0]).toBe('• my-app (agent session) — 400 MB, pid 100')
+    expect(lines[0]).toBe('• my-app (agent session) - 400 MB, pid 100')
     expect(lines[1]).toContain('\n   node vite')
   })
 })

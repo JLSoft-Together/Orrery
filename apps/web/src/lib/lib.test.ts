@@ -52,7 +52,7 @@ describe('attention', () => {
 
 describe('model labels', () => {
   it('prefers catalog names and localizes effort', () => {
-    expect(modelLabel('claude-opus-5-5[1m]', 1_000_000, { 'claude-opus-5-5': 'Opus 5.5 New' })).toBe('Opus 5.5 New · 1M')
+    expect(modelLabel('claude-opus-5-5[1m]', 1_000_000, { 'claude-opus-5-5': 'Opus 5.5 New' })).toBe('Opus 5.5 New, 1M')
     expect(effortLabel('high', (k) => `T:${k}`)).toBe('T:effort.high')
     expect(effortLabel('ultra', (k) => k)).toBe('ultra')
     expect(effortLabel(undefined, (k) => k)).toBeNull()

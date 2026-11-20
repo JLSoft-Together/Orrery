@@ -112,7 +112,7 @@ function openWorkspace(): void {
           <div class="fact"><dt>{{ t('session.agent') }}</dt><dd class="agent" :class="`p-${provider}`">{{ t(`provider.${provider}`) }}</dd></div>
           <div v-if="started" class="fact"><dt>{{ t('session.startedAt') }}</dt><dd>{{ started }}</dd></div>
         </dl>
-        <p v-if="session.tool" class="tool mono" data-testid="session-tool-detail">▸ {{ session.toolSummary ? `${session.tool} · ${session.toolSummary}` : session.tool }}</p>
+        <p v-if="session.tool" class="tool mono" data-testid="session-tool-detail">▸ {{ session.toolSummary ? `${session.tool}, ${session.toolSummary}` : session.tool }}</p>
       </div>
 
       <Transition name="ask">

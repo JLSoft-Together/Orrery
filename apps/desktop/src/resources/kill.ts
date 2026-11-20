@@ -51,7 +51,7 @@ export function formatRam(bytes: number | null): string {
 export function confirmLines(items: readonly KillItem[], sessionWord: string): string[] {
   return items.map((i) => {
     const cmd = i.cmd ? `\n   ${i.cmd.length > 140 ? `${i.cmd.slice(0, 140)}…` : i.cmd}` : ''
-    return `• ${i.name}${i.session ? ` (${sessionWord})` : ''} — ${formatRam(i.ramBytes)}, pid ${i.pid}${cmd}`
+    return `• ${i.name}${i.session ? ` (${sessionWord})` : ''} - ${formatRam(i.ramBytes)}, pid ${i.pid}${cmd}`
   })
 }
 

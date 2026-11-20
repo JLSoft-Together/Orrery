@@ -26,7 +26,7 @@ const timeOf = (r: CommandRow): string => (r.startedAt ? (duration(r.startedAt, 
 const sessionName = (r: CommandRow): string => {
   const term = terminals.byId[r.terminalId]
   const base = term ? displayTitle(term) : r.terminalId
-  return r.role === 'subagent' ? `${base} · ${t('monitorV88.cmd.subagent')}` : base
+  return r.role === 'subagent' ? `${base}, ${t('monitorV88.cmd.subagent')}` : base
 }
 const labelOf = (r: CommandRow): string => t(`monitorV88.agentLabel.${r.provider}`)
 const panelId = 'cmd-panel-body'

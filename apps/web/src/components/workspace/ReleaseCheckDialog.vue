@@ -233,7 +233,7 @@ function onKey(e: KeyboardEvent): void {
                 <div class="min-w-0">
                   <p class="text-ink">
                     <span class="font-medium">{{ t(`releaseCheck.rule.${f.rule}.title`) }}</span>
-                    <span class="text-ink-muted"> · {{ describe(f) }}</span>
+                    <span class="text-ink-muted">, {{ describe(f) }}</span>
                   </p>
                   <button
                     v-if="canOpen(f)"

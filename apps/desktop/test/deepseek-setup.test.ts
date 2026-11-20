@@ -371,7 +371,7 @@ describe('registerDeepSeekIpc', () => {
   })
 
   it('checks for an update through doctor and confirms the route command', async () => {
-    const doctor = 'Version Information:\n  codewhale: 0.10.2 (ff466b2ed0bf)\n\nUpdates:\n  · current: v0.10.2\n  · latest: v0.11.0\n\nConfiguration:\n  ✓ ok\n'
+    const doctor = 'Version Information:\n  codewhale: 0.10.2 (ff466b2ed0bf)\n\nUpdates:\n , current: v0.10.2\n , latest: v0.11.0\n\nConfiguration:\n  ✓ ok\n'
     const s = setup({
       run: async (_c, args) => (args[0] === 'doctor' ? { code: 0, stdout: doctor, stderr: '' } : { code: 0, stdout: '', stderr: '' }),
       update: () => [{ cmd: { file: '/bin/codewhale', args: ['update'] }, display: 'codewhale update' }],
@@ -398,7 +398,7 @@ describe('sync fingerprint', () => {
 
 describe('updates', () => {
   it('parses doctor --check-updates (0.10.2 layout)', () => {
-    const out = 'Updates:\n  · current: v0.10.2\n  · latest: v0.10.2\n    Already up to date.\n\nConfiguration:\n'
+    const out = 'Updates:\n , current: v0.10.2\n , latest: v0.10.2\n    Already up to date.\n\nConfiguration:\n'
     expect(parseDoctorUpdates(out)).toEqual({ current: '0.10.2', latest: '0.10.2' })
     expect(parseDoctorUpdates('Configuration:\n  ok\n')).toBeNull()
   })

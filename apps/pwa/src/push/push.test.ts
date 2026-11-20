@@ -224,8 +224,8 @@ describe('push service worker', () => {
 
   it('shows the decrypted title and body with a per-pane tag and the deep link', async () => {
     const sw = load()
-    await sw.fire('push', push({ title: 'Claude · Fix · orrery', body: 'Xong sau 12m', m: 'mach', p: 'p1', k: 'done', tag: 'mach:p1' }))
-    expect(sw.shown).toEqual([{ title: 'Claude · Fix · orrery', options: { body: 'Xong sau 12m', tag: 'mach:p1', data: { url: '/app/m/mach/p/p1', m: 'mach', p: 'p1', k: 'done' }, icon: '/app/icon-192.png', badge: '/app/icon-192.png' } }])
+    await sw.fire('push', push({ title: 'Claude, Fix, orrery', body: 'Xong sau 12m', m: 'mach', p: 'p1', k: 'done', tag: 'mach:p1' }))
+    expect(sw.shown).toEqual([{ title: 'Claude, Fix, orrery', options: { body: 'Xong sau 12m', tag: 'mach:p1', data: { url: '/app/m/mach/p/p1', m: 'mach', p: 'p1', k: 'done' }, icon: '/app/icon-192.png', badge: '/app/icon-192.png' } }])
     await sw.fire('push', push({ title: 'x', m: 'bad/../id', p: 'p1', k: 'done' }))
     expect(sw.shown[1]!.options.data).toMatchObject({ url: '/app/' })
     await sw.fire('push', { data: { json: () => JSON.parse('{') } })

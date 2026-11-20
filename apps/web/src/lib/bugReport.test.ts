@@ -16,7 +16,7 @@ describe('bugReport helpers', () => {
     expect(formatBytes(2048)).toBe('2 KB')
     expect(formatBytes(5 * 1024 ** 2)).toBe('5 MB')
     expect(formatBytes(1.5 * 1024 ** 2)).toBe('1.5 MB')
-    expect(formatBytes(-1)).toBe('—')
+    expect(formatBytes(-1)).toBe('-')
   })
 
   it('groups by kind in a fixed order and sums bytes', () => {

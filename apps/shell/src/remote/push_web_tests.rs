@@ -166,7 +166,7 @@ fn a_web_push_is_aes128gcm_encrypted_to_the_subscription_with_vapid_and_carries_
     let exp = claims["exp"].as_u64().unwrap();
     assert!(exp > now_secs() && exp <= now_secs() + 12 * 3600);
     let payload = open(&call.2);
-    assert_eq!(payload["title"], "Claude · Fix login · orrery");
+    assert_eq!(payload["title"], "Claude, Fix login, orrery");
     assert_eq!(payload["body"], "Dùng Postgres hay SQLite? token=••••");
     assert_eq!(payload["k"], "question");
     assert_eq!(payload["m"], ctx.machine_id());

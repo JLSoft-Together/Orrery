@@ -2,7 +2,7 @@
 const en = {
   devPerf: {
     button: 'Performance',
-    title: 'Performance · {name}',
+    title: 'Performance, {name}',
     hint: 'Frame timing, memory and cold start of one app, measured only when you click. The last 10 measurements per app are kept.',
     pkg: 'Package',
     pkgPlaceholder: 'com.example.app',
@@ -57,7 +57,7 @@ const en = {
   },
   devFiles: {
     button: 'Files',
-    title: 'Files · {name}',
+    title: 'Files, {name}',
     hint: 'Browse shared storage or the private folder of a debuggable app. Folders load when opened; nothing is watched.',
     close: 'Close',
     scope: { sdcard: 'Shared storage', app: 'App folder (run-as)' },
@@ -114,7 +114,7 @@ const en = {
 const vi: typeof en = {
   devPerf: {
     button: 'Hiệu năng',
-    title: 'Hiệu năng · {name}',
+    title: 'Hiệu năng, {name}',
     hint: 'Thời gian khung hình, bộ nhớ và thời gian mở nguội của một app, chỉ đo khi bấm. Giữ 10 lần đo gần nhất mỗi app.',
     pkg: 'Package',
     pkgPlaceholder: 'com.example.app',
@@ -169,7 +169,7 @@ const vi: typeof en = {
   },
   devFiles: {
     button: 'File',
-    title: 'File · {name}',
+    title: 'File, {name}',
     hint: 'Duyệt bộ nhớ dùng chung hoặc thư mục riêng của app debug. Thư mục chỉ tải khi mở; không theo dõi thay đổi.',
     close: 'Đóng',
     scope: { sdcard: 'Bộ nhớ dùng chung', app: 'Thư mục app (run-as)' },

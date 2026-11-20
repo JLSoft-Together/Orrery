@@ -12,7 +12,7 @@ export const isBlob = (c: AppDbCell): c is { blob: number } => typeof c === 'obj
 
 export function cellText(c: AppDbCell): string {
   if (c === null) return 'NULL'
-  if (isBlob(c)) return `BLOB · ${c.blob} B`
+  if (isBlob(c)) return `BLOB, ${c.blob} B`
   return String(c)
 }
 

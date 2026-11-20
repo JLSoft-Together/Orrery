@@ -40,7 +40,7 @@ String? _detail(String kind, Map<String, dynamic> data) {
     'terminal.status' => [str(data['to']), str(data['waitingFor'])],
     _ => [str(data['title']), str(data['description']), str(data['error'])],
   };
-  final text = parts.whereType<String>().where((s) => s.isNotEmpty).join(' · ');
+  final text = parts.whereType<String>().where((s) => s.isNotEmpty).join(', ');
   if (text.isEmpty) return null;
   final line = text.replaceAll(RegExp(r'\s+'), ' ');
   return line.length > 160 ? '${line.substring(0, 160)}…' : line;

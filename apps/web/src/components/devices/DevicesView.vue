@@ -162,7 +162,7 @@ onBeforeUnmount(() => void store.close().catch(() => undefined))
               data-dev-select-all
               @change="store.selectAll(!allSelected)"
             />
-            <span class="md:hidden">{{ t('devices.list') }} · {{ store.devices.length }}</span>
+            <span class="md:hidden">{{ t('devices.list') }}, {{ store.devices.length }}</span>
             <span class="hidden md:block">{{ t('devices.col.status') }}</span>
             <span class="hidden md:block">{{ t('devices.col.name') }}</span>
             <span class="hidden md:block">{{ t('devices.col.id') }}</span>

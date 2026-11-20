@@ -9,7 +9,7 @@ describe('app data helpers', () => {
 
   it('shows cells', () => {
     expect(cellText(null)).toBe('NULL')
-    expect(cellText({ blob: 4 })).toBe('BLOB · 4 B')
+    expect(cellText({ blob: 4 })).toBe('BLOB, 4 B')
     expect(cellText(3.5)).toBe('3.5')
   })
 

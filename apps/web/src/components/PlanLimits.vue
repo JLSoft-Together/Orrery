@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
           <component :is="LEVEL[w.level].icon" v-if="w.level !== 'ok'" :size="11" aria-hidden="true" />{{ t('headerV79.left', { pct: w.left }) }}
         </span>
         <span class="col-span-3 inline-flex items-center gap-1 text-2xs text-ink-faint tabular" :title="w.resetsIn ? t('limits.resetsIn', { in: w.resetsIn }) : undefined">
-          <RotateCcw :size="10" aria-hidden="true" />{{ w.resetAt ? `${w.resetAt} (${w.resetsIn})` : '—' }}
+          <RotateCcw :size="10" aria-hidden="true" />{{ w.resetAt ? `${w.resetAt} (${w.resetsIn})` : '-' }}
         </span>
         <span v-if="w.risk && !stale" class="col-span-3 inline-flex items-center gap-1 text-2xs font-medium text-warning tabular" data-limit-forecast>
           <TrendingUp :size="11" aria-hidden="true" />{{ t('limitsV80.runsOutAt', { at: w.fullAt }) }}
@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
             class="hidden items-center gap-1 text-2xs whitespace-nowrap text-ink-faint tabular sm:inline-flex"
             :title="w.resetsIn ? `${t('limits.resetsIn', { in: w.resetsIn })} (${w.resetAt})` : undefined"
           >
-            <RotateCcw :size="10" aria-hidden="true" />{{ w.resetsInShort ?? '—' }}
+            <RotateCcw :size="10" aria-hidden="true" />{{ w.resetsInShort ?? '-' }}
           </span>
         </span>
       </span>

@@ -42,8 +42,8 @@ describe('devPorts', () => {
 
 describe('portsLabel', () => {
   it('joins and truncates', () => {
-    expect(portsLabel([5173, 4317])).toBe('5173 · 4317')
-    expect(portsLabel([1, 2, 3, 4, 5, 6])).toBe('1 · 2 · 3 · 4 +2')
+    expect(portsLabel([5173, 4317])).toBe('5173, 4317')
+    expect(portsLabel([1, 2, 3, 4, 5, 6])).toBe('1, 2, 3, 4 +2')
   })
 })
 

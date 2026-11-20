@@ -185,7 +185,7 @@ function onKey(e: KeyboardEvent): void {
             <div v-for="f in (['shared', 'local'] as const)" :key="f" class="mt-1" :data-perm-file="f">
               <p class="text-2xs text-ink">
                 {{ t(`permAdvisor.file.${f}`) }}
-                <span v-if="ok[f].state !== 'ok'" class="text-ink-faint">· {{ t(`permAdvisor.fileState.${ok[f].state}`) }}</span>
+                <span v-if="ok[f].state !== 'ok'" class="text-ink-faint">- {{ t(`permAdvisor.fileState.${ok[f].state}`) }}</span>
               </p>
               <template v-if="ok[f].state === 'ok'">
                 <p v-if="!ok[f].allow.length && !ok[f].deny.length" class="text-2xs text-ink-faint">{{ t('permAdvisor.noRules') }}</p>

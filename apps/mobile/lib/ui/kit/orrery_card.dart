@@ -92,7 +92,7 @@ class SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.orrery;
-    final label = count == null ? text : '$text · $count';
+    final label = count == null ? text : '$text, $count';
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       child: Text(

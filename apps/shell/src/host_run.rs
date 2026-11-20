@@ -49,7 +49,7 @@ fn strs(v: &Value) -> Vec<String> {
 }
 
 fn trust_detail(vi: bool, cwd: &str, command: &str, before: &[String], env_keys: &[String]) -> String {
-    let command = if command.is_empty() { "—" } else { command };
+    let command = if command.is_empty() { "-" } else { command };
     let mut lines = Vec::new();
     if vi {
         lines.push("Cấu hình này đến từ repository (dùng chung hoặc được import). Chỉ chạy khi bạn tin người viết nó.".to_owned());

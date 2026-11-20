@@ -199,7 +199,7 @@ const age = computed(() => {
   const pid = term.processId ? t('terminal.process', { pid: term.processId }) : null
   const parts = [full, pid, term.shell, term.codexVersion ? t('provider.version', { v: term.codexVersion }) : null].filter((p): p is string => !!p)
   if (!parts.length) return null
-  return { label: label ?? parts[0], title: parts.join(' · ') }
+  return { label: label ?? parts[0], title: parts.join(', ') }
 })
 
 const wait = computed(() => (props.terminal.status === 'waiting' ? waitDisplay(props.terminal.waitingFor, main.value?.currentTool, t) : null))
@@ -209,7 +209,7 @@ const detail = computed(() => {
   if (term.status === 'waiting') {
     const waited = term.statusSince ? duration(term.statusSince, now.value) : null
     const w = wait.value
-    if (w && w.reason !== 'other') return waited ? `${w.text} · ${waited}` : w.text
+    if (w && w.reason !== 'other') return waited ? `${w.text}, ${waited}` : w.text
     if (w && waited) return t('terminal.waitingForSince', { reason: w.text, waited })
     if (w) return t('terminal.waitingFor', { reason: w.text })
     if (waited) return t('terminal.waitingSince', { waited })

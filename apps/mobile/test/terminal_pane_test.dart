@@ -370,7 +370,7 @@ void main() {
       raw: pane('a', rail: 'working'),
       snapshot: snapshot,
     );
-    expect(find.textContaining('Bash · npm test · '), findsOneWidget);
+    expect(find.textContaining('Bash, npm test, '), findsOneWidget);
     expect(find.text('Running'), findsOneWidget);
   });
 }

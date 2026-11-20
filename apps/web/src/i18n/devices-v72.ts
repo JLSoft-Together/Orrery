@@ -3,7 +3,7 @@ const en = {
   deviceTools: {
     capture: {
       button: 'Screenshot',
-      title: 'Screenshot · {name}',
+      title: 'Screenshot, {name}',
       loading: 'Capturing the screen…',
       retake: 'Retake',
       attach: 'Attach to agent',
@@ -34,7 +34,7 @@ const en = {
     },
     uiTest: {
       button: 'Test UI',
-      title: 'Test UI · {name}',
+      title: 'Test UI, {name}',
       loading: 'Reading the device settings…',
       changed: '{n} changed',
       restore: 'Restore all',
@@ -76,7 +76,7 @@ const vi: typeof en = {
   deviceTools: {
     capture: {
       button: 'Chụp màn hình',
-      title: 'Ảnh chụp · {name}',
+      title: 'Ảnh chụp, {name}',
       loading: 'Đang chụp màn hình…',
       retake: 'Chụp lại',
       attach: 'Đính kèm vào agent',
@@ -107,7 +107,7 @@ const vi: typeof en = {
     },
     uiTest: {
       button: 'Thử UI',
-      title: 'Thử UI · {name}',
+      title: 'Thử UI, {name}',
       loading: 'Đang đọc cài đặt của máy…',
       changed: 'Đã đổi {n}',
       restore: 'Trả về như cũ',

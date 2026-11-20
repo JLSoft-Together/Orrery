@@ -180,7 +180,7 @@ defineExpose({ focus: () => scroller.value?.focus(), scrollToHash })
           :aria-posinset="v.index + 1"
           class="absolute inset-x-0 flex h-6 min-w-0 cursor-default items-center gap-2 pr-2 text-xs"
           :class="v.c.hash === selected ? 'bg-selection text-ink' : 'text-ink hover:bg-fill'"
-          :title="`${v.c.author} <${v.c.email}> · ${fullFmt.format(v.c.time * 1000)}`"
+          :title="`${v.c.author} <${v.c.email}>, ${fullFmt.format(v.c.time * 1000)}`"
           :style="{ top: `${v.index * ROW_H}px` }"
           :data-commit="v.c.hash"
           @click="emit('select', v.c.hash)"

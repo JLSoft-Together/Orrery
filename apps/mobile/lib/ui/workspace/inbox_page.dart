@@ -134,7 +134,7 @@ class _InboxTile extends StatelessWidget {
     final since = row.since;
     final age = since == null
         ? ''
-        : ' · ${shortElapsed(l, DateTime.now().difference(since))}';
+        : ', ${shortElapsed(l, DateTime.now().difference(since))}';
     return Card(
       child: PressScale(
         onTap: () => openPane(context, machineId, row.tab, pane.key),
@@ -159,7 +159,7 @@ class _InboxTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${row.tab.displayName} · ${inboxReasonLabel(l, row)}$age',
+                      '${row.tab.displayName}, ${inboxReasonLabel(l, row)}$age',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: scheme.onSurfaceVariant),

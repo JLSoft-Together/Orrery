@@ -190,7 +190,7 @@ const resultText = computed(() => (result.value && !result.value.ok ? t(`ext.res
 
               <p v-if="resultText" class="flex items-start gap-1 text-xs leading-relaxed text-warning" role="alert">
                 <CircleAlert :size="13" class="mt-0.5 shrink-0" aria-hidden="true" />
-                <span class="min-w-0 break-words">{{ resultText }}<template v-if="result && !result.ok && result.detail"> — <span class="font-mono text-2xs">{{ result.detail }}</span></template></span>
+                <span class="min-w-0 break-words">{{ resultText }}<template v-if="result && !result.ok && result.detail"> - <span class="font-mono text-2xs">{{ result.detail }}</span></template></span>
               </p>
 
               <div v-if="added && added.plugins.length" class="-mx-5 -mb-4 flex justify-end gap-2 border-t border-line px-5 py-3">
@@ -228,7 +228,7 @@ const resultText = computed(() => (result.value && !result.value.ok ? t(`ext.res
 
               <p v-if="resultText" class="flex items-start gap-1 text-xs leading-relaxed text-warning" role="alert">
                 <CircleAlert :size="13" class="mt-0.5 shrink-0" aria-hidden="true" />
-                <span class="min-w-0 break-words">{{ resultText }}<template v-if="result && !result.ok && result.detail"> — <span class="font-mono text-2xs">{{ result.detail }}</span></template></span>
+                <span class="min-w-0 break-words">{{ resultText }}<template v-if="result && !result.ok && result.detail"> - <span class="font-mono text-2xs">{{ result.detail }}</span></template></span>
               </p>
               <p class="text-2xs leading-relaxed text-ink-faint">{{ t('ext.sheet.confirmNote') }}</p>
 

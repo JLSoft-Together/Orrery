@@ -97,8 +97,8 @@ function heading(row: Row): string | null {
 }
 
 function groupLabel(e: Entry): string {
-  const runner = e.group.source === e.group.file.replace(/\..*$/, '').toLowerCase() ? '' : ` · ${e.group.source}`
-  const where = uniqueDirs.value.length > 1 ? ` · ${t('workspace.scripts.inDir', { dir: folderName(e.dir) })}` : ''
+  const runner = e.group.source === e.group.file.replace(/\..*$/, '').toLowerCase() ? '' : `, ${e.group.source}`
+  const where = uniqueDirs.value.length > 1 ? `, ${t('workspace.scripts.inDir', { dir: folderName(e.dir) })}` : ''
   return `${e.group.file}${runner}${where}`
 }
 

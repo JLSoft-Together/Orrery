@@ -1574,8 +1574,8 @@ const dropWord = computed(() => {
   if (dropCaret.value !== null) return t('workspace.tabStrip.moveHere')
   const p = dropPreview.value
   if (!p) return ''
-  if (dragSource.value?.kind === 'project' && p.edge) return `${t('railSelect.dropProject')} · ${edgeWord(p.edge)}`
-  if (dragSource.value?.kind === 'group' && p.edge) return `${t('groupsV99.dropGroup')} · ${edgeWord(p.edge)}`
+  if (dragSource.value?.kind === 'project' && p.edge) return `${t('railSelect.dropProject')}, ${edgeWord(p.edge)}`
+  if (dragSource.value?.kind === 'group' && p.edge) return `${t('groupsV99.dropGroup')}, ${edgeWord(p.edge)}`
   return p.edge ? t('workspace.drag.dock', { edge: edgeWord(p.edge) }) : t('workspace.drag.swap')
 })
 
@@ -1672,7 +1672,7 @@ function onPaneDrop(src: PaneDragSource, act: PaneDropAction): void {
 const moveTabKeys = `${keyCombo(['Mod', 'Shift', 'PgUp'], isMac)} / PgDn`
 
 function tabTip(tab: Tab): string | undefined {
-  const hints = [t('workspace.tabStrip.renameHint'), tabDraggable() ? t('workspace.tabStrip.reorderHint', { keys: moveTabKeys }) : ''].filter(Boolean).join(' · ')
+  const hints = [t('workspace.tabStrip.renameHint'), tabDraggable() ? t('workspace.tabStrip.reorderHint', { keys: moveTabKeys }) : ''].filter(Boolean).join(', ')
   const dock = tabDraggable() && tab !== workspace.activeTab ? t('workspace.drag.tabHint') : ''
   const subs = tabState(tab)?.subagents ?? 0
   const running = subs ? t('workspace.subagentState.count', { n: subs }, subs) : ''
@@ -2282,8 +2282,8 @@ onBeforeUnmount(() => {
       >
         <PaneIcon v-if="dragPane" :pane="dragPane" :size="13" class="shrink-0" />
         <span class="min-w-0 truncate font-medium">{{ dragLabel }}</span>
-        <span v-if="dropWord" class="shrink-0 text-accent-ink">· {{ dropWord }}</span>
-        <span v-else-if="dragSource.kind === 'pane'" class="shrink-0 text-ink-faint">· {{ swapKeyName }} = {{ t('workspace.drag.swap') }}</span>
+        <span v-if="dropWord" class="shrink-0 text-accent-ink">- {{ dropWord }}</span>
+        <span v-else-if="dragSource.kind === 'pane'" class="shrink-0 text-ink-faint">- {{ swapKeyName }} = {{ t('workspace.drag.swap') }}</span>
       </div>
     </Teleport>
     <DragGhost

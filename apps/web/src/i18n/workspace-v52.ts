@@ -9,8 +9,8 @@ const en = {
     said: { on: 'Other panes dimmed', off: 'Other panes no longer dimmed' },
   },
   activity: {
-    tool: '{tool} · {time}',
-    working: 'Working · {time}',
+    tool: '{tool}, {time}',
+    working: 'Working, {time}',
     diff: '+{ins} −{del}',
     diffTitle: '{files} file changed in this checkout: {ins} added, {del} removed | {files} files changed in this checkout: {ins} added, {del} removed',
   },
@@ -27,8 +27,8 @@ const vi: typeof en = {
     said: { on: 'Đã làm mờ pane khác', off: 'Đã thôi làm mờ pane khác' },
   },
   activity: {
-    tool: '{tool} · {time}',
-    working: 'Đang làm · {time}',
+    tool: '{tool}, {time}',
+    working: 'Đang làm, {time}',
     diff: '+{ins} −{del}',
     diffTitle: '{files} file đổi trong checkout này: thêm {ins}, xoá {del} | {files} file đổi trong checkout này: thêm {ins}, xoá {del}',
   },

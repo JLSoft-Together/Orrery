@@ -238,13 +238,13 @@ describe('rail groups', () => {
     expect(railItems(k).map((i) => i.key)).toEqual([`group:${tabKey}`, a.key, sh.key])
   })
 
-  it('draws a shell member as its title over "Shell · state"', () => {
+  it('draws a shell member as its title over "Shell, state"', () => {
     const ws = useWorkspaceStore()
     const a = ws.open('claude', 'C:\\work\\app', undefined, { tab: true })
     const sh = ws.split(a.key, 'row', { kind: 'term', preset: 'shell' })!
     ws.update(sh.key, { command: 'npm run dev' })
     const row = buildRail(input())[0]!.checkouts[0]!.rows.find((r) => r.paneKey === sh.key)!
-    expect(rowLines(row, 'Ready')).toEqual({ first: 'npm run dev', second: 'Shell · Ready' })
+    expect(rowLines(row, 'Ready')).toEqual({ first: 'npm run dev', second: 'Shell, Ready' })
     expect(rowLines({ ...row, task: 'Shell' }, 'Ready')).toEqual({ first: 'Shell', second: 'Ready' })
   })
 
@@ -373,7 +373,7 @@ describe('row twins', () => {
     const web = ws.split(api.key, 'col', { kind: 'term', preset: 'shell' })!
     ws.update(api.key, { command: 'npm run dev', liveCwd: 'C:\\work\\app\\api' })
     ws.update(web.key, { command: 'npm run dev', liveCwd: 'C:\\work\\app\\web' })
-    expect(firsts()).toEqual([['Claude', 'npm run dev · api', 'npm run dev · web']])
+    expect(firsts()).toEqual([['Claude', 'npm run dev - api', 'npm run dev - web']])
   })
 
   it('falls back to numbers when the folders match, and keeps the line-2 ordinal for agents', () => {
@@ -385,10 +385,10 @@ describe('row twins', () => {
     for (const p of [s1, s2]) ws.update(p.key, { command: 'npm test' })
     const rows = buildRail(input({ sessionOf: (p) => (p.preset === 'claude' ? { status: 'idle', title: 'Fix login', subagents: 0 } : undefined) }))[0]!.checkouts[0]!.rows
     expect(rows.map((r) => rowLines(r, 'Ready'))).toEqual([
-      { first: 'Fix login', second: 'Claude · Ready' },
-      { first: 'npm test', second: 'Shell · Ready' },
-      { first: 'npm test 2', second: 'Shell · Ready' },
-      { first: 'Fix login', second: 'Claude 2 · Ready' },
+      { first: 'Fix login', second: 'Claude, Ready' },
+      { first: 'npm test', second: 'Shell, Ready' },
+      { first: 'npm test 2', second: 'Shell, Ready' },
+      { first: 'Fix login', second: 'Claude 2, Ready' },
     ])
   })
 
@@ -493,8 +493,8 @@ describe('row lines', () => {
   const base = { kind: 'agent' as const, agent: 'Claude' }
 
   it('silent unnamed rows carry the ordinal on line 1, named rows on line 2', () => {
-    expect(rowLines({ ...base, task: null, ordinal: 'Claude 2' }, 'Ready')).toEqual({ first: 'Claude 2', second: 'Claude · Ready' })
-    expect(rowLines({ ...base, task: 'Fix login', ordinal: 'Claude 2' }, 'Working')).toEqual({ first: 'Fix login', second: 'Claude 2 · Working' })
+    expect(rowLines({ ...base, task: null, ordinal: 'Claude 2' }, 'Ready')).toEqual({ first: 'Claude 2', second: 'Claude, Ready' })
+    expect(rowLines({ ...base, task: 'Fix login', ordinal: 'Claude 2' }, 'Working')).toEqual({ first: 'Fix login', second: 'Claude 2, Working' })
     expect(rowLines({ ...base, kind: 'other', agent: 'npm test', task: null, ordinal: 'npm test' }, 'Running')).toEqual({ first: 'npm test', second: 'Running' })
   })
 })

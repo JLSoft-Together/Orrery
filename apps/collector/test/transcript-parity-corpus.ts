@@ -152,7 +152,7 @@ export function edgeLines(): string[] {
     result(at(18), 'toolu_ask', { content: 'lone \ud800 surrogate' }),
     line({ type: 'assistant', timestamp: at(19), isApiErrorMessage: true, apiError: 'usage_limit_reached', quotaLimits: { resetsAt: 1_791_400_000.5, rateLimitType: 'five_hour' }, message: { id: 'e5', model: '<synthetic>', content: [{ type: 'text', text: 'limit' }] } }),
     system('informational', at(20), { content: 'Usage limit reached · continuing automatically at 5:40am' }),
-    system('informational', at(21), { content: 'Automatic continue cancelled · x' }),
+    system('informational', at(21), { content: 'Automatic continue cancelled, x' }),
     line({ type: 'assistant', timestamp: at(22), isApiErrorMessage: true, apiError: 'usage_limit_reached', quotaLimits: { resetsAt: 'soon', rateLimitType: 'BAD' }, message: { id: 'e6', content: [] } }),
     system('informational', at(23), { content: 'Usage limit reset · continuing automatically' }),
     system('compact_boundary', at(24), { compactMetadata: { trigger: 'manual', preTokens: 'x', postTokens: 1200.5 } }),

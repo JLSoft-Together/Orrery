@@ -53,8 +53,8 @@ void main() {
     );
     await h.pump(tester, const HomePage());
     await tester.pumpAndSettle();
-    expect(find.text('CONNECTED · 1'), findsOneWidget);
-    expect(find.text('SAME NAME · 2'), findsOneWidget);
+    expect(find.text('CONNECTED, 1'), findsOneWidget);
+    expect(find.text('SAME NAME, 2'), findsOneWidget);
     expect(find.text('Revoked'), findsOneWidget);
     expect(find.textContaining(' ms'), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('clean-old')));
@@ -71,7 +71,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('orrery-dialog-confirm')));
     await tester.pumpAndSettle();
     expect(machines.forgotten, ['m2', 'm3']);
-    expect(find.text('SAME NAME · 2'), findsNothing);
+    expect(find.text('SAME NAME, 2'), findsNothing);
     expect(find.text('Old copies removed.'), findsOneWidget);
     expect(find.text('DESKTOP-DAUPH'), findsOneWidget);
   });

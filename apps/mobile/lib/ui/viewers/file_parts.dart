@@ -74,7 +74,7 @@ class FileFooter extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  parts.join(' · '),
+                  parts.join(', '),
                   key: const ValueKey('file-footer'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

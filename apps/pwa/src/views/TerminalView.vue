@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
         </button>
         <button type="button" class="pick" :disabled="!found" data-testid="pane-pick" @click="sheet = true">
           <span v-if="found" class="dot" :class="`p-${found.pane.provider}`" aria-hidden="true" />
-          <span class="pick-text">{{ found ? `${t(`provider.${found.pane.provider}`)} · ${found.tab.name}` : t('term.loading') }}</span>
+          <span class="pick-text">{{ found ? `${t(`provider.${found.pane.provider}`)}, ${found.tab.name}` : t('term.loading') }}</span>
           <ChevronDown :size="18" :stroke-width="2" aria-hidden="true" />
         </button>
         <span v-if="slow" class="lat" data-testid="term-latency"><Signal :size="13" :stroke-width="2.2" aria-hidden="true" />{{ t('chat.slow', { ms: rtt }) }}</span>

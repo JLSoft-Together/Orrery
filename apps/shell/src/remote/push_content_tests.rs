@@ -19,13 +19,13 @@ fn fact(reason: &'static str) -> Fact {
 
 #[test]
 fn the_title_is_agent_session_project_without_spinner_glyphs_or_repeats() {
-    assert_eq!(title_of(&scene(), None, &mask), "Claude · Fix login bug · orrery");
+    assert_eq!(title_of(&scene(), None, &mask), "Claude, Fix login bug, orrery");
     let s = Scene { session: "orrery".into(), ..scene() };
-    assert_eq!(title_of(&s, None, &mask), "Claude · orrery");
+    assert_eq!(title_of(&s, None, &mask), "Claude, orrery");
     let s = Scene { session: String::new(), ..scene() };
-    assert_eq!(title_of(&s, None, &mask), "Claude · Backend · orrery");
+    assert_eq!(title_of(&s, None, &mask), "Claude, Backend, orrery");
     let s = Scene { agent: "codex".into(), session: String::new(), tab: String::new(), project: String::new() };
-    assert_eq!(title_of(&s, Some(&fact("done")), &mask), "Codex · api · orrery");
+    assert_eq!(title_of(&s, Some(&fact("done")), &mask), "Codex, api, orrery");
     assert_eq!(title_of(&Scene::default(), None, &mask), "Agent");
     assert_eq!(agent_label("deepseek"), "DeepSeek");
     assert_eq!(agent_label("shell"), "Shell");
@@ -102,7 +102,7 @@ fn content_off_security_and_test_keep_the_fixed_text() {
     assert_eq!(ask("done", false), fixed(title_body("done", "vi")));
     assert_eq!(ask("security", true), fixed(title_body("security", "vi")));
     assert_eq!(ask("test", true), fixed(test_text("vi")));
-    assert_eq!(ask("question", true), ("Claude · Fix login bug · orrery".to_owned(), "Deploy to prod with API_KEY=••••".to_owned()));
+    assert_eq!(ask("question", true), ("Claude, Fix login bug, orrery".to_owned(), "Deploy to prod with API_KEY=••••".to_owned()));
     assert_eq!(ask("done", true).1, "Xong sau 1m");
 }
 

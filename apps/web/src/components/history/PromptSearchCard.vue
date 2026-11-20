@@ -57,7 +57,7 @@ const isRunning = (id: string): boolean => {
   return !!tm && !tm.endedAt && tm.status !== 'stale'
 }
 const openPane = (id: string) => workspace.panes.find((p) => p.agentSessionId === id && (p.state === 'running' || p.state === 'starting'))
-const fmt = (iso?: string): string => (iso && Number.isFinite(Date.parse(iso)) ? dateFormat.value.format(Date.parse(iso)) : '—')
+const fmt = (iso?: string): string => (iso && Number.isFinite(Date.parse(iso)) ? dateFormat.value.format(Date.parse(iso)) : '-')
 
 function resumeDisabledReason(h: PromptSearchHit): string | null {
   if (!hasTerminals) return t('promptSearch.noTerminals')

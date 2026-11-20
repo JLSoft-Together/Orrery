@@ -20,7 +20,7 @@ List<String> previewLines(
     lines.addAll(pane.waitText!.split('\n').where((l) => l.trim().isNotEmpty));
   }
   if (tool != null) {
-    lines.add('● ${[tool, ?toolSummary].join(' · ')}');
+    lines.add('● ${[tool, ?toolSummary].join(', ')}');
   }
   if (pane.subagents > 0) lines.add('✻ $subagentsText');
   if (lines.isEmpty) lines.add(statusLabel);

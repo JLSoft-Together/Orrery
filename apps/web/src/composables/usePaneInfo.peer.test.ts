@@ -108,8 +108,8 @@ describe('usePaneInfo peers', () => {
     peers.patch({ id: peerLinkId('ta', 'tb'), ba: 1, lastDir: 'ba' })
     expect(info.peerOf(b)).toMatchObject({ dir: 'both', text: 'Talking with api', short: '⇄ api' })
     expect(info.peerOf(b)!.glyph).toBe(ArrowRightLeft)
-    expect(info.peerLines(b)[0]).toMatch(/^Sent to api · /)
-    expect(info.peerLines(a)[0]).toMatch(/^Message from web · /)
+    expect(info.peerLines(b)[0]).toMatch(/^Sent to api, /)
+    expect(info.peerLines(a)[0]).toMatch(/^Message from web, /)
 
     vi.advanceTimersByTime(30_000)
     expect(info.peerOf(b)).toBeNull()

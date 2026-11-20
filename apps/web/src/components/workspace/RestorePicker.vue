@@ -74,7 +74,7 @@ function restore(): void {
         <p class="text-sm font-semibold text-ink">{{ t('workspace.restore.title') }}</p>
         <p class="text-xs text-ink-muted">
           {{ t('workspace.restore.summary', { tabs }, tabs) }}
-          <template v-if="agents"> · {{ t('workspace.restore.agents', { n: agents }, agents) }}</template>
+          <template v-if="agents">, {{ t('workspace.restore.agents', { n: agents }, agents) }}</template>
         </p>
       </div>
       <button v-if="!pickable" type="button" class="ccm-btn ccm-btn-primary shrink-0" @click="restore">{{ t('workspace.restore.action') }}</button>

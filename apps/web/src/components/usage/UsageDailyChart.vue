@@ -116,7 +116,7 @@ const summary = computed(() => {
   return t('usage.chartSummary', {
     days: rows.length,
     total: fmt(total),
-    peak: peak ? formatDay(peak.day, locale.value, 'long') : '—',
+    peak: peak ? formatDay(peak.day, locale.value, 'long') : '-',
   })
 })
 

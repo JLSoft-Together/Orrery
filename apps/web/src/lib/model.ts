@@ -12,7 +12,7 @@ export function modelLabel(id: string | undefined, contextWindow?: number, names
   const family = parts.find((p) => FAMILY.test(p))
   const version = parts.filter((p) => /^\d{1,2}$/.test(p)).join('.')
   const base = names[bare] ?? (family ? `${cap(family)}${version ? ` ${version}` : ''}` : id)
-  return contextWindow !== undefined && contextWindow >= CONTEXT_WINDOW_1M ? `${base} · 1M` : base
+  return contextWindow !== undefined && contextWindow >= CONTEXT_WINDOW_1M ? `${base}, 1M` : base
 }
 
 /** Localized effort name; unknown levels pass through so a new Claude level still shows. */

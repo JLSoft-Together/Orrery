@@ -146,7 +146,7 @@ pub fn title_of(scene: &Scene, fact: Option<&Fact>, mask: &dyn Fn(&str) -> Strin
             parts.push(part);
         }
     }
-    cut(&parts.join(" · "), TEXT_MAX)
+    cut(&parts.join(", "), TEXT_MAX)
 }
 
 pub fn duration(ms: u64) -> String {

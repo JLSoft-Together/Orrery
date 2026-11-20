@@ -23,7 +23,7 @@ void main() {
     expect(find.text('Refactor AdsGate'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('mon-t-c')));
     await tester.pumpAndSettle();
-    expect(find.text('SUB-AGENTS · 3'), findsOneWidget);
+    expect(find.text('SUB-AGENTS, 3'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('detail-open-terminal')));
     expect(opened, ['t-c']);
   });
@@ -38,10 +38,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('monitor-view-mode')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('mon-filter-all')), findsNothing);
-    expect(find.text('CHỜ BẠN · 1'), findsNothing);
-    expect(find.text('WAITING FOR YOU · 1'), findsOneWidget);
-    expect(find.text('RUNNING · 2'), findsOneWidget);
-    expect(find.text('IDLE · 2'), findsOneWidget);
+    expect(find.text('CHỜ BẠN, 1'), findsNothing);
+    expect(find.text('WAITING FOR YOU, 1'), findsOneWidget);
+    expect(find.text('RUNNING, 2'), findsOneWidget);
+    expect(find.text('IDLE, 2'), findsOneWidget);
     expect((h.prefs as MemoryViewPrefsStore).value.monitor, ViewMode.alternate);
   });
 
@@ -56,7 +56,7 @@ void main() {
     );
     await h.pump(tester, MonitorPage(machineId: 'm1', onOpen: (_) {}));
     await tester.pumpAndSettle();
-    expect(find.text('RUNNING · 2'), findsOneWidget);
+    expect(find.text('RUNNING, 2'), findsOneWidget);
   });
 
   testWidgets('prefs round trip through json', (tester) async {

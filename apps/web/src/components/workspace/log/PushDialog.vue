@@ -65,7 +65,7 @@ const accountNote = computed(() => {
   if (g.access === 'read') return t('github.note.read', { login: g.account.login, repo })
   return null
 })
-const previewError = computed(() => (preview.value && !preview.value.ok ? [L(`error.${preview.value.error}`, { name: branch.value }), preview.value.detail].filter(Boolean).join(' — ') : null))
+const previewError = computed(() => (preview.value && !preview.value.ok ? [L(`error.${preview.value.error}`, { name: branch.value }), preview.value.detail].filter(Boolean).join(' - ') : null))
 
 async function load(nextRemote?: string, nextBranch?: string): Promise<void> {
   const req = props.request
@@ -165,7 +165,7 @@ async function submit(): Promise<void> {
   if (props.request !== req) return
   if (res.ok || res.error === 'cancelled') return emit('done', res, name)
   const text = res.error === 'non-ff' ? L('pushError.non-ff', { name: target.value }) : L(`error.${res.error}`, { name: target.value })
-  failure.value = [text, res.detail].filter(Boolean).join(' — ')
+  failure.value = [text, res.detail].filter(Boolean).join(' - ')
   authFailed.value = res.error === 'auth'
   void load(remote.value, branch.value)
 }
@@ -260,7 +260,7 @@ function trap(e: KeyboardEvent): void {
                 {{ L('nothing', { target, local: ok.local }) }}
               </p>
               <ul v-else-if="ok && count" class="ccm-scroll max-h-[240px] min-h-0 overflow-x-hidden overflow-y-auto rounded-inner border border-line py-0.5" :aria-label="L('outgoing', { n: count }, count)" data-push-commits>
-                <li v-for="c in ok.commits" :key="c.hash" class="flex h-7 min-w-0 items-center gap-2 px-2.5 text-xs" :title="`${c.subject}\n${c.author} <${c.email}> · ${fullFmt.format(c.time * 1000)}`">
+                <li v-for="c in ok.commits" :key="c.hash" class="flex h-7 min-w-0 items-center gap-2 px-2.5 text-xs" :title="`${c.subject}\n${c.author} <${c.email}>, ${fullFmt.format(c.time * 1000)}`">
                   <span class="shrink-0 font-mono text-ink-faint tabular">{{ c.hash.slice(0, 8) }}</span>
                   <span class="min-w-0 flex-1 truncate text-ink">{{ c.subject }}</span>
                   <span class="hidden max-w-28 shrink-0 truncate text-ink-muted sm:block">{{ c.author }}</span>

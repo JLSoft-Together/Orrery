@@ -147,7 +147,7 @@ pub fn tail_html(name: &str, body: &str, vi: bool, m: &Masker, token: Option<&st
 }
 
 pub fn pane_line(p: &Value, vi: bool) -> String {
-    format!("• <b>{}</b> — {}", esc(s(p, "name").unwrap_or("")), text::pane_status(s(p, "status").unwrap_or(""), vi))
+    format!("• <b>{}</b> - {}", esc(s(p, "name").unwrap_or("")), text::pane_status(s(p, "status").unwrap_or(""), vi))
 }
 
 pub fn result_html(res: &Value, vi: bool) -> String {
@@ -266,7 +266,7 @@ mod tests {
         assert_eq!(episode_html(&e, true, &m, false), "✅ <b>a&lt;b</b> đã xong sau 3 phút");
         assert_eq!(clip("abc&amp;def", 6), "abc…");
         let r = json!({"ok": false, "error": "many", "panes": [{"name": "x", "status": "idle"}]});
-        assert_eq!(result_html(&r, true), "Project này có nhiều session, chủ nhân reply vào tin báo của session muốn gửi:\n• <b>x</b> — rảnh");
+        assert_eq!(result_html(&r, true), "Project này có nhiều session, chủ nhân reply vào tin báo của session muốn gửi:\n• <b>x</b> - rảnh");
         let k = markup(false, &[vec![cell("ap", "k1"), cell_t("lk", "k2", "proj")]]);
         assert_eq!(k["inline_keyboard"][0][1]["text"], "🔗 proj");
         assert_eq!(k["inline_keyboard"][0][0]["callback_data"], "ap:k1");

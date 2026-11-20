@@ -251,7 +251,7 @@ defineExpose({ focus: () => input.value?.select() ?? input.value?.focus(), seed 
       <span v-if="error" class="text-st-error">{{ error }}</span>
       <template v-else-if="searched">
         <span>{{ t('workspace.search.summary', { n: matches.length, files }, matches.length) }}</span>
-        <span v-if="truncated">· {{ t('workspace.search.truncated') }}</span>
+        <span v-if="truncated">- {{ t('workspace.search.truncated') }}</span>
       </template>
       <span v-else-if="!busy">{{ t('workspace.search.hint') }}</span>
     </p>

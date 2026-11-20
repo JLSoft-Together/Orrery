@@ -35,7 +35,7 @@ describe('RemotePushBell', () => {
     await bell.get('[data-remote-push-toggle]').trigger('click')
     const row = (id: string) => bell.get(`[data-remote-push-device="${id}"]`)
     expect(row('a').attributes('data-push-state')).toBe('on')
-    expect(row('a').get('[data-remote-push-state]').text()).toBe('Push on · Web Push · with content')
+    expect(row('a').get('[data-remote-push-state]').text()).toBe('Push on, Web Push, with content')
     expect(row('a').get('[data-remote-push-state]').classes()).toContain('text-success')
     expect(row('a').find('[data-remote-push-state] svg').exists()).toBe(true)
     expect(row('b').get('[data-remote-push-state]').text()).toBe('Off on this computer')

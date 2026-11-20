@@ -202,7 +202,7 @@ onBeforeUnmount(() => stop?.())
         :tabindex="tabbable ? 0 : -1"
         role="group"
         :aria-roledescription="t('mapV53.node.main')"
-        :aria-label="`${title} · ${t(meta.labelKey)}`"
+        :aria-label="`${title}, ${t(meta.labelKey)}`"
         :aria-describedby="`${flowId}-keys`"
         class="group/node relative flex flex-col justify-between gap-1 rounded-card border bg-surface px-3 py-2.5 shadow-card transition-[opacity,border-color,box-shadow] duration-(--ccm-dur-base) ease-out-quint focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-focus"
         :style="frame"
@@ -244,7 +244,7 @@ onBeforeUnmount(() => stop?.())
         </div>
         <div class="flex min-w-0 items-center gap-2 text-xs">
           <span v-if="model" class="nodrag min-w-0 flex-1 cursor-text truncate text-ink-muted select-text" :title="modelTitle">
-            {{ model }}<span v-if="effort" class="text-ink-faint"> · {{ effort }}</span>
+            {{ model }}<span v-if="effort" class="text-ink-faint">, {{ effort }}</span>
           </span>
           <span v-else class="flex-1" />
           <Transition name="ccm-swap" mode="out-in">

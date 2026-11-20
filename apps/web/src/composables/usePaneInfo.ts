@@ -171,8 +171,8 @@ export function usePaneInfo() {
     const dir = workCwd(pane)
     const where = dir ? shortPath(dir) : ''
     const session = sessionOf(pane)
-    const what = session ? `${t(`workspace.preset.${presetOf(pane)}`)} — ${displayTitle(session)}` : t(`workspace.preset.${presetOf(pane)}`)
-    return where ? `${what} · ${where}` : what
+    const what = session ? `${t(`workspace.preset.${presetOf(pane)}`)} - ${displayTitle(session)}` : t(`workspace.preset.${presetOf(pane)}`)
+    return where ? `${what}, ${where}` : what
   }
 
   /**
@@ -275,7 +275,7 @@ export function usePaneInfo() {
       const mine = (l.lastDir === 'ab') === (l.a === id)
       const when = ago(l.lastAt)
       const sentence = mine ? t('peer.sent', { name }) : t('peer.received', { name })
-      lines.push(when ? `${sentence} · ${when}` : sentence)
+      lines.push(when ? `${sentence}, ${when}` : sentence)
     }
     const role = peers.roleOf(id)
     const coordinating = coordinatingOf(pane)

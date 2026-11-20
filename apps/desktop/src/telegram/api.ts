@@ -125,8 +125,8 @@ export function episodeHtml(e: TelegramEpisodeMessage, locale: TelegramLocale, m
 }
 
 const DIGEST_HEAD: Record<TelegramLocale, (name: string, n: number, at: string) => string> = {
-  en: (name, n, at) => `✅ <b>${name}</b> · done ${n} time${n === 1 ? '' : 's'} · ${at}`,
-  vi: (name, n, at) => `✅ <b>${name}</b> · xong ${n} lần · ${at}`,
+  en: (name, n, at) => `✅ <b>${name}</b>, done ${n} time${n === 1 ? '' : 's'}, ${at}`,
+  vi: (name, n, at) => `✅ <b>${name}</b>, xong ${n} lần, ${at}`,
 }
 
 /** Edited "finished" message of the digest: counter line on top, the latest episode below. */

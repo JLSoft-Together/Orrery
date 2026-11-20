@@ -64,8 +64,8 @@ const deviceId = computed<string>({
 })
 const deviceOptions = computed<SelectOption<string>[]>(() =>
   devices.value.map((d) => {
-    const kind = d.emulator ? `${d.platform} · emulator` : d.platform
-    return { value: d.id, label: d.name, hint: d.id === runDeviceId.value ? `${kind} · ${t('fwp.runDevice')}` : kind }
+    const kind = d.emulator ? `${d.platform}, emulator` : d.platform
+    return { value: d.id, label: d.name, hint: d.id === runDeviceId.value ? `${kind}, ${t('fwp.runDevice')}` : kind }
   }),
 )
 const failing = computed(() => failingEntries(entries.value, error.value, root.value))
@@ -239,7 +239,7 @@ watch(
                   <span class="flex min-w-0 flex-1 flex-col">
                     <span class="truncate text-xs" :class="e.skipped ? 'text-ink-muted' : current === e.id ? 'font-semibold text-accent-ink' : 'text-ink'">{{ e.label }}</span>
                     <span class="truncate text-2xs text-ink-faint" :title="`${e.file}:${e.line}`">
-                      {{ group === 'other' ? `${e.file} · ` : '' }}{{ symbolText(e) ? `${symbolText(e)} · ` : '' }}{{ t('fwp.line', { line: e.line }) }}
+                      {{ group === 'other' ? `${e.file}, ` : '' }}{{ symbolText(e) ? `${symbolText(e)}, ` : '' }}{{ t('fwp.line', { line: e.line }) }}
                     </span>
                     <span v-if="e.skipped" class="text-2xs text-ink-muted" data-fwp-skipped>{{ t(`fwp.skipped.${e.skipped}`) }}</span>
                     <span v-else-if="failing.has(e.id)" class="text-2xs text-ink-muted" data-fwp-entry-error>{{ t('fwp.entryError') }}</span>

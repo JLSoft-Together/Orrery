@@ -479,7 +479,7 @@ onBeforeUnmount(() => {
               <div class="min-w-0">
                 <p class="font-medium tabular-nums" data-rec-result>{{ t('deviceRec.result', { duration: clock(rec.durationMs), size: sizeText(rec.bytes) }) }}</p>
                 <p class="text-2xs text-ink-faint" data-rec-frames-count>
-                  {{ t('deviceRec.frames', rec.frames.length) }}<template v-if="rec.framesFailed"> · {{ t('deviceRec.framesFailed') }}</template>
+                  {{ t('deviceRec.frames', rec.frames.length) }}<template v-if="rec.framesFailed">, {{ t('deviceRec.framesFailed') }}</template>
                 </p>
               </div>
               <div v-if="rec.frames.length" class="flex min-w-0 gap-1 overflow-hidden">

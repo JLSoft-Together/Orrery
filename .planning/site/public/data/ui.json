@@ -1,7 +1,7 @@
 {
   "updated": "2026-11-20",
-  "source": "ccm-qa-fast (E2E Tauri 20/11): rail, explorer, diff, v104-*; apps/pwa/e2e/.out (WP-68b3, shots-55a); docs/qa/v103, v104; apps/web/src/components/next; apps/pwa/src",
-  "lede": "Đợt 2: 5 chỗ nên update tiếp, xếp theo lợi ích trên công sức. Đợt 1 (U1 đến U5: dòng session, quota, nhãn chân rail, thẻ pane điện thoại, terminal chế độ Đọc) đã làm, gom ở cuối trang. Không trùng các việc v104 đã xong (Inbox, Settings 14 trang, cảnh báo đụng file, Changes theo session). Mỗi chỗ có ảnh E2E hôm nay hoặc file:line làm bằng chứng và wireframe Trước / Sau bấm thử được.",
+  "source": "ccm-qa-fast (E2E Tauri 20/11): rail, v73, tabs-cwd; docs/qa/v103/WP-70b; apps/pwa/e2e/.out (WP-68b3, shots-55a); apps/mobile/shots; apps/web/src/components/workspace, history; apps/web/src/stores/workspace.ts; apps/pwa/src; apps/mobile/lib/ui/workspace",
+  "lede": "Đợt 3: 7 chỗ nên update tiếp, xếp theo lợi ích trên công sức: tab strip, màn trống lúc chưa có pane, History, trang chi tiết session trên iPad / điện thoại, thẻ pane của app Android, và 2 việc chủ nhân thêm: Shell mới từ điện thoại, terminal mạng yếu học từ mosh. Đợt 1 (U1 đến U5) và đợt 2 (U6 đến U10: pane công cụ trên rail, Inbox sheet, chữ bị cắt trên rail, Giám sát điện thoại, Explorer drawer) đã làm, gom ở cuối trang. Không trùng v104 (Inbox, Settings 14 trang, cảnh báo đụng file, Changes theo session) và thẻ Cài app lên điện thoại. Mỗi chỗ có ảnh hoặc file:line làm bằng chứng và wireframe Trước / Sau bấm thử được.",
   "items": [
     {
       "id": "U1",
@@ -172,7 +172,8 @@
         "ccm-qa-fast/v104-turn-changes/v104h-03-narrow-light.png"
       ],
       "wireframe": "railTools",
-      "wfHint": "Thu gọn Công cụ, sửa file"
+      "wfHint": "Thu gọn Công cụ, sửa file",
+      "status": "done"
     },
     {
       "id": "U7",
@@ -201,7 +202,8 @@
         "docs/qa/v104/WP-104e/pwa-inbox-light.png"
       ],
       "wireframe": "inboxSheet",
-      "wfHint": "Vuốt hàng, bấm Hoàn tác"
+      "wfHint": "Vuốt hàng, bấm Hoàn tác",
+      "status": "done"
     },
     {
       "id": "U8",
@@ -230,7 +232,8 @@
         "ccm-qa-fast/rail/rail-03-needs.png"
       ],
       "wireframe": "railFit",
-      "wfHint": "Kéo độ rộng rail, đổi ngôn ngữ"
+      "wfHint": "Kéo độ rộng rail, đổi ngôn ngữ",
+      "status": "done"
     },
     {
       "id": "U9",
@@ -259,7 +262,8 @@
         "apps/pwa/e2e/.out/shots-55a/monitor-a-phone-light-webkit.png"
       ],
       "wireframe": "phoneMonitor",
-      "wfHint": "Thêm session vào project"
+      "wfHint": "Thêm session vào project",
+      "status": "done"
     },
     {
       "id": "U10",
@@ -287,7 +291,215 @@
         "ccm-qa-fast/diff/diff-02-viewer.png"
       ],
       "wireframe": "drawer",
-      "wfHint": "Kéo độ rộng cửa sổ, mở Explorer"
+      "wfHint": "Kéo độ rộng cửa sổ, mở Explorer",
+      "status": "done"
+    },
+    {
+      "id": "U11",
+      "round": 3,
+      "anchor": "tab-strip",
+      "area": "desktop",
+      "title": "Tab strip: tên tab là tên pane, tên project chỉ hiện 1 lần",
+      "effort": "S",
+      "rank": 1,
+      "problem": [
+        "3 tab cùng project đều ghi \"alpha\" (\"alpha\", \"A alpha\", \"A alpha waiting\", ảnh rail-03-needs): không biết tab nào là Shell, tab nào là Shell 2 đang chờ.",
+        "Tên tab lấy từ pane chính, pane chính mặc định mang tên project (stores/workspace.ts:252-257), trong khi rail đã đổi sang tên pane từ U1.",
+        "Chip \"waiting\" và chuông \"1\" chen vào cùng tên nên tab rộng ra, tab strip mau tràn sang menu ẩn."
+      ],
+      "proposal": [
+        "Tên tab dùng đúng tên dòng rail (tên do chủ nhân đặt, nếu chưa đặt thì \"Claude 2\", \"Shell 2\"); tab gộp nhiều project vẫn ghi \"api + web\".",
+        "Các tab liền nhau cùng project gom dưới 1 chip project (monogram + tên) ở đầu cụm; tooltip tab ghi đủ \"alpha / Shell 2\".",
+        "Trạng thái trên tab chỉ là glyph + chữ ngắn (Chờ bạn) khi tab không active; tab active bỏ chip vì pane header đã có."
+      ],
+      "impact": "Chọn đúng tab ngay lần đầu khi mở 3 đến 6 pane cùng project; tab strip chứa thêm 2 đến 3 tab trước khi tràn.",
+      "risk": "Thấp. Đổi tabTitle ảnh hưởng Inbox (useInboxGlobal.ts:36), menu tab ẩn và E2E bắt theo tên tab; tab đã đặt tên (tab.name) giữ nguyên.",
+      "files": [
+        "apps/web/src/stores/workspace.ts:252-257",
+        "apps/web/src/composables/usePaneInfo.ts:121-127",
+        "apps/web/src/components/workspace/WorkspaceView.vue:1256-1257",
+        "ccm-qa-fast/rail/rail-03-needs.png"
+      ],
+      "wireframe": "tabStrip",
+      "wfHint": "Bấm tab, thêm tab cùng project"
+    },
+    {
+      "id": "U12",
+      "round": 3,
+      "anchor": "launcher",
+      "area": "desktop",
+      "title": "Màn trống lúc chưa có pane: chọn agent và project rõ ràng, rail không nói 2 lần",
+      "effort": "S",
+      "rank": 2,
+      "problem": [
+        "Thẻ agent ghi tên 2 lần: \"Claude Code / Claude Code\" (LaunchPicker.vue:49, 185; launcher-v93.ts hint), dòng phụ không thêm thông tin gì.",
+        "Mục \"Open sessions\" thật ra là các thư mục có session đang chạy ngoài Orrery (LaunchPicker.vue:94); đọc lên tưởng là session sẽ mở lại, không thấy agent nào, bao lâu rồi.",
+        "Rail trống ghi \"No sessions yet. Open one from Ctrl+K.\" trong khi giữa màn đã có sẵn bộ chọn; 2 lời chỉ dẫn khác nhau cho cùng 1 việc (ảnh 01-more-open)."
+      ],
+      "proposal": [
+        "Thẻ agent: dòng phụ là phím tắt và trạng thái thật (\"1\", \"Codex chưa đăng nhập\"), không lặp tên; nút chính đổi theo lựa chọn: \"Mở Claude ở claude-code-monitor\".",
+        "Đổi \"Open sessions\" thành \"Project gần đây\" kèm agent đã dùng và thời gian (\"Claude, 2 giờ trước\"); session đang chạy ngoài Orrery tách mục riêng có chip agent.",
+        "Rail trống: 1 dòng \"Chưa có pane, chọn agent ở giữa màn\" + mũi tên, không nhắc Ctrl+K lần nữa."
+      ],
+      "impact": "Lần đầu mở app hoặc sau khi đóng hết pane, mở được pane đúng project trong 1 đến 2 lần bấm; người mới không phải đoán \"Open sessions\".",
+      "risk": "Thấp. Chỉ đổi chữ và bố cục; mở pane vẫn là owner bấm, không gửi prompt. data-tour=\"ws-new\" của Workspace guide phải giữ.",
+      "files": [
+        "apps/web/src/components/workspace/LaunchPicker.vue:49, 94, 185",
+        "apps/web/src/i18n/launcher-v93.ts:4-9",
+        "apps/web/src/i18n/mist-v102.ts:88",
+        "apps/web/src/components/workspace/WorkspaceView.vue:2024-2042",
+        "docs/qa/v103/WP-70b/01-more-open.png"
+      ],
+      "wireframe": "launcher",
+      "wfHint": "Chọn agent, chọn project"
+    },
+    {
+      "id": "U13",
+      "round": 3,
+      "anchor": "history",
+      "area": "desktop",
+      "title": "History, mục Hôm nay: thanh có chữ, số % nói là % gì",
+      "effort": "S",
+      "rank": 3,
+      "problem": [
+        "Session chỉ rảnh hiện 1 thanh xám kín bề ngang + \"0%\" ở cuối (ảnh v73-01-toolstats-30): nhìn như thanh tiến độ đã đầy, \"0%\" không nói là 0% thời gian làm việc.",
+        "Thanh chỉ phân biệt bằng màu (TimelineChart.vue:140), chú thích nằm trong tooltip; trái hard rule trạng thái = icon + chữ + màu.",
+        "Ô tìm ở trên và nút \"Search\" bên phải trùng việc; dòng phụ \"idle 3s\" cạnh tiêu đề Hôm nay không rõ của session nào."
+      ],
+      "proposal": [
+        "Mỗi dòng ghi chữ ngay dưới thanh: \"Làm 2 giờ 10 phút, chờ bạn 12 phút, rảnh 40 phút\"; cột cuối đổi \"0%\" thành \"làm 52%\".",
+        "Đoạn trên thanh có hoa văn riêng (làm đặc, chờ sọc chéo, rảnh chấm) + chú thích luôn hiện 1 dòng trên list.",
+        "Session chỉ rảnh cả ngày gom thành 1 dòng \"3 session chỉ rảnh\" thu gọn; bỏ nút Search trùng."
+      ],
+      "impact": "Đọc History không cần hover từng thanh; người mù màu vẫn phân biệt được làm / chờ / rảnh.",
+      "risk": "Thấp. Số liệu đã có (r.totals); không bịa thời gian khi collector không chạy, đoạn đó để trống và ghi \"không có dữ liệu\".",
+      "files": [
+        "apps/web/src/components/history/TimelineChart.vue:111-142",
+        "apps/web/src/i18n/en.ts:1241-1249",
+        "ccm-qa-fast/v73/v73-01-toolstats-30.png"
+      ],
+      "wireframe": "historyLane",
+      "wfHint": "Đổi dữ liệu mẫu, hover đoạn"
+    },
+    {
+      "id": "U14",
+      "round": 3,
+      "anchor": "session-detail",
+      "area": "phone",
+      "title": "iPad và trang chi tiết session: cột phải là chi tiết, tên không lặp, 1 nút mở terminal",
+      "effort": "M",
+      "rank": 4,
+      "problem": [
+        "iPad: cột trái và cột phải cùng là list session (ảnh monitor-b-ipad); rail còn kiểu project 1 session = header + dòng cùng tên (\"api\" / \"api\") dù U9 đã gộp trên điện thoại.",
+        "Trang chi tiết ghi \"docs\" 4 lần: tiêu đề trang, tên thẻ, chip project, nhánh git (SessionView.vue:66-80, ảnh detail-ipad-light).",
+        "2 nút to cùng mở terminal (\"Trả lời trong terminal\" và \"Mở terminal\", SessionView.vue:100, 130); \"Chưa có hoạt động\" chiếm chỗ mà không nói tool cuối."
+      ],
+      "proposal": [
+        "iPad: rail giữ list (project 1 session gộp 1 dòng như U9); cột phải luôn là chi tiết session đang chọn, mặc định session Chờ bạn đầu tiên.",
+        "Tiêu đề trang = tên session, dòng phụ \"Claude, nhánh docs, Orrery Desk\"; thẻ hero bỏ tên lặp, chỉ còn trạng thái + tool đang chạy.",
+        "Thẻ Chờ bạn có câu hỏi + nút đáp án đọc từ menu như thẻ U4 (Hoàn tác 3 giây); \"Mở terminal\" là nút phụ duy nhất."
+      ],
+      "impact": "iPad thấy list và chi tiết cùng lúc thay vì 2 list; trả lời từ trang chi tiết còn 1 chạm.",
+      "risk": "Trung bình. Nút đáp án dùng đúng đường gửi phím của U4 (mỗi phím sau 1 chạm của chủ nhân, đọc lại menu nếu quá 30 giây); route session trên iPad phải giữ nút back.",
+      "files": [
+        "apps/pwa/src/views/SessionView.vue:66-80, 100, 130",
+        "apps/pwa/src/components/IpadRail.vue:88-96",
+        "apps/pwa/e2e/.out/shots-55a/monitor-b-ipad-light-webkit.png",
+        "apps/pwa/e2e/.out/WP-68b3/detail-ipad-light-webkit.png"
+      ],
+      "wireframe": "sessionDetail",
+      "wfHint": "Chọn session ở rail, bấm Có / Không"
+    },
+    {
+      "id": "U15",
+      "round": 3,
+      "anchor": "android-card",
+      "area": "android",
+      "title": "App Android: thẻ pane Chờ bạn trả lời ngay, đổi pane thấy được",
+      "effort": "M",
+      "rank": 5,
+      "problem": [
+        "Thẻ Codex \"Chờ bạn\" chỉ có 1 nút \"Mở toàn màn hình\" (pane_card.dart:91-95, ảnh 03c-workspace-vi); web app điện thoại đã trả lời được trên thẻ (U4).",
+        "Đổi pane bằng vuốt ngang, chỉ có dòng chữ \"Vuốt ngang để đổi pane\" kèm số pane (workspace_single.dart:126), không có chấm trang, chip trên đầu không ghi trạng thái từng pane.",
+        "Chip Codex đang chọn tô màu cam của accent thay vì tím Codex, dễ đọc nhầm là pane Claude."
+      ],
+      "proposal": [
+        "Thẻ Chờ bạn: câu hỏi + nút đáp án đọc từ menu (Có, Không, Mở pane), toast \"Đã gửi\" có Hoàn tác 3 giây như U4.",
+        "Chip pane ghi glyph + trạng thái (\"Codex, Chờ bạn\"), chip đang chọn viền theo màu agent; dưới thẻ có chấm trang thay dòng chữ hướng dẫn.",
+        "Pane Chờ bạn tự lên đầu hàng chip; chạm chip là đổi pane, vuốt vẫn dùng được."
+      ],
+      "impact": "Trả lời 1 câu hỏi từ app Android còn 1 chạm thay vì mở terminal full; thấy ngay pane nào đang chờ trong tab.",
+      "risk": "Trung bình. Gửi phím qua kênh Noise đã có; phải giữ luật mỗi phím sau 1 chạm của chủ nhân, pane không idle thì không submit. Cần chuỗi l10n en + vi mới.",
+      "files": [
+        "apps/mobile/lib/ui/workspace/pane_card.dart:91-95",
+        "apps/mobile/lib/ui/workspace/workspace_single.dart:120-130",
+        "apps/mobile/lib/l10n/app_vi.arb:343-344",
+        "apps/mobile/shots/03c-workspace-vi.png"
+      ],
+      "wireframe": "androidCard",
+      "wfHint": "Chạm chip pane, bấm Có / Không"
+    },
+    {
+      "id": "U16",
+      "round": 3,
+      "anchor": "new-shell",
+      "area": "phone",
+      "title": "Shell mới từ điện thoại: 1 chạm mở shell trống trên máy, vào thẳng terminal",
+      "effort": "S",
+      "rank": 6,
+      "owner": true,
+      "problem": [
+        "Web app: nút \"Pane mới\" chỉ hiện khi tab đang mở có cwd (WorkspaceView.vue:213); không mở được shell ở thư mục home hay project khác, Home và trang terminal không có nút.",
+        "Mở xong vẫn đứng ở lưới thẻ (NewPaneSheet.vue:16-21 chỉ emit paneKey), phải chạm thêm thẻ rồi chờ attach mới gõ được: 3 đến 4 chạm cho 1 shell.",
+        "App Android đi qua trang Mở pane (chọn preset, chọn thư mục, prompt) rồi navigator.pop() về Workspace (open_pane_page.dart:75-93), cũng không vào thẳng terminal."
+      ],
+      "proposal": [
+        "Nút \"Shell mới\" (icon >_ +) ở header Workspace và header trang terminal, như Termius / Blink: 1 chạm gửi ws.open preset shell ở project vừa dùng, rồi mở ngay trang terminal của pane đó.",
+        "Chip dưới nút chọn nơi mở: project vừa dùng (mặc định), thư mục home, hoặc project khác từ list Workspace; nhớ lựa chọn theo máy.",
+        "Điều khiển từ xa tắt (view only) hoặc mất kết nối: nút ẩn, chỗ đó ghi \"Chỉ xem\"; shell không gửi prompt nào, chỉ mở pane."
+      ],
+      "impact": "Cần 1 shell để chạy git / npm từ điện thoại còn 1 chạm thay vì 3 đến 4; dùng được cả khi chưa mở tab nào.",
+      "risk": "Thấp. Dùng ws.open có sẵn (cwd phải là project đang sống hoặc home theo luật path của remote); đặt max số pane mở từ điện thoại mỗi phút để chạm nhầm không mở hàng loạt.",
+      "files": [
+        "apps/pwa/src/views/WorkspaceView.vue:213, 221",
+        "apps/pwa/src/components/NewPaneSheet.vue:16-21",
+        "apps/mobile/lib/ui/workspace/open_pane_page.dart:75-93",
+        "apps/mobile/lib/ui/workspace/workspace_body.dart:63"
+      ],
+      "wireframe": "newShell",
+      "wfHint": "Bấm Shell mới, đổi nơi mở, tắt điều khiển"
+    },
+    {
+      "id": "U17",
+      "round": 3,
+      "anchor": "mosh",
+      "area": "phone",
+      "title": "Terminal điện thoại trên mạng yếu: học từ mosh, gõ thấy ngay, nối lại không mất màn",
+      "effort": "L",
+      "rank": 7,
+      "owner": true,
+      "problem": [
+        "Ký tự gõ chỉ hiện khi desktop echo về: qua relay 4G 300 đến 800 ms thì mỗi phím chờ gần 1 giây, dễ gõ lặp hoặc gõ sai.",
+        "Lúc đổi Wi-Fi sang 4G, phím gõ trong lúc mất nối bị bỏ im lặng (ptyStreams.ts:100, pty_stream.dart:189-192 trả về khi chưa ready). Web app có dải \"Mất kết nối, đang nối lại...\" (TerminalView.vue:152); app Android trong terminal chỉ có thông báo khi lỗi / kết thúc (terminal_pane.dart:358-376).",
+        "Độ trễ (rtt) chỉ có ở LinkChip trên header Workspace và thẻ máy (WorkspaceView.vue:178, MachineCard.vue:48), trang terminal không có. Nối lại thì đã có: ptyStreams.onReady attach lại và pty.snapshot dựng lại màn (docs/remote-integration.md §4.4)."
+      ],
+      "proposal": [
+        "Gõ đoán như mosh, chỉ để hiển thị: ký tự in được ở dòng prompt hiện ngay, gạch chân mờ tới khi echo của desktop khớp thì thành chữ thường; lệch thì bỏ phần đoán, lấy màn desktop. Tắt đoán khi alt screen (TUI), khi echo tắt (password) và khi 2 lần đoán sai liên tiếp.",
+        "Nối lại liền mạch: giữ màn cũ (mờ nhẹ) thay vì trống, dải nhỏ \"Đang nối lại, lần 2\" trên đầu; xong thì pty.snapshot thay màn. Phím gõ lúc mất nối không bỏ im lặng: giữ trong ô nháp \"chưa gửi\", chủ nhân bấm Gửi sau khi nối lại.",
+        "Header terminal có chip độ trễ: \"LAN 12 ms\", \"Relay 180 ms, chậm\" (chữ + icon + màu); trên 400 ms tự bật gạch chân đoán."
+      ],
+      "impact": "Gõ lệnh ngắn trên 4G không còn chờ từng phím; đổi mạng giữa chừng không mất màn và không mất phím đã gõ.",
+      "risk": "Cao. Phải dựng lại phần predictive echo của mosh trên xterm (web) và terminal Flutter; đoán chỉ là lớp vẽ, mọi phím vẫn gửi đúng như cũ và chỉ sau khi chủ nhân gõ; ô nháp không bao giờ tự gửi.",
+      "files": [
+        "apps/pwa/src/terminal/ptyStreams.ts:99-108, 166-170",
+        "apps/pwa/src/terminal/termPipe.ts:130",
+        "apps/pwa/src/views/TerminalView.vue:43-45, 152",
+        "apps/mobile/lib/remote/pty_stream.dart:183-192",
+        "apps/mobile/lib/ui/terminal/terminal_pane.dart:358-376",
+        "docs/remote-integration.md §4.4"
+      ],
+      "wireframe": "moshTerm",
+      "wfHint": "Kéo độ trễ, gõ thử, đổi mạng"
     }
   ]
 }

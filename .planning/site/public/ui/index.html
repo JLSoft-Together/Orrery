@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Orrery Update UI</title>
-<meta name="description" content="Đợt 2: 5 chỗ nên update tiếp trên giao diện Orrery desktop và web app điện thoại, kèm wireframe Trước / Sau bấm thử được; đợt 1 đã làm.">
+<meta name="description" content="Đợt 3: 7 chỗ nên update tiếp trên Orrery desktop, web app điện thoại và app Android, kèm wireframe Trước / Sau bấm thử được; đợt 1 và đợt 2 đã làm.">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/suggest/suggest.css">
@@ -31,13 +31,13 @@
 <main class="wrap">
 <header class="hero">
   <p class="eyebrow">Update giao diện, <span id="updated">20/11/2026</span></p>
-  <h1>5 chỗ nên update UI, đợt 2</h1>
+  <h1>7 chỗ nên update UI, đợt 3</h1>
   <p class="lede" id="lede">Đang tải dữ liệu.</p>
 </header>
 
 <section id="ban-do" aria-labelledby="h-bd">
   <h2 id="h-bd">Nằm ở đâu trên app</h2>
-  <p class="sub">Bấm một điểm để tới đề xuất. Màu xanh là desktop, tím là web app điện thoại.</p>
+  <p class="sub">Bấm một điểm để tới đề xuất. Màu xanh là desktop, tím là web app điện thoại (U16, U17 áp cho cả app Android), xanh ngọc là app Android.</p>
   <div class="map" id="map">
     <div class="map-desk" aria-hidden="true">
       <div class="md-rail"><i></i><i></i><i class="on"></i><i></i><div class="md-foot"><s></s><s></s><s></s><s></s><s></s><s></s></div></div>
@@ -46,11 +46,13 @@
     <div class="map-phone" aria-hidden="true">
       <div class="mp-top"></div><div class="mp-card"></div><div class="mp-card"></div><div class="mp-term"></div><div class="mp-keys"></div>
     </div>
-    <a class="hot d" href="#rail-tools" style="left:8%;top:42%">U6<span>Pane công cụ</span></a>
-    <a class="hot d" href="#rail-fit" style="left:8%;top:14%">U8<span>Chữ bị cắt</span></a>
-    <a class="hot d" href="#drawer" style="left:62%;top:46%">U10<span>Explorer đè pane</span></a>
-    <a class="hot p" href="#phone-monitor" style="left:82%;top:28%">U9<span>Giám sát</span></a>
-    <a class="hot p" href="#inbox-sheet" style="left:82%;top:72%">U7<span>Inbox</span></a>
+    <a class="hot d" href="#tab-strip" style="left:30%;top:16%">U11<span>Tab strip</span></a>
+    <a class="hot d" href="#launcher" style="left:46%;top:52%">U12<span>Màn trống</span></a>
+    <a class="hot d" href="#history" style="left:14%;top:78%">U13<span>History</span></a>
+    <a class="hot p" href="#session-detail" style="left:84%;top:18%">U14<span>Chi tiết session</span></a>
+    <a class="hot a" href="#android-card" style="left:84%;top:40%">U15<span>Android</span></a>
+    <a class="hot p" href="#new-shell" style="left:84%;top:62%">U16<span>Shell mới</span></a>
+    <a class="hot p" href="#mosh" style="left:84%;top:84%">U17<span>Mạng yếu</span></a>
   </div>
 </section>
 
@@ -62,18 +64,18 @@
 
 <section id="thu-tu" aria-labelledby="h-tt">
   <h2 id="h-tt">Thứ tự làm</h2>
-  <p class="sub">4 việc cỡ S làm trước: U6 + U8 desktop gộp 1 bản (cùng RailRowItem), U7 + U9 điện thoại gộp 1 bản. U10 cỡ M làm sau, cần đo terminal resize khi drawer đẩy pane.</p>
+  <p class="sub">3 việc desktop cỡ S làm trước: U11 + U12 gộp 1 bản (cùng WorkspaceView), U13 riêng. U14 và U15 cỡ M dùng chung đường gửi phím của U4. U16 cỡ S làm được ngay sau U14 (cùng ws.open). U17 cỡ L tách 2 bước: nối lại + chip độ trễ + ô Chưa gửi trước, gõ đoán sau.</p>
   <div class="card tw"><table><thead><tr><th>#</th><th>Đề xuất</th><th>Nơi</th><th>Công sức</th><th>Rủi ro</th></tr></thead><tbody id="order"></tbody></table></div>
 </section>
 
 <section id="da-lam" aria-labelledby="h-dl" hidden>
   <h2 id="h-dl">Đã làm</h2>
-  <p class="sub">Đợt 1 đã code xong. Giữ lại wireframe để so với bản thật.</p>
-  <details class="done-box" id="done-det"><summary>Đợt 1 đã làm <span class="pill p-done" id="done-n">5</span></summary><div class="props" id="done"></div></details>
+  <p class="sub">Đợt 1 và đợt 2 đã code xong. Giữ lại wireframe để so với bản thật.</p>
+  <div class="done-rounds" id="done-rounds"></div>
 </section>
 </main>
 
-<footer class="wrap"><p>Nguồn: ảnh E2E 20/11 (<code>ccm-qa-fast/</code>, <code>apps/pwa/e2e/.out/</code>), <code>docs/qa/v103/</code>, <code>docs/qa/v104/</code>, <code>docs/qa/v98/WP-68b4/</code>, code <code>apps/web/src/components/next/</code>, <code>apps/pwa/src/</code>. Dữ liệu ở <a href="/data/ui.json"><code>/data/ui.json</code></a>.</p><p class="copy">© <span id="yr">2026</span> Jin Vũ. All rights reserved.</p></footer>
+<footer class="wrap"><p>Nguồn: ảnh E2E 20/11 (<code>ccm-qa-fast/</code>, <code>apps/pwa/e2e/.out/</code>), <code>docs/qa/v103/</code>, <code>docs/qa/v104/</code>, <code>docs/qa/v98/WP-68b4/</code>, <code>apps/mobile/shots/</code>, code <code>apps/web/src/</code>, <code>apps/pwa/src/</code>, <code>apps/mobile/lib/</code>. Dữ liệu ở <a href="/data/ui.json"><code>/data/ui.json</code></a>.</p><p class="copy">© <span id="yr">2026</span> Jin Vũ. All rights reserved.</p></footer>
 
 <script src="/site.js"></script>
 <script src="/ui/ui.js"></script>

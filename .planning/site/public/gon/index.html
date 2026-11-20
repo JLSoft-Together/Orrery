@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Orrery Gọn UI</title>
+<meta name="description" content="Kiểm kê UI next trên desktop: phần tử nào giữ, ẩn, gộp hay bỏ. Bấm pill để chọn, rồi Copy kết quả gửi lại.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="gon.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <div class="ttl">
+      <h1>Gọn UI desktop</h1>
+      <p class="sub">Bấm pill để đổi. Mặc định là đề xuất của con.</p>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn" id="reset">Đặt lại</button>
+      <button type="button" class="btn pri" id="copy">Copy kết quả</button>
+    </div>
+  </div>
+  <div class="wrap tally" id="tally" aria-live="polite"></div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="gon.js"></script>
+</body>
+</html>

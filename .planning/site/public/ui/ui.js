@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const WF = {};
-  const AREA = { desktop: ['where-d', 'Desktop'], phone: ['where-p', 'Điện thoại'] };
+  const AREA = { desktop: ['where-d', 'Desktop'], phone: ['where-p', 'Điện thoại'], android: ['where-a', 'App Android'] };
   const X = '<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3L3 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const FOCUS = '<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 5V2h3M10 5V2H7M2 7v3h3M10 7v3H7" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 
@@ -513,6 +513,371 @@
     ]);
   };
 
+  const TABS0 = [
+    { p: 'alpha', n: 'Shell', k: 'idle' },
+    { p: 'alpha', n: 'Shell 2', k: 'wait' },
+    { p: 'beta', n: 'Shell', k: 'wait' }
+  ];
+  const KW = { idle: 'Rảnh', wait: 'Chờ bạn', run: 'Đang chạy' };
+  WF.tabStrip = host => {
+    compare(host, [
+      stage => {
+        const win = h('div', 'wf-win');
+        win.innerHTML = `<div class="wf-tabs"><span class="wf-tab">${ic(FILE)}alpha <span class="w">1</span></span><span class="wf-tab on"><span class="wf-mono">A</span>alpha <span class="x">${X}</span></span><span class="wf-tab"><span class="wf-mono">A</span>alpha <span class="st wait">waiting</span></span><span class="wf-tab">+</span></div><div class="wf-tbody"><b>Shell</b><span>PS C:\\...\\alpha&gt;</span></div>`;
+        stage.appendChild(win);
+        hint(stage, 'Ảnh rail-03-needs: 3 tab đều ghi "alpha", không biết tab nào là Shell 2 đang chờ.');
+      },
+      stage => {
+        const win = h('div', 'wf-win');
+        let tabs = TABS0.map(x => ({ ...x })), on = 0;
+        const draw = () => {
+          const clus = [];
+          tabs.forEach((t, i) => { const last = clus[clus.length - 1]; if (last && last.p === t.p) last.items.push(i); else clus.push({ p: t.p, items: [i] }); });
+          win.innerHTML = `<div class="wf-tabs">${clus.map(c => `<span class="wf-tclu"><span class="lbl"><span class="wf-mono${c.p === 'beta' ? ' b' : ''}">${c.p[0].toUpperCase()}</span>${c.p}</span>${c.items.map(i => { const t = tabs[i]; return `<button type="button" class="wf-tab${i === on ? ' on' : ''}" data-i="${i}" title="${t.p} / ${t.n}"><span class="wf-glyph ${t.k}"></span>${t.n}${i !== on && t.k === 'wait' ? ` <span class="w">${KW.wait}</span>` : ''}${i === on ? ` <span class="x">${X}</span>` : ''}</button>`; }).join('')}</span>`).join('')}<span class="wf-tab">+</span></div><div class="wf-tbody"><b>${tabs[on].n}</b><span class="st ${tabs[on].k}">${KW[tabs[on].k]}</span><span>${tabs[on].p} / ${tabs[on].n}</span></div>`;
+          win.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { on = +b.dataset.i; draw(); }));
+        };
+        draw();
+        const ctl = h('div', 'wf-ctl');
+        const add = h('button', 'wf-btn', 'Thêm tab alpha');
+        add.type = 'button';
+        add.addEventListener('click', () => {
+          const at = tabs.map(t => t.p).lastIndexOf('alpha') + 1;
+          const c = tabs.filter(t => t.n.startsWith('Claude')).length + 1;
+          tabs.splice(at, 0, { p: 'alpha', n: `Claude ${c}`, k: 'run' });
+          if (on >= at) on++;
+          draw();
+        });
+        const rs = h('button', 'wf-btn', 'Đặt lại');
+        rs.type = 'button';
+        rs.addEventListener('click', () => { tabs = TABS0.map(x => ({ ...x })); on = 0; draw(); });
+        ctl.append(add, rs);
+        stage.append(win, ctl);
+        hint(stage, 'Bấm tab để đổi. Tab cùng project gom dưới 1 chip, tên tab là tên pane; tab không active mà đang chờ thì ghi Chờ bạn. Hover tab thấy đủ "alpha / Shell 2".');
+      }
+    ]);
+  };
+
+  const AGENTS = [
+    { k: 'c', n: 'Claude Code', g: '✳', cls: 'ag-c', sub: 'phím 1' },
+    { k: 'x', n: 'Codex', g: '⬡', cls: 'ag-x', sub: 'phím 2' },
+    { k: 't', n: 'Shell', g: '&gt;_', cls: 'ag-t', sub: 'phím 3' }
+  ];
+  const RECENT = [
+    { n: 'claude-code-monitor', m: 'Claude, 2 giờ trước' },
+    { n: 'jin-tools', m: 'Codex, hôm qua' },
+    { n: 'ios-launcher', m: 'Shell, 3 ngày trước' }
+  ];
+  WF.launcher = host => {
+    compare(host, [
+      stage => {
+        const win = h('div', 'wf-win');
+        win.innerHTML = `<div class="wf-lwrap"><div class="wf-lrail">No sessions yet. Open one from Ctrl+K.</div><div class="wf-lmain"><b class="wf-lh">No terminals yet</b>
+          <div class="wf-agents">${[['Claude Code', 'Claude Code', 'ag-c', '✳'], ['Codex', 'Codex CLI', 'ag-x', '⬡'], ['Shell', 'Plain terminal', 'ag-t', '&gt;_']].map(([n, s, c, g], i) => `<span class="wf-agent${i ? '' : ' on'}"><span class="${c}">${g}</span>${n}<small>${s}</small></span>`).join('')}</div>
+          <div class="wf-lsec">Open sessions</div>${['jin-tools', 'claude-code-monitor', 'ios-launcher', 'meme-voice'].map(n => `<span class="wf-lrow"><span>${n}</span><small>.../${n}</small></span>`).join('')}
+          <span class="wf-lrow"><span>Choose folder...</span></span></div></div>`;
+        stage.appendChild(win);
+        hint(stage, 'Ảnh 01-more-open: thẻ ghi "Claude Code / Claude Code", "Open sessions" là thư mục có session chạy ngoài Orrery, rail và giữa màn nói 2 cách khác nhau.');
+      },
+      stage => {
+        const win = h('div', 'wf-win');
+        let ag = 0, pr = 0, opened = false;
+        const draw = () => {
+          const a = AGENTS[ag], p = pr < RECENT.length ? RECENT[pr].n : 'meme-voice';
+          win.innerHTML = `<div class="wf-lwrap" tabindex="0" aria-label="Chọn agent bằng phím 1, 2, 3"><div class="wf-lrail">Chưa có pane, chọn agent ở giữa màn <span aria-hidden="true">→</span></div><div class="wf-lmain"><b class="wf-lh">Mở pane đầu tiên</b>
+            <div class="wf-agents" role="radiogroup" aria-label="Agent">${AGENTS.map((x, i) => `<button type="button" role="radio" aria-checked="${i === ag}" class="wf-agent${i === ag ? ' on' : ''}" data-a="${i}"><span class="${x.cls}">${x.g}</span>${x.n}<small>${x.sub}</small></button>`).join('')}</div>
+            <div class="wf-lsec">Project gần đây</div>${RECENT.map((x, i) => `<button type="button" class="wf-lrow${i === pr ? ' on' : ''}" data-p="${i}"><span>${x.n}</span><small>${x.m}</small></button>`).join('')}
+            <div class="wf-lsec">Đang chạy ngoài Orrery</div><button type="button" class="wf-lrow${pr === 3 ? ' on' : ''}" data-p="3"><span>meme-voice</span><small><span class="ag-c">Claude</span>, 1 session</small></button>
+            <button type="button" class="wf-lgo">${opened ? `Đã mở pane ${a.n} ở ${p}` : `Mở ${a.n} ở ${p}`}</button>${opened ? '<p class="wf-wd">Chỉ mở pane, không gửi prompt.</p>' : ''}</div></div>`;
+          win.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => { ag = +b.dataset.a; opened = false; draw(); }));
+          win.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { pr = +b.dataset.p; opened = false; draw(); }));
+          win.querySelector('.wf-lgo').addEventListener('click', () => { opened = true; draw(); });
+          win.querySelector('.wf-lwrap').addEventListener('keydown', e => { if (['1', '2', '3'].includes(e.key)) { ag = +e.key - 1; opened = false; draw(); win.querySelector('.wf-lwrap').focus(); } });
+        };
+        draw();
+        stage.appendChild(win);
+        hint(stage, 'Bấm thẻ agent (hoặc phím 1, 2, 3 khi focus khung) và 1 project: nút chính ghi đúng việc sẽ làm. Mở pane không gửi prompt.');
+      }
+    ]);
+  };
+
+  const HDATA = {
+    shot: [{ t: 'v73-limit', g: 'idle', seg: [['idle', 100, '00:10 đến 08:30']] }],
+    day: [
+      { t: 'api: migrate schema', g: 'run', seg: [['work', 70, '08:00 đến 09:10'], ['wait', 12, '09:10 đến 09:22'], ['work', 60, '09:22 đến 10:22'], ['idle', 40, '10:22 đến 11:02']] },
+      { t: 'web codex', g: 'wait', seg: [['idle', 30, '08:00 đến 08:30'], ['work', 45, '08:30 đến 09:15'], ['wait', 25, '09:15 đến 09:40']] },
+      { t: 'Shell build', g: 'idle', seg: [['idle', 120, '08:00 đến 10:00']] },
+      { t: 'docs', g: 'idle', seg: [['idle', 90, '08:00 đến 09:30']] }
+    ]
+  };
+  const HW = { work: 'làm', wait: 'chờ bạn', idle: 'rảnh' };
+  const mins = m => m >= 60 ? `${Math.floor(m / 60)} giờ${m % 60 ? ` ${m % 60} phút` : ''}` : `${m} phút`;
+  const tot = l => { const o = { work: 0, wait: 0, idle: 0 }; l.seg.forEach(([k, m]) => { o[k] += m; }); return o; };
+  WF.historyLane = host => {
+    let set = 'shot';
+    const pick = (stage, draw) => {
+      const ctl = h('div', 'wf-ctl');
+      [['shot', 'Như ảnh v73'], ['day', 'Ngày bận, 4 session']].forEach(([k, n]) => {
+        const b = h('button', 'wf-btn' + (k === set ? ' on' : ''), n);
+        b.type = 'button';
+        b.addEventListener('click', () => { set = k; [...ctl.children].forEach(x => x.classList.toggle('on', x === b)); draw(); });
+        ctl.appendChild(b);
+      });
+      stage.appendChild(ctl);
+    };
+    compare(host, [
+      stage => {
+        const win = h('div', 'wf-win');
+        const draw = () => {
+          win.innerHTML = `<div class="wf-hist"><div class="wf-hh"><b>Today</b><span>idle 3s</span><span class="sp"></span><span class="wf-hs">Search</span></div>${HDATA[set].map(l => { const o = tot(l), all = o.work + o.wait + o.idle; return `<div class="wf-hl"><span class="nm">${l.t}</span><span class="wf-hbar flat">${l.seg.map(([k, m]) => `<i class="${k}" style="width:${m / all * 100}%"></i>`).join('')}</span><span class="pc">${Math.round(o.work / all * 100)}%</span></div>`; }).join('')}</div>`;
+        };
+        draw();
+        stage.appendChild(win);
+        pick(stage, draw);
+        hint(stage, 'Thanh chỉ phân biệt bằng màu, chú thích nằm trong tooltip. Session chỉ rảnh là 1 thanh xám kín + "0%".');
+      },
+      stage => {
+        const win = h('div', 'wf-win');
+        let fold = true;
+        const out = h('p', 'wf-wd', 'Hover hoặc Tab vào 1 đoạn để xem giờ.');
+        const lane = l => {
+          const o = tot(l), all = o.work + o.wait + o.idle;
+          const txt = ['work', 'wait', 'idle'].filter(k => o[k]).map((k, i) => `${i ? HW[k] : HW[k][0].toUpperCase() + HW[k].slice(1)} ${mins(o[k])}`).join(', ');
+          return `<div class="wf-hl"><span class="nm"><span class="wf-glyph ${l.g}"></span>${l.t}</span><span class="wf-hbar">${l.seg.map(([k, m, r]) => `<i class="${k}" style="width:${m / all * 100}%" tabindex="0" data-r="${HW[k]}: ${r}" aria-label="${HW[k]} ${r}"></i>`).join('')}</span><span class="pc">${o.work ? `làm ${Math.round(o.work / all * 100)}%` : 'chỉ rảnh'}</span><span class="txt">${txt}</span></div>`;
+        };
+        const draw = () => {
+          const L = HDATA[set];
+          const busy = L.filter(l => l.seg.some(s => s[0] !== 'idle'));
+          const idle = L.filter(l => !l.seg.some(s => s[0] !== 'idle'));
+          win.innerHTML = `<div class="wf-hist"><div class="wf-hh"><b>Hôm nay</b></div><div class="wf-hleg"><span><i class="work"></i>Làm</span><span><i class="wait"></i>Chờ bạn</span><span><i class="idle"></i>Rảnh</span></div>
+            ${busy.map(lane).join('')}
+            ${idle.length ? `<button type="button" class="wf-tools" aria-expanded="${!fold}"><span class="cv${fold ? '' : ' on'}">${CHEV}</span>${idle.length} session chỉ rảnh</button>${fold ? '' : idle.map(lane).join('')}` : ''}</div>`;
+          const t = win.querySelector('.wf-tools');
+          if (t) t.addEventListener('click', () => { fold = !fold; draw(); });
+          win.querySelectorAll('[data-r]').forEach(s => { const f = () => { out.textContent = s.dataset.r; }; s.addEventListener('mouseenter', f); s.addEventListener('focus', f); });
+        };
+        draw();
+        stage.appendChild(win);
+        pick(stage, draw);
+        stage.appendChild(out);
+        hint(stage, 'Đổi dữ liệu mẫu. Mỗi dòng có chữ dưới thanh, đoạn có hoa văn riêng, chú thích luôn hiện. Session chỉ rảnh gom 1 dòng thu gọn.');
+      }
+    ]);
+  };
+
+  const SESS = [
+    { p: 'docs', a: 'Claude', b: 'docs', k: 'wait', w: 'Chờ bạn', tool: 'Bash npm test', q: 'Chạy lệnh npm test?', t: '4 phút' },
+    { p: 'web', a: 'Codex', b: 'main', k: 'run', w: 'Đang chạy', tool: 'Edit src/app.ts', t: '38 giây' },
+    { p: 'api', a: 'Claude', b: 'feat/api', k: 'idle', w: 'Rảnh', tool: 'Xong lượt', t: '2 giờ' },
+    { p: 'infra', a: 'Terminal', b: 'infra', k: 'idle', w: 'Rảnh', tool: '', t: 'từ 03/01' }
+  ];
+  WF.sessionDetail = host => {
+    compare(host, [
+      stage => {
+        const ip = h('div', 'wf-ipad');
+        ip.innerHTML = `<div class="wf-irail">${SESS.map(s => `<div class="wf-ihd"><span class="wf-mono">${s.p[0].toUpperCase()}</span>${s.p}<span class="n">1</span></div><div class="wf-irow2${s.p === 'docs' ? ' on' : ''}"><span class="wf-glyph ${s.k}"></span><span><b>${s.p}</b><small>${s.a}, ${s.w}</small></span></div>`).join('')}</div>
+          <div class="wf-idet"><div class="wf-ipg"><b>docs</b><small>docs, Orrery Desk</small></div><div class="wf-ihero"><b>docs</b><span class="st wait">Chờ bạn</span><small><span class="wf-mono">D</span> docs, nhánh docs</small></div>
+          <div class="wf-iask"><b>Chờ bạn: npm test</b><span class="wf-lgo">Trả lời trong terminal</span></div><div class="wf-lsec">Hoạt động gần đây</div><p class="wf-wd">Chưa có hoạt động.</p><span class="wf-lgo">Mở terminal</span></div>`;
+        stage.appendChild(ip);
+        hint(stage, 'Ảnh detail-ipad và monitor-b-ipad: rail lặp tên project, "docs" 4 lần ở cột phải, 2 nút to cùng mở terminal.');
+      },
+      stage => {
+        const ip = h('div', 'wf-ipad');
+        let sel = 0, ans = null, timer = null;
+        const draw = () => {
+          const s = SESS[sel];
+          const k = sel === 0 && ans && ans !== 'undo' ? 'run' : s.k;
+          const w = k === 'run' && s.k === 'wait' ? 'Đang chạy' : s.w;
+          ip.innerHTML = `<div class="wf-irail">${SESS.map((x, i) => `<button type="button" class="wf-irow2${i === sel ? ' on' : ''}" data-s="${i}"><span class="wf-glyph ${i === 0 && k === 'run' && sel === 0 ? 'run' : x.k}"></span><span><b>${x.p}</b><small>${x.a}, ${i === 0 && ans && ans !== 'undo' ? 'Đang chạy' : x.w}, ${x.t}</small></span></button>`).join('')}</div>
+            <div class="wf-idet"><div class="wf-ipg"><b>${s.p}</b><small>${s.a}, nhánh ${s.b}, Orrery Desk</small></div>
+            <div class="wf-ihero"><span class="st ${k}">${w}</span>${s.tool ? `<code>▸ ${s.tool}</code>` : ''}</div>
+            ${k === 'wait' ? `<div class="wf-iask"><b>${s.q}</b><div class="wf-ans"><button type="button" class="pri" data-a="Có">Có</button><button type="button" data-a="Không">Không</button></div></div>` : ''}
+            <div class="wf-lsec">Hoạt động</div><p class="wf-wd">${s.tool ? `Tool cuối: ${s.tool}, ${s.t} trước` : 'Chưa có tool nào từ lúc mở app.'}</p>
+            <button type="button" class="wf-lsub">Mở terminal</button></div>`;
+          ip.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => { sel = +b.dataset.s; draw(); }));
+          ip.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => {
+            ans = b.dataset.a; draw();
+            const t = h('div', 'wf-ptoast', `<span>Đã gửi "${ans}" tới docs</span><button type="button">Hoàn tác</button><i class="bar"></i>`);
+            t.querySelector('button').addEventListener('click', () => { clearTimeout(timer); ans = 'undo'; draw(); });
+            ip.appendChild(t);
+            clearTimeout(timer);
+            timer = setTimeout(() => { const x = ip.querySelector('.wf-ptoast'); if (x) x.remove(); }, 3000);
+          }));
+        };
+        draw();
+        stage.appendChild(ip);
+        hint(stage, 'Bấm dòng ở rail để đổi chi tiết. Session Chờ bạn có nút Có / Không, toast Hoàn tác 3 giây; phím chỉ gửi sau khi chủ nhân bấm. Khung hẹp thì 2 cột xếp dọc như điện thoại.');
+      }
+    ]);
+  };
+
+  const APANES = [
+    { a: 'Codex', c: 'x', n: 'Fix PTY resize', k: 'wait', w: 'Chờ bạn', q: 'Chạy flutter test --concurrency=4?', prev: ['Read test/pty_test.dart', 'Edit lib/pty.dart  +8 -2', 'Bash: flutter test --concurrency=4'] },
+    { a: 'Claude', c: 'c', n: 'Review relay', k: 'idle', w: 'Rảnh', prev: ['Xong lượt', 'Đã sửa 3 file', '&nbsp;'] }
+  ];
+  const ANAV = '<div class="wf-anav"><b>Workspace</b><span>Quỹ đạo</span><span>Inbox</span><span>Cài đặt</span></div>';
+  WF.androidCard = host => {
+    compare(host, [
+      stage => {
+        const p = h('div', 'wf-phone');
+        p.innerHTML = `<div class="wf-ph-h">Workspace</div><div class="wf-atabs"><b>claude-code-monitor</b><span>Dumpling-5</span><span>orrery-relay</span></div>
+          <div class="wf-achips"><span class="wf-achip"><i class="wf-adot c"></i>Claude</span><span class="wf-achip bad"><i class="wf-adot x"></i>Codex</span></div>
+          <div class="wf-pcard cx"><div class="nm"><span>Fix PTY resize</span><span class="st wait">Chờ bạn</span></div><div class="wf-prev" style="min-height:70px"><div>Bash: flutter test --concurrency=4</div></div><span class="wf-abig">Mở toàn màn hình</span></div>
+          <p class="wf-wd" style="text-align:center">Vuốt ngang để đổi pane, 2 pane trong tab</p>${ANAV}`;
+        stage.appendChild(p);
+        hint(stage, 'Ảnh 03c-workspace-vi: thẻ Chờ bạn chỉ có Mở toàn màn hình. Chip Codex đang chọn tô cam như Claude, chip không ghi trạng thái.');
+      },
+      stage => {
+        const p = h('div', 'wf-phone');
+        let on = 0, ans = null, timer = null;
+        const draw = () => {
+          const x = APANES[on];
+          const k = on === 0 && ans && ans !== 'undo' ? 'run' : x.k;
+          const w = k === 'run' ? 'Đang chạy' : x.w;
+          p.innerHTML = `<div class="wf-ph-h">Workspace</div><div class="wf-atabs"><b>claude-code-monitor</b><span>Dumpling-5</span><span>orrery-relay</span></div>
+            <div class="wf-achips" role="tablist">${APANES.map((y, i) => { const kk = i === 0 && ans && ans !== 'undo' ? 'run' : y.k; return `<button type="button" role="tab" aria-selected="${i === on}" class="wf-achip ${y.c}${i === on ? ' on' : ''}" data-i="${i}"><span class="wf-glyph ${kk}"></span>${y.a}, ${kk === 'run' ? 'Đang chạy' : y.w}</button>`; }).join('')}</div>
+            <div class="wf-pcard${x.c === 'x' ? ' cx' : ''} wf-aswipe"><div class="nm"><span>${x.n}</span><span class="st ${k}">${w}</span></div><div class="wf-prev">${x.prev.map(l => `<div>${l}</div>`).join('')}</div>
+            ${k === 'wait' ? `<div class="wf-q2">${x.q}</div><div class="wf-ans"><button type="button" class="pri" data-a="Có">Có</button><button type="button" data-a="Không">Không</button><button type="button" data-open>Mở pane</button></div>` : '<button type="button" class="wf-lsub" data-open>Mở toàn màn hình</button>'}</div>
+            <div class="wf-dots">${APANES.map((_, i) => `<i class="${i === on ? 'on' : ''}"></i>`).join('')}</div>${ANAV}`;
+          p.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { on = +b.dataset.i; draw(); }));
+          p.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => { b.textContent = 'Đang mở...'; }));
+          p.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => {
+            ans = b.dataset.a; draw();
+            const t = h('div', 'wf-ptoast', `<span>Đã gửi "${ans}" tới Codex</span><button type="button">Hoàn tác</button><i class="bar"></i>`);
+            t.querySelector('button').addEventListener('click', () => { clearTimeout(timer); ans = 'undo'; draw(); });
+            p.appendChild(t);
+            clearTimeout(timer);
+            timer = setTimeout(() => { const y = p.querySelector('.wf-ptoast'); if (y) y.remove(); }, 3000);
+          }));
+          const card = p.querySelector('.wf-aswipe');
+          let x0 = null;
+          card.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; x0 = e.clientX; });
+          card.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) { on = (on + (dx < 0 ? 1 : APANES.length - 1)) % APANES.length; draw(); } });
+        };
+        draw();
+        stage.appendChild(p);
+        hint(stage, 'Chạm chip để đổi pane (vuốt thẻ vẫn được). Pane Chờ bạn đứng đầu, viền theo màu agent. Bấm Có / Không: toast Hoàn tác 3 giây, phím chỉ gửi sau khi chủ nhân bấm.');
+      }
+    ]);
+  };
+
+  const WHERE = [
+    { k: 'last', n: 'claude-code-monitor', path: 'F:\\work\\web\\claude-code-monitor', m: 'project vừa dùng' },
+    { k: 'home', n: 'Thư mục home', path: 'C:\\Users\\dauph', m: 'home' },
+    { k: 'other', n: 'orrery-relay', path: 'F:\\work\\web\\orrery-relay', m: 'project khác' }
+  ];
+  const SHELLIC = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4l3 3-3 3M7 11h3M12.5 2v4M10.5 4h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  WF.newShell = host => {
+    compare(host, [
+      stage => {
+        const p = h('div', 'wf-phone');
+        let step = 0;
+        const draw = () => {
+          p.innerHTML = `<div class="wf-ph-h">Workspace <span class="pill p-c6">Relay 180 ms</span></div><div class="wf-pgrid"><div class="wf-pg">claude-code-monitor</div><div class="wf-pcard cx"><div class="nm"><span>Codex</span><span class="st run">Đang chạy</span></div><div class="wf-prev"><div>&gt; Edit src/app.ts</div></div></div></div>
+            ${step === 0 ? '<button type="button" class="wf-fab" data-n>+ Pane mới</button>' : ''}
+            ${step === 1 ? `<div class="wf-scrim"></div><div class="wf-sheet" style="top:auto;height:190px"><i class="grab"></i><b class="ttl">Pane mới</b>${['Claude', 'Codex', 'Shell'].map(x => `<button type="button" class="wf-lrow" data-p="${x}"><span>${x}</span></button>`).join('')}</div>` : ''}
+            ${step === 2 ? '<div class="wf-ptoast"><span>Đã mở pane Shell. Chạm thẻ để vào terminal.</span></div>' : ''}`;
+          const n = p.querySelector('[data-n]');
+          if (n) n.addEventListener('click', () => { step = 1; draw(); });
+          p.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { step = 2; draw(); setTimeout(() => { step = 0; draw(); }, 2500); }));
+        };
+        draw();
+        stage.appendChild(p);
+        hint(stage, 'Bấm Pane mới rồi Shell: pane mở ở đúng cwd của tab đang xem, xong vẫn đứng ở lưới thẻ. Không có cách mở ở home, Home và trang terminal không có nút.');
+      },
+      stage => {
+        const p = h('div', 'wf-phone');
+        let w = 0, remote = true, term = false, menu = false;
+        const draw = () => {
+          const x = WHERE[w];
+          if (term) {
+            p.innerHTML = `<div class="wf-ph-h"><span>Shell mới</span><span class="wf-pill2">${x.n}</span></div><div class="wf-term3"><div>PS ${x.path}&gt; <span class="cur"></span></div></div><div class="wf-keys"><div class="wf-keyrow">${KEYS.slice(0, 6).map(k => `<span>${k}</span>`).join('')}</div></div><button type="button" class="wf-lsub" data-back>Về Workspace</button>`;
+            p.querySelector('[data-back]').addEventListener('click', () => { term = false; draw(); });
+            return;
+          }
+          p.innerHTML = `<div class="wf-ph-h">Workspace ${remote ? `<button type="button" class="wf-shbtn" data-go aria-label="Shell mới ở ${x.n}">${SHELLIC}Shell mới</button>` : '<span class="pill p-off">Chỉ xem</span>'}</div>
+            ${remote ? `<button type="button" class="wf-where" data-w aria-expanded="${menu}">ở <b>${x.n}</b> ${CHEV}</button>${menu ? `<div class="wf-wmenu">${WHERE.map((y, i) => `<button type="button" class="wf-lrow${i === w ? ' on' : ''}" data-i="${i}"><span>${y.n}</span><small>${y.m}</small></button>`).join('')}</div>` : ''}` : ''}
+            <div class="wf-pgrid"><div class="wf-pg">claude-code-monitor</div><div class="wf-pcard cx"><div class="nm"><span>Codex</span><span class="st run">Đang chạy</span></div><div class="wf-prev"><div>&gt; Edit src/app.ts</div></div></div></div>`;
+          const go = p.querySelector('[data-go]');
+          if (go) go.addEventListener('click', () => { term = true; menu = false; draw(); });
+          const wb = p.querySelector('[data-w]');
+          if (wb) wb.addEventListener('click', () => { menu = !menu; draw(); });
+          p.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { w = +b.dataset.i; menu = false; draw(); }));
+        };
+        draw();
+        const ctl = h('div', 'wf-ctl');
+        const r = h('button', 'wf-btn on', 'Điều khiển từ xa: bật');
+        r.type = 'button';
+        r.addEventListener('click', () => { remote = !remote; term = false; menu = false; r.classList.toggle('on', remote); r.textContent = `Điều khiển từ xa: ${remote ? 'bật' : 'tắt'}`; draw(); });
+        ctl.appendChild(r);
+        stage.append(p, ctl);
+        hint(stage, 'Bấm Shell mới: mở shell ở nơi đang chọn và vào thẳng terminal. Bấm "ở ..." để đổi sang home hoặc project khác. Tắt điều khiển từ xa: nút ẩn, chỉ còn "Chỉ xem". Chỉ mở pane, không gửi prompt.');
+      }
+    ]);
+  };
+
+  const RTT = ms => ms <= 60 ? ['LAN', 'Nhanh', 'run'] : ms <= 400 ? ['Relay', 'Ổn', 'idle'] : ['Relay', 'Chậm', 'wait'];
+  WF.moshTerm = host => {
+    let lat = 600;
+    const view = (stage, smart) => {
+      const p = h('div', 'wf-phone');
+      let ok = '', pend = [], off = false, dropped = 0, draft = '', tui = false, tries = 0, timers = [];
+      p.innerHTML = `<div class="wf-ph-h"><span>Shell, api</span><span class="wf-lat"></span></div><div class="wf-mbar" hidden></div><div class="wf-term3 wf-mt"></div><div class="wf-mnote"></div><label class="wf-minput"><span>Gõ thử</span><input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Gõ vào terminal"></label>`;
+      const scr = p.querySelector('.wf-mt'), bar = p.querySelector('.wf-mbar'), latEl = p.querySelector('.wf-lat'), note = p.querySelector('.wf-mnote'), inp = p.querySelector('input');
+      const draw = () => {
+        const [route, word, k] = RTT(lat);
+        latEl.innerHTML = smart ? `<span class="st ${off ? 'wait' : k}">${off ? 'Đang nối lại' : `${route} ${lat} ms, ${word.toLowerCase()}`}</span>` : '';
+        const guess = smart && !tui && !off ? pend.map(c => c.c).join('') : '';
+        scr.classList.toggle('dim', off && smart);
+        scr.innerHTML = tui ? `<div class="tui">htop  CPU 12%  MEM 41%</div><div class="tui">PID  USER  CMD</div><div>$ ${esc(ok)}<u>${esc(guess)}</u><span class="cur"></span></div>` : `<div>PS F:\\work\\api&gt; git status</div><div>On branch main</div><div>PS F:\\work\\api&gt; ${esc(ok)}<u>${esc(guess)}</u><span class="cur"></span></div>`;
+        if (!smart && off) scr.innerHTML = '';
+        bar.hidden = !off;
+        bar.textContent = smart ? `Đang nối lại, lần ${tries}. Màn cũ giữ nguyên.` : 'Mất kết nối, đang nối lại...';
+        bar.className = 'wf-mbar' + (smart ? ' sm' : ' big');
+        note.innerHTML = smart ? (draft ? `<span class="wf-draft">Chưa gửi: <code>${esc(draft)}</code> <button type="button" data-send ${off ? 'disabled' : ''}>Gửi</button><button type="button" data-clear>Bỏ</button></span>` : tui ? 'Alt screen (TUI): tắt đoán, chờ echo của desktop.' : `Gạch chân = đoán, chờ desktop xác nhận.`) : (dropped ? `${dropped} phím đã bị bỏ lúc mất nối.` : '');
+        const s = note.querySelector('[data-send]');
+        if (s) s.addEventListener('click', () => { [...draft].forEach(type); draft = ''; draw(); });
+        const c = note.querySelector('[data-clear]');
+        if (c) c.addEventListener('click', () => { draft = ''; draw(); });
+      };
+      const type = ch => {
+        if (off) { if (smart) draft += ch; else dropped++; draw(); return; }
+        const item = { c: ch };
+        pend.push(item);
+        timers.push(setTimeout(() => { pend = pend.filter(x => x !== item); ok += ch; draw(); }, lat));
+        draw();
+      };
+      inp.addEventListener('input', () => { [...inp.value].forEach(type); inp.value = ''; });
+      const ctl = h('div', 'wf-ctl');
+      const net = h('button', 'wf-btn', 'Đổi Wi-Fi sang 4G');
+      net.type = 'button';
+      net.addEventListener('click', () => {
+        if (off) return;
+        off = true; tries = 1; draw();
+        setTimeout(() => { tries = 2; draw(); }, 1200);
+        setTimeout(() => { off = false; draw(); }, 2600);
+      });
+      ctl.appendChild(net);
+      if (smart) {
+        const tb = h('button', 'wf-btn', 'Mở TUI (alt screen)');
+        tb.type = 'button';
+        tb.addEventListener('click', () => { tui = !tui; tb.classList.toggle('on', tui); draw(); });
+        ctl.appendChild(tb);
+      }
+      const rs = h('button', 'wf-btn', 'Xoá dòng');
+      rs.type = 'button';
+      rs.addEventListener('click', () => { ok = ''; pend = []; dropped = 0; draft = ''; draw(); });
+      ctl.appendChild(rs);
+      const r = h('label', 'wf-range', `Độ trễ mạng <input type="range" min="20" max="1200" step="20" value="${lat}"> <b class="v">${lat} ms</b>`);
+      r.querySelector('input').addEventListener('input', e => { lat = +e.target.value; r.querySelector('.v').textContent = lat + ' ms'; draw(); });
+      stage.append(p, r, ctl);
+      draw();
+    };
+    compare(host, [
+      stage => { view(stage, false); hint(stage, 'Gõ thử: chữ chỉ hiện sau đúng độ trễ mạng. Đổi mạng: màn trống + dải lớn, phím gõ lúc đó bị bỏ. Không thấy độ trễ trong trang terminal.'); },
+      stage => { view(stage, true); hint(stage, 'Gõ thử: chữ hiện ngay, gạch chân tới khi echo về. Mở TUI thì tắt đoán. Đổi mạng: giữ màn cũ, dải nhỏ, phím gõ vào ô Chưa gửi, chủ nhân bấm Gửi mới đi. Đoán chỉ để vẽ, phím gửi như cũ.'); }
+    ]);
+  };
+
   let d = { items: [] };
   try { d = await (await fetch('/data/ui.json', { cache: 'no-cache' })).json(); } catch (e) {}
   if (d.lede) $('lede').textContent = d.lede;
@@ -521,19 +886,25 @@
   const all = d.items || [];
   const items = all.filter(p => p.status !== 'done');
   const done = all.filter(p => p.status === 'done');
-  const doneBox = $('done');
-  if (doneBox) {
-    $('done-n').textContent = done.length;
+  const rounds = $('done-rounds');
+  const doneBoxes = {};
+  if (rounds) {
     $('da-lam').hidden = !done.length;
-    $('done-det').addEventListener('toggle', () => dispatchEvent(new Event('resize')));
+    [...new Set(done.map(p => p.round || 1))].sort((a, b) => a - b).forEach(r => {
+      const n = done.filter(p => (p.round || 1) === r).length;
+      const det = h('details', 'done-box', `<summary>Đợt ${r} đã làm <span class="pill p-done">${n}</span></summary><div class="props"></div>`);
+      det.addEventListener('toggle', () => dispatchEvent(new Event('resize')));
+      rounds.appendChild(det);
+      doneBoxes[r] = det.querySelector('.props');
+    });
   }
   all.forEach(p => {
     const [ac, at] = AREA[p.area] || ['p-off', p.area];
     const isDone = p.status === 'done';
-    const box = isDone && doneBox ? doneBox : $('props');
+    const box = isDone && doneBoxes[p.round || 1] ? doneBoxes[p.round || 1] : $('props');
     const el = h('article', 'prop' + (isDone ? ' is-done' : ''));
     el.id = p.anchor;
-    el.innerHTML = `<div class="prop-h"><div class="prop-tags"><span class="id">${esc(p.id)}</span>${isDone ? `<span class="pill p-done"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.4 2.4L9.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Đã làm</span>` : ''}<span class="pill ${ac}">${esc(at)}</span><span class="pill p-off">Công sức ${esc(p.effort)}</span>${p.round ? `<span class="pill p-off">Đợt ${esc(p.round)}</span>` : ''}</div><h3>${esc(p.title)}</h3></div>
+    el.innerHTML = `<div class="prop-h"><div class="prop-tags"><span class="id">${esc(p.id)}</span>${isDone ? `<span class="pill p-done"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.4 2.4L9.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Đã làm</span>` : ''}<span class="pill ${ac}">${esc(at)}</span><span class="pill p-off">Công sức ${esc(p.effort)}</span>${p.round ? `<span class="pill p-off">Đợt ${esc(p.round)}</span>` : ''}${p.owner ? '<span class="pill p-c1">Chủ nhân thêm</span>' : ''}</div><h3>${esc(p.title)}</h3></div>
       <div class="prop-body"><div class="prop-text"><dl>
         <dt>Vấn đề hiện tại</dt><dd>${list(p.problem)}</dd>
         <dt>Đề xuất</dt><dd>${list(p.proposal)}</dd>

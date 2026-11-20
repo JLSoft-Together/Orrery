@@ -1134,7 +1134,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String wsPaneHint(int count) {
-    return 'Vuốt ngang để đổi pane · $count pane trong tab';
+    return 'Vuốt ngang để đổi pane, $count pane trong tab';
   }
 
   @override
@@ -1582,6 +1582,17 @@ class AppLocalizationsVi extends AppLocalizations {
   String chatQueued(int n) {
     return 'Chưa gửi: $n byte';
   }
+
+  @override
+  String termUnsent(int n) {
+    return 'Chưa gửi $n ký tự';
+  }
+
+  @override
+  String get termSendUnsent => 'Gửi';
+
+  @override
+  String get termDropUnsent => 'Bỏ';
 
   @override
   String chatSlow(int n) {

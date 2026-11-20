@@ -57,6 +57,11 @@ class PtyAttachment {
     }
   }
 
+  void _emitFlushed(int bytes) {
+    if (_events.isClosed) return;
+    _events.add({'t': 'pty.flushed', 'stream': stream, 'bytes': bytes});
+  }
+
   void _appendTail(Uint8List bytes) {
     if (bytes.length >= ptyTailBytes) {
       _tail = Uint8List.fromList(bytes.sublist(bytes.length - ptyTailBytes));
@@ -151,7 +156,6 @@ class PtyStreams {
       if (entry._suspended) continue;
       try {
         await _sendAttach(session, entry);
-        _flushQueued(session, entry);
       } on RemoteCommandException catch (error) {
         entry._events.add({
           't': 'pty.error',
@@ -162,19 +166,28 @@ class PtyStreams {
     }
   }
 
-  void _flushQueued(RemoteSession session, PtyAttachment entry) {
-    if (entry._queued.isEmpty || !connection.isReady) return;
+  bool sendQueued(PtyAttachment entry) {
+    final session = connection.session;
+    if (entry._queued.isEmpty ||
+        entry._suspended ||
+        session == null ||
+        !connection.isReady ||
+        !_entries.containsKey(entry.stream)) {
+      return false;
+    }
     final bytes = entry._queued.takeBytes();
     final claim = entry._queuedClaim;
     entry._queuedClaim = false;
-    session.sendPtyInput(entry.stream, bytes, claim: claim);
-    if (!entry._events.isClosed) {
-      entry._events.add({
-        't': 'pty.flushed',
-        'stream': entry.stream,
-        'bytes': bytes.length,
-      });
-    }
+    entry._emitFlushed(bytes.length);
+    input(entry, bytes, claim: claim);
+    return true;
+  }
+
+  void dropQueued(PtyAttachment entry) {
+    if (entry._queued.isEmpty) return;
+    entry._queued.clear();
+    entry._queuedClaim = false;
+    entry._emitFlushed(0);
   }
 
   Future<void> detach(PtyAttachment entry) async {

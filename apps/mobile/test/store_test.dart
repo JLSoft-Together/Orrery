@@ -89,6 +89,20 @@ void main() {
     expect(h.sent, isEmpty);
   });
 
+  test('events give a new snapshot map so select listeners see them', () {
+    final h = Harness()..snapshot();
+    final before = h.s.view.snapshot;
+    h.events(6, [
+      {
+        'type': 'terminal.updated',
+        'payload': {'id': 't1', 'statusSince': '2026-11-20T03:43:31.022Z'},
+      },
+    ]);
+    final after = h.s.view.snapshot;
+    expect(identical(before, after), isFalse);
+    expect((h.terminals().first as Map)['statusSince'], isNotNull);
+  });
+
   test('a seq gap requests exactly one resync and skips the events', () {
     final h = Harness()..snapshot();
     h.events(8, [

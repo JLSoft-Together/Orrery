@@ -96,6 +96,18 @@ class FakeMachineApi implements MachineApi {
     claims.add(claim);
   }
 
+  int queuedSends = 0;
+  int queuedDrops = 0;
+
+  @override
+  bool sendQueued(PtyHandle handle) {
+    queuedSends++;
+    return true;
+  }
+
+  @override
+  void dropQueued(PtyHandle handle) => queuedDrops++;
+
   @override
   Future<void> resize(PtyHandle handle, int cols, int rows) async =>
       resizes.add((cols, rows));

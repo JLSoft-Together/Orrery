@@ -267,7 +267,7 @@ void main() {
     });
   });
 
-  test('input while reconnecting is queued, then sent once after attach', () {
+  test('input while reconnecting is queued and waits for the owner to send', () {
     fakeAsync((async) {
       final bed = Bed(async);
       final a = bed.attach('s1');
@@ -283,13 +283,38 @@ void main() {
       expect(events.last['bytes'], 5);
       async.elapse(const Duration(seconds: 2));
       expect(bed.servers, hasLength(2));
+      expect(bed.servers.last.ptyInput, isEmpty);
+      expect(a.queued, 5);
+      expect(bed.pty.sendQueued(a), isTrue);
+      async.flushMicrotasks();
       expect(bed.servers.last.ptyInput.map(utf8.decode), ['ls -l']);
       expect(bed.servers.last.ptyClaims, [true]);
       expect(a.queued, 0);
       expect(events.last['t'], 'pty.flushed');
       expect(events.last['bytes'], 5);
+      expect(bed.pty.sendQueued(a), isFalse);
       async.elapse(const Duration(seconds: 2));
       expect(bed.servers.last.ptyInput, hasLength(1));
+    });
+  });
+
+  test('dropping the queue sends nothing and reports zero', () {
+    fakeAsync((async) {
+      final bed = Bed(async);
+      final a = bed.attach('s1');
+      final events = <Map<String, dynamic>>[];
+      a.events.listen(events.add);
+      bed.servers.last.serverClose(null);
+      async.flushMicrotasks();
+      bed.pty.input(a, Uint8List.fromList(utf8.encode('rm -rf build')));
+      expect(bed.pty.sendQueued(a), isFalse);
+      bed.pty.dropQueued(a);
+      async.flushMicrotasks();
+      expect(a.queued, 0);
+      expect(events.last, {'t': 'pty.flushed', 'stream': a.stream, 'bytes': 0});
+      async.elapse(const Duration(seconds: 2));
+      expect(bed.pty.sendQueued(a), isFalse);
+      expect(bed.servers.last.ptyInput, isEmpty);
     });
   });
 

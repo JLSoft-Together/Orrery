@@ -261,17 +261,37 @@ void main() {
     expect(find.byKey(const ValueKey('reconnect-text')), findsOneWidget);
   });
 
-  testWidgets('queued keys show a Not sent note until they are flushed', (
+  testWidgets('queued keys wait for Send or Drop from the owner', (
     tester,
   ) async {
     final h = await mount(tester);
     h.api.handles.single.ev.add({'t': 'pty.queued', 'stream': 1, 'bytes': 7});
     await tester.pump();
-    expect(find.text('Not sent yet: 7 bytes'), findsOneWidget);
-    h.api.handles.single.ev.add({'t': 'pty.flushed', 'stream': 1, 'bytes': 7});
+    expect(find.text('7 characters not sent'), findsOneWidget);
+    expect(h.api.queuedSends, 0);
+    await tester.tap(find.byKey(const ValueKey('term-unsent-send')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Not sent yet: 7 bytes'), findsNothing);
+    expect(h.api.queuedSends, 1);
+    await tester.tap(find.byKey(const ValueKey('term-unsent-drop')));
+    await tester.pump();
+    expect(h.api.queuedDrops, 1);
+    h.api.handles.single.ev.add({'t': 'pty.flushed', 'stream': 1, 'bytes': 0});
+    await tester.pump();
+    expect(find.byKey(const ValueKey('term-unsent')), findsNothing);
+  });
+
+  testWidgets('Send is off while offline, Drop still works', (tester) async {
+    final h = await mount(tester);
+    h.api.handles.single.ev.add({'t': 'pty.queued', 'stream': 1, 'bytes': 3});
+    h.linkNotifier.emit(linkOffline);
+    await tester.pump();
+    final send = tester.widget<TextButton>(
+      find.byKey(const ValueKey('term-unsent-send')),
+    );
+    expect(send.onPressed, isNull);
+    await tester.tap(find.byKey(const ValueKey('term-unsent-drop')));
+    await tester.pump();
+    expect(h.api.queuedDrops, 1);
   });
 
   testWidgets('going offline mid-typing keeps the field and the text', (

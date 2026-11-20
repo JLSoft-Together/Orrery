@@ -170,6 +170,65 @@ void main() {
     expect(h.api.commands.last.$2, {'paneKey': 'a', 'text': 'run the tests'});
   });
 
+  testWidgets('send scrolls a chat read higher up back to the newest', (
+    tester,
+  ) async {
+    final long = List.generate(80, (i) => 'line $i').join('\n\n');
+    final api = FakeMachineApi()
+      ..responder = (type, fields) {
+        if (type == 'chat.watch') {
+          return {
+            ...chatPage(),
+            'items': [
+              {'id': 'u1', 'k': 'me', 'seq': 1, 'rev': 0, 'text': 'hi'},
+              {'id': 'a1', 'k': 'ai', 'seq': 2, 'rev': 0, 'text': long},
+            ],
+          };
+        }
+        if (type == 'ws.send') return {'submitted': true};
+        return {};
+      };
+    final h = harness(api: api);
+    await h.pump(tester, const ChatScreen(machineId: 'm1', paneKey: 'a'));
+    await tester.pump();
+    final list = find.descendant(
+      of: find.byKey(const ValueKey('chat-list')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(list, const Offset(0, 600));
+    await tester.pumpAndSettle();
+    final position = tester.state<ScrollableState>(list).position;
+    expect(position.pixels, greaterThan(100));
+    await tester.enterText(find.byKey(const ValueKey('chat-input')), 'next');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-send')));
+    await tester.pumpAndSettle();
+    expect(position.pixels, 0);
+  });
+
+  testWidgets('a suggestion chip on an empty chat sends at once', (
+    tester,
+  ) async {
+    final api = FakeMachineApi()
+      ..responder = (type, fields) {
+        if (type == 'chat.watch') {
+          return {...chatPage(), 'items': <Object>[]};
+        }
+        if (type == 'ws.send') return {'submitted': true};
+        return {};
+      };
+    final h = harness(api: api);
+    await h.pump(tester, const ChatScreen(machineId: 'm1', paneKey: 'a'));
+    await tester.pump();
+    final chip = find.byKey(const ValueKey('chat-chip-Run the tests'));
+    expect(chip, findsOneWidget);
+    await tester.tap(chip);
+    await tester.pump();
+    expect(h.api.commands.last.$1, 'ws.send');
+    expect(h.api.commands.last.$2, {'paneKey': 'a', 'text': 'Run the tests'});
+    expect(find.byKey(const ValueKey('chat-chip-Run the tests')), findsNothing);
+  });
+
   testWidgets('working shows the live line and Stop sends esc', (tester) async {
     final h = harness(workspaceRaw: ws(rail: 'working'));
     await h.pump(tester, const ChatScreen(machineId: 'm1', paneKey: 'a'));

@@ -118,6 +118,8 @@ fn last_reply_is_the_latest_finished_turn() {
     assert!(at.is_some());
     assert_eq!(last_paragraph("Intro\n\n```\ncode\n\nmore\n```\n\nFinal line here.\n"), "Final line here.");
     assert_eq!(last_paragraph("Only\n\n```rust\nfn x() {}\n```"), "Only");
+    assert_eq!(last_paragraph("Done.\n\n## Kết quả: **ok** cho `redirect_uri`, xem [docs](http://x) và _note_ a * b"), "Kết quả: ok cho redirect_uri, xem docs và note a * b");
+    assert_eq!(last_paragraph("- **src/a.ts**: thêm\n- my_var giữ"), "src/a.ts: thêm\nmy_var giữ");
 }
 
 fn turns(n: usize) -> String {
@@ -252,4 +254,26 @@ fn tool_groups_cap_items_and_count_the_rest() {
     assert_eq!(tools["items"].as_array().unwrap().len(), TOOLS_MAX);
     assert_eq!(tools["more"], 5);
     assert_eq!(tools["sum"]["other"], 35);
+}
+
+#[test]
+fn file_tool_targets_stay_relative_when_root_is_under_home() {
+    let home = crate::toolsum::host_home().to_owned();
+    if home.is_empty() {
+        return;
+    }
+    let sep = if cfg!(windows) { "\\" } else { "/" };
+    let root = format!("{home}{sep}proj{sep}api");
+    let inside = format!("{root}{sep}src{sep}auth.ts");
+    let mut s = prompt("u1", "fix");
+    s += &tool("m1", "t1", "Read", json!({ "file_path": inside }));
+    s += &tool("m1", "t2", "Edit", json!({ "file_path": inside, "old_string": "a", "new_string": "b" }));
+    s += &tool("m1", "t3", "Read", json!({ "file_path": format!("{home}{sep}other{sep}x.ts") }));
+    let p = file("home-root", &s);
+    let pg = page(&p, Agent::Claude, &root, None, PAGE, &Fake, false).unwrap();
+    let tools = pg.items.iter().find(|i| i["k"] == "tools").unwrap();
+    assert_eq!(tools["items"][0]["target"], "src/auth.ts");
+    assert_eq!(tools["items"][1]["target"], "src/auth.ts");
+    let outside = tools["items"][2]["target"].as_str().unwrap();
+    assert!(outside.starts_with('~'), "{outside}");
 }

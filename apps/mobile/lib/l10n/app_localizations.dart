@@ -2147,7 +2147,7 @@ abstract class AppLocalizations {
   /// No description provided for @wsPaneHint.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 pane in this tab} other{{count} panes in this tab}} · swipe to switch'**
+  /// **'{count, plural, =1{1 pane in this tab} other{{count} panes in this tab}}, swipe to switch'**
   String wsPaneHint(int count);
 
   /// No description provided for @wsNoTabs.
@@ -2935,6 +2935,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not sent yet: {n} bytes'**
   String chatQueued(int n);
+
+  /// No description provided for @termUnsent.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 character not sent} other{{n} characters not sent}}'**
+  String termUnsent(int n);
+
+  /// No description provided for @termSendUnsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get termSendUnsent;
+
+  /// No description provided for @termDropUnsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get termDropUnsent;
 
   /// No description provided for @chatSlow.
   ///

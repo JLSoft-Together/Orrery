@@ -121,10 +121,9 @@ fn assistant(b: &mut Builder, rec: &Value, off: u64, at: Option<i64>) {
             Some("tool_use") => {
                 let Some(name) = s(&block["name"]) else { continue };
                 let input = &block["input"];
-                let target = tool_summary_of(name, input, host_home(), host_platform()).map(|t| match super::rel_path(&t, &b.root) {
-                    Some(r) if matches!(name, "Read" | "Edit" | "Write" | "NotebookEdit") => r,
-                    _ => t,
-                });
+                let raw = s(&input["file_path"]).or_else(|| s(&input["notebook_path"]));
+                let rel = raw.filter(|_| matches!(name, "Read" | "Edit" | "Write" | "MultiEdit" | "NotebookEdit")).and_then(|p| super::rel_path(p, &b.root));
+                let target = rel.or_else(|| tool_summary_of(name, input, host_home(), host_platform()));
                 b.tool(off, at, s(&block["id"]), name, target);
                 if let Some((path, add, del)) = edits_of(name, input) {
                     b.file(at, &path, add, del);

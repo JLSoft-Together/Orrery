@@ -1186,7 +1186,7 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count panes in this tab',
       one: '1 pane in this tab',
     );
-    return '$_temp0 · swipe to switch';
+    return '$_temp0, swipe to switch';
   }
 
   @override
@@ -1688,6 +1688,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String chatQueued(int n) {
     return 'Not sent yet: $n bytes';
   }
+
+  @override
+  String termUnsent(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n characters not sent',
+      one: '1 character not sent',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get termSendUnsent => 'Send';
+
+  @override
+  String get termDropUnsent => 'Drop';
 
   @override
   String chatSlow(int n) {

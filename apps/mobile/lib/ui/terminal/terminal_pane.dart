@@ -16,6 +16,7 @@ import '../commands.dart';
 import '../machine_api.dart';
 import '../model/workspace_model.dart';
 import '../ui_providers.dart';
+import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import 'anchored_terminal.dart';
 import 'input_bar.dart';
@@ -308,11 +309,8 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
           onActions: widget.onActions,
           onSwipe: widget.onSwipe,
         ),
-        ReconnectStrip(
-          machineId: widget.machineId,
-          queued: _queued,
-          showLatency: true,
-        ),
+        ReconnectStrip(machineId: widget.machineId, showLatency: true),
+        if (_queued > 0) _unsentStrip(context, online),
         PermissionBar(pane: pane, enabled: online, onKeys: _sendKeys),
         Expanded(
           child: TerminalSurface(
@@ -363,6 +361,55 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
             },
           ),
       ],
+    );
+  }
+
+  Widget _unsentStrip(BuildContext context, bool online) {
+    final c = context.orrery;
+    final l = context.l10n;
+    final handle = _handle;
+    final style = TextButton.styleFrom(
+      minimumSize: const Size(48, 40),
+      foregroundColor: c.ink,
+      disabledForegroundColor: c.inkFaint,
+      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    );
+    return Container(
+      key: const ValueKey('term-unsent'),
+      color: c.waiting.withValues(alpha: 0.12),
+      padding: const EdgeInsets.only(left: 12, right: 4),
+      child: Row(
+        children: [
+          Icon(Icons.link_off_rounded, size: 16, color: c.waiting),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.termUnsent(_queued),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: c.waiting,
+              ),
+            ),
+          ),
+          TextButton(
+            key: const ValueKey('term-unsent-send'),
+            style: style,
+            onPressed: online && handle != null
+                ? () => _api.sendQueued(handle)
+                : null,
+            child: Text(l.termSendUnsent),
+          ),
+          TextButton(
+            key: const ValueKey('term-unsent-drop'),
+            style: style,
+            onPressed: handle != null ? () => _api.dropQueued(handle) : null,
+            child: Text(l.termDropUnsent),
+          ),
+        ],
+      ),
     );
   }
 

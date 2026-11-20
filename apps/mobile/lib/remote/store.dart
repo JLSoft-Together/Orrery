@@ -212,10 +212,10 @@ class MachineStore {
   void _onEvents(JsonMap event) {
     final seq = event['seq'];
     final list = event['events'];
-    final snap = _view.snapshot;
+    final current = _view.snapshot;
     if (seq is! num || list is! List) return;
     final direct = event['direct'] == true;
-    if (snap == null || _view.fromCache) {
+    if (current == null || _view.fromCache) {
       _requestResync();
       return;
     }
@@ -227,6 +227,7 @@ class MachineStore {
         return;
       }
     }
+    final snap = Map<String, dynamic>.of(current);
     for (final item in list) {
       applyMonitorEvent(snap, item);
     }

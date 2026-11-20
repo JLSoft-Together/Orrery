@@ -195,7 +195,48 @@ pub fn last_paragraph(text: &str) -> String {
         kept.push(if fenced { "" } else { line });
     }
     let joined = kept.join("\n");
-    joined.split("\n\n").map(str::trim).filter(|p| !p.is_empty()).last().unwrap_or("").to_owned()
+    let last = joined.split("\n\n").map(str::trim).filter(|p| !p.is_empty()).last().unwrap_or("");
+    last.lines().map(plain_line).collect::<Vec<_>>().join("\n")
+}
+
+fn plain_line(line: &str) -> String {
+    let t = line.trim_start();
+    let t = t.trim_start_matches('#').trim_start();
+    let t = t.strip_prefix("- ").or_else(|| t.strip_prefix("* ")).or_else(|| t.strip_prefix("> ")).unwrap_or(t);
+    let mut out = String::with_capacity(t.len());
+    let mut rest = t;
+    while let Some(i) = rest.find(['[', '*', '_', '`']) {
+        out.push_str(&rest[..i]);
+        let tail = &rest[i..];
+        if tail.starts_with('[') {
+            if let Some(close) = tail.find("](") {
+                if let Some(end) = tail[close..].find(')') {
+                    out.push_str(&tail[1..close]);
+                    rest = &tail[close + end + 1..];
+                    continue;
+                }
+            }
+            out.push('[');
+            rest = &tail[1..];
+        } else if tail.starts_with("**") || tail.starts_with("__") {
+            rest = &tail[2..];
+        } else if tail.starts_with('`') {
+            rest = &tail[1..];
+        } else {
+            let c = &tail[..1];
+            let prev = out.chars().last();
+            let next = tail[1..].chars().next();
+            let word = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+            if !(word(prev) && word(next)) && (word(prev) || word(next)) {
+                rest = &tail[1..];
+            } else {
+                out.push_str(c);
+                rest = &tail[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 impl Item {

@@ -41,6 +41,8 @@ Future<JsonMap> sendHello(RemoteSession session, ConnectionConfig config) {
   });
 }
 
+const Duration firstPingAfter = Duration(seconds: 3);
+
 Timer startKeepalive(
   RemoteSession session,
   ConnectionConfig config, {
@@ -51,7 +53,9 @@ Timer startKeepalive(
     session.onRtt = (rtt) {
       if (!session.isClosed) onRtt(rtt.inMilliseconds);
     };
-    session.sendKeepalive();
+    Timer(firstPingAfter, () {
+      if (!session.isClosed) session.sendKeepalive();
+    });
   }
   return Timer.periodic(config.keepalive, (_) {
     if (session.isClosed) return;

@@ -341,7 +341,7 @@
   "detailNoSubagents": "Chưa có sub-agent",
   "wsTitle": "Workspace",
   "wsOpenFull": "Mở toàn màn hình",
-  "wsPaneHint": "Vuốt ngang để đổi pane · {count} pane trong tab",
+  "wsPaneHint": "Vuốt ngang để đổi pane, {count} pane trong tab",
   "wsNoTabs": "Chưa có tab nào",
   "wsAllTabs": "Tất cả",
   "paneSheetTitle": "Pane trong tab {tab}",
@@ -473,6 +473,9 @@
   "chatRejoined": "Đã nối lại",
   "chatOffline": "Mất kết nối",
   "chatQueued": "Chưa gửi: {n} byte",
+  "termUnsent": "Chưa gửi {n} ký tự",
+  "termSendUnsent": "Gửi",
+  "termDropUnsent": "Bỏ",
   "chatSlow": "Chậm {n} ms",
   "chatNoNet": "Mất mạng",
   "chatContext": "Context {n}%"

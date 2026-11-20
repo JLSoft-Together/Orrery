@@ -139,12 +139,20 @@ class ChatHeader extends ConsumerWidget {
                       ),
                     ] else if (latency != null && latency > slowLatencyMs) ...[
                       const SizedBox(width: 8),
-                      Flexible(
+                      Icon(
+                        Icons.network_check_rounded,
+                        size: 12,
+                        color: c.waiting,
+                      ),
+                      const SizedBox(width: 3),
+                      Semantics(
+                        label: l.chatSlow(latency),
+                        excludeSemantics: true,
                         child: Text(
-                          l.chatSlow(latency),
+                          '$latency ms',
                           key: const ValueKey('chat-latency'),
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
                           style: sub.copyWith(color: c.waiting),
                         ),
                       ),

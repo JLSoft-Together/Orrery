@@ -20,6 +20,7 @@ class ChatList extends StatelessWidget {
   const ChatList({
     super.key,
     required this.controller,
+    this.scroll,
     required this.pane,
     required this.facts,
     required this.online,
@@ -30,6 +31,7 @@ class ChatList extends StatelessWidget {
   });
 
   final ChatController controller;
+  final ScrollController? scroll;
   final PaneInfo pane;
   final PaneFacts facts;
   final bool online;
@@ -142,6 +144,7 @@ class ChatList extends StatelessWidget {
       onNotification: _nearTop,
       child: ListView.separated(
         key: const ValueKey('chat-list'),
+        controller: scroll,
         reverse: true,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         itemCount: reversed.length,

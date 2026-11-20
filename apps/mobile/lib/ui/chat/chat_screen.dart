@@ -41,6 +41,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final GlobalKey<ChatComposerState> _composer = GlobalKey();
   late bool _termMode = widget.terminal;
   late final AppLifecycleListener _life;
+  final ScrollController _scroll = ScrollController();
 
   @override
   void initState() {
@@ -68,10 +69,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void dispose() {
     _life.dispose();
+    _scroll.dispose();
     _chat
       ..removeListener(_onChat)
       ..dispose();
     super.dispose();
+  }
+
+  Future<bool> _send(String text) {
+    if (_scroll.hasClients && _scroll.offset > 0) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    }
+    return _chat.send(text);
   }
 
   void _toggle() => setState(() => _termMode = !_termMode);
@@ -96,6 +109,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _openFile(ChatFiles card, ChatFile file) {
+    FocusManager.instance.primaryFocus?.unfocus();
     Navigator.of(context).push(
       machineRoute<void>(
         widget.machineId,
@@ -184,6 +198,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     )
                   : ChatList(
                       controller: _chat,
+                      scroll: _scroll,
                       pane: pane,
                       facts: facts,
                       online: online,
@@ -201,7 +216,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     : l.chatMessage(agentName),
                 enabled: true,
                 working: working,
-                onSend: _chat.send,
+                onSend: _send,
                 onStop: () => _stop(pane),
                 onPlus: () => showChatPlusSheet(
                   context,

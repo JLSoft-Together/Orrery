@@ -87,7 +87,9 @@ class ChatComposerState extends State<ChatComposer> {
                     ActionChip(
                       key: ValueKey('chat-chip-$chip'),
                       label: Text(chip),
-                      onPressed: widget.enabled ? () => fill(chip) : null,
+                      onPressed: widget.enabled
+                          ? () => widget.onSend(chip)
+                          : null,
                       shape: const StadiumBorder(),
                       side: BorderSide(color: c.line),
                       backgroundColor: c.raised,

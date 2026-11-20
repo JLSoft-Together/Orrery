@@ -83,13 +83,15 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
               child: Row(
                 children: [
                   const SizedBox(width: 8),
-                  Flexible(
-                    child: _MachinePill(
-                      name: machine?.displayName ?? '',
-                      online: online,
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _MachinePill(
+                        name: machine?.displayName ?? '',
+                        online: online,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   IconButton(
                     key: const ValueKey('home-search'),
                     tooltip: l.chatSearch,

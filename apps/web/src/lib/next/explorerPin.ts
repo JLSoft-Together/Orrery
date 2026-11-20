@@ -29,3 +29,10 @@ export function fitPinnedWidth(canvasTotal: number, desired: number): number | n
   if (room < EXPLORER_MIN_W) return null
   return clampExplorerWidth(desired, room)
 }
+
+export const PUSH_MIN_CANVAS = 640
+
+export function fitsPush(canvasTotal: number, width: number): boolean {
+  if (!Number.isFinite(canvasTotal) || canvasTotal <= 0) return false
+  return canvasTotal - width - EXPLORER_PIN_GAP >= PUSH_MIN_CANVAS
+}

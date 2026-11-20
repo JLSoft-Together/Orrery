@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { waitReason, type PtyPreset } from '@ccm/shared'
-import { ChevronDown, ChevronRight, Ellipsis, LoaderCircle, Plus } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Ellipsis, LoaderCircle, Plus, Wrench } from 'lucide-vue-next'
 import { useClusterDrag } from '../../../composables/useClusterDrag'
 import { useOpenProject } from '../../../composables/useOpenProject'
 import { useCompact } from '../../../composables/useCompact'
@@ -19,6 +19,7 @@ import type { MenuEntry } from '../../../lib/menu'
 import { othersOf, relPath, summarize } from '../../../lib/clash'
 import { buildLiveRows, collapsedProjects, freezeLayout, layoutOf, type LayoutSection, type LiveExtras, type LiveRow, type RowClash } from '../../../lib/next/railLive'
 import { forgetSnoozed, isSnoozed } from '../../../lib/next/railSnooze'
+import { isToolRow, readToolsOpen, splitTools, toggleOpen, writeToolsOpen } from '../../../lib/next/railTools'
 import { NEXT_SHELL_KEY } from '../../../lib/next/shellContext'
 import { leftRail, workspaceBridge, type DragHandoff } from '../../../lib/next/workspaceBridge'
 import { hasLayouts, hasScripts, listLayouts, type SavedLayout } from '../../../lib/projects'
@@ -105,7 +106,9 @@ const rowByKey = computed(() => new Map(rows.value.map((r) => [r.key, r] as cons
 const clusterOrder = computed(() => rail.clusters.value.map((c) => c.key))
 const clusterByKey = computed(() => new Map(rail.clusters.value.map((c) => [c.key, c] as const)))
 const mode = computed(() => uigen.railGroup)
-const freshBody = computed(() => layoutOf(rows.value, mode.value, clusterOrder.value))
+const agentRows = computed(() => rows.value.filter((r) => !isToolRow(r)))
+const toolRows = computed(() => rows.value.filter(isToolRow))
+const freshBody = computed(() => layoutOf(mode.value === 'project' ? rows.value : agentRows.value, mode.value, clusterOrder.value))
 
 const hold = ref(false)
 const body = ref<LayoutSection[]>([])
@@ -119,6 +122,17 @@ function sync(force = false): void {
 watch([freshBody, hold, mode], () => sync(), { immediate: true })
 
 const sectionRows = (s: LayoutSection): LiveRow[] => s.keys.map((k) => rowByKey.value.get(k)).filter((r): r is LiveRow => !!r)
+const rowOf = (k: string): LiveRow | undefined => rowByKey.value.get(k)
+const toolsOpen = ref<Set<string>>(readToolsOpen())
+const STATUS_TOOLS = 'status'
+function toggleTools(key: string): void {
+  toolsOpen.value = toggleOpen(toolsOpen.value, key)
+  writeToolsOpen(toolsOpen.value)
+}
+const splitOf = (s: LayoutSection) => splitTools(s.keys, rowOf)
+const keysToRows = (keys: string[]): LiveRow[] => keys.map(rowOf).filter((r): r is LiveRow => !!r)
+const statusToolSplit = computed(() => splitTools(toolRows.value.map((r) => r.key), rowOf))
+const dirtyLabel = (n: number): string => (n > 0 ? t('v106rail.dirtyN', { n }) : '')
 const collapsedList = computed(() => collapsedProjects(rows.value, clusterOrder.value, isSnoozed))
 
 watch(rows, (list) => forgetSnoozed((k) => list.some((r) => r.key === k)))
@@ -169,7 +183,15 @@ function onClickCapture(e: MouseEvent): void {
 }
 
 const tabStopKey = computed(() => {
-  const keys = body.value.flatMap((s) => (folded.value.has(s.id.replace(/^p:/, '')) ? [] : s.keys))
+  const keys = [
+    ...body.value.flatMap((s) => {
+      if (folded.value.has(s.id.replace(/^p:/, ''))) return []
+      if (!s.id.startsWith('p:')) return s.keys
+      const sp = splitOf(s)
+      return toolsOpen.value.has(s.id.slice(2)) ? s.keys : sp.main
+    }),
+    ...(toolsOpen.value.has(STATUS_TOOLS) && mode.value === 'status' ? statusToolSplit.value.tools : []),
+  ]
   return keys.find((k) => rowByKey.value.get(k)?.focused) ?? keys[0] ?? null
 })
 
@@ -621,8 +643,8 @@ const clusterKeyOf = (id: string): string => id.slice(2)
     @click.capture="onClickCapture"
     @keydown="onNavKey"
   >
-    <div v-if="!props.collapsed" class="flex shrink-0 items-center gap-2 px-2 pt-1 pb-1">
-      <span class="shrink-0 text-2xs font-medium text-ink-faint" aria-hidden="true">{{ t('mist.rail.group.name') }}</span>
+    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-2 px-2 pt-1 pb-1">
+      <span class="hidden shrink-0 text-2xs font-medium text-ink-faint @[280px]:inline" aria-hidden="true">{{ t('mist.rail.group.name') }}</span>
       <SegmentedControl v-model="uigen.railGroup" :options="groupOptions" :label="t('mist.rail.group.label')" size="sm" fill class="min-w-0 flex-1" data-rail-group />
       <button
         v-if="openable"
@@ -668,7 +690,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
               }}</span>
               <span class="min-w-0 truncate text-xs font-semibold text-ink">{{ clusterName(clusterKeyOf(s.id)) }}</span>
               <span v-if="branchOf(clusterKeyOf(s.id))" class="min-w-0 shrink truncate text-2xs text-ink-faint">{{ branchOf(clusterKeyOf(s.id)) }}</span>
-              <span class="ccm-tabular ml-auto shrink-0 text-2xs text-ink-faint">{{ s.keys.length }}</span>
+              <span class="ccm-tabular ml-auto shrink-0 text-2xs text-ink-faint">{{ splitOf(s).main.length }}</span>
               <button
                 type="button"
                 class="inline-grid size-6 shrink-0 cursor-pointer place-items-center rounded-control text-ink-muted opacity-0 outline-none group-hover/head:opacity-100 hover:bg-fill focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-focus"
@@ -681,7 +703,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
             </div>
             <div v-if="!folded.has(clusterKeyOf(s.id))" class="ccm-next-rail-children ml-[17px] flex flex-col gap-0.5 border-l border-line pl-1" data-rail-children>
               <RailRowItem
-                v-for="r in sectionRows(s)"
+                v-for="r in keysToRows(splitOf(s).main)"
                 :key="r.key"
                 :row="r"
                 :selected="selectedSet.has(r.key)"
@@ -693,6 +715,41 @@ const clusterKeyOf = (id: string): string => id.slice(2)
                 @key="onRowKey"
                 @close="closeRowTab"
               />
+              <button
+                v-if="splitOf(s).tools.length"
+                type="button"
+                class="flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-control px-2 text-2xs text-ink-muted outline-none hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                :aria-expanded="toolsOpen.has(clusterKeyOf(s.id))"
+                :aria-label="t(toolsOpen.has(clusterKeyOf(s.id)) ? 'v106rail.toolsClose' : 'v106rail.toolsOpen', { n: splitOf(s).tools.length, project: clusterName(clusterKeyOf(s.id)) })"
+                data-no-drag
+                data-rail-tools
+                @click="toggleTools(clusterKeyOf(s.id))"
+              >
+                <ChevronDown v-if="toolsOpen.has(clusterKeyOf(s.id))" :size="12" class="shrink-0" aria-hidden="true" />
+                <ChevronRight v-else :size="12" class="shrink-0" aria-hidden="true" />
+                <Wrench :size="12" class="shrink-0" aria-hidden="true" />
+                <span class="min-w-0 truncate font-medium">{{ t('v106rail.tools') }}</span>
+                <span class="ccm-tabular shrink-0 text-ink-faint">{{ splitOf(s).tools.length }}</span>
+                <span v-if="splitOf(s).dirty" class="ml-auto inline-flex min-w-0 shrink items-center gap-1 text-warning" data-rail-tools-dirty>
+                  <span class="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" />
+                  <span class="min-w-0 truncate">{{ dirtyLabel(splitOf(s).dirty) }}</span>
+                </span>
+              </button>
+              <template v-if="toolsOpen.has(clusterKeyOf(s.id))">
+                <RailRowItem
+                  v-for="r in keysToRows(splitOf(s).tools)"
+                  :key="r.key"
+                  :row="r"
+                  :selected="selectedSet.has(r.key)"
+                  :renaming="renaming === r.tabKey"
+                  :tab-stop="tabStopKey === r.key"
+                  @open="activateRow"
+                  @menu="onRowMenu"
+                  @renamed="onRenamed"
+                  @key="onRowKey"
+                  @close="closeRowTab"
+                />
+              </template>
             </div>
           </section>
           <section v-else class="mb-1.5" :data-status="clusterKeyOf(s.id)">
@@ -718,6 +775,43 @@ const clusterKeyOf = (id: string): string => id.slice(2)
             </div>
           </section>
         </template>
+        <section v-if="mode === 'status' && statusToolSplit.tools.length" class="mb-1.5" data-status="tools">
+          <button
+            type="button"
+            class="flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-control px-2 text-2xs text-ink-muted outline-none hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+            :aria-expanded="toolsOpen.has(STATUS_TOOLS)"
+            :aria-label="t(toolsOpen.has(STATUS_TOOLS) ? 'v106rail.toolsClose' : 'v106rail.toolsOpen', { n: statusToolSplit.tools.length, project: t('v106rail.tools') })"
+            data-no-drag
+            data-rail-tools
+            @click="toggleTools(STATUS_TOOLS)"
+          >
+            <ChevronDown v-if="toolsOpen.has(STATUS_TOOLS)" :size="12" class="shrink-0" aria-hidden="true" />
+            <ChevronRight v-else :size="12" class="shrink-0" aria-hidden="true" />
+            <Wrench :size="12" class="shrink-0" aria-hidden="true" />
+            <span class="min-w-0 truncate font-medium">{{ t('v106rail.tools') }}</span>
+            <span class="ccm-tabular shrink-0 text-ink-faint">{{ statusToolSplit.tools.length }}</span>
+            <span v-if="statusToolSplit.dirty" class="ml-auto inline-flex min-w-0 shrink items-center gap-1 text-warning" data-rail-tools-dirty>
+              <span class="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" />
+              <span class="min-w-0 truncate">{{ dirtyLabel(statusToolSplit.dirty) }}</span>
+            </span>
+          </button>
+          <div v-if="toolsOpen.has(STATUS_TOOLS)" class="flex flex-col gap-0.5">
+            <RailRowItem
+              v-for="r in keysToRows(statusToolSplit.tools)"
+              :key="r.key"
+              :row="r"
+              show-project
+              :selected="selectedSet.has(r.key)"
+              :renaming="renaming === r.tabKey"
+              :tab-stop="tabStopKey === r.key"
+              @open="activateRow"
+              @menu="onRowMenu"
+              @renamed="onRenamed"
+              @key="onRowKey"
+              @close="closeRowTab"
+            />
+          </div>
+        </section>
       </template>
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announce }}</p>

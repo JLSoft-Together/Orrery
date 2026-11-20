@@ -32,6 +32,7 @@ import { formatKeys } from '../../lib/shortcuts'
 import { isMac } from '../../lib/platform'
 import { leaves } from '../../lib/splitLayout'
 import { canCollapseRail, effectiveRailMode, isRailToggleKey, readRailCollapsed, writeRailCollapsed } from '../../lib/next/railCollapse'
+import { footModeFor } from '../../lib/next/railTools'
 import { clampRailWidth, nextRailMode, RAIL_MAX, RAIL_MIN, railModeFor, railWidth, readRailWidth, writeRailWidth, type RailMode } from '../../lib/next/railMode'
 import { NEXT_SHELL_KEY } from '../../lib/next/shellContext'
 import { useExtrasStore } from '../../stores/extras'
@@ -142,12 +143,26 @@ function applyPause(): void {
 }
 watch(pageActive, applyPause, { immediate: true })
 
+const footEl = ref<HTMLElement | null>(null)
+const footWidth = ref(0)
+let footObserver: ResizeObserver | undefined
+const footMode = computed(() => footModeFor(footWidth.value, iconMode.value))
+const footIcons = computed(() => footMode.value === 'icon')
+
 onMounted(() => {
+  if (footEl.value && typeof ResizeObserver === 'function') {
+    footObserver = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width
+      if (typeof w === 'number') footWidth.value = w
+    })
+    footObserver.observe(footEl.value)
+  }
   window.addEventListener('resize', onResize)
   window.addEventListener('keydown', onKey, true)
   onResize()
 })
 onBeforeUnmount(() => {
+  footObserver?.disconnect()
   window.removeEventListener('resize', onResize)
   window.removeEventListener('keydown', onKey, true)
   document.documentElement.removeAttribute('data-paused')
@@ -242,7 +257,11 @@ function onIconKey(e: KeyboardEvent): void {
   void nextTick(() => group.querySelector<HTMLElement>(`[data-view-switch="${next.value}"]`)?.focus())
 }
 
-const footBtn = computed(() => (iconMode.value ? iconBtn : iconBtn.replace('size-8 shrink-0', 'h-8 w-full min-w-0 gap-1 px-1.5 text-2xs font-medium')))
+const footBtn = computed(() => {
+  if (footMode.value === 'icon') return iconBtn
+  if (footMode.value === 'under') return iconBtn.replace('size-8 shrink-0 ', 'h-11 w-full min-w-0 flex-col gap-0.5 px-1 text-[11px] leading-none font-medium ')
+  return iconBtn.replace('size-8 shrink-0', 'h-8 w-full min-w-0 gap-1 px-1.5 text-2xs font-medium')
+})
 const iconBtn =
   'relative inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-muted transition-colors duration-(--ccm-dur-fast) outline-none hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus'
 </script>
@@ -300,7 +319,7 @@ const iconBtn =
 
         <LiveRail :collapsed="iconMode" />
 
-        <div class="flex shrink-0 flex-col gap-1.5 border-t border-line px-2 py-2" :class="iconMode ? 'items-center' : ''" data-next-rail-foot>
+        <div ref="footEl" class="flex shrink-0 flex-col gap-1.5 border-t border-line px-2 py-2" :class="iconMode ? 'items-center' : ''" :data-foot-mode="footMode" data-next-rail-foot>
           <div v-if="(update.available || hasTelegram || phoneShown) && !iconMode" class="flex flex-wrap items-center gap-1" data-next-rail-channels>
             <button
               v-if="update.available"
@@ -334,22 +353,22 @@ const iconBtn =
 
           <div class="flex items-center gap-0.5" :class="iconMode ? 'flex-col' : 'w-full'">
             <div class="ccm-next-status"><HeaderStatusPopover /></div>
-            <GlassTooltip :text="t('nav.usage')" :delay="0" :disabled="!iconMode" :class="iconMode ? '' : 'min-w-0 flex-1'">
+            <GlassTooltip :text="t('nav.usage')" :delay="0" :disabled="!footIcons" :class="footIcons ? '' : 'min-w-0 flex-1'">
               <button type="button" :class="[footBtn, ui.view === 'usage' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.usage')" :aria-current="ui.view === 'usage' ? 'page' : undefined" data-view-switch="usage" @click="ui.setView('usage')">
                 <ChartColumnBig :size="16" class="shrink-0" aria-hidden="true" />
-                <span v-if="!iconMode" class="min-w-0 truncate" data-foot-label>{{ t('nav.usage') }}</span>
+                <span v-if="!footIcons" class="max-w-full min-w-0 truncate" data-foot-label>{{ t('nav.usage') }}</span>
               </button>
             </GlassTooltip>
-            <GlassTooltip :text="t('nav.history')" :delay="0" :disabled="!iconMode" :class="iconMode ? '' : 'min-w-0 flex-1'">
+            <GlassTooltip :text="t('nav.history')" :delay="0" :disabled="!footIcons" :class="footIcons ? '' : 'min-w-0 flex-1'">
               <button type="button" :class="[footBtn, ui.view === 'history' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.history')" :aria-current="ui.view === 'history' ? 'page' : undefined" data-view-switch="history" @click="ui.setView('history')">
                 <History :size="16" class="shrink-0" aria-hidden="true" />
-                <span v-if="!iconMode" class="min-w-0 truncate" data-foot-label>{{ t('nav.history') }}</span>
+                <span v-if="!footIcons" class="max-w-full min-w-0 truncate" data-foot-label>{{ t('nav.history') }}</span>
               </button>
             </GlassTooltip>
-            <GlassTooltip :text="t('settings.title')" :delay="0" :disabled="!iconMode" :class="iconMode ? '' : 'min-w-0 flex-1'">
+            <GlassTooltip :text="t('settings.title')" :delay="0" :disabled="!footIcons" :class="footIcons ? '' : 'min-w-0 flex-1'">
               <button type="button" :class="[footBtn, ui.settingsOpen ? 'bg-fill text-ink' : '']" data-tour="settings" :aria-label="t('settings.title')" :aria-expanded="ui.settingsOpen" aria-controls="settings-panel" data-next-settings @click="ui.settingsOpen = !ui.settingsOpen">
                 <Settings2 :size="16" class="shrink-0" aria-hidden="true" />
-                <span v-if="!iconMode" class="min-w-0 truncate" data-foot-label>{{ t('v105u3.railSettings') }}</span>
+                <span v-if="!footIcons" class="max-w-full min-w-0 truncate" data-foot-label>{{ t('v105u3.railSettings') }}</span>
                 <span v-if="update.available" class="absolute top-1 right-1 size-2 rounded-full bg-accent ring-2 ring-canvas" aria-hidden="true" data-update-dot />
               </button>
             </GlassTooltip>

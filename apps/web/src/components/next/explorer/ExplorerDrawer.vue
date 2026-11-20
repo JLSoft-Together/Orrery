@@ -7,7 +7,7 @@ import { useProjectRoots } from '../../../composables/useProjectRoots'
 import { withViewTransition } from '../../../lib/motion'
 import { renamedPanePatches, trashedPaneKeys } from '../../../lib/explorer/tree'
 import { hasDragPath } from '../../../lib/explorer/dragPath'
-import { dragWidth, EXPLORER_DRAWER_W, EXPLORER_MAX_W, EXPLORER_MIN_W, EXPLORER_PIN_GAP, fitPinnedWidth, PIN_MIN_CANVAS, pinnedRoom } from '../../../lib/next/explorerPin'
+import { dragWidth, EXPLORER_DRAWER_W, EXPLORER_MAX_W, EXPLORER_MIN_W, EXPLORER_PIN_GAP, fitPinnedWidth, fitsPush, PIN_MIN_CANVAS, pinnedRoom } from '../../../lib/next/explorerPin'
 import { isMac } from '../../../lib/platform'
 import { workspaceAction } from '../../../lib/workspaceKeys'
 import { paneProjectOf, useWorkspaceStore, type Pane } from '../../../stores/workspace'
@@ -61,6 +61,8 @@ const canPin = computed(() => pinned.value || pinFit.value !== null)
 const pinTip = computed(() => (pinned.value ? t('mist.explorer.unpin') : canPin.value ? t('mist.explorer.pin') : t('mist.explorer.pinNoRoomCanvas', { min: PIN_MIN_CANVAS })))
 const shown = computed(() => active.value && (pinned.value || open.value))
 const asDrawer = computed(() => shown.value && !pinned.value)
+const pushed = computed(() => asDrawer.value && fitsPush(canvasTotal.value, uiGen.explorerWidth))
+const overlay = computed(() => asDrawer.value && !pushed.value)
 
 function measure(): void {
   const parent = root.value?.parentElement
@@ -198,6 +200,17 @@ watch(
   { immediate: true },
 )
 
+watch(
+  pushed,
+  (on) => {
+    const el = document.documentElement
+    if (on) el.setAttribute('data-explorer-pushed', 'on')
+    else el.removeAttribute('data-explorer-pushed')
+    void nextTick(measure)
+  },
+  { immediate: true },
+)
+
 watch(inWorkspace, (on) => {
   if (!on) open.value = false
 })
@@ -291,6 +304,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   observer?.disconnect()
   document.documentElement.removeAttribute('data-explorer-pinned')
+  document.documentElement.removeAttribute('data-explorer-pushed')
   document.documentElement.removeAttribute('data-explorer-resizing')
   document.documentElement.style.removeProperty('--ccm-explorer-w')
 })
@@ -298,11 +312,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="ccm-explorer-drawer" :data-state="shown ? (pinned ? 'pinned' : 'open') : 'closed'" data-explorer-drawer @keydown="onKeydown">
-    <div v-if="asDrawer" class="ccm-explorer-scrim" :class="{ 'is-dragging': dragging }" aria-hidden="true" data-explorer-scrim @click="close()" />
+    <div v-if="overlay" class="ccm-explorer-scrim" :class="{ 'is-dragging': dragging }" aria-hidden="true" data-explorer-scrim @click="close()" />
     <aside
       v-show="shown"
       class="ccm-explorer-card glass-pop"
-      :class="{ 'is-pinned': pinned, 'is-resizing': resizing }"
+      :class="{ 'is-pinned': pinned, 'is-pushed': pushed, 'is-resizing': resizing }"
       :style="{ width: `${colWidth}px` }"
       :role="asDrawer ? 'dialog' : 'complementary'"
       :aria-label="t('mist.explorer.drawer')"
@@ -376,7 +390,7 @@ onBeforeUnmount(() => {
 :root[data-ui='next'] .ccm-explorer-scrim {
   position: absolute;
   inset: 0;
-  background: var(--ccm-drawer-scrim);
+  background: linear-gradient(color-mix(in srgb, var(--ccm-ink) 14%, transparent), color-mix(in srgb, var(--ccm-ink) 14%, transparent)), var(--ccm-drawer-scrim);
   pointer-events: auto;
   animation: ccm-explorer-fade var(--ccm-dur-base, 180ms) ease-out;
 }
@@ -439,11 +453,16 @@ onBeforeUnmount(() => {
   padding: 6px;
   outline: none;
 }
-:root[data-ui='next'][data-explorer-pinned='on'] .ccm-next-canvas {
+:root[data-ui='next'][data-explorer-pinned='on'] .ccm-next-canvas,
+:root[data-ui='next'][data-explorer-pushed='on'] .ccm-next-canvas {
   padding-right: calc(var(--ccm-explorer-w, 288px) + 8px);
 }
-:root[data-ui='next'] .ccm-next-canvas {
+:root[data-ui='next'][data-explorer-pinned='on'] .ccm-next-canvas {
   transition: padding-right var(--ccm-dur-base, 180ms) var(--ccm-ease-standard, ease-out);
+}
+:root[data-ui='next'] .ccm-explorer-card.is-pushed {
+  animation: none;
+  border-color: var(--ccm-line);
 }
 :root[data-ui='next'][data-explorer-resizing='on'] .ccm-next-canvas,
 :root[data-ui='next'][data-motion='off'] .ccm-next-canvas {

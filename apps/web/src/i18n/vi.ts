@@ -107,6 +107,8 @@ import diskAppsV101 from './disk-apps-v101'
 import v104Ux from './v104-ux'
 import v105U1 from './v105-u1'
 import v105U2 from './v105-u2'
+import v106Rail from './v106-rail'
+import v106Install from './v106-install'
 import v105U3 from './v105-u3'
 
 const vi: typeof en = {
@@ -115,6 +117,8 @@ const vi: typeof en = {
   ...v104Ux.vi,
   ...v105U1.vi,
   ...v105U2.vi,
+  ...v106Rail.vi,
+  ...v106Install.vi,
   ...v105U3.vi,
   ...diskV101.vi,
   ...diskCleanV101.vi,

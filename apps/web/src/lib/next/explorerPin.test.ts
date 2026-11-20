@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampExplorerWidth, dragWidth, EXPLORER_DRAWER_W, fitPinnedWidth, parseExplorerWidth, pinnedRoom } from './explorerPin'
+import { clampExplorerWidth, dragWidth, EXPLORER_DRAWER_W, fitPinnedWidth, fitsPush, parseExplorerWidth, pinnedRoom } from './explorerPin'
 
 describe('explorerPin width', () => {
   it('clamps to min and max', () => {
@@ -34,5 +34,19 @@ describe('explorerPin width', () => {
   it('refuses to pin when even the minimum column does not fit', () => {
     expect(fitPinnedWidth(787, 288)).toBeNull()
     expect(fitPinnedWidth(0, 288)).toBeNull()
+  })
+})
+
+describe('fitsPush', () => {
+  it('pushes only when 640px stay for the canvas', () => {
+    expect(fitsPush(936, 288)).toBe(true)
+    expect(fitsPush(935, 288)).toBe(false)
+    expect(fitsPush(1360, 285)).toBe(true)
+    expect(fitsPush(1000, 288)).toBe(true)
+    expect(fitsPush(900, 288)).toBe(false)
+  })
+  it('overlays when the canvas is unmeasured', () => {
+    expect(fitsPush(0, 288)).toBe(false)
+    expect(fitsPush(Number.NaN, 288)).toBe(false)
   })
 })

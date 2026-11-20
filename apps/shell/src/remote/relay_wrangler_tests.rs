@@ -279,3 +279,15 @@ fn the_parsers_accept_real_shapes_and_refuse_junk() {
     assert_eq!(tail("\n\n"), "");
     assert!(WRANGLER.starts_with("wrangler@4."));
 }
+
+#[test]
+fn nvm_bins_newest_version_first() {
+    let root = std::env::temp_dir().join(format!("orrery-nvm-{}", std::process::id()));
+    for v in ["v18.20.1", "v22.3.0", "v20.11.0", "junk"] {
+        std::fs::create_dir_all(root.join(v).join("bin")).unwrap();
+    }
+    let got = crate::remote::relay_setup::wrangler::nvm_bins(&root);
+    let names: Vec<String> = got.iter().map(|p| p.parent().unwrap().file_name().unwrap().to_string_lossy().into_owned()).collect();
+    assert_eq!(names, ["v22.3.0", "v20.11.0", "v18.20.1"]);
+    let _ = std::fs::remove_dir_all(&root);
+}

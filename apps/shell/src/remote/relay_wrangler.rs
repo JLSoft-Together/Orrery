@@ -76,9 +76,26 @@ fn extra_dirs(env: &BTreeMap<String, String>, win: bool) -> Vec<PathBuf> {
         if let Some(h) = get("HOME") {
             out.push(h.join(".volta").join("bin"));
             out.push(h.join(".local").join("bin"));
+            out.extend(nvm_bins(&h.join(".nvm").join("versions").join("node")));
+            out.push(h.join(".asdf").join("shims"));
         }
     }
     out
+}
+
+pub(crate) fn nvm_bins(root: &Path) -> Vec<PathBuf> {
+    let mut dirs: Vec<(Vec<u64>, PathBuf)> = std::fs::read_dir(root)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().trim_start_matches('v').to_owned();
+            let ver: Vec<u64> = name.split('.').map(|p| p.parse().ok()).collect::<Option<_>>()?;
+            Some((ver, e.path().join("bin")))
+        })
+        .collect();
+    dirs.sort_by(|a, b| b.0.cmp(&a.0));
+    dirs.into_iter().map(|(_, p)| p).collect()
 }
 
 pub fn find_npx(env: &BTreeMap<String, String>, win: bool) -> Option<PathBuf> {

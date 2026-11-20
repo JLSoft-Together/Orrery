@@ -336,7 +336,7 @@
   function liveHTML(s) {
     const sec = Math.max(0, Math.floor((now() - (s.runStart || now())) / 1000));
     const [v, t] = s.act || ['Đang làm', ''];
-    return `<div class="live" role="status"><svg class="spark-i" aria-hidden="true"><use href="#i-spark"/></svg><span class="what"><span class="shimmer">${esc(v)} ${esc(t)}</span></span><time id="liveTime">${fmt(sec)}</time></div>`;
+    return `<div class="live" role="status"><span class="pulse-dot" aria-hidden="true"></span><span class="what">${esc(v)} ${esc(t)}</span><time id="liveTime">${fmt(sec)}</time></div>`;
   }
 
   function quotaHot(agent) {
@@ -392,7 +392,7 @@
     let h = s.msgs.map((m, i) => msgHTML(s, m, i)).join('');
     if (s.state === 'working') h += liveHTML(s);
     const empty = !s.msgs.length && s.agent !== 'shell';
-    if (empty) h = `<div class="empty-chat"><svg class="spark-big" aria-hidden="true"><use href="#i-spark"/></svg><h2 class="hello">Chào chủ nhân</h2><p><span class="glyph ${s.agent}">${ic(s.agent)}</span>${AGENT[s.agent]} ở ${esc(s.project)}</p></div>`;
+    if (empty) h = `<div class="empty-chat"><h2 class="hello">Chào chủ nhân</h2><p><span class="glyph ${s.agent}">${ic(s.agent)}</span>${AGENT[s.agent]} ở ${esc(s.project)}</p></div>`;
     msgs.innerHTML = h;
     const chips = $('#chips');
     chips.hidden = !empty || s.termMode;

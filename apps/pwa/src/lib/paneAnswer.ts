@@ -58,7 +58,7 @@ export function answerChoices(pane: WsPane): AnswerChoice[] {
 }
 
 export function askSignature(pane: WsPane): string {
-  return JSON.stringify([pane.rail, pane.since, pane.inbox?.reason ?? null, pane.waitText, pane.terminalId, pane.sessionId])
+  return JSON.stringify([pane.rail, pane.since, pane.inbox?.reason ?? null, pane.waitText, pane.terminalId, pane.sessionId, pane.menu?.sig ?? null])
 }
 
 export function createAnswerFlow(deps: AnswerDeps) {

@@ -10,6 +10,8 @@ describe('router paths', () => {
     { name: 'pair' },
     { name: 'settings' },
     { name: 'debug' },
+    { name: 'chats', machine: 'm-1' },
+    { name: 'chat', machine: 'm-1', pane: 'p 1' },
     { name: 'monitor', machine: 'm-1' },
     { name: 'session', machine: 'm-1', terminal: 't 2' },
     { name: 'workspace', machine: 'm-1' },
@@ -33,7 +35,11 @@ describe('router paths', () => {
   it('goes up one level', () => {
     expect(parentOf({ name: 'session', machine: 'a', terminal: 'b' })).toEqual({ name: 'monitor', machine: 'a' })
     expect(parentOf({ name: 'debug' })).toEqual({ name: 'settings' })
-    expect(parentOf({ name: 'monitor', machine: 'a' })).toEqual({ name: 'home' })
+    expect(parentOf({ name: 'monitor', machine: 'a' })).toEqual({ name: 'chats', machine: 'a' })
+    expect(parentOf({ name: 'chat', machine: 'a', pane: 'p' })).toEqual({ name: 'chats', machine: 'a' })
+    expect(parentOf({ name: 'chats', machine: 'a' })).toEqual({ name: 'home' })
+    expect(parsePath('/m/a')).toEqual({ name: 'chats', machine: 'a' })
+    expect(parsePath('/m/a/mon')).toEqual({ name: 'monitor', machine: 'a' })
   })
 })
 

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { Activity, LayoutGrid, SlidersHorizontal } from 'lucide-vue-next'
+import { LayoutGrid, MessageCircle, SlidersHorizontal } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 
-export type TabId = 'monitor' | 'workspace' | 'settings'
+export type TabId = 'chats' | 'workspace' | 'settings'
 
 defineProps<{ active: TabId | null; badge?: number }>()
 const emit = defineEmits<{ select: [tab: TabId] }>()
 const { t } = useI18n()
 const tabs = [
-  { id: 'monitor' as const, icon: Activity },
+  { id: 'chats' as const, icon: MessageCircle },
   { id: 'workspace' as const, icon: LayoutGrid },
   { id: 'settings' as const, icon: SlidersHorizontal },
 ]
@@ -19,7 +19,7 @@ const tabs = [
     <button v-for="tab in tabs" :key="tab.id" type="button" class="tab" :class="{ on: active === tab.id }" :aria-current="active === tab.id ? 'page' : undefined" :data-testid="`tab-${tab.id}`" @click="emit('select', tab.id)">
       <span class="icon">
         <component :is="tab.icon" :size="22" :stroke-width="2" aria-hidden="true" />
-        <span v-if="tab.id === 'monitor' && badge" class="badge" data-testid="tab-badge">{{ badge }}</span>
+        <span v-if="tab.id === 'chats' && badge" class="badge" data-testid="tab-badge">{{ badge }}</span>
       </span>
       <span>{{ t(`tabs.${tab.id}`) }}</span>
     </button>

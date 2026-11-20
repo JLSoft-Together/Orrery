@@ -23,6 +23,8 @@ import SessionView from './views/SessionView.vue'
 import SettingsView from './views/SettingsView.vue'
 import TerminalView from './views/TerminalView.vue'
 import WorkspaceView from './views/WorkspaceView.vue'
+import ChatsView from './views/ChatsView.vue'
+import ChatView from './views/ChatView.vue'
 
 const { t } = useI18n()
 const hub = useHubStore()
@@ -34,27 +36,30 @@ const master = computed<Route>(() => {
   const r = route.value
   if (wide.value && r.name === 'session') return { name: 'monitor', machine: r.machine }
   if (wide.value && r.name === 'workspace' && r.pane) return { name: 'workspace', machine: r.machine }
+  if (wide.value && r.name === 'chat') return { name: 'chats', machine: r.machine }
   return r
 })
-const fullTerminal = computed(() => !wide.value && route.value.name === 'workspace' && route.value.pane !== undefined)
+const fullTerminal = computed(() => !wide.value && ((route.value.name === 'workspace' && route.value.pane !== undefined) || route.value.name === 'chat'))
 const viewKey = computed(() => JSON.stringify(master.value))
 const selectedTerminal = computed(() => (route.value.name === 'session' ? route.value.terminal : undefined))
 const sessionRoute = computed(() => (route.value.name === 'session' ? route.value : null))
 const paneRoute = computed(() => (route.value.name === 'workspace' && route.value.pane ? { machine: route.value.machine, pane: route.value.pane } : null))
+const chatRoute = computed(() => (route.value.name === 'chat' ? { machine: route.value.machine, pane: route.value.pane } : null))
+const chatsHome = computed(() => master.value.name === 'chats')
 const renderReady = computed(() => hub.ready || hub.bootError !== null)
 
 const tabMachine = computed(() => {
   const r = master.value
-  if (r.name === 'monitor' || r.name === 'workspace') return r.machine
+  if (r.name === 'monitor' || r.name === 'workspace' || r.name === 'chats' || r.name === 'chat') return r.machine
   const last = prefs.local.lastMachine
   return last && hub.machines.some((m) => m.id === last) ? last : (hub.machines[0]?.id ?? null)
 })
-const hasDetail = computed(() => sessionRoute.value !== null || paneRoute.value !== null)
+const hasDetail = computed(() => sessionRoute.value !== null || paneRoute.value !== null || chatRoute.value !== null)
 const railOn = computed(() => railShown(wide.value, route.value.name, tabMachine.value))
 const activeTab = computed<TabId | null>(() => {
   switch (master.value.name) {
     case 'monitor':
-      return 'monitor'
+      return 'chats'
     case 'workspace':
       return 'workspace'
     case 'settings':
@@ -69,7 +74,7 @@ const badge = computed(() => (tabMachine.value ? inboxCount(hub.viewOf(tabMachin
 function selectTab(tab: TabId): void {
   const machine = tabMachine.value
   if (tab === 'settings') navigate({ name: 'settings' }, { replace: true })
-  else if (machine) navigate(tab === 'monitor' ? { name: 'monitor', machine } : { name: 'workspace', machine }, { replace: true })
+  else if (machine) navigate(tab === 'chats' ? { name: 'chats', machine } : { name: 'workspace', machine }, { replace: true })
 }
 
 watch(
@@ -98,12 +103,14 @@ watch(
       </div>
     </div>
     <div class="body" :class="{ railed: railOn }">
-      <IpadRail v-if="railOn && tabMachine && activeTab" :machine="tabMachine" :active="activeTab" :terminal="sessionRoute?.terminal" :pane="paneRoute?.pane" />
+      <IpadRail v-if="railOn && tabMachine && activeTab" :machine="tabMachine" :active="activeTab === 'chats' ? 'monitor' : activeTab" :terminal="sessionRoute?.terminal" :pane="paneRoute?.pane" />
       <div class="master" :class="{ split: wide && !railOn, off: railOn && hasDetail }">
         <main class="scroll" :class="{ fill: fullTerminal, tabbed: showTabs }">
           <div v-if="renderReady" :key="viewKey" class="view" :class="[routeDirection, { fill: fullTerminal }]">
             <HomeView v-if="master.name === 'home'" />
             <PairView v-else-if="master.name === 'pair'" />
+            <ChatsView v-else-if="master.name === 'chats'" :machine="master.machine" :selected="chatRoute?.pane" />
+            <ChatView v-else-if="master.name === 'chat'" :machine="master.machine" :pane="master.pane" />
             <MonitorView v-else-if="master.name === 'monitor'" :machine="master.machine" :selected="selectedTerminal" />
             <SessionView v-else-if="master.name === 'session'" :machine="master.machine" :terminal="master.terminal" />
             <TerminalView v-else-if="master.name === 'workspace' && master.pane" :machine="master.machine" :pane="master.pane" />
@@ -117,7 +124,8 @@ watch(
       <aside v-if="wide && (!railOn || hasDetail)" class="detail" :class="{ roomy: railOn }" data-testid="detail-pane">
         <SessionView v-if="sessionRoute" :key="sessionRoute.terminal" :machine="sessionRoute.machine" :terminal="sessionRoute.terminal" embedded />
         <TerminalView v-else-if="paneRoute" :key="paneRoute.pane" :machine="paneRoute.machine" :pane="paneRoute.pane" embedded />
-        <p v-else class="placeholder">{{ t('machines.detailEmpty') }}</p>
+        <ChatView v-else-if="chatRoute" :key="chatRoute.pane" :machine="chatRoute.machine" :pane="chatRoute.pane" embedded />
+        <p v-else class="placeholder">{{ chatsHome ? t('chat.detailEmpty') : t('machines.detailEmpty') }}</p>
       </aside>
     </div>
     <ConfirmHost />

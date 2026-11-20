@@ -17,7 +17,7 @@ import { RemoteCommandError } from '../remote/types'
 export type SurfaceState = 'attaching' | 'live' | 'ended' | 'error'
 
 const props = defineProps<{ machine: string; sessionId: string | null; mods: StickyModifiers; direct: boolean }>()
-const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; typing: [typing: boolean]; scrolled: [scrolled: boolean]; mode: [mode: TermMode] }>()
+const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; typing: [typing: boolean]; scrolled: [scrolled: boolean]; mode: [mode: TermMode]; unsent: [bytes: number] }>()
 const { t: tr } = useI18n()
 
 const hub = useHubStore()
@@ -50,6 +50,8 @@ let deskRows = 0
 let disposed = false
 let observer: ResizeObserver | null = null
 let attaching = false
+let wasLive = false
+let resetDue = false
 const cleanups: Array<() => void> = []
 
 function setState(next: SurfaceState, info: string | null = null): void {
@@ -133,6 +135,10 @@ function toggleMode(): void {
 }
 
 function onOutput(bytes: Uint8Array): void {
+  if (resetDue) {
+    resetDue = false
+    pipe.reset(() => applyLayout())
+  }
   checksum(bytes)
   pipe.output(bytes)
   scheduleReader()
@@ -220,13 +226,18 @@ function onEvent(event: Record<string, unknown>): void {
   switch (event.t) {
     case 'pty.ready': {
       const size = deskSize(event)
-      pipe.reset(() => {
+      const apply = (): void => {
         if (size) {
           deskCols = size.cols
           deskRows = size.rows
         }
         applyLayout()
-      })
+      }
+      if (wasLive) {
+        resetDue = true
+        pipe.barrier(apply)
+      } else pipe.reset(apply)
+      wasLive = true
       setState('live')
       break
     }
@@ -247,6 +258,7 @@ function onEvent(event: Record<string, unknown>): void {
     case 'pty.snapshot': {
       const size = deskSize(event)
       if (!size || typeof event.data !== 'string') break
+      resetDue = false
       pipe.snapshot(size.cols, size.rows, event.data, (cols, rows) => {
         deskCols = cols
         deskRows = rows
@@ -273,7 +285,7 @@ async function attach(): Promise<void> {
   setState('attaching')
   layoutFit()
   try {
-    const next = await streams().attach(props.sessionId, t.cols, t.rows, { onOutput, onEvent })
+    const next = await streams().attach(props.sessionId, t.cols, t.rows, { onOutput, onEvent, onUnsent: (n) => emit('unsent', n) })
     if (disposed) {
       void streams().detach(next)
       return
@@ -348,6 +360,9 @@ watch(
   () => props.sessionId,
   async () => {
     await detach()
+    wasLive = false
+    resetDue = false
+    emit('unsent', 0)
     mode.value = loadMode(props.sessionId)
     readText.value = ''
     emit('mode', mode.value)
@@ -373,7 +388,15 @@ onBeforeUnmount(() => {
   queueMicrotask(pruneXtermStyles)
 })
 
-defineExpose({ sendText, sendLine, sendKey, sendBytes, focusDirect: applyInputMode, mode })
+function sendUnsent(): boolean {
+  return attachment ? streams().sendUnsent(attachment) : false
+}
+
+function dropUnsent(): void {
+  if (attachment) streams().dropUnsent(attachment)
+}
+
+defineExpose({ sendText, sendLine, sendKey, sendBytes, sendUnsent, dropUnsent, focusDirect: applyInputMode, mode })
 </script>
 
 <template>

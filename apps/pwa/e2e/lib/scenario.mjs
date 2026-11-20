@@ -7,14 +7,15 @@ import { helloControlStep, paneSteps, pairDeniedStep } from './pane-steps.mjs'
 import { pushSteps } from './push-steps.mjs'
 import { startPeer } from './procs.mjs'
 import { screenshotSteps } from './shots.mjs'
-import { uiSteps } from './ui-steps.mjs'
+import { go, uiSteps } from './ui-steps.mjs'
 import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
 import { mistHomeSteps } from './mist-home-steps.mjs'
 import { mistWorkspaceSteps } from './mist-ws-steps.mjs'
 import { inboxSteps } from './inbox-steps.mjs'
+import { CHAT_STEPS, chatSteps } from './chat-steps.mjs'
 
-export const STEPS_PER_BROWSER = 52
+export const STEPS_PER_BROWSER = 52 + CHAT_STEPS
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -122,6 +123,7 @@ export async function runScenario({ browserName, launch, env, record }) {
     await screenshotSteps(c, page, peer)
     await mistHomeSteps(c, page, peer)
     await inboxSteps(c, page, peer)
+    await chatSteps(c, page, peer)
     await workspaceSteps(c, page, peer)
     await workspaceShots(c, page, peer)
     await mistWorkspaceSteps(c, page, peer)
@@ -142,10 +144,14 @@ export async function runScenario({ browserName, launch, env, record }) {
       if ((await status(page, id).getAttribute('data-status')) === 'ready') throw new Error('unexpectedly ready')
       await shoot(page, join(env.qaDir, `home-stale-phone-light-${browserName}.png`))
       await byId(page, `machine-${id}`).locator('[data-testid="machine-open"]').click()
+      await byId(page, 'chat-home-offline').waitFor({ timeout: 5000 })
+      if ((await page.locator('[data-testid^="chat-row-"]:not([data-testid="chat-row-last"])').count()) < 3) throw new Error('cached chat rows missing')
+      await byId(page, 'chat-more').click()
+      await byId(page, 'more-monitor').click()
       await byId(page, 'monitor-offline').waitFor({ timeout: 5000 })
       if ((await page.locator('[data-testid="monitor-list"] button[data-testid^="session-"]').count()) !== 4) throw new Error('cached sessions missing')
       await shoot(page, join(env.qaDir, `monitor-offline-phone-light-${browserName}.png`))
-      await byId(page, 'back').click()
+      await go(page, '/app/')
       await byId(page, 'machines-view').waitFor()
     })
 

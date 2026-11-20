@@ -65,6 +65,9 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
     if let Some(text) = wait {
         p1["waitText"] = json!(text);
     }
+    if desk.menu {
+        p1["menu"] = crate::chat::menu();
+    }
     let mut p2 = json!({"key": "p2", "kind": "term", "preset": "codex", "title": "web codex", "state": "working", "rail": "working", "subagents": 0, "dirty": false, "busy": true, "sessionId": "sess-p2", "terminalId": "t2", "cwd": "D:/Code/web", "branch": "main"});
     let mut p3 = json!({"key": "p3", "kind": "term", "preset": "shell", "title": "npm run dev", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p3", "terminalId": "t4", "cwd": "D:/Code/infra", "branch": "infra"});
     let mut p4 = json!({"key": "p4", "kind": "term", "preset": "shell", "title": "db shell", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p4", "terminalId": "t3", "cwd": "D:/Code/api", "branch": "feat/api"});

@@ -1,3 +1,4 @@
+import { parseChatLast, type ChatLastEntry } from '../lib/chatModel'
 import { applyJsonPatch, deepCopy, PatchError } from './jsonPatch'
 import { applyMonitorEvent, type MonitorSnapshot } from './monitorReducer'
 import type { JsonMap, LinkState } from './types'
@@ -38,6 +39,7 @@ export interface MachineView {
   fromCache: boolean
   updatedAt: number | null
   revision: number
+  chatLast: Record<string, ChatLastEntry>
 }
 
 export interface CacheEntry {
@@ -79,6 +81,7 @@ export const EMPTY_VIEW: MachineView = {
   fromCache: false,
   updatedAt: null,
   revision: 0,
+  chatLast: {},
 }
 
 const isMap = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
@@ -164,6 +167,9 @@ export class MachineData {
         break
       case 'limit':
         this.onLimit(event)
+        return
+      case 'chat.last':
+        this.set({ chatLast: parseChatLast(event, this.current.chatLast) })
         return
       default:
         return

@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { Check, Clock, GitBranch, LoaderCircle, SquareTerminal, TriangleAlert } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AgentTile from '../components/AgentTile.vue'
+import ChatAsk, { type AskPick } from '../components/ChatAsk.vue'
+import { answerChoices, createAnswerFlow } from '../lib/paneAnswer'
+import { findPane, parseWorkspace, type WsPane } from '../lib/workspaceModel'
+import { RemoteCommandError } from '../remote/types'
 import PageBar from '../components/PageBar.vue'
 import StatusChip from '../components/StatusChip.vue'
 import { activityKey, isBadActivity, parseActivity, parseSessions, type Rail } from '../lib/monitorModel'
-import { projectName, toneOf } from '../lib/projectModel'
+import { projectName } from '../lib/projectModel'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
 
@@ -24,7 +28,6 @@ const lost = computed(() => hub.linkOf(props.machine).status !== 'ready')
 const activity = computed(() => parseActivity(view.value.snapshot?.activity, props.terminal))
 const project = computed(() => projectName(session.value?.cwd ?? null))
 const pageSub = computed(() => [project.value, machineName.value].filter(Boolean).join(', '))
-const tone = computed(() => toneOf(project.value ?? ''))
 const provider = computed(() => session.value?.provider ?? 'claude')
 const started = computed(() => (session.value?.since ? clock(session.value.since) : null))
 const paneKey = computed(() => {
@@ -56,6 +59,33 @@ function indent(depth: number): string {
 
 const subIcon: Record<Rail, typeof Clock> = { working: LoaderCircle, asked: Clock, failed: TriangleAlert, done: Check, idle: Check }
 
+const tabs = computed(() => parseWorkspace(view.value.workspace, parseSessions(view.value.snapshot)))
+const askPane = computed(() => (paneKey.value ? (findPane(tabs.value, paneKey.value)?.pane ?? null) : null))
+const answerable = computed(() => !!askPane.value && askPane.value.rail === 'asked' && (!!askPane.value.menu || answerChoices(askPane.value).length > 0))
+const pendingLabel = ref<string | null>(null)
+const answers = createAnswerFlow({
+  now: () => Date.now(),
+  dataAt: () => (view.value.stale ? 0 : (view.value.updatedAt ?? 0)),
+  refresh: async () => {
+    await Promise.all([hub.command(props.machine, 'ws.get'), hub.refresh(props.machine)])
+  },
+  read: (key: string): WsPane | null => findPane(tabs.value, key)?.pane ?? null,
+  send: async (target, keys) => {
+    if (keys.startsWith('menu:')) await hub.command(props.machine, 'ws.menu', { paneKey: target.key, sig: target.menu?.sig ?? '', index: Number(keys.slice(5)) })
+    else await hub.command(props.machine, 'ws.keys', { paneKey: target.key, keys, since: target.since ?? 0 })
+  },
+})
+
+async function pick(choice: AskPick): Promise<void> {
+  if (!askPane.value) return
+  pendingLabel.value = choice.label
+  const result = await answers.press(askPane.value, choice.keys)
+  pendingLabel.value = null
+  if (result.outcome === 'failed') console.warn(`[session] answer ${result.error instanceof RemoteCommandError ? result.error.code : 'internal'}`)
+}
+
+onBeforeUnmount(() => answers.dispose())
+
 function openWorkspace(): void {
   navigate({ name: 'workspace', machine: props.machine, pane: paneKey.value })
 }
@@ -71,14 +101,9 @@ function openWorkspace(): void {
         <div class="hero-head">
           <AgentTile :provider="provider" :size="48" />
           <div class="who">
-            <h2 class="name">{{ session.title }}</h2>
-            <p v-if="project" class="sub">
-              <span class="tone-mono" :data-tone="tone" aria-hidden="true">{{ project.slice(0, 1).toUpperCase() }}</span>
-              <span class="sub-text">{{ project }}</span>
-              <template v-if="session.branch">
-                <GitBranch :size="14" :stroke-width="2" aria-hidden="true" />
-                <span class="sub-text mono">{{ session.branch }}</span>
-              </template>
+            <p v-if="session.branch" class="sub">
+              <GitBranch :size="14" :stroke-width="2" aria-hidden="true" />
+              <span class="sub-text mono">{{ session.branch }}</span>
             </p>
           </div>
           <StatusChip :rail="session.rail" :lost="lost" />
@@ -86,7 +111,6 @@ function openWorkspace(): void {
         <dl class="facts">
           <div class="fact"><dt>{{ t('session.agent') }}</dt><dd class="agent" :class="`p-${provider}`">{{ t(`provider.${provider}`) }}</dd></div>
           <div v-if="started" class="fact"><dt>{{ t('session.startedAt') }}</dt><dd>{{ started }}</dd></div>
-          <div class="fact"><dt>{{ t('session.machine') }}</dt><dd>{{ machineName }}</dd></div>
         </dl>
         <p v-if="session.tool" class="tool mono" data-testid="session-tool-detail">▸ {{ session.toolSummary ? `${session.tool} · ${session.toolSummary}` : session.tool }}</p>
       </div>
@@ -97,7 +121,8 @@ function openWorkspace(): void {
             <Clock :size="22" :stroke-width="2.2" aria-hidden="true" />
             <span><strong>{{ t('session.waitingTitle') }}</strong><template v-if="session.waitingFor">: {{ session.waitingFor }}</template></span>
           </p>
-          <button type="button" class="btn btn-primary" data-testid="session-answer" @click="openWorkspace"><SquareTerminal :size="20" :stroke-width="2" aria-hidden="true" />{{ t('session.answer') }}</button>
+          <ChatAsk v-if="answerable && askPane" class="ask-card" :pane="askPane" :cmd="session.toolSummary" :enabled="!lost && !hub.isViewOnly(machine)" :pending="answers.pending.value ? pendingLabel : null" @pick="pick" @undo="answers.undo()" @terminal="openWorkspace" />
+          <button v-else type="button" class="btn btn-primary" data-testid="session-answer" @click="openWorkspace"><SquareTerminal :size="20" :stroke-width="2" aria-hidden="true" />{{ t('session.answer') }}</button>
         </div>
       </Transition>
 
@@ -125,7 +150,7 @@ function openWorkspace(): void {
         </li>
       </TransitionGroup>
 
-      <div class="actions">
+      <div v-if="!(session.rail === 'asked' && !answerable)" class="actions">
         <button type="button" class="btn btn-primary open" data-testid="open-terminal" @click="openWorkspace">
           <SquareTerminal :size="20" :stroke-width="2" aria-hidden="true" />{{ t('session.openTerminal') }}
         </button>
@@ -243,6 +268,10 @@ function openWorkspace(): void {
   background: var(--ccm-raised);
   color: var(--ccm-ink-muted);
   overflow-wrap: anywhere;
+}
+
+.ask-card {
+  align-self: stretch;
 }
 
 .ask {

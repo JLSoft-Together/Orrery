@@ -27,7 +27,7 @@ function date(ms: number): string {
 }
 
 function openMachine(id: string): void {
-  navigate({ name: 'monitor', machine: id })
+  navigate({ name: 'chats', machine: id })
 }
 
 async function cleanOld(): Promise<void> {

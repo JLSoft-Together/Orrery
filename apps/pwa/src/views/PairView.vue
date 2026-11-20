@@ -63,7 +63,7 @@ async function run(qr: string): Promise<void> {
 }
 
 function finish(): void {
-  navigate({ name: 'monitor', machine: pairedId }, { replace: true })
+  navigate({ name: 'chats', machine: pairedId }, { replace: true })
 }
 
 function submitPaste(): void {

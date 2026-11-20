@@ -180,7 +180,7 @@ export async function mistWorkspaceSteps(c, page, peer) {
   await step('iPad rail: replaces the tab bar, machine + project-indented sessions + workspace panes, collapses and remembers it, phone keeps the floating tab bar, no blur on lists, scroll stays smooth', async () => {
     await page.setViewportSize(IPAD)
     await page.emulateMedia({ colorScheme: 'light' })
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await byId(page, 'ipad-rail').waitFor({ timeout: 8000 })
     if ((await byId(page, 'tab-bar').count()) !== 0) throw new Error('tab bar on iPad')
     if ((await byId(page, 'ipad-rail').getAttribute('data-collapsed')) !== '0') throw new Error('rail starts collapsed')
@@ -257,7 +257,7 @@ export async function mistWorkspaceSteps(c, page, peer) {
     await byId(page, 'rail-settings').click()
     await byId(page, 'settings-view').waitFor({ timeout: 8000 })
     if ((await byId(page, 'ipad-rail').count()) !== 1 || (await byId(page, 'tab-bar').count()) !== 0) throw new Error('settings on iPad: rail missing or tab bar shown')
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await byId(page, 'monitor-view').waitFor({ timeout: 8000 })
     await page.evaluate(() => {
       const list = document.querySelector('[data-testid="monitor-list"]') ?? document.querySelector('[data-testid="monitor-groups"]')
@@ -295,7 +295,7 @@ export async function mistWorkspaceSteps(c, page, peer) {
     if (scrolled.range < 200) throw new Error(`long list did not overflow (${scrolled.range})`)
     console.log(`perf [${browserName}] terminal burst ${JSON.stringify(c.perf.terminalBurst)} list scroll ${JSON.stringify(c.perf.listScroll)}`)
     if (scrolled.p50 > (browserName === 'webkit' ? 400 : 60)) throw new Error(`list scroll median frame ${scrolled.p50} ms`)
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await c.reload(page)
     await page.setViewportSize(PHONE)
     await byId(page, 'tab-bar').waitFor({ timeout: 8000 })

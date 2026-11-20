@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RemoteCommandError, type JsonMap } from '../remote/types'
 import { keySequence, lineBytes, utf8 } from './keys'
 import { controlChar, StickyModifiers } from './modifiers'
-import { PtyStreams, type PtyTransport } from './ptyStreams'
+import { PtyStreams, UNSENT_MAX, type PtyTransport } from './ptyStreams'
 import { Terminal } from '@xterm/xterm'
 import { bufferLines, resizeAnchored, TermPipe, type PipeClock } from './termPipe'
 
@@ -158,6 +158,32 @@ describe('PtyStreams', () => {
     s.input(a, new Uint8Array([6]), true)
     vi.advanceTimersByTime(31)
     expect(x.sent[2]).toEqual({ stream: 1, bytes: [5, 6], claim: true })
+  })
+
+  it('keeps keys typed while the link is down as unsent, sends them only when asked, and caps them', async () => {
+    const x = transport()
+    const s = new PtyStreams(x.t)
+    const counts: number[] = []
+    const a = await s.attach('sess', 80, 24, { ...handlers, onUnsent: (n) => counts.push(n) })
+    x.state.ready = false
+    s.input(a, new Uint8Array([104, 105]), true)
+    s.input(a, new Uint8Array([33]), true)
+    expect(x.sent).toEqual([])
+    expect(s.unsentBytes(a)).toBe(3)
+    expect(counts).toEqual([2, 3])
+    expect(s.sendUnsent(a)).toBe(false)
+    x.state.ready = true
+    await s.onReady()
+    expect(x.sent).toEqual([])
+    expect(s.sendUnsent(a)).toBe(true)
+    expect(x.sent).toEqual([{ stream: 1, bytes: [104, 105, 33], claim: true }])
+    expect(s.unsentBytes(a)).toBe(0)
+    x.state.ready = false
+    s.input(a, new Uint8Array(UNSENT_MAX + 10), true)
+    expect(s.unsentBytes(a)).toBe(UNSENT_MAX)
+    s.dropUnsent(a)
+    expect(s.unsentBytes(a)).toBe(0)
+    expect(counts.at(-1)).toBe(0)
   })
 
   it('does not send while suspended or offline', async () => {

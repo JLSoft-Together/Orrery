@@ -18,7 +18,7 @@ export async function inboxSteps(c, page, peer) {
     await page.setViewportSize(PHONE)
     await page.emulateMedia({ colorScheme: 'light' })
     peer.send('inbox')
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await byId(page, 'monitor-view').waitFor({ timeout: 8000 })
     await badge(4)
     await byId(page, 'inbox-open').click()
@@ -52,7 +52,7 @@ export async function inboxSteps(c, page, peer) {
 
   await step('Inbox: an old desktop without the flag falls back to attention (question, done); no inbox clears the badge', async () => {
     peer.send('inboxold')
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await byId(page, 'monitor-view').waitFor({ timeout: 8000 })
     await badge(2)
     await byId(page, 'inbox-open').click()
@@ -62,7 +62,7 @@ export async function inboxSteps(c, page, peer) {
     await go(page, `/app/m/${id}/ws`)
     await byId(page, 'inbox-sheet').waitFor({ state: 'detached', timeout: 5000 })
     peer.send('inboxoff')
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await byId(page, 'monitor-view').waitFor({ timeout: 8000 })
     await page.waitForFunction(() => !document.querySelector('[data-testid="tab-badge"]'), null, { timeout: 8000 })
     await byId(page, 'inbox-open').click()

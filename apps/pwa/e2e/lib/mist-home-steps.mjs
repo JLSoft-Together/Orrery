@@ -22,7 +22,7 @@ export async function mistHomeSteps(c, page, peer) {
     const sub = await text(card.locator('.sub'))
     if (!/Orrery 2\.3\.0, Windows/.test(sub)) throw new Error(`subtitle ${sub}`)
 
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     await byId(page, 'monitor-list').waitFor({ timeout: 8000 })
     if ((await page.locator('[data-testid^="project-"]').count()) !== 4) throw new Error('project cards')
     if ((await byId(page, 'mode-cards').getAttribute('aria-selected')) !== 'true') throw new Error('Project is not the default view')
@@ -35,10 +35,10 @@ export async function mistHomeSteps(c, page, peer) {
 
     const screens = [
       { name: 'home', path: '/app/', wait: 'machines-view' },
-      { name: 'monitor-a', path: `/app/m/${id}`, wait: 'monitor-list' },
-      { name: 'monitor-b', path: `/app/m/${id}`, wait: 'monitor-groups', mode: 'groups' },
+      { name: 'monitor-a', path: `/app/m/${id}/mon`, wait: 'monitor-list' },
+      { name: 'monitor-b', path: `/app/m/${id}/mon`, wait: 'monitor-groups', mode: 'groups' },
       { name: 'detail', path: `/app/m/${id}/s/t3`, wait: 'session-ask' },
-      { name: 'limit', path: `/app/m/${id}`, wait: 'monitor-limit', limit: true },
+      { name: 'limit', path: `/app/m/${id}/mon`, wait: 'monitor-limit', limit: true },
       { name: 'pair-scan', path: '/app/pair', wait: 'pair-view' },
       { name: 'pair-code', path: '/app/pair', wait: 'pair-view', after: async () => {
         await page.locator('[data-testid="pair-tab-paste"], [data-testid="pair-other"]').first().waitFor({ timeout: 8000 })
@@ -83,7 +83,7 @@ export async function mistHomeSteps(c, page, peer) {
     await page.emulateMedia({ colorScheme: 'light' })
     for (const palette of ['nebula', 'galaxy']) {
       await page.evaluate((p) => document.documentElement.setAttribute('data-next-theme', p), palette)
-      for (const [name, path, wait1] of [['home', '/app/', 'machines-view'], ['monitor-a', `/app/m/${id}`, 'monitor-list']]) {
+      for (const [name, path, wait1] of [['home', '/app/', 'machines-view'], ['monitor-a', `/app/m/${id}/mon`, 'monitor-list']]) {
         await go(page, path)
         await byId(page, wait1).waitFor({ timeout: 8000 })
         await wait(450)
@@ -91,7 +91,7 @@ export async function mistHomeSteps(c, page, peer) {
       }
     }
     await page.evaluate(() => document.documentElement.setAttribute('data-next-theme', 'mist'))
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     if ((await byId(page, 'monitor-view').getAttribute('data-mode')) === 'groups') await byId(page, 'mode-cards').click()
     await go(page, '/app/')
     await byId(page, 'machines-view').waitFor()

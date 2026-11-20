@@ -2,6 +2,7 @@ import { REMOTE_ATTACH_MAX } from '../lib/limits'
 import { RemoteCommandError, type JsonMap } from '../remote/types'
 
 export const PTY_CAPS = ['pty.snapshot'] as const
+export const UNSENT_MAX = 8192
 
 export interface PtyTransport {
   ready(): boolean
@@ -12,6 +13,7 @@ export interface PtyTransport {
 export interface PtyHandlers {
   onOutput(bytes: Uint8Array): void
   onEvent(event: JsonMap): void
+  onUnsent?(bytes: number): void
 }
 
 export interface PtyAttachment {
@@ -24,6 +26,7 @@ export interface PtyAttachment {
   pendingClaim: boolean
   timer: ReturnType<typeof setTimeout> | null
   handlers: PtyHandlers
+  unsent: Uint8Array[]
 }
 
 export interface PtyOptions {
@@ -60,7 +63,7 @@ export class PtyStreams {
 
   async attach(sessionId: string, cols: number, rows: number, handlers: PtyHandlers): Promise<PtyAttachment> {
     if (this.entries.size >= this.limit) throw new RemoteCommandError('limit')
-    const entry: PtyAttachment = { stream: this.next++, sessionId, cols, rows, suspended: false, pending: [], pendingClaim: false, timer: null, handlers }
+    const entry: PtyAttachment = { stream: this.next++, sessionId, cols, rows, suspended: false, pending: [], pendingClaim: false, timer: null, handlers, unsent: [] }
     this.entries.set(entry.stream, entry)
     if (this.transport.ready()) {
       try {
@@ -96,8 +99,38 @@ export class PtyStreams {
     entry.pendingClaim = false
   }
 
+  unsentBytes(entry: PtyAttachment): number {
+    return entry.unsent.reduce((n, c) => n + c.length, 0)
+  }
+
+  private queue(entry: PtyAttachment, bytes: Uint8Array): void {
+    const room = UNSENT_MAX - this.unsentBytes(entry)
+    if (room <= 0) return
+    entry.unsent.push(bytes.length > room ? bytes.slice(0, room) : bytes)
+    entry.handlers.onUnsent?.(this.unsentBytes(entry))
+  }
+
+  sendUnsent(entry: PtyAttachment): boolean {
+    if (entry.unsent.length === 0 || entry.suspended || !this.transport.ready() || !this.entries.has(entry.stream)) return false
+    const bytes = concat(entry.unsent)
+    entry.unsent = []
+    entry.handlers.onUnsent?.(0)
+    this.input(entry, bytes, true)
+    return true
+  }
+
+  dropUnsent(entry: PtyAttachment): void {
+    if (entry.unsent.length === 0) return
+    entry.unsent = []
+    entry.handlers.onUnsent?.(0)
+  }
+
   input(entry: PtyAttachment, bytes: Uint8Array, claim: boolean): void {
-    if (bytes.length === 0 || entry.suspended || !this.transport.ready()) return
+    if (bytes.length === 0 || entry.suspended) return
+    if (!this.transport.ready()) {
+      this.queue(entry, bytes)
+      return
+    }
     if (!entry.timer) {
       this.transport.sendInput(entry.stream, bytes, claim)
       entry.timer = setTimeout(() => this.flush(entry), this.coalesceMs)

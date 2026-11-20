@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 export type Route =
   | { name: 'home' }
   | { name: 'pair' }
+  | { name: 'chats'; machine: string }
+  | { name: 'chat'; machine: string; pane: string }
   | { name: 'monitor'; machine: string }
   | { name: 'session'; machine: string; terminal: string }
   | { name: 'workspace'; machine: string; pane?: string }
@@ -24,7 +26,9 @@ export function parsePath(path: string): Route {
   if (head === 'settings' && parts.length === 1) return { name: 'settings' }
   if (head === 'settings' && id === 'debug' && parts.length === 2) return { name: 'debug' }
   if (head === 'm' && id) {
-    if (!sub && parts.length === 2) return { name: 'monitor', machine: id }
+    if (!sub && parts.length === 2) return { name: 'chats', machine: id }
+    if (sub === 'mon' && parts.length === 3) return { name: 'monitor', machine: id }
+    if (sub === 'c' && key && parts.length === 4) return { name: 'chat', machine: id, pane: key }
     if (sub === 's' && key && parts.length === 4) return { name: 'session', machine: id, terminal: key }
     if (sub === 'ws' && parts.length === 3) return { name: 'workspace', machine: id }
     if (sub === 'p' && key && parts.length === 4) return { name: 'workspace', machine: id, pane: key }
@@ -44,8 +48,12 @@ export function toPath(route: Route): string {
       return '/settings'
     case 'debug':
       return '/settings/debug'
-    case 'monitor':
+    case 'chats':
       return `/m/${enc(route.machine)}`
+    case 'chat':
+      return `/m/${enc(route.machine)}/c/${enc(route.pane)}`
+    case 'monitor':
+      return `/m/${enc(route.machine)}/mon`
     case 'session':
       return `/m/${enc(route.machine)}/s/${enc(route.terminal)}`
     case 'workspace':
@@ -56,8 +64,11 @@ export function toPath(route: Route): string {
 export function parentOf(route: Route): Route {
   switch (route.name) {
     case 'session':
-    case 'workspace':
       return { name: 'monitor', machine: route.machine }
+    case 'chat':
+    case 'workspace':
+    case 'monitor':
+      return { name: 'chats', machine: route.machine }
     case 'debug':
       return { name: 'settings' }
     default:

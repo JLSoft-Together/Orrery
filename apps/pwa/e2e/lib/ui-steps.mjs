@@ -19,6 +19,9 @@ export async function uiSteps(c, page, peer) {
 
   await step('Home card opens Monitor A: cards sorted by state, tool line, filters', async () => {
     await byId(page, `machine-${id}`).locator('[data-testid="machine-open"]').click()
+    await byId(page, 'chat-home').waitFor({ timeout: 5000 })
+    await byId(page, 'chat-more').click()
+    await byId(page, 'more-monitor').click()
     await byId(page, 'monitor-view').waitFor({ timeout: 5000 })
     if ((await byId(page, 'monitor-view').getAttribute('data-mode')) !== 'cards') throw new Error('Monitor A is not the default')
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="monitor-list"] button[data-testid^="session-"]').length === 4)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, ChevronDown, ChevronLeft, Clock, LayoutGrid, LoaderCircle, Check, Laptop, MoonStar, PanelLeftClose, PanelLeftOpen, QrCode, SlidersHorizontal, TriangleAlert } from 'lucide-vue-next'
+import { Activity, MessageCircle, ChevronDown, ChevronLeft, Clock, LayoutGrid, LoaderCircle, Check, Laptop, MoonStar, PanelLeftClose, PanelLeftOpen, QrCode, SlidersHorizontal, TriangleAlert } from 'lucide-vue-next'
 import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { inboxCount } from '../lib/inboxModel'
@@ -71,6 +71,10 @@ function go(target: 'monitor' | 'workspace'): void {
     </header>
 
     <div class="seg" role="tablist">
+      <button type="button" role="tab" class="seg-btn" :aria-selected="false" :aria-label="t('tabs.chats')" data-testid="rail-seg-chats" @click="navigate({ name: 'chats', machine })">
+        <span class="ico"><MessageCircle :size="18" :stroke-width="2" aria-hidden="true" /></span>
+        <span v-if="!collapsed">{{ t('tabs.chats') }}</span>
+      </button>
       <button type="button" role="tab" class="seg-btn" :class="{ on: active === 'monitor' }" :aria-selected="active === 'monitor'" :aria-label="t('tabs.monitor')" data-testid="rail-seg-monitor" @click="go('monitor')">
         <span class="ico"><Activity :size="18" :stroke-width="2" aria-hidden="true" /><span v-if="waiting > 0 && collapsed" class="dot" aria-hidden="true" /></span>
         <span v-if="!collapsed">{{ t('tabs.monitor') }}</span>

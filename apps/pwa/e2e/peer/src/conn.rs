@@ -269,10 +269,19 @@ impl Live {
                         extra.push(snapshot_event(desk));
                         extra.push(json!({"t": "webpush.config", "key": data::VAPID_KEY}));
                         extra.push(data::ws_snapshot(desk));
-                        json!({
+                        let caps_chat = value.get("caps").and_then(Value::as_array).is_some_and(|c| c.iter().any(|x| x.as_str() == Some("chat")));
+                        if desk.chat && caps_chat {
+                            extra.push(crate::chat::last_full());
+                        }
+                        let mut hello = json!({
                             "re": id, "ok": true, "machine": desk.machine, "name": NAME,
                             "version": "2.3.0", "os": "windows", "minProto": PROTO, "locale": "vi", "control": !desk.view_only,
-                        })
+                        });
+                        if desk.chat {
+                            hello["chat"] = json!(1);
+                        }
+                        println!("{}", json!({"ev": "hello", "caps": value.get("caps")}));
+                        hello
                     }
                     Some("ws.get") => {
                         extra.push(data::ws_snapshot(desk));
@@ -304,6 +313,29 @@ impl Live {
                         json!({ "re": id, "ok": true })
                     }
                     Some("ws.keys") | Some("ws.send") | Some("ws.open") | Some("ws.close") | Some("ws.rename") | Some("ws.move") | Some("ws.reopen") | Some("ws.compact") if desk.view_only => json!({ "re": id, "ok": false, "error": "denied" }),
+                    Some("chat.watch") | Some("chat.page") | Some("chat.unwatch") if !desk.chat => json!({ "re": id, "ok": false, "error": "denied" }),
+                    Some("chat.watch") | Some("chat.page") => {
+                        let pane = value.get("paneKey").and_then(Value::as_str).unwrap_or("");
+                        println!("{}", json!({"ev": kind, "paneKey": pane, "before": value.get("before"), "gen": value.get("gen")}));
+                        if pane != "p1" && pane != "p2" {
+                            json!({ "re": id, "ok": false, "error": "notFound" })
+                        } else {
+                            let before = if kind == Some("chat.page") { value.get("before").and_then(Value::as_u64) } else { None };
+                            let mut reply = crate::chat::page(pane, before);
+                            reply["re"] = id.clone();
+                            reply["ok"] = json!(true);
+                            reply
+                        }
+                    }
+                    Some("chat.unwatch") => {
+                        println!("{}", json!({"ev": "chat.unwatch", "paneKey": value.get("paneKey")}));
+                        json!({ "re": id, "ok": true })
+                    }
+                    Some("ws.menu") if desk.view_only => json!({ "re": id, "ok": false, "error": "denied" }),
+                    Some("ws.menu") => {
+                        println!("{}", json!({"ev": "menu", "paneKey": value.get("paneKey"), "sig": value.get("sig"), "index": value.get("index")}));
+                        json!({ "re": id, "ok": true })
+                    }
                     Some("ws.keys") => {
                         println!("{}", json!({"ev": "keys", "keys": value.get("keys"), "paneKey": value.get("paneKey"), "since": value.get("since")}));
                         json!({ "re": id, "ok": true })

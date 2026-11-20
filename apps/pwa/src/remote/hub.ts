@@ -45,7 +45,7 @@ interface Entry {
 }
 
 const LOG_CAP = 200
-const DEVICE_EVENTS = /^(pty|fs|git|run|webpush)\./
+const DEVICE_EVENTS = /^(pty|fs|git|run|webpush|chat)\./
 
 export interface PtyOut {
   machineId: string

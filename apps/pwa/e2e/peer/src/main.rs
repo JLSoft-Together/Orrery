@@ -1,3 +1,4 @@
+mod chat;
 mod conn;
 mod data;
 mod vw;
@@ -47,6 +48,8 @@ pub struct Desk {
     pub close_ask: bool,
     pub close_pending: Option<&'static str>,
     pub vw: vw::Vw,
+    pub chat: bool,
+    pub menu: bool,
 }
 
 pub fn now() -> u64 {
@@ -153,6 +156,23 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
         }
         "confirm" => {
             let value = json!({"t": "confirm.ask", "cid": "cid1", "re": "git.discard", "title": "Bỏ thay đổi trong src/app.ts?", "detail": "git checkout -- src/app.ts", "ok": "Bỏ thay đổi", "cancel": "Giữ lại"});
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
+        "chat" => desk.chat = true,
+        "chatoff" => desk.chat = false,
+        "chatitems" | "chatreset" => {
+            let value = if line == "chatitems" { chat::live_items() } else { chat::reset() };
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
+        "chatmenu" | "chatmenuoff" => {
+            desk.menu = line == "chatmenu";
+            desk.asked = desk.menu;
+            desk.rev += 1;
+            let value = data::ws_snapshot(desk);
             for (id, conn) in conns.iter_mut() {
                 outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
             }
@@ -271,6 +291,8 @@ fn main() {
         close_ask: false,
         close_pending: None,
         vw: vw::Vw::new(),
+        chat: false,
+        menu: false,
     };
 
     let ts = now();

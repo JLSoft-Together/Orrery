@@ -1,5 +1,6 @@
 import type { WorkspaceDoc } from '../remote/machineData'
 import { parseRemoteInbox, type RemoteInbox } from '../../../../packages/shared/src/inbox'
+import { parseMenu, type ChatMenu } from './chatModel'
 import { letterOf, toneOf } from './projectModel'
 import { providerOf, type ActivityItem, type MonitorSession, type Provider, type Rail } from './monitorModel'
 
@@ -22,6 +23,7 @@ export interface WsPane {
   since: number | null
   attention: 'waiting' | 'done' | null
   inbox: RemoteInbox | null
+  menu?: ChatMenu | null
 }
 
 export interface WsGroup {
@@ -100,6 +102,7 @@ function parsePane(raw: Item, sessions: Map<string, MonitorSession>): WsPane | n
     since: live?.since ?? null,
     attention: raw.attention === 'waiting' || raw.attention === 'done' ? raw.attention : null,
     inbox: parseRemoteInbox(raw.inbox),
+    menu: parseMenu(raw.menu),
   }
 }
 

@@ -7,8 +7,8 @@ export async function screenshotSteps(c, page, peer) {
   const id = peer.info.machine
   const screens = [
     { name: 'home', path: '/app/', waitFor: 'machines-view' },
-    { name: 'monitor-a', path: `/app/m/${id}`, waitFor: 'monitor-list' },
-    { name: 'monitor-b', path: `/app/m/${id}`, waitFor: 'monitor-groups', mode: 'groups' },
+    { name: 'monitor-a', path: `/app/m/${id}/mon`, waitFor: 'monitor-list' },
+    { name: 'monitor-b', path: `/app/m/${id}/mon`, waitFor: 'monitor-groups', mode: 'groups' },
     { name: 'detail', path: `/app/m/${id}/s/t2`, waitFor: 'session-view' },
     { name: 'settings', path: '/app/settings', waitFor: 'settings-view' },
     { name: 'pair-code', path: '/app/pair', waitFor: 'pair-view', after: async () => byId(page, 'pair-tab-paste').dispatchEvent('click') },
@@ -45,7 +45,7 @@ export async function screenshotSteps(c, page, peer) {
     }
     await page.setViewportSize(PHONE)
     await page.emulateMedia({ colorScheme: 'light' })
-    await go(page, `/app/m/${id}`)
+    await go(page, `/app/m/${id}/mon`)
     if ((await byId(page, 'monitor-view').getAttribute('data-mode')) === 'groups') await byId(page, 'mode-cards').click()
     await go(page, '/app/')
     await byId(page, 'machines-view').waitFor()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronLeft, FolderTree, Link2Off, StopCircle, Eye } from 'lucide-vue-next'
+import { ChevronDown, ChevronLeft, FolderTree, Link2Off, Signal, StopCircle, Eye } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import InputBar from '../components/InputBar.vue'
@@ -31,6 +31,8 @@ const toast = ref<string | null>(null)
 const waitedOut = ref(false)
 const scrolled = ref(false)
 const askOpen = ref(false)
+const unsent = ref(0)
+const SLOW_MS = 150
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 const waitTimer = setTimeout(() => {
   waitedOut.value = true
@@ -42,7 +44,17 @@ const tabs = computed(() => parseWorkspace(view.value.workspace, parseSessions(v
 const found = computed(() => findPane(tabs.value, props.pane))
 const online = computed(() => hub.linkOf(props.machine).status === 'ready')
 const viewOnly = computed(() => hub.isViewOnly(props.machine))
-const canType = computed(() => online.value && !viewOnly.value && state.value === 'live')
+const canType = computed(() => !viewOnly.value && state.value === 'live')
+const rtt = computed(() => hub.rtt[props.machine])
+const slow = computed(() => online.value && rtt.value !== undefined && rtt.value > SLOW_MS)
+
+function sendUnsent(): void {
+  surface.value?.sendUnsent()
+}
+
+function dropUnsent(): void {
+  surface.value?.dropUnsent()
+}
 const gone = computed(() => found.value === null && (view.value.workspace !== null || waitedOut.value))
 const overlay = computed(() => {
   if (found.value && !found.value.pane.canAttach) return { icon: StopCircle, text: t('term.notTerminal') }
@@ -143,16 +155,23 @@ onBeforeUnmount(() => {
           <span class="pick-text">{{ found ? `${t(`provider.${found.pane.provider}`)} · ${found.tab.name}` : t('term.loading') }}</span>
           <ChevronDown :size="18" :stroke-width="2" aria-hidden="true" />
         </button>
-        <StatusChip v-if="found" :rail="found.pane.rail" :lost="!online" />
+        <span v-if="slow" class="lat" data-testid="term-latency"><Signal :size="13" :stroke-width="2.2" aria-hidden="true" />{{ t('chat.slow', { ms: rtt }) }}</span>
+        <StatusChip v-else-if="found" :rail="found.pane.rail" :lost="!online" />
         <button type="button" class="icon" :aria-label="t('viewer.open')" :disabled="!found?.pane.cwd" data-testid="open-viewer" @click="viewer = true">
           <FolderTree :size="22" :stroke-width="2" aria-hidden="true" />
         </button>
       </header>
       <p v-if="viewOnly" class="banner view-only" role="status" data-testid="view-only"><Eye :size="16" :stroke-width="2.2" aria-hidden="true" />{{ t('term.viewOnly') }}</p>
       <p v-else-if="!online" class="banner offline" role="status" data-testid="term-offline"><Link2Off :size="16" :stroke-width="2.2" aria-hidden="true" />{{ t('term.offline') }}</p>
+      <div v-if="unsent > 0" class="banner unsent" role="status" data-testid="term-unsent">
+        <Link2Off :size="16" :stroke-width="2.2" aria-hidden="true" />
+        <span class="grow">{{ t('term.unsent', { n: unsent }, unsent) }}</span>
+        <button type="button" class="mini" :disabled="!online" data-testid="term-unsent-send" @click="sendUnsent">{{ t('term.sendUnsent') }}</button>
+        <button type="button" class="mini" data-testid="term-unsent-drop" @click="dropUnsent">{{ t('term.dropUnsent') }}</button>
+      </div>
       <PermissionBar v-if="found?.pane.asked" :text="found.pane.waitText" :enabled="online && !viewOnly" :collapsed="scrolled && !askOpen" @keys="answer" @expand="askOpen = true" />
       <div class="stage">
-        <TerminalSurface v-if="found?.pane.canAttach" ref="surface" :key="found.pane.sessionId ?? ''" :machine="machine" :session-id="found.pane.sessionId" :mods="mods" :direct="direct" @state="onState" @scrolled="onScrolled" />
+        <TerminalSurface v-if="found?.pane.canAttach" ref="surface" :key="found.pane.sessionId ?? ''" :machine="machine" :session-id="found.pane.sessionId" :mods="mods" :direct="direct" @state="onState" @scrolled="onScrolled" @unsent="(n) => (unsent = n)" />
         <p v-if="overlay" class="overlay" role="status" data-testid="term-overlay"><component :is="overlay.icon" :size="18" :stroke-width="2.2" aria-hidden="true" />{{ overlay.text }}</p>
         <p v-if="toast" class="toast" role="status" data-testid="term-toast">{{ toast }}</p>
       </div>
@@ -247,6 +266,43 @@ onBeforeUnmount(() => {
   font-size: 0.875rem;
   font-weight: 600;
   flex: none;
+}
+
+.unsent {
+  color: var(--ccm-warning);
+  background: var(--ccm-warning-soft);
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.mini {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--ccm-ink);
+  font-weight: 700;
+}
+
+.mini:disabled {
+  color: var(--ccm-ink-faint);
+}
+
+.lat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ccm-warning);
+  font-variant-numeric: tabular-nums;
 }
 
 .view-only {

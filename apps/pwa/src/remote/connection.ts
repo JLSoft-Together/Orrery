@@ -8,6 +8,8 @@ import { RemoteSession, type PtyChunk } from './session'
 import type { WireConnector } from './wire'
 import { backoffFor, isTerminal, RemoteCommandError, type ConnectionConfig, type JsonMap, type LinkReason, type LinkState, type Machine } from './types'
 
+export const HELLO_CAPS = ['chat'] as const
+
 export interface DeviceIdentity {
   privateKey: Uint8Array
   deviceId: string
@@ -271,7 +273,7 @@ export class MachineConnection {
     session.start()
     let reply: JsonMap
     try {
-      reply = await session.request('hello', { proto: this.deps.config.proto, app: this.deps.config.appName, platform: this.deps.config.platform, caps: [] })
+      reply = await session.request('hello', { proto: this.deps.config.proto, app: this.deps.config.appName, platform: this.deps.config.platform, caps: [...HELLO_CAPS] })
     } catch (error) {
       const code = error instanceof RemoteCommandError ? error.code : 'internal'
       if (code === 'offline') {

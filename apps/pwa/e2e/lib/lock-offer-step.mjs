@@ -13,7 +13,7 @@ async function pairUntilNext(c, page, peer, base) {
   await byId(page, 'pair-tab-paste').dispatchEvent('click')
   await byId(page, 'pair-code').fill(peer.info.qr)
   await byId(page, 'pair-submit').click({ timeout: 8000 })
-  await page.waitForFunction(() => document.querySelector('[data-testid="lock-offer"]') || document.querySelector('[data-testid="monitor-view"]'), null, { timeout: 20000 })
+  await page.waitForFunction(() => document.querySelector('[data-testid="lock-offer"]') || document.querySelector('[data-testid="chat-home"]'), null, { timeout: 20000 })
 }
 
 const prefs = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ccm.pwa.prefs') ?? '{}'))
@@ -56,7 +56,7 @@ export async function lockOfferStep(c, env) {
       await shoot(a.page, join(env.qaDirE, `lock-offer-fail-phone-light-${browserName}.png`))
       if ((await prefs(a.page)).lockEnabled === true) throw new Error('lock enabled after a refused try')
       await byId(a.page, 'lock-offer-later').click({ timeout: 8000 })
-      await byId(a.page, 'monitor-view').waitFor({ timeout: 8000 })
+      await byId(a.page, 'chat-home').waitFor({ timeout: 8000 })
       const saved = await prefs(a.page)
       if (saved.lockOffered !== true || saved.lockEnabled === true) throw new Error(`prefs after Later ${JSON.stringify(saved)}`)
     } finally {
@@ -74,7 +74,7 @@ export async function lockOfferStep(c, env) {
       await pairUntilNext(c, b.page, second, base)
       await byId(b.page, 'lock-offer').waitFor({ timeout: 5000 })
       await byId(b.page, 'lock-offer-enable').click({ timeout: 8000 })
-      await byId(b.page, 'monitor-view').waitFor({ timeout: 10000 })
+      await byId(b.page, 'chat-home').waitFor({ timeout: 10000 })
       const saved = await prefs(b.page)
       if (saved.lockEnabled !== true || !saved.credentialId || saved.lockOffered !== true) throw new Error(`prefs after Turn on ${JSON.stringify(saved)}`)
       await byId(b.page, 'back').click({ timeout: 8000 })

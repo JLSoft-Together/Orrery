@@ -88,7 +88,7 @@ async function phaseOne(app) {
   check('header name tooltip shows the new folder', /other/.test(await evaluate(`document.querySelector('[data-pane="${shellKey}"] [data-pane-name]')?.title ?? ''`)))
 
   // Relative path printed after cd → Ctrl+click resolves against `other`, not the start folder.
-  await type(`cls; 1..60 | % { 'src/y.ts:2' }`)
+  await type(process.platform === 'win32' ? `cls; 1..60 | % { 'src/y.ts:2' }` : `clear; for i in $(seq 60); do echo src/y.ts:2; done`)
   await key('Enter', 'Enter', 13)
   await sleep(2500)
   const at = await evaluate(`(() => { const r = document.querySelector('[data-pane="${shellKey}"] .xterm-screen').getBoundingClientRect(); return { x: r.left + 6, y: r.top + 6 } })()`)

@@ -8,8 +8,8 @@ const W = `${S}.get('workspace')`
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
 
-const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-group-'))
-const OTHER = fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-other-'))
+const DIR = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-group-')))
+const OTHER = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-other-')))
 const norm = (d) => d.replace(/[\\/]+$/, '').replace(/\//g, '\\').toLowerCase()
 
 ;(async () => {

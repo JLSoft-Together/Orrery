@@ -3,6 +3,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const path = require('node:path')
 const { launch, REPO, OUT } = require('./cdp.cjs')
+const { paneProbe } = require('./pane-probe.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const IO = path.join(OUT, 'agent-api')
@@ -57,7 +58,7 @@ const sc = (r) => r?.structuredContent
     await sleep(2500)
     await evaluate(`document.querySelector('[data-pane="${shellKey}"] .xterm-helper-textarea').focus()`)
     const envFile = path.join(IO, 'env.json')
-    await type(`@{api=$env:ORRERY_API; token=$env:ORRERY_TOKEN} | ConvertTo-Json | Set-Content -Encoding utf8 ${psq(envFile)}`)
+    await type(process.platform === 'win32' ? `@{api=$env:ORRERY_API; token=$env:ORRERY_TOKEN} | ConvertTo-Json | Set-Content -Encoding utf8 ${psq(envFile)}` : paneProbe(IO, { envFile }))
     await key('Enter', 'Enter', 13)
     const env = await readJson(envFile)
     const port = Number(/^http:\/\/127\.0\.0\.1:(\d+)$/.exec(env.api ?? '')?.[1])

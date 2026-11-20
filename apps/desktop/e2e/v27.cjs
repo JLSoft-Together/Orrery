@@ -50,7 +50,8 @@ async function main() {
     await evaluate(`document.querySelector('[data-font-picker=code]').click()`)
     await sleep(300)
     const options = await evaluate(`[...document.querySelectorAll('[data-font-option]')].map(o => o.dataset.fontOption)`)
-    check('code font list has Consolas, JetBrains Mono, Google Sans Code', ['consolas', 'jetbrains-mono', 'google-sans-code'].every((id) => options.includes(id)), options.join(','))
+    const systemMono = process.platform === 'darwin' ? 'menlo' : 'consolas'
+    check(`code font list has ${systemMono}, JetBrains Mono, Google Sans Code`, [systemMono, 'jetbrains-mono', 'google-sans-code'].every((id) => options.includes(id)), options.join(','))
     await evaluate(`document.querySelector('[data-font-picker=code]').closest('.ccm-scroll, aside')?.querySelector('#set-text')?.scrollIntoView()`)
     await sleep(300); await shot('v27-02-settings-fonts')
     await evaluate(`document.querySelector('[data-font-option="google-sans-code"]').click()`)

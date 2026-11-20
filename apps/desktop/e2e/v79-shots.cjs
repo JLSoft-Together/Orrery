@@ -80,7 +80,7 @@ async function main() {
     await evaluate(`${ST}.hideFinished = false`)
 
     // Monitor
-    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor'); ${UI}.openSessionTab(null)`)
+    await evaluate(`${UI}.monitorMode = 'sky'; ${UI}.setView('monitor'); ${UI}.openSessionTab(Object.keys(${S}.get('terminals').byId)[0] ?? null)`)
     await waitFor(`${TM}.list.length >= 4`, 30000, 'fixture sessions').catch(() => {})
     await sleep(1500)
     await evaluate(`${UI}.panels.sessions.open = true`)
@@ -100,7 +100,7 @@ async function main() {
     await evaluate(`document.querySelector('[data-session-card]')?.click()`)
     await sleep(600)
     await shoot('05-agent-map-with-details')
-    await evaluate(`${UI}.openSessionTab(null)`)
+    await evaluate(`${UI}.setView('monitor'); ${UI}.openSessionTab(Object.keys(${S}.get('terminals').byId)[0] ?? null)`)
     await evaluate(`${UI}.panels.sessions.open = true`)
 
     // Narrow window: sheet
@@ -137,7 +137,7 @@ async function main() {
     await evaluate(`${UI}.settingsPage = 'notify'`)
     await sleep(300)
     const nh = await evaluate(`document.querySelector('[data-settings-current]').scrollHeight`)
-    check('Thông báo page <= 1.3 screens (scrollHeight vs 900)', nh > 0 && nh <= 1170, String(nh))
+    check('Thông báo page (Telegram merged in v107) <= 2 screens (scrollHeight vs 900)', nh > 0 && nh <= 1800, String(nh))
     // search
     await evaluate(`document.querySelector('[data-settings-search]')?.focus()`)
     await type('âm')

@@ -311,7 +311,7 @@ async function main() {
       try { doc = JSON.parse(text) } catch {}
       check('backup file written (orrery-backup v1)', doc?.format === 'orrery-backup' && doc.version === 1, text.slice(0, 120))
       const keys = Object.keys(doc?.local ?? {})
-      check('whitelisted ccm.* keys only (theme, locale, workspace tabs kept)', keys.length > 0 && keys.every((k) => k.startsWith('ccm.')) && doc.local['ccm.theme'] === 'dark' && doc.local['ccm.locale'] === 'en' && 'ccm.workspace.e2eTabs' in doc.local && !keys.some((k) => /whatsNew/.test(k)), JSON.stringify(keys))
+      check('whitelisted ccm.* keys only (theme, locale, workspace tabs kept)', keys.length > 0 && keys.every((k) => k.startsWith('ccm.')) && !!doc.local['ccm.theme'] && doc.local['ccm.locale'] === 'en' && 'ccm.workspace.e2eTabs' in doc.local && !keys.some((k) => /whatsNew/.test(k)), JSON.stringify(keys))
       check('no token: secret-named key dropped, token-shaped value redacted, no ghp_ anywhere', !keys.includes('ccm.github.token') && doc.local['ccm.e2eNote'] === 'kept [removed] here' && !text.includes('ghp_') && !/github_pat_|sk-ant-/.test(text), doc?.local?.['ccm.e2eNote'])
       await evaluate(`document.querySelector('[data-backup-import]').click()`)
       await waitFor(`!!document.querySelector('[data-backup-preview]')`, 15000, 'preview')

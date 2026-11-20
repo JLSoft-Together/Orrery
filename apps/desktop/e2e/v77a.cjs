@@ -134,7 +134,7 @@ async function main() {
 
     await step('disk threshold setting', async () => {
       disk(5)
-      await evaluate(`${UI}.settingsPage = 'notify'; ${UI}.settingsOpen = true`)
+      await evaluate(`${UI}.settingsPage = 'data'; ${UI}.settingsOpen = true`)
       await waitFor(`!!document.querySelector('[data-disk-threshold]')`, 10000, 'threshold control')
       await evaluate(`[...document.querySelectorAll('[data-disk-threshold] button, [data-disk-threshold] [role=radio]')].find((b) => /Off/.test(b.textContent)).click()`)
       await waitFor(`${S}.get('disk').state?.warnGb === 0`, 5000, 'off saved')

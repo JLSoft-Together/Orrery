@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { launch, OUT, UI } = require('./cdp.cjs')
-const OPEN_DRAWER = `if (document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))`
+const OPEN_DRAWER = `if (document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ${process.platform === 'darwin' ? 'metaKey' : 'ctrlKey'}: true, shiftKey: true, bubbles: true, cancelable: true }))`
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const X = `${S}.get('explorer')`
@@ -51,7 +51,10 @@ async function run(app) {
   check('shortcut focuses the tree', await evaluate(`!!document.activeElement?.closest('[data-explorer-tree]')`))
   const top = await evaluate(names)
   check('root listing: folders first, node_modules and dot-files hidden', JSON.stringify(top.slice(1)) === JSON.stringify(['src', 'README.md']), JSON.stringify(top))
-  check('root row is the project folder', (top[0] ?? '').toLowerCase() === path.basename(DIR).toLowerCase(), top[0])
+  const shown = (top[0] ?? '').toLowerCase()
+  const full = path.basename(DIR).toLowerCase()
+  const [head, tail] = shown.split('…')
+  check('root row is the project folder', shown === full || (tail !== undefined && full.startsWith(head) && full.endsWith(tail)), top[0])
 
   // Drag a row onto the terminal: the row hands out its path, the shell pane types it at the prompt.
   const drag = await evaluate(`(() => { const r = ${row('README.md')}; const dt = new DataTransfer(); r.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt })); return { draggable: r.draggable, root: document.querySelector('[data-explorer-tree] [role=treeitem]').draggable, path: dt.getData('application/x-ccm-path') } })()`)
@@ -171,7 +174,7 @@ async function run(app) {
   if (UI === 'next') {
     await evaluate(OPEN_DRAWER)
     await sleep(300)
-    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))`)
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ${process.platform === 'darwin' ? 'metaKey' : 'ctrlKey'}: true, shiftKey: true, bubbles: true, cancelable: true }))`)
     await sleep(300)
     check('next: Ctrl+Shift+E closes the Explorer drawer, rail stays', await evaluate(`document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed' && !!document.querySelector('[data-live-rail]')`))
   } else {

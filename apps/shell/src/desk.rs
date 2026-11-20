@@ -31,8 +31,7 @@ pub fn boot(env: &DeskEnv) -> DeskState {
 }
 
 pub fn wire(app: &AppHandle) {
-    let secrets = crate::vault::Keyring { service: crate::legacy::keyring_service() };
-    app.manage(crate::vault::Vault::new(Box::new(secrets), crate::legacy::source()));
+    app.manage(crate::vault::Vault::new(crate::vault::secrets(), crate::legacy::source()));
     crate::preview_ipc::manage(app);
     let state = app.state::<DeskState>();
     let sink = app.clone();

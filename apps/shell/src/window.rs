@@ -91,7 +91,10 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
                 let app_page = webview.app_handle().state::<Shell>().is_app_url(payload.url());
                 match payload.event() {
                     PageLoadEvent::Started => crate::links::page_started(webview.app_handle()),
-                    PageLoadEvent::Finished if app_page => crate::links::page_ready(webview.app_handle()),
+                    PageLoadEvent::Finished if app_page => {
+                        crate::links::page_ready(webview.app_handle());
+                        crate::e2e_cdp::page_loaded(webview.app_handle());
+                    }
                     PageLoadEvent::Finished => {}
                 }
             }
@@ -118,6 +121,10 @@ fn builder<'a>(app: &'a AppHandle, label: &str, url: &str, shell: &Shell) -> Res
     }
     if let Some(args) = crate::remote::awake::browser_args(app) {
         b = b.additional_browser_args(args);
+    }
+    #[cfg(target_os = "macos")]
+    if let Some(id) = crate::config::webview_store_id() {
+        b = b.data_store_identifier(id);
     }
     Ok(b.disable_drag_drop_handler())
 }

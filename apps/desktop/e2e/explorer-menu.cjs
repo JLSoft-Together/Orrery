@@ -5,7 +5,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { launch, OUT, UI } = require('./cdp.cjs')
 const SHOW_EXPLORER = UI === 'next'
-  ? `if (document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))`
+  ? `if (document.querySelector('[data-explorer-drawer]')?.dataset.state === 'closed') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', code: 'KeyE', ${process.platform === 'darwin' ? 'metaKey' : 'ctrlKey'}: true, shiftKey: true, bubbles: true, cancelable: true }))`
   : `if (!document.querySelector('[data-explorer-tree]')) document.querySelector('[data-explorer-toggle]').click()`
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`

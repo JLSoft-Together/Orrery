@@ -67,6 +67,30 @@ pub fn devtools_allowed() -> bool {
     devtools_gate(cfg!(debug_assertions), &|k| std::env::var(k).ok())
 }
 
+pub fn store_id_of(dir: &str, born: u128) -> [u8; 16] {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    let half = |salt: u8| {
+        let mut h = DefaultHasher::new();
+        (salt, dir, born).hash(&mut h);
+        h.finish().to_le_bytes()
+    };
+    let mut out = [0u8; 16];
+    out[..8].copy_from_slice(&half(1));
+    out[8..].copy_from_slice(&half(2));
+    out
+}
+
+pub fn webview_store_id() -> Option<[u8; 16]> {
+    static ID: std::sync::OnceLock<Option<[u8; 16]>> = std::sync::OnceLock::new();
+    *ID.get_or_init(|| {
+        let dir = std::env::var("CCM_SHELL_WEBVIEW_DIR").ok().filter(|d| !d.is_empty())?;
+        let _ = std::fs::create_dir_all(&dir);
+        let meta = std::fs::metadata(&dir).ok()?;
+        let born = meta.created().or_else(|_| meta.modified()).ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_nanos();
+        Some(store_id_of(&dir, born))
+    })
+}
+
 fn free_port() -> u16 {
     std::net::TcpListener::bind(("127.0.0.1", 0)).and_then(|l| l.local_addr()).map_or(DEV_PORT, |a| a.port())
 }
@@ -175,6 +199,15 @@ mod tests {
         assert!(parts[2].starts_with('4'));
         assert!(matches!(&parts[3][..1], "8" | "9" | "a" | "b"));
         assert_ne!(uuid(), id);
+    }
+
+    #[test]
+    fn a_new_webview_folder_gets_a_new_store_and_the_same_folder_keeps_it() {
+        let a = store_id_of("/tmp/ccm-e2e/run/ud", 1);
+        assert_eq!(a, store_id_of("/tmp/ccm-e2e/run/ud", 1));
+        assert_ne!(a, store_id_of("/tmp/ccm-e2e/run/ud", 2));
+        assert_ne!(a, store_id_of("/tmp/other/ud", 1));
+        assert_ne!(a[..8], a[8..]);
     }
 
     #[test]

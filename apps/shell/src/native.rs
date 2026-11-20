@@ -107,6 +107,35 @@ mod platform {
         let wk = view(p);
         unsafe { (wk.canGoBack(), wk.canGoForward()) }
     }
+
+    fn js_error(e: &NSError) -> String {
+        use objc2_foundation::NSString;
+        let key = NSString::from_str("WKJavaScriptExceptionMessage");
+        e.userInfo().objectForKey(&key).and_then(|v| v.downcast::<NSString>().ok()).map(|s| s.to_string()).unwrap_or_else(|| e.localizedDescription().to_string())
+    }
+
+    pub fn call_js(p: &PlatformWebview, body: &str, tx: Sender<Result<String, String>>) {
+        use objc2::runtime::AnyObject;
+        use objc2::MainThreadMarker;
+        use objc2_foundation::NSString;
+        use objc2_web_kit::WKContentWorld;
+        let Some(mtm) = MainThreadMarker::new() else {
+            let _ = tx.send(Err("not on the main thread".into()));
+            return;
+        };
+        let world = unsafe { WKContentWorld::pageWorld(mtm) };
+        let block = RcBlock::new(move |res: *mut AnyObject, err: *mut NSError| {
+            let out = match unsafe { err.as_ref() } {
+                Some(e) => Err(js_error(e)),
+                None => match unsafe { res.as_ref() } {
+                    Some(o) => o.downcast_ref::<NSString>().map(|s| s.to_string()).ok_or_else(|| "result is not a string".to_owned()),
+                    None => Ok("null".to_owned()),
+                },
+            };
+            let _ = tx.send(out);
+        });
+        unsafe { view(p).callAsyncJavaScript_arguments_inFrame_inContentWorld_completionHandler(&NSString::from_str(body), None, None, &world, Some(&block)) };
+    }
 }
 
 pub fn capture(webview: &Webview) -> Png {
@@ -128,4 +157,16 @@ pub fn history(webview: &Webview) -> (bool, bool) {
         return (false, false);
     }
     rx.recv_timeout(HISTORY_WAIT).unwrap_or((false, false))
+}
+
+#[cfg(target_os = "macos")]
+pub fn call_js(webview: &Webview, body: String, wait: Duration) -> Result<String, String> {
+    let (tx, rx) = mpsc::channel();
+    webview.with_webview(move |p| platform::call_js(&p, &body, tx)).map_err(|e| e.to_string())?;
+    rx.recv_timeout(wait).map_err(|_| "eval timeout".to_owned())?
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn call_js(_webview: &Webview, _body: String, _wait: Duration) -> Result<String, String> {
+    Err("callAsyncJavaScript is macOS only".into())
 }

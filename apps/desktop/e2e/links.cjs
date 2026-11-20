@@ -156,7 +156,11 @@ process.stdin.on('data', (d) => {
       await shot(`links-${name.replace(/\W+/g, '-')}-sel`)
       console.log('xterm classes', await evaluate(`document.querySelector('[data-pane="' + ${W}.activeKey + '"] .xterm').className`))
     }
-    await ctrlKey('c', 67)
+    if (process.platform === 'darwin') {
+      await cmd('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'c', code: 'KeyC', windowsVirtualKeyCode: 67, modifiers: 4 })
+      await cmd('Input.dispatchKeyEvent', { type: 'keyUp', key: 'c', code: 'KeyC', windowsVirtualKeyCode: 67, modifiers: 4 })
+      await sleep(400)
+    } else await ctrlKey('c', 67)
     const got = await clip()
     check(`${name}: copy`, got === L.expect, got === L.expect ? '' : diff(got, L.expect))
   }
@@ -228,7 +232,7 @@ process.stdin.on('data', (d) => {
       await copyCheck('two URLs on two rows stay apart', L, cell)
     })
     await scenario('mouse', async (L, cell) => {
-      await copyCheck('mouse-tracking app, Shift-drag', L, cell, SHIFT)
+      await copyCheck(process.platform === 'darwin' ? 'mouse-tracking app, Option-drag' : 'mouse-tracking app, Shift-drag', L, cell, process.platform === 'darwin' ? 1 : SHIFT)
       await clickCheck('mouse-tracking app', L, cell)
       await clearClip()
       await focusPane()

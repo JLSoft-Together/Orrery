@@ -132,6 +132,11 @@ fn builder(app: &AppHandle, id: u64, url: Url) -> WebviewBuilder<tauri::Wry> {
         Some(args) => b.additional_browser_args(args),
         None => b,
     };
+    #[cfg(target_os = "macos")]
+    let b = match crate::config::webview_store_id() {
+        Some(store) => b.data_store_identifier(store),
+        None => b,
+    };
     b.disable_drag_drop_handler()
         .data_directory(shell.webview_dir.clone())
         .initialization_script(SCRIPT)

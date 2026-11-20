@@ -43,7 +43,7 @@ async function boot(app) {
     await app.shot('p5-01-before-quit')
 
     // Reopen guard: a live external session asks first and never opens on Cancel.
-    await app.evaluate(`${S}.get('ui').setView('monitor')`)
+    await app.evaluate(`${S}.get('ui').monitorMode = 'sky'; ${S}.get('ui').setView('monitor'); ${S}.get('ui').openSessionTab(Object.values(${S}.get('terminals').byId).find((t) => !${W}.paneByTerminal.has(t.id))?.id ?? null); ${S}.get('ui').panels.sessions.open = true`)
     await app.sleep(1500)
     // v79: the card's Open in Orrery button moved into its ⋯ menu.
     const openCardMenu = `document.querySelector('[data-card-more]')?.click()`

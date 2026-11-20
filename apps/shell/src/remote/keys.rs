@@ -52,6 +52,30 @@ impl KeyStore for OsKeyring {
     }
 }
 
+impl KeyStore for crate::vault::FileSecrets {
+    fn read(&self, name: &str) -> Read {
+        match crate::vault::FileSecrets::read(self, name) {
+            Some(v) => Read::Found(Zeroizing::new(v)),
+            None => Read::Missing,
+        }
+    }
+
+    fn write(&self, name: &str, value: &str) -> bool {
+        crate::vault::FileSecrets::write(self, name, Some(value))
+    }
+
+    fn delete(&self, name: &str) -> bool {
+        crate::vault::FileSecrets::write(self, name, None)
+    }
+}
+
+pub fn store() -> Box<dyn KeyStore> {
+    match crate::vault::e2e_file_store() {
+        Some(path) => Box::new(crate::vault::FileSecrets::new(path)),
+        None => Box::new(OsKeyring { service: crate::legacy::keyring_service() }),
+    }
+}
+
 pub struct Keys {
     pub noise: StaticKeypair,
     pub relay: RelayKey,

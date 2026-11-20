@@ -42,6 +42,7 @@ const MAC_KEYS = [
   [CTRL, 'Tab', META | SHIFT, 'BracketRight'],
   [CTRL | SHIFT, 'Tab', META | SHIFT, 'BracketLeft'],
   [CTRL, 'KeyK', META, 'KeyK'],
+  [CTRL, 'F12', META, 'F12'],
   [CTRL, 'ArrowUp', META, 'ArrowUp'],
   [CTRL, 'ArrowDown', META, 'ArrowDown'],
 ]
@@ -50,10 +51,10 @@ function macKey(p) {
   const mods = p.modifiers ?? 0
   const code = p.code ?? ''
   if (mods & META) return p
+  if (mods === CTRL && p.commands?.length) return { ...p, modifiers: META }
   const hit = MAC_KEYS.find(([m, c]) => m === mods && c === code)
   if (hit) return { ...p, modifiers: hit[2], code: hit[3], windowsVirtualKeyCode: hit[3] === code ? p.windowsVirtualKeyCode : VK[hit[3]] ?? p.windowsVirtualKeyCode, key: hit[3] === code ? p.key : hit[3].replace(/^Key/, '').replace('BracketRight', ']').replace('BracketLeft', '[') }
   if (mods === (CTRL | ALT) && /^Digit[1-9]$/.test(code)) return { ...p, modifiers: META }
-  if (mods === (CTRL | ALT) && (code === 'ArrowLeft' || code === 'ArrowRight')) return { ...p, modifiers: code === 'ArrowLeft' ? CTRL : CTRL | SHIFT, code: 'Minus', key: '-', windowsVirtualKeyCode: 189 }
   if ((mods === ALT || mods === (ALT | SHIFT)) && ARROW.test(code)) return { ...p, modifiers: mods | META }
   return p
 }
@@ -79,7 +80,7 @@ async function launch(opts = {}) {
   const env = { ...process.env, ...opts.env, CCM_PORT: String(PORT), CCM_DATA_DIR: path.join(TMP, 'data'), CCM_TOAST: '0', ...(process.platform === 'win32' ? { APPDATA: path.join(TMP, 'appdata') } : {}) }
   const stdio = ['ignore', fs.openSync(path.join(OUT, 'electron.log'), 'w'), fs.openSync(path.join(OUT, 'electron.err'), 'w')]
   const child = SHELL
-    ? spawn(opts.exe ?? SHELL_EXE, opts.args ?? [], { env: { ...env, CCM_SHELL_WEBVIEW_DIR: path.join(TMP, 'ud'), CCM_E2E_DEVTOOLS: '1', CCM_KEYRING_SERVICE: env.CCM_KEYRING_SERVICE || 'Orrery E2E', CCM_ELECTRON_USER_DATA: env.CCM_ELECTRON_USER_DATA || path.join(TMP, 'electron-ud'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${DBG}`, ...flags].join(' ') }, stdio })
+    ? spawn(opts.exe ?? SHELL_EXE, opts.args ?? [], { env: { ...env, CCM_SHELL_WEBVIEW_DIR: path.join(TMP, 'ud'), CCM_E2E_DEVTOOLS: '1', CCM_E2E_CDP_PORT: String(DBG), CCM_KEYRING_SERVICE: env.CCM_KEYRING_SERVICE || 'Orrery E2E', CCM_ELECTRON_USER_DATA: env.CCM_ELECTRON_USER_DATA || path.join(TMP, 'electron-ud'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${DBG}`, ...flags].join(' ') }, stdio })
     : spawn(opts.exe ?? require(path.join(REPO, 'node_modules/electron')), [`--user-data-dir=${path.join(TMP, 'ud')}`, `--remote-debugging-port=${DBG}`, ...flags, ...(opts.args ?? []), ...(opts.exe ? [] : [path.join(REPO, 'apps/desktop/stage')])], { env, stdio })
   let target
   for (let i = 0; i < 120 && !target; i++) {
@@ -106,6 +107,7 @@ async function launch(opts = {}) {
   })
   const send = (method, params = {}) => new Promise((r) => { if (ws.readyState > 1) return r({ error: { message: 'cdp closed' }, result: { exceptionDetails: { text: 'cdp closed' } } }); const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
   await send('Page.enable')
+  if (SHELL && process.platform === 'darwin') await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] })
   const appUp = async () => {
     const end = Date.now() + 15000
     while (Date.now() < end) {
@@ -116,6 +118,7 @@ async function launch(opts = {}) {
   }
   const cmd = async (method, params = {}) => {
     if (method === 'Input.dispatchKeyEvent' && process.platform === 'darwin') params = macKey(params)
+    if (method === 'Input.dispatchMouseEvent' && params.type !== 'mouseWheel' && process.platform === 'darwin' && (params.modifiers ?? 0) & CTRL && !((params.modifiers ?? 0) & META)) params = { ...params, modifiers: (params.modifiers & ~CTRL) | META }
     if (method !== 'Page.reload') return send(method, params)
     const loaded = new Promise((r) => { loads.push(r); setTimeout(r, 15000) })
     const res = await send(method, params)
@@ -131,7 +134,12 @@ async function launch(opts = {}) {
   const shot = async (name) => {
     await cmd('Page.bringToFront')
     await sleep(150)
-    const r = await cmd('Page.captureScreenshot', { format: 'png' })
+    let r = await cmd('Page.captureScreenshot', { format: 'png' })
+    if (!r.result?.data) {
+      await sleep(500)
+      r = await cmd('Page.captureScreenshot', { format: 'png' })
+    }
+    if (!r.result?.data) throw new Error('screenshot ' + name + ': ' + JSON.stringify(r.error ?? r).slice(0, 200))
     fs.writeFileSync(path.join(OUT, name + '.png'), Buffer.from(r.result.data, 'base64'))
   }
   const type = async (text) => cmd('Input.insertText', { text })

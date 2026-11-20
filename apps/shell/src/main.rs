@@ -32,6 +32,7 @@ mod disk_pick;
 mod disk_snap;
 mod disk_text;
 mod drop_paths;
+mod e2e_cdp;
 mod episodes;
 mod files_ipc;
 mod guest;
@@ -193,6 +194,7 @@ fn main() {
             tray::create(&handle)?;
             #[cfg(target_os = "macos")]
             tray::install_app_menu(&handle)?;
+            e2e_cdp::start(&handle);
             let links_app = handle.clone();
             app.deep_link().on_open_url(move |event| {
                 for url in event.urls() {

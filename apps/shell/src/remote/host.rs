@@ -118,7 +118,7 @@ impl Host for AppHost {
 pub fn install(app: &AppHandle) {
     let dir = app.state::<Shell>().data_dir.join("remote");
     let host = Arc::new(AppHost { app: app.clone(), power: core_desk::power::native::power() });
-    let secrets = Box::new(super::keys::OsKeyring { service: crate::legacy::keyring_service() });
+    let secrets = super::keys::store();
     let remote = Remote::new(host, secrets, dir, Options { mdns: true, ..Options::default() });
     let wanted = remote.wants_on();
     {

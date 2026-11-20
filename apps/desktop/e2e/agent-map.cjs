@@ -60,7 +60,7 @@ async function main() {
     if (!terminalId) return
     const mainId = await evaluate(`${AG}.mainOf(${JSON.stringify(terminalId)})?.id`)
     const sessionId = await evaluate(`${TM}.byId[${JSON.stringify(terminalId)}].claudeSessionId`)
-    await evaluate(`${UI}.focusTerminal(${JSON.stringify(terminalId)})`)
+    await evaluate(`${UI}.openSessionTab(${JSON.stringify(terminalId)}); ${UI}.focusTerminal(${JSON.stringify(terminalId)})`)
     await sleep(1200)
     const nodeSel = `.vue-flow__node[data-id="${mainId}"] [data-agent-node]`
 

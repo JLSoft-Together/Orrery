@@ -52,7 +52,7 @@ async function main() {
       await sleep(200)
     }
     const tip = await waitFor(`document.querySelector('[data-shortcut-tip]')?.textContent`, 3000, 'tip').catch(() => null)
-    check('tip after 3 mouse uses names Ctrl+Shift+T', !!tip && tip.includes('Ctrl+Shift+T'), tip)
+    check('tip after 3 mouse uses names Ctrl+Shift+T', !!tip && tip.includes(process.platform === 'darwin' ? '⌘T' : 'Ctrl+Shift+T'), tip)
     await shot('v25-03-tip')
     await evaluate(`[...document.querySelectorAll('[data-shortcut-tip] button')].find(b => /show tips|hiện mẹo/i.test(b.textContent)).click()`)
     await sleep(400)
@@ -89,10 +89,10 @@ async function main() {
     check('claude pane linked', !!terminalId, String(terminalId))
 
     if (terminalId) {
-      await evaluate(`${S}.get('ui').view = 'monitor'`)
+      await evaluate(`${S}.get('ui').monitorMode = 'sky'; ${S}.get('ui').setView('monitor')`)
       await sleep(1500)
       // Zoom to this session: fitting the whole map with other big live sessions leaves its node tiny / under the toolbar.
-      await evaluate(`${S}.get('ui').focusTerminal(${JSON.stringify(terminalId)})`)
+      await evaluate(`${S}.get('ui').openSessionTab(${JSON.stringify(terminalId)}); ${S}.get('ui').focusTerminal(${JSON.stringify(terminalId)})`)
       await sleep(1200)
       const agentId = await evaluate(`${S}.get('agents').mainOf(${JSON.stringify(terminalId)})?.id`)
       // Right-click a point that really hits the node (not the floating map toolbar over it).
@@ -146,15 +146,20 @@ async function main() {
     await shot('v25-08b-attach-explorer')
 
     // Paste image from the panel (clipboard holds the image just inserted).
-    await evaluate(`document.querySelector('${pane} [data-attach=paste]').click()`)
-    const pasted = await waitFor(`${A}.list(${JSON.stringify(claudeKey)}).find(a => a.source === 'paste' && a.token)?.token`, 15000, 'pasted').catch(() => null)
-    check('panel "Paste image" → new [Image #N]', !!pasted, String(pasted))
+    const MAC = process.platform === 'darwin'
+    if (!MAC) {
+      await evaluate(`document.querySelector('${pane} [data-attach=paste]').click()`)
+      const pasted = await waitFor(`${A}.list(${JSON.stringify(claudeKey)}).find(a => a.source === 'paste' && a.token)?.token`, 15000, 'pasted').catch(() => null)
+      check('panel "Paste image" → new [Image #N]', !!pasted, String(pasted))
+    }
 
     // Ctrl+V in the terminal: the agent's paste key, the row is named "Clipboard image".
-    await evaluate(`document.querySelector('${pane} .xterm-helper-textarea').focus()`)
-    await key('v', 'KeyV', 86, CTRL)
-    const viaKey = await waitFor(`${A}.list(${JSON.stringify(claudeKey)}).filter(a => a.source === 'paste' && a.token).length >= 2`, 15000, 'ctrl+v').catch(() => false)
-    check('Ctrl+V of an image reaches Claude ([Image #N] bound)', viaKey)
+    if (!MAC) {
+      await evaluate(`document.querySelector('${pane} .xterm-helper-textarea').focus()`)
+      await key('v', 'KeyV', 86, CTRL)
+      const viaKey = await waitFor(`${A}.list(${JSON.stringify(claudeKey)}).filter(a => a.source === 'paste' && a.token).length >= 2`, 15000, 'ctrl+v').catch(() => false)
+      check('Ctrl+V of an image reaches Claude ([Image #N] bound)', viaKey)
+    }
     await shot('v25-09-attach-paste')
 
     // Backspace in the terminal (cursor after the last "[Image #N] "): the row leaves the tray.

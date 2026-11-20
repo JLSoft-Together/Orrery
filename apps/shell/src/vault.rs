@@ -33,6 +33,61 @@ impl Secrets for Keyring {
     }
 }
 
+pub struct FileSecrets {
+    pub path: std::path::PathBuf,
+    gate: Mutex<()>,
+}
+
+impl FileSecrets {
+    pub fn new(path: std::path::PathBuf) -> FileSecrets {
+        FileSecrets { path, gate: Mutex::new(()) }
+    }
+
+    fn load(&self) -> std::collections::BTreeMap<String, String> {
+        std::fs::read(&self.path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    }
+
+    pub fn read(&self, name: &str) -> Option<String> {
+        let _g = lock(&self.gate);
+        self.load().remove(name)
+    }
+
+    pub fn write(&self, name: &str, value: Option<&str>) -> bool {
+        let _g = lock(&self.gate);
+        let mut all = self.load();
+        match value {
+            Some(v) => all.insert(name.to_owned(), v.to_owned()),
+            None => all.remove(name),
+        };
+        serde_json::to_vec(&all).is_ok_and(|b| std::fs::write(&self.path, b).is_ok())
+    }
+}
+
+impl Secrets for FileSecrets {
+    fn get(&self, name: &str) -> Option<String> {
+        self.read(name)
+    }
+
+    fn set(&self, name: &str, value: &str) -> bool {
+        self.write(name, Some(value))
+    }
+}
+
+pub fn e2e_file_store() -> Option<std::path::PathBuf> {
+    let var = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
+    if !cfg!(target_os = "macos") || var("CCM_E2E_CDP_PORT").is_none() || !crate::config::devtools_allowed() {
+        return None;
+    }
+    Some(std::path::PathBuf::from(var("CCM_DATA_DIR")?).join("e2e-keyring.json"))
+}
+
+pub fn secrets() -> Box<dyn Secrets> {
+    match e2e_file_store() {
+        Some(path) => Box::new(FileSecrets::new(path)),
+        None => Box::new(Keyring { service: crate::legacy::keyring_service() }),
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LegacyKey {
     Gcm([u8; 32]),

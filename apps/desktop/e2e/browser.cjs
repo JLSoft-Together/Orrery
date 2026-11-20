@@ -10,7 +10,7 @@ const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); console.log(results.at(-1)) }
 const CTRL = 2, SHIFT = 8
 
-const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-site-'))
+const DIR = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ccm-e2e-site-')))
 const html = (v) => `<!doctype html><html><head><title>Fixture</title><link rel="stylesheet" href="/style.css"></head><body data-v="${v}"><h1>Fixture page</h1><button id="b">Go</button></body></html>\n`
 const lines = (n, edit = {}) => Array.from({ length: n }, (_, i) => edit[i + 1] ?? `export const line${i + 1} = ${i + 1}`).join('\n') + '\n'
 
@@ -110,7 +110,7 @@ function fixture() {
 
     // Ctrl+click a path printed in the terminal → file tab at that line.
     await focusShell()
-    await type(`cls; 1..80 | % { '${path.join(DIR, 'src', 'b.ts')}:4' }`)
+    await type(process.platform === 'win32' ? `cls; 1..80 | % { '${path.join(DIR, 'src', 'b.ts')}:4' }` : `clear; for i in $(seq 80); do echo '${path.join(DIR, 'src', 'b.ts')}:4'; done`)
     await key('Enter', 'Enter', 13)
     await sleep(2500)
     const at = await evaluate(`(() => { const r = document.querySelector('[data-pane="' + ${W}.activeKey + '"] .xterm-screen').getBoundingClientRect(); return { x: r.left + 6, y: r.top + 6 } })()`)

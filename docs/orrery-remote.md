@@ -159,10 +159,14 @@ Settings → Điều khiển từ xa có hai khối, không cần đọc docs ha
 
 **Relay (ngoài mạng nhà)** — dùng tài khoản Cloudflare miễn phí của bạn:
 
-1. Bấm "Mở trang tạo token", bấm Create Token → Start from scratch (Custom), tick `Account · Workers Scripts · Edit` và `Account · Account Settings · Read` trên account muốn dùng.
-2. Dán token vào ô (ẩn ký tự) rồi "Kiểm tra". Token được cất trong Keychain / Credential Manager của máy, không hiện lại trên màn hình. Mỗi lần mở Settings, nếu muốn chọn account hoặc cập nhật relay thì dán lại token.
-3. Chọn account (chỉ có một thì đã chọn sẵn) rồi "Dựng relay". Tiến độ từng bước hiện ngay: kiểm token, địa chỉ workers.dev, tải relay, bật địa chỉ, chờ relay phản hồi. Rời trang giữa chừng không dừng việc dựng; mở lại sẽ thấy tiến độ.
-4. Xong: địa chỉ relay (nút Sao chép), account, và "Cập nhật relay" khi bản kèm app mới hơn. Nếu relay chưa phản hồi ngay, đó là DNS đang lan, chờ vài phút.
+Cách nhanh (máy có Node.js): bấm **"Cài relay 1 chạm"**. Đã đăng nhập wrangler thì relay được deploy luôn; chưa thì trình duyệt mở trang Cloudflare, bấm Allow rồi quay lại. Nhiều account thì chọn một rồi bấm "Dựng relay". Tiến độ: đăng nhập Cloudflare, deploy relay, chờ relay phản hồi; có nút Huỷ. Lỗi deploy hiện kèm vài dòng cuối của wrangler (đã che email và chuỗi dài giống secret). Account chưa có địa chỉ workers.dev thì app hiện nút mở Cloudflare Workers, mở một lần rồi thử lại.
+
+Không có Node.js, hoặc muốn dùng token: bấm **"Dùng token"**.
+
+1. Bấm "Tạo token": trang Cloudflare mở với đúng 2 quyền đã điền sẵn (Workers Scripts Edit, Account Settings Read). Bấm Continue, Create Token, Copy.
+2. Quay lại Orrery: app tự đọc token vừa copy (chỉ nhận token Cloudflare dạng `cfut_` / `cfat_`, trong 15 phút sau khi bấm "Tạo token") và kiểm tra. Vẫn dán tay được vào ô rồi "Kiểm tra". Token được cất trong Keychain / Credential Manager của máy, không hiện lại trên màn hình.
+3. Chỉ có một account thì app dựng relay luôn; nhiều account thì chọn rồi "Dựng relay". Rời trang giữa chừng không dừng việc dựng; mở lại sẽ thấy tiến độ.
+4. Xong: địa chỉ relay (nút Sao chép), account, và "Cập nhật relay" khi bản kèm app mới hơn (relay dựng 1 chạm cập nhật bằng wrangler, không cần token). Nếu relay chưa phản hồi ngay, đó là DNS đang lan, chờ vài phút.
 
 "Gỡ" hỏi hai kiểu: chỉ gỡ khỏi máy này, hoặc xoá luôn Worker trên Cloudflare (app hỏi xác nhận thêm một lần). Chưa xoá Worker thì nó vẫn nằm trong account của bạn.
 

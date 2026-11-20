@@ -129,7 +129,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 20] = [
+pub const CHANNELS: [&str; 23] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -143,6 +143,9 @@ pub const CHANNELS: [&str; 20] = [
     "ccm:remote-relay-token",
     "ccm:remote-relay-deploy",
     "ccm:remote-relay-remove",
+    "ccm:remote-relay-quick",
+    "ccm:remote-relay-cancel",
+    "ccm:remote-relay-clipboard",
     "ccm:remote-push-status",
     "ccm:remote-push-setup",
     "ccm:remote-push-test",
@@ -458,6 +461,9 @@ impl Remote {
             "ccm:remote-relay-token" => Ok(self.relay_token(arg)),
             "ccm:remote-relay-deploy" => Ok(self.relay_deploy(arg, progress)),
             "ccm:remote-relay-remove" => Ok(self.relay_remove(arg)),
+            "ccm:remote-relay-quick" => Ok(self.relay_quick(arg, progress)),
+            "ccm:remote-relay-cancel" => Ok(self.relay_cancel()),
+            "ccm:remote-relay-clipboard" => Ok(self.relay_clipboard()),
             "ccm:remote-push-status" => Ok(self.push_status()),
             "ccm:remote-push-setup" => Ok(self.push_setup(arg)),
             "ccm:remote-push-test" => Ok(self.push_test(arg)),

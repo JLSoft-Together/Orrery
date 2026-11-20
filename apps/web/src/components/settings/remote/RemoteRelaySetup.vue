@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, CircleAlert, CircleCheck, CircleDashed, CircleOff, Copy, ExternalLink, LoaderCircle } from 'lucide-vue-next'
+import { Check, CircleAlert, CircleCheck, CircleDashed, CircleOff, Copy, ExternalLink, LoaderCircle, Zap } from 'lucide-vue-next'
 import { openExternal } from '../../../lib/preview'
-import { RELAY_STEPS, RELAY_TOKEN_URL, useRemoteRelay } from '../../../composables/useRemoteRelay'
+import { RELAY_TOKEN_URL, useRemoteRelay } from '../../../composables/useRemoteRelay'
+import { hasRelayQuick } from '../../../composables/useRemoteSetupIpc'
 
 const { t, te } = useI18n()
 const r = useRemoteRelay()
+if (!hasRelayQuick) r.useToken(true)
 
 const asking = ref(false)
 const copied = ref(false)
@@ -28,8 +30,14 @@ const TONES: Record<string, Tone> = {
 }
 const tone = computed(() => (TONES[r.state.value] ?? TONES.none) as Tone)
 
-const stepIndex = computed(() => (r.step.value ? RELAY_STEPS.indexOf(r.step.value) : -1))
+const stepIndex = computed(() => (r.step.value ? r.steps.value.indexOf(r.step.value) : -1))
 const stepState = (i: number): 'done' | 'now' | 'todo' => (i < stepIndex.value ? 'done' : i === stepIndex.value ? 'now' : 'todo')
+const picking = computed(() => r.accounts.value.length > 1)
+
+function openTokenPage(): void {
+  r.armClipboard()
+  openExternal(RELAY_TOKEN_URL)
+}
 
 async function copy(): Promise<void> {
   const url = r.status.value?.url
@@ -63,21 +71,34 @@ onBeforeUnmount(() => {
     </div>
 
     <Transition name="ccm-fade">
-      <div v-if="errorText" class="flex items-start gap-2 border-t border-line bg-warning-soft px-3 py-2 text-xs text-warning" role="alert" data-relay-error :data-code="shownError">
-        <CircleAlert :size="14" class="mt-0.5 shrink-0" aria-hidden="true" />
-        <p class="min-w-0 flex-1">{{ r.state.value === 'ready' ? t('remoteV97.relaySetup.ready.lastError', { text: errorText }) : errorText }}</p>
+      <div v-if="errorText" class="space-y-1 border-t border-line bg-warning-soft px-3 py-2 text-xs text-warning" role="alert" data-relay-error :data-code="shownError">
+        <p class="flex items-start gap-2">
+          <CircleAlert :size="14" class="mt-0.5 shrink-0" aria-hidden="true" />
+          <span class="min-w-0 flex-1">{{ r.state.value === 'ready' ? t('remoteV97.relaySetup.ready.lastError', { text: errorText }) : errorText }}</span>
+        </p>
+        <pre v-if="r.detail.value" class="max-h-24 overflow-auto whitespace-pre-wrap break-all pl-[22px] font-mono text-2xs text-ink-muted" data-relay-detail>{{ r.detail.value }}</pre>
+        <button v-if="r.link.value" type="button" class="ccm-btn ml-[22px]" data-relay-onboarding @click="openExternal(r.link.value)">
+          <ExternalLink :size="14" aria-hidden="true" />
+          {{ t('remoteV97.relaySetup.quick.onboarding') }}
+        </button>
       </div>
     </Transition>
 
     <Transition name="ccm-fade">
-      <ol v-if="r.state.value === 'deploying'" class="space-y-1.5 border-t border-line px-3 py-2.5" data-relay-progress>
-        <li v-for="(s, i) in RELAY_STEPS" :key="s" class="flex items-center gap-2 text-xs" :data-step="s" :data-step-state="stepState(i)">
-          <CircleCheck v-if="stepState(i) === 'done'" :size="14" class="shrink-0 text-success" aria-hidden="true" />
-          <LoaderCircle v-else-if="stepState(i) === 'now'" :size="14" class="shrink-0 animate-spin text-ink-muted" aria-hidden="true" />
-          <CircleDashed v-else :size="14" class="shrink-0 text-ink-faint" aria-hidden="true" />
-          <span :class="stepState(i) === 'todo' ? 'text-ink-faint' : 'text-ink'">{{ t(`remoteV97.relaySetup.progress.${s}`) }}</span>
-        </li>
-      </ol>
+      <div v-if="r.state.value === 'deploying'" class="space-y-2 border-t border-line px-3 py-2.5">
+        <ol class="space-y-1.5" data-relay-progress :data-flow="r.flow.value">
+          <li v-for="(s, i) in r.steps.value" :key="s" class="flex items-center gap-2 text-xs" :data-step="s" :data-step-state="stepState(i)">
+            <CircleCheck v-if="stepState(i) === 'done'" :size="14" class="shrink-0 text-success" aria-hidden="true" />
+            <LoaderCircle v-else-if="stepState(i) === 'now'" :size="14" class="shrink-0 animate-spin text-ink-muted" aria-hidden="true" />
+            <CircleDashed v-else :size="14" class="shrink-0 text-ink-faint" aria-hidden="true" />
+            <span :class="stepState(i) === 'todo' ? 'text-ink-faint' : 'text-ink'">{{ t(`remoteV97.relaySetup.progress.${s}`) }}</span>
+          </li>
+        </ol>
+        <p v-if="r.flow.value === 'quick' && r.step.value === 'login'" class="text-2xs text-ink-faint">{{ t('remoteV97.relaySetup.quick.loginHint') }}</p>
+        <div v-if="r.phase.value === 'deploying'" class="flex justify-end">
+          <button type="button" class="ccm-btn" data-relay-cancel @click="r.cancel()">{{ t('remoteV97.relaySetup.quick.cancel') }}</button>
+        </div>
+      </div>
     </Transition>
 
     <Transition name="ccm-fade">
@@ -130,21 +151,36 @@ onBeforeUnmount(() => {
 
     <Transition name="ccm-fade">
       <div v-if="r.showSteps.value && r.state.value !== 'deploying'" class="border-t border-line" data-relay-steps>
-        <div class="space-y-1.5 px-3 py-2.5">
-          <h4 class="text-xs font-semibold">1. {{ t('remoteV97.relaySetup.step1.title') }}</h4>
-          <p class="text-xs text-ink-muted">{{ t('remoteV97.relaySetup.step1.body') }}</p>
-          <ul class="space-y-0.5 text-xs">
-            <li class="font-mono">{{ t('remoteV97.relaySetup.step1.permScripts') }}</li>
-            <li class="font-mono">{{ t('remoteV97.relaySetup.step1.permAccount') }}</li>
-          </ul>
-          <button type="button" class="ccm-btn" data-relay-open @click="openExternal(RELAY_TOKEN_URL)">
-            <ExternalLink :size="14" aria-hidden="true" />
-            {{ t('remoteV97.relaySetup.step1.open') }}
-          </button>
+        <div v-if="picking" class="space-y-1.5 px-3 py-2.5" role="radiogroup" :aria-label="t('remoteV97.relaySetup.step3.pick')" data-relay-accounts :data-for="r.pickFor.value">
+          <p class="text-xs text-ink-muted">{{ t('remoteV97.relaySetup.quick.pick') }}</p>
+          <label v-for="a in r.accounts.value" :key="a.id" class="flex min-h-8 cursor-pointer items-center gap-2 text-xs" :data-account="a.id">
+            <input v-model="r.picked.value" type="radio" name="relay-account" :value="a.id" class="accent-[var(--ccm-accent)]" />
+            <span class="min-w-0 flex-1 truncate" :title="a.name">{{ a.name }}</span>
+          </label>
+          <div class="flex justify-end">
+            <button type="button" class="ccm-btn ccm-btn-primary" :disabled="r.busy.value || !r.picked.value" data-relay-deploy @click="r.build()">
+              {{ t('remoteV97.relaySetup.step3.deploy') }}
+            </button>
+          </div>
         </div>
 
-        <div class="space-y-1.5 border-t border-line px-3 py-2.5">
-          <h4 class="text-xs font-semibold">2. {{ t('remoteV97.relaySetup.step2.title') }}</h4>
+        <div v-else-if="!r.tokenMode.value" class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5" data-relay-quick-row>
+          <button type="button" class="ccm-btn ccm-btn-primary" :disabled="r.busy.value" data-relay-quick @click="r.quick()">
+            <Zap :size="14" aria-hidden="true" />
+            {{ t('remoteV97.relaySetup.quick.button') }}
+          </button>
+          <span class="min-w-0 flex-1 text-2xs text-ink-faint">{{ t('remoteV97.relaySetup.quick.hint') }}</span>
+          <button type="button" class="text-xs text-accent-ink underline-offset-2 hover:underline" data-relay-use-token @click="r.useToken(true)">{{ t('remoteV97.relaySetup.quick.useToken') }}</button>
+        </div>
+
+        <div v-else class="space-y-2 px-3 py-2.5" data-relay-token-panel>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="ccm-btn" data-relay-open @click="openTokenPage">
+              <ExternalLink :size="14" aria-hidden="true" />
+              {{ t('remoteV97.relaySetup.step1.open') }}
+            </button>
+            <span class="min-w-0 flex-1 text-2xs text-ink-faint">{{ t('remoteV97.relaySetup.step1.body') }}</span>
+          </div>
           <p v-if="r.status.value?.hasToken && !r.tokenChecked.value" class="text-2xs text-ink-faint" data-relay-has-token>{{ t('remoteV97.relaySetup.step2.saved') }}</p>
           <form class="flex items-center gap-2" @submit.prevent="r.check()">
             <input
@@ -164,25 +200,13 @@ onBeforeUnmount(() => {
               {{ t(r.phase.value === 'checking' ? 'remoteV97.relaySetup.step2.checking' : 'remoteV97.relaySetup.step2.check') }}
             </button>
           </form>
-          <p v-if="r.tokenChecked.value" class="flex items-center gap-1.5 text-xs text-success" data-relay-token-ok>
-            <CircleCheck :size="14" aria-hidden="true" />
-            {{ t('remoteV97.relaySetup.step2.ok') }}
-          </p>
-        </div>
-
-        <div class="space-y-1.5 border-t border-line px-3 py-2.5">
-          <h4 class="text-xs font-semibold">3. {{ t('remoteV97.relaySetup.step3.title') }}</h4>
-          <p v-if="!r.tokenChecked.value" class="text-xs text-ink-faint">{{ t('remoteV97.relaySetup.step3.needToken') }}</p>
-          <div v-else class="space-y-1.5" role="radiogroup" :aria-label="t('remoteV97.relaySetup.step3.pick')" data-relay-accounts>
-            <label v-for="a in r.accounts.value" :key="a.id" class="flex min-h-8 cursor-pointer items-center gap-2 text-xs" :data-account="a.id">
-              <input v-model="r.picked.value" type="radio" name="relay-account" :value="a.id" class="accent-[var(--ccm-accent)]" />
-              <span class="min-w-0 flex-1 truncate" :title="a.name">{{ a.name }}</span>
-            </label>
-          </div>
-          <div class="flex justify-end">
-            <button type="button" class="ccm-btn ccm-btn-primary" :disabled="r.busy.value || !r.picked.value" data-relay-deploy @click="r.deploy()">
-              {{ t('remoteV97.relaySetup.step3.deploy') }}
-            </button>
+          <div class="flex items-center gap-2">
+            <p v-if="r.tokenChecked.value" class="flex flex-1 items-center gap-1.5 text-xs text-success" data-relay-token-ok>
+              <CircleCheck :size="14" aria-hidden="true" />
+              {{ t('remoteV97.relaySetup.step2.ok') }}
+            </p>
+            <span v-else class="flex-1" />
+            <button v-if="hasRelayQuick" type="button" class="text-xs text-accent-ink underline-offset-2 hover:underline" data-relay-use-quick @click="r.useToken(false)">{{ t('remoteV97.relaySetup.quick.back') }}</button>
           </div>
         </div>
       </div>

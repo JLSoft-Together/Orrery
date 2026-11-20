@@ -13,6 +13,8 @@ use crate::state::lock;
 mod fake;
 #[path = "relay_setup_tests2.rs"]
 mod more;
+#[path = "relay_wrangler_tests.rs"]
+mod quick;
 
 use fake::*;
 

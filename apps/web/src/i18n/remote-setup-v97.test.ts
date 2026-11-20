@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import remote from './remote-v97'
 
-const RELAY_CODES = ['token_invalid', 'token_scope', 'rate_limited', 'no_account', 'no_token', 'keyring', 'offline', 'subdomain', 'upload', 'enable', 'health', 'bundle', 'busy', 'rejected', 'cancelled', 'migration', 'unknown']
+const RELAY_CODES = ['token_invalid', 'token_scope', 'rate_limited', 'no_account', 'no_token', 'keyring', 'offline', 'subdomain', 'upload', 'enable', 'health', 'bundle', 'busy', 'rejected', 'cancelled', 'migration', 'no_node', 'login_cancelled', 'login_timeout', 'deploy_failed', 'subdomain_missing', 'wrangler_failed', 'timeout', 'unknown']
 const PUSH_CODES = [
   'too_big',
   'unknown_file',
@@ -21,7 +21,7 @@ const PUSH_CODES = [
   'offline',
   'unknown',
 ]
-const STEPS = ['verify', 'subdomain', 'upload', 'enable', 'health', 'done']
+const STEPS = ['verify', 'subdomain', 'upload', 'enable', 'login', 'deploy', 'health', 'done']
 
 describe('relay and push setup messages', () => {
   for (const locale of ['en', 'vi'] as const) {

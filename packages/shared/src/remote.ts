@@ -302,8 +302,15 @@ export type RelaySetupError =
   | 'rejected'
   | 'cancelled'
   | 'migration'
+  | 'no_node'
+  | 'login_cancelled'
+  | 'login_timeout'
+  | 'deploy_failed'
+  | 'subdomain_missing'
+  | 'wrangler_failed'
+  | 'timeout'
 
-export type RelayDeployStep = 'verify' | 'subdomain' | 'upload' | 'enable' | 'health' | 'done'
+export type RelayDeployStep = 'verify' | 'subdomain' | 'upload' | 'enable' | 'login' | 'deploy' | 'health' | 'done'
 
 export interface RelaySetupStatus {
   state: RelaySetupState
@@ -311,6 +318,7 @@ export interface RelaySetupStatus {
   account?: string
   updateAvailable: boolean
   hasToken: boolean
+  via?: 'token' | 'wrangler'
   error?: RelaySetupError
   warning?: 'health'
 }

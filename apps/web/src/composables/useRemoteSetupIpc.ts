@@ -5,6 +5,9 @@ export type RelayErrorCode = RelaySetupError | 'cancelled' | 'migration'
 
 export type RelayTokenResult = { ok: true; accounts: RelayAccount[] } | { ok: false; error: RelayErrorCode }
 export type RelayDeployResult = { ok: true; url: string; warning?: 'health' } | { ok: false; error: RelayErrorCode }
+export type RelayQuickResult =
+  | { ok: true; url: string; warning?: 'health' }
+  | { ok: false; error: RelayErrorCode | 'pick_account'; accounts?: RelayAccount[]; detail?: string; link?: string }
 export type RelayRemoveResult = { ok: true; workerDeleted: boolean } | { ok: false; error: RelayErrorCode; workerDeleted?: boolean }
 
 interface SetupBridge {
@@ -12,6 +15,9 @@ interface SetupBridge {
   remoteRelayToken?: (token: string) => Promise<unknown>
   remoteRelayDeploy?: (accountId: string) => Promise<unknown>
   remoteRelayRemove?: (deleteWorker: boolean) => Promise<unknown>
+  remoteRelayQuick?: (accountId: string) => Promise<unknown>
+  remoteRelayCancel?: () => Promise<unknown>
+  remoteRelayClipboard?: () => Promise<unknown>
   onRemoteRelayProgress?: (handler: (progress: unknown) => void) => () => void
   remotePushStatus?: () => Promise<unknown>
   remotePushSetup?: (googleServices: string, serviceAccount: string) => Promise<unknown>
@@ -23,6 +29,7 @@ const seam = (window as unknown as { __ccmE2eSetupBridge?: SetupBridge }).__ccmE
 const bridge = seam ?? (desktop as unknown as SetupBridge | undefined)
 
 export const hasRelaySetup = typeof bridge?.remoteRelayStatus === 'function'
+export const hasRelayQuick = typeof bridge?.remoteRelayQuick === 'function'
 export const hasPushSetup = typeof bridge?.remotePushStatus === 'function'
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
@@ -47,6 +54,40 @@ export async function relayDeploy(accountId: string): Promise<RelayDeployResult>
   const r = await bridge?.remoteRelayDeploy?.(accountId).catch(() => null)
   if (!isObj(r)) return { ok: false, error: 'rejected' }
   if (r.ok === true && typeof r.url === 'string') return { ok: true, url: r.url, ...(r.warning === 'health' ? { warning: 'health' as const } : {}) }
+  return { ok: false, error: code(r.error, 'rejected') as RelayErrorCode }
+}
+
+const ONBOARDING = /^https:\/\/dash\.cloudflare\.com\/[0-9a-f]{32}\/workers\/onboarding$/
+const DETAIL_MAX = 600
+
+export function parseAccounts(v: unknown): RelayAccount[] {
+  return Array.isArray(v) ? v.filter((a): a is RelayAccount => isObj(a) && typeof a.id === 'string' && typeof a.name === 'string') : []
+}
+
+export function parseQuick(r: unknown): RelayQuickResult {
+  if (!isObj(r)) return { ok: false, error: 'rejected' }
+  if (r.ok === true && typeof r.url === 'string') return { ok: true, url: r.url, ...(r.warning === 'health' ? { warning: 'health' as const } : {}) }
+  const out: RelayQuickResult = { ok: false, error: code(r.error, 'rejected') as RelayErrorCode }
+  const accounts = parseAccounts(r.accounts)
+  if (accounts.length) out.accounts = accounts
+  if (typeof r.detail === 'string' && r.detail) out.detail = r.detail.slice(0, DETAIL_MAX)
+  if (typeof r.link === 'string' && ONBOARDING.test(r.link)) out.link = r.link
+  return out
+}
+
+export async function relayQuick(accountId: string): Promise<RelayQuickResult> {
+  return parseQuick(await bridge?.remoteRelayQuick?.(accountId).catch(() => null))
+}
+
+export async function relayCancel(): Promise<boolean> {
+  const r = await bridge?.remoteRelayCancel?.().catch(() => null)
+  return isObj(r) && r.ok === true
+}
+
+export async function relayClipboard(): Promise<RelayTokenResult | null> {
+  const r = await bridge?.remoteRelayClipboard?.().catch(() => null)
+  if (!isObj(r) || r.error === 'none') return null
+  if (r.ok === true) return { ok: true, accounts: parseAccounts(r.accounts) }
   return { ok: false, error: code(r.error, 'rejected') as RelayErrorCode }
 }
 

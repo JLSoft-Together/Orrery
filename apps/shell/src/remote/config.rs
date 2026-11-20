@@ -29,6 +29,8 @@ pub struct RelayConfig {
     pub account_name: String,
     #[serde(default)]
     pub deployed_hash: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub via: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

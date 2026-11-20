@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
@@ -12,7 +12,12 @@ use super::keys::Read;
 use super::Remote;
 use crate::state::lock;
 
+#[path = "relay_wrangler.rs"]
+pub mod wrangler;
+
 pub const TOKEN_SECRET: &str = "orrery-cf-token";
+pub const VIA_WRANGLER: &str = "wrangler";
+const CLIP_PREFIXES: [&str; 2] = ["cfut_", "cfat_"];
 const MIN_TOKEN: usize = 20;
 const MAX_TOKEN: usize = 256;
 const CANCEL_WAIT: Duration = Duration::from_secs(90);
@@ -22,16 +27,19 @@ const WORKER_META: &str = include_str!("../../resources/relay/worker.json");
 
 pub type HttpFactory = Box<dyn Fn(&str, &str) -> Box<dyn Http> + Send + Sync>;
 pub type ConfirmFn = Box<dyn Fn() -> bool + Send + Sync>;
+pub type ClipFn = Box<dyn Fn() -> Option<Zeroizing<String>> + Send + Sync>;
 
 pub struct Env {
     pub factory: Option<HttpFactory>,
     pub health_wait: Duration,
     pub health_gap: Duration,
+    pub wrangler: Option<Arc<dyn wrangler::Wrangler>>,
+    pub clipboard: Option<ClipFn>,
 }
 
 impl Default for Env {
     fn default() -> Self {
-        Env { factory: None, health_wait: Duration::from_secs(60), health_gap: Duration::from_secs(3) }
+        Env { factory: None, health_wait: Duration::from_secs(60), health_gap: Duration::from_secs(3), wrangler: None, clipboard: None }
     }
 }
 
@@ -39,7 +47,7 @@ impl Default for Env {
 pub struct Setup {
     pub busy: Mutex<bool>,
     pub removing: AtomicBool,
-    pub cancel: AtomicBool,
+    pub cancel: Arc<AtomicBool>,
     pub error: Mutex<Option<&'static str>>,
     pub warning: Mutex<Option<&'static str>>,
     pub env: Mutex<Env>,
@@ -57,6 +65,25 @@ pub fn bundle_hash() -> String {
 pub fn clean_token(raw: &str) -> Option<&str> {
     let t = raw.trim();
     ((MIN_TOKEN..=MAX_TOKEN).contains(&t.len()) && t.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')).then_some(t)
+}
+
+pub fn clip_token(raw: &str) -> Option<&str> {
+    clean_token(raw).filter(|t| CLIP_PREFIXES.iter().any(|p| t.starts_with(p)))
+}
+
+fn read_clipboard() -> Option<Zeroizing<String>> {
+    arboard::Clipboard::new().and_then(|mut c| c.get_text()).ok().map(Zeroizing::new)
+}
+
+pub struct Failure {
+    pub code: &'static str,
+    pub extra: Value,
+}
+
+impl From<&'static str> for Failure {
+    fn from(code: &'static str) -> Self {
+        Failure { code, extra: Value::Null }
+    }
 }
 
 pub struct BusyGuard<'a>(&'a Mutex<bool>);
@@ -161,6 +188,7 @@ impl Remote {
             out["url"] = Value::from(cfg.url);
         }
         if managed {
+            out["via"] = Value::from(if cfg.via == VIA_WRANGLER { VIA_WRANGLER } else { "token" });
             out["account"] = Value::from(if cfg.account_name.is_empty() { cfg.account_id } else { cfg.account_name });
         }
         if let Some(e) = error {
@@ -184,6 +212,28 @@ impl Remote {
         }
     }
 
+    pub fn relay_clipboard(&self) -> Value {
+        let text = {
+            let env = lock(&self.setup.env);
+            match env.clipboard.as_ref() {
+                Some(f) => f(),
+                None => read_clipboard(),
+            }
+        };
+        match text.as_deref().and_then(|t| clip_token(t)) {
+            Some(token) => self.relay_token(&Value::from(token)),
+            None => json!({ "ok": false, "error": "none" }),
+        }
+    }
+
+    pub fn relay_cancel(&self) -> Value {
+        let busy = *lock(&self.setup.busy);
+        if busy && !self.setup.removing.load(Ordering::SeqCst) {
+            self.setup.cancel.store(true, Ordering::SeqCst);
+        }
+        json!({ "ok": busy })
+    }
+
     fn check_token(&self, token: &str) -> Res<Vec<Account>> {
         let http = self.http(API_BASE, token);
         cf_api::verify(http.as_ref())?;
@@ -204,12 +254,16 @@ impl Remote {
             Some(a) => a,
         };
         let Some(account) = Some(picked).filter(|a| cf_api::valid_account(a)) else { return json!({ "ok": false, "error": "no_account" }) };
+        self.guarded(|| self.run_deploy(account, progress).map_err(Failure::from))
+    }
+
+    pub(super) fn guarded(&self, run: impl FnOnce() -> Result<String, Failure>) -> Value {
         let Some(guard) = self.acquire() else { return json!({ "ok": false, "error": "busy" }) };
         self.setup.cancel.store(false, Ordering::SeqCst);
         *lock(&self.setup.error) = None;
         *lock(&self.setup.warning) = None;
         self.host.changed(self.status());
-        let out = match self.run_deploy(account, progress) {
+        let out = match run() {
             Ok(url) => {
                 let mut out = json!({ "ok": true, "url": url });
                 if let Some(w) = *lock(&self.setup.warning) {
@@ -217,11 +271,17 @@ impl Remote {
                 }
                 out
             }
-            Err(e) => {
-                if e != "cancelled" {
-                    *lock(&self.setup.error) = Some(e);
+            Err(f) => {
+                if f.code != "cancelled" && f.code != "pick_account" {
+                    *lock(&self.setup.error) = Some(f.code);
                 }
-                json!({ "ok": false, "error": e })
+                let mut out = json!({ "ok": false, "error": f.code });
+                if let (Some(o), Value::Object(extra)) = (out.as_object_mut(), f.extra) {
+                    for (k, v) in extra {
+                        o.entry(k).or_insert(v);
+                    }
+                }
+                out
             }
         };
         drop(guard);
@@ -257,6 +317,10 @@ impl Remote {
         progress("enable");
         cf_api::enable_workers_dev(http, account_id)?;
         self.cancelled()?;
+        self.finish_deploy(url, &account, "", progress)
+    }
+
+    pub(super) fn finish_deploy(&self, url: String, account: &Account, via: &str, progress: &dyn Fn(&str)) -> Res<String> {
         progress("health");
         let healthy = self.wait_health(&url)?;
         self.cancelled()?;
@@ -271,6 +335,7 @@ impl Remote {
             cfg.relay.account_id = account.id.clone();
             cfg.relay.account_name = account.name.clone();
             cfg.relay.deployed_hash = hash;
+            cfg.relay.via = via.to_owned();
             changed
         });
         if changed {
@@ -337,10 +402,18 @@ impl Remote {
             if !confirmed {
                 return json!({ "ok": false, "error": "cancelled" });
             }
-            let Some(token) = self.saved_token() else { return json!({ "ok": false, "error": "no_token" }) };
-            let http = self.http(API_BASE, &token);
-            if let Err(e) = cf_api::delete_script(http.as_ref(), &cfg.account_id) {
-                *lock(&self.setup.error) = Some(e);
+            let deleted = match self.saved_token() {
+                Some(token) => {
+                    let http = self.http(API_BASE, &token);
+                    cf_api::delete_script(http.as_ref(), &cfg.account_id)
+                }
+                None if cfg.via == VIA_WRANGLER => self.wrangler_delete(&cfg.account_id),
+                None => Err("no_token"),
+            };
+            if let Err(e) = deleted {
+                if e != "no_token" {
+                    *lock(&self.setup.error) = Some(e);
+                }
                 return json!({ "ok": false, "error": e });
             }
             worker_deleted = true;
@@ -355,6 +428,7 @@ impl Remote {
             c.relay.account_id.clear();
             c.relay.account_name.clear();
             c.relay.deployed_hash.clear();
+            c.relay.via.clear();
             had
         });
         if had_url {

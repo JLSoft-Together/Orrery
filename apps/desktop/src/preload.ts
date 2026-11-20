@@ -330,6 +330,10 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   remoteRelayDeploy: (accountId: string): Promise<unknown> =>
     typeof accountId === 'string' && accountId.length <= 64 ? ipcRenderer.invoke('ccm:remote-relay-deploy', accountId) : Promise.resolve({ ok: false, error: 'no_account' }),
   remoteRelayRemove: (deleteWorker: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:remote-relay-remove', { deleteWorker: deleteWorker === true }),
+  remoteRelayQuick: (accountId: string): Promise<unknown> =>
+    typeof accountId === 'string' && accountId.length <= 64 ? ipcRenderer.invoke('ccm:remote-relay-quick', accountId) : Promise.resolve({ ok: false, error: 'no_account' }),
+  remoteRelayCancel: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-relay-cancel'),
+  remoteRelayClipboard: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-relay-clipboard'),
   remotePushStatus: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-push-status'),
   remotePushSetup: (googleServices: string, serviceAccount: string): Promise<unknown> =>
     typeof googleServices === 'string' && typeof serviceAccount === 'string' && googleServices.length <= 102400 && serviceAccount.length <= 102400

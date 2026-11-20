@@ -8,7 +8,8 @@ import PageBar from '../components/PageBar.vue'
 import SessionRow from '../components/SessionRow.vue'
 import { inboxRows, type InboxRow } from '../lib/inboxModel'
 import { filterCounts, groupByState, matchesFilter, parseSessions, sortSessions, type MonitorFilter, type Rail } from '../lib/monitorModel'
-import { groupByProject } from '../lib/projectModel'
+import { projectRows } from '../lib/projectModel'
+import { parseWorkspace } from '../lib/workspaceModel'
 import { useNow } from '../lib/useNow'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
@@ -31,7 +32,12 @@ const lost = computed(() => link.value.status !== 'ready')
 const sessions = computed(() => sortSessions(parseSessions(view.value.snapshot)))
 const counts = computed(() => filterCounts(sessions.value))
 const shown = computed(() => sessions.value.filter((s) => matchesFilter(filter.value, s)))
-const projects = computed(() => groupByProject(shown.value))
+const rows = computed(() => projectRows(shown.value))
+const paneOf = computed(() => {
+  const map = new Map<string, string>()
+  for (const tab of parseWorkspace(view.value.workspace, [])) for (const pane of tab.panes) if (pane.terminalId && !map.has(pane.terminalId)) map.set(pane.terminalId, pane.key)
+  return map
+})
 const groups = computed(() => groupByState(sessions.value))
 const grouped = computed(() => prefs.local.monitorMode === 'groups')
 const updated = computed(() =>
@@ -54,6 +60,11 @@ const groupMeta: Record<Rail, { icon: typeof Clock; tone: string }> = {
 
 function open(id: string): void {
   navigate({ name: 'session', machine: props.machine, terminal: id })
+}
+
+function answer(id: string): void {
+  const pane = paneOf.value.get(id)
+  navigate(pane ? { name: 'workspace', machine: props.machine, pane } : { name: 'session', machine: props.machine, terminal: id })
 }
 
 function openInbox(row: InboxRow): void {
@@ -121,17 +132,22 @@ function setMode(mode: 'cards' | 'groups'): void {
         </button>
       </div>
       <TransitionGroup name="plist" tag="div" class="list" data-testid="monitor-list" :class="{ dim: lost }">
-        <section v-for="p in projects" :key="p.key" class="card project" :data-testid="`project-${p.key || 'none'}`">
-          <header class="p-head">
-            <span class="tone-mono" :data-tone="p.tone" aria-hidden="true">{{ p.letter }}</span>
-            <span class="p-name">{{ p.name ?? t('monitor.noProject') }}</span>
-            <span v-if="p.branch" class="p-branch"><GitBranch :size="16" :stroke-width="2" aria-hidden="true" /><span class="p-branch-text">{{ p.branch }}</span></span>
-            <span class="p-count">{{ p.sessions.length }}</span>
-          </header>
-          <TransitionGroup name="srow" tag="div" class="rows">
-            <SessionRow v-for="s in p.sessions" :key="s.id" :session="s" :now="now" :lost="lost" :class="{ picked: s.id === selected }" @open="open(s.id)" />
-          </TransitionGroup>
-        </section>
+        <template v-for="r in rows" :key="r.project.key">
+          <section v-if="r.kind === 'single'" class="card project single" :data-testid="`project-${r.project.key || 'none'}`" data-single="true">
+            <SessionRow :session="r.session" :label="r.project.name ?? t('monitor.noProject')" :now="now" :lost="lost" answer :class="{ picked: r.session.id === selected }" @open="open(r.session.id)" @answer="answer(r.session.id)" />
+          </section>
+          <section v-else class="card project" :data-testid="`project-${r.project.key || 'none'}`">
+            <header class="p-head">
+              <span class="tone-mono" :data-tone="r.project.tone" aria-hidden="true">{{ r.project.letter }}</span>
+              <span class="p-name">{{ r.project.name ?? t('monitor.noProject') }}</span>
+              <span v-if="r.project.branch" class="p-branch"><GitBranch :size="16" :stroke-width="2" aria-hidden="true" /><span class="p-branch-text">{{ r.project.branch }}</span></span>
+              <span class="p-count">{{ r.project.sessions.length }}</span>
+            </header>
+            <TransitionGroup name="srow" tag="div" class="rows">
+              <SessionRow v-for="s in r.project.sessions" :key="s.id" :session="s" :now="now" :lost="lost" answer :class="{ picked: s.id === selected }" @open="open(s.id)" @answer="answer(s.id)" />
+            </TransitionGroup>
+          </section>
+        </template>
         <p v-if="shown.length === 0" key="empty" class="empty">{{ t('monitor.emptyFilter') }}</p>
       </TransitionGroup>
     </template>
@@ -143,7 +159,7 @@ function setMode(mode: 'cards' | 'groups'): void {
           <span class="gl">{{ t(`status.${g.rail}`) }} {{ g.sessions.length }}</span>
         </h2>
         <div class="card group-card">
-          <SessionRow v-for="s in g.sessions" :key="s.id" prefix="row" :session="s" :now="now" :lost="lost" :class="{ picked: s.id === selected }" @open="open(s.id)" />
+          <SessionRow v-for="s in g.sessions" :key="s.id" prefix="row" :session="s" :now="now" :lost="lost" answer :class="{ picked: s.id === selected }" @open="open(s.id)" @answer="answer(s.id)" />
         </div>
       </section>
     </div>

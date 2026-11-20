@@ -1,4 +1,4 @@
-import type { MonitorSession, Rail } from './monitorModel'
+import { isRunning, isWaiting, type MonitorSession, type Rail } from './monitorModel'
 
 export interface ProjectGroup {
   key: string
@@ -92,4 +92,19 @@ export function quotaTone(pct: number): QuotaTone {
   if (pct >= 85) return 'bad'
   if (pct >= 65) return 'warn'
   return 'ok'
+}
+
+export type ProjectRow = { kind: 'single'; project: ProjectGroup; session: MonitorSession } | { kind: 'group'; project: ProjectGroup }
+
+function projectRank(group: ProjectGroup): number {
+  let best = 2
+  for (const s of group.sessions) best = Math.min(best, isWaiting(s.rail) ? 0 : isRunning(s.rail) ? 1 : 2)
+  return best
+}
+
+export function projectRows(sessions: readonly MonitorSession[]): ProjectRow[] {
+  return groupByProject(sessions)
+    .map((project, index) => ({ project, index, rank: projectRank(project) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ project }) => (project.sessions.length === 1 ? { kind: 'single', project, session: project.sessions[0]! } : { kind: 'group', project }))
 }

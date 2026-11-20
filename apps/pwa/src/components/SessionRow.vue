@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { Check, Clock, LoaderCircle, MoonStar, TriangleAlert, WifiOff } from 'lucide-vue-next'
+import { Check, Clock, LoaderCircle, MessageSquareReply, MoonStar, TriangleAlert, WifiOff } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatElapsed, isRunning, type MonitorSession } from '../lib/monitorModel'
 
-const props = withDefaults(defineProps<{ session: MonitorSession; now: number; lost?: boolean; prefix?: string }>(), { prefix: 'session' })
-const emit = defineEmits<{ open: [] }>()
+const props = withDefaults(defineProps<{ session: MonitorSession; now: number; lost?: boolean; prefix?: string; label?: string; answer?: boolean }>(), { prefix: 'session' })
+const emit = defineEmits<{ open: []; answer: [] }>()
 const { t } = useI18n()
 
 const elapsed = computed(() => (props.session.since ? formatElapsed(props.now - props.session.since, t) : null))
+const canAnswer = computed(() => props.answer === true && !props.lost && props.session.rail === 'asked')
 const activeSubs = computed(() => props.session.subagents.filter((s) => isRunning(s.rail)).length)
 const detail = computed(() => {
   const s = props.session
@@ -35,40 +36,75 @@ const meta = computed(() => {
 </script>
 
 <template>
-  <button type="button" class="row" :class="[`p-${session.provider}`, `tone-${meta.tone}`, { lost }]" :data-testid="`${prefix}-${session.id}`" :data-rail="session.rail" @click="emit('open')">
-    <span class="mark" data-testid="status-chip" :data-rail="session.rail"><component :is="meta.icon" :size="22" :stroke-width="2.2" :class="{ spin: meta.spin }" aria-hidden="true" /></span>
-    <span class="text">
-      <span class="line1">
-        <span class="title">{{ session.title }}</span>
-        <span v-if="elapsed" class="since">{{ elapsed }}</span>
+  <div class="item">
+    <button type="button" class="row" :class="[`p-${session.provider}`, `tone-${meta.tone}`, { lost }]" :data-testid="`${prefix}-${session.id}`" :data-rail="session.rail" @click="emit('open')">
+      <span class="mark" data-testid="status-chip" :data-rail="session.rail"><component :is="meta.icon" :size="22" :stroke-width="2.2" :class="{ spin: meta.spin }" aria-hidden="true" /></span>
+      <span class="text">
+        <span class="line1">
+          <span class="title">{{ label ?? session.title }}</span>
+          <span v-if="elapsed" class="since">{{ elapsed }}</span>
+        </span>
+        <span class="line2">
+          <span class="agent">{{ t(`provider.${session.provider}`) }}</span>
+          <span class="state">{{ meta.text }}</span>
+          <span v-if="detail" class="detail" data-testid="session-tool">{{ detail }}</span>
+        </span>
       </span>
-      <span class="line2">
-        <span class="agent">{{ t(`provider.${session.provider}`) }}</span>
-        <span class="state">{{ meta.text }}</span>
-        <span v-if="detail" class="detail" data-testid="session-tool">{{ detail }}</span>
-      </span>
-    </span>
-  </button>
+    </button>
+    <button v-if="canAnswer" type="button" class="answer" :aria-label="t('monitor.answerFor', { name: label ?? session.title })" :data-testid="`answer-${session.id}`" @click="emit('answer')">
+      <MessageSquareReply :size="18" :stroke-width="2.2" aria-hidden="true" />
+      {{ t('monitor.answer') }}
+    </button>
+  </div>
 </template>
 
 <style scoped>
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--ccm-line);
+}
+
+.item:has(.answer) {
+  padding-right: 12px;
+}
+
+.item:first-child {
+  border-top: 0;
+}
+
+.answer {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--ccm-waiting);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--ccm-waiting) 12%, var(--ccm-surface));
+  color: var(--ccm-ink);
+  font-weight: 700;
+}
+
+.answer:active {
+  background: var(--ccm-fill);
+}
+
 .row {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 60px;
   padding: 10px 16px;
   border: 0;
-  border-top: 1px solid var(--ccm-line);
   background: transparent;
   text-align: left;
   color: var(--ccm-ink);
   transition: background-color var(--ccm-dur-fast) var(--ccm-ease-standard);
-}
-
-.row:first-child {
-  border-top: 0;
 }
 
 .row:active {

@@ -103,14 +103,16 @@ describe('monitor model', () => {
   it('formats elapsed time compactly in each language', () => {
     const en = createAppI18n('en').global.t
     const vi = createAppI18n('vi').global.t
-    expect(formatElapsed(30_000, en)).toBe('<1m')
-    expect(formatElapsed(5 * 60_000, en)).toBe('5m')
-    expect(formatElapsed(3 * 3_600_000, en)).toBe('3h')
-    expect(formatElapsed(50 * 3_600_000, en)).toBe('2d')
-    expect(formatElapsed(30_000, vi)).toBe('<1p')
-    expect(formatElapsed(5 * 60_000, vi)).toBe('5p')
-    expect(formatElapsed(3 * 3_600_000, vi)).toBe('3g')
-    expect(formatElapsed(50 * 3_600_000, vi)).toBe('2n')
+    expect(formatElapsed(30_000, en)).toBe('just now')
+    expect(formatElapsed(5 * 60_000, en)).toBe('5 min')
+    expect(formatElapsed(3 * 3_600_000, en)).toBe('3 h')
+    expect(formatElapsed(5 * 3_600_000 + 22 * 60_000, en)).toBe('5 h 22 min')
+    expect(formatElapsed(50 * 3_600_000, en)).toBe('2 d')
+    expect(formatElapsed(30_000, vi)).toBe('vừa xong')
+    expect(formatElapsed(5 * 60_000, vi)).toBe('5 phút')
+    expect(formatElapsed(3 * 3_600_000, vi)).toBe('3 giờ')
+    expect(formatElapsed(5 * 3_600_000 + 22 * 60_000, vi)).toBe('5 giờ 22 phút')
+    expect(formatElapsed(322 * 24 * 3_600_000, vi)).toBe('322 ngày')
   })
 
   it('reads the newest 12 activity lines of one terminal, newest first', () => {

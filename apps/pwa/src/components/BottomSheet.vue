@@ -32,6 +32,9 @@ const emit = defineEmits<{ close: [] }>()
   overflow-y: auto;
   padding: 8px 16px 20px;
   border-radius: 28px;
+  background: var(--ccm-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   animation: rise var(--ccm-dur-slow) var(--ease-out);
 }
 

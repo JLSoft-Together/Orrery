@@ -83,7 +83,7 @@ export const vi = {
       failed: { title: 'Ghép thất bại', body: 'Bắt tay mã hoá không thành công. Tạo mã mới trên máy tính rồi thử lại.' },
     },
   },
-  duration: { lessThanMinute: '<1p', minutes: '{n}p', hours: '{n}g', days: '{n}n' },
+  duration: { lessThanMinute: 'vừa xong', minutes: '{n} phút', hours: '{n} giờ', hoursMinutes: '{h} giờ {m} phút', days: '{n} ngày' },
   quota: {
     label: 'Hạn mức',
     window5h: '5g',
@@ -94,6 +94,8 @@ export const vi = {
     agent: { claude: 'Claude Code', codex: 'Codex' },
   },
   monitor: {
+    answer: 'Trả lời',
+    answerFor: 'Trả lời {name}',
     lost: 'Mất kết nối',
     lostTitle: 'Mất kết nối tới {name}',
     lostBody: 'Đang nối lại. Dữ liệu bên dưới có thể đã cũ.',
@@ -123,6 +125,12 @@ export const vi = {
     title: 'Inbox',
     open: 'Mở Inbox',
     empty: 'Không có agent nào cần chủ nhân lúc này.',
+    seen: 'Đã xem',
+    snooze: 'Hoãn 15 phút',
+    more: 'Thêm thao tác',
+    undo: 'Hoàn tác',
+    seenToast: 'Đã đánh dấu đã xem',
+    snoozeToast: 'Đã hoãn 15 phút',
     group: { menu: 'Chờ trả lời menu', permission: 'Xin quyền', question: 'Câu hỏi', clash: 'Đụng file', error: 'Lỗi', note: 'Ghi chú của agent', done: 'Xong, chưa xem' },
     reason: {
       menu: 'Đang chờ chọn trong menu',

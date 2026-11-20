@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MonitorSession } from './monitorModel'
-import { cardState, groupByProject, letterOf, machineSubtitle, osLabel, projectName, quotaTone, railCounts, toneOf } from './projectModel'
+import { cardState, groupByProject, letterOf, machineSubtitle, osLabel, projectName, projectRows, quotaTone, railCounts, toneOf } from './projectModel'
 
 function session(id: string, cwd: string | null, rail: MonitorSession['rail'] = 'idle', branch: string | null = null): MonitorSession {
   return { id, title: id, rail, provider: 'claude', branch, cwd, tool: null, toolSummary: null, waitingFor: null, since: null, subagents: [] }
@@ -93,5 +93,33 @@ describe('letterOf', () => {
   it('uppercases the first letter', () => {
     expect(letterOf('web')).toBe('W')
     expect(letterOf('  đồ án')).toBe('Đ')
+  })
+})
+
+describe('projectRows', () => {
+  it('collapses a project with one session and keeps groups for more', () => {
+    const rows = projectRows([session('a', '/x/api'), session('b', '/x/web'), session('c', '/y/web')])
+    expect(rows.map((r) => [r.project.name, r.kind])).toEqual([
+      ['api', 'single'],
+      ['web', 'group'],
+    ])
+    const single = rows[0]!
+    expect(single.kind === 'single' && single.session.id).toBe('a')
+  })
+
+  it('floats projects with waiting or failed sessions above running and idle ones', () => {
+    const rows = projectRows([
+      session('i', '/x/idle', 'idle'),
+      session('w', '/x/work', 'working'),
+      session('q', '/x/ask', 'asked'),
+      session('f', '/x/fail', 'failed'),
+      session('d', '/x/done', 'done'),
+    ])
+    expect(rows.map((r) => r.project.name)).toEqual(['ask', 'fail', 'work', 'idle', 'done'])
+  })
+
+  it('ranks a group by its most urgent session', () => {
+    const rows = projectRows([session('a', '/x/one', 'working'), session('b', '/x/two', 'idle'), session('c', '/x/two', 'asked')])
+    expect(rows.map((r) => r.project.name)).toEqual(['two', 'one'])
   })
 })

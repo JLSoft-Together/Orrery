@@ -63,9 +63,9 @@ describe('format', () => {
     const en = createAppI18n('en').global.t
     const vi = createAppI18n('vi').global.t
     const at = NOW + 2 * 3_600_000
-    expect(formatReset(at, NOW, 'en', en)).toMatch(/^resets in 2h \(.+\)$/)
-    expect(formatReset(at, NOW, 'vi', vi)).toMatch(/^đặt lại sau 2g \(.+\)$/)
-    expect(formatReset(NOW + 3 * 86_400_000, NOW, 'en', en)).toMatch(/^resets in 3d \(\w+ .+\)$/)
+    expect(formatReset(at, NOW, 'en', en)).toMatch(/^resets in 2 h \(.+\)$/)
+    expect(formatReset(at, NOW, 'vi', vi)).toMatch(/^đặt lại sau 2 giờ \(.+\)$/)
+    expect(formatReset(NOW + 3 * 86_400_000, NOW, 'en', en)).toMatch(/^resets in 3 d \(\w+ .+\)$/)
   })
 
   it('says nothing when the reset is unknown or already past', () => {

@@ -42,7 +42,7 @@ export async function uiSteps(c, page, peer) {
     if (groups.join(',') !== 'asked,working,idle') throw new Error(`groups ${groups}`)
     await c.reload(page)
     await byId(page, 'monitor-groups').waitFor({ timeout: 10000 })
-    if ((await page.locator('[data-testid="monitor-groups"] button').count()) !== 4) throw new Error('rows')
+    if ((await page.locator('[data-testid="monitor-groups"] button.row').count()) !== 4) throw new Error('rows')
   })
 
   await step('Session detail: sub-agents, last activity, terminal button opens that pane in the Workspace', async () => {

@@ -85,7 +85,7 @@ export const en: Messages = {
       failed: { title: 'Pairing failed', body: 'The encrypted handshake did not complete. Make a new code on your computer and try again.' },
     },
   },
-  duration: { lessThanMinute: '<1m', minutes: '{n}m', hours: '{n}h', days: '{n}d' },
+  duration: { lessThanMinute: 'just now', minutes: '{n} min', hours: '{n} h', hoursMinutes: '{h} h {m} min', days: '{n} d' },
   quota: {
     label: 'Usage limits',
     window5h: '5h',
@@ -96,6 +96,8 @@ export const en: Messages = {
     agent: { claude: 'Claude Code', codex: 'Codex' },
   },
   monitor: {
+    answer: 'Answer',
+    answerFor: 'Answer {name}',
     lost: 'Disconnected',
     lostTitle: 'Disconnected from {name}',
     lostBody: 'Reconnecting. The data below may be old.',
@@ -125,6 +127,12 @@ export const en: Messages = {
     title: 'Inbox',
     open: 'Open Inbox',
     empty: 'No agent needs you right now.',
+    seen: 'Mark seen',
+    snooze: 'Snooze 15 minutes',
+    more: 'More actions',
+    undo: 'Undo',
+    seenToast: 'Marked seen',
+    snoozeToast: 'Snoozed for 15 minutes',
     group: { menu: 'Waiting on a menu', permission: 'Asking permission', question: 'Questions', clash: 'Same file', error: 'Errors', note: 'Agent notes', done: 'Done, not seen' },
     reason: {
       menu: 'Waiting for a menu choice',

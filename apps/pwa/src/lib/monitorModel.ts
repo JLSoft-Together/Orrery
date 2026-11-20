@@ -165,7 +165,10 @@ export function formatElapsed(ms: number, t: Translate): string {
   if (ms < 60_000) return t('duration.lessThanMinute')
   const hours = Math.floor(ms / 3_600_000)
   if (hours >= 24) return t('duration.days', { n: Math.floor(hours / 24) })
-  if (hours >= 1) return t('duration.hours', { n: hours })
+  if (hours >= 1) {
+    const minutes = Math.floor((ms % 3_600_000) / 60_000)
+    return minutes > 0 ? t('duration.hoursMinutes', { h: hours, m: minutes }) : t('duration.hours', { n: hours })
+  }
   return t('duration.minutes', { n: Math.floor(ms / 60_000) })
 }
 

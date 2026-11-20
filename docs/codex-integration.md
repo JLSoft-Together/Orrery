@@ -39,6 +39,13 @@ line. Observed 2026-10-11: 216 rollouts, 3.1 GB, largest 1.5 GB, single lines of
 plugin's app-server `clientInfo.name`) → **plugin**; `source` object → **subagent**; `vscode` otherwise
 (`Codex Desktop`, IDE) → ignored; anything else → **app-server**.
 
+### 2.1 Chat content for the phone (v107 C3, inspected 2026-11-20 on codex-cli 0.162.1 exec, 0.163.0 tui, 0.169.0 exec)
+
+- No `event_msg` `user_message` / `agent_message` in these versions. Clean text is in `response_item` `message`: role `user` (`input_text`; the first one is the injected `# AGENTS.md instructions` block, skipped), role `assistant` (`output_text`, `phase` `commentary` or `final_answer`), role `developer` (skipped). `event_msg` `item_completed` `UserMessage` / `AgentMessage` duplicate them and are missing in some threads, so they are not used.
+- Tools: 0.162.1+ run commands inside a `custom_tool_call` named `exec` (JavaScript input, skipped); the real work is `event_msg` `item_completed` with `item.type` `CommandExecution` (`command` argv, `parsed_cmd[0].type` `read` / `search` / `unknown`, `status` `failed` + `exit_code`), `FileChange` (`changes{path: {type: add|update|delete, content | unified_diff}}`), `Extension` (`kind` `web.search`), `ImageView`. Plain `function_call` (`spawn_agent`, `wait_agent`, `send_message`…) and `apply_patch` / `local_shell_call` are still read.
+- Last answer: `event_msg` `task_complete.last_agent_message`. `turn_aborted` = stop.
+- Code: `apps/core/crates/core-transcript/src/chat/codex.rs`.
+
 ## 3. Reading strategy
 
 - Head: `readSessionMeta` parses line 1 (≤ 4 MB; regex fallback on the first 64 KB when the line is longer).

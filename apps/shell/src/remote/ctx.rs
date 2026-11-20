@@ -126,6 +126,7 @@ pub struct Ctx {
     pub settle: Mutex<Duration>,
     pub keepalive: Mutex<(Duration, Duration)>,
     pub install: super::install::Tickets,
+    pub chat: super::chat_src::Hub,
 }
 
 impl Ctx {
@@ -163,6 +164,7 @@ impl Ctx {
             settle: Mutex::new(PUSH_SETTLE),
             keepalive: Mutex::new((super::liveness::PING_EVERY, super::liveness::DEAD_AFTER)),
             install: super::install::Tickets::default(),
+            chat: super::chat_src::Hub::default(),
         }
     }
 
@@ -326,6 +328,7 @@ impl Ctx {
             "theme": w.theme,
             "locale": w.locale,
             "control": self.host.control(),
+            "chat": core_transcript::chat::PROTO,
         });
         let cfg = lock(&self.config);
         if cfg.relay.registered && !cfg.relay.url.is_empty() {

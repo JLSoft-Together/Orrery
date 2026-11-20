@@ -228,6 +228,38 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await call('ws.compact', { paneKey: a.key })).toEqual({ ok: false, error: 'busy' })
   })
 
+  it('ws.menu answers the live menu through the desktop picker once per rid', async () => {
+    const a = pane('claude', 'C:\work\A', 'a')
+    const { useMenuQueueStore } = await import('../stores/menuQueue')
+    const { menuSig } = await import('../lib/menuToast')
+    const queue = useMenuQueueStore()
+    const menu = {
+      kind: 'permission' as const,
+      agent: 'claude' as const,
+      items: [
+        { index: 1, label: 'Yes', row: 1, selected: true },
+        { index: 2, label: 'Other', row: 2, selected: false, isOther: true },
+      ],
+      highlighted: 1,
+      numbered: true,
+      confident: true,
+      firstRow: 1,
+      lastRow: 2,
+    }
+    const picker = vi.fn(async (_item: { index: number }) => undefined)
+    queue.register(a.key, picker)
+    queue.report(a.key, { menu, question: 'Proceed?' } as never)
+    const sig = menuSig(menu, 'Proceed?')
+    expect(await call('ws.menu', { paneKey: a.key, sig: 'ffffffff', index: 1 })).toEqual({ ok: false, error: 'busy' })
+    expect(await call('ws.menu', { paneKey: a.key, sig, index: 2 })).toEqual({ ok: false, error: 'invalid' })
+    expect(await call('ws.menu', { paneKey: a.key, sig, index: 7 })).toEqual({ ok: false, error: 'notFound' })
+    expect(picker).not.toHaveBeenCalled()
+    expect(await call('ws.menu', { paneKey: a.key, sig, index: 1 }, { rid: 'r1' })).toEqual({ ok: true })
+    expect(await call('ws.menu', { paneKey: a.key, sig, index: 1 }, { rid: 'r1' })).toEqual({ ok: true })
+    expect(picker).toHaveBeenCalledTimes(1)
+    expect(picker.mock.calls[0]![0]).toMatchObject({ index: 1 })
+  })
+
   it('every command writes one line to the phone log, and only phone callers may send them', async () => {
     const a = pane('shell', 'C:\\work\\A', 'a')
     await call('ws.close', { paneKey: a.key })

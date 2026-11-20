@@ -1,4 +1,4 @@
-import { waitReason, type LayoutNodeLike, type RemoteInbox, type RemotePaneGroup, type RemotePane, type RemoteTab, type RemoteWorkspaceSnapshot } from '@ccm/shared'
+import { waitReason, type LayoutNodeLike, type RemoteInbox, type RemoteMenu, type RemotePaneGroup, type RemotePane, type RemoteTab, type RemoteWorkspaceSnapshot } from '@ccm/shared'
 import { isTerm, presetOf, workCwd, type Pane, type Tab } from '../stores/workspace'
 import type { LayoutNode } from './splitLayout'
 import { groupsOf, leaves } from './splitLayout'
@@ -20,6 +20,7 @@ export interface RemoteSummaryInput {
   closedCount: number
   facts: (pane: Pane) => RemotePaneFacts
   inbox?: (pane: Pane) => RemoteInbox | undefined
+  menu?: (pane: Pane) => RemoteMenu | undefined
 }
 
 const treeOf = (node: LayoutNode): LayoutNodeLike => ('pane' in node ? { pane: node.pane } : 'group' in node ? treeOf(node.node) : { dir: node.dir, ratio: node.ratio, a: treeOf(node.a), b: treeOf(node.b) })
@@ -38,7 +39,7 @@ function inboxOf(x: RemoteInbox | undefined): RemoteInbox | undefined {
   return { reason: x.reason, ...(x.since ? { since: x.since } : {}), ...(x.file ? { file: clip(x.file) } : {}), ...(x.peer ? { peer: clip(x.peer) } : {}) }
 }
 
-function paneOf(pane: Pane, facts: RemotePaneFacts, inbox?: RemoteInbox): RemotePane {
+function paneOf(pane: Pane, facts: RemotePaneFacts, inbox?: RemoteInbox, menu?: RemoteMenu): RemotePane {
   const term = isTerm(pane)
   const cwd = term || pane.kind === 'run' || pane.kind === 'changes' || pane.kind === 'log' ? (term ? workCwd(pane) : (pane.root ?? pane.cwd)) : undefined
   const branch = facts.branch ?? pane.branch
@@ -60,6 +61,7 @@ function paneOf(pane: Pane, facts: RemotePaneFacts, inbox?: RemoteInbox): Remote
     dirty: !!pane.dirty,
     busy: facts.busy,
     ...(inbox ? { inbox } : {}),
+    ...(menu ? { menu } : {}),
   }
 }
 
@@ -87,7 +89,7 @@ export function buildSummary(input: RemoteSummaryInput, rev: number): RemoteWork
       ...(groups.length ? { groups } : {}),
       panes: leaves(tab.root).flatMap((k) => {
         const pane = byKey.get(k)
-        return pane ? [paneOf(pane, input.facts(pane), inboxOf(input.inbox?.(pane)))] : []
+        return pane ? [paneOf(pane, input.facts(pane), inboxOf(input.inbox?.(pane)), isTerm(pane) ? input.menu?.(pane) : undefined)] : []
       }),
     }
   })

@@ -64,6 +64,10 @@ pub fn events_event(text: &str) -> Option<(u64, Value)> {
     Some((seq, json!({ "t": "events", "seq": seq, "events": phone_events(events) })))
 }
 
+pub fn turn_changed(text: &str) -> bool {
+    text.contains("\"terminal.updated\"") && text.contains("\"status\"")
+}
+
 pub fn command(raw: &[u8]) -> Result<(String, String, Value), Value> {
     let v: Value = serde_json::from_slice(raw).map_err(|_| error(Value::Null, "invalid"))?;
     let id = v.get("id").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= MAX_ID_LEN).map(str::to_owned);
@@ -181,6 +185,12 @@ impl Phone {
                     }
                 }
                 Some(ev) = self.x.v.rx.recv() => self.on_vevent(ev),
+                Some(msg) = self.x.chat.rx.recv() => {
+                    if !self.on_chat(msg).await {
+                        break;
+                    }
+                }
+                _ = flush_due(self.x.chat.due) => self.chat_tick(),
                 _ = flush_due(self.x.v.flush_at) => {
                     if !self.flush_vevents().await {
                         break;
@@ -286,6 +296,7 @@ impl Phone {
             lock(&self.ctx.devices).set_platform(&self.device, p);
         }
         self.hello = true;
+        self.set_chat_cap(v);
         let welcome = self.ctx.welcome(id);
         if !self.sec.json(&welcome).await {
             return false;
@@ -338,6 +349,7 @@ impl Phone {
     }
 
     async fn resync(&mut self, id: &str) -> bool {
+        self.x.chat.full_last();
         self.sec.json(&json!({ "re": id, "ok": true })).await && self.resync_event().await
     }
 
@@ -380,6 +392,7 @@ impl Phone {
             }
             overflow = feed.overflow.swap(false, Ordering::SeqCst);
         }
+        self.x.chat.nudge(batch.iter().any(|t| turn_changed(t)));
         if overflow {
             return self.resync_event().await;
         }

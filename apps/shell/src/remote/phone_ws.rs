@@ -42,6 +42,7 @@ pub struct Extra {
     pub(super) backlog: Arc<AtomicUsize>,
     pub(super) nonce: String,
     pub(super) v: ViewerState,
+    pub(super) chat: super::chat::ChatState,
 }
 
 impl Done {
@@ -68,6 +69,7 @@ impl Extra {
             hub_rx,
             backlog: Arc::new(AtomicUsize::new(0)),
             v: ViewerState::new(device, &nonce),
+            chat: super::chat::ChatState::default(),
             nonce,
         }
     }
@@ -124,6 +126,8 @@ impl Phone {
     }
 
     pub(super) async fn on_ws(&mut self, event: Option<WsEvent>) -> bool {
+        let rail = event.as_ref().is_none_or(|e| e.ops.as_ref().is_none_or(|ops| ops.to_string().contains("/rail")));
+        self.x.chat.nudge(rail);
         let Some(e) = event else { return self.send_ws_snapshot().await };
         if self.x.ws_rev == Some(e.rev) {
             return true;
@@ -145,7 +149,8 @@ impl Phone {
             "pty.resize" => self.pty_resize(id, v).await,
             "push.register" => self.push_register(id, v).await,
             "push.unregister" => self.push_unregister(id).await,
-            "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" => {
+            "chat.page" | "chat.watch" | "chat.unwatch" => self.chat_command(id, t, v).await,
+            "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" | "ws.menu" => {
                 if !self.ctx.board.take_rate(&self.device, Instant::now()) {
                     return self.sec.json(&error(Value::from(id), "rate")).await;
                 }

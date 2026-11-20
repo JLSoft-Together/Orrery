@@ -59,6 +59,10 @@ impl StoreTap {
         self.store.with(snapshot_text)
     }
 
+    pub fn terminal(&self, id: &str) -> Option<Value> {
+        self.store.with(|s| s.get_terminal(id).and_then(|t| serde_json::to_value(t).ok()))
+    }
+
     pub fn subscribe(&self, f: impl Fn(Arc<str>) + Send + Sync + 'static) -> TapGuard {
         let id = self.clients.add_tap(Arc::new(f) as TapFn);
         TapGuard { clients: self.clients.clone(), id }

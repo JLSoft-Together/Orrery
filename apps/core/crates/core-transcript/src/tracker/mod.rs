@@ -14,6 +14,7 @@ use std::path::PathBuf;
 mod read;
 pub mod serve;
 mod subs;
+pub use subs::{cwd_slug, find_transcript};
 mod view;
 
 #[cfg(test)]

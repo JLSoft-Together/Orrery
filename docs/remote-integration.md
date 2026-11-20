@@ -79,7 +79,7 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 ### 4.1 Phiên
 | Lệnh | Trả lời / event |
 |---|---|
-| `hello {proto, app, platform, caps[]}` | `{ok, machine, name, version, minProto, theme{mode, palette{token: color}}, locale, control}` + event `snapshot` + `ws.snapshot`. `control` (bool, tuỳ chọn, v98 WP-61a): `false` = desktop không nhận lệnh ghi (`ws.*` ghi, gõ pty) từ điện thoại, app vào chế độ chỉ xem ngay; thiếu = coi như `true` (app cũ / desktop cũ). Desktop thật hiện luôn gửi `true` (`Host::control`, chưa có công tắc); chỉ đọc ở `hello`, đổi giữa phiên thì vẫn chỉ biết qua `denied`. `lanTls` (bool, tuỳ chọn, v98 WP-63): `true` = cổng LAN nghe `wss://`, web app mới thử LAN (§1); thiếu = `false`, desktop hiện chưa gửi |
+| `hello {proto, app, platform, caps[]}` | `{ok, machine, name, version, minProto, theme{mode, palette{token: color}}, locale, control}` + event `snapshot` + `ws.snapshot`. `control` (bool, tuỳ chọn, v98 WP-61a): `false` = desktop không nhận lệnh ghi (`ws.*` ghi, gõ pty) từ điện thoại, app vào chế độ chỉ xem ngay; thiếu = coi như `true` (app cũ / desktop cũ). Desktop thật hiện luôn gửi `true` (`Host::control`, chưa có công tắc); chỉ đọc ở `hello`, đổi giữa phiên thì vẫn chỉ biết qua `denied`. `chat` (số, v107 C3): `1` = desktop có giao thức chat §4.7; thiếu = desktop cũ, app giữ hành vi cũ (bấm session mở terminal). Điện thoại mới gửi `caps: ["chat"]` trong `hello` để nhận `chat.last`. `lanTls` (bool, tuỳ chọn, v98 WP-63): `true` = cổng LAN nghe `wss://`, web app mới thử LAN (§1); thiếu = `false`, desktop hiện chưa gửi |
 | `resync` | event `snapshot` |
 | — | event `machine.restarting`, `device.revoked`, `remote.off` (gửi trước khi đóng socket), `relay.token {token}` (khi token còn < 7 ngày, token mới hạn 30 ngày) |
 
@@ -100,6 +100,7 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 | `ws.rename {tabKey, name\|null}` · `ws.move {paneKey, tabKey}` · `ws.reopen` · `ws.compact {paneKey}` | như desktop; `ws.move` vào đúng nhóm project của tab đích, UI next hiện toast "Điện thoại đã chuyển pane" kèm Hoàn tác 5 s; pane `ws.close` đóng vào ngăn mở lại và hiện toast Hoàn tác như đóng trên desktop |
 | `ws.send {paneKey, text}` | ≤ 2000 ký tự; gõ và submit ngay, kể cả khi agent đang chạy (chủ nhân 20/11/2026; `prefillNow`, chỉ chờ nếu pane đang waiting) → `{submitted: true}` |
 | `ws.keys {paneKey, keys, since}` | nút trả lời xin quyền; `since` lệch `statusSince` → `busy` |
+| `ws.menu {paneKey, sig, index}` | (v107 C3) bấm 1 dòng của `panes[].menu`: renderer so `sig` với menu đang sống (`menuSig`), lệch → `busy`; `index` không có → `notFound`; mục `other` → `invalid` (bản 1 chỉ mở terminal); đúng → `menuQueue.answer` (cùng đường nút desktop và toast) → `{ok:true}`. Tính 30 / phút như `ws.*` khác, có `rid` |
 
 `timeout` của lệnh `ws.*` = kết quả chưa rõ (renderer có thể vẫn đã làm): client KHÔNG tự retry lệnh có tác dụng phụ. Gateway gửi kèm `rid` (theo phiên + `id` lệnh) cho renderer; renderer bỏ lệnh trùng `rid` (50 gần nhất, 60 s) và trả lại kết quả lần đầu.
 
@@ -108,6 +109,7 @@ Event `ws.snapshot {rev, tabs[], inbox?}` / `ws.patch {base, rev, ops[]}` (`ops`
 `groups[k] = {project, name?, tone?, folded?, panes[]}` (tuỳ chọn, WP-67 2026-11-19): chỉ có khi tab chia nhóm project (`GroupNode`), theo thứ tự trong `tree`; `project` = thư mục nhóm, `name` ≤ 120 ký tự đã lọc ký tự điều khiển, `tone` 0 đến 7 (8 màu nhóm), `panes` = key pane thuộc nhóm. App không biết `groups` thì bỏ qua (field lạ bị bỏ qua), vẫn vẽ đúng từ `tree`.
 `panes[j] = {key, kind, preset, agent, title, cwd, branch, state, rail, waitText, attention, subagents, sessionId, terminalId, dirty, busy, inbox?}`.
 `inbox` (tuỳ chọn, v104 WP-104e) = `{reason, since?, file?, peer?}`: lý do khẩn nhất của pane theo Inbox desktop (`packages/shared/src/inbox.ts`). `reason` thuộc `menu`, `permission`, `question`, `clash`, `failed`, `loop`, `checks`, `stuck`, `note`, `done`; nhóm theo `INBOX_GROUPS` = `menu`, `permission`, `question`, `clash`, `error` (`failed`, `loop`, `checks`, `stuck`), `note`, `done`, trong nhóm cũ nhất lên đầu (`since` ISO). `file` = path tương đối repo (chỉ `clash`), `peer` = tên session kia (chỉ `clash`), mỗi chuỗi max 120 ký tự; không có nội dung diff, không có chữ của ghi chú. Mục đã hoãn hoặc đã đánh dấu xem trên desktop không gửi. Snapshot có `inbox: true` ở cấp gốc khi desktop gửi field này; app thấy `inbox: true` thì chỉ dựng Inbox từ `panes[].inbox`, không có thì dùng `attention` như cũ (desktop cũ). `reason` lạ thì bỏ dòng đó. Inbox trên điện thoại chỉ mở session / pane, không trả lời menu (trả lời vẫn qua `ws.keys` / terminal như trước).
+`menu` (tuỳ chọn, v107 C3) = `{sig, kind, agent, question, items[{index, label, selected?, checked?, other?, submit?}], numbered, confident, since}`: menu Claude / Codex đọc từ màn terminal sống (`menuQueue`, v100), chỉ gửi khi `confident` hoặc `kind` là `permission` / `codex-approval` (`apps/web/src/lib/remoteMenu.ts` `remoteMenuOf`). Gateway che secret `question` + `label` và cắt max 12 item, label 120, question 300 ngay trong `Board::publish` (`remote/chat_src.rs` `mask_menus`), `sig` sai dạng thì bỏ cả `menu`; snapshot và patch luôn là bản đã che. Không còn menu thì field biến mất (patch `remove`).
 
 ### 4.4 PTY
 | Lệnh | Ý nghĩa |
@@ -156,8 +158,28 @@ Xác nhận (4.6) dùng cho `branch.delete`, `git.discard`, `branch.push`, `git.
 ### 4.6 Xác nhận
 Lệnh cần xác nhận trả ngay `{re, ok:true, confirm: cid}`; event `confirm.ask {cid, re, title, detail, ok, cancel}` chỉ tới thiết bị gửi lệnh; lệnh `confirm.answer {cid, ok}` (`cid` dùng 1 lần); từ chối / quá 60 s / phiên đóng → lệnh gốc kết thúc `{cancelled:true}`. `confirmed` chỉ gateway đặt. Trả lời `confirm.answer` ok chạy lệnh gốc rồi trả đúng phản hồi của nó (`{ok:true,...}`), từ chối trả `{ok:true, cancelled:true}`; web app dựa vào đó để hiện Hoàn tác sau `ws.close` đã xác nhận (WP-65), không có trường mới.
 
+### 4.7 Chat (v107 C3)
+Spec đầy đủ: `.planning/SPEC-v107-chat-protocol.md`. Gateway Rust tự xử lý (không qua renderer), tính vào hạn mức viewer 120 / phút / thiết bị.
+
+| Lệnh | Trả lời |
+|---|---|
+| `chat.page {paneKey, gen?, before?, limit?}` | `{re, ok, paneKey, agent, gen, items[], older}` |
+| `chat.watch {paneKey, limit?}` | như `chat.page` trang mới nhất, rồi gửi `chat.items` cho pane đó |
+| `chat.unwatch {paneKey}` | `{re, ok}` |
+
+- Lỗi: `notFound` (pane không có hoặc không phải pane agent Claude / Codex), `invalid` (`limit` ngoài 1 đến 50, `before` không phải số nguyên ≥ 0), `limit` (watch thứ 3, max 2 / phiên), `busy` (2 lệnh chat đang đọc file), `offline` (core chưa lên), `internal` (đọc file lỗi). Desktop cũ trả `denied`.
+- Nguồn: `terminalId` của pane → terminal trong store core (`StoreTap::terminal`): Claude `claudeSessionId` + `cwd` → `<CLAUDE_CONFIG_DIR>/projects/<slug>/<id>.jsonl` (`find_transcript`); Codex `codexSessionId` (hoặc `codex:<id>`) → `<CODEX_HOME>/sessions/Y/M/D/rollout-*-<id>.jsonl` (cache theo id). Pane chưa có transcript: `gen: ""`, `items: []`, `older: null`.
+- Parser: `core_transcript::chat` (`claude.rs`, `codex.rs`, `page.rs`). Trang đọc ngược từ `before` (không có = cuối file), max 4 MiB quét, luôn mở tại dòng prompt, gom cả lượt tới khi đủ `limit` item hoặc chạm 256 KiB. `seq` = byte offset dòng, `id` = `<loại>:<offset>`, thẻ `files` có `seq` = offset prompt + 1. `older` = offset prompt đầu trang, `null` khi tới đầu file.
+- `gen` = `<sessionId>:<n>`, `n` tăng khi file nhỏ đi (bị cắt) hoặc tailer thấy cắt. `chat.page` với `gen` cũ bỏ `before`, trả trang mới nhất.
+- Live: watch giữ 1 tailer riêng (offset cuối + trạng thái lượt đang chạy), đọc phần mới khi dashboard có event (lần đầu của một đợt đọc ngay, sau đó gom 300 ms) và mỗi 5 s dự phòng; không watch thì không đọc file nào. Event `chat.items {paneKey, gen, items[]}` max 64 KiB, chia nhiều event khi cần, 1 item quá cỡ thì cắt `text` + `cut`. File đổi (session mới sau `/clear`, file bị cắt, transcript mới xuất hiện) → `chat.reset {paneKey, gen}`, điện thoại gọi lại `chat.watch`.
+- `chat.last {full?, items[{paneKey, text, at?}]}`: chỉ gửi cho phiên có cap `chat`. `full: true` sau `hello` và `resync`; sau đó chỉ khi lượt đổi (dashboard `terminal.updated` có `status`, hoặc patch workspace đụng `rail`), max 1 event / s, chỉ các pane đổi (`text: null` = xoá). Câu = đoạn văn cuối (bỏ code block) của câu trả lời xong gần nhất: Claude = lượt kết thúc `end_turn`, Codex = `task_complete.last_agent_message`; qua `clean()` max 160 ký tự. Đọc 1 MiB cuối file, cache theo cỡ file.
+- Che: chuỗi 1 dòng qua `push_content::clean` (bỏ ký tự điều khiển / bidi, gộp khoảng trắng, `mask_text`); `me` / `ai` giữ `
+` `	`, bỏ ký tự điều khiển khác + bidi, `mask_text`, cắt 4000 / 8000. Không bao giờ gửi: thinking, nội dung `tool_result`, input thô của tool (chỉ `target` từ `tool_summary_of`), `isMeta`, `isSidechain`, `<system-reminder>`, ảnh (`[ảnh]`), message `developer` / AGENTS.md / `reasoning` của Codex.
+- Cache trang: tối đa 16 trang / 4 MiB trong bộ nhớ, khoá theo path + cỡ file + `before` + `limit`.
+- Đo (bản debug, Windows): trang đầu của rollout Codex 950 KB 15 ms, transcript Claude 680 KB 5 ms.
+
 ## 5. Giới hạn
-`ws.*` 30 / phút · `fs.write` 20 / phút · JSON 1 MiB · text prompt 2000 · max 8 kết nối chưa xác thực / IP trên LAN · thiết bị không dùng 30 ngày tự hết hạn.
+`ws.*` 30 / phút, chat theo hạn mức viewer 120 / phút và 2 watch / phiên · `fs.write` 20 / phút · JSON 1 MiB · text prompt 2000 · max 8 kết nối chưa xác thực / IP trên LAN · thiết bị không dùng 30 ngày tự hết hạn.
 
 ### 5.1 Chặn IP tăng dần (WP-59)
 Cùng luật ở cổng LAN desktop (`apps/shell/src/remote/guard.rs`) và relay (`apps/relay/src/guard.ts`):

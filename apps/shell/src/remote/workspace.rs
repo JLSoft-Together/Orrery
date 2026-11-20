@@ -11,7 +11,7 @@ use crate::state::{lock, take_slot};
 pub const WS_EVENTS: usize = 16;
 pub const WS_PER_MINUTE: usize = 30;
 pub const MAX_ATTACH: usize = 4;
-pub const WS_COMMANDS: [&str; 8] = ["ws.open", "ws.close", "ws.rename", "ws.move", "ws.reopen", "ws.compact", "ws.send", "ws.keys"];
+pub const WS_COMMANDS: [&str; 9] = ["ws.open", "ws.close", "ws.rename", "ws.move", "ws.reopen", "ws.compact", "ws.send", "ws.keys", "ws.menu"];
 pub const SUMMARY_WAIT: Duration = Duration::from_secs(2);
 const STALE_FOR: Duration = Duration::from_secs(10);
 const MINUTE: Duration = Duration::from_secs(60);
@@ -81,7 +81,8 @@ impl Board {
         }
     }
 
-    pub fn publish(&self, summary: Value) {
+    pub fn publish(&self, mut summary: Value) {
+        super::chat_src::mask_menus(&mut summary);
         let event = {
             let mut cur = lock(&self.state);
             let rev = rev_of(&summary);

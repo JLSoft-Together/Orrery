@@ -12,6 +12,8 @@ import {
 import { i18n } from '../i18n'
 import { workspaceBridge } from '../lib/next/workspaceBridge'
 import { baseName } from '../lib/preview'
+import { pickForPhone } from '../lib/remoteMenu'
+import { useMenuQueueStore } from '../stores/menuQueue'
 import { useInboxStore } from '../stores/inbox'
 import { useRemoteStore } from '../stores/remote'
 import { isTerm, presetOf, useWorkspaceStore, workCwd, type Pane } from '../stores/workspace'
@@ -185,6 +187,17 @@ export function installRemotePhone(): void {
     return { ok: true }
   }
 
+  async function menu(call: RemotePhoneCall<'ws.menu'>): Promise<PhoneResult> {
+    const pane = paneOf(call.cmd.paneKey)
+    if (!pane || !isTerm(pane)) return fail('notFound')
+    const queue = useMenuQueueStore()
+    const picked = pickForPhone(queue.entryOf(pane.key), call.cmd.sig, call.cmd.index)
+    if ('error' in picked) return fail(picked.error)
+    await queue.answer(pane.key, picked.item)
+    log(call.device, 'keys', { name: nameOf(pane), key: String(picked.item.index) }, pane)
+    return { ok: true }
+  }
+
   function typed(sessionId: string): PhoneResult {
     const pane = workspace.panes.find((p) => isTerm(p) && p.sessionId === sessionId)
     if (!pane || !isTerm(pane)) return fail('notFound')
@@ -209,4 +222,5 @@ export function installRemotePhone(): void {
   handleOrrery('ws.compact', (call) => onceByRid(recent, call.rid, () => compact(call)))
   handleOrrery('ws.send', (call) => onceByRid(recent, call.rid, () => send(call)))
   handleOrrery('ws.keys', (call) => onceByRid(recent, call.rid, () => keys(call)))
+  handleOrrery('ws.menu', (call) => onceByRid(recent, call.rid, () => menu(call)))
 }

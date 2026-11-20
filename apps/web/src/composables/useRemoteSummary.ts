@@ -2,7 +2,9 @@ import { computed, watch } from 'vue'
 import { REMOTE_SUMMARY_DEBOUNCE_MS, type RemoteInbox, type RemoteWorkspaceSnapshot } from '@ccm/shared'
 import { remotePublish } from '../lib/remote'
 import { buildSummary, summaryHash, type RemotePaneFacts } from '../lib/remoteSummary'
+import { remoteMenuOf } from '../lib/remoteMenu'
 import { useInboxStore } from '../stores/inbox'
+import { useMenuQueueStore } from '../stores/menuQueue'
 import { useRemoteStore } from '../stores/remote'
 import { isTerm, useWorkspaceStore, type Pane } from '../stores/workspace'
 import { handleOrrery, hasOrrery } from './useOrreryApi'
@@ -19,6 +21,7 @@ export function installRemoteSummary(): void {
   const remote = useRemoteStore()
   const info = usePaneInfo()
   const inbox = useInboxStore()
+  const menus = useMenuQueueStore()
   const inboxByPane = computed(() => {
     const out = new Map<string, RemoteInbox>()
     for (const i of inbox.items) {
@@ -45,7 +48,7 @@ export function installRemoteSummary(): void {
     }
   }
 
-  const build = (at: number): RemoteWorkspaceSnapshot => buildSummary({ tabs: workspace.tabs, panes: workspace.panes, closedCount: workspace.closedStack.length, facts, inbox: (p) => inboxByPane.value.get(p.key) }, at)
+  const build = (at: number): RemoteWorkspaceSnapshot => buildSummary({ tabs: workspace.tabs, panes: workspace.panes, closedCount: workspace.closedStack.length, facts, inbox: (p) => inboxByPane.value.get(p.key), menu: (p) => remoteMenuOf(menus.entryOf(p.key)) }, at)
 
   const hashed = computed(() => (remote.connected > 0 ? summaryHash(build(0)) : ''))
 

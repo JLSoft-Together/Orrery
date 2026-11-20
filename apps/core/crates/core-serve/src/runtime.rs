@@ -51,7 +51,7 @@ pub struct Setup {
     pub new_projects: Receiver<Vec<String>>,
     pub sensitive_events: Arc<Mutex<Vec<ActivityEvent>>>,
     pub emit: Emit,
-    pub host_rpc: bool,
+    pub busy_events: bool,
     pub stats: bool,
 }
 
@@ -74,7 +74,7 @@ pub struct Runtime {
 }
 
 pub fn run(setup: Setup, rx: Receiver<Cmd>, wake: Arc<dyn Fn() + Send + Sync>) {
-    let Setup { handle, config, deps, cache, alerts, sensitive, sampling, host, roots, new_projects, sensitive_events, emit, host_rpc, stats } = setup;
+    let Setup { handle, config, deps, cache, alerts, sensitive, sampling, host, roots, new_projects, sensitive_events, emit, busy_events, stats } = setup;
     let stores = MonitorStores::load_from(&config.data_dir);
     let projects = config.claude_root.join("projects");
     let usage_cache = config.data_dir.join("usage-index.json");
@@ -84,7 +84,7 @@ pub fn run(setup: Setup, rx: Receiver<Cmd>, wake: Arc<dyn Fn() + Send + Sync>) {
     monitor.sensitive = Some(Box::new(SensitiveAdapter(sensitive.clone())));
     monitor.set_wake(wake.clone());
     monitor.enable_agents(Arc::new(CachedAgentProcs(cache.clone())), true, verify);
-    let busy = host_rpc.then(BusyTracker::default);
+    let busy = busy_events.then(BusyTracker::default);
     let mut rt = Runtime { monitor, alerts, sensitive, sampling, host, usage: None, office_noted: false, roots, repo: RepoRoots::system(), new_projects, sensitive_events, cache, busy, emit, toast_at: now_ms() + TOAST_TIMER_MS };
     rt.cache.prefetch();
     rt.monitor.prepare(now_ms());

@@ -34,7 +34,7 @@ pub fn is_episode(v: &Value) -> bool {
 
 pub fn sink() -> Emit {
     Arc::new(|v: &Value| {
-        if is_episode(v) {
+        if is_episode(v) || crate::toast::is_host_message(v) {
             let _ = lock(&queue().0).send(v.clone());
             return;
         }
@@ -179,9 +179,24 @@ pub fn start(app: &AppHandle) {
             call(&phone_app, PHONE_CHANNEL, args);
         }
     });
+    let (host_tx, host_rx) = channel::<Value>();
+    let host_app = app.clone();
+    spawn("host-messages", move || {
+        for msg in host_rx {
+            if msg.get("type").and_then(Value::as_str) == Some("busy") {
+                crate::power::busy(&host_app, &msg);
+            } else {
+                crate::toast::handle(&host_app, &msg);
+            }
+        }
+    });
     let episodes_app = app.clone();
     spawn("episodes", move || {
         for msg in rx {
+            if crate::toast::is_host_message(&msg) {
+                let _ = host_tx.send(msg);
+                continue;
+            }
             if msg.get("type").and_then(Value::as_str) == Some("telegram") {
                 if let Some(r) = episodes_app.try_state::<crate::remote::Remote>() {
                     r.note_episode(&msg);

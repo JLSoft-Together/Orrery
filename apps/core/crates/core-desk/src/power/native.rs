@@ -41,6 +41,10 @@ pub fn power() -> Box<dyn Power> {
     Box::new(SystemPower { battery, hold: Mutex::new(None) })
 }
 
+pub fn on_battery_now() -> bool {
+    forced_battery().unwrap_or_else(system_on_battery)
+}
+
 pub fn grace_ms() -> f64 {
     std::env::var("CCM_E2E_AWAKE_GRACE_MS").ok().and_then(|v| v.trim().parse::<f64>().ok()).filter(|v| v.is_finite() && *v > 0.0).unwrap_or(super::awake::AWAKE_GRACE_MS)
 }

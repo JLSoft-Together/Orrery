@@ -41,7 +41,10 @@ pub fn wire(app: &AppHandle) {
     state.desk.set_host(Arc::new(move |method, params| hosts::call(&host, None, method, &params).map_err(DeskError::Host)));
     crate::mcp::start(app);
     crate::lifecycle::boot(app);
+    crate::menu_toast::install(app);
     crate::episodes::start(app);
+    crate::power::watch(app);
+    crate::toast::refresh_health(app);
     crate::lifecycle::migrate_bridges(app);
     let boot = app.clone();
     std::thread::spawn(move || {

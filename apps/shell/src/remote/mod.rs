@@ -34,6 +34,7 @@ mod push_seal;
 mod push_web;
 mod phone_ws;
 pub mod pty_bridge;
+mod pty_vt;
 mod rebind;
 pub mod scope;
 mod relay;
@@ -70,6 +71,8 @@ mod viewer_tests;
 mod viewer_guard_tests;
 #[cfg(test)]
 mod pty_tests;
+#[cfg(test)]
+mod pty_snapshot_tests;
 #[cfg(test)]
 mod push_tests;
 #[cfg(test)]

@@ -22,6 +22,7 @@ pub struct ServeConfig {
     pub activity_limit: usize,
     pub batch_ms: i64,
     pub host_rpc: bool,
+    pub host_events: bool,
     pub dev_origin_port: u16,
     pub toast: Option<ToastBackend>,
     pub toast_link: Option<String>,
@@ -102,6 +103,7 @@ impl ServeConfig {
             activity_limit: 1000,
             batch_ms: 50,
             host_rpc: get("CCM_HOST_RPC").as_deref() == Some("1"),
+            host_events: false,
             dev_origin_port: u16::try_from(positive(get("CCM_DEV_ORIGIN_PORT"), 5173)).unwrap_or(5173),
             toast: toast_backend(get("CCM_TOAST").as_deref(), get("CCM_TOAST_BACKEND").as_deref(), cfg!(windows)),
             toast_link: get("CCM_TOAST_LINK"),
@@ -111,7 +113,11 @@ impl ServeConfig {
     }
 
     pub fn toast_supported(&self) -> bool {
-        self.host_rpc && self.toast.is_some()
+        self.posts_to_host() && self.toast.is_some()
+    }
+
+    pub fn posts_to_host(&self) -> bool {
+        self.host_rpc || self.host_events
     }
 
     pub fn toast_full(&self) -> bool {
@@ -194,5 +200,16 @@ mod tests {
         assert_eq!(toast_backend(None, None, true), Some(ToastBackend::Powershell));
         assert_eq!(toast_backend(None, Some("electron"), false), Some(ToastBackend::Electron));
         assert_eq!(toast_backend(None, None, false), None);
+    }
+
+    #[test]
+    fn an_embedding_host_gets_toasts_and_busy_without_host_rpc() {
+        let mut c = ServeConfig::from_vars(&vars(&[("CCM_APP_KEY", "k")]), false).unwrap();
+        c.toast = Some(ToastBackend::Powershell);
+        assert!(!c.host_events && !c.posts_to_host() && !c.toast_supported());
+        c.host_events = true;
+        assert!(c.posts_to_host() && c.toast_supported() && !c.host_rpc);
+        c.toast = None;
+        assert!(!c.toast_supported());
     }
 }

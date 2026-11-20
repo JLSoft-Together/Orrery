@@ -9,6 +9,7 @@ pub fn stop(app: &AppHandle) -> Value {
     let taken = lock(&shell.serve).take();
     if let Some(mut serve) = taken {
         serve.stop();
+        crate::power::idle(app);
     }
     Value::Null
 }
@@ -23,7 +24,10 @@ pub fn start(app: &AppHandle) -> Value {
         return Value::Null;
     }
     match Serve::start(shell.serve_cfg.clone()) {
-        Ok(serve) => *slot = Some(serve),
+        Ok(serve) => {
+            *slot = Some(serve);
+            crate::toast::refresh_health(app);
+        }
         Err(e) => eprintln!("[shell] collector restart failed: {e:?}"),
     }
     Value::Null

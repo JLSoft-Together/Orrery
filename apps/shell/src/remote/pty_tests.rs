@@ -185,7 +185,7 @@ fn a_claimed_phone_that_stops_reading_never_stalls_the_desktop_pane() {
         desk_until(&mut d, |m| matches!(m, Message::Binary(b) if String::from_utf8_lossy(b).contains("desk-up"))).await;
         let (back, mut rx) = tokio::sync::mpsc::channel(1);
         let slot = Slot::take(&ctx, "d").unwrap();
-        let spec = Spec { re: "a".into(), stream: 1, session: id.clone(), cols: 50, rows: 20, gen: 1, backlog: Arc::new(AtomicUsize::new(0)) };
+        let spec = Spec { re: "a".into(), stream: 1, session: id.clone(), cols: 50, rows: 20, gen: 1, backlog: Arc::new(AtomicUsize::new(0)), snapshot: false };
         let tx = spawn(ctx.host.clone(), spec, slot, back);
         loop {
             match tokio::time::timeout(Duration::from_secs(10), rx.recv()).await.unwrap().unwrap() {

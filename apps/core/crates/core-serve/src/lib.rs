@@ -67,6 +67,7 @@ pub fn run_with_tap(cfg: ServeConfig, emit: Emit, on_tap: TapSink) -> i32 {
 }
 
 fn serve(cfg: ServeConfig, emit: Emit, embedded: bool, on_tap: Option<TapSink>) -> i32 {
+    let cfg = ServeConfig { host_events: cfg.host_events || embedded, ..cfg };
     if cfg.app_key.is_none() && !cfg.dev {
         eprintln!("[collector] {}", ConfigError::NoAppKey);
         return 1;
@@ -154,7 +155,7 @@ fn serve(cfg: ServeConfig, emit: Emit, embedded: bool, on_tap: Option<TapSink>) 
             new_projects,
             sensitive_events,
             emit: emit.clone(),
-            host_rpc: cfg.host_rpc,
+            busy_events: cfg.posts_to_host(),
             stats: cfg.stats,
         };
         let wake_tx = sender(&tx);

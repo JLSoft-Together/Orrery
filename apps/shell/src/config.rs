@@ -117,6 +117,9 @@ impl ShellConfig {
         if dev && var("CCM_DATA_DIR").is_none() {
             over.insert("CCM_DATA_DIR", std::env::temp_dir().join("orrery-shell-dev").to_string_lossy().into_owned());
         }
+        if cfg!(windows) && var("CCM_TOAST_LINK").is_none() {
+            over.insert("CCM_TOAST_LINK", format!("{LINK_SCHEME}://"));
+        }
         if var("CCM_STATUSLINE_COMMAND").is_none() {
             over.insert("CCM_STATUSLINE_COMMAND", String::new());
         }

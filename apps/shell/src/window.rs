@@ -218,9 +218,37 @@ fn report_maximized(window: &tauri::Window) {
     let _ = window.emit_to(label.as_str(), "ccm:window-maximized", now);
 }
 
+pub fn minimized_size(last: &mut Vec<(String, PhysicalSize<u32>)>, label: &str, size: PhysicalSize<u32>, minimized: bool) -> Option<PhysicalSize<u32>> {
+    let at = last.iter().position(|(l, _)| l == label);
+    if minimized {
+        return at.map(|i| last[i].1);
+    }
+    if size.width == 0 || size.height == 0 {
+        return None;
+    }
+    match at {
+        Some(i) => last[i].1 = size,
+        None => last.push((label.to_owned(), size)),
+    }
+    None
+}
+
+fn keep_size_when_minimized(window: &tauri::Window, size: PhysicalSize<u32>) {
+    static LAST: std::sync::Mutex<Vec<(String, PhysicalSize<u32>)>> = std::sync::Mutex::new(Vec::new());
+    let minimized = window.is_minimized().unwrap_or(false);
+    let keep = minimized_size(&mut LAST.lock().unwrap_or_else(std::sync::PoisonError::into_inner), window.label(), size, minimized);
+    let Some(keep) = keep else { return };
+    for webview in window.webviews().into_iter().filter(|w| w.label() == window.label()) {
+        let _ = webview.set_size(keep);
+    }
+}
+
 pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
     if cfg!(windows) && matches!(event, WindowEvent::Resized(_)) {
         report_maximized(window);
+    }
+    if let (true, WindowEvent::Resized(size)) = (cfg!(windows), event) {
+        keep_size_when_minimized(window, *size);
     }
     if matches!(event, WindowEvent::Destroyed) {
         crate::preview_ipc::release(window.app_handle(), window.label());
@@ -228,6 +256,9 @@ pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
     }
     if window.label() != MAIN {
         return;
+    }
+    if matches!(event, WindowEvent::Focused(true)) {
+        crate::menu_toast::settle(window.app_handle());
     }
     if let WindowEvent::CloseRequested { api, .. } = event {
         save_bounds(window);
@@ -291,6 +322,20 @@ pub fn set_background_all(app: &AppHandle, hex: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_minimized_window_keeps_the_last_normal_webview_size() {
+        let mut last = Vec::new();
+        let big = PhysicalSize::new(1360, 860);
+        assert_eq!(minimized_size(&mut last, MAIN, big, true), None);
+        assert_eq!(minimized_size(&mut last, MAIN, big, false), None);
+        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(0, 0), false), None);
+        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(160, 28), true), Some(big));
+        assert_eq!(minimized_size(&mut last, COMPACT, PhysicalSize::new(160, 28), true), None);
+        let wide = PhysicalSize::new(1920, 1000);
+        minimized_size(&mut last, MAIN, wide, false);
+        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(1, 1), true), Some(wide));
+    }
 
     #[test]
     fn the_init_script_ends_every_part_with_a_semicolon() {

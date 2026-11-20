@@ -60,6 +60,7 @@ pub enum Link {
     Open { preset: String, cwd: String, resume: Option<String> },
     Focus { key: String, terminal: Option<String> },
     Snooze { query: String },
+    Menu { raw: String },
 }
 
 fn win_absolute(cwd: &str) -> bool {
@@ -97,6 +98,7 @@ pub fn parse(raw: &str, windows: bool) -> Option<Link> {
             Some(Link::Focus { key, terminal: get("t").filter(|t| !t.is_empty()) })
         }
         "snooze" => Some(Link::Snooze { query: url.query().unwrap_or("").to_owned() }),
+        "menu" => Some(Link::Menu { raw: raw.to_owned() }),
         _ => None,
     }
 }
@@ -171,7 +173,7 @@ pub fn page_ready(app: &AppHandle) {
 pub fn handle(app: &AppHandle, raw: &str) {
     let Some(link) = parse(raw, cfg!(windows)) else { return };
     let link = match (&link, app.try_state::<LinkGate>()) {
-        (Link::Snooze { .. }, _) | (_, None) => link,
+        (Link::Snooze { .. } | Link::Menu { .. }, _) | (_, None) => link,
         (_, Some(gate)) => match lock(&gate.0).offer(link) {
             Some(link) => link,
             None => return,
@@ -185,6 +187,7 @@ fn run(app: &AppHandle, link: Link) {
     std::thread::spawn(move || match link {
         Link::Open { preset, cwd, resume } => open(&app, preset, cwd, resume),
         Link::Focus { key, terminal } => focus(&app, key, terminal),
+        Link::Menu { raw } => crate::menu_toast::activate(&app, &raw),
         Link::Snooze { query } => {
             let shell = app.state::<Shell>();
             let _ = request(shell.port, "GET", &format!("/snooze?{query}"), Some(&shell.key), None);
@@ -234,6 +237,8 @@ mod tests {
         assert_eq!(parse("agent-monitor://focus?k=abc&t=t1", true), Some(Link::Focus { key: "abc".into(), terminal: Some("t1".into()) }));
         assert_eq!(parse("agent-monitor://focus?t=t1", true), None);
         assert_eq!(parse("agent-monitor://snooze?k=a&t=b&m=5", true), Some(Link::Snooze { query: "k=a&t=b&m=5".into() }));
+        let menu = "agent-monitor://menu?k=a&p=p1&s=s1&i=1";
+        assert_eq!(parse(menu, true), Some(Link::Menu { raw: menu.into() }));
     }
 
     #[test]

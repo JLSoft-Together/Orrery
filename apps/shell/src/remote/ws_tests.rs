@@ -11,7 +11,7 @@ use super::pair::{clean_name, is_hidden};
 use super::patch::diff;
 use super::phone_ws::{error_code, reply_of, SUMMARY_GET};
 use super::test_util::*;
-use super::workspace::{Board, WS_PER_MINUTE};
+use super::workspace::{snapshot_event, Board, WS_PER_MINUTE};
 use crate::state::lock;
 
 fn unescape(s: &str) -> String {
@@ -72,6 +72,24 @@ fn json_patch_turns_the_old_snapshot_into_the_new_one() {
         assert_eq!(apply(&old, &ops), new, "{ops:?}");
     }
     assert!(diff(&summary(5, vec![]), &summary(5, vec![])).is_empty());
+}
+
+#[test]
+fn the_inbox_field_and_flag_reach_the_phone_unchanged() {
+    let mut with = pane("p1", "s1", "running");
+    with["inbox"] = json!({ "reason": "clash", "since": "2026-11-20T01:00:00.000Z", "file": "src/a.ts", "peer": "B" });
+    let mut new = summary(2, vec![with.clone()]);
+    new["inbox"] = json!(true);
+    let old = summary(1, vec![pane("p1", "s1", "running")]);
+    let board = Board::default();
+    board.publish(old.clone());
+    board.publish(new.clone());
+    let got = board.summary().unwrap();
+    assert_eq!(got["tabs"][0]["panes"][0]["inbox"], with["inbox"]);
+    assert_eq!(got["inbox"], json!(true));
+    let event = snapshot_event(&got).unwrap();
+    assert_eq!(event["tabs"][0]["panes"][0]["inbox"]["file"], "src/a.ts");
+    assert_eq!(apply(&old, &diff(&old, &new)), new);
 }
 
 #[test]

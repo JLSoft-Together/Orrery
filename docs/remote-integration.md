@@ -102,20 +102,29 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 
 `timeout` của lệnh `ws.*` = kết quả chưa rõ (renderer có thể vẫn đã làm): client KHÔNG tự retry lệnh có tác dụng phụ. Gateway gửi kèm `rid` (theo phiên + `id` lệnh) cho renderer; renderer bỏ lệnh trùng `rid` (50 gần nhất, 60 s) và trả lại kết quả lần đầu.
 
-Event `ws.snapshot {rev, tabs[]}` / `ws.patch {base, rev, ops[]}` (`ops` = JSON Patch RFC 6902 trên snapshot; chỉ áp khi `base` = rev đang có, lệch → `ws.get`).
+Event `ws.snapshot {rev, tabs[], inbox?}` / `ws.patch {base, rev, ops[]}` (`ops` = JSON Patch RFC 6902 trên snapshot; chỉ áp khi `base` = rev đang có, lệch → `ws.get`).
 `tabs[i] = {key, name, project, tree, zoom, folded, groups?, panes[]}`; `tree` = `{pane} | {dir, ratio, a, b}` (luôn phẳng: nhóm project của UI next không lồng vào `tree`, app cũ vẫn đọc được);
 `groups[k] = {project, name?, tone?, folded?, panes[]}` (tuỳ chọn, WP-67 2026-11-19): chỉ có khi tab chia nhóm project (`GroupNode`), theo thứ tự trong `tree`; `project` = thư mục nhóm, `name` ≤ 120 ký tự đã lọc ký tự điều khiển, `tone` 0 đến 7 (8 màu nhóm), `panes` = key pane thuộc nhóm. App không biết `groups` thì bỏ qua (field lạ bị bỏ qua), vẫn vẽ đúng từ `tree`.
-`panes[j] = {key, kind, preset, agent, title, cwd, branch, state, rail, waitText, attention, subagents, sessionId, terminalId, dirty, busy}`.
+`panes[j] = {key, kind, preset, agent, title, cwd, branch, state, rail, waitText, attention, subagents, sessionId, terminalId, dirty, busy, inbox?}`.
+`inbox` (tuỳ chọn, v104 WP-104e) = `{reason, since?, file?, peer?}`: lý do khẩn nhất của pane theo Inbox desktop (`packages/shared/src/inbox.ts`). `reason` thuộc `menu`, `permission`, `question`, `clash`, `failed`, `loop`, `checks`, `stuck`, `note`, `done`; nhóm theo `INBOX_GROUPS` = `menu`, `permission`, `question`, `clash`, `error` (`failed`, `loop`, `checks`, `stuck`), `note`, `done`, trong nhóm cũ nhất lên đầu (`since` ISO). `file` = path tương đối repo (chỉ `clash`), `peer` = tên session kia (chỉ `clash`), mỗi chuỗi max 120 ký tự; không có nội dung diff, không có chữ của ghi chú. Mục đã hoãn hoặc đã đánh dấu xem trên desktop không gửi. Snapshot có `inbox: true` ở cấp gốc khi desktop gửi field này; app thấy `inbox: true` thì chỉ dựng Inbox từ `panes[].inbox`, không có thì dùng `attention` như cũ (desktop cũ). `reason` lạ thì bỏ dòng đó. Inbox trên điện thoại chỉ mở session / pane, không trả lời menu (trả lời vẫn qua `ws.keys` / terminal như trước).
 
 ### 4.4 PTY
 | Lệnh | Ý nghĩa |
 |---|---|
-| `pty.attach {stream, sessionId, cols, rows}` | xem pane (viewer); output về kind 1 cùng `stream`; event `pty.ready {stream, cols, rows}` rồi replay |
+| `pty.attach {stream, sessionId, cols, rows, caps?}` | xem pane (viewer); output về kind 1 cùng `stream`; event `pty.ready {stream, cols, rows}` rồi replay (`caps` có `pty.snapshot` thì replay là 1 event `pty.snapshot` thay tail byte thô) |
 | `pty.detach {stream}` | thôi xem |
 | `pty.resize {stream, cols, rows}` | lưu cỡ của điện thoại; chỉ áp khi điện thoại đang gõ |
 | kind 2 trên `stream` | gõ (ghi vào PTY); gateway gửi `claim` cho hub khi đó là phím người dùng thật, điện thoại thành người gõ, cỡ của nó áp vào PTY |
 
 Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Workspace summary (không thì `notFound`). Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}` (`code:null` = mất hub), `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị (thứ 5 → `limit`). Ngay sau khi điện thoại nối (hello), summary được coi là cũ tới lần `publish` kế (max 10 s): `pty.attach` với pane chưa có trong summary chờ summary mới tối đa 2 s rồi mới trả `notFound`.
+
+`pty.snapshot` (v104 WP-104a2, 2026-11-20): client gửi `caps: ['pty.snapshot']` trong `pty.attach` (field tuỳ chọn; desktop cũ bỏ qua, client không gửi thì giữ hành vi cũ: tail byte thô, `pty.resized` trơn). Có cap thì gateway giữ 1 terminal ảo (crate `vt100`, `apps/shell/src/remote/pty_vt.rs`, scrollback max 2000 dòng) cho stream đó, nạp mọi byte theo đúng thứ tự từ hub, giải phóng khi stream đóng, và gửi `{t:'pty.snapshot', stream, cols, rows, gen, data}`:
+- lần flush đầu sau attach / nối lại: thay byte replay (ring tail + byte tới cùng đợt);
+- ngay sau mỗi `pty.resized` (cùng kênh JSON, sau byte cũ, trước byte ConPTY vẽ lại).
+
+`data` = chuỗi ANSI dựng lại: các dòng scrollback rồi các hàng màn hình (mỗi dòng mở bằng `ESC[m`, nối bằng CRLF, dòng mềm wrap thành dòng cứng), rồi vị trí con trỏ (CUP tuyệt đối), SGR hiện tại, mode nhập (app cursor, keypad, bracketed paste, mouse) và `ESC[?25l` khi ẩn con trỏ; đang alt screen thì `ESC[?1049h` + nội dung alt screen (không kèm scrollback). Max 512 KiB sau escape JSON: quá thì bỏ dòng scrollback cũ nhất. Khi thu số hàng mà con trỏ nằm dưới hàng mới, terminal ảo cuộn các hàng trên vào scrollback trước (như ConPTY giữ con trỏ trong màn); tăng hàng thì thêm hàng trống dưới đáy, không kéo scrollback xuống. Nội dung chỉ là output terminal như kind 1, không thêm env / secret.
+
+Client nhận `pty.snapshot`: bỏ byte còn chờ ghi, reset terminal (thoát alt screen, xoá scrollback, mode về mặc định), resize đúng `cols` × `rows`, ghi `data`, rồi ghi tiếp byte sau. Mọi byte và event `pty.*` của 1 stream xử lý đúng thứ tự nhận; `pty.resized` ghi hết byte trước nó ở cỡ cũ rồi mới resize (PWA `src/terminal/termPipe.ts`, Android `ui/terminal/pty_snapshot.dart` + `anchored_terminal.dart`).
 
 ### 4.5 Viewer
 Bảng cố định (lệnh ngoài bảng → `denied`); path luôn tuyệt đối, phải nằm trong root pane đang sống hoặc grant của desktop (full-access của desktop KHÔNG áp cho điện thoại); không có `grant-folder`, chọn thư mục / file, mở path, reveal.

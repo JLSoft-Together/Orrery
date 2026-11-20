@@ -89,8 +89,10 @@ fn open_dialog(app: &AppHandle) -> Value {
 }
 
 fn e2e_answer(app: &AppHandle, message: &str) -> Option<bool> {
-    let answer = std::env::var("CCM_E2E_CONFIRM").ok()?;
-    let log = app.state::<Shell>().data_dir.join("e2e-confirms.log");
+    let fixed = std::env::var("CCM_E2E_CONFIRM").ok()?;
+    let data = &app.state::<Shell>().data_dir;
+    let answer = std::fs::read_to_string(data.join("e2e-confirm-answer")).map_or(fixed, |s| s.trim().to_owned());
+    let log = data.join("e2e-confirms.log");
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(log) {
         let _ = writeln!(f, "{}", message.replace('\n', " "));
     }
@@ -101,7 +103,7 @@ pub fn confirm(app: &AppHandle, message: &str, detail: &str, ok: &str, cancel: &
     if let Some(answer) = crate::remote::scope::confirm(message, detail, ok, cancel) {
         return answer;
     }
-    if let Some(answer) = e2e_answer(app, message) {
+    if let Some(answer) = e2e_answer(app, &format!("{message} {detail}")) {
         return answer;
     }
     if app.get_webview_window(MAIN).is_some_and(|w| !w.is_visible().unwrap_or(true)) {

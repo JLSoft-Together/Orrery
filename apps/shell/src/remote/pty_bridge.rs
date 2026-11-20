@@ -14,6 +14,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use super::ctx::{Ctx, Host};
 use super::dashboard::error;
+use super::pty_vt::Vt;
 
 pub const ORIGIN: &str = "orrery-remote://gateway";
 pub const HUB_TIMEOUT: Duration = Duration::from_secs(5);
@@ -69,6 +70,7 @@ pub struct Spec {
     pub rows: u16,
     pub gen: u64,
     pub backlog: Arc<AtomicUsize>,
+    pub snapshot: bool,
 }
 
 pub fn spawn(host: Arc<dyn Host>, spec: Spec, slot: Slot, back: mpsc::Sender<FromHub>) -> mpsc::Sender<ToHub> {
@@ -124,9 +126,32 @@ struct Pump<'a> {
     buf: Vec<u8>,
     backlog: Arc<AtomicUsize>,
     stalled: bool,
+    vt: Option<Vt>,
+    fresh: bool,
 }
 
-impl Pump<'_> {
+impl<'a> Pump<'a> {
+    fn new(back: &'a mpsc::Sender<FromHub>, spec: &Spec) -> Pump<'a> {
+        let vt = spec.snapshot.then(|| Vt::new(spec.cols, spec.rows));
+        Pump { back, stream: spec.stream, gen: spec.gen, size: (spec.cols, spec.rows), announced: false, buf: Vec::new(), backlog: spec.backlog.clone(), stalled: false, vt, fresh: true }
+    }
+
+    fn take(&mut self, bytes: &[u8]) -> usize {
+        if let Some(vt) = self.vt.as_mut() {
+            vt.feed(bytes);
+        }
+        self.buf.extend_from_slice(bytes);
+        self.buf.len()
+    }
+
+    async fn snapshot(&mut self) -> bool {
+        let Some(vt) = self.vt.as_mut() else { return true };
+        self.fresh = false;
+        let (cols, rows) = vt.size();
+        let data = vt.snapshot();
+        self.json(json!({ "t": "pty.snapshot", "stream": self.stream, "cols": cols, "rows": rows, "gen": self.gen, "data": data })).await
+    }
+
     async fn put(&mut self, msg: FromHub) -> bool {
         match timeout(SEND_WAIT, self.back.send(msg)).await {
             Ok(Ok(())) => true,
@@ -154,6 +179,10 @@ impl Pump<'_> {
         if !self.announced && !self.announce(self.size).await {
             return false;
         }
+        if self.fresh && self.vt.is_some() {
+            self.buf.clear();
+            return self.snapshot().await;
+        }
         let len = self.buf.len();
         if self.backlog.fetch_add(len, Ordering::SeqCst) + len > MAX_BACKLOG {
             self.backlog.fetch_sub(len, Ordering::SeqCst);
@@ -175,10 +204,17 @@ impl Pump<'_> {
                 if !self.flush().await {
                     return Some(false);
                 }
+                self.size = size;
+                if let Some(vt) = self.vt.as_mut() {
+                    vt.resize(size.0, size.1);
+                }
                 if !self.announced {
                     return Some(self.announce(size).await);
                 }
-                Some(self.json(json!({ "t": "pty.resized", "stream": self.stream, "cols": size.0, "rows": size.1 })).await)
+                if !self.json(json!({ "t": "pty.resized", "stream": self.stream, "cols": size.0, "rows": size.1 })).await {
+                    return Some(false);
+                }
+                Some(self.snapshot().await)
             }
             "exit" => {
                 if self.flush().await {
@@ -221,7 +257,7 @@ async fn run(host: Arc<dyn Host>, spec: Spec, mut rx: mpsc::Receiver<ToHub>, bac
         let _ = ws.close(None).await;
         return false;
     }
-    let mut pump = Pump { back, stream: spec.stream, gen: spec.gen, size: (spec.cols, spec.rows), announced: false, buf: Vec::new(), backlog: spec.backlog.clone(), stalled: false };
+    let mut pump = Pump::new(back, &spec);
     if !pump.json(json!({ "re": spec.re, "ok": true, "stream": spec.stream })).await {
         return pump.stalled;
     }
@@ -230,8 +266,7 @@ async fn run(host: Arc<dyn Host>, spec: Spec, mut rx: mpsc::Receiver<ToHub>, bac
         tokio::select! {
             msg = ws.next() => match msg {
                 Some(Ok(Message::Binary(b))) => {
-                    pump.buf.extend_from_slice(&b);
-                    if pump.buf.len() >= OUT_MAX {
+                    if pump.take(&b) >= OUT_MAX {
                         flush_at = None;
                         if !pump.flush().await {
                             break;

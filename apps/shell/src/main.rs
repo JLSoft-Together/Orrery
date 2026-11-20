@@ -45,6 +45,7 @@ mod lifecycle;
 mod links;
 mod log;
 mod mcp;
+mod menu_toast;
 mod native;
 mod notice;
 mod presets;
@@ -57,6 +58,7 @@ mod preview_serve;
 mod preview_text;
 mod preview_watch;
 mod pty;
+mod power;
 mod pty_branch;
 mod remote;
 mod resources;
@@ -65,6 +67,7 @@ mod shot;
 mod state;
 mod stdio;
 mod strings;
+mod toast;
 mod tray;
 mod update_host;
 mod vault;
@@ -183,6 +186,7 @@ fn main() {
             let stopping = handle.clone();
             *state::lock(&handle.state::<Shell>().before_stop) = Some(Box::new(move || {
                 remote::host::shutdown(&stopping);
+                power::dispose(&stopping);
                 lifecycle::clean(&stopping)
             }));
             window::create_main(&handle, hidden).map_err(std::io::Error::other)?;

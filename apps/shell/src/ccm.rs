@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 39] = [
+const LOCAL: [&str; 40] = [
     "ccm:window",
     "ccm:pty-endpoint",
     "ccm:editor-dirty",
@@ -52,6 +52,7 @@ const LOCAL: [&str; 39] = [
     "ccm:remote-push-device",
     "ccm:remote-guard",
     "ccm:drop-paths",
+    "ccm:menu-toast-sync",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -188,6 +189,13 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         "ccm:orrery-reply" => {
             if let (true, Some(id)) = (answers_asks(webview.label()), arg(&args, 0).as_str()) {
                 shell.reply(id, arg(&args, 1).clone());
+            }
+            Ok(Value::Null)
+        }
+        "ccm:menu-toast-sync" => {
+            if answers_asks(webview.label()) {
+                let (handle, data) = (app.clone(), arg(&args, 0).clone());
+                blocking(move || crate::menu_toast::sync(&handle, &data)).await?;
             }
             Ok(Value::Null)
         }

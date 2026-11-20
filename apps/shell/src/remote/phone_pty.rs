@@ -13,6 +13,10 @@ fn dim(v: &Value, key: &str, fallback: u16) -> u16 {
     v.get(key).and_then(Value::as_u64).filter(|n| (1..=MAX_DIM).contains(n)).map_or(fallback, |n| n as u16)
 }
 
+pub fn wants_snapshot(v: &Value) -> bool {
+    v.get("caps").and_then(Value::as_array).is_some_and(|caps| caps.iter().any(|c| c.as_str() == Some(super::pty_vt::CAP)))
+}
+
 pub fn stream_of(v: &Value) -> Option<u32> {
     v.get("stream").and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).filter(|n| *n > 0)
 }
@@ -32,7 +36,7 @@ impl Phone {
         let Some(slot) = Slot::take(&self.ctx, &self.device) else { return self.sec.json(&error(Value::from(id), "limit")).await };
         self.x.next_gen += 1;
         let gen = self.x.next_gen;
-        let spec = Spec { re: id.to_owned(), stream, session: session.to_owned(), cols: dim(v, "cols", 80), rows: dim(v, "rows", 24), gen, backlog: self.x.backlog.clone() };
+        let spec = Spec { re: id.to_owned(), stream, session: session.to_owned(), cols: dim(v, "cols", 80), rows: dim(v, "rows", 24), gen, backlog: self.x.backlog.clone(), snapshot: wants_snapshot(v) };
         let tx = spawn(self.ctx.host.clone(), spec, slot, self.x.hub_tx.clone());
         self.x.attaches.insert(stream, Attach { tx, gen, session: session.to_owned(), typed_at: None });
         true

@@ -55,6 +55,7 @@ if-addrs = "0.15"
 socket2 = { version = "0.6", features = ["all"] }
 zeroize = "1"
 regex = "1"
+vt100 = "0.16"
 
 [dev-dependencies]
 core-http = { path = "../core/crates/core-http" }
@@ -63,7 +64,7 @@ core-store = { path = "../core/crates/core-store" }
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Pipes", "Win32_Security_Cryptography", "Win32_Networking_WinSock", "Win32_Storage_FileSystem", "Win32_System_IO"] }
 webview2-com = "=0.39.1"
-windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell", "Data_Xml_Dom", "UI_Notifications"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"

@@ -71,19 +71,29 @@ try {
       <h2>Ngẫu nhiên</h2>
     </div>
     <div class="rand" id="rand">
-      <div class="rand-l">
+      <div class="rand-head">
         <span class="rand-ic"><svg><use href="#i-dice"/></svg></span>
-        <div>
-          <div class="rand-t">Mỗi lần mở, một màu</div>
-          <div class="hint" id="randPool"></div>
+        <div class="rand-tt">
+          <div class="rand-t">Mỗi lần mở, trộn màu mới</div>
+          <div class="hint" id="randInfo"></div>
+        </div>
+        <button type="button" class="sw" id="randOn" role="switch" aria-checked="true" aria-label="Bật ngẫu nhiên"><span></span></button>
+      </div>
+      <div class="rand-body">
+        <div class="rand-prev" id="randPrev"></div>
+        <div class="rand-side">
+          <div class="seg small" role="radiogroup" aria-label="Sáng / Tối" id="randSeg">
+            <button type="button" role="radio" data-rs="light"><svg><use href="#i-sun"/></svg>Sáng</button>
+            <button type="button" role="radio" data-rs="dark"><svg><use href="#i-moon"/></svg>Tối</button>
+          </div>
+          <div class="dots" id="randDots"></div>
+          <div class="rand-btns">
+            <button type="button" class="btn" id="randMix"><svg><use href="#i-dice"/></svg>Trộn lại</button>
+            <button type="button" class="btn pin" id="randPin" aria-pressed="false"><svg><use href="#i-star"/></svg>Giữ màu này</button>
+          </div>
+          <div class="pins" id="pins"></div>
         </div>
       </div>
-      <div class="rand-stack" id="randStack"></div>
-      <div class="rand-r">
-        <button type="button" class="btn ghost" id="randTry"><svg><use href="#i-dice"/></svg>Thử</button>
-        <button type="button" class="sw" id="randOn" role="switch" aria-checked="true"><span></span></button>
-      </div>
-      <div class="rand-pick" id="randPick" hidden></div>
     </div>
   </section>
 </main>

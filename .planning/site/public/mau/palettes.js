@@ -1,140 +1,123 @@
+const MAU_BASE = {
+  light: {
+    canvas: '#f7f7f7', side: '#f2f2f2', surface: '#ffffff', raised: '#fafafa', control: '#ffffff',
+    line: '#e5e5e5', 'line-strong': '#d4d4d4',
+    ink: '#1f1f1f', 'ink-muted': '#525252', 'ink-faint': '#636363',
+    working: '#1f5fbf', waiting: '#7a5a00', idle: '#636363', done: '#1b6e37', error: '#c02a2a',
+    'agent-claude': '#b85a35', 'agent-codex': '#6750b8', 'agent-shell': '#17786f',
+    'diff-add': '#1b6e37', 'diff-del': '#c02a2a',
+    well: '#ffffff', 'well-ink': '#1f1f1f', 'well-dim': '#636363',
+    'well-green': '#1b6e37', 'well-red': '#c02a2a', 'well-blue': '#1f5fbf', 'well-yellow': '#7a5a00',
+  },
+  dark: {
+    canvas: '#1e1e1e', side: '#181818', surface: '#252525', raised: '#2b2b2b', control: '#333333',
+    line: '#333333', 'line-strong': '#444444',
+    ink: '#e6e6e6', 'ink-muted': '#b0b0b0', 'ink-faint': '#9a9a9a',
+    working: '#7fb0ff', waiting: '#e5c07b', idle: '#9a9a9a', done: '#6fcf8f', error: '#f28b82',
+    'agent-claude': '#d9825f', 'agent-codex': '#a89cf0', 'agent-shell': '#5cc0b4',
+    'diff-add': '#6fcf8f', 'diff-del': '#f28b82',
+    well: '#121212', 'well-ink': '#e6e6e6', 'well-dim': '#8c8c8c',
+    'well-green': '#6fcf8f', 'well-red': '#f28b82', 'well-blue': '#8ab4f8', 'well-yellow': '#e5c07b',
+  },
+}
+
+function mauPreset(id, name, tag, la, li, da, dOn, di) {
+  return {
+    id, name, tag,
+    light: { ...MAU_BASE.light, accent: la, 'accent-ink': li, 'on-accent': '#ffffff', 'well-accent': li },
+    dark: { ...MAU_BASE.dark, accent: da, 'accent-ink': di, 'on-accent': dOn, 'well-accent': di },
+  }
+}
+
 const MAU_PALETTES = [
-  {
-    id: 'fog',
-    name: 'Sương xám',
-    tag: 'Lạnh, trung tính',
-    light: {
-      canvas: '#eef1f4', side: '#e7ebef', surface: '#f9fafb', raised: '#f2f4f6', control: '#ffffff',
-      line: '#dde2e7', 'line-strong': '#c9d0d7',
-      ink: '#1f2933', 'ink-muted': '#4b5763', 'ink-faint': '#5c6874',
-      accent: '#3d6f8e', 'accent-ink': '#335f7b', 'on-accent': '#ffffff',
-      working: '#2f5f9e', waiting: '#7a5a10', idle: '#5c6874', done: '#2f6b4a', error: '#a63d40',
-      'agent-claude': '#b8603f', 'agent-codex': '#6656b0', 'agent-shell': '#2f7a72',
-      'diff-add': '#2f6b4a', 'diff-del': '#a63d40',
-      well: '#1e252c', 'well-ink': '#dfe5ea', 'well-dim': '#8f9ca8', 'well-accent': '#9cc3d8',
-      'well-green': '#8fcfa6', 'well-red': '#eba0a2', 'well-blue': '#9dbde3', 'well-yellow': '#e2c98a',
-    },
-    dark: {
-      canvas: '#14181c', side: '#171c21', surface: '#1c2228', raised: '#222930', control: '#2a323a',
-      line: '#2b333b', 'line-strong': '#3a444e',
-      ink: '#e3e8ec', 'ink-muted': '#a9b4be', 'ink-faint': '#95a1ac',
-      accent: '#7fa9c4', 'accent-ink': '#9cc0d6', 'on-accent': '#0f1c25',
-      working: '#8fb2e6', waiting: '#e0c27a', idle: '#9ca8b3', done: '#8cc9a5', error: '#eb9fa1',
-      'agent-claude': '#d4876a', 'agent-codex': '#a89ce6', 'agent-shell': '#6cc0b5',
-      'diff-add': '#8cc9a5', 'diff-del': '#eb9fa1',
-      well: '#101418', 'well-ink': '#dfe5ea', 'well-dim': '#8693a0', 'well-accent': '#9cc3d8',
-      'well-green': '#8fcfa6', 'well-red': '#eba0a2', 'well-blue': '#9dbde3', 'well-yellow': '#e2c98a',
-    },
-  },
-  {
-    id: 'moss',
-    name: 'Rêu',
-    tag: 'Xanh lá dịu',
-    light: {
-      canvas: '#eff1ec', side: '#e8ebe4', surface: '#fafbf8', raised: '#f3f5f0', control: '#ffffff',
-      line: '#dde1d7', 'line-strong': '#c8cec0',
-      ink: '#20271f', 'ink-muted': '#4d574b', 'ink-faint': '#5c6759',
-      accent: '#4b7556', 'accent-ink': '#3f6649', 'on-accent': '#ffffff',
-      working: '#3d6491', waiting: '#7a5c12', idle: '#5c6759', done: '#2e6b3c', error: '#a8433c',
-      'agent-claude': '#b5603e', 'agent-codex': '#6a5aa8', 'agent-shell': '#2f766c',
-      'diff-add': '#2e6b3c', 'diff-del': '#a8433c',
-      well: '#222821', 'well-ink': '#e1e6dc', 'well-dim': '#929d8f', 'well-accent': '#a8c8ae',
-      'well-green': '#9fd0a6', 'well-red': '#eaa199', 'well-blue': '#a2bfe0', 'well-yellow': '#e0c98a',
-    },
-    dark: {
-      canvas: '#151915', side: '#181c17', surface: '#1d221c', raised: '#232922', control: '#2b322a',
-      line: '#2c332b', 'line-strong': '#3b4439',
-      ink: '#e4e8df', 'ink-muted': '#aab3a5', 'ink-faint': '#97a191',
-      accent: '#94b89c', 'accent-ink': '#a8c8ae', 'on-accent': '#13211a',
-      working: '#93b3dc', waiting: '#dcc27f', idle: '#9ea799', done: '#9fd0a6', error: '#e9a098',
-      'agent-claude': '#d38a6c', 'agent-codex': '#ab9fe0', 'agent-shell': '#79c2b4',
-      'diff-add': '#9fd0a6', 'diff-del': '#e9a098',
-      well: '#101310', 'well-ink': '#e1e6dc', 'well-dim': '#87927f', 'well-accent': '#a8c8ae',
-      'well-green': '#9fd0a6', 'well-red': '#eaa199', 'well-blue': '#a2bfe0', 'well-yellow': '#e0c98a',
-    },
-  },
-  {
-    id: 'paper',
-    name: 'Giấy',
-    tag: 'Ấm, terminal sáng',
-    light: {
-      canvas: '#f3efe8', side: '#ede8e0', surface: '#fbf9f5', raised: '#f5f1eb', control: '#fffdfa',
-      line: '#e2dcd2', 'line-strong': '#cfc7ba',
-      ink: '#2a2420', 'ink-muted': '#5a5048', 'ink-faint': '#685e55',
-      accent: '#4a6585', 'accent-ink': '#405872', 'on-accent': '#ffffff',
-      working: '#3b5f8f', waiting: '#7a580c', idle: '#685e55', done: '#3d6a3a', error: '#a53b35',
-      'agent-claude': '#b0573a', 'agent-codex': '#6a58a8', 'agent-shell': '#2e7268',
-      'diff-add': '#3d6a3a', 'diff-del': '#a53b35',
-      well: '#f0ebe3', 'well-ink': '#2a2420', 'well-dim': '#665c53', 'well-accent': '#405872',
-      'well-green': '#38623a', 'well-red': '#9c3832', 'well-blue': '#3b5b88', 'well-yellow': '#6f520c',
-    },
-    dark: {
-      canvas: '#1a1715', side: '#1d1a17', surface: '#221f1c', raised: '#292522', control: '#312c28',
-      line: '#332e2a', 'line-strong': '#443d37',
-      ink: '#ece6df', 'ink-muted': '#b5aca2', 'ink-faint': '#a0978d',
-      accent: '#9db4cf', 'accent-ink': '#b0c4db', 'on-accent': '#16202c',
-      working: '#9db4dc', waiting: '#dfc282', idle: '#a39a91', done: '#a3c99a', error: '#e89d95',
-      'agent-claude': '#d98c6c', 'agent-codex': '#b1a3e0', 'agent-shell': '#7fc0b0',
-      'diff-add': '#a3c99a', 'diff-del': '#e89d95',
-      well: '#141210', 'well-ink': '#e6e0d8', 'well-dim': '#8d8379', 'well-accent': '#b0c4db',
-      'well-green': '#a3c99a', 'well-red': '#e89d95', 'well-blue': '#a5bde0', 'well-yellow': '#dfc282',
-    },
-  },
-  {
-    id: 'indigo',
-    name: 'Chàm',
-    tag: 'Tím than nhạt',
-    light: {
-      canvas: '#f0f0f5', side: '#e9e9f0', surface: '#fafafd', raised: '#f3f3f8', control: '#ffffff',
-      line: '#dfdfe8', 'line-strong': '#cacad7',
-      ink: '#232336', 'ink-muted': '#4f4f66', 'ink-faint': '#5f5f77',
-      accent: '#585ca4', 'accent-ink': '#4c5096', 'on-accent': '#ffffff',
-      working: '#2a6585', waiting: '#7a5a14', idle: '#5f5f77', done: '#2f6b51', error: '#a5405a',
-      'agent-claude': '#b65f42', 'agent-codex': '#7656b0', 'agent-shell': '#2b7774',
-      'diff-add': '#2f6b51', 'diff-del': '#a5405a',
-      well: '#1d1d2b', 'well-ink': '#e2e2ee', 'well-dim': '#9292ab', 'well-accent': '#b6b9ee',
-      'well-green': '#92ceb0', 'well-red': '#eba3b4', 'well-blue': '#9ccbe0', 'well-yellow': '#e2c784',
-    },
-    dark: {
-      canvas: '#15151d', side: '#181821', surface: '#1d1d27', raised: '#23232f', control: '#2b2b38',
-      line: '#2c2c39', 'line-strong': '#3b3b4b',
-      ink: '#e6e6f0', 'ink-muted': '#ababc2', 'ink-faint': '#9898b0',
-      accent: '#a3a7e6', 'accent-ink': '#b6b9ee', 'on-accent': '#171a3a',
-      working: '#8cc4dc', waiting: '#e2c784', idle: '#a0a0b6', done: '#92ceb0', error: '#eba0b2',
-      'agent-claude': '#d98b6e', 'agent-codex': '#bea3ec', 'agent-shell': '#78c4bd',
-      'diff-add': '#92ceb0', 'diff-del': '#eba0b2',
-      well: '#101017', 'well-ink': '#e2e2ee', 'well-dim': '#8a8aa3', 'well-accent': '#b6b9ee',
-      'well-green': '#92ceb0', 'well-red': '#eba3b4', 'well-blue': '#9ccbe0', 'well-yellow': '#e2c784',
-    },
-  },
-  {
-    id: 'lotus',
-    name: 'Sen',
-    tag: 'Hồng tro',
-    light: {
-      canvas: '#f2f0f1', side: '#ebe8ea', surface: '#fbfafa', raised: '#f4f2f3', control: '#ffffff',
-      line: '#e1dcdf', 'line-strong': '#cdc6ca',
-      ink: '#2a2328', 'ink-muted': '#574d54', 'ink-faint': '#665c63',
-      accent: '#864d69', 'accent-ink': '#78435d', 'on-accent': '#ffffff',
-      working: '#3b6090', waiting: '#7a5a12', idle: '#665c63', done: '#356a46', error: '#a53e3e',
-      'agent-claude': '#b35e3f', 'agent-codex': '#6457ad', 'agent-shell': '#2e7670',
-      'diff-add': '#356a46', 'diff-del': '#a53e3e',
-      well: '#221d21', 'well-ink': '#ebe4e8', 'well-dim': '#9d9198', 'well-accent': '#e2b6cc',
-      'well-green': '#98cca8', 'well-red': '#ec9f9b', 'well-blue': '#a0bce2', 'well-yellow': '#e0c482',
-    },
-    dark: {
-      canvas: '#181517', side: '#1b181a', surface: '#211d20', raised: '#282326', control: '#302a2e',
-      line: '#322c30', 'line-strong': '#433b40',
-      ink: '#ede6ea', 'ink-muted': '#b6abb2', 'ink-faint': '#a1969d',
-      accent: '#d6a3bd', 'accent-ink': '#e2b6cc', 'on-accent': '#2a1420',
-      working: '#98b6e0', waiting: '#e0c482', idle: '#a59aa1', done: '#98cca8', error: '#ec9f9b',
-      'agent-claude': '#d98b6d', 'agent-codex': '#ada2e6', 'agent-shell': '#7bc1b6',
-      'diff-add': '#98cca8', 'diff-del': '#ec9f9b',
-      well: '#121012', 'well-ink': '#ebe4e8', 'well-dim': '#928790', 'well-accent': '#e2b6cc',
-      'well-green': '#98cca8', 'well-red': '#ec9f9b', 'well-blue': '#a0bce2', 'well-yellow': '#e0c482',
-    },
-  },
+  mauPreset('blue', 'Xanh', 'Xanh dương chuẩn', '#0a66d6', '#0758bd', '#4c9aff', '#0a1a33', '#7fb3ff'),
+  mauPreset('mono', 'Đen trắng', 'Không màu nhấn', '#262626', '#262626', '#e6e6e6', '#1e1e1e', '#f0f0f0'),
+  mauPreset('green', 'Lục', 'Xanh lá', '#1f7a44', '#1a6a3b', '#5cc185', '#0c2416', '#7dd3a0'),
+  mauPreset('violet', 'Tím', 'Tím xanh', '#5b4fcf', '#4f43bd', '#9d94f5', '#191536', '#b3abff'),
+  mauPreset('teal', 'Xanh ngọc', 'Xanh ngọc', '#0f7575', '#0c6767', '#4cc3c3', '#052222', '#72d6d6'),
 ]
+
+const MAU_AVOID = [
+  { name: 'error', h: 25 }, { name: 'agent-claude', h: 45 }, { name: 'waiting', h: 85 }, { name: 'done', h: 145 },
+  { name: 'agent-shell', h: 185 }, { name: 'working', h: 255 }, { name: 'agent-codex', h: 290 },
+]
+const MAU_HUE_GAP = 18
+
+function mauOklchToHex(L, C, h) {
+  let c = C
+  for (let i = 0; i < 40; i++) {
+    const a = c * Math.cos((h * Math.PI) / 180)
+    const b = c * Math.sin((h * Math.PI) / 180)
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
+    const lin = [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    ]
+    if (lin.every((v) => v >= -0.0005 && v <= 1.0005) || c <= 0) {
+      return '#' + lin.map((v) => {
+        const x = Math.min(1, Math.max(0, v))
+        const g = x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
+        return Math.round(g * 255).toString(16).padStart(2, '0')
+      }).join('')
+    }
+    c = Math.max(0, c - 0.005)
+  }
+  return '#808080'
+}
+
+function mauRng(seed) {
+  let t = seed >>> 0
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0
+    let r = Math.imul(t ^ (t >>> 15), 1 | t)
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function mauHueDist(a, b) {
+  const d = Math.abs(a - b) % 360
+  return Math.min(d, 360 - d)
+}
+
+function mauAllowedHues() {
+  const out = []
+  for (let h = 0; h < 360; h++) if (MAU_AVOID.every((x) => mauHueDist(h, x.h) >= MAU_HUE_GAP)) out.push(h)
+  return out
+}
+
+const MAU_GEN_LADDER = {
+  light: { canvas: 0.976, side: 0.962, surface: 1, raised: 0.986, control: 1, line: 0.918, 'line-strong': 0.86, ink: 0.235, 'ink-muted': 0.44, 'ink-faint': 0.5, well: 0.995, 'well-ink': 0.235, 'well-dim': 0.5 },
+  dark: { canvas: 0.235, side: 0.205, surface: 0.255, raised: 0.278, control: 0.31, line: 0.31, 'line-strong': 0.37, ink: 0.925, 'ink-muted': 0.77, 'ink-faint': 0.7, well: 0.175, 'well-ink': 0.925, 'well-dim': 0.66 },
+}
+
+function mauGenerate(scheme, seed) {
+  const rnd = mauRng(seed)
+  const hues = mauAllowedHues()
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const h = hues[Math.floor(rnd() * hues.length)]
+    const tint = rnd() * 0.006
+    const ac = 0.08 + rnd() * 0.05
+    const t = { ...MAU_BASE[scheme] }
+    for (const [k, L] of Object.entries(MAU_GEN_LADDER[scheme])) {
+      const isInk = k.includes('ink') || k === 'well-dim'
+      t[k] = mauOklchToHex(L, isInk ? tint * 0.6 : tint, h)
+    }
+    let aL = scheme === 'light' ? 0.5 + rnd() * 0.06 : 0.72 + rnd() * 0.08
+    for (let i = 0; i < 30; i++) {
+      t.accent = mauOklchToHex(aL, ac, h)
+      t['accent-ink'] = mauOklchToHex(scheme === 'light' ? aL - 0.05 : aL + 0.06, ac * 0.9, h)
+      t['on-accent'] = scheme === 'light' ? '#ffffff' : mauOklchToHex(0.2, 0.03, h)
+      t['well-accent'] = scheme === 'light' ? t['accent-ink'] : t['accent-ink']
+      if (mauChecks(t).every((r) => r.ratio >= r.min)) return { id: 'gen-' + seed, name: 'Trộn', tag: 'hue ' + h, seed, hue: h, chroma: +ac.toFixed(3), tint: +tint.toFixed(4), [scheme]: t, tokens: t }
+      aL += scheme === 'light' ? -0.015 : 0.015
+    }
+  }
+  return { id: 'gen-fallback', name: 'Trộn', tag: 'Xanh', seed, hue: 255, tokens: MAU_PALETTES[0][scheme], [scheme]: MAU_PALETTES[0][scheme] }
+}
 
 const MAU_CURRENT = {
   next: [
@@ -198,4 +181,4 @@ function mauChecks(t) {
   return rows
 }
 
-if (typeof module !== 'undefined') module.exports = { MAU_PALETTES, MAU_CURRENT, mauChecks, mauRatio, mauMix }
+if (typeof module !== 'undefined') module.exports = { MAU_PALETTES, MAU_BASE, MAU_CURRENT, MAU_AVOID, MAU_HUE_GAP, mauAllowedHues, mauGenerate, mauChecks, mauRatio, mauMix }

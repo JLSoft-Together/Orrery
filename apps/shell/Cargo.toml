@@ -70,7 +70,7 @@ windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_C
 libc = "0.2"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSArray", "NSData", "NSDictionary", "NSEnumerator", "NSError", "NSGeometry", "NSString", "NSURL"] }
-objc2-app-kit = { version = "0.3", features = ["NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSPasteboard"] }
+objc2-app-kit = { version = "0.3", features = ["NSAlert", "NSButton", "NSControl", "NSView", "NSResponder", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSPasteboard"] }
 objc2-web-kit = { version = "0.3", features = ["WKWebView", "WKSnapshotConfiguration", "WKContentWorld", "WKFrameInfo", "block2", "objc2-app-kit"] }
 block2 = "0.6"
 

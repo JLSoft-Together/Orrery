@@ -109,6 +109,10 @@ pub fn confirm(app: &AppHandle, message: &str, detail: &str, ok: &str, cancel: &
     if app.get_webview_window(MAIN).is_some_and(|w| !w.is_visible().unwrap_or(true)) {
         show_main(app);
     }
+    #[cfg(target_os = "macos")]
+    if let Some(answer) = mac_confirm(app, message, detail, ok, cancel) {
+        return answer;
+    }
     let mut d = app
         .dialog()
         .message(format!("{message}\n\n{detail}"))
@@ -119,6 +123,35 @@ pub fn confirm(app: &AppHandle, message: &str, detail: &str, ok: &str, cancel: &
         d = d.parent(&w);
     }
     d.blocking_show()
+}
+
+#[cfg(target_os = "macos")]
+fn mac_confirm(app: &AppHandle, message: &str, detail: &str, ok: &str, cancel: &str) -> Option<bool> {
+    use objc2::MainThreadMarker;
+    let (message, detail, ok, cancel) = (message.to_owned(), detail.to_owned(), ok.to_owned(), cancel.to_owned());
+    let run = move |mtm: MainThreadMarker| -> bool {
+        use objc2_app_kit::{NSAlert, NSAlertFirstButtonReturn, NSAlertStyle};
+        use objc2_foundation::NSString;
+        let alert = NSAlert::new(mtm);
+        alert.setAlertStyle(NSAlertStyle::Warning);
+        alert.setMessageText(&NSString::from_str(&message));
+        alert.setInformativeText(&NSString::from_str(&detail));
+        alert.addButtonWithTitle(&NSString::from_str(&ok));
+        let no = alert.addButtonWithTitle(&NSString::from_str(&cancel));
+        no.setKeyEquivalent(&NSString::from_str("\u{1b}"));
+        alert.runModal() == NSAlertFirstButtonReturn
+    };
+    if let Some(mtm) = MainThreadMarker::new() {
+        return Some(run(mtm));
+    }
+    let (tx, rx) = mpsc::channel();
+    app.run_on_main_thread(move || {
+        if let Some(mtm) = MainThreadMarker::new() {
+            let _ = tx.send(run(mtm));
+        }
+    })
+    .ok()?;
+    rx.recv().ok()
 }
 
 pub fn locale(app: &AppHandle) -> String {

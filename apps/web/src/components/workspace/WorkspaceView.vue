@@ -1206,6 +1206,7 @@ const lastSummary = computed(() => {
 const tabStrip = ref<HTMLElement | null>(null)
 const tabWidths = ref(new Map<string, number>())
 const stripAvail = ref(0)
+const measuredNames = new Map<string, string>()
 const plusWrap = ref<HTMLElement | null>(null)
 const tabFit = computed(() => fitTabs({ keys: visibleTabKeys.value, widths: tabWidths.value, active: workspace.activeTab?.key ?? null, avail: stripAvail.value }))
 const shownTabKeys = computed(() => tabFit.value.shown)
@@ -1231,9 +1232,13 @@ function measureStrip(): void {
   const next = new Map(tabWidths.value)
   let changed = false
   tabStrip.value?.querySelectorAll<HTMLElement>('[data-tab-item]').forEach((el) => {
-    const w = el.offsetWidth
     const key = el.dataset.tabItem
-    if (w && key && next.get(key) !== w) {
+    if (!key) return
+    const name = tabNames.value.get(key) ?? ''
+    const same = measuredNames.get(key) === name
+    measuredNames.set(key, name)
+    const w = same ? Math.max(el.offsetWidth, next.get(key) ?? 0) : el.offsetWidth
+    if (w && next.get(key) !== w) {
       next.set(key, w)
       changed = true
     }

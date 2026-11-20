@@ -48,6 +48,7 @@ export interface RemotePane {
   dirty: boolean
   busy: boolean
   inbox?: RemoteInbox
+  menu?: RemoteMenu
 }
 
 export interface RemotePaneGroup {
@@ -116,6 +117,7 @@ export type RemoteCommand =
   | { t: 'ws.compact'; paneKey: string }
   | { t: 'ws.send'; paneKey: string; text: string }
   | { t: 'ws.keys'; paneKey: string; keys: string; since: number }
+  | { t: 'ws.menu'; paneKey: string; sig: string; index: number }
   | { t: 'push.register'; token: string; platform: RemotePushPlatform; locale: RemotePushLocale; mute?: RemotePushGroup[] }
   | { t: 'push.unregister' }
 
@@ -220,6 +222,10 @@ export function parseRemoteCommand(raw: unknown, name: RemoteCommandName): Remot
     case 'ws.keys':
       return ident(raw.paneKey, KEY_ID_MAX) && parseRemoteKeys(raw.keys) && typeof raw.since === 'number' && Number.isFinite(raw.since)
         ? { t: 'ws.keys', paneKey: raw.paneKey, keys: raw.keys as string, since: raw.since }
+        : null
+    case 'ws.menu':
+      return ident(raw.paneKey, KEY_ID_MAX) && ident(raw.sig, REMOTE_MENU_SIG_MAX) && Number.isInteger(raw.index) && (raw.index as number) >= 1 && (raw.index as number) <= REMOTE_MENU_ITEMS_MAX
+        ? { t: 'ws.menu', paneKey: raw.paneKey, sig: raw.sig, index: raw.index as number }
         : null
     case 'push.register': {
       if (typeof raw.token !== 'string' || !REMOTE_PUSH_TOKEN_RE.test(raw.token)) return null
@@ -378,3 +384,138 @@ export type RemoteGuardReply = { ok: true; state: RemoteGuardState } | { ok: fal
 
 export const REMOTE_GUARD_RULES_MAX = 32
 export const REMOTE_GUARD_TEXT_MAX = 64
+
+export const REMOTE_CHAT_PROTO = 1
+export const REMOTE_CHAT_PAGE = 30
+export const REMOTE_CHAT_PAGE_MAX = 50
+export const REMOTE_CHAT_REPLY_BYTES = 256 * 1024
+export const REMOTE_CHAT_EVENT_BYTES = 64 * 1024
+export const REMOTE_CHAT_SCAN_BYTES = 4 * 1024 * 1024
+export const REMOTE_CHAT_BATCH_MS = 300
+export const REMOTE_CHAT_WATCH_MAX = 2
+export const REMOTE_CHAT_ME_MAX = 4000
+export const REMOTE_CHAT_AI_MAX = 8000
+export const REMOTE_CHAT_SYS_MAX = 300
+export const REMOTE_CHAT_TOOLS_MAX = 30
+export const REMOTE_CHAT_FILES_MAX = 20
+export const REMOTE_CHAT_TARGET_MAX = 120
+export const REMOTE_CHAT_TOOL_NAME_MAX = 40
+export const REMOTE_CHAT_PATH_MAX = 300
+export const REMOTE_CHAT_LAST_MAX = 160
+export const REMOTE_CHAT_ID_MAX = 64
+export const REMOTE_MENU_ITEMS_MAX = 12
+export const REMOTE_MENU_LABEL_MAX = 120
+export const REMOTE_MENU_QUESTION_MAX = 300
+export const REMOTE_MENU_SIG_MAX = 16
+
+export const REMOTE_CHAT_TOOL_CATS = ['edit', 'run', 'read', 'search', 'web', 'agent', 'other'] as const
+export type RemoteChatToolCat = (typeof REMOTE_CHAT_TOOL_CATS)[number]
+
+export const REMOTE_CHAT_SYS_KINDS = ['stop', 'error', 'limit', 'compact'] as const
+export type RemoteChatSysKind = (typeof REMOTE_CHAT_SYS_KINDS)[number]
+
+export type RemoteChatAgent = 'claude' | 'codex'
+
+export interface RemoteChatTool {
+  tool: string
+  cat: RemoteChatToolCat
+  target?: string
+  err?: true
+}
+
+export interface RemoteChatFile {
+  path: string
+  add?: number
+  del?: number
+  out?: true
+}
+
+interface RemoteChatBase {
+  id: string
+  seq: number
+  rev: number
+  at?: number
+}
+
+export interface RemoteChatMe extends RemoteChatBase {
+  k: 'me'
+  text: string
+  cut?: true
+}
+
+export interface RemoteChatAi extends RemoteChatBase {
+  k: 'ai'
+  text: string
+  cut?: true
+}
+
+export interface RemoteChatTools extends RemoteChatBase {
+  k: 'tools'
+  sum: Partial<Record<RemoteChatToolCat, number>>
+  items: RemoteChatTool[]
+  more?: number
+}
+
+export interface RemoteChatFiles extends RemoteChatBase {
+  k: 'files'
+  root: string
+  files: RemoteChatFile[]
+  more?: number
+}
+
+export interface RemoteChatSys extends RemoteChatBase {
+  k: 'sys'
+  kind: RemoteChatSysKind
+  text?: string
+}
+
+export type RemoteChatItem = RemoteChatMe | RemoteChatAi | RemoteChatTools | RemoteChatFiles | RemoteChatSys
+export type RemoteChatItemKind = RemoteChatItem['k']
+
+export type RemoteChatCommand =
+  | { t: 'chat.page'; paneKey: string; gen?: string; before?: number; limit?: number }
+  | { t: 'chat.watch'; paneKey: string; limit?: number }
+  | { t: 'chat.unwatch'; paneKey: string }
+
+export type RemoteChatCommandName = RemoteChatCommand['t']
+
+export interface RemoteChatPage {
+  paneKey: string
+  agent: RemoteChatAgent
+  gen: string
+  items: RemoteChatItem[]
+  older: number | null
+}
+
+export interface RemoteChatLast {
+  paneKey: string
+  text: string | null
+  at?: number
+}
+
+export type RemoteChatEvent =
+  | { t: 'chat.items'; paneKey: string; gen: string; items: RemoteChatItem[] }
+  | { t: 'chat.reset'; paneKey: string; gen: string }
+  | { t: 'chat.last'; full?: true; items: RemoteChatLast[] }
+
+export type RemoteMenuKind = 'ask' | 'ask-multi' | 'permission' | 'plan' | 'picker' | 'codex-approval'
+
+export interface RemoteMenuItem {
+  index: number
+  label: string
+  selected?: true
+  checked?: boolean
+  other?: true
+  submit?: true
+}
+
+export interface RemoteMenu {
+  sig: string
+  kind: RemoteMenuKind
+  agent: 'claude' | 'codex' | 'unknown'
+  question: string
+  items: RemoteMenuItem[]
+  numbered: boolean
+  confident: boolean
+  since: number
+}

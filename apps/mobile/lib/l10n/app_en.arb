@@ -159,6 +159,33 @@
   "inboxEmptyHint": "Permission requests and finished work show up here.",
   "inboxWaiting": "waiting for you",
   "inboxDone": "finished",
+  "inboxGroupMenu": "Waiting on a menu",
+  "inboxGroupPermission": "Asking permission",
+  "inboxGroupQuestion": "Questions",
+  "inboxGroupClash": "Same file",
+  "inboxGroupError": "Errors",
+  "inboxGroupNote": "Agent notes",
+  "inboxGroupDone": "Done, not seen",
+  "inboxReasonMenu": "Waiting for a menu choice",
+  "inboxReasonPermission": "Asking permission",
+  "inboxReasonQuestion": "Waiting for your answer",
+  "inboxReasonClash": "Editing {file} with {peer}",
+  "@inboxReasonClash": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      },
+      "peer": {
+        "type": "String"
+      }
+    }
+  },
+  "inboxReasonFailed": "Failed",
+  "inboxReasonLoop": "Failing the same way again and again",
+  "inboxReasonChecks": "Checks failed in its folder",
+  "inboxReasonStuck": "Quiet while working",
+  "inboxReasonNote": "Left you a note",
+  "inboxReasonDone": "Finished, not looked at yet",
   "filterAll": "All",
   "filterNeeds": "Needs you",
   "filterRunning": "Running",

@@ -10,6 +10,15 @@ extension L10nX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
 
+const waitKeys = {'permission', 'question', 'other'};
+
+String waitLabel(AppLocalizations l, String? text) => switch (text) {
+  'permission' => l.inboxReasonPermission,
+  'question' => l.inboxReasonQuestion,
+  null || 'other' => l.chipWaiting,
+  _ => text,
+};
+
 bool reduceMotion(BuildContext context) =>
     MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
@@ -41,7 +50,7 @@ StatusStyle statusStyle(BuildContext context, RailState state) {
     RailState.asked => StatusStyle(
       Icons.front_hand_outlined,
       c.asked,
-      l.statusAsked,
+      l.chipWaiting,
     ),
     RailState.failed => StatusStyle(
       Icons.error_outline_rounded,

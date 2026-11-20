@@ -548,6 +548,108 @@ abstract class AppLocalizations {
   /// **'finished'**
   String get inboxDone;
 
+  /// No description provided for @inboxGroupMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting on a menu'**
+  String get inboxGroupMenu;
+
+  /// No description provided for @inboxGroupPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking permission'**
+  String get inboxGroupPermission;
+
+  /// No description provided for @inboxGroupQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions'**
+  String get inboxGroupQuestion;
+
+  /// No description provided for @inboxGroupClash.
+  ///
+  /// In en, this message translates to:
+  /// **'Same file'**
+  String get inboxGroupClash;
+
+  /// No description provided for @inboxGroupError.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get inboxGroupError;
+
+  /// No description provided for @inboxGroupNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent notes'**
+  String get inboxGroupNote;
+
+  /// No description provided for @inboxGroupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done, not seen'**
+  String get inboxGroupDone;
+
+  /// No description provided for @inboxReasonMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for a menu choice'**
+  String get inboxReasonMenu;
+
+  /// No description provided for @inboxReasonPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking permission'**
+  String get inboxReasonPermission;
+
+  /// No description provided for @inboxReasonQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your answer'**
+  String get inboxReasonQuestion;
+
+  /// No description provided for @inboxReasonClash.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing {file} with {peer}'**
+  String inboxReasonClash(String file, String peer);
+
+  /// No description provided for @inboxReasonFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get inboxReasonFailed;
+
+  /// No description provided for @inboxReasonLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Failing the same way again and again'**
+  String get inboxReasonLoop;
+
+  /// No description provided for @inboxReasonChecks.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks failed in its folder'**
+  String get inboxReasonChecks;
+
+  /// No description provided for @inboxReasonStuck.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet while working'**
+  String get inboxReasonStuck;
+
+  /// No description provided for @inboxReasonNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Left you a note'**
+  String get inboxReasonNote;
+
+  /// No description provided for @inboxReasonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished, not looked at yet'**
+  String get inboxReasonDone;
+
   /// No description provided for @filterAll.
   ///
   /// In en, this message translates to:

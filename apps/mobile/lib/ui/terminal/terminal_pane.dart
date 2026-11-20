@@ -19,7 +19,9 @@ import '../widgets/common.dart';
 import 'anchored_terminal.dart';
 import 'input_bar.dart';
 import 'pane_header.dart';
+import 'pane_notice.dart';
 import 'permission_bar.dart';
+import 'pty_snapshot.dart';
 import 'sticky_modifiers.dart';
 import 'terminal_surface.dart';
 import 'wp26_probe.dart';
@@ -210,6 +212,17 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         _flushOut();
         _applyDesk(event);
         if (_claimed && !_typing) setState(() => _claimed = false);
+      case 'pty.snapshot':
+        final snap = PtySnapshot.parse(event);
+        if (snap == null) return;
+        _pendingOut.clear();
+        _writing = true;
+        try {
+          _terminal.applySnapshot(snap);
+        } finally {
+          _writing = false;
+        }
+        _applyDesk(event);
       case 'pty.exit':
         _flushOut();
         final code = event['code'];
@@ -345,7 +358,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
 
   Widget? _overlay(AppLocalizations l, PaneInfo pane) {
     if (!pane.canAttach) {
-      return _Notice(
+      return PaneNotice(
         icon: Icons.desktop_windows_outlined,
         text: l.paneNotTerminal,
       );
@@ -354,46 +367,14 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
       final text = _error == 'limit'
           ? l.attachLimit
           : errorText(l, RemoteCommandException(_error!));
-      return _Notice(icon: Icons.link_off_rounded, text: text);
+      return PaneNotice(icon: Icons.link_off_rounded, text: text);
     }
     if (_exited) {
-      return _Notice(
+      return PaneNotice(
         icon: Icons.stop_circle_outlined,
         text: _exitCode == null ? l.sessionLost : l.sessionEnded(_exitCode!),
       );
     }
     return null;
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.78),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: Colors.white),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(text, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -280,6 +280,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inboxDone => 'finished';
 
   @override
+  String get inboxGroupMenu => 'Waiting on a menu';
+
+  @override
+  String get inboxGroupPermission => 'Asking permission';
+
+  @override
+  String get inboxGroupQuestion => 'Questions';
+
+  @override
+  String get inboxGroupClash => 'Same file';
+
+  @override
+  String get inboxGroupError => 'Errors';
+
+  @override
+  String get inboxGroupNote => 'Agent notes';
+
+  @override
+  String get inboxGroupDone => 'Done, not seen';
+
+  @override
+  String get inboxReasonMenu => 'Waiting for a menu choice';
+
+  @override
+  String get inboxReasonPermission => 'Asking permission';
+
+  @override
+  String get inboxReasonQuestion => 'Waiting for your answer';
+
+  @override
+  String inboxReasonClash(String file, String peer) {
+    return 'Editing $file with $peer';
+  }
+
+  @override
+  String get inboxReasonFailed => 'Failed';
+
+  @override
+  String get inboxReasonLoop => 'Failing the same way again and again';
+
+  @override
+  String get inboxReasonChecks => 'Checks failed in its folder';
+
+  @override
+  String get inboxReasonStuck => 'Quiet while working';
+
+  @override
+  String get inboxReasonNote => 'Left you a note';
+
+  @override
+  String get inboxReasonDone => 'Finished, not looked at yet';
+
+  @override
   String get filterAll => 'All';
 
   @override

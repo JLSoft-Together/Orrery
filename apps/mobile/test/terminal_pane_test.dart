@@ -82,6 +82,30 @@ void main() {
     expect(text, isNot(contains('hello world')));
   });
 
+  testWidgets('pty.snapshot drops queued output and redraws at its size', (
+    tester,
+  ) async {
+    final h = await mount(tester);
+    final handle = h.api.handles.single;
+    handle.out.add(bytes('stale screen\r\n'));
+    await tester.pump();
+    handle.out.add(bytes('stale queued\r\n'));
+    handle.ev.add({
+      't': 'pty.snapshot',
+      'stream': 1,
+      'cols': 60,
+      'rows': 12,
+      'gen': 1,
+      'data': 'snap-1\r\nsnap-2\x1b[2;7H',
+    });
+    handle.out.add(bytes('\r\nafter snapshot'));
+    await tester.pump();
+    final text = screen(tester);
+    expect(text, contains('snap-1'));
+    expect(text, contains('after snapshot'));
+    expect(text, isNot(contains('stale')));
+  });
+
   testWidgets('a multibyte character split across chunks still decodes', (
     tester,
   ) async {

@@ -14,7 +14,9 @@ List<String> previewLines(
   String statusLabel,
 ) {
   final lines = <String>[];
-  if (pane.isAsked && pane.waitText != null) {
+  if (pane.isAsked &&
+      pane.waitText != null &&
+      !waitKeys.contains(pane.waitText)) {
     lines.addAll(pane.waitText!.split('\n').where((l) => l.trim().isNotEmpty));
   }
   if (tool != null) {

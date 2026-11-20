@@ -45,7 +45,7 @@ class PermissionBar extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          pane.waitText ?? l.statusAsked,
+                          waitLabel(l, pane.waitText),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

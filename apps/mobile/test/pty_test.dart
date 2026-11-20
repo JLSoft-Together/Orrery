@@ -243,6 +243,30 @@ void main() {
     });
   });
 
+  test('attach asks for pty.snapshot and a snapshot replaces the tail', () {
+    fakeAsync((async) {
+      final bed = Bed(async);
+      final a = bed.attach('s1', pane: 'paneA');
+      final attach = bed.commands.firstWhere((c) => c['t'] == 'pty.attach');
+      expect(attach['caps'], ['pty.snapshot']);
+      final events = <String>[];
+      a.events.listen((e) => events.add(e['t'] as String));
+      bed.servers.last.pushPty(1, utf8.encode('old bytes'));
+      bed.servers.last.pushJson({
+        't': 'pty.snapshot',
+        'stream': 1,
+        'cols': 80,
+        'rows': 19,
+        'gen': 1,
+        'data': 'line-1\r\nline-2',
+      });
+      bed.servers.last.pushPty(1, utf8.encode('\r\nline-3'));
+      async.flushMicrotasks();
+      expect(events, ['pty.snapshot']);
+      expect(utf8.decode(a.tail), 'line-1\r\nline-2\r\nline-3');
+    });
+  });
+
   test('input while not connected is dropped, not queued', () {
     fakeAsync((async) {
       final bed = Bed(async);

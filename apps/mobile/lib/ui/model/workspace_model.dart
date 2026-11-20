@@ -1,3 +1,5 @@
+import 'inbox_model.dart';
+
 enum RailState {
   failed,
   asked,
@@ -86,6 +88,7 @@ class PaneInfo {
     this.attention,
     this.sessionId,
     this.terminalId,
+    this.inbox,
   });
 
   final String key;
@@ -103,6 +106,7 @@ class PaneInfo {
   final String? attention;
   final String? sessionId;
   final String? terminalId;
+  final InboxInfo? inbox;
 
   PaneInfo withTitle(String next) => PaneInfo(
     key: key,
@@ -120,6 +124,7 @@ class PaneInfo {
     attention: attention,
     sessionId: sessionId,
     terminalId: terminalId,
+    inbox: inbox,
   );
 
   bool get isTerm => kind == 'term';
@@ -155,6 +160,7 @@ class PaneInfo {
       attention: text('attention'),
       sessionId: text('sessionId'),
       terminalId: text('terminalId'),
+      inbox: InboxInfo.parse(raw['inbox']),
     );
   }
 }
@@ -266,12 +272,17 @@ class ProjectInfo {
 }
 
 class WorkspaceModel {
-  const WorkspaceModel({required this.tabs, required this.closedCount});
+  const WorkspaceModel({
+    required this.tabs,
+    required this.closedCount,
+    this.inboxMode = false,
+  });
 
   static const WorkspaceModel empty = WorkspaceModel(tabs: [], closedCount: 0);
 
   final List<TabInfo> tabs;
   final int closedCount;
+  final bool inboxMode;
 
   static WorkspaceModel parse(Map<String, dynamic>? raw) {
     if (raw == null) return empty;
@@ -284,6 +295,7 @@ class WorkspaceModel {
     return WorkspaceModel(
       tabs: tabs,
       closedCount: closed is num ? closed.toInt() : 0,
+      inboxMode: raw['inbox'] == true,
     );
   }
 
@@ -291,6 +303,7 @@ class WorkspaceModel {
     if (aliases.isEmpty) return this;
     return WorkspaceModel(
       closedCount: closedCount,
+      inboxMode: inboxMode,
       tabs: [
         for (final t in tabs)
           TabInfo(
@@ -347,12 +360,7 @@ class WorkspaceModel {
     return [for (final e in indexed) e.value];
   }
 
-  List<PaneInfo> get inbox {
-    final entries = panes
-        .where((p) => p.needsUser || p.isWaiting || p.isDone)
-        .toList();
-    int rank(PaneInfo p) => p.needsUser ? 0 : (p.isWaiting ? 1 : 2);
-    entries.sort((a, b) => rank(a).compareTo(rank(b)));
-    return entries;
-  }
+  List<InboxRow> get inboxRows => buildInboxRows(this);
+
+  List<PaneInfo> get inbox => [for (final r in inboxRows) r.pane];
 }

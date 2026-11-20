@@ -264,6 +264,59 @@ class AppLocalizationsVi extends AppLocalizations {
   String get inboxDone => 'đã xong';
 
   @override
+  String get inboxGroupMenu => 'Chờ trả lời menu';
+
+  @override
+  String get inboxGroupPermission => 'Xin quyền';
+
+  @override
+  String get inboxGroupQuestion => 'Câu hỏi';
+
+  @override
+  String get inboxGroupClash => 'Đụng file';
+
+  @override
+  String get inboxGroupError => 'Lỗi';
+
+  @override
+  String get inboxGroupNote => 'Ghi chú của agent';
+
+  @override
+  String get inboxGroupDone => 'Xong, chưa xem';
+
+  @override
+  String get inboxReasonMenu => 'Đang chờ chọn trong menu';
+
+  @override
+  String get inboxReasonPermission => 'Xin quyền';
+
+  @override
+  String get inboxReasonQuestion => 'Chờ chủ nhân trả lời';
+
+  @override
+  String inboxReasonClash(String file, String peer) {
+    return 'Cùng sửa $file với $peer';
+  }
+
+  @override
+  String get inboxReasonFailed => 'Lỗi';
+
+  @override
+  String get inboxReasonLoop => 'Lỗi lặp lại liên tục';
+
+  @override
+  String get inboxReasonChecks => 'Checks lỗi trong thư mục của nó';
+
+  @override
+  String get inboxReasonStuck => 'Im lặng khi đang chạy';
+
+  @override
+  String get inboxReasonNote => 'Có ghi chú cho chủ nhân';
+
+  @override
+  String get inboxReasonDone => 'Xong, chưa xem';
+
+  @override
   String get filterAll => 'Tất cả';
 
   @override

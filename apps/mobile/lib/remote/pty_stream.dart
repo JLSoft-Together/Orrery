@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'connection.dart';
@@ -6,6 +7,7 @@ import 'protocol.dart';
 
 const int ptyTailBytes = 64 * 1024;
 const int maxAttach = 4;
+const List<String> ptyCaps = ['pty.snapshot'];
 
 class PtyAttachment {
   PtyAttachment._(
@@ -119,6 +121,7 @@ class PtyStreams {
       'sessionId': entry.sessionId,
       'cols': entry.cols,
       'rows': entry.rows,
+      'caps': ptyCaps,
     });
   }
 
@@ -244,6 +247,11 @@ class PtyStreams {
     final entry = _entries[stream];
     if (entry == null || entry._events.isClosed) return;
     if (type == 'pty.ready') entry._tail = Uint8List(0);
+    final data = event['data'];
+    if (type == 'pty.snapshot' && data is String) {
+      entry._tail = Uint8List(0);
+      entry._appendTail(Uint8List.fromList(utf8.encode(data)));
+    }
     entry._events.add(event);
     if (type == 'pty.overflow') unawaited(_reattach(entry));
   }

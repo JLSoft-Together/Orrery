@@ -1,10 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../model/workspace_model.dart';
+import '../../l10n/app_localizations.dart';
+import '../model/inbox_model.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
 import 'workspace_page.dart';
+
+String inboxGroupLabel(AppLocalizations l, String group) => switch (group) {
+  'menu' => l.inboxGroupMenu,
+  'permission' => l.inboxGroupPermission,
+  'question' => l.inboxGroupQuestion,
+  'clash' => l.inboxGroupClash,
+  'error' => l.inboxGroupError,
+  'note' => l.inboxGroupNote,
+  _ => l.inboxGroupDone,
+};
+
+String inboxReasonLabel(AppLocalizations l, InboxRow row) {
+  final text = row.text;
+  if (text != null) return waitLabel(l, text);
+  return switch (row.reason) {
+    'menu' => l.inboxReasonMenu,
+    'permission' => l.inboxReasonPermission,
+    'question' => l.inboxReasonQuestion,
+    'clash' => l.inboxReasonClash(row.file ?? '?', row.peer ?? '?'),
+    'failed' => l.inboxReasonFailed,
+    'loop' => l.inboxReasonLoop,
+    'checks' => l.inboxReasonChecks,
+    'stuck' => l.inboxReasonStuck,
+    'note' => l.inboxReasonNote,
+    _ => l.inboxReasonDone,
+  };
+}
 
 class InboxPage extends ConsumerWidget {
   const InboxPage({super.key, required this.machineId});
@@ -15,16 +43,16 @@ class InboxPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final model = ref.watch(workspaceModelProvider(machineId));
-    final entries = [
-      for (final pane in model.inbox)
-        if (model.tabOfPane(pane.key) case final tab?) (tab, pane),
-    ];
+    final groups = groupInboxRows(model.inboxRows);
     final scheme = Theme.of(context).colorScheme;
+    final items = <Object>[
+      for (final (group, rows) in groups) ...[group, ...rows],
+    ];
     return Scaffold(
       appBar: AppBar(title: Text(l.inbox)),
       body: AnimatedSwitcher(
         duration: motion(context),
-        child: entries.isEmpty
+        child: items.isEmpty
             ? Center(
                 key: const ValueKey('empty'),
                 child: Column(
@@ -44,20 +72,22 @@ class InboxPage extends ConsumerWidget {
                   ],
                 ),
               )
-            : ListView.separated(
+            : ListView.builder(
                 key: const ValueKey('list'),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                itemCount: entries.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemCount: items.length,
                 itemBuilder: (context, i) {
-                  final (tab, pane) = entries[i];
-                  return Appear(
-                    key: ValueKey('inbox-${pane.key}'),
-                    delay: i * 30,
-                    child: _InboxTile(
-                      machineId: machineId,
-                      tab: tab,
-                      pane: pane,
+                  final item = items[i];
+                  if (item is String) {
+                    return _GroupHeader(group: item);
+                  }
+                  final row = item as InboxRow;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Appear(
+                      key: ValueKey('inbox-${row.pane.key}'),
+                      delay: i * 30,
+                      child: _InboxTile(machineId: machineId, row: row),
                     ),
                   );
                 },
@@ -67,27 +97,47 @@ class InboxPage extends ConsumerWidget {
   }
 }
 
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.group});
+
+  final String group;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      key: ValueKey('inbox-group-$group'),
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+      child: Text(
+        inboxGroupLabel(context.l10n, group),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: scheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 class _InboxTile extends StatelessWidget {
-  const _InboxTile({
-    required this.machineId,
-    required this.tab,
-    required this.pane,
-  });
+  const _InboxTile({required this.machineId, required this.row});
 
   final String machineId;
-  final TabInfo tab;
-  final PaneInfo pane;
+  final InboxRow row;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final l = context.l10n;
-    final detail = pane.isAsked && pane.waitText != null
-        ? pane.waitText!
-        : (pane.isWaiting ? l.inboxWaiting : l.inboxDone);
+    final pane = row.pane;
+    final since = row.since;
+    final age = since == null
+        ? ''
+        : ' · ${shortElapsed(l, DateTime.now().difference(since))}';
     return Card(
       child: PressScale(
-        onTap: () => openPane(context, machineId, tab, pane.key),
+        onTap: () => openPane(context, machineId, row.tab, pane.key),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -109,7 +159,7 @@ class _InboxTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${tab.displayName} · $detail',
+                      '${row.tab.displayName} · ${inboxReasonLabel(l, row)}$age',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: scheme.onSurfaceVariant),

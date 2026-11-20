@@ -180,7 +180,7 @@ describe('phone commands (ws.* with source phone)', () => {
     workspaceBridge.value = null
   })
 
-  it('send submits into an idle agent and only types into a busy one; text over the limit is refused', async () => {
+  it('send submits into an idle and a working agent; text over the limit is refused', async () => {
     const { useTerminalsStore } = await import('../stores/terminals')
     const a = pane('claude', 'C:\\work\\A', 'a')
     const b = pane('codex', 'C:\\work\\B', 'b')
@@ -189,8 +189,9 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await call('ws.send', { paneKey: a.key, text: 'go' })).toEqual({ ok: true, submitted: true })
     expect(a.prefill).toBe('go')
     expect(a.prefillSubmit).toBe(true)
-    expect(await call('ws.send', { paneKey: b.key, text: 'wait' })).toEqual({ ok: true, submitted: false })
-    expect(b.prefillSubmit).toBeUndefined()
+    expect(await call('ws.send', { paneKey: b.key, text: 'wait' })).toEqual({ ok: true, submitted: true })
+    expect(b.prefillSubmit).toBe(true)
+    expect(b.prefillNow).toBe(true)
     expect(await call('ws.send', { paneKey: a.key, text: 'again' })).toEqual({ ok: false, error: 'busy' })
     expect(await call('ws.send', { paneKey: b.key, text: 'x'.repeat(2001) })).toEqual({ ok: false, error: 'args' })
     expect(await call('ws.send', { paneKey: 'gone', text: 'x' })).toEqual({ ok: false, error: 'notFound' })

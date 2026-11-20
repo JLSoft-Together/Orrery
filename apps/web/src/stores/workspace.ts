@@ -130,6 +130,7 @@ export interface Pane {
   openTicket?: string
   prefill?: string
   prefillSubmit?: boolean
+  prefillNow?: boolean
   /** Set when `prefillSubmit` was armed by the Compact flow; value = arm time, so typing or a timeout can disarm it. */
   prefillAuto?: number
   typeKeys?: string
@@ -1027,6 +1028,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (pane.prefill || pane.compact) return { busy: pane }
     pane.prefill = prompt
     pane.prefillSubmit = true
+    pane.prefillNow = true
     return pane
   }
 

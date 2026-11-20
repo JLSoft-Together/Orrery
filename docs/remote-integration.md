@@ -98,7 +98,7 @@ Mã lỗi: `denied` · `busy` · `limit` · `notFound` · `invalid` · `timeout`
 | `ws.open {cwd, preset: "claude"\|"codex"\|"shell", prompt?, submit?, resume?}` | mở pane trong tab project, không đổi focus desktop → `{paneKey}` |
 | `ws.close {paneKey}` | pane bận / file chưa lưu → event `confirm.ask` cho chính điện thoại; không hiện gì trên desktop |
 | `ws.rename {tabKey, name\|null}` · `ws.move {paneKey, tabKey}` · `ws.reopen` · `ws.compact {paneKey}` | như desktop; `ws.move` vào đúng nhóm project của tab đích, UI next hiện toast "Điện thoại đã chuyển pane" kèm Hoàn tác 5 s; pane `ws.close` đóng vào ngăn mở lại và hiện toast Hoàn tác như đóng trên desktop |
-| `ws.send {paneKey, text}` | ≤ 2000 ký tự; pane idle → gửi luôn, không idle → chỉ gõ sẵn → `{submitted}` |
+| `ws.send {paneKey, text}` | ≤ 2000 ký tự; gõ và submit ngay, kể cả khi agent đang chạy (chủ nhân 20/11/2026; `prefillNow`, chỉ chờ nếu pane đang waiting) → `{submitted: true}` |
 | `ws.keys {paneKey, keys, since}` | nút trả lời xin quyền; `since` lệch `statusSince` → `busy` |
 
 `timeout` của lệnh `ws.*` = kết quả chưa rõ (renderer có thể vẫn đã làm): client KHÔNG tự retry lệnh có tác dụng phụ. Gateway gửi kèm `rid` (theo phiên + `id` lệnh) cho renderer; renderer bỏ lệnh trùng `rid` (50 gần nhất, 60 s) và trả lại kết quả lần đầu.

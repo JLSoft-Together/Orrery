@@ -169,10 +169,9 @@ export function installRemotePhone(): void {
     const text = cleanPanePrompt(call.cmd.text)
     if (!text) return fail('invalid')
     if (pane.prefill || pane.compact) return fail('busy')
-    const idle = act.sessionOf(pane)?.status === 'idle'
-    workspace.update(pane.key, { prefill: text, prefillSubmit: idle ? true : undefined })
-    log(call.device, idle ? 'send' : 'type', { name: nameOf(pane) }, pane)
-    return { ok: true, submitted: idle }
+    workspace.update(pane.key, { prefill: text, prefillSubmit: true, prefillNow: true })
+    log(call.device, 'send', { name: nameOf(pane) }, pane)
+    return { ok: true, submitted: true }
   }
 
   async function keys(call: RemotePhoneCall<'ws.keys'>): Promise<PhoneResult> {

@@ -19,7 +19,7 @@ export const TELEGRAM_SEND_TOOL = {
         type: 'array',
         minItems: 1,
         maxItems: TELEGRAM_BUTTONS_MAX,
-        description: 'Optional reply buttons under the message (not with file). A tap types `value` into this session as the next prompt; it is submitted only while this session is idle, otherwise only typed. One tap per message.',
+        description: 'Optional reply buttons under the message (not with file). A tap types `value` into this session as the next prompt; it is submitted straight away, even while this session is working. One tap per message.',
         items: {
           type: 'object',
           properties: {

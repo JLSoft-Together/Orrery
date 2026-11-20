@@ -274,7 +274,7 @@ export const en: Messages = {
   send: {
     title: 'Send a prompt',
     titleFor: 'Send to {name}',
-    hint: 'Text for the pane (only typed in if the pane is busy)',
+    hint: 'Text for the pane (sent straight away, even while it is working)',
     go: 'Send',
   },
   deeplink: {

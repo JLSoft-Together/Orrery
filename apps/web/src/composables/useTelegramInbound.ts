@@ -104,7 +104,7 @@ export function installTelegramInbound(): void {
     const name = nameOf(out.pane)
     log(out.pane, req.from, text)
     toast(name, text)
-    return { ok: true, action: 'send', name, queued: session?.status !== 'idle', ...(session ? { terminalId: session.id } : {}), ...(images ? { images } : {}) }
+    return { ok: true, action: 'send', name, queued: false,...(session ? { terminalId: session.id } : {}), ...(images ? { images } : {}) }
   }
 
   function all(req: Req<'all'>): TelegramInboundResult {
@@ -156,7 +156,7 @@ export function installTelegramInbound(): void {
 
   /**
    * Owner exception 5 (docs §11an): a tapped `telegram_send` button types its value into the pane that sent it.
-   * Submitted only while that agent is idle; busy, waiting or unknown → only typed, the owner presses Enter.
+   * Submitted straight away, even while the agent is working (owner, 2026-11-20); a pending prompt on the pane is still `busy`.
    */
   function answer(req: Req<'answer'>): TelegramInboundResult {
     const pane = workspace.panes.find((p) => isTerm(p) && p.sessionId === req.target.sessionId)
@@ -164,12 +164,11 @@ export function installTelegramInbound(): void {
     const text = cleanPanePrompt(req.text)
     if (!text) return { ok: false, error: 'unavailable' }
     if (pane.prefill || pane.compact) return fail({ ok: false, error: 'busy', panes: [pane] })
-    const idle = sessionOf(pane)?.status === 'idle'
-    workspace.update(pane.key, { prefill: text, prefillSubmit: idle ? true : undefined })
+    workspace.update(pane.key, { prefill: text, prefillSubmit: true, prefillNow: true })
     const name = nameOf(pane)
     log(pane, req.from, text)
     toast(name, text)
-    return { ok: true, action: 'answer', name, submitted: idle }
+    return { ok: true, action: 'answer', name, submitted: true }
   }
 
   const openError = (error: SessionOpenError): TelegramInboundResult => ({ ok: false, error: error === 'live' ? 'busy' : 'unavailable' })

@@ -44,14 +44,15 @@ describe('Telegram reply button (session.answer)', () => {
     expect(a.prefillSubmit).toBe(true)
   })
 
-  it('working, waiting or unknown pane: only typed, never submitted', async () => {
+  it('working, waiting or unknown pane: submitted straight away too', async () => {
     const w = pane('claude', 'C:\\work\\A', 'w', 'working')
     const q = pane('codex', 'C:\\work\\A', 'q', 'waiting')
     const u = pane('claude', 'C:\\work\\A', 'u')
     for (const [p, id] of [[w, 'w'], [q, 'q'], [u, 'u']] as const) {
-      expect(await handler(req(`pty-${id}`))).toMatchObject({ ok: true, action: 'answer', submitted: false })
+      expect(await handler(req(`pty-${id}`))).toMatchObject({ ok: true, action: 'answer', submitted: true })
       expect(p.prefill).toBe('yes, go on')
-      expect(p.prefillSubmit).toBeUndefined()
+      expect(p.prefillSubmit).toBe(true)
+      expect(p.prefillNow).toBe(true)
     }
   })
 

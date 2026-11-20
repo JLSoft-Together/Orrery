@@ -81,7 +81,7 @@ Tin của 1 pane (chờ, hỏi, xin quyền, xong việc) có nút **Mở trên 
 | Phiên cùng lúc | max 16 |
 | Attach pane / điện thoại | max 4 |
 | Xác nhận trên điện thoại | 60 giây, max 4 xác nhận chờ |
-| Prompt gửi từ điện thoại | max 2000 ký tự; pane không idle thì chỉ gõ sẵn, không submit |
+| Prompt gửi từ điện thoại | max 2000 ký tự; gõ và submit ngay, kể cả khi agent đang chạy (chủ nhân 20/11/2026); dừng bằng phím stop / esc |
 | Lệnh `ws.*` | 30 / phút (hợp đồng); gateway đếm chung max 240 lệnh / phút / phiên |
 | Ghi file | 20 / phút, chỉ ghi đè file có sẵn, báo conflict nếu file đổi trên đĩa |
 | Kích thước tin | 1 MiB |

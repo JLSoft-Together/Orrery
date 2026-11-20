@@ -272,7 +272,7 @@ export const vi = {
   send: {
     title: 'Gửi prompt',
     titleFor: 'Gửi tới {name}',
-    hint: 'Nội dung gửi vào pane (chỉ gõ sẵn nếu pane đang bận)',
+    hint: 'Nội dung gửi vào pane (gửi ngay, kể cả khi pane đang chạy)',
     go: 'Gửi',
   },
   deeplink: {

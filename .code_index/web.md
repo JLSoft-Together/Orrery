@@ -108,3 +108,6 @@ Invariants:
 
 ## v106 (cài app điện thoại)
 - `components/settings/remote/RemoteInstallCard.vue` (`[data-remote-install]`, SettingEmbed `remoteInstall` dưới `remoteAdd`): tab Android (Qua Wi-Fi: chọn APK + QR `http://<ip>:<port>/install/<token>/orrery.apk` hạn 10 phút, chọn IP; Link tải: https lưu `apkUrl`) / iPhone (QR `relayUrl + /app/`, chưa có relay thì nút `flashSettingRow(remoteRelay)`). `lib/remoteInstall.ts` (parse + `relayAppUrl`, `isHttpsUrl`, `installUrl`), i18n `i18n/v106-install.ts` (`v106Install.*`), bridge `desktop.remoteInstall`, `RemoteStatus.relayUrl`.
+
+## v107 Settings gọn (14 -> 7 trang)
+- `components/settings/index.ts` `SETTINGS_PAGES` = general, appearance, workspace, notify, integrations, data, about; `LEGACY_PAGES` + `resolvePage` đổi id cũ (editor, telegram, remote, github, deepseek, access, disk) sang trang gộp (dùng cho `ui.settingsPage` kiểu `SettingsPageInput`, `loadPage`, entries); trang gộp = `PageWorkspace` / `PageNotify` / `PageIntegrations` / `PageData` (+ `SettingPart` tiêu đề phần, DeepSeek lazy gate `hasDeepSeek` trong `PageIntegrations`); Office nằm sau nút Nâng cao `[data-general-more]` trong `SettingsGeneral` (flash qua `settingsFlash.ts` / `SettingsMenu.flash`); i18n `v107gon.settings.*`, tên trang `settingsV79.pages.*`.

@@ -80,10 +80,14 @@ Các biến còn lại (chọn core Rust / Node, DeepSeek, test): `CLAUDE.md`.
 - **Secret không rời máy**: env, khoá app, token PTY không gửi ra ngoài; nội dung push, Telegram, chat điện thoại đều che secret. Token GitHub, relay cất trong Keychain / Credential Manager.
 - Token chỉ hiện khi có số liệu thật; Remote, Telegram, push mặc định tắt.
 
-## Ghi công
+## Thư viện bên thứ ba
 
 - [Habblaud](https://github.com/marmottajr/habblaud) (MIT): Office pixel-art, vendored trong `packages/habblaud`.
 - [GramJS](https://github.com/gram-js/gramjs) (MIT): gửi file lớn qua Telegram MTProto.
 - [Atom Material Icons](https://github.com/AtomMaterialUI/iconGenerator) (MIT): icon file / thư mục.
 - [escrcpy](https://github.com/viarotel-org/escrcpy) (Apache-2.0): tham khảo cho tab Thiết bị, bản sao trong `src/escrcpy`, không build vào app.
 - Font mở kèm app: SIL OFL / Ubuntu Font Licence, xem `apps/web/public/fonts-LICENSES.txt`.
+
+## Giấy phép
+
+[MIT](LICENSE). Thư viện bên thứ ba giữ giấy phép riêng như liệt kê ở trên.

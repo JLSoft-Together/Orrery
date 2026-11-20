@@ -1,4 +1,5 @@
 import type { WorkspaceDoc } from '../remote/machineData'
+import { parseRemoteInbox, type RemoteInbox } from '../../../../packages/shared/src/inbox'
 import { letterOf, toneOf } from './projectModel'
 import { providerOf, type MonitorSession, type Provider, type Rail } from './monitorModel'
 
@@ -19,6 +20,8 @@ export interface WsPane {
   canAttach: boolean
   asked: boolean
   since: number | null
+  attention: 'waiting' | 'done' | null
+  inbox: RemoteInbox | null
 }
 
 export interface WsGroup {
@@ -95,6 +98,8 @@ function parsePane(raw: Item, sessions: Map<string, MonitorSession>): WsPane | n
     canAttach: isTerm && sessionId !== null,
     asked: rail === 'asked',
     since: live?.since ?? null,
+    attention: raw.attention === 'waiting' || raw.attention === 'done' ? raw.attention : null,
+    inbox: parseRemoteInbox(raw.inbox),
   }
 }
 

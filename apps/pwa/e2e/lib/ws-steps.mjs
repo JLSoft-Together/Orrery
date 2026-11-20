@@ -77,6 +77,38 @@ export async function workspaceSteps(c, page, peer) {
     if (colour === 'rgb(0, 0, 0)') throw new Error('xterm text unstyled')
   })
 
+  await step('Terminal: pty.resized 24 -> 12 rows mid 64 KiB burst loses no line, on the raw path and with pty.snapshot', async () => {
+    const attach = peer.events.find((e) => e.ev === 'attach' && e.sessionId === 'sess-p1')
+    if (!Array.isArray(attach?.caps) || !attach.caps.includes('pty.snapshot')) throw new Error(`attach caps ${JSON.stringify(attach)}`)
+    const resizeTotal = 4700
+    for (const [command, prefix] of [['resizeburst', 'rb'], ['resizesnap', 'rs']]) {
+      const before = (await rx()).bytes
+      peer.send(command)
+      await page.waitForFunction((n) => Number(document.querySelector('[data-testid="terminal"]')?.getAttribute('data-rx-bytes')) > n + 60000, before, { timeout: 15000 })
+      const last = `${prefix}-${String(resizeTotal).padStart(5, '0')}-xxx`
+      const lines = await page
+        .waitForFunction(
+          ([p, end]) => {
+            const read = document.querySelector('[data-testid="terminal"]')?.ccmLines
+            const all = read ? read().map((l) => l.trimEnd()).filter((l) => l.startsWith(`${p}-`)) : []
+            return all.at(-1) === end && all
+          },
+          [prefix, last],
+          { timeout: 15000 },
+        )
+        .then((h) => h.jsonValue())
+        .catch(async () => {
+          throw new Error(`${command}: never showed ${last} ${await dump()}`)
+        })
+      const nums = lines.map((l) => Number(l.slice(prefix.length + 1, prefix.length + 6)))
+      const gaps = nums.filter((n, i) => i > 0 && n !== nums[i - 1] + 1)
+      const first = prefix === 'rb' ? 50 : 1
+      if (nums[0] > first || nums.length !== resizeTotal - nums[0] + 1 || gaps.length) throw new Error(`${command}: ${nums.length} lines from ${nums[0]}, gaps at ${gaps.slice(0, 5).join(',')}`)
+      const rows = await page.locator('.xterm-rows > div').count()
+      if (rows !== 12) throw new Error(`${command}: ${rows} rows after pty.resized`)
+    }
+  })
+
   await step('Typing: "echo xin chào" reaches the desktop as UTF-8 with claim; Ctrl is sticky once / locked / off; direct typing claims too', async () => {
     await byId(page, 'line-input').fill('echo xin chào')
     await byId(page, 'line-send').click()

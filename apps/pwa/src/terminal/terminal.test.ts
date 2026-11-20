@@ -3,6 +3,8 @@ import { RemoteCommandError, type JsonMap } from '../remote/types'
 import { keySequence, lineBytes, utf8 } from './keys'
 import { controlChar, StickyModifiers } from './modifiers'
 import { PtyStreams, type PtyTransport } from './ptyStreams'
+import { Terminal } from '@xterm/xterm'
+import { bufferLines, resizeAnchored, TermPipe, type PipeClock } from './termPipe'
 
 describe('sticky modifiers', () => {
   it('cycles off -> once -> locked -> off', () => {
@@ -126,7 +128,7 @@ describe('PtyStreams', () => {
     const s = new PtyStreams(x.t)
     const a = await s.attach('sess', 80, 24, handlers)
     expect(a.stream).toBe(1)
-    expect(x.requests[0]).toEqual({ type: 'pty.attach', fields: { stream: 1, sessionId: 'sess', cols: 80, rows: 24 } })
+    expect(x.requests[0]).toEqual({ type: 'pty.attach', fields: { stream: 1, sessionId: 'sess', cols: 80, rows: 24, caps: ['pty.snapshot'] } })
     await s.attach('b', 80, 24, handlers)
     await s.attach('c', 80, 24, handlers)
     await s.attach('d', 80, 24, handlers)
@@ -223,5 +225,108 @@ describe('PtyStreams', () => {
     await s.resize(a, 40, 10)
     expect([a.cols, a.rows]).toEqual([40, 10])
     expect(x.requests.filter((r) => r.type === 'pty.resize')).toHaveLength(1)
+  })
+})
+
+const ESC = '\x1b'
+const CRLF = '\r\n'
+
+function lines(from: number, to: number): Uint8Array {
+  let text = ''
+  for (let n = from; n <= to; n++) text += `line-${n}${CRLF}`
+  return utf8(text)
+}
+
+function repaint(first: number, rows: number, filled: number): Uint8Array {
+  let text = `${ESC}[?25l${ESC}[H`
+  for (let r = 0; r < filled; r++) text += `line-${first + r}${ESC}[K${CRLF}`
+  for (let r = filled; r < rows; r++) text += `${ESC}[K`
+  return utf8(`${text}${ESC}[${filled + 1};1H${ESC}[?25h`)
+}
+
+function chunked(bytes: Uint8Array, size: number): Uint8Array[] {
+  const out: Uint8Array[] = []
+  for (let at = 0; at < bytes.length; at += size) out.push(bytes.subarray(at, at + size))
+  return out
+}
+
+function textOf(t: Terminal): string[] {
+  return bufferLines(t)
+    .map((l) => l.trimEnd())
+    .filter((l) => l)
+}
+
+function run(from: number, to: number): string[] {
+  const out: string[] = []
+  for (let n = from; n <= to; n++) out.push(`line-${n}`)
+  return out
+}
+
+function termRig(cols: number, rows: number) {
+  const t = new Terminal({ cols, rows, scrollback: 5000, allowProposedApi: true })
+  const jobs: Array<() => void> = []
+  const clock: PipeClock = {
+    schedule: (fn) => jobs.push(fn),
+    cancel: () => {},
+  }
+  const pipe = new TermPipe(() => t, clock)
+  const settle = async (): Promise<void> => {
+    for (let i = 0; i < 100; i++) {
+      while (jobs.length) jobs.shift()!()
+      await new Promise<void>((resolve) => t.write('', resolve))
+      if (!pipe.waiting && jobs.length === 0) return
+    }
+  }
+  return { t, pipe, settle }
+}
+
+describe('terminal resize order', () => {
+  it('a shrink from 41 to 19 rows mid burst keeps every line', async () => {
+    const { t, pipe, settle } = termRig(80, 41)
+    for (const c of chunked(lines(1, 1963), 4096)) pipe.output(c)
+    pipe.barrier(() => resizeAnchored(t, 80, 19))
+    for (const c of chunked(repaint(1946, 19, 18), 512)) pipe.output(c)
+    for (const c of chunked(lines(1964, 3000), 4096)) pipe.output(c)
+    await settle()
+    expect([t.cols, t.rows]).toEqual([80, 19])
+    expect(textOf(t)).toEqual(run(1, 3000))
+  })
+
+  it('a grow keeps the cursor row like ConPTY instead of pulling the scrollback down', async () => {
+    const { t, pipe, settle } = termRig(80, 19)
+    pipe.output(lines(1, 500))
+    pipe.barrier(() => resizeAnchored(t, 80, 41))
+    pipe.output(repaint(483, 41, 18))
+    pipe.output(lines(501, 600))
+    await settle()
+    expect(t.rows).toBe(41)
+    expect(textOf(t)).toEqual(run(1, 600))
+  })
+
+  it('bytes queued before a resize are written at the old size first', async () => {
+    const { t, pipe, settle } = termRig(20, 10)
+    const rows: number[] = []
+    pipe.output(utf8('0123456789abcdefghij-wrapped'))
+    pipe.barrier(() => {
+      rows.push(t.buffer.active.cursorY)
+      t.resize(40, 10)
+    })
+    await settle()
+    expect(rows).toEqual([1])
+  })
+
+  it('a snapshot resets, resizes and replaces what was there', async () => {
+    const { t, pipe, settle } = termRig(80, 41)
+    pipe.output(lines(1, 300))
+    await settle()
+    pipe.output(utf8('stale bytes never shown'))
+    let data = ''
+    for (let n = 1; n <= 40; n++) data += `${ESC}[mline-${n}${ESC}[m${CRLF}`
+    data += `${ESC}[mline-41${ESC}[m${ESC}[19;8H`
+    pipe.snapshot(80, 19, data, (cols, rows) => t.resize(cols, rows))
+    pipe.output(utf8(`${CRLF}line-42${CRLF}`))
+    await settle()
+    expect([t.cols, t.rows]).toEqual([80, 19])
+    expect(textOf(t)).toEqual(run(1, 42))
   })
 })

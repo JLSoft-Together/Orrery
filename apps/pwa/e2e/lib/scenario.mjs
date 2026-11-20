@@ -12,8 +12,9 @@ import { viewOnlyStep, workspaceSteps } from './ws-steps.mjs'
 import { workspaceShots } from './ws-shots.mjs'
 import { mistHomeSteps } from './mist-home-steps.mjs'
 import { mistWorkspaceSteps } from './mist-ws-steps.mjs'
+import { inboxSteps } from './inbox-steps.mjs'
 
-export const STEPS_PER_BROWSER = 48
+export const STEPS_PER_BROWSER = 52
 
 export async function runScenario({ browserName, launch, env, record }) {
   await fetch(`${env.base}/__version?web=${env.webHash}`)
@@ -120,6 +121,7 @@ export async function runScenario({ browserName, launch, env, record }) {
 
     await screenshotSteps(c, page, peer)
     await mistHomeSteps(c, page, peer)
+    await inboxSteps(c, page, peer)
     await workspaceSteps(c, page, peer)
     await workspaceShots(c, page, peer)
     await mistWorkspaceSteps(c, page, peer)

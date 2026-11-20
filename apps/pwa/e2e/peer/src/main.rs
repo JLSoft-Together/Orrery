@@ -43,6 +43,7 @@ pub struct Desk {
     pub groups: bool,
     pub moved: bool,
     pub hidden: Vec<&'static str>,
+    pub inbox: u8,
     pub close_ask: bool,
     pub close_pending: Option<&'static str>,
     pub vw: vw::Vw,
@@ -140,6 +141,11 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
                 outs.extend(conn.big().into_iter().map(|o| (*id, o)));
             }
         }
+        "resizeburst" | "resizesnap" => {
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.resize_burst(line == "resizesnap").into_iter().map(|o| (*id, o)));
+            }
+        }
         "demo" => {
             for (id, conn) in conns.iter_mut() {
                 outs.extend(conn.demo().into_iter().map(|o| (*id, o)));
@@ -188,6 +194,18 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
         }
         "asked" => {
             desk.asked = true;
+            desk.rev += 1;
+            let value = data::ws_snapshot(desk);
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.push(&value).into_iter().map(|o| (*id, o)));
+            }
+        }
+        "inbox" | "inboxold" | "inboxoff" => {
+            desk.inbox = match line {
+                "inbox" => 1,
+                "inboxold" => 2,
+                _ => 0,
+            };
             desk.rev += 1;
             let value = data::ws_snapshot(desk);
             for (id, conn) in conns.iter_mut() {
@@ -249,6 +267,7 @@ fn main() {
         groups: false,
         moved: false,
         hidden: Vec::new(),
+        inbox: 0,
         close_ask: false,
         close_pending: None,
         vw: vw::Vw::new(),

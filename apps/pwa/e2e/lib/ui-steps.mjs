@@ -32,7 +32,7 @@ export async function uiSteps(c, page, peer) {
     await byId(page, 'filter-waiting').click()
     await settleCount(1, 'waiting filter')
     await byId(page, 'filter-all').click()
-    if ((await byId(page, 'tab-badge').textContent())?.trim() !== '1') throw new Error('waiting badge')
+    if ((await byId(page, 'tab-badge').count()) !== 0) throw new Error('badge without an inbox')
   })
 
   await step('Monitor B groups by state; the mode survives a reload', async () => {

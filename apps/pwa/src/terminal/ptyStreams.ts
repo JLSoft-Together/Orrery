@@ -1,6 +1,8 @@
 import { REMOTE_ATTACH_MAX } from '../lib/limits'
 import { RemoteCommandError, type JsonMap } from '../remote/types'
 
+export const PTY_CAPS = ['pty.snapshot'] as const
+
 export interface PtyTransport {
   ready(): boolean
   request(type: string, fields: JsonMap): Promise<JsonMap>
@@ -72,7 +74,7 @@ export class PtyStreams {
   }
 
   private async sendAttach(entry: PtyAttachment): Promise<void> {
-    await this.transport.request('pty.attach', { stream: entry.stream, sessionId: entry.sessionId, cols: entry.cols, rows: entry.rows })
+    await this.transport.request('pty.attach', { stream: entry.stream, sessionId: entry.sessionId, cols: entry.cols, rows: entry.rows, caps: [...PTY_CAPS] })
   }
 
   async detach(entry: PtyAttachment): Promise<void> {

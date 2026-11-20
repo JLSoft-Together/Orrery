@@ -7,6 +7,7 @@ import { useHubStore } from '../stores/hub'
 import type { PtyAttachment } from '../terminal/ptyStreams'
 import type { StickyModifiers } from '../terminal/modifiers'
 import { TERM_FONT, TERM_THEME } from '../terminal/theme'
+import { bufferLines, resizeAnchored, TermPipe } from '../terminal/termPipe'
 import { allowXtermStyles, pruneXtermStyles } from '../terminal/xtermStyles'
 import { lineBytes, utf8 } from '../terminal/keys'
 import { RemoteCommandError } from '../remote/types'
@@ -18,6 +19,7 @@ const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; 
 
 const hub = useHubStore()
 const host = ref<HTMLElement | null>(null)
+const surface = ref<(HTMLElement & { ccmLines?: () => string[] }) | null>(null)
 const state = ref<SurfaceState>('attaching')
 const detail = ref<string | null>(null)
 const rxBytes = ref(0)
@@ -35,9 +37,6 @@ let typing = false
 let typingTimer: ReturnType<typeof setTimeout> | null = null
 let deskCols = 0
 let deskRows = 0
-let queue: Uint8Array[] = []
-let frame = 0
-let pendingWrites = 0
 let disposed = false
 let observer: ResizeObserver | null = null
 let attaching = false
@@ -60,28 +59,11 @@ function checksum(bytes: Uint8Array): void {
   rxBytes.value += bytes.length
 }
 
-function flush(): void {
-  frame = 0
-  const t = term.value
-  if (!t || queue.length === 0) return
-  const total = queue.reduce((n, c) => n + c.length, 0)
-  const merged = new Uint8Array(total)
-  let at = 0
-  for (const chunk of queue) {
-    merged.set(chunk, at)
-    at += chunk.length
-  }
-  queue = []
-  pendingWrites++
-  t.write(merged, () => {
-    pendingWrites--
-  })
-}
+const pipe = new TermPipe(() => term.value)
 
 function onOutput(bytes: Uint8Array): void {
   checksum(bytes)
-  queue.push(bytes)
-  if (!frame) frame = requestAnimationFrame(flush)
+  pipe.output(bytes)
 }
 
 function layoutFit(): void {
@@ -91,7 +73,7 @@ function layoutFit(): void {
   t.options.fontSize = BASE_FONT
   const dims = f.proposeDimensions()
   if (!dims || dims.cols < 2 || dims.rows < 2) return
-  if (dims.cols !== t.cols || dims.rows !== t.rows) t.resize(dims.cols, dims.rows)
+  resizeAnchored(t, dims.cols, dims.rows)
 }
 
 function layoutDesk(): void {
@@ -103,13 +85,21 @@ function layoutDesk(): void {
   }
   const size = Math.max(9, Math.min(BASE_FONT, Math.floor((el.clientWidth - 8) / (deskCols * 0.602))))
   t.options.fontSize = size
-  if (t.cols !== deskCols || t.rows !== deskRows) t.resize(deskCols, deskRows)
+  resizeAnchored(t, deskCols, deskRows)
 }
 
-function relayout(): void {
+function applyLayout(): void {
   if (typing || deskCols === 0) layoutFit()
   else layoutDesk()
   if (typing && attachment) void streams().resize(attachment, term.value?.cols ?? attachment.cols, term.value?.rows ?? attachment.rows)
+}
+
+function relayout(): void {
+  pipe.barrier(applyLayout)
+}
+
+function deskSize(event: Record<string, unknown>): { cols: number; rows: number } | null {
+  return typeof event.cols === 'number' && typeof event.rows === 'number' ? { cols: event.cols, rows: event.rows } : null
 }
 
 function beginTyping(): void {
@@ -155,29 +145,48 @@ function sendKey(sequence: string): void {
 
 function onEvent(event: Record<string, unknown>): void {
   switch (event.t) {
-    case 'pty.ready':
-      term.value?.reset()
-      queue = []
-      if (typeof event.cols === 'number' && typeof event.rows === 'number') {
-        deskCols = event.cols
-        deskRows = event.rows
-      }
-      relayout()
+    case 'pty.ready': {
+      const size = deskSize(event)
+      pipe.reset(() => {
+        if (size) {
+          deskCols = size.cols
+          deskRows = size.rows
+        }
+        applyLayout()
+      })
       setState('live')
       break
-    case 'pty.resized':
-      if (typeof event.cols === 'number' && typeof event.rows === 'number') {
-        deskCols = event.cols
-        deskRows = event.rows
-      }
-      if (!typing) {
-        claimed.value = false
-        relayout()
-      }
+    }
+    case 'pty.resized': {
+      const size = deskSize(event)
+      pipe.barrier(() => {
+        if (size) {
+          deskCols = size.cols
+          deskRows = size.rows
+        }
+        if (!typing) {
+          claimed.value = false
+          applyLayout()
+        }
+      })
       break
-    case 'pty.exit':
-      setState('ended', typeof event.code === 'number' ? String(event.code) : null)
+    }
+    case 'pty.snapshot': {
+      const size = deskSize(event)
+      if (!size || typeof event.data !== 'string') break
+      pipe.snapshot(size.cols, size.rows, event.data, (cols, rows) => {
+        deskCols = cols
+        deskRows = rows
+        layoutDesk()
+      })
+      if (typing) relayout()
       break
+    }
+    case 'pty.exit': {
+      const code = typeof event.code === 'number' ? String(event.code) : null
+      pipe.barrier(() => setState('ended', code))
+      break
+    }
     case 'pty.error':
       setState('error', typeof event.error === 'string' ? event.error : 'internal')
       break
@@ -242,6 +251,7 @@ async function create(): Promise<void> {
   t.open(host.value)
   term.value = t
   fit.value = f
+  if (surface.value) surface.value.ccmLines = () => bufferLines(t)
   bindUserInput(t)
   t.onData((data) => {
     if (!attachment || performance.now() - userAt > USER_WINDOW_MS) return
@@ -262,7 +272,7 @@ watch(
   () => props.sessionId,
   async () => {
     await detach()
-    term.value?.reset()
+    pipe.reset(() => {})
     rxBytes.value = 0
     rxSum.value = 0
     void attach()
@@ -273,7 +283,7 @@ watch(() => props.direct, applyInputMode)
 
 onBeforeUnmount(() => {
   disposed = true
-  if (frame) cancelAnimationFrame(frame)
+  pipe.dispose()
   if (typingTimer) clearTimeout(typingTimer)
   observer?.disconnect()
   for (const off of cleanups) off()
@@ -287,7 +297,7 @@ defineExpose({ sendText, sendLine, sendKey, sendBytes, focusDirect: applyInputMo
 </script>
 
 <template>
-  <div class="surface" data-testid="terminal" :data-state="state" :data-detail="detail ?? ''" :data-rx-bytes="rxBytes" :data-rx-sum="rxSum" :data-claimed="claimed ? '1' : '0'">
+  <div ref="surface" class="surface" data-testid="terminal" :data-state="state" :data-detail="detail ?? ''" :data-rx-bytes="rxBytes" :data-rx-sum="rxSum" :data-claimed="claimed ? '1' : '0'">
     <div ref="host" class="host" />
   </div>
 </template>

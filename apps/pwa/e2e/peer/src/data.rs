@@ -19,6 +19,29 @@ pub fn big_payload() -> Vec<u8> {
     out
 }
 
+pub const RESIZE_LINES: u32 = 4700;
+pub const RESIZE_AT: u32 = 2350;
+pub const RESIZE_ROWS: u32 = 12;
+
+pub fn resize_lines(prefix: &str, from: u32, to: u32) -> Vec<u8> {
+    (from..=to).map(|n| format!("{prefix}-{n:05}-xxx\r\n")).collect::<String>().into_bytes()
+}
+
+pub fn resize_repaint(prefix: &str) -> Vec<u8> {
+    let filled = RESIZE_ROWS - 1;
+    let mut out = String::from("\x1b[?25l\x1b[H");
+    for r in 0..filled {
+        out.push_str(&format!("{prefix}-{:05}-xxx\x1b[K\r\n", RESIZE_AT - filled + 1 + r));
+    }
+    out.push_str(&format!("\x1b[K\x1b[{};1H\x1b[?25h", RESIZE_ROWS));
+    out.into_bytes()
+}
+
+pub fn resize_snapshot(prefix: &str) -> String {
+    let lines: Vec<String> = (1..=RESIZE_AT).map(|n| format!("\x1b[m{prefix}-{n:05}-xxx")).collect();
+    format!("{}\x1b[m\r\n\x1b[m\x1b[{};1H", lines.join("\x1b[m\r\n"), RESIZE_ROWS)
+}
+
 pub fn pane_key(key: Option<&str>) -> Option<&'static str> {
     match key? {
         "p1" => Some("p1"),
@@ -42,8 +65,20 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
     if let Some(text) = wait {
         p1["waitText"] = json!(text);
     }
-    let p2 = json!({"key": "p2", "kind": "term", "preset": "codex", "title": "web codex", "state": "working", "rail": "working", "subagents": 0, "dirty": false, "busy": true, "sessionId": "sess-p2", "terminalId": "t2", "cwd": "D:/Code/web", "branch": "main"});
-    let p3 = json!({"key": "p3", "kind": "term", "preset": "shell", "title": "npm run dev", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p3", "terminalId": "t4", "cwd": "D:/Code/infra", "branch": "infra"});
+    let mut p2 = json!({"key": "p2", "kind": "term", "preset": "codex", "title": "web codex", "state": "working", "rail": "working", "subagents": 0, "dirty": false, "busy": true, "sessionId": "sess-p2", "terminalId": "t2", "cwd": "D:/Code/web", "branch": "main"});
+    let mut p3 = json!({"key": "p3", "kind": "term", "preset": "shell", "title": "npm run dev", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p3", "terminalId": "t4", "cwd": "D:/Code/infra", "branch": "infra"});
+    let mut p4 = json!({"key": "p4", "kind": "term", "preset": "shell", "title": "db shell", "state": "idle", "rail": "idle", "subagents": 0, "dirty": false, "busy": false, "sessionId": "sess-p4", "terminalId": "t3", "cwd": "D:/Code/api", "branch": "feat/api"});
+    let mut extra = Vec::new();
+    if desk.inbox == 1 {
+        p1["inbox"] = json!({"reason": "permission", "since": "2026-11-20T08:00:00Z"});
+        p2["inbox"] = json!({"reason": "clash", "since": "2026-11-20T08:05:00Z", "file": "src/app.ts", "peer": "api claude"});
+        p3["inbox"] = json!({"reason": "done", "since": "2026-11-20T07:00:00Z"});
+        p4["inbox"] = json!({"reason": "menu", "since": "2026-11-20T08:10:00Z"});
+        extra.push(p4);
+    } else if desk.inbox == 2 {
+        p1["attention"] = json!("waiting");
+        p3["attention"] = json!("done");
+    }
     let mut first = Vec::new();
     let mut second = Vec::new();
     for (key, pane) in [("p1", p1), ("p2", p2), ("p3", p3)] {
@@ -56,6 +91,7 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
             first.push(pane);
         }
     }
+    first.extend(extra);
     let name = desk.tab_name.clone();
     let mut tab1 = json!({"key": "tab1", "project": "api", "tree": {"pane": "p1"}, "panes": first});
     if let Some(name) = name {
@@ -82,12 +118,16 @@ pub fn ws_snapshot(desk: &Desk) -> Value {
     if desk.tab2 {
         tabs.push(json!({"key": "tab2", "name": "web", "project": "web", "panes": second}));
     }
-    json!({
+    let mut out = json!({
         "t": "ws.snapshot",
         "rev": desk.rev,
         "closedCount": desk.hidden.len(),
         "tabs": tabs
-    })
+    });
+    if desk.inbox == 1 {
+        out["inbox"] = json!(true);
+    }
+    out
 }
 
 pub const FILE_TEXT: &str = "import 'package:flutter/material.dart';\n\nclass KeyBar extends StatelessWidget {\n  const KeyBar({super.key});\n}\n";

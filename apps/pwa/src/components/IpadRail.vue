@@ -2,10 +2,10 @@
 import { Activity, ChevronDown, ChevronLeft, Clock, LayoutGrid, LoaderCircle, Check, Laptop, MoonStar, PanelLeftClose, PanelLeftOpen, QrCode, SlidersHorizontal, TriangleAlert } from 'lucide-vue-next'
 import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { inboxCount } from '../lib/inboxModel'
 import { formatElapsed, parseSessions, type MonitorSession, type Rail } from '../lib/monitorModel'
 import { quotaOf } from '../lib/quotaModel'
 import { groupByProject } from '../lib/projectModel'
-import { attentionCount } from '../lib/railModel'
 import { useNow } from '../lib/useNow'
 import { monogram, parseWorkspace, toneOfProject, type WsPane } from '../lib/workspaceModel'
 import { navigate } from '../router'
@@ -30,7 +30,7 @@ const sessions = computed(() => parseSessions(view.value.snapshot))
 const groups = computed(() => groupByProject(sessions.value))
 const tabs = computed(() => parseWorkspace(view.value.workspace, sessions.value))
 const wsMode = computed(() => props.active === 'workspace')
-const waiting = computed(() => attentionCount(sessions.value))
+const waiting = computed(() => inboxCount(view.value.workspace))
 const quota = computed(() => quotaOf(view.value.snapshot, now.value))
 
 const STATUS: Record<Rail, { icon: typeof Clock; tone: string; spin: boolean }> = {

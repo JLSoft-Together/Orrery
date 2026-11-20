@@ -7,7 +7,7 @@ import IpadRail from './components/IpadRail.vue'
 import RemoteConfirmHost from './components/RemoteConfirmHost.vue'
 import TabBar, { type TabId } from './components/TabBar.vue'
 import UpdateBar from './components/UpdateBar.vue'
-import { isWaiting, parseSessions } from './lib/monitorModel'
+import { inboxCount } from './lib/inboxModel'
 import { railShown } from './lib/railModel'
 import { useWide } from './lib/useWide'
 import { navigate, route, routeDirection, type Route } from './router'
@@ -64,7 +64,7 @@ const activeTab = computed<TabId | null>(() => {
   }
 })
 const showTabs = computed(() => !railOn.value && !fullTerminal.value && activeTab.value !== null && (activeTab.value === 'settings' ? tabMachine.value !== null : true))
-const badge = computed(() => (tabMachine.value ? parseSessions(hub.viewOf(tabMachine.value).snapshot).filter((s) => isWaiting(s.rail)).length : 0))
+const badge = computed(() => (tabMachine.value ? inboxCount(hub.viewOf(tabMachine.value).workspace) : 0))
 
 function selectTab(tab: TabId): void {
   const machine = tabMachine.value

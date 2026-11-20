@@ -112,6 +112,13 @@ impl Conn {
         }
     }
 
+    pub fn resize_burst(&mut self, snapshot: bool) -> Vec<Out> {
+        match self {
+            Conn::Live(live) => live.resize_burst(snapshot),
+            _ => Vec::new(),
+        }
+    }
+
     pub fn on_data(&mut self, desk: &mut Desk, data: &[u8], pairing_only: bool) -> Vec<Out> {
         match std::mem::replace(self, Conn::Done) {
             Conn::New if data.len() == PAIR_MSG1_LEN => self.pair_start(desk, data),
@@ -210,6 +217,21 @@ impl Live {
         outs
     }
 
+    fn resize_burst(&mut self, snapshot: bool) -> Vec<Out> {
+        let prefix = if snapshot { "rs" } else { "rb" };
+        let mut outs = Vec::new();
+        for stream in self.attached.clone() {
+            outs.extend(sealed(&mut self.transport, Kind::PtyOut, stream, &data::resize_lines(prefix, 1, data::RESIZE_AT)));
+            outs.extend(json_out(&mut self.transport, &json!({"t": "pty.resized", "stream": stream, "cols": 80, "rows": data::RESIZE_ROWS})));
+            if snapshot {
+                outs.extend(json_out(&mut self.transport, &json!({"t": "pty.snapshot", "stream": stream, "cols": 80, "rows": data::RESIZE_ROWS, "gen": 1, "data": data::resize_snapshot(prefix)})));
+            }
+            outs.extend(sealed(&mut self.transport, Kind::PtyOut, stream, &data::resize_repaint(prefix)));
+            outs.extend(sealed(&mut self.transport, Kind::PtyOut, stream, &data::resize_lines(prefix, data::RESIZE_AT + 1, data::RESIZE_LINES)));
+        }
+        outs
+    }
+
     fn big(&mut self) -> Vec<Out> {
         let payload = data::big_payload();
         let mut outs = Vec::new();
@@ -266,7 +288,7 @@ impl Live {
                         if !self.attached.contains(&stream) {
                             self.attached.push(stream);
                         }
-                        println!("{}", json!({"ev": "attach", "stream": stream, "sessionId": value.get("sessionId"), "cols": value.get("cols"), "rows": value.get("rows")}));
+                        println!("{}", json!({"ev": "attach", "stream": stream, "sessionId": value.get("sessionId"), "cols": value.get("cols"), "rows": value.get("rows"), "caps": value.get("caps")}));
                         extra.push(json!({"t": "pty.ready", "stream": stream, "cols": 80, "rows": 24}));
                         tail.push((stream, data::BANNER));
                         json!({ "re": id, "ok": true, "stream": stream })

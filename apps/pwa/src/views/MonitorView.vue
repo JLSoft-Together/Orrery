@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Check, Clock, GitBranch, Info, LoaderCircle, MoonStar, RefreshCw, TriangleAlert, WifiOff } from 'lucide-vue-next'
+import { Check, Clock, GitBranch, Inbox, Info, LoaderCircle, MoonStar, RefreshCw, TriangleAlert, WifiOff } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import InboxSheet from '../components/InboxSheet.vue'
 import LinkChip from '../components/LinkChip.vue'
 import PageBar from '../components/PageBar.vue'
 import SessionRow from '../components/SessionRow.vue'
+import { inboxRows, type InboxRow } from '../lib/inboxModel'
 import { filterCounts, groupByState, matchesFilter, parseSessions, sortSessions, type MonitorFilter, type Rail } from '../lib/monitorModel'
 import { groupByProject } from '../lib/projectModel'
 import { useNow } from '../lib/useNow'
@@ -39,6 +41,8 @@ const sub = computed(() => {
   if (view.value.stale && updated.value) return t('monitor.staleSub')
   return updated.value ? t('monitor.updated', { time: updated.value }) : undefined
 })
+const inbox = computed(() => inboxRows(view.value.workspace))
+const inboxOpen = ref(false)
 const reasonKey = computed(() => (link.value.reason !== 'none' ? `reason.${link.value.reason}` : null))
 const groupMeta: Record<Rail, { icon: typeof Clock; tone: string }> = {
   failed: { icon: TriangleAlert, tone: 'error' },
@@ -50,6 +54,11 @@ const groupMeta: Record<Rail, { icon: typeof Clock; tone: string }> = {
 
 function open(id: string): void {
   navigate({ name: 'session', machine: props.machine, terminal: id })
+}
+
+function openInbox(row: InboxRow): void {
+  inboxOpen.value = false
+  navigate(row.terminalId ? { name: 'session', machine: props.machine, terminal: row.terminalId } : { name: 'workspace', machine: props.machine, pane: row.paneKey })
 }
 
 function megabytes(bytes: number): string {
@@ -65,6 +74,10 @@ function setMode(mode: 'cards' | 'groups'): void {
   <section class="page" data-testid="monitor-view" :data-mode="grouped ? 'groups' : 'cards'" :data-machine="machine">
     <PageBar :title="name" :sub="sub">
       <template #right>
+        <button type="button" class="inbox-btn" :aria-label="t('inbox.open')" data-testid="inbox-open" @click="inboxOpen = true">
+          <Inbox :size="20" :stroke-width="2.2" aria-hidden="true" />
+          <span v-if="inbox.length > 0" class="inbox-n" data-testid="inbox-count">{{ inbox.length }}</span>
+        </button>
         <LinkChip :link="link" :rtt="hub.rtt[machine]" />
       </template>
       <template #below>
@@ -134,6 +147,7 @@ function setMode(mode: 'cards' | 'groups'): void {
         </div>
       </section>
     </div>
+    <InboxSheet v-if="inboxOpen" :rows="inbox" :now="now" @pick="openInbox" @close="inboxOpen = false" />
   </section>
 </template>
 
@@ -143,6 +157,34 @@ function setMode(mode: 'cards' | 'groups'): void {
   flex-direction: column;
   gap: 12px;
   padding: 0 16px 16px;
+}
+
+.inbox-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ccm-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--ccm-glass);
+  color: var(--ccm-ink);
+}
+
+.inbox-n {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--ccm-waiting);
+  color: var(--ccm-material);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
 }
 
 .seg {

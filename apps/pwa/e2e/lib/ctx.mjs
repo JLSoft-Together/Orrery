@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { writeQrVideo } from './y4m.mjs'
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -115,7 +116,16 @@ const byId = (page, id) => page.locator(id.startsWith("machine-") && !id.startsW
   }
   const shoot = async (page, file) => {
     const before = { csp: await page.evaluate(() => window.__csp.length), errors: errors.length }
-    await page.screenshot({ caret: 'initial', path: file })
+    const png = await page.screenshot({ caret: 'initial' })
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        writeFileSync(file, png)
+        break
+      } catch (error) {
+        if (attempt === 3) console.log(`shot not saved: ${file}: ${String(error?.message ?? error).split('\n')[0]}`)
+        else await wait(400)
+      }
+    }
     await wait(250)
     const after = await page.evaluate(() => window.__csp.length)
     const added = errors.splice(before.errors).filter((e) => !/Refused to apply a stylesheet/.test(e))

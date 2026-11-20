@@ -172,6 +172,7 @@ interface DesktopBridge {
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   remoteGuard?: (op: RemoteGuardOp) => Promise<RemoteGuardReply | null>
+  remoteInstall?: (op: { op: string; url?: string }) => Promise<unknown>
   menuToastSync?: (payload: unknown) => void
   onMenuToast?: (handler: (action: unknown) => void) => () => void
   /** Orrery API executor (`ccm:orrery`): raw action, args and caller; `useOrreryApi` checks them against ORRERY_ACTIONS. */

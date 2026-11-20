@@ -13,6 +13,7 @@ import RemoteAccessLog from './remote/RemoteAccessLog.vue'
 import RemoteDeviceRow from './remote/RemoteDeviceRow.vue'
 import RemoteGuardBlocked from './remote/RemoteGuardBlocked.vue'
 import RemoteGuardTrust from './remote/RemoteGuardTrust.vue'
+import RemoteInstallCard from './remote/RemoteInstallCard.vue'
 import RemoteLogList from './remote/RemoteLogList.vue'
 import RemotePairPanel from './remote/RemotePairPanel.vue'
 import RemotePushBell from './remote/RemotePushBell.vue'
@@ -128,6 +129,12 @@ onMounted(() => {
             </button>
           </div>
         </Transition>
+      </SettingSection>
+    </SettingEmbed>
+
+    <SettingEmbed id="remoteInstall">
+      <SettingSection id="remote-install" :title="t('v106Install.title')">
+        <RemoteInstallCard />
       </SettingSection>
     </SettingEmbed>
 

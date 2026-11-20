@@ -16,6 +16,8 @@ mod guard_hooks;
 mod guard_ip;
 mod guard_ops;
 pub mod host;
+mod install;
+mod install_ops;
 mod keys;
 mod lan;
 mod limits;
@@ -97,6 +99,8 @@ mod push_seal_tests;
 mod webpush_live_tests;
 #[cfg(test)]
 mod fit_tests;
+#[cfg(test)]
+mod install_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -121,7 +125,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 19] = [
+pub const CHANNELS: [&str; 20] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -141,6 +145,7 @@ pub const CHANNELS: [&str; 19] = [
     "ccm:remote-push-remove",
     "ccm:remote-push-device",
     "ccm:remote-guard",
+    "ccm:remote-install",
 ];
 pub const RELAY_PROGRESS: &str = "ccm:remote-relay-progress";
 const SWEEP_EVERY: Duration = Duration::from_secs(3600);
@@ -455,6 +460,7 @@ impl Remote {
             "ccm:remote-push-remove" => Ok(self.push_remove()),
             "ccm:remote-push-device" => Ok(self.push_device(arg)),
             "ccm:remote-guard" => Ok(self.guard_call(arg)),
+            "ccm:remote-install" => Ok(self.install_call(arg)),
             _ => Err("unknown channel".into()),
         }
     }

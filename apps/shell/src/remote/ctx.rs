@@ -79,6 +79,9 @@ pub trait Host: Send + Sync + 'static {
     fn pty(&self) -> Option<PtyEndpoint>;
     fn viewer(&self, owner: &str, channel: &str, args: Value, accept: &[String]) -> Value;
     fn viewer_release(&self, owner: &str);
+    fn pick_apk(&self) -> Option<std::path::PathBuf> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,6 +125,7 @@ pub struct Ctx {
     pub facts: Mutex<Facts>,
     pub settle: Mutex<Duration>,
     pub keepalive: Mutex<(Duration, Duration)>,
+    pub install: super::install::Tickets,
 }
 
 impl Ctx {
@@ -158,6 +162,7 @@ impl Ctx {
             facts: Mutex::new(Facts::default()),
             settle: Mutex::new(PUSH_SETTLE),
             keepalive: Mutex::new((super::liveness::PING_EVERY, super::liveness::DEAD_AFTER)),
+            install: super::install::Tickets::default(),
         }
     }
 

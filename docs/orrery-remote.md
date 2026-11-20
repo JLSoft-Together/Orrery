@@ -119,6 +119,15 @@ Thao tác nguy hiểm (xoá branch, bỏ thay đổi, push, commit amend, chạy
 
 **iPhone / iPad (web app, đang làm ở v98)**: dùng web app tải từ relay của bạn, không có app iOS native, không cần Mac hay tài khoản Apple Developer. Các bước cài web app lên màn hình chính và cài CA cho LAN sẽ bổ sung ở v98.
 
+**Cài từ Settings (v106, card "Cài app lên điện thoại", trang Điều khiển từ xa, ngay dưới "Thêm điện thoại")**: 2 tab.
+
+- **iPhone / iPad**: mã QR = `<relayUrl>/app/` lấy từ status (`relayUrl`), relay của chính người dùng, không hardcode domain nào. Chưa có relay thì card chỉ hiện ghi chú + nút "Cài relay" (cuộn tới mục relay cùng trang). 3 bước: mở link bằng Safari, bấm Chia sẻ, Thêm vào MH chính.
+- **Android, "Qua Wi-Fi"**: chọn file APK một lần (hộp thoại chọn file của máy; nếu có `apps/mobile/build/app/outputs/flutter-apk/*.apk` trong repo lúc build app thì gợi ý file mới nhất). Đường dẫn lưu trong `config.json` của remote (`apkPath`). Bấm "Hiện mã QR" tạo token ngẫu nhiên 128 bit, hạn 10 phút (tạo token mới thì token cũ hết hiệu lực, đổi / bỏ file cũng huỷ token). QR = `http://<IP LAN>:<port>/install/<token>/orrery.apk`; máy có nhiều IP LAN thì chọn IP trong ô chọn. Cần bật điều khiển từ xa (dùng chung listener LAN port 4320). Android có thể hỏi cho phép cài từ trình duyệt: cho phép một lần rồi bấm Cài đặt.
+- **Android, "Link tải"**: dán link tải APK của bạn (cloud riêng), chỉ nhận `https://`, lưu ở `apkUrl`; QR = link đó.
+- Cài xong: ghép đôi bằng mã QR ghép đôi ở mục "Thêm điện thoại".
+
+Bảo mật đường `/install/`: chỉ phục vụ đúng 1 file đã chọn (đuôi `.apk`, ≤ 1 GiB), chỉ `GET` / `HEAD`, đường dẫn phải khớp tuyệt đối, so token constant-time; IP điện thoại phải là IPv4 riêng (10/8, 172.16/12, 192.168/16), IP khác nhận 403; sai token, hết hạn, đường khác nhận 404. Vẫn qua guard chặn IP + rate limit LAN như kết nối WS. Không có thư mục, env, khoá hay dữ liệu PTY nào đi qua đường này. Chi tiết giao thức: `docs/remote-integration.md` §1.
+
 ### Web app iPhone và relay: đánh đổi
 
 - Web app được relay phát: code chạy trên iPhone đến từ relay Cloudflare của chính bạn, không đến từ store.

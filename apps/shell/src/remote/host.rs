@@ -104,6 +104,15 @@ impl Host for AppHost {
     fn viewer_release(&self, owner: &str) {
         crate::preview_ipc::release(&self.app, owner);
     }
+
+    fn pick_apk(&self) -> Option<std::path::PathBuf> {
+        use tauri_plugin_dialog::DialogExt;
+        let mut d = self.app.dialog().file().add_filter("APK", &["apk"]);
+        if let Some(w) = self.app.get_webview_window(MAIN) {
+            d = d.set_parent(&w);
+        }
+        d.blocking_pick_file().and_then(|p| p.into_path().ok())
+    }
 }
 
 pub fn install(app: &AppHandle) {

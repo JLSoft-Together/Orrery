@@ -43,7 +43,7 @@ rusty-leveldb = "3"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 zip = { version = "=7.2.0", default-features = false, features = ["deflate"] }
 core-remote-proto = { path = "../core/crates/core-remote-proto" }
-tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util", "fs"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake", "connect", "rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

@@ -126,6 +126,11 @@ pub async fn accept_loop(ctx: Arc<Ctx>, listener: std::net::TcpListener, mut sto
 
 async fn handle(ctx: Arc<Ctx>, stream: TcpStream, ip: IpAddr, pending: Pending) {
     let deadline = Instant::now() + HANDSHAKE;
+    if super::install::sniff(&stream, deadline).await {
+        super::install::serve(&ctx.install, stream, ip, deadline).await;
+        drop(pending);
+        return;
+    }
     let accepted = timeout_at(deadline, tokio_tungstenite::accept_hdr_async_with_config(stream, check, Some(ws_config()))).await;
     let Ok(Ok(ws)) = accepted else { return };
     let (in_tx, in_rx) = mpsc::channel(INBOX);

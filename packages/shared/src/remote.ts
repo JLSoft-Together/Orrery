@@ -274,6 +274,7 @@ export interface RemoteStatus {
   pairing?: { exp: number; relay: boolean } | null
   pairEnded?: 'tries' | 'denied' | null
   guardRev?: number
+  relayUrl?: string
 }
 
 export type RelaySetupState = 'none' | 'ready' | 'deploying' | 'error'

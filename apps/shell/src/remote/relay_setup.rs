@@ -96,7 +96,7 @@ impl Remote {
         }
     }
 
-    fn read_config(&self) -> Config {
+    pub(super) fn read_config(&self) -> Config {
         match lock(&self.ctx).clone() {
             Some(c) => lock(&c.config).clone(),
             None => Config::load(&self.dir),

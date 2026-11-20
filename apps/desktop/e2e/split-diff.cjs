@@ -1,5 +1,5 @@
 // v33 JetBrains side-by-side diff: real lines per side, thin lines for empty sides, word marks, scroll sync, F7, zoom,
-// plus a light-well screenshot (xcode-light) to check deleted grey / word marks on a light well. Gaps 2026-10-15:
+// plus a light-well screenshot (mono light) to check deleted grey / word marks on a light well. Gaps 2026-10-15:
 // Highlight chars / split / none, Align changes, Sync scrolling off, Ignore imports, Ctrl+Shift+D, split view in the Log.
 const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
@@ -119,11 +119,11 @@ async function run(app) {
   await evaluate(`document.documentElement.style.removeProperty('--ccm-code-size')`)
   await shot('split-diff-02-current')
   // The well is light in some themes: tints and the deleted grey must still read there.
-  await evaluate(`${S}.get('settings').theme = 'xcode-light'`)
+  await evaluate(`${S}.get('uiGen').setGeneration('next'); ${S}.get('uiGen').setNextTheme('mono'); ${S}.get('settings').setThemeMode('light')`)
   await sleep(400)
   await shot('split-diff-03-light-well')
   check('light theme keeps a light well', await evaluate(`(() => { const c = getComputedStyle(document.documentElement).getPropertyValue('--ccm-well').trim(); return c === '#ffffff' || c === '#fff' })()`))
-  await evaluate(`${S}.get('settings').theme = 'dark'`)
+  await evaluate(`${S}.get('uiGen').setNextTheme('mist'); ${S}.get('settings').setThemeMode('dark')`)
   await sleep(300)
 
   // Highlight levels: characters mark only the changed digits of line 5 (5 → 500), words the whole number.

@@ -19,9 +19,8 @@ import {
   type RailGroup,
   type UiGeneration,
 } from '../lib/uiGeneration'
-import { isNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, nextPalette, nextSchemeFor, type NextPaletteId, type NextScheme } from '@ccm/mist-tokens'
+import { isNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, NEXT_PALETTE_RANDOM, nextPalette, nextSchemeFor, type NextPaletteId, type NextScheme } from '@ccm/mist-tokens'
 import {
-  applyCustomVars,
   buildCustomTheme,
   parseCustomTheme,
   pushRecent,
@@ -30,6 +29,19 @@ import {
   type CustomThemeConfig,
 } from '../lib/next/customTheme'
 import { clampExplorerWidth, parseExplorerWidth } from '../lib/next/explorerPin'
+import { mauSeed, mauTheme } from '../lib/next/mau'
+import {
+  applyInlineVars,
+  dropRandomPin,
+  freshRandomPalette,
+  holdRandomPalette,
+  launchRandomPalette,
+  parseRandomPalette,
+  pickRandomPin,
+  reshuffleRandomPalette,
+  serializeRandomPalette,
+  type RandomPaletteState,
+} from '../lib/next/randomPalette'
 import { useSettingsStore } from './settings'
 
 function read(key: string): string | null {
@@ -67,7 +79,11 @@ export const NEXT_CODE_FONT = 'jetbrains-mono'
 export const useUiGenStore = defineStore('uiGen', () => {
   const settings = useSettingsStore()
   const generation = ref<UiGeneration>(initialGeneration())
-  const nextTheme = ref<NextPaletteId>(parseNextTheme(read(NEXT_KEYS.theme)))
+  const storedTheme = read(NEXT_KEYS.theme)
+  const nextTheme = ref<NextPaletteId>(parseNextTheme(storedTheme))
+  if (storedTheme !== null && storedTheme !== nextTheme.value) persist(NEXT_KEYS.theme, nextTheme.value)
+  const storedRandom = parseRandomPalette(read(NEXT_KEYS.random))
+  const randomState = ref<RandomPaletteState | null>(nextTheme.value === NEXT_PALETTE_RANDOM ? launchRandomPalette(storedRandom, mauSeed) : storedRandom)
   const railGroup = ref<RailGroup>(isRailGroup(read(NEXT_KEYS.railGroup)) ? (read(NEXT_KEYS.railGroup) as RailGroup) : 'project')
   const explorerPinned = ref(read(NEXT_KEYS.explorerPinned) === '1')
   const explorerWidth = ref(parseExplorerWidth(read(NEXT_KEYS.explorerWidth)))
@@ -93,6 +109,11 @@ export const useUiGenStore = defineStore('uiGen', () => {
   const customTheme = computed(() => buildCustomTheme(custom.value))
   const customScheme = computed(() => customTheme.value[scheme.value])
   const customActive = computed(() => isNext.value && nextTheme.value === NEXT_PALETTE_CUSTOM)
+  const randomTheme = computed(() => (randomState.value ? mauTheme(randomState.value.seed) : null))
+  const randomActive = computed(() => isNext.value && nextTheme.value === NEXT_PALETTE_RANDOM && randomTheme.value !== null)
+  const inlineVars = computed<Readonly<Record<string, string>> | null>(() =>
+    customActive.value ? customScheme.value.vars : randomActive.value ? randomTheme.value!.css[scheme.value] : null,
+  )
 
   watch(
     [generation, nextTheme, scheme, () => settings.theme],
@@ -113,11 +134,9 @@ export const useUiGenStore = defineStore('uiGen', () => {
     { flush: 'sync', immediate: true },
   )
 
-  watch(
-    [customActive, customScheme, glass],
-    ([active, result, g]) => applyCustomVars(document.documentElement.style, active ? result.vars : null, g === 'reduced'),
-    { flush: 'sync', immediate: true },
-  )
+  watch([inlineVars, glass], ([vars, g]) => applyInlineVars(document.documentElement.style, vars, g === 'reduced'), { flush: 'sync', immediate: true })
+
+  watch(randomState, (value) => value && persist(NEXT_KEYS.random, serializeRandomPalette(value)), { immediate: true })
 
   let customTimer: ReturnType<typeof setTimeout> | null = null
   watch(customConfig, (value) => {
@@ -172,7 +191,27 @@ export const useUiGenStore = defineStore('uiGen', () => {
   function setNextTheme(id: string): void {
     if (!isNextPaletteId(id)) return
     if (id === NEXT_PALETTE_CUSTOM && !customConfig.value) customConfig.value = seedCustomTheme(nextTheme.value)
+    if (id === NEXT_PALETTE_RANDOM && !randomState.value) randomState.value = freshRandomPalette(mauSeed)
     nextTheme.value = id
+  }
+
+  function reshuffleRandom(): void {
+    randomState.value = reshuffleRandomPalette(randomState.value ?? freshRandomPalette(mauSeed), mauSeed)
+    nextTheme.value = NEXT_PALETTE_RANDOM
+  }
+
+  function holdRandom(): void {
+    if (randomState.value) randomState.value = holdRandomPalette(randomState.value)
+  }
+
+  function pickRandom(seed: number): void {
+    if (!randomState.value) return
+    randomState.value = pickRandomPin(randomState.value, seed)
+    nextTheme.value = NEXT_PALETTE_RANDOM
+  }
+
+  function dropRandom(seed: number): void {
+    if (randomState.value) randomState.value = dropRandomPin(randomState.value, seed)
   }
 
   function setCustom(patch: Partial<Omit<CustomThemeConfig, 'v'>>): void {
@@ -216,6 +255,13 @@ export const useUiGenStore = defineStore('uiGen', () => {
     custom,
     customTheme,
     customScheme,
+    inlineVars,
+    random: randomState,
+    randomTheme,
+    reshuffleRandom,
+    holdRandom,
+    pickRandom,
+    dropRandom,
     setCustom,
     resetCustom,
     addCustomRecent,

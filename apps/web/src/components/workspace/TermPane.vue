@@ -360,7 +360,7 @@ const hiddenNews = computed(() => {
   return tab ? info.peerNewsOf(leaves(tab.root).filter((k) => k !== props.pane.key).map((k) => workspace.panes.find((p) => p.key === k))) : null
 })
 const hiddenLabel = computed(() =>
-  [t('workspace.paneHead.hidden', { n: props.hiddenCount }, props.hiddenCount), hiddenNews.value?.label].filter(Boolean).join(' · '),
+  [t('workspace.paneHead.hidden', { n: props.hiddenCount }, props.hiddenCount), hiddenNews.value?.label].filter(Boolean).join(', '),
 )
 
 const activity = computed(() => info.activityOf(props.pane))
@@ -1241,7 +1241,7 @@ watch(
 )
 
 watch(
-  () => [settings.theme, settings.stars, settings.starsPanels, uiGen.isNext, uiGen.clearTerm, uiGen.nextTheme, uiGen.dark, uiGen.customScheme] as const,
+  () => [settings.theme, settings.stars, settings.starsPanels, uiGen.isNext, uiGen.clearTerm, uiGen.nextTheme, uiGen.dark, uiGen.customScheme, uiGen.inlineVars] as const,
   async () => {
     await nextTick()
     if (!term) return
@@ -1450,7 +1450,7 @@ onBeforeUnmount(() => {
               <span class="min-w-0 truncate" :class="statusWordShown(sessionChip.state) ? '@max-[460px]:sr-only' : 'sr-only'">{{ sessionChip.label }}</span>
               <span v-if="peerBadge && peer" class="sr-only">, {{ peer.label }}</span>
               <span v-else-if="peerBadge && coordinating" class="sr-only">, {{ coordinating.label }}</span>
-              <span v-if="activityText" class="max-w-[22ch] min-w-0 truncate font-normal text-ink-muted tabular-nums @max-[620px]:hidden" data-pane-activity>· {{ activityText }}</span>
+              <span v-if="activityText" class="max-w-[22ch] min-w-0 truncate font-normal text-ink-muted tabular-nums @max-[620px]:hidden" data-pane-activity>- {{ activityText }}</span>
               <span v-if="isNext && workflowText" class="max-w-[16ch] min-w-0 truncate font-normal text-ink-muted tabular-nums @max-[520px]:hidden" data-agent-status="merged">- {{ workflowText }}</span>
             </span>
             <span

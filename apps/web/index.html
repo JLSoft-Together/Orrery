@@ -12,12 +12,16 @@
       ;(function () {
         try {
           // Mirrors lib/themes.ts THEMES (checked by lib/themes.test.ts).
-          var L = ['orrery-light', 'light', 'xcode-light', 'github-light', 'solarized-light', 'islands-light']
-          var D = ['galaxy', 'orrery-dark', 'console', 'dark', 'xcode-dark', 'github-dark', 'solarized-dark', 'monokai', 'dracula', 'material', 'one-dark', 'islands-dark']
+          var L = ['orrery-light']
+          var D = ['galaxy', 'orrery-dark']
+          var R = { light: 'orrery-light', 'xcode-light': 'orrery-light', 'github-light': 'orrery-light', 'solarized-light': 'orrery-light', 'islands-light': 'orrery-light', dark: 'galaxy', console: 'galaxy', 'xcode-dark': 'galaxy', 'github-dark': 'galaxy', 'solarized-dark': 'galaxy', 'islands-dark': 'galaxy', monokai: 'galaxy', dracula: 'galaxy', material: 'galaxy', 'one-dark': 'galaxy' }
           function pick(t, m, light) {
             var known = L.indexOf(t) >= 0 || D.indexOf(t) >= 0
-            if (m !== '4.0.2-galaxy') return { t: (known ? L.indexOf(t) >= 0 : light) ? 'orrery-light' : 'galaxy', w: true }
-            return { t: known ? t : light ? 'orrery-light' : 'galaxy', w: false }
+            var mv = !known && t && R.hasOwnProperty(t) ? R[t] : null
+            if (m === '4.1-v108') return { t: known ? t : light ? 'orrery-light' : 'galaxy', w: false }
+            if (m === '4.0.2-galaxy') return { t: known ? t : mv || (light ? 'orrery-light' : 'galaxy'), w: true }
+            var lt = known ? L.indexOf(t) >= 0 : mv ? L.indexOf(mv) >= 0 : light
+            return { t: lt ? 'orrery-light' : 'galaxy', w: true }
           }
           var r = document.documentElement
           var s = null
@@ -31,11 +35,11 @@
           if (p.w) {
             try {
               localStorage.setItem('ccm.theme', t)
-              localStorage.setItem('ccm.themeMigration', '4.0.2-galaxy')
+              localStorage.setItem('ccm.themeMigration', '4.1-v108')
             } catch (e) {}
           }
           r.classList.toggle('dark', D.indexOf(t) >= 0)
-          if (t !== 'light' && t !== 'dark') r.setAttribute('data-theme', t)
+          r.setAttribute('data-theme', t)
           try {
             if (localStorage.getItem('ccm.stars') === '0') r.setAttribute('data-stars', 'off')
             if (localStorage.getItem('ccm.starsPanels') === '0') r.setAttribute('data-stars-panels', 'off')
@@ -46,10 +50,12 @@
             if (m !== '4.1-next') return { u: 'next', w: true }
             return { u: u === 'classic' ? 'classic' : 'next', w: false }
           }
-          var NP = { mist: 'ld', nebula: 'ld', aurora: 'ld', graphite: 'ld', dawn: 'ld', galaxy: 'd', orrery: 'ld', console: 'd', custom: 'ld' }
+          var NR = { nebula: 'mist', aurora: 'mist', dawn: 'orrery', console: 'graphite' }
+          var NP = { mist: 'ld', graphite: 'ld', mono: 'ld', galaxy: 'd', orrery: 'ld', random: 'ld', custom: 'ld' }
           function pickNext(u, nt, dk, g, rt, mo, rm) {
             var ui = u === 'classic' ? 'classic' : 'next'
-            var id = NP.hasOwnProperty(nt) ? nt : 'mist'
+            var mt = NR.hasOwnProperty(nt) ? NR[nt] : nt
+            var id = NP.hasOwnProperty(mt) ? mt : 'mist'
             var s = NP[id]
             var dark = ui === 'next' && s.indexOf(dk ? 'd' : 'l') < 0 ? s.charAt(0) === 'd' : dk
             var motion = mo === 'full' || mo === 'reduced' || mo === 'off' ? mo : rm ? 'reduced' : 'full'
@@ -86,6 +92,16 @@
                   if (cv && typeof cv === 'object')
                     for (var ck in cv)
                       if (/^--ccm-[a-z-]+$/.test(ck) && typeof cv[ck] === 'string' && !(ck === '--ccm-glass' && n.glass === 'reduced')) r.style.setProperty(ck, cv[ck])
+                } catch (e) {}
+              }
+              if (n.theme === 'random') {
+                try {
+                  var rj = JSON.parse(localStorage.getItem('ccm.next.randomPalette') || 'null')
+                  var rc = rj && rj.v === 1 ? (!rj.held && rj.upcomingCss ? rj.upcomingCss : rj.css) : null
+                  var rv = rc ? rc[n.dark ? 'dark' : 'light'] : null
+                  if (rv && typeof rv === 'object')
+                    for (var rk in rv)
+                      if (/^--ccm-[a-z0-9-]+$/.test(rk) && typeof rv[rk] === 'string' && !(rk === '--ccm-glass' && n.glass === 'reduced')) r.style.setProperty(rk, rv[rk])
                 } catch (e) {}
               }
             }

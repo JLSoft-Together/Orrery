@@ -14,7 +14,7 @@ describe('resolveAppearance', () => {
   })
 
   it('dark only palettes stay dark whatever the mode', () => {
-    for (const palette of ['galaxy', 'console']) expect(resolveAppearance(input({ palette, theme: 'light' }), env()).scheme).toBe('dark')
+    for (const palette of ['galaxy']) expect(resolveAppearance(input({ palette, theme: 'light' }), env()).scheme).toBe('dark')
   })
 
   it('falls back to the default palette for unknown ids', () => {
@@ -105,7 +105,7 @@ describe('local prefs migration', () => {
   it('round trips through storage', () => {
     const store = new Map<string, string>()
     const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) }
-    saveLocalPrefs({ ...DEFAULT_LOCAL_PREFS, palette: 'dawn', reduceTransparency: true, theme: 'light' }, storage)
-    expect(loadLocalPrefs(storage)).toMatchObject({ palette: 'dawn', reduceTransparency: true, theme: 'light' })
+    saveLocalPrefs({ ...DEFAULT_LOCAL_PREFS, palette: 'mono', reduceTransparency: true, theme: 'light' }, storage)
+    expect(loadLocalPrefs(storage)).toMatchObject({ palette: 'mono', reduceTransparency: true, theme: 'light' })
   })
 })

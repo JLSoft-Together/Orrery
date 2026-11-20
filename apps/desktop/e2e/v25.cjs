@@ -68,7 +68,7 @@ async function main() {
     await evaluate(`${S}.get('ui').shortcutsOpen = false`)
 
     // Themes: data-theme + mode class + tokens from themes.css; one screenshot each.
-    for (const [id, mode] of [['dracula', 'dark'], ['monokai', 'dark'], ['solarized-light', 'light'], ['github-dark', 'dark'], ['xcode-light', 'light'], ['material', 'dark'], ['one-dark', 'dark'], ['github-light', 'light'], ['islands-light', 'light'], ['islands-dark', 'dark']]) {
+    for (const [id, mode] of [['orrery-light', 'light'], ['galaxy', 'dark'], ['orrery-dark', 'dark']]) {
       await evaluate(`${S}.get('settings').setTheme('${id}')`)
       await sleep(350)
       const st = await evaluate(`(() => { const r = document.documentElement; return { theme: r.dataset.theme, dark: r.classList.contains('dark'), surface: getComputedStyle(r).getPropertyValue('--ccm-surface').trim(), soft: getComputedStyle(r).getPropertyValue('--ccm-accent-soft').trim() } })()`)
@@ -78,8 +78,8 @@ async function main() {
     await evaluate(`${S}.get('ui').settingsPage = 'appearance'; ${S}.get('ui').settingsOpen = true`)
     await sleep(500); await shot('v25-06-settings-themes')
     await evaluate(`${S}.get('ui').settingsOpen = false`)
-    await evaluate(`${S}.get('settings').setTheme('dark')`)
-    check('Apple dark has no data-theme', await evaluate(`!document.documentElement.dataset.theme && document.documentElement.classList.contains('dark')`))
+    await evaluate(`${S}.get('settings').setTheme('galaxy')`)
+    check('galaxy sets data-theme and dark', await evaluate(`document.documentElement.dataset.theme === 'galaxy' && document.documentElement.classList.contains('dark')`))
 
     // Claude pane: linked session for the map menu, then the attachments tray.
     await evaluate(`${W}.open('claude', ${JSON.stringify(REPO)}, undefined, { tab: true })`)

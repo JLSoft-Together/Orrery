@@ -75,21 +75,21 @@ describe('uiGen store', () => {
     gen.setGeneration('next')
     gen.setNextTheme('galaxy')
     expect(root.classList.contains('dark')).toBe(true)
-    gen.setNextTheme('aurora')
+    gen.setNextTheme('mono')
     expect(root.classList.contains('dark')).toBe(false)
     gen.setNextTheme('nope')
-    expect(gen.nextTheme).toBe('aurora')
+    expect(gen.nextTheme).toBe('mono')
   })
 
   it('custom theme seeds from the previous palette, sets vars inline only while active, persists debounced', async () => {
     const gen = useUiGenStore()
     gen.setGeneration('next')
-    gen.setNextTheme('nebula')
+    gen.setNextTheme('graphite')
     expect(root.style.getPropertyValue('--ccm-accent')).toBe('')
     gen.setNextTheme('custom')
     expect(gen.nextTheme).toBe('custom')
     expect(root.dataset.nextTheme).toBe('custom')
-    expect(gen.custom.seed).toBe('nebula')
+    expect(gen.custom.seed).toBe('graphite')
     expect(root.style.getPropertyValue('--ccm-accent')).toBe(gen.customScheme.vars['--ccm-accent'])
     gen.setCustom({ accent: '#c15f3c' })
     expect(root.style.getPropertyValue('--ccm-accent')).toBe(gen.customScheme.vars['--ccm-accent'])
@@ -98,7 +98,7 @@ describe('uiGen store', () => {
     gen.reduceGlass = true
     await nextTick()
     expect(root.style.getPropertyValue('--ccm-glass')).toBe('')
-    gen.setNextTheme('aurora')
+    gen.setNextTheme('mono')
     expect(root.style.getPropertyValue('--ccm-accent')).toBe('')
     gen.setNextTheme('custom')
     expect(gen.custom.accent).toBe('#c15f3c')
@@ -133,5 +133,52 @@ describe('uiGen store', () => {
     gen.reduceGlass = false
     await nextTick()
     expect(root.dataset.glass).toBeUndefined()
+  })
+
+  it('maps a removed palette to the nearest kept one and stores it', () => {
+    localStorage.setItem('ccm.nextTheme', 'dawn')
+    const gen = useUiGenStore()
+    expect(gen.nextTheme).toBe('orrery')
+    expect(localStorage.getItem('ccm.nextTheme')).toBe('orrery')
+  })
+
+  it('random mixes a palette inline, mixes again, keeps a seed and rolls at the next launch only while not kept', async () => {
+    const gen = useUiGenStore()
+    gen.setGeneration('next')
+    gen.setNextTheme('random')
+    expect(root.dataset.nextTheme).toBe('random')
+    const first = gen.random!
+    expect(root.style.getPropertyValue('--ccm-accent')).toBe(gen.randomTheme!.css[gen.scheme]['--ccm-accent'])
+    expect(root.style.getPropertyValue('--ccm-ansi-1')).toBeTruthy()
+    await nextTick()
+    const saved = JSON.parse(localStorage.getItem('ccm.next.randomPalette')!)
+    expect(saved.seed).toBe(first.seed)
+    expect(saved.css.light['--ccm-canvas']).toBe(gen.randomTheme!.css.light['--ccm-canvas'])
+    expect(saved.upcomingCss.dark['--ccm-accent']).toBeTruthy()
+
+    setActivePinia(createPinia())
+    const next = useUiGenStore()
+    expect(next.random!.seed).toBe(first.upcoming)
+    expect(root.style.getPropertyValue('--ccm-accent')).toBe(next.randomTheme!.css[next.scheme]['--ccm-accent'])
+
+    const before = next.random!.seed
+    next.reshuffleRandom()
+    expect(next.random!.seed).not.toBe(before)
+    next.holdRandom()
+    expect(next.random!.held).toBe(true)
+    expect(next.random!.pins[0]).toBe(next.random!.seed)
+    const kept = next.random!.seed
+    await nextTick()
+
+    setActivePinia(createPinia())
+    const third = useUiGenStore()
+    expect(third.random!.seed).toBe(kept)
+    third.dropRandom(kept)
+    expect(third.random!.held).toBe(false)
+    expect(third.random!.pins).toEqual([])
+
+    third.setNextTheme('mist')
+    expect(root.style.getPropertyValue('--ccm-accent')).toBe('')
+    expect(root.style.getPropertyValue('--ccm-ansi-1')).toBe('')
   })
 })

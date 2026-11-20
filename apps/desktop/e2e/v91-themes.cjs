@@ -16,7 +16,7 @@ const PROJ = path.join(BASE, 'proj')
 fs.mkdirSync(PROJ, { recursive: true })
 fs.writeFileSync(path.join(PROJ, 'README.md'), '# v91\n')
 
-const THEMES = ['orrery-dark', 'orrery-light', 'console', 'dark']
+const THEMES = ['orrery-dark', 'orrery-light', 'galaxy']
 const noHScroll = `document.documentElement.scrollWidth <= window.innerWidth + 1 && document.body.scrollWidth <= window.innerWidth + 1`
 const rootTheme = `document.documentElement.dataset.theme ?? (document.documentElement.classList.contains('dark') ? 'dark' : 'light')`
 
@@ -39,11 +39,15 @@ async function main() {
     await evaluate(`localStorage.setItem('ccm.theme','dark'); localStorage.removeItem('ccm.themeMigration')`)
     await reload()
     check('migration moves Apple dark to galaxy', (await evaluate(rootTheme)) === 'galaxy', await evaluate(rootTheme))
-    check('migration key written', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.0.2-galaxy')
+    check('migration key written', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.1-v108')
 
-    await evaluate(`localStorage.setItem('ccm.theme','dark'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy')`)
+    await evaluate(`localStorage.setItem('ccm.theme','dracula'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy')`)
     await reload()
-    check('after migration a chosen theme sticks', (await evaluate(rootTheme)) === 'dark' && (await evaluate(`${S}.get('settings').theme`)) === 'dark')
+    check('v108 moves a removed theme to the nearest kept one', (await evaluate(rootTheme)) === 'galaxy' && (await evaluate(`${S}.get('settings').theme`)) === 'galaxy')
+
+    await evaluate(`localStorage.setItem('ccm.theme','orrery-dark'); localStorage.setItem('ccm.themeMigration','4.1-v108')`)
+    await reload()
+    check('after migration a chosen theme sticks', (await evaluate(rootTheme)) === 'orrery-dark' && (await evaluate(`${S}.get('settings').theme`)) === 'orrery-dark')
 
     for (const id of THEMES) {
       await evaluate(`localStorage.setItem('ccm.theme','${id}'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy')`)
@@ -74,7 +78,7 @@ async function main() {
       await evaluate(`document.querySelector('[data-settings-page="appearance"]').click()`)
       await waitFor(`!!document.querySelector('[data-theme-option="orrery-dark"]')`, 10000, 'theme picker')
       await sleep(400)
-      check(`${id}: picker lists Orrery first with default label`, await evaluate(`(() => { const o = [...document.querySelectorAll('[data-theme-option]')].map((b) => b.dataset.themeOption); return o[0] === 'orrery-light' && o.indexOf('galaxy') < o.indexOf('orrery-dark') && o.indexOf('orrery-dark') < o.indexOf('console') && o.indexOf('console') < o.indexOf('dark') && document.querySelectorAll('[data-theme-default]').length === 2 })()`))
+      check(`${id}: picker lists Orrery first with default label`, await evaluate(`(() => { const o = [...document.querySelectorAll('[data-theme-option]')].map((b) => b.dataset.themeOption); return o[0] === 'orrery-light' && o.indexOf('galaxy') < o.indexOf('orrery-dark') && o.length === 3 && document.querySelectorAll('[data-theme-default]').length === 2 })()`))
       check(`${id}: picker marks the active theme`, await evaluate(`document.querySelector('[data-theme-option="${id}"]')?.getAttribute('aria-checked') === 'true'`))
       check(`${id}: settings no horizontal scroll`, await evaluate(noHScroll))
       await shot(`v91-${id}-settings`)

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { THEMES, THEME_MIGRATION, defaultTheme, hasStars, isThemeId, modeOf, startTheme, toggleTarget } from './themes'
+import { REMOVED_THEMES, THEMES, THEME_MIGRATION, THEME_MIGRATION_GALAXY, applyTheme, defaultTheme, hasStars, isThemeId, modeOf, startTheme, themeMeta, toggleTarget } from './themes'
 
 // Read from disk: vitest turns CSS imports (even ?raw) into empty modules.
 const themesCss = readFileSync(new URL('../themes.css', import.meta.url), 'utf8')
@@ -41,14 +41,14 @@ const SHAPE = [
   'card-shadow', 'panel-bg', 'panel-edge', 'chrome-line', 'tab-on-bg', 'tab-on-shadow', 'tab-rail', 'chip-fill', 'pane-ring', 'pane-bar',
   'pane-head-tint', 'dim-inactive', 'tab-on-bar', 'wordmark-font', 'wordmark-display', 'seg-track', 'seg-thumb', 'seg-thumb-shadow', 'seg-on-ink', 'label-font', 'label-case', 'label-tracking', 'gap-shell',
 ]
-const SHAPED = ['orrery-dark', 'orrery-light', 'console', 'galaxy']
+const SHAPED = ['orrery-dark', 'orrery-light', 'galaxy']
 
 function rootBlock(): Record<string, string> {
   const m = /\n:root \{([^}]*)\}/.exec(styleCss)
   return Object.fromEntries([...m![1]!.matchAll(/--ccm-([\w-]+):\s*([^;]+);/g)].map((x) => [x[1]!, x[2]!.trim()]))
 }
 
-const extra = THEMES.filter((th) => th.id !== 'light' && th.id !== 'dark')
+const extra = THEMES
 
 describe('themes', () => {
   it('every extra theme names every colour token as #RRGGBB', () => {
@@ -66,19 +66,11 @@ describe('themes', () => {
     }
   })
 
-  it('agent colour chips of the full themes mirror the CSS', () => {
-    const apple = (k: string) => [...styleCss.matchAll(new RegExp(`--ccm-agent-${k}:\\s*(#[0-9a-f]{6});`, 'gi'))].map((x) => x[1]!)
-    const appleIdx: Record<string, number> = { light: 0, dark: 1 }
-    const full = THEMES.filter((th) => th.agents)
-    expect(full.map((th) => th.id).sort()).toEqual(['console', 'dark', 'galaxy', 'light', 'orrery-dark', 'orrery-light'])
-    for (const th of full) {
-      if (th.id in appleIdx) {
-        const i = appleIdx[th.id]!
-        expect(th.agents, th.id).toEqual([apple('claude')[i], apple('codex')[i], apple('shell-mark')[i]])
-      } else {
-        const b = block(th.id)
-        expect(th.agents, th.id).toEqual([b['agent-claude'], b['agent-codex'], b['agent-shell-mark']])
-      }
+  it('agent colour chips mirror the CSS', () => {
+    expect(THEMES.map((th) => th.id).sort()).toEqual(['galaxy', 'orrery-dark', 'orrery-light'])
+    for (const th of THEMES) {
+      const b = block(th.id)
+      expect(th.agents, th.id).toEqual([b['agent-claude'], b['agent-codex'], b['agent-shell-mark']])
     }
   })
 
@@ -93,7 +85,7 @@ describe('themes', () => {
       expect(modeOf(toggleTarget(th.id)), th.id).not.toBe(th.mode)
       if (th.pair) expect(toggleTarget(toggleTarget(th.id))).toBe(th.id)
     }
-    expect(isThemeId('dracula')).toBe(true)
+    expect(isThemeId('dracula')).toBe(false)
     expect(isThemeId('nope')).toBe(false)
   })
 
@@ -145,28 +137,52 @@ describe('themes', () => {
     expect(toggleTarget('galaxy')).toBe('orrery-light')
     for (const mode of ['light', 'dark'] as const) expect(THEMES.find((th) => th.mode === mode)!.id).toBe(defaultTheme(mode === 'light'))
     expect(THEMES.filter((th) => th.isDefault).map((th) => th.id).sort()).toEqual(['galaxy', 'orrery-light'])
-    expect(THEMES.filter((th) => th.mode === 'dark').map((th) => th.id).slice(0, 3)).toEqual(['galaxy', 'orrery-dark', 'console'])
+    expect(THEMES.filter((th) => th.mode === 'dark').map((th) => th.id)).toEqual(['galaxy', 'orrery-dark'])
   })
 
-  it('start theme: 4.0.2 moves everyone to Orrery once, then choices stick', () => {
+  it('start theme: a fresh or pre 4.0.2 install moves to Orrery by mode once', () => {
     expect(startTheme(null, null, true)).toEqual({ theme: 'orrery-light', migrate: true })
     expect(startTheme(null, null, false)).toEqual({ theme: 'galaxy', migrate: true })
     expect(startTheme('dark', null, true)).toEqual({ theme: 'galaxy', migrate: true })
     expect(startTheme('solarized-light', null, false)).toEqual({ theme: 'orrery-light', migrate: true })
+    expect(startTheme('orrery-dark', '4.0.1', true)).toEqual({ theme: 'galaxy', migrate: true })
     expect(startTheme('monokai', '4.0.2', true)).toEqual({ theme: 'galaxy', migrate: true })
-    expect(startTheme('dark', THEME_MIGRATION, true)).toEqual({ theme: 'dark', migrate: false })
-    expect(startTheme('console', THEME_MIGRATION, true)).toEqual({ theme: 'console', migrate: false })
+  })
+
+  it('v108: removed themes map once to the nearest kept one, kept choices stay', () => {
+    for (const [from, to] of Object.entries(REMOVED_THEMES)) {
+      expect(isThemeId(from), from).toBe(false)
+      expect(isThemeId(to), to).toBe(true)
+      expect(startTheme(from, THEME_MIGRATION_GALAXY, true), from).toEqual({ theme: to, migrate: true })
+      expect(themeMeta(from).id).toBe(to)
+    }
+    expect(REMOVED_THEMES['xcode-light']).toBe('orrery-light')
+    expect(REMOVED_THEMES.dracula).toBe('galaxy')
+    expect(REMOVED_THEMES.console).toBe('galaxy')
+    expect(startTheme('orrery-dark', THEME_MIGRATION_GALAXY, true)).toEqual({ theme: 'orrery-dark', migrate: true })
+    expect(startTheme(null, THEME_MIGRATION_GALAXY, false)).toEqual({ theme: 'galaxy', migrate: true })
+    expect(startTheme('orrery-dark', THEME_MIGRATION, true)).toEqual({ theme: 'orrery-dark', migrate: false })
+    expect(startTheme('dracula', THEME_MIGRATION, true)).toEqual({ theme: 'orrery-light', migrate: false })
     expect(startTheme('nope', THEME_MIGRATION, true)).toEqual({ theme: 'orrery-light', migrate: false })
     expect(startTheme(null, THEME_MIGRATION, false)).toEqual({ theme: 'galaxy', migrate: false })
   })
 
+  it('every kept theme sets data-theme, removed CSS is gone', () => {
+    const root = { classList: { toggle: () => undefined }, dataset: {} as Record<string, string> } as unknown as HTMLElement
+    for (const th of THEMES) {
+      applyTheme(root, th.id)
+      expect(root.dataset.theme).toBe(th.id)
+    }
+    for (const id of Object.keys(REMOVED_THEMES)) expect(themesCss, id).not.toContain(`data-theme='${id}'`)
+  })
+
   it('pre-paint pick mirrors startTheme', () => {
-    const src = /var L = [^\n]*\n\s*var D = [^\n]*\n\s*function pick\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
+    const src = /var L = [^\n]*\n\s*var D = [^\n]*\n\s*var R = [^\n]*\n\s*function pick\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
     const pick = new Function(`${src}; return pick`)() as (t: string | null, m: string | null, light: boolean) => { t: string; w: boolean }
     expect(indexHtml).toContain(`localStorage.setItem('ccm.themeMigration', '${THEME_MIGRATION}')`)
-    const stored = [null, 'nope', ...THEMES.map((th) => th.id)]
+    const stored = [null, 'nope', ...THEMES.map((th) => th.id), ...Object.keys(REMOVED_THEMES)]
     for (const t of stored)
-      for (const m of [null, '4.0.1', '4.0.2', THEME_MIGRATION])
+      for (const m of [null, '4.0.1', '4.0.2', THEME_MIGRATION_GALAXY, THEME_MIGRATION])
         for (const light of [true, false]) {
           const want = startTheme(t, m, light)
           expect(pick(t, m, light), `${t} ${m} ${light}`).toEqual({ t: want.theme, w: want.migrate })

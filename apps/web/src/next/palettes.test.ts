@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isNextPaletteId, NEXT_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_THEME_IDS, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from '@ccm/mist-tokens'
-import { startNext, startUi, UI_MIGRATION } from '../lib/uiGeneration'
+import { isNextPaletteId, NEXT_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_REMOVED_PALETTES, NEXT_THEME_IDS, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from '@ccm/mist-tokens'
+import { MAU_MONO, mauVars } from '../lib/next/mau'
+import { parseNextTheme, startNext, startUi, UI_MIGRATION } from '../lib/uiGeneration'
 
 const pkgDir = new URL('../../../../packages/mist-tokens/', import.meta.url)
 const tokensCss = readFileSync(new URL('tokens.css', pkgDir), 'utf8') + '\n' + readFileSync(new URL('./tokens.css', import.meta.url), 'utf8')
@@ -53,16 +54,18 @@ const SOFT: Record<string, number> = { working: 0.1, error: 0.12, done: 0.14 }
 const variants = NEXT_PALETTES.flatMap((p) => p.schemes.map((s) => [p.id, s] as const))
 
 describe('next palettes', () => {
-  it('lists 8 palettes in 9 cards plus the custom card, Sương kính first and default', () => {
-    expect(NEXT_PALETTES.map((p) => p.id)).toEqual(['mist', 'nebula', 'aurora', 'graphite', 'dawn', 'galaxy', 'orrery', 'console'])
+  it('lists 5 palettes in 6 cards plus the random and custom cards, Sương kính first and default', () => {
+    expect(NEXT_PALETTES.map((p) => p.id)).toEqual(['mist', 'graphite', 'mono', 'galaxy', 'orrery'])
     expect(NEXT_PALETTE_DEFAULT).toBe('mist')
-    expect(nextPaletteCards()).toHaveLength(10)
-    expect(nextPaletteCards().at(-1)!.id).toBe('custom')
+    expect(nextPaletteCards()).toHaveLength(8)
+    expect(nextPaletteCards().slice(-2).map((c) => c.id)).toEqual(['random', 'custom'])
+    expect(isNextPaletteId('random')).toBe(true)
+    expect(nextSchemeFor('random', 'light')).toBe('light')
     expect(isNextPaletteId('custom')).toBe(true)
     expect(nextSchemeFor('custom', 'light')).toBe('light')
     expect(nextSchemeFor('custom', 'dark')).toBe('dark')
     expect(NEXT_PALETTES.find((p) => p.id === 'galaxy')!.schemes).toEqual(['dark'])
-    expect(NEXT_PALETTES.find((p) => p.id === 'console')!.schemes).toEqual(['dark'])
+    expect(NEXT_PALETTES.find((p) => p.id === 'mono')!.schemes).toEqual(['light', 'dark'])
     for (const p of NEXT_PALETTES) for (const s of p.schemes) expect(p.preview[s], `${p.id} ${s}`).toBeTruthy()
   })
 
@@ -74,6 +77,32 @@ describe('next palettes', () => {
     }
     const named = new Set([...palettesCss.matchAll(/data-next-theme='([\w-]+)'/g)].map((m) => m[1]))
     expect([...named].sort()).toEqual(NEXT_PALETTES.filter((p) => p.id !== 'mist').map((p) => p.id).sort())
+  })
+
+  it('v108: removed palettes map to the nearest kept one', () => {
+    expect(NEXT_REMOVED_PALETTES).toEqual({ nebula: 'mist', aurora: 'mist', dawn: 'orrery', console: 'graphite' })
+    for (const [from, to] of Object.entries(NEXT_REMOVED_PALETTES)) {
+      expect(isNextPaletteId(from), from).toBe(false)
+      expect(parseNextTheme(from)).toBe(to)
+    }
+    expect(parseNextTheme('nope')).toBe('mist')
+    expect(parseNextTheme('mono')).toBe('mono')
+  })
+
+  it('mono CSS is the RESEARCH v108 table mapped by mauVars, flat with no glow or blur', () => {
+    for (const s of ['light', 'dark'] as const) {
+      const sel = `:root[data-ui='next'][data-next-theme='mono']${s === 'dark' ? '.dark' : ':not(.dark)'}`
+      const css = blocks(palettesCss, sel)
+      const want = Object.fromEntries(Object.entries(mauVars(MAU_MONO[s], s)).map(([k, v]) => [k.slice(6), v]))
+      expect(css, s).toEqual(want)
+      expect(css['bg-image']).toBe('none')
+      expect(css['glass-blur']).toBe('none')
+      const p = NEXT_PALETTES.find((x) => x.id === 'mono')!.preview[s]!
+      expect([p.canvas, p.accent, p.well, p.ink]).toEqual([css.canvas, css.accent, css.well, css.ink])
+    }
+    expect(MAU_MONO.light.accent).toBe('#262626')
+    expect(MAU_MONO.dark.accent).toBe('#e6e6e6')
+    expect(MAU_MONO.dark['on-accent']).toBe('#1e1e1e')
   })
 
   it('a dark-only palette forces dark', () => {
@@ -122,7 +151,7 @@ describe('next palettes', () => {
         s = s.replace(/([^{};]+)\{[^{}]*\}/g, (_, pre: string) => (preludes.push(pre.trim()), ';'))
       }
       const selectors = preludes.filter((p) => !p.startsWith('@')).flatMap((p) => p.split(/,(?![^(]*\))/).map((x) => x.trim())).filter((x) => !/^(from|to|[\d.]+%)$/.test(x))
-      expect(selectors.length).toBeGreaterThan(10)
+      expect(selectors.length).toBeGreaterThan(5)
       for (const sel of selectors) expect(sel, sel).toMatch(/^:root\[data-ui='next'\]/)
     }
     expect(styleCss).not.toContain("data-ui='next'")
@@ -146,7 +175,7 @@ describe('next palettes', () => {
 })
 
 describe('pre-paint next pick', () => {
-  const src = /var NP = [^\n]*\n\s*function pickNext\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
+  const src = /var NR = [^\n]*\n\s*var NP = [^\n]*\n\s*function pickNext\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
   const run = new Function(`${src}; return { NP: NP, pick: pickNext }`)() as {
     NP: Record<string, string>
     pick: (...a: unknown[]) => ReturnType<typeof startNext>
@@ -159,7 +188,7 @@ describe('pre-paint next pick', () => {
 
   it('mirrors startNext', () => {
     for (const ui of [null, 'classic', 'next', 'x'])
-      for (const theme of [null, 'nope', ...NEXT_THEME_IDS])
+      for (const theme of [null, 'nope', ...NEXT_THEME_IDS, ...Object.keys(NEXT_REMOVED_PALETTES)])
         for (const dark of [true, false])
           for (const glass of [null, '1', '0'])
             for (const rt of [true, false])

@@ -1,5 +1,10 @@
-import { isNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT } from '@ccm/mist-tokens'
+import { isNextPaletteId, migrateNextPaletteId, NEXT_PALETTE_CUSTOM, NEXT_PALETTE_DEFAULT, NEXT_PALETTE_RANDOM } from '@ccm/mist-tokens'
 import { DEFAULT_LOCK_TIMEOUT, normalizeTimeout } from '../lib/lockPolicy'
+
+function paletteOf(value: unknown): string {
+  const id = typeof value === 'string' ? migrateNextPaletteId(value) : null
+  return isNextPaletteId(id) && id !== NEXT_PALETTE_CUSTOM && id !== NEXT_PALETTE_RANDOM ? id : NEXT_PALETTE_DEFAULT
+}
 
 export type LanguagePref = 'auto' | 'vi' | 'en'
 export type ThemePref = 'auto' | 'light' | 'dark'
@@ -50,7 +55,7 @@ export function normalizeLocalPrefs(raw: unknown): LocalPrefs {
   return {
     language: pick(o.language, ['auto', 'vi', 'en'], 'auto'),
     theme: pick(o.theme, ['auto', 'light', 'dark'], 'auto'),
-    palette: isNextPaletteId(o.palette) && o.palette !== NEXT_PALETTE_CUSTOM ? o.palette : NEXT_PALETTE_DEFAULT,
+    palette: paletteOf(o.palette),
     reduceTransparency: o.reduceTransparency === true,
     monitorMode: pick(o.monitorMode, ['cards', 'groups'], 'cards'),
     workspaceMode: pick(o.workspaceMode, ['focus', 'grid'], 'focus'),

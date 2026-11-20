@@ -154,11 +154,11 @@ describe('custom theme', () => {
   })
 
   it('seeds from a palette accent, unknown or custom falls back to mist', () => {
-    expect(seedCustomTheme('nebula').accent).toBe('#6a4fc9')
+    expect(seedCustomTheme('graphite').accent).toBe('#52677a')
     expect(seedCustomTheme('galaxy').accent).toBe('#f0946f')
     expect(seedCustomTheme('custom').seed).toBe('mist')
     expect(seedCustomTheme('nope').accent).toBe('#2a7f9e')
-    expect(paletteAccents()).toHaveLength(9)
+    expect(paletteAccents()).toHaveLength(6)
   })
 
   it('recent keeps 8 unique colours, newest first', () => {
@@ -195,7 +195,7 @@ describe('custom theme storage', () => {
   it('applies vars inline and clears them, leaving glass to data-glass=reduced', () => {
     const style = document.createElement('div').style
     style.setProperty('--font-sans', 'x')
-    const vars = buildCustomScheme(seedCustomTheme('aurora'), 'light').vars
+    const vars = buildCustomScheme(seedCustomTheme('orrery'), 'light').vars
     applyCustomVars(style, vars, false)
     expect(style.getPropertyValue('--ccm-accent')).toBe(vars['--ccm-accent'])
     expect(style.getPropertyValue('--ccm-glass')).toBe(vars['--ccm-glass'])

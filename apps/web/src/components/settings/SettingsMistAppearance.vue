@@ -3,7 +3,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check } from 'lucide-vue-next'
 import { modeOf } from '../../lib/themes'
-import { NEXT_PALETTE_CUSTOM, nextPaletteCards, type NextPreview, type NextScheme } from '@ccm/mist-tokens'
+import { NEXT_PALETTE_CUSTOM, NEXT_PALETTE_RANDOM, nextPaletteCards, type NextPreview, type NextScheme } from '@ccm/mist-tokens'
+import { MAU_MONO, mauPreview } from '../../lib/next/mau'
 import { useSettingsStore } from '../../stores/settings'
 import { useUiGenStore } from '../../stores/uiGen'
 import NextSegmentedControl from '../next/ui/SegmentedControl.vue'
@@ -12,6 +13,7 @@ import PaletteMini from './PaletteMini.vue'
 import SettingRow from './SettingRow.vue'
 import SettingSection from './SettingSection.vue'
 import CustomThemeBuilder from './CustomThemeBuilder.vue'
+import RandomPaletteBar from './RandomPaletteBar.vue'
 
 const { t } = useI18n()
 const settings = useSettingsStore()
@@ -36,10 +38,15 @@ const motions = computed(() => [
   { value: 'off' as const, label: t('mist.settings.motionOff') },
 ])
 
-const cardActive = (id: string, scheme: NextScheme): boolean => uiGen.nextTheme === id && (id === NEXT_PALETTE_CUSTOM || uiGen.scheme === scheme)
+const schemeFree = (id: string): boolean => id === NEXT_PALETTE_CUSTOM || id === NEXT_PALETTE_RANDOM
+const cardActive = (id: string, scheme: NextScheme): boolean => uiGen.nextTheme === id && (schemeFree(id) || id !== 'mist' || uiGen.scheme === scheme)
 const anyActive = computed(() => cards.some((x) => cardActive(x.palette.id, x.scheme)))
 const cardName = (nameKey: string, scheme: NextScheme, id: string): string => (id === 'mist' ? `${t(nameKey)}, ${t(`mist.palette.${scheme}`)}` : t(nameKey))
-const cardPreview = (c: (typeof cards)[number]): NextPreview | undefined => (c.palette.id === NEXT_PALETTE_CUSTOM ? uiGen.customTheme[uiGen.scheme].preview : c.palette.preview[c.scheme])
+function cardPreview(c: (typeof cards)[number]): NextPreview | undefined {
+  if (c.palette.id === NEXT_PALETTE_CUSTOM) return uiGen.customTheme[uiGen.scheme].preview
+  if (c.palette.id === NEXT_PALETTE_RANDOM) return mauPreview(uiGen.randomTheme ? uiGen.randomTheme.tokens[uiGen.scheme] : MAU_MONO[uiGen.scheme])
+  return c.palette.preview[c.scheme]
+}
 
 function pick(id: string, scheme: NextScheme, schemes: readonly NextScheme[]): void {
   uiGen.setNextTheme(id)
@@ -96,6 +103,7 @@ function onKey(e: KeyboardEvent, index: number): void {
           </button>
         </div>
         <CustomThemeBuilder v-if="uiGen.nextTheme === NEXT_PALETTE_CUSTOM" class="mt-3" />
+        <RandomPaletteBar v-if="uiGen.nextTheme === NEXT_PALETTE_RANDOM" />
       </div>
       <SettingRow :label="t('mist.settings.mode')" :info="t('mist.settings.modeHint')" data-setting-row="mode">
         <NextSegmentedControl

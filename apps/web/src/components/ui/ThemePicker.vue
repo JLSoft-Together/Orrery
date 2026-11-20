@@ -11,9 +11,8 @@ const { t } = useI18n()
 const settings = useSettingsStore()
 const root = ref<HTMLElement | null>(null)
 
-const full = THEMES.filter((th) => th.agents)
-const palette = THEMES.filter((th) => !th.agents)
-const ordered = [...full, ...palette]
+const full = THEMES
+const ordered = full
 const STARS: [number, number][] = [
   [10, 12],
   [28, 40],
@@ -34,7 +33,7 @@ const modes = computed(() => [
 
 const name = (th: ThemeMeta): string => (th.nameKey ? t(th.nameKey) : th.name)
 const modeLabel = (th: ThemeMeta): string => t(th.mode === 'light' ? 'settings.themeLight' : 'settings.themeDark')
-const label = (th: ThemeMeta): string => `${name(th)} · ${modeLabel(th)}${th.isDefault ? ` · ${t('settings.themeDefault')}` : ''}`
+const label = (th: ThemeMeta): string => `${name(th)}, ${modeLabel(th)}${th.isDefault ? `, ${t('settings.themeDefault')}` : ''}`
 
 function pick(id: ThemeId): void {
   if (id !== shown.value) withViewTransition(() => settings.setTheme(id))
@@ -103,32 +102,6 @@ function onKey(e: KeyboardEvent, index: number): void {
             </span>
           </span>
         </button>
-      </div>
-
-      <div role="presentation">
-        <p class="ccm-label mb-1.5 text-2xs font-semibold text-ink-faint" aria-hidden="true">{{ t('themeV96.palette') }}</p>
-        <div class="flex flex-wrap gap-1.5" role="presentation">
-          <button
-            v-for="th in palette"
-            :key="th.id"
-            type="button"
-            role="radio"
-            :aria-checked="shown === th.id"
-            :aria-label="label(th)"
-            :tabindex="shown === th.id ? 0 : -1"
-            :data-theme-option="th.id"
-            class="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-control px-2 py-1 text-xs ring-1 ring-line transition-colors duration-(--ccm-dur-fast) outline-none hover:bg-fill focus-visible:ring-2 focus-visible:ring-focus aria-checked:bg-accent-soft aria-checked:text-accent-ink aria-checked:ring-2 aria-checked:ring-accent"
-            @click="pick(th.id)"
-            @keydown="onKey($event, ordered.indexOf(th))"
-          >
-            <span class="relative inline-flex h-4 w-6 shrink-0 overflow-hidden rounded-[3px] shadow-control" :style="{ background: th.swatch[0] }" aria-hidden="true">
-              <span class="absolute top-0.5 left-0.5 h-1.5 w-3 rounded-[1px]" :style="{ background: th.swatch[1] }" />
-              <span class="absolute right-0.5 bottom-0.5 size-1.5 rounded-full" :style="{ background: th.swatch[2] }" />
-            </span>
-            <span class="truncate font-medium">{{ name(th) }}</span>
-            <span class="text-2xs text-ink-faint">{{ modeLabel(th) }}</span>
-          </button>
-        </div>
       </div>
     </div>
   </div>

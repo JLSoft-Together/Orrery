@@ -146,7 +146,7 @@ const BLOCK = { key: '203.0.113.7', source: 'relay', why: 'token', count: 6, at:
     await snap('06-settings-pair-mist-light')
     await closeSettings()
 
-    for (const [pal, mode, name] of [['mist', 'dark', '07-chip-mist-dark'], ['nebula', 'light', '08-chip-nebula-light'], ['galaxy', 'dark', '09-chip-galaxy-dark']]) {
+    for (const [pal, mode, name] of [['mist', 'dark', '07-chip-mist-dark'], ['mono', 'light', '08-chip-mono-light'], ['galaxy', 'dark', '09-chip-galaxy-dark']]) {
       await theme(pal, mode)
       c = await chip()
       check(`chip readable in ${pal} ${mode}`, !!c && c.tone === 'live' && c.w > 40, JSON.stringify(c))
@@ -162,18 +162,18 @@ const BLOCK = { key: '203.0.113.7', source: 'relay', why: 'token', count: 6, at:
     await scrollTo('[data-setting-row="remoteBlocked"]')
     await snap('11-settings-guard-galaxy-dark')
     await closeSettings()
-    await theme('nebula', 'dark')
+    await theme('mono', 'dark')
     await evaluate(`${S}.get('ui').settingsPage = 'remote'; ${S}.get('ui').settingsOpen = true`)
-    await waitFor(`!!document.querySelector('[data-settings-remote]')`, 8000, 'settings remote nebula')
+    await waitFor(`!!document.querySelector('[data-settings-remote]')`, 8000, 'settings remote mono')
     await sleep(600)
-    await snap('12-settings-phone-nebula-dark')
+    await snap('12-settings-phone-mono-dark')
     await closeSettings()
 
     await evaluate(`document.querySelector('[data-rail-collapse]')?.click()`)
     await sleep(700)
     c = await json(`(() => { const c = document.querySelector('[data-next-rail-foot] [data-phone-chip]'); return c ? { tone: c.dataset.tone, badge: c.querySelector('[data-phone-chip-badge]')?.textContent.trim() ?? null, text: !!c.querySelector('[data-phone-chip-text]'), w: c.getBoundingClientRect().width } : null })()`)
     check('collapsed rail keeps an icon chip with the blocked count badge', !!c && c.tone === 'alert' && c.badge === '1' && !c.text && c.w <= 34, JSON.stringify(c))
-    await snap('13-chip-collapsed-nebula-dark')
+    await snap('13-chip-collapsed-mono-dark')
     await evaluate(`${R}.blocked = []; true`)
     await sleep(400)
     c = await json(`(() => { const c = document.querySelector('[data-next-rail-foot] [data-phone-chip]'); return c ? { tone: c.dataset.tone, badge: c.querySelector('[data-phone-chip-badge]')?.textContent.trim() ?? null } : null })()`)

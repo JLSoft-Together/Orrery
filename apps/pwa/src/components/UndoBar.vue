@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
 
-const props = defineProps<{ text: string; action: string; ms?: number }>()
+const props = defineProps<{ text: string; action: string; ms?: number; testid?: string }>()
 const emit = defineEmits<{ undo: []; dismiss: [] }>()
 let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -14,9 +14,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="bar" role="status" data-testid="undo-bar">
+  <div class="bar" role="status" :data-testid="testid ?? 'undo-bar'">
     <span class="text">{{ text }}</span>
-    <button type="button" class="act" data-testid="undo-go" @click="emit('undo')">{{ action }}</button>
+    <button type="button" class="act" :data-testid="testid ? `${testid}-go` : 'undo-go'" @click="emit('undo')">{{ action }}</button>
   </div>
 </template>
 

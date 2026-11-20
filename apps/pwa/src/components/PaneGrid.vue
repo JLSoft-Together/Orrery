@@ -2,13 +2,14 @@
 import { ChevronDown, Ellipsis } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { ActivityItem } from '../lib/monitorModel'
 import { monogram, type WsGroup, type WsPane } from '../lib/workspaceModel'
 import PaneCard from './PaneCard.vue'
 
 type GridFilter = 'all' | 'running' | 'waiting'
 
-const props = defineProps<{ panes: WsPane[]; lost: boolean; viewOnly: boolean; selected?: string; groups?: WsGroup[] }>()
-const emit = defineEmits<{ open: [key: string]; actions: [key: string] }>()
+const props = defineProps<{ panes: WsPane[]; lost: boolean; viewOnly: boolean; selected?: string; groups?: WsGroup[]; recent?: (terminalId: string | null) => ActivityItem[]; answering?: string | null }>()
+const emit = defineEmits<{ open: [key: string]; actions: [key: string]; answer: [key: string, keys: string] }>()
 const { t } = useI18n()
 const filter = ref<GridFilter>('all')
 
@@ -42,7 +43,7 @@ const sections = computed(() => (props.groups ?? []).map((g) => ({ g, panes: g.p
       <div class="gbody"><div class="gin">
         <div class="grid">
           <div v-for="p in x.panes" :key="p.key" class="cell">
-            <PaneCard :pane="p" :lost="lost" :selected="selected === p.key" @open="emit('open', p.key)" />
+            <PaneCard :pane="p" :lost="lost" :selected="selected === p.key" :recent="recent?.(p.terminalId)" :can-answer="!lost && !viewOnly" :answering="!!answering" @open="emit('open', p.key)" @answer="(keys) => emit('answer', p.key, keys)" />
             <button type="button" class="more" :disabled="lost || viewOnly" :aria-label="t('paneActions.title')" :data-testid="`more-${p.key}`" @click="emit('actions', p.key)"><Ellipsis :size="18" :stroke-width="2" aria-hidden="true" /></button>
           </div>
         </div>
@@ -51,7 +52,7 @@ const sections = computed(() => (props.groups ?? []).map((g) => ({ g, panes: g.p
   </div>
   <TransitionGroup v-else tag="div" name="pane-list" class="grid" data-testid="ws-grid">
     <div v-for="p in shown" :key="p.key" class="cell">
-      <PaneCard :pane="p" :lost="lost" :selected="selected === p.key" @open="emit('open', p.key)" />
+      <PaneCard :pane="p" :lost="lost" :selected="selected === p.key" :recent="recent?.(p.terminalId)" :can-answer="!lost && !viewOnly" :answering="!!answering" @open="emit('open', p.key)" @answer="(keys) => emit('answer', p.key, keys)" />
       <button type="button" class="more" :disabled="lost || viewOnly" :aria-label="t('paneActions.title')" :data-testid="`more-${p.key}`" @click="emit('actions', p.key)"><Ellipsis :size="18" :stroke-width="2" aria-hidden="true" /></button>
     </div>
   </TransitionGroup>
@@ -82,8 +83,18 @@ const sections = computed(() => (props.groups ?? []).map((g) => ({ g, panes: g.p
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+.cell {
+  min-width: 0;
 }
 
 .sections {

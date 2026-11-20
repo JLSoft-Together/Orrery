@@ -1,7 +1,7 @@
 import type { WorkspaceDoc } from '../remote/machineData'
 import { parseRemoteInbox, type RemoteInbox } from '../../../../packages/shared/src/inbox'
 import { letterOf, toneOf } from './projectModel'
-import { providerOf, type MonitorSession, type Provider, type Rail } from './monitorModel'
+import { providerOf, type ActivityItem, type MonitorSession, type Provider, type Rail } from './monitorModel'
 
 export interface WsPane {
   key: string
@@ -160,12 +160,16 @@ export function findPane(tabs: WsTab[], key: string): { tab: WsTab; pane: WsPane
   return null
 }
 
-export function previewLines(pane: WsPane): string[] {
-  const lines: string[] = []
+export const PREVIEW_LINES = 3
+
+const WAIT_KEYS = new Set(['permission', 'question', 'other'])
+
+export function previewLines(pane: WsPane, recent: readonly ActivityItem[] = [], label: (item: ActivityItem) => string = (item) => item.detail ?? item.kind): string[] {
+  const lines = [...recent].sort((a, b) => a.at - b.at).map(label).filter((line) => line.trim() !== '')
   if (pane.tool) lines.push(`> ${pane.toolSummary ? `${pane.tool} ${pane.toolSummary}` : pane.tool}`)
-  if (pane.waitText) lines.push(pane.waitText)
+  if (pane.waitText && !WAIT_KEYS.has(pane.waitText)) lines.push(pane.waitText)
   if (pane.subagents > 0) lines.push(`+${pane.subagents}`)
-  return lines.slice(0, 3)
+  return lines.slice(-PREVIEW_LINES)
 }
 
 export function paneColorVar(provider: Provider): string {

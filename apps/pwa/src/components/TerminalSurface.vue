@@ -2,7 +2,8 @@
 import '@xterm/xterm/css/xterm.css'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useHubStore } from '../stores/hub'
 import type { PtyAttachment } from '../terminal/ptyStreams'
 import type { StickyModifiers } from '../terminal/modifiers'
@@ -10,12 +11,14 @@ import { TERM_FONT, TERM_THEME } from '../terminal/theme'
 import { bufferLines, resizeAnchored, TermPipe } from '../terminal/termPipe'
 import { allowXtermStyles, pruneXtermStyles } from '../terminal/xtermStyles'
 import { lineBytes, utf8 } from '../terminal/keys'
+import { loadMode, nextMode, readerText, saveMode, type ModeAction, type TermMode } from '../terminal/readMode'
 import { RemoteCommandError } from '../remote/types'
 
 export type SurfaceState = 'attaching' | 'live' | 'ended' | 'error'
 
 const props = defineProps<{ machine: string; sessionId: string | null; mods: StickyModifiers; direct: boolean }>()
-const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; typing: [typing: boolean] }>()
+const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; typing: [typing: boolean]; scrolled: [scrolled: boolean]; mode: [mode: TermMode] }>()
+const { t: tr } = useI18n()
 
 const hub = useHubStore()
 const host = ref<HTMLElement | null>(null)
@@ -27,8 +30,15 @@ const rxSum = ref(0)
 const claimed = ref(false)
 const term = shallowRef<Terminal | null>(null)
 const fit = shallowRef<FitAddon | null>(null)
+const mode = ref<TermMode>(loadMode(props.sessionId))
+const reader = ref<HTMLElement | null>(null)
+const readText = ref('')
+let readTimer: ReturnType<typeof setTimeout> | null = null
+let scrolledNow = false
 
 const BASE_FONT = 13
+const READ_REFRESH_MS = 200
+const AT_BOTTOM_PX = 24
 const USER_WINDOW_MS = 400
 const TYPING_HOLD_MS = 8000
 let attachment: PtyAttachment | null = null
@@ -61,9 +71,71 @@ function checksum(bytes: Uint8Array): void {
 
 const pipe = new TermPipe(() => term.value)
 
+function setScrolled(value: boolean): void {
+  if (value === scrolledNow) return
+  scrolledNow = value
+  emit('scrolled', value)
+}
+
+function readerAtBottom(): boolean {
+  const el = reader.value
+  return !el || el.scrollTop + el.clientHeight >= el.scrollHeight - AT_BOTTOM_PX
+}
+
+function refreshReader(): void {
+  readTimer = null
+  const t = term.value
+  const el = reader.value
+  if (!t || !el || mode.value !== 'read') return
+  const stick = readerAtBottom()
+  readText.value = readerText(t.buffer.active)
+  if (stick) void nextTick(() => {
+    el.scrollTop = el.scrollHeight
+  })
+}
+
+function scheduleReader(): void {
+  if (mode.value !== 'read' || readTimer) return
+  readTimer = setTimeout(refreshReader, READ_REFRESH_MS)
+}
+
+function onReaderScroll(): void {
+  setScrolled(!readerAtBottom())
+}
+
+function onTermScroll(): void {
+  const b = term.value?.buffer.active
+  if (mode.value === 'desk' && b) setScrolled(b.viewportY < b.baseY)
+}
+
+function changeMode(action: ModeAction): void {
+  const next = nextMode(mode.value, action)
+  if (next === mode.value) return
+  mode.value = next
+  saveMode(props.sessionId, next)
+  emit('mode', next)
+  setScrolled(false)
+  if (next === 'read') {
+    pipe.barrier(() => {
+      refreshReader()
+      void nextTick(() => {
+        if (reader.value) reader.value.scrollTop = reader.value.scrollHeight
+      })
+    })
+  } else {
+    readText.value = ''
+    relayout()
+  }
+}
+
+function toggleMode(): void {
+  changeMode('toggle')
+}
+
 function onOutput(bytes: Uint8Array): void {
   checksum(bytes)
   pipe.output(bytes)
+  scheduleReader()
 }
 
 function layoutFit(): void {
@@ -127,6 +199,7 @@ function endTyping(): void {
 
 function sendBytes(bytes: Uint8Array): void {
   if (!attachment) return
+  changeMode('input')
   beginTyping()
   streams().input(attachment, bytes, true)
 }
@@ -253,8 +326,11 @@ async function create(): Promise<void> {
   fit.value = f
   if (surface.value) surface.value.ccmLines = () => bufferLines(t)
   bindUserInput(t)
+  t.onScroll(onTermScroll)
+  t.onWriteParsed(scheduleReader)
   t.onData((data) => {
     if (!attachment || performance.now() - userAt > USER_WINDOW_MS) return
+    changeMode('input')
     beginTyping()
     streams().input(attachment, utf8(props.mods.apply(data)), true)
   })
@@ -272,6 +348,9 @@ watch(
   () => props.sessionId,
   async () => {
     await detach()
+    mode.value = loadMode(props.sessionId)
+    readText.value = ''
+    emit('mode', mode.value)
     pipe.reset(() => {})
     rxBytes.value = 0
     rxSum.value = 0
@@ -285,6 +364,7 @@ onBeforeUnmount(() => {
   disposed = true
   pipe.dispose()
   if (typingTimer) clearTimeout(typingTimer)
+  if (readTimer) clearTimeout(readTimer)
   observer?.disconnect()
   for (const off of cleanups) off()
   void detach()
@@ -293,12 +373,17 @@ onBeforeUnmount(() => {
   queueMicrotask(pruneXtermStyles)
 })
 
-defineExpose({ sendText, sendLine, sendKey, sendBytes, focusDirect: applyInputMode })
+defineExpose({ sendText, sendLine, sendKey, sendBytes, focusDirect: applyInputMode, mode })
 </script>
 
 <template>
   <div ref="surface" class="surface" data-testid="terminal" :data-state="state" :data-detail="detail ?? ''" :data-rx-bytes="rxBytes" :data-rx-sum="rxSum" :data-claimed="claimed ? '1' : '0'">
-    <div ref="host" class="host" />
+    <div ref="host" class="host" :class="{ hidden: mode === 'read' }" />
+    <pre v-if="mode === 'read'" ref="reader" class="reader mono" data-testid="term-reader" tabindex="0" @scroll.passive="onReaderScroll">{{ readText }}</pre>
+    <button type="button" class="mode" :aria-label="tr('term.modeLabel')" :aria-pressed="mode === 'read'" :data-mode="mode" :title="mode === 'read' ? tr('term.modeReadHint') : tr('term.modeDeskHint')" data-testid="term-mode" @click="toggleMode">
+      <span :class="{ on: mode === 'desk' }">{{ tr('term.modeDesk') }}</span>
+      <span :class="{ on: mode === 'read' }">{{ tr('term.modeRead') }}</span>
+    </button>
   </div>
 </template>
 
@@ -317,6 +402,56 @@ defineExpose({ sendText, sendLine, sendKey, sendBytes, focusDirect: applyInputMo
   padding: 6px 4px 0 6px;
   overflow: auto;
   overscroll-behavior: contain;
+}
+
+.host.hidden {
+  visibility: hidden;
+}
+
+.reader {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 6px 10px 44px 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ccm-term-ink);
+  background: var(--ccm-term-bg);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.mode {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+  min-height: 32px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--ccm-line-strong);
+  background: var(--ccm-surface);
+  color: var(--ccm-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mode span {
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  border-radius: calc(var(--radius-control) - 2px);
+}
+
+.mode span.on {
+  background: var(--ccm-accent);
+  color: var(--ccm-on-accent);
 }
 
 .surface :deep(.xterm-viewport) {

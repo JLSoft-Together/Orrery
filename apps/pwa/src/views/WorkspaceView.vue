@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CircleHelp, Ellipsis, LayoutGrid, Plus, Rows3, Send, SquareTerminal } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LinkChip from '../components/LinkChip.vue'
 import NewPaneSheet from '../components/NewPaneSheet.vue'
@@ -13,8 +13,9 @@ import SendSheet from '../components/SendSheet.vue'
 import UndoBar from '../components/UndoBar.vue'
 import { undoOffer } from '../lib/closeUndo'
 import { errorCode, reopenPane } from '../lib/paneActions'
-import { parseSessions } from '../lib/monitorModel'
-import { closedCount, monogram, parseWorkspace } from '../lib/workspaceModel'
+import { parseActivity, parseSessions, type ActivityItem } from '../lib/monitorModel'
+import { ANSWER_UNDO_MS, createAnswerFlow } from '../lib/paneAnswer'
+import { closedCount, findPane, monogram, parseWorkspace, type WsPane } from '../lib/workspaceModel'
 import { RemoteCommandError } from '../remote/types'
 import { navigate } from '../router'
 import { useHubStore } from '../stores/hub'
@@ -109,6 +110,52 @@ async function undo(): Promise<void> {
   }
 }
 
+const notice = ref<string | null>(null)
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+
+function say(text: string): void {
+  notice.value = text
+  if (noticeTimer) clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(() => {
+    notice.value = null
+  }, 4000)
+}
+
+function readPane(key: string): WsPane | null {
+  const fresh = parseWorkspace(hub.viewOf(props.machine).workspace, parseSessions(hub.viewOf(props.machine).snapshot))
+  return findPane(fresh, key)?.pane ?? null
+}
+
+const answers = createAnswerFlow({
+  now: () => Date.now(),
+  dataAt: () => (view.value.stale ? 0 : (view.value.updatedAt ?? 0)),
+  refresh: async () => {
+    await Promise.all([hub.command(props.machine, 'ws.get'), hub.refresh(props.machine)])
+  },
+  read: readPane,
+  send: async (target, keys) => {
+    await hub.command(props.machine, 'ws.keys', { paneKey: target.key, keys, since: target.since ?? 0 })
+  },
+})
+
+function recentOf(terminalId: string | null): ActivityItem[] {
+  return terminalId ? parseActivity(view.value.snapshot?.activity, terminalId) : []
+}
+
+async function answer(key: string, keys: string): Promise<void> {
+  const target = readPane(key)
+  if (!target || lost.value || viewOnly.value) return
+  notice.value = null
+  const result = await answers.press(target, keys)
+  if (result.outcome === 'changed') say(t('workspace.ask.changed'))
+  else if (result.outcome === 'failed') say(failText(result.error))
+}
+
+onBeforeUnmount(() => {
+  answers.dispose()
+  if (noticeTimer) clearTimeout(noticeTimer)
+})
+
 async function send(text: string): Promise<void> {
   if (!pane.value) return
   busy.value = true
@@ -151,7 +198,7 @@ async function send(text: string): Promise<void> {
       <template v-if="!grid">
         <PaneChips :panes="panes" :current="pane?.key" :groups="tab?.groups" @pick="paneKey = $event" />
         <div v-if="pane" class="focus" data-testid="ws-focus" :data-pane="pane.key" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
-          <PaneCard :pane="pane" :lost="lost" large :selected="selected === pane.key" @open="open(pane.key)" />
+          <PaneCard :pane="pane" :lost="lost" large :selected="selected === pane.key" :recent="recentOf(pane.terminalId)" :can-answer="!lost && !viewOnly" :answering="!!answers.pending.value" @open="open(pane.key)" @answer="(keys) => answer(pane!.key, keys)" />
           <div class="actions">
             <button type="button" class="btn btn-primary full" :disabled="!pane.canAttach" data-testid="ws-open" @click="open(pane.key)"><SquareTerminal :size="20" :stroke-width="2" aria-hidden="true" />{{ t('workspace.openFull') }}</button>
             <button type="button" class="btn sendbtn" :disabled="lost || viewOnly" :aria-label="t('send.title')" data-testid="ws-send" @click="((sendOpen = true), (fail = null))"><Send :size="20" :stroke-width="2" aria-hidden="true" /></button>
@@ -161,13 +208,15 @@ async function send(text: string): Promise<void> {
         </div>
       </template>
 
-      <PaneGrid v-else :panes="panes" :groups="tab?.groups" :lost="lost" :view-only="viewOnly" :selected="selected" @open="open" @actions="openActions" />
+      <PaneGrid v-else :panes="panes" :groups="tab?.groups" :lost="lost" :view-only="viewOnly" :selected="selected" :recent="recentOf" :answering="answers.pending.value?.paneKey ?? null" @open="open" @actions="openActions" @answer="answer" />
 
       <button v-if="tab?.cwd && !viewOnly" type="button" class="fab btn btn-primary" :disabled="lost" data-testid="ws-new" @click="newOpen = true"><Plus :size="20" :stroke-width="2.2" aria-hidden="true" />{{ t('workspace.newPane') }}</button>
     </template>
 
     <PaneActionsSheet v-if="actionsOpen && tab && pane" :machine="machine" :tab="tab" :tabs="tabs" :pane="pane" :closed="closed" @close="actionsOpen = false" @closed-pane="undoOpen = true" />
-    <Transition name="undo"><UndoBar v-if="undoOpen" :text="t('paneActions.closedToast')" :action="t('paneActions.undo')" @undo="undo" @dismiss="undoOpen = false" /></Transition>
+    <Transition name="undo"><UndoBar v-if="undoOpen && !answers.pending.value" :text="t('paneActions.closedToast')" :action="t('paneActions.undo')" @undo="undo" @dismiss="undoOpen = false" /></Transition>
+    <Transition name="undo"><UndoBar v-if="answers.pending.value" :key="answers.pending.value.seq" :text="t('workspace.ask.sent')" :action="t('workspace.ask.undo')" :ms="ANSWER_UNDO_MS" testid="answer-undo" @undo="answers.undo" @dismiss="() => {}" /></Transition>
+    <p v-if="notice" class="ask-notice" role="status" data-testid="answer-notice">{{ notice }}</p>
     <SendSheet v-if="sendOpen && pane" :title="t('send.titleFor', { name: pane.title })" :busy="busy" :error="fail" @send="send" @close="sendOpen = false" />
     <NewPaneSheet v-if="newOpen && tab?.cwd" :machine="machine" :cwd="tab.cwd" @close="newOpen = false" @opened="(key) => key && (paneKey = key)" />
   </section>
@@ -204,6 +253,22 @@ async function send(text: string): Promise<void> {
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--ccm-waiting) 10%, var(--ccm-surface));
   color: var(--ccm-waiting);
+  font-weight: 600;
+}
+
+.ask-notice {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--ccm-tabbar-h) + var(--ccm-tabbar-gap) + 78px + var(--ccm-safe-bottom));
+  z-index: 6;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid color-mix(in srgb, var(--ccm-waiting) 40%, transparent);
+  background: color-mix(in srgb, var(--ccm-waiting) 10%, var(--ccm-surface));
+  color: var(--ccm-ink);
   font-weight: 600;
 }
 

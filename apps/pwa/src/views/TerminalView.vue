@@ -29,6 +29,8 @@ const sheet = ref(false)
 const viewer = ref(false)
 const toast = ref<string | null>(null)
 const waitedOut = ref(false)
+const scrolled = ref(false)
+const askOpen = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 const waitTimer = setTimeout(() => {
   waitedOut.value = true
@@ -81,6 +83,11 @@ async function answer(keys: string): Promise<void> {
   }
 }
 
+function onScrolled(value: boolean): void {
+  scrolled.value = value
+  if (!value) askOpen.value = false
+}
+
 function toggleDirect(): void {
   direct.value = !direct.value
 }
@@ -99,6 +106,8 @@ watch(
   () => {
     mods.reset()
     direct.value = false
+    scrolled.value = false
+    askOpen.value = false
   },
 )
 
@@ -141,9 +150,9 @@ onBeforeUnmount(() => {
       </header>
       <p v-if="viewOnly" class="banner view-only" role="status" data-testid="view-only"><Eye :size="16" :stroke-width="2.2" aria-hidden="true" />{{ t('term.viewOnly') }}</p>
       <p v-else-if="!online" class="banner offline" role="status" data-testid="term-offline"><Link2Off :size="16" :stroke-width="2.2" aria-hidden="true" />{{ t('term.offline') }}</p>
-      <PermissionBar v-if="found?.pane.asked" :text="found.pane.waitText" :enabled="online && !viewOnly" @keys="answer" />
+      <PermissionBar v-if="found?.pane.asked" :text="found.pane.waitText" :enabled="online && !viewOnly" :collapsed="scrolled && !askOpen" @keys="answer" @expand="askOpen = true" />
       <div class="stage">
-        <TerminalSurface v-if="found?.pane.canAttach" ref="surface" :key="found.pane.sessionId ?? ''" :machine="machine" :session-id="found.pane.sessionId" :mods="mods" :direct="direct" @state="onState" />
+        <TerminalSurface v-if="found?.pane.canAttach" ref="surface" :key="found.pane.sessionId ?? ''" :machine="machine" :session-id="found.pane.sessionId" :mods="mods" :direct="direct" @state="onState" @scrolled="onScrolled" />
         <p v-if="overlay" class="overlay" role="status" data-testid="term-overlay"><component :is="overlay.icon" :size="18" :stroke-width="2.2" aria-hidden="true" />{{ overlay.text }}</p>
         <p v-if="toast" class="toast" role="status" data-testid="term-toast">{{ toast }}</p>
       </div>

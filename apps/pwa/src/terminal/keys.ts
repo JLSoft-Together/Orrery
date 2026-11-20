@@ -1,4 +1,4 @@
-export type KeyId = 'esc' | 'tab' | 'shiftTab' | 'ctrlC' | 'up' | 'down' | 'left' | 'right' | 'enter'
+export type KeyId = 'esc' | 'tab' | 'shiftTab' | 'ctrlC' | 'ctrlD' | 'ctrlL' | 'ctrlR' | 'up' | 'down' | 'left' | 'right' | 'enter'
 
 export interface KeyEvent {
   key: KeyId
@@ -11,6 +11,9 @@ const BASE: Record<KeyId, string> = {
   tab: '\t',
   shiftTab: '\x1b[Z',
   ctrlC: '\x03',
+  ctrlD: '\x04',
+  ctrlL: '\x0c',
+  ctrlR: '\x12',
   up: '\x1b[A',
   down: '\x1b[B',
   right: '\x1b[C',
@@ -27,7 +30,7 @@ export function keySequence(event: KeyEvent): string {
     return `\x1b[1;${mod}${arrow}`
   }
   const base = BASE[event.key]
-  return event.alt && event.key !== 'ctrlC' ? `\x1b${base}` : base
+  return event.alt && !event.key.startsWith('ctrl') ? `\x1b${base}` : base
 }
 
 export function lineBytes(text: string, bracketed: boolean): string {

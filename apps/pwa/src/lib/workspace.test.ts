@@ -52,6 +52,19 @@ describe('workspace model', () => {
     const [p1] = parseWorkspace(doc, [session({ tool: 'Bash', toolSummary: 'npm test' })])[0]!.panes
     expect(previewLines(p1!)).toEqual(['> Bash npm test', '+2'])
   })
+
+  it('keeps only the last 3 preview lines, oldest first, and drops raw wait reason keys', () => {
+    const [p1, p2] = parseWorkspace(doc, [session({ tool: 'Bash', toolSummary: 'npm test' })])[0]!.panes
+    const recent = [
+      { id: 'c', kind: 'tool.started', at: 30, detail: 'Edit' },
+      { id: 'b', kind: 'tool.started', at: 20, detail: 'Read' },
+      { id: 'a', kind: 'tool.started', at: 10, detail: 'Grep' },
+    ]
+    expect(previewLines(p1!, recent)).toEqual(['Edit', '> Bash npm test', '+2'])
+    expect(previewLines({ ...p1!, tool: null, subagents: 0 }, recent)).toEqual(['Grep', 'Read', 'Edit'])
+    expect(previewLines({ ...p2!, waitText: 'permission', tool: null, subagents: 0 })).toEqual([])
+    expect(previewLines({ ...p2!, waitText: 'Chạy npm test?', tool: null, subagents: 0 }, [], (i) => i.kind)).toEqual(['Chạy npm test?'])
+  })
 })
 
 describe('viewer model', () => {

@@ -1,7 +1,8 @@
 import type { MonitorSnapshot } from '../remote/monitorReducer'
-import type { ChatLastEntry } from './chatModel'
+import type { Route } from '../router'
+import { chatSupported, type ChatLastEntry } from './chatModel'
 import type { Provider, Rail } from './monitorModel'
-import { baseName, type WsPane, type WsTab } from './workspaceModel'
+import { baseName, findPane, type WsPane, type WsTab } from './workspaceModel'
 
 export interface LiveInfo {
   at: number | null
@@ -122,4 +123,10 @@ export function shortAgo(ms: number, t: (key: string, values?: Record<string, un
   if (ms < 3_600_000) return t('duration.minutes', { n: Math.floor(ms / 60_000) })
   if (ms < 86_400_000) return t('duration.hours', { n: Math.floor(ms / 3_600_000) })
   return t('duration.days', { n: Math.floor(ms / 86_400_000) })
+}
+
+export function preferChat(target: Route, hello: Parameters<typeof chatSupported>[0], tabs: WsTab[]): Route {
+  if (target.name !== 'workspace' || !target.pane || !chatSupported(hello)) return target
+  const found = findPane(tabs, target.pane)
+  return found && canChatPane(found.pane) ? { name: 'chat', machine: target.machine, pane: target.pane } : target
 }

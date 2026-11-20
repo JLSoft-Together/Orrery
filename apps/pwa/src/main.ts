@@ -4,7 +4,8 @@ import App from './App.vue'
 import { createAppI18n } from './i18n'
 import { resolveLocale, startAppearance } from './lib/appearance'
 import { createRuntime } from './runtime'
-import { startRouter } from './router'
+import { readPushOpen } from './lib/deepLink'
+import { route, startRouter } from './router'
 import { useHubStore } from './stores/hub'
 import { useLockStore } from './stores/lock'
 import { usePrefsStore } from './stores/prefs'
@@ -38,6 +39,7 @@ const appearance = startAppearance(() => prefs.local)
 watch(() => prefs.local.language, applyLanguage)
 watch(() => [prefs.local.theme, prefs.local.palette, prefs.local.reduceTransparency], appearance.refresh)
 startRouter()
+readPushOpen(location.search, route.value)
 app.mount('#app')
 
 if (__DEV_TOOLS__) void import('./dev/devtools').then((m) => m.startDevtools())

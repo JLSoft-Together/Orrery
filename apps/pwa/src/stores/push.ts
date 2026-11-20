@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, watch } from 'vue'
 import { browserPush, currentPermission, dropSubscription, ensureSubscription, pushSupport, readEnv, registerFields, validKey, type PushBrowser, type PushEnv, type PushPermission, type PushSupport } from '../push/webPush'
+import { preferChat } from '../lib/chatInbox'
+import { parseSessions } from '../lib/monitorModel'
+import { parseWorkspace } from '../lib/workspaceModel'
 import { navigate, parsePath } from '../router'
 import { useHubStore } from './hub'
 import { usePrefsStore } from './prefs'
@@ -98,7 +101,13 @@ export const usePushStore = defineStore('push', () => {
     const base = deps.base.replace(/\/$/, '')
     const path = d.url.startsWith(base) ? d.url.slice(base.length) : d.url
     const target = parsePath(path)
-    if (target.name !== 'notfound') navigate(target)
+    if (target.name === 'notfound') return
+    if (target.name === 'workspace' && target.pane) {
+      const view = hub.viewOf(target.machine)
+      navigate(preferChat(target, view.hello, parseWorkspace(view.workspace, parseSessions(view.snapshot))))
+      return
+    }
+    navigate(target)
   }
 
   function start(next: PushDeps = {}): void {

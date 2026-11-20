@@ -58,7 +58,7 @@ async function onClick(event) {
     await client.focus()
     return
   }
-  await self.clients.openWindow(url)
+  await self.clients.openWindow(url.includes('/p/') ? `${url}?from=push` : url)
 }
 
 self.addEventListener('push', (event) => event.waitUntil(onPush(event)))

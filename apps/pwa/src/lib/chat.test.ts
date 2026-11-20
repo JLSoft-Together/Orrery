@@ -4,7 +4,8 @@ import { RemoteCommandError, type JsonMap } from '../remote/types'
 import { MachineData } from '../remote/machineData'
 import { ChatFeed, type FeedState } from './chatFeed'
 import { cachedLog, cacheLog, forgetLogs } from './chatCache'
-import { chatRows, filterRows, liveOf, shortAgo, sortRows } from './chatInbox'
+import { chatRows, filterRows, liveOf, preferChat, shortAgo, sortRows } from './chatInbox'
+import { clearPushOpen, pendingPushOpen, readPushOpen } from './deepLink'
 import { applyItems, applyPage, chatSupported, chatView, emptyLog, fileTotals, parseChatItem, parseChatLast, parseChatPage, parseMenu, toolCat, toolParts } from './chatModel'
 import { settleOutbox } from './chatOutbox'
 import { parseInline, parseMarkdown, safeHref } from './markdown'
@@ -260,6 +261,43 @@ describe('chat inbox', () => {
     const items = [parseChatItem({ ...me('u', 1, 'Run the tests'), at: 2000 })!]
     expect(settleOutbox(out, items, 5000).map((m) => m.id)).toEqual(['b', 'c'])
     expect(settleOutbox(out, items, 70_000).map((m) => m.id)).toEqual(['b'])
+  })
+})
+
+describe('deep link to chat', () => {
+  const tabs = parseWorkspace(
+    {
+      tabs: [
+        {
+          key: 'tab1',
+          panes: [
+            { key: 'p1', kind: 'term', preset: 'claude', title: 'a', rail: 'idle', terminalId: 't1' },
+            { key: 'p3', kind: 'term', preset: 'shell', title: 'sh', rail: 'idle', terminalId: 't3' },
+          ],
+        },
+      ],
+    },
+    [],
+  )
+  const ws = (pane: string) => ({ name: 'workspace' as const, machine: 'm', pane })
+
+  it('opens the chat for agent panes only when the desktop has chat', () => {
+    expect(preferChat(ws('p1'), { chat: 1 }, tabs)).toEqual({ name: 'chat', machine: 'm', pane: 'p1' })
+    expect(preferChat(ws('p1'), {}, tabs)).toEqual(ws('p1'))
+    expect(preferChat(ws('p1'), null, tabs)).toEqual(ws('p1'))
+    expect(preferChat(ws('p3'), { chat: 1 }, tabs)).toEqual(ws('p3'))
+    expect(preferChat(ws('zz'), { chat: 1 }, tabs)).toEqual(ws('zz'))
+    expect(preferChat({ name: 'workspace', machine: 'm' }, { chat: 1 }, tabs)).toEqual({ name: 'workspace', machine: 'm' })
+  })
+
+  it('keeps a push open request for its pane until cleared', () => {
+    readPushOpen('?from=push', ws('p1'))
+    expect(pendingPushOpen('m', 'p1')).toBe(true)
+    expect(pendingPushOpen('m', 'p2')).toBe(false)
+    clearPushOpen()
+    expect(pendingPushOpen('m', 'p1')).toBe(false)
+    readPushOpen('', ws('p1'))
+    expect(pendingPushOpen('m', 'p1')).toBe(false)
   })
 })
 

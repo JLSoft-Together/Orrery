@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { IPAD, PHONE, wait } from './ctx.mjs'
 import { go } from './ui-steps.mjs'
 
-export const CHAT_STEPS = 8
+export const CHAT_STEPS = 9
 
 async function after(peer, from, match, ms = 8000) {
   const end = Date.now() + ms
@@ -183,6 +183,30 @@ export async function chatSteps(c, page, peer) {
     await byId(page, 'terminal-view').waitFor({ timeout: 8000 })
     await wait(300)
     if (peer.events.slice(from).some((e) => /^chat\./.test(e.ev ?? ''))) throw new Error('chat command sent to an old desktop')
+    await go(page, '/app/')
+    await byId(page, 'machines-view').waitFor()
+  })
+
+  await step('Chat: a push or inbox open of a Claude pane lands in the chat, a shell pane and an old desktop stay on the terminal', async () => {
+    const open = (url) => page.evaluate((u) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'orrery-open', url: u } })), url)
+    const at = (want) => page.waitForFunction((w) => location.pathname === w, want, { timeout: 5000 })
+    peer.send('chatoff')
+    await go(page, `/app/m/${id}`)
+    await reload(page)
+    await page.waitForSelector('[data-testid="chat-home"][data-chat="0"]', { timeout: 10000 })
+    await open(`/app/m/${id}/p/p1`)
+    await at(`/app/m/${id}/p/p1`)
+    peer.send('chat')
+    await go(page, `/app/m/${id}`)
+    await reload(page)
+    await page.waitForSelector('[data-testid="chat-home"][data-chat="1"]', { timeout: 10000 })
+    await open(`/app/m/${id}/p/p3`)
+    await at(`/app/m/${id}/p/p3`)
+    await go(page, `/app/m/${id}`)
+    await page.waitForSelector('[data-testid="chat-home"][data-chat="1"]', { timeout: 10000 })
+    await open(`/app/m/${id}/p/p1`)
+    await at(`/app/m/${id}/c/p1`)
+    await byId(page, 'chat-view').waitFor({ timeout: 8000 })
     await go(page, '/app/')
     await byId(page, 'machines-view').waitFor()
   })

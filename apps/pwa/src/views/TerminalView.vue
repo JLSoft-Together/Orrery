@@ -8,6 +8,8 @@ import PaneSwitchSheet from '../components/PaneSwitchSheet.vue'
 import PermissionBar from '../components/PermissionBar.vue'
 import StatusChip from '../components/StatusChip.vue'
 import TerminalSurface, { type SurfaceState } from '../components/TerminalSurface.vue'
+import { preferChat } from '../lib/chatInbox'
+import { clearPushOpen, pendingPushOpen } from '../lib/deepLink'
 import { parseSessions } from '../lib/monitorModel'
 import { findPane, parseWorkspace } from '../lib/workspaceModel'
 import { RemoteCommandError } from '../remote/types'
@@ -112,6 +114,17 @@ function pick(key: string): void {
 function toWorkspace(): void {
   navigate({ name: 'workspace', machine: props.machine }, { replace: true })
 }
+
+watch(
+  () => [view.value.hello, view.value.workspace] as const,
+  ([hello, workspace]) => {
+    if (!pendingPushOpen(props.machine, props.pane) || !hello || !workspace) return
+    clearPushOpen()
+    const target = preferChat({ name: 'workspace', machine: props.machine, pane: props.pane }, hello, tabs.value)
+    if (target.name === 'chat') navigate(target, { replace: true })
+  },
+  { immediate: true },
+)
 
 watch(
   () => props.pane,

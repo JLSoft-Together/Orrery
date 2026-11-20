@@ -6,6 +6,7 @@ import InboxSheet from '../components/InboxSheet.vue'
 import LinkChip from '../components/LinkChip.vue'
 import PageBar from '../components/PageBar.vue'
 import SessionRow from '../components/SessionRow.vue'
+import { preferChat } from '../lib/chatInbox'
 import { inboxRows, type InboxRow } from '../lib/inboxModel'
 import { filterCounts, groupByState, matchesFilter, parseSessions, sortSessions, type MonitorFilter, type Rail } from '../lib/monitorModel'
 import { projectRows } from '../lib/projectModel'
@@ -69,7 +70,9 @@ function answer(id: string): void {
 
 function openInbox(row: InboxRow): void {
   inboxOpen.value = false
-  navigate(row.terminalId ? { name: 'session', machine: props.machine, terminal: row.terminalId } : { name: 'workspace', machine: props.machine, pane: row.paneKey })
+  const v = view.value
+  const chat = preferChat({ name: 'workspace', machine: props.machine, pane: row.paneKey }, v.hello, parseWorkspace(v.workspace, parseSessions(v.snapshot)))
+  navigate(chat.name === 'chat' ? chat : row.terminalId ? { name: 'session', machine: props.machine, terminal: row.terminalId } : chat)
 }
 
 function megabytes(bytes: number): string {

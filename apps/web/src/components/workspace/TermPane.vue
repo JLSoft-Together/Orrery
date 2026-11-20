@@ -19,6 +19,8 @@ import type { MenuEntry } from '../../lib/menu'
 import { PANE_LAYOUT_MENU } from '../../lib/layoutPaneMenu'
 import { newlineFor } from '../../lib/termKeys'
 import { installReplacementIme } from '../../lib/termIme'
+import { progressPct } from '../../lib/agentStatus'
+import { meterState } from '../../lib/paneV93'
 import { headMode, isHeadBlank, processChip, STATE_BADGE, statusWordShown, suggestCompact, zoomKeys } from '../../lib/paneHead'
 import { contextPctOf } from '../../lib/provider'
 import { retireOverlay } from '../../lib/motion'
@@ -335,7 +337,19 @@ const chipKey = computed(() => (sessionChip.value ? `s:${sessionChip.value.state
 const agentStatus = useAgentStatusStore()
 const workflowStatus = computed(() => (isShell.value ? undefined : agentStatus.statusOf(props.pane.key)))
 const peer = computed(() => (props.pane.state === 'running' ? info.peerOf(props.pane) : null))
-const peerBadge = computed(() => !!sessionChip.value && needsUser(sessionChip.value.state))
+const peerBadge = computed(() => !!sessionChip.value && (isNext.value || needsUser(sessionChip.value.state)))
+const workflowText = computed(() => {
+  const w = workflowStatus.value
+  if (!w) return ''
+  const pct = progressPct(w)
+  return pct === null ? w.phase : `${w.phase} ${pct}%`
+})
+const chipTitle = computed(() => {
+  const label = sessionChip.value?.label ?? ''
+  const extra = peerBadge.value ? [peer.value ? peerTip.value : coordinating.value?.label] : []
+  if (isNext.value && workflowStatus.value) extra.push([workflowStatus.value.phase, workflowStatus.value.note].filter(Boolean).join(': '))
+  return [label, ...extra].filter(Boolean).join('\n')
+})
 const coordinating = computed(() => (props.pane.state === 'running' ? info.coordinatingOf(props.pane) : null))
 const peerTip = computed(() => [...new Set([peer.value?.label ?? '', ...info.peerLines(props.pane), peer.value?.action ?? ''].filter(Boolean))].join('\n'))
 const peerAria = computed(() => (peer.value ? (peer.value.action ? t('peerWs.chipLabel', { text: peer.value.label, action: peer.value.action }) : peer.value.label) : ''))
@@ -367,6 +381,10 @@ const compactPct = computed(() => Math.round(context.value?.pct ?? 0))
 const isClaude = computed(() => preset.value === 'claude')
 const orbitAgents = computed(() => (isClaude.value && props.pane.terminalId && session.value ? agents.byTerminal[props.pane.terminalId] : undefined))
 const meterOn = computed(() => !isShell.value && props.pane.state === 'running')
+const meterOver = computed(() => meterState(mainAgent.value?.contextTokens, settings.contextWarnTokens)?.tone === 'over')
+const GAUGE_FROM_PCT = 70
+const REVEAL = 'opacity-0 transition-opacity duration-(--ccm-dur-fast) group-hover/head:opacity-100 group-focus-within/head:opacity-100 focus-visible:opacity-100'
+const gaugeShown = computed(() => !isNext.value || ((context.value?.pct ?? 0) >= GAUGE_FROM_PCT && !compactSuggested.value))
 const canMeterCompact = computed(() => compactFlow.stateOf(props.pane) === 'ready')
 
 const barSlot = inject<Ref<HTMLElement | null>>('ccm-pane-bar', ref(null))
@@ -389,6 +407,7 @@ const moreEntries = computed<MenuEntry[]>(() => {
   const url = devUrls.value[devUrls.value.length - 1]
   if (url) out.push({ id: 'dev', label: t('workspace.devServer.open', { host: devUrlLabel(url) }), icon: Globe })
   if (compactSuggested.value) out.push({ id: 'compact', label: t('workspace.paneHead.compact.label', { pct: compactPct.value }), icon: TriangleAlert, hint: t('workspace.compact.hint') })
+  if (isNext.value && peer.value?.other) out.push({ id: 'peer', label: peerAria.value, icon: Mail })
   out.push({ separator: true })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
   if (isShell.value) out.push({ id: 'scan', label: t('workspace.termScan.button'), icon: ScanSearch, hint: t('workspace.termScan.hint') })
@@ -416,6 +435,7 @@ function pickMore(id: string): void {
     const url = devUrls.value[devUrls.value.length - 1]
     if (url) emit('openLink', { kind: 'url', url }, {})
   } else if (id === 'compact') compactFlow.start(props.pane.key)
+  else if (id === 'peer') info.goToPeer(peer.value?.other)
   else if (id === 'scripts') emit('scripts')
   else if (id === 'scan') scanErrors()
   else if (id === 'queue') queueButton.value?.open(more.value?.button?.getBoundingClientRect())
@@ -1269,7 +1289,7 @@ onBeforeUnmount(() => {
       :is="isNext ? PaneHeader : 'header'"
       v-bind="isNext ? { active: multi && focused } : {}"
       class="relative select-none"
-      :class="[isNext ? 'ccm-next-head' : 'flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs @max-[420px]:gap-1', multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', !isNext && multi && focused ? 'ccm-pane-head-on' : '']"
+      :class="[isNext ? 'ccm-next-head group/head' : 'flex h-7 min-w-0 items-center gap-1.5 px-1 text-xs @max-[420px]:gap-1', multi ? 'cursor-grab' : '', inBar ? 'max-w-full' : '', !isNext && multi && focused ? 'ccm-pane-head-on' : '']"
       :title="multi ? t('workspace.drag.paneHint', { key: isMac ? '⌘' : 'Ctrl' }) : inBar ? headTip : undefined"
       :data-pane-grip="multi || undefined"
       :data-pane-of="pane.key"
@@ -1303,6 +1323,7 @@ onBeforeUnmount(() => {
         <span
           v-if="diff"
           class="inline-flex shrink-0 items-center gap-1 text-2xs font-medium tabular-nums @max-[480px]:hidden"
+          :class="isNext ? REVEAL : ''"
           :title="t('workspace.activity.diffTitle', { files: diff.files, ins: diff.insertions, del: diff.deletions }, diff.files)"
           data-pane-diff
           data-pane-chip
@@ -1317,11 +1338,12 @@ onBeforeUnmount(() => {
         </Transition>
       </Teleport>
       <div class="ml-auto flex min-w-0 items-center gap-1">
-        <RemotePhoneChip :pane-key="pane.key" />
+        <span v-if="isNext" class="inline-flex min-w-0 items-center empty:hidden" :class="REVEAL" data-pane-reveal><RemotePhoneChip :pane-key="pane.key" /></span>
+        <RemotePhoneChip v-else :pane-key="pane.key" />
         <ClashChip v-if="isNext && pane.terminalId" :terminal-id="pane.terminalId" :can-worktree="!!cwd && pane.state === 'running'" @worktree="wtAnchor || toggleWorktrees()" />
-        <SubagentOrbit v-if="isClaude" :agents="orbitAgents" data-pane-chip />
-        <ContextGauge v-if="context" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
-        <ContextTokens class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />
+        <SubagentOrbit v-if="isClaude" :agents="orbitAgents" :flat="isNext" data-pane-chip />
+        <ContextGauge v-if="context && gaugeShown" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
+        <ContextTokens v-if="!isNext" class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />
         <button
           v-if="cwd && pane.state === 'running'"
           ref="wtButton"
@@ -1341,6 +1363,7 @@ onBeforeUnmount(() => {
           v-if="canAttach"
           type="button"
           class="relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-pressed:bg-fill aria-pressed:text-ink"
+          :class="isNext ? `${REVEAL} aria-pressed:opacity-100` : ''"
           :title="attachLabel"
           :aria-label="attachLabel"
           :aria-pressed="attachOpen"
@@ -1360,6 +1383,7 @@ onBeforeUnmount(() => {
           v-if="canTools"
           type="button"
           class="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink"
+          :class="isNext ? REVEAL : ''"
           :title="t('sessionTools.menu')"
           :aria-label="t('sessionTools.menu')"
           data-no-drag
@@ -1408,7 +1432,7 @@ onBeforeUnmount(() => {
               :key="chipKey"
               class="inline-flex h-5 max-w-full min-w-6 items-center gap-1 rounded-inner px-1.5 text-2xs font-medium whitespace-nowrap"
               :class="[sessionChip.meta.text, sessionChip.meta.chip]"
-              :title="peerBadge && peer ? `${sessionChip.label}\n${peerTip}` : sessionChip.label"
+              :title="chipTitle"
               :data-pane-status="sessionChip.status"
               :data-subagents="sessionChip.subagents || undefined"
             >
@@ -1418,11 +1442,16 @@ onBeforeUnmount(() => {
                   <span v-if="peerBadge && peer" class="absolute -top-1 -right-1 inline-flex rounded-full bg-surface p-px" aria-hidden="true" :data-pane-peer-badge="peer.dir">
                     <component :is="peer.glyph" :size="8" :class="peer.tone" />
                   </span>
+                  <span v-else-if="peerBadge && coordinating" class="absolute -top-1 -right-1 inline-flex rounded-full bg-surface p-px" aria-hidden="true" :data-pane-coordinating-badge="coordinating.n">
+                    <Network :size="8" class="text-ink-faint" />
+                  </span>
                 </Transition>
               </span>
               <span class="min-w-0 truncate" :class="statusWordShown(sessionChip.state) ? '@max-[460px]:sr-only' : 'sr-only'">{{ sessionChip.label }}</span>
               <span v-if="peerBadge && peer" class="sr-only">, {{ peer.label }}</span>
+              <span v-else-if="peerBadge && coordinating" class="sr-only">, {{ coordinating.label }}</span>
               <span v-if="activityText" class="max-w-[22ch] min-w-0 truncate font-normal text-ink-muted tabular-nums @max-[620px]:hidden" data-pane-activity>· {{ activityText }}</span>
+              <span v-if="isNext && workflowText" class="max-w-[16ch] min-w-0 truncate font-normal text-ink-muted tabular-nums @max-[520px]:hidden" data-agent-status="merged">- {{ workflowText }}</span>
             </span>
             <span
               v-else-if="procChip"
@@ -1469,8 +1498,8 @@ onBeforeUnmount(() => {
             </span>
           </Transition>
         </span>
-        <OverlapChip v-if="cwd && preset !== 'shell'" :cwd="cwd" :branch="branch" data-pane-chip />
-        <AgentStatusChip v-if="workflowStatus" :status="workflowStatus" data-pane-chip />
+        <OverlapChip v-if="cwd && preset !== 'shell'" :cwd="cwd" :branch="branch" :compact="isNext" data-pane-chip />
+        <AgentStatusChip v-if="workflowStatus && !(isNext && sessionChip)" :status="workflowStatus" data-pane-chip />
         <LimitResumeChip v-if="!isShell && pane.state === 'running'" :pane-key="pane.key" :hit="limitHit" data-pane-chip />
         <span v-if="!isShell" class="hidden"><PromptQueueButton ref="queueButton" :pane-key="pane.key" :can-fill="canFillQueue" @fill="fillQueued" /></span>
         <PaneMore ref="more" class="@max-[300px]:min-w-6 @max-[300px]:px-1" :entries="moreEntries" :label="t('workspace.paneHead.more')" @pick="pickMore" />
@@ -1494,6 +1523,7 @@ onBeforeUnmount(() => {
           v-if="multi || zoomed"
           type="button"
           class="ccm-btn-plain shrink-0 @max-[300px]:min-w-6 @max-[300px]:px-1"
+          :class="isNext && !zoomed ? REVEAL : ''"
           :aria-pressed="zoomed"
           :title="zoomLabel"
           :aria-label="zoomLabel"
@@ -1511,6 +1541,7 @@ onBeforeUnmount(() => {
           ref="splitButton"
           type="button"
           class="ccm-btn-plain shrink-0 aria-expanded:bg-fill @max-[300px]:min-w-6 @max-[300px]:px-1"
+          :class="isNext ? `${REVEAL} aria-expanded:opacity-100` : ''"
           :title="t('workspace.splitPane')"
           :aria-label="t('workspace.splitPane')"
           aria-haspopup="menu"
@@ -1539,7 +1570,7 @@ onBeforeUnmount(() => {
       </div>
     </component>
     </Teleport>
-    <ContextMeter v-if="meterOn" :tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
+    <ContextMeter v-if="meterOn && (!isNext || meterOver)":tokens="mainAgent?.contextTokens" :limit="settings.contextWarnTokens" :can-compact="canMeterCompact" @compact="compactFlow.start(pane.key)" />
     <div class="flex min-h-0 flex-1 gap-1.5" data-pane-body @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <div
       class="ccm-pane-ring ccm-sky-well relative flex min-h-0 min-w-0 flex-1 flex-col rounded-card bg-well shadow-card transition-[outline-color] duration-(--ccm-dur-fast) ease-out-quint"

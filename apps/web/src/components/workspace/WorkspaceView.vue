@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { BellRing, FolderOpen, FolderTree, LayoutTemplate, Mail, Maximize2, PanelLeft, PanelRight, Play, Plus, Send, X } from 'lucide-vue-next'
+import { BellRing, FolderTree, LayoutTemplate, Mail, Maximize2, PanelLeft, PanelRight, Play, Plus, Send, X } from 'lucide-vue-next'
 import type { TerminalStatus } from '@ccm/shared'
 import { useCompact } from '../../composables/useCompact'
 import { usePaneActions } from '../../composables/usePaneActions'
@@ -47,7 +47,6 @@ import { useExplorerDrawer } from '../next/explorer/useExplorerDrawer'
 import { isTerm, paneProjectOf, presetOf, primaryPaneKey, tabProject, useWorkspaceStore, workCwd, type Pane, type PaneSpec, type SplitChoice, type Tab } from '../../stores/workspace'
 import type { ResumeItem } from '../../lib/launcher'
 import StatusIcon from '../StatusIcon.vue'
-import Chip from '../next/ui/Chip.vue'
 import { statusMeta } from '../../lib/status'
 import LaunchPicker from './LaunchPicker.vue'
 import BrowserPane from './BrowserPane.vue'
@@ -229,13 +228,6 @@ watch(
   (root) => root && projectMru.touch(root),
   { immediate: true },
 )
-const otherNeeds = computed(() => rail.clusters.value.filter((c) => !c.active).reduce((n, c) => n + c.needs, 0))
-const otherFailed = computed(() => rail.clusters.value.some((c) => !c.active && c.failed > 0))
-const otherNews = computed(() => {
-  const latest = latestPeer(rail.clusters.value.filter((c) => !c.active))
-  return latest ? t('peerWs.projectNews', { text: info.peerView(latest).label }) : null
-})
-
 
 function paneRect(key: string): DOMRect | null {
   return canvas.value?.querySelector<HTMLElement>(`[data-pane="${CSS.escape(key)}"]`)?.getBoundingClientRect() ?? null
@@ -1227,6 +1219,10 @@ function tabMono(tab: Tab): string {
   if (key === 'home' || key === '~') return '~'
   return monogram(rail.clusters.value.find((c) => c.key === key)?.name ?? tabName(tab))
 }
+function tabProjectName(tab: Tab): string {
+  const c = rail.clusters.value.find((x) => x.key === (rail.clusterOfTab(tab.key) ?? groupOf(tab.key)))
+  return c ? (c.key === 'home' ? t('workspace.side.home') : c.name) : ''
+}
 const tabDirty = (tab: Tab): boolean => leaves(tab.root).some((k) => paneOf(k)?.dirty)
 
 function measureStrip(): void {
@@ -1755,7 +1751,7 @@ onBeforeUnmount(() => {
       :class="[sideDragging || explorerDragging ? 'pointer-events-none' : '', dragSource ? 'cursor-grabbing select-none' : '']"
       @pointerdown="onDragDown"
     >
-    <div v-if="workspace.tabs.length" class="flex min-w-0 items-center gap-2" :class="isNext ? 'ccm-next-tabs glass' : ''" :data-next-tabs="isNext || undefined">
+    <div v-if="workspace.tabs.length" class="group/tabs flex min-w-0 items-center gap-2" :class="isNext ? 'ccm-next-tabs glass' : ''" :data-next-tabs="isNext || undefined">
       <button
         v-if="!focusOn && !isNext"
         type="button"
@@ -1767,23 +1763,6 @@ onBeforeUnmount(() => {
       >
         <PanelLeft :size="15" aria-hidden="true" />
       </button>
-      <div
-        v-if="activeCluster"
-        class="inline-flex h-7 max-w-[24ch] min-w-0 shrink-0 items-center gap-1.5 rounded-inner px-2 text-xs font-semibold text-ink-muted"
-        :title="[activeCluster.root, otherNews].filter(Boolean).join('\n')"
-        data-strip-project
-      >
-        <FolderOpen :size="14" class="shrink-0" aria-hidden="true" />
-        <span class="min-w-0 truncate">{{ activeCluster.key === 'home' ? t('workspace.side.home') : activeCluster.name }}</span>
-        <span v-if="otherNeeds" class="inline-flex shrink-0 items-center gap-0.5 tabular" :class="otherFailed ? 'text-st-error' : 'text-st-waiting'">
-          <BellRing :size="12" aria-hidden="true" />{{ otherNeeds }}<span class="sr-only"> {{ t('workspace.rail.needs', { n: otherNeeds }, otherNeeds) }}</span>
-        </span>
-        <Transition name="ccm-fade">
-          <span v-if="otherNews" class="inline-flex shrink-0 text-peer" aria-hidden="true" data-strip-project-peer>
-            <Mail :size="11" />
-          </span>
-        </Transition>
-      </div>
       <div
         ref="tabRow"
         class="ccm-tab-rail flex min-w-0 flex-1 items-center gap-1 rounded-inner outline-2 -outline-offset-2 transition-[background-color,outline-color] duration-(--ccm-dur-fast)"
@@ -1849,6 +1828,12 @@ onBeforeUnmount(() => {
             aria-hidden="true"
             data-drag-spring
           ><i /></span>
+          <span
+            v-if="groupStartKeys.size && (groupStartKeys.has(tab.key) || tab.key === shownTabKeys[0])"
+            class="ml-2.5 max-w-[12ch] shrink-0 truncate text-2xs font-semibold text-ink-faint"
+            :title="tabProjectName(tab)"
+            data-strip-project
+          >{{ tabProjectName(tab) }}</span>
           <div v-if="renaming === tab.key" class="flex h-full min-w-0 items-center pr-1 pl-1.5" :style="{ width: `${renameWidth}px` }" data-tab-renaming>
             <TabRenameInput :tab-key="tab.key" :initial="tab.name ?? tabName(tab)" @done="(saved) => onRenameDone(tab.key, saved)" />
           </div>
@@ -1907,9 +1892,6 @@ onBeforeUnmount(() => {
             <span v-if="leaves(tab.root).some((k) => paneOf(k)?.dirty)" class="shrink-0 text-warning" :title="t('editor.unsaved')" data-tab-dirty>
               <span aria-hidden="true">●</span><span class="sr-only">{{ t('editor.unsaved') }}</span>
             </span>
-            <span v-if="leaves(tab.root).length > 1" class="shrink-0 text-[11px] text-ink-faint tabular-nums" data-pane-count>
-              {{ leaves(tab.root).length }} {{ t('paneV92.paneWord') }}
-            </span>
             <Transition name="ccm-fade">
               <span
                 v-if="tabZoom(tab)"
@@ -1925,10 +1907,8 @@ onBeforeUnmount(() => {
             <span v-if="isNext && tabDirty(tab)" class="shrink-0 text-warning" data-tab-dirty-next>
               <span aria-hidden="true">●</span><span class="sr-only">{{ t('editor.unsaved') }}</span>
             </span>
-            <Chip v-if="isNext && !tabAttention(tab) && tabState(tab)?.status === 'error'" status="error" data-tab-attention="error" />
-            <span v-if="tabAttention(tab) === 'waiting'" class="inline-flex h-4 shrink-0 items-center gap-0.5 rounded-inner px-1 text-2xs font-medium" :class="statusMeta('waiting').chip" :data-tab-attention="'waiting'">
-              <StatusIcon status="waiting" :size="10" :animate="false" />{{ t('paneV92.wait') }}
-            </span>
+            <span v-if="isNext && !tabAttention(tab) && tabState(tab)?.status === 'error'" class="sr-only" data-tab-attention="error">{{ t('v107gon.tabs.error') }}</span>
+            <span v-if="tabAttention(tab) === 'waiting'" class="sr-only" data-tab-attention="waiting">{{ t('paneV92.wait') }}</span>
             <span v-else-if="tabAttention(tab)" class="inline-flex shrink-0" aria-hidden="true" :data-tab-attention="tabAttention(tab)">
               <StatusIcon status="completed" :size="12" :animate="false" />
             </span>
@@ -2000,7 +1980,9 @@ onBeforeUnmount(() => {
         </Transition>
       </div>
       </div>
-      <LayoutMenu v-if="isNext && workspace.activeTab" :disabled="presetDisabled" :current="currentPreset" @preset="nextLayout.applyPreset" @even="nextLayout.evenOut" />
+      <div v-if="isNext && workspace.activeTab" class="shrink-0 opacity-0 transition-opacity duration-(--ccm-dur-fast) group-focus-within/tabs:opacity-100 group-hover/tabs:opacity-100 has-[[aria-expanded=true]]:opacity-100" data-layout-wrap>
+        <LayoutMenu :disabled="presetDisabled" :current="currentPreset" @preset="nextLayout.applyPreset" @even="nextLayout.evenOut" />
+      </div>
       <div ref="paneBar" class="flex min-w-0 shrink-0 items-center empty:hidden" data-pane-bar />
       <InboxChip />
       <span v-if="!focusOn" class="mx-0.5 hidden h-4 w-px shrink-0 bg-line md:block" aria-hidden="true" data-explorer-divider />
@@ -2024,8 +2006,8 @@ onBeforeUnmount(() => {
     <div v-if="!workspace.tabs.length" class="ccm-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto py-6">
       <div class="my-auto flex w-full max-w-[400px] flex-col gap-3">
         <div class="px-1 text-center">
-          <h2 class="text-base font-semibold text-ink">{{ t('workspace.empty.title') }}</h2>
-          <p class="mt-1 text-sm text-ink-muted">{{ t('workspace.empty.body') }}</p>
+          <h2 v-if="!isNext" class="text-base font-semibold text-ink">{{ t('workspace.empty.title') }}</h2>
+          <p class="text-sm text-ink-muted" :class="isNext ? '' : 'mt-1'">{{ isNext ? t('v107gon.tabs.empty') : t('workspace.empty.body') }}</p>
         </div>
         <RestorePicker
           v-if="lastSummary && restoreMode !== 'off'"

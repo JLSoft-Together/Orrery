@@ -7,7 +7,7 @@ import { statusMeta } from '../../lib/status'
 import type { Agent } from '@ccm/shared'
 
 defineOptions({ inheritAttrs: false })
-const props = defineProps<{ agents: readonly Agent[] | undefined }>()
+const props = defineProps<{ agents: readonly Agent[] | undefined; flat?: boolean }>()
 const { t } = useI18n()
 
 const entries = computed(() => orbitEntries(props.agents))
@@ -64,7 +64,7 @@ const since = (iso: string | undefined): string | null => duration(iso, now.valu
     v-bind="$attrs"
     type="button"
     class="inline-flex h-5 shrink-[8] cursor-pointer items-center gap-1.5 rounded-inner px-1.5 text-2xs font-medium whitespace-nowrap transition-colors duration-(--ccm-dur-fast) ease-out-quint hover:text-ink aria-expanded:text-ink @max-[360px]:hidden"
-    :class="[meta.chip, meta.text]"
+    :class="[flat ? 'px-0.5' : meta.chip, meta.text]"
     :aria-label="t('paneV93.orbit.aria', { n: entries.length })"
     aria-haspopup="dialog"
     :aria-expanded="!!at"
@@ -79,7 +79,8 @@ const since = (iso: string | undefined): string | null => duration(iso, now.valu
         </span>
       </span>
     </span>
-    <span class="min-w-0 truncate tabular-nums @max-[640px]:sr-only">{{ label }}</span>
+    <span class="min-w-0 truncate tabular-nums" :class="flat ? 'sr-only' : '@max-[640px]:sr-only'">{{ label }}</span>
+    <span v-if="flat" class="text-2xs tabular-nums" aria-hidden="true">{{ entries.length }}</span>
   </button>
   <Teleport to="body">
     <div

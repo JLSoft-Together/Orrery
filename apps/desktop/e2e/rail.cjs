@@ -55,7 +55,7 @@ async function run(app) {
   // --- Spaces: strip scoped to the active tab's project ---
   const drawn = () => evaluate(`${STRIP}.querySelectorAll('[role=tab]').length`)
   check('strip shows only the active project tabs (alpha: 2)', (await drawn()) === 2, String(await drawn()))
-  check('project capsule names the active project', (await evaluate(`document.querySelector('[data-strip-project]')?.textContent.trim()`))?.startsWith('alpha'))
+  check('strip has no project chip while only one project shows', await evaluate(`!document.querySelector('[data-strip-project]')`))
   await evaluate(`${W}.activateTab(${W}.tabs[0].key)`)
   await sleep(200)
   await chord('2', 'Digit2', 50, CTRL | ALT)
@@ -135,7 +135,7 @@ async function run(app) {
   await evaluate(`${item('copy-path')}.click()`)
   await waitFor(`!${MENU}`, 3000, 'menu closed after pick')
   const copied = await evaluate(`navigator.clipboard.readText().catch((e) => 'ERR ' + e.message)`)
-  const status = await evaluate(`${NAV}.querySelector('[data-rail-status]')?.textContent.trim() ?? ''`)
+  const status = await evaluate(`${NAV}.querySelector('p[data-rail-status]')?.textContent.trim() ?? ''`)
   check('Copy path copies the project folder and says so', status === 'Path copied' && (copied === A || String(copied).startsWith('ERR')), `${status} / ${copied}`)
 
   if (UI !== 'next') {

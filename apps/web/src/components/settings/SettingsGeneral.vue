@@ -20,6 +20,7 @@ const { t } = useI18n()
 const settings = useSettingsStore()
 const tips = useTipsStore()
 const ui = useUiStore()
+const advancedOpen = ref(false)
 const tipsOn = computed({ get: () => !tips.state.off, set: (on: boolean) => tips.setOff(!on) })
 
 const loginItem = ref<boolean | null>(null)
@@ -44,8 +45,6 @@ const terminalApps = computed(() => (['terminal', 'iterm'] as const).map((app) =
       <SettingRow :label="t('settings.language')" data-setting-row="language">
         <SegmentedControl v-model="settings.locale" :options="locales" :label="t('settings.language')" />
       </SettingRow>
-      <ToggleSwitch v-model="settings.officeEnabled" :label="t('settings.office')" :info="t('settings.officeHint')" class="px-3" data-setting-row="office" />
-      <OfficeNeedsNode v-if="settings.officeEnabled && officeNeedsNode" inline />
       <ToggleSwitch v-model="settings.keyHints" :label="t('keys.hints')" :info="t('keys.hintsHint')" class="px-3" data-setting-row="keyHints" />
       <ToggleSwitch v-if="hasTerminals" v-model="tipsOn" :label="t('tips.setting')" :info="t('tips.settingHint')" class="px-3" data-setting-row="tips" />
       <SettingRow v-if="isMac" :label="t('settings.launchTerminal')" :info="t('settings.launchTerminalHint')" data-setting-row="launch">
@@ -69,5 +68,23 @@ const terminalApps = computed(() => (['terminal', 'iterm'] as const).map((app) =
     </SettingSection>
 
     <SettingEmbed v-if="hasAwake" id="awake"><AwakeSettings /></SettingEmbed>
+
+    <SettingSection id="advanced-toggle">
+      <div class="flex items-center gap-3 px-3 py-2" data-general-more-row>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm">{{ t('v107gon.settings.advanced') }}</p>
+          <p class="mt-0.5 text-2xs text-ink-faint">{{ t('v107gon.settings.advancedHint') }}</p>
+        </div>
+        <button type="button" class="ccm-btn" :aria-expanded="advancedOpen" aria-controls="general-advanced" data-general-more @click="advancedOpen = !advancedOpen">
+          {{ advancedOpen ? t('v107gon.settings.advancedClose') : t('v107gon.settings.advancedOpen') }}
+        </button>
+      </div>
+    </SettingSection>
+    <div v-show="advancedOpen" id="general-advanced" class="mt-4" data-general-advanced>
+      <SettingSection id="advanced">
+        <ToggleSwitch v-model="settings.officeEnabled" :label="t('settings.office')" :info="t('settings.officeHint')" class="px-3" data-setting-row="office" />
+        <OfficeNeedsNode v-if="settings.officeEnabled && officeNeedsNode" inline />
+      </SettingSection>
+    </div>
   </div>
 </template>

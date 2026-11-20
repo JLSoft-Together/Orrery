@@ -97,6 +97,13 @@ const rows = computed(() =>
     .sort((a, b) => b.totals.working - a.totals.working),
 )
 
+const PAT: Record<LaneStatus, string> = { working: 'ccm-pat-working', waiting: 'ccm-pat-waiting', idle: 'ccm-pat-idle' }
+const activeRows = computed(() => rows.value.filter((r) => r.totals.working + r.totals.waiting > 0))
+const idleOnly = computed(() => {
+  const list = rows.value.filter((r) => r.totals.working + r.totals.waiting === 0)
+  return { count: list.length, idle: list.reduce((n, r) => n + r.totals.idle, 0) }
+})
+
 const summary = computed(() =>
   lanes.value.length
     ? summaryLine(overall.value.totals, dur, { working: (d) => t('history.worked', { d }), waiting: (d) => t('history.waited', { d }), idle: (d) => t('pagesV79.history.idleFor', { d }) })
@@ -117,10 +124,11 @@ const range = (s: Seg) => `${clock.value.format(s.from)} – ${s.open ? t('histo
     <template v-else-if="span">
       <ul class="divide-y divide-line">
         <li
-          v-for="r in rows"
+          v-for="r in activeRows"
           :key="r.id"
-          class="grid grid-cols-[minmax(7rem,13rem)_minmax(0,1fr)_auto] items-center gap-x-3 py-2 sm:gap-x-4"
+          class="grid grid-cols-[minmax(7rem,13rem)_minmax(0,1fr)_auto] items-start gap-x-3 py-2 sm:gap-x-4"
           :title="t('history.laneLabel', { title: r.title, working: short(r.totals.working), waiting: short(r.totals.waiting) })"
+          data-history-row
         >
           <button
             type="button"
@@ -132,14 +140,28 @@ const range = (s: Seg) => `${clock.value.format(s.from)} – ${s.open ? t('histo
             <StatusIcon v-if="r.current && r.live" :status="r.current" :size="13" :animate="false" class="shrink-0" />
             <span class="truncate">{{ r.title }}</span>
           </button>
-          <div
-            class="flex h-2.5 min-w-0 gap-0.5 overflow-hidden rounded-full bg-fill"
-            role="img"
-            :aria-label="t('history.laneLabel', { title: r.title, working: short(r.totals.working), waiting: short(r.totals.waiting) })"
-          >
-            <span v-for="k in STATUSES" v-show="r.share[k] > 0" :key="k" class="h-full" :class="FILL[k]" :style="{ width: `${r.share[k]}%` }" />
+          <div class="min-w-0">
+            <div
+              class="mt-1 flex h-2.5 min-w-0 gap-0.5 overflow-hidden rounded-full bg-fill"
+              role="img"
+              :aria-label="t('history.laneLabel', { title: r.title, working: short(r.totals.working), waiting: short(r.totals.waiting) })"
+            >
+              <span v-for="k in STATUSES" v-show="r.share[k] > 0" :key="k" class="h-full" :class="PAT[k]" :style="{ width: `${r.share[k]}%` }" />
+            </div>
+            <p class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-2xs tabular" data-history-legend>
+              <span v-for="k in STATUSES" v-show="r.totals[k] > 0" :key="k" class="inline-flex items-center gap-1" :class="TEXT[k]">
+                <span class="inline-block h-2 w-3 rounded-[2px]" :class="PAT[k]" aria-hidden="true" />{{ t(`v107gon.history.pattern.${k}`) }} {{ short(r.totals[k]) }}
+              </span>
+            </p>
           </div>
-          <span class="w-10 text-right text-xs text-ink-muted tabular">{{ Math.round(r.share.working) }}%</span>
+          <span class="whitespace-nowrap text-right text-xs text-ink-muted tabular" data-history-pct>{{ t('v107gon.history.doingPct', { n: Math.round(r.share.working) }) }}</span>
+        </li>
+        <li v-if="idleOnly.count" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-xs text-ink-muted" data-history-idle-only>
+          <span class="inline-flex min-w-0 items-center gap-1.5">
+            <span class="inline-block h-2 w-3 shrink-0 rounded-[2px]" :class="PAT.idle" aria-hidden="true" />
+            <span class="truncate">{{ t(idleOnly.count === 1 ? 'v107gon.history.idleOnlyOne' : 'v107gon.history.idleOnly', { n: idleOnly.count }) }}</span>
+          </span>
+          <span class="tabular">{{ t('v107gon.history.pattern.idle') }} {{ short(idleOnly.idle) }}</span>
         </li>
       </ul>
 
@@ -227,3 +249,15 @@ const range = (s: Seg) => `${clock.value.format(s.from)} – ${s.open ? t('histo
     </template>
   </div>
 </template>
+
+<style scoped>
+.ccm-pat-working {
+  background: var(--color-st-working);
+}
+.ccm-pat-waiting {
+  background: repeating-linear-gradient(135deg, var(--color-st-waiting) 0 3px, var(--ccm-surface) 3px 5px);
+}
+.ccm-pat-idle {
+  background: radial-gradient(circle, var(--color-st-idle) 0 1px, transparent 1.2px) 0 0 / 4px 4px, var(--ccm-fill);
+}
+</style>

@@ -140,7 +140,7 @@ async function fixture() {
     await evaluate(`${S}.get('ui').settingsOpen = true`)
     await waitFor(`!!document.querySelector('[data-settings-page="appearance"]')`, 10000, 'settings')
     const nav = await evaluate(`[...document.querySelectorAll('[data-settings-page]')].map((b) => b.dataset.settingsPage).join(',')`)
-    check('Settings nav has the next-only Workspace and Disk pages', /(^|,)workspace(,|$)/.test(nav) && /(^|,)disk(,|$)/.test(nav), nav)
+    check('Settings nav has the merged Workspace and Data pages', /(^|,)workspace(,|$)/.test(nav) && /(^|,)data(,|$)/.test(nav) && !/(^|,)disk(,|$)/.test(nav), nav)
     await evaluate(`document.querySelector('[data-settings-page="appearance"]').click()`)
     await waitFor(`!!document.querySelector('[data-palette-card]')`, 5000, 'palette cards')
     const cards = await evaluate(`document.querySelectorAll('[data-palette-card]').length`)

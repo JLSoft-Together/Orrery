@@ -74,7 +74,9 @@ const phoneShown = computed(() => remote.supported && remote.enabled)
 const viewport = ref(typeof window === 'undefined' ? 1440 : window.innerWidth)
 const baseMode = ref<RailMode>(railModeFor(viewport.value))
 const collapsed = ref(readRailCollapsed())
-const mode = computed<RailMode>(() => effectiveRailMode(baseMode.value, collapsed.value))
+const monitorOpen = ref(false)
+const monitorFolded = computed(() => ui.view === 'monitor' && !monitorOpen.value)
+const mode = computed<RailMode>(() => effectiveRailMode(baseMode.value, collapsed.value || monitorFolded.value))
 const collapsible = computed(() => canCollapseRail(baseMode.value))
 const custom = ref<number | null>(readRailWidth())
 const overlayOpen = ref(false)
@@ -91,6 +93,10 @@ function onResize(): void {
 }
 function toggleCollapse(): void {
   if (!collapsible.value) return
+  if (ui.view === 'monitor') {
+    monitorOpen.value = !monitorOpen.value
+    return
+  }
   collapsed.value = !collapsed.value
   writeRailCollapsed(collapsed.value)
 }
@@ -108,7 +114,10 @@ watch(mode, (m) => {
 })
 watch(
   () => ui.view,
-  () => closeRail(),
+  () => {
+    closeRail()
+    monitorOpen.value = false
+  },
 )
 
 function onKey(e: KeyboardEvent): void {
@@ -275,7 +284,6 @@ const iconBtn =
     <div v-if="!railHidden" class="ccm-next-rail-cell" :class="mode === 'overlay' ? 'ccm-next-rail-overlay' : ''" :aria-hidden="!railOpen || undefined" :inert="!railOpen || undefined">
       <aside id="ccm-next-rail" class="glass-side flex h-full min-h-0 flex-col overflow-hidden rounded-[18px]" :aria-label="t('mist.shell.rail')" data-next-rail>
         <div class="flex shrink-0 gap-2 px-2.5" :class="iconMode ? 'flex-col items-center py-2.5' : 'h-11 items-center'">
-          <span class="bg-accent-grad inline-grid size-[26px] shrink-0 place-items-center rounded-inner text-[13px] font-bold" aria-hidden="true" data-next-logo>O</span>
           <SegmentedControl v-if="!iconMode" v-model="view" :options="textOptions" :label="t('mist.switch.title')" size="sm" fill class="min-w-0 flex-1" data-tour="tabs" />
           <RailCollapseButton v-if="!iconMode && collapsible" :collapsed="false" @toggle="toggleCollapse" />
           <div v-else class="flex flex-col gap-1" role="radiogroup" :aria-label="t('mist.switch.title')" data-tour="tabs" @keydown="onIconKey">
@@ -297,29 +305,31 @@ const iconBtn =
           <RailCollapseButton v-if="iconMode && collapsible" :collapsed="true" @toggle="toggleCollapse" />
         </div>
 
-        <button
-          v-if="!iconMode"
-          type="button"
-          class="mx-2.5 mb-1.5 flex h-[30px] shrink-0 cursor-pointer items-center gap-1.5 rounded-[10px] border border-line bg-(--ccm-control) px-2.5 text-left text-xs text-ink-faint outline-none transition-colors duration-(--ccm-dur-fast) hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
-          :aria-label="t('palette.open')"
-          :aria-keyshortcuts="isMac ? 'Meta+K' : 'Control+K'"
-          data-tour="palette"
-          data-next-search
-          @click="ui.paletteOpen = true"
-        >
-          <Search :size="14" class="shrink-0" aria-hidden="true" />
-          <span class="min-w-0 flex-1 truncate">{{ t('mist.shell.search') }}</span>
-          <kbd class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[11px] font-semibold text-ink-muted">{{ searchKeys }}</kbd>
-        </button>
-        <GlassTooltip v-else :text="t('palette.open')" side="bottom">
+        <GlassTooltip v-if="iconMode" :text="t('palette.open')" side="bottom">
           <button type="button" :class="[iconBtn, 'mx-auto mb-1']" :aria-label="t('palette.open')" data-tour="palette" data-next-search @click="ui.paletteOpen = true">
             <Search :size="16" aria-hidden="true" />
           </button>
         </GlassTooltip>
 
-        <LiveRail :collapsed="iconMode" />
+        <LiveRail :collapsed="iconMode">
+          <template #search>
+            <button
+              type="button"
+              class="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-[10px] border border-line bg-(--ccm-control) px-2.5 text-left text-xs text-ink-faint outline-none transition-colors duration-(--ccm-dur-fast) hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
+              :aria-label="t('palette.open')"
+              :aria-keyshortcuts="isMac ? 'Meta+K' : 'Control+K'"
+              data-tour="palette"
+              data-next-search
+              @click="ui.paletteOpen = true"
+            >
+              <Search :size="14" class="shrink-0" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ t('mist.shell.search') }}</span>
+              <kbd class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[11px] font-semibold text-ink-muted">{{ searchKeys }}</kbd>
+            </button>
+          </template>
+        </LiveRail>
 
-        <div ref="footEl" class="flex shrink-0 flex-col gap-1.5 border-t border-line px-2 py-2" :class="iconMode ? 'items-center' : ''" :data-foot-mode="footMode" data-next-rail-foot>
+        <div ref="footEl" class="ccm-next-foot flex shrink-0 flex-col gap-1.5 border-t border-line px-2 py-2" :class="iconMode ? 'items-center' : ''" :data-foot-mode="footMode" data-next-rail-foot>
           <div v-if="(update.available || hasTelegram || phoneShown) && !iconMode" class="flex flex-wrap items-center gap-1" data-next-rail-channels>
             <button
               v-if="update.available"
@@ -352,8 +362,8 @@ const iconBtn =
           </button>
 
           <div class="flex items-center gap-0.5" :class="iconMode ? 'flex-col' : 'w-full'">
-            <div class="ccm-next-status"><HeaderStatusPopover /></div>
-            <GlassTooltip :text="t('nav.usage')" :delay="0" :disabled="!footIcons" :class="footIcons ? '' : 'min-w-0 flex-1'">
+            <div class="ccm-next-status ccm-foot-quiet"><HeaderStatusPopover /></div>
+            <GlassTooltip :text="t('nav.usage')" :delay="0" :disabled="!footIcons" :class="[footIcons ? '' : 'min-w-0 flex-1', ui.view === 'usage' ? '' : 'ccm-foot-quiet']">
               <button type="button" :class="[footBtn, ui.view === 'usage' ? 'bg-accent-soft text-accent-ink' : '']" :aria-label="t('nav.usage')" :aria-current="ui.view === 'usage' ? 'page' : undefined" data-view-switch="usage" @click="ui.setView('usage')">
                 <ChartColumnBig :size="16" class="shrink-0" aria-hidden="true" />
                 <span v-if="!footIcons" class="max-w-full min-w-0 truncate" data-foot-label>{{ t('nav.usage') }}</span>
@@ -436,6 +446,20 @@ const iconBtn =
 :root[data-ui='next'] .ccm-next-shell[data-rail-dragging],
 :root[data-ui='next'][data-motion='off'] .ccm-next-shell {
   transition: none;
+}
+:root[data-ui='next'] .ccm-foot-quiet {
+  opacity: 0;
+  transition: opacity var(--ccm-dur-fast);
+}
+:root[data-ui='next'] .ccm-next-foot:hover .ccm-foot-quiet,
+:root[data-ui='next'] .ccm-next-foot:focus-within .ccm-foot-quiet,
+:root[data-ui='next'] .ccm-foot-quiet:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  :root[data-ui='next'] .ccm-foot-quiet {
+    opacity: 1;
+  }
 }
 :root[data-ui='next'] .ccm-next-footer {
   grid-column: 1 / -1;

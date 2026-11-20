@@ -126,7 +126,7 @@ async function main() {
     await theme('dark')
 
     // Settings pages, 900px tall
-    for (const p of ['general', 'appearance', 'editor', 'notify', 'github', 'integrations', 'access', 'data', 'about']) {
+    for (const p of ['general', 'appearance', 'workspace', 'notify', 'integrations', 'data', 'about']) {
       await evaluate(`${UI}.settingsPage = '${p}'; ${UI}.settingsOpen = true`)
       await sleep(500)
       const hi = await evaluate(`(() => { const c = document.querySelector('[data-settings-current]'); const cont = c?.querySelector('.ccm-set-page') ?? c; return cont ? [cont.scrollHeight, cont.clientHeight] : null })()`)

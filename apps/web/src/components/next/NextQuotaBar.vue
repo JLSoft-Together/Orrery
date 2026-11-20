@@ -61,7 +61,7 @@ function pick(id: QuotaAgentId): void {
         v-for="a in agents"
         :key="a.id"
         type="button"
-        class="flex min-w-0 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-control px-1.5 py-0.5 tabular-nums outline-none transition-colors duration-(--ccm-dur-instant) hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-accent"
+        class="group/quota flex min-w-0 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-control px-1.5 py-0.5 tabular-nums outline-none transition-colors duration-(--ccm-dur-instant) hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-accent"
         :class="a.stale ? 'opacity-60' : ''"
         :title="tip(a)"
         :aria-label="t('v105.quota.open', { name: a.name })"
@@ -73,7 +73,12 @@ function pick(id: QuotaAgentId): void {
       >
         <component :is="ICONS[a.id].is" :size="12" class="shrink-0" :class="ICONS[a.id].cls" aria-hidden="true" />
         <span v-for="w in a.windows" :key="w.key" class="inline-flex items-center gap-1.5" :data-quota="w.key" :data-tone="w.tone">
-          <span class="h-1 w-10 shrink-0 overflow-hidden rounded-sm bg-line-strong" aria-hidden="true">
+          <span
+            class="h-1 w-10 shrink-0 overflow-hidden rounded-sm bg-line-strong"
+            :class="w.tone === 'ok' ? 'hidden group-hover/quota:block group-focus-visible/quota:block' : ''"
+            aria-hidden="true"
+            data-quota-track
+          >
             <span class="ccm-next-quota-fill block h-full" :class="QUOTA_TONE_CLASS[w.tone]" :style="{ width: `${w.used}%` }" />
           </span>
           <span class="font-semibold" :class="w.tone === 'critical' ? 'text-st-error' : w.tone === 'warn' ? 'text-warning' : 'text-ink'">{{ w.used }}%</span>
@@ -81,7 +86,6 @@ function pick(id: QuotaAgentId): void {
         </span>
       </button>
     </TransitionGroup>
-    <span v-if="!agents.length" class="truncate text-ink-faint" data-quota-empty>{{ t('mist.shell.noQuota') }}</span>
     <Transition name="ccm-next-pop">
       <div
         v-if="open && agents.length"

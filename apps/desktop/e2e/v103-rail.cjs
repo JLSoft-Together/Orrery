@@ -87,7 +87,7 @@ async function fixture() {
     check('old quota block is gone from the rail', await evaluate(`!document.querySelector('[data-next-rail] [data-next-quota]')`))
     await evaluate(`${S}.get('extras').limits = null; ${S}.get('extras').codexLimits = null`)
     await sleep(400)
-    check('footer shows the empty note with no limits', await evaluate(`!!document.querySelector('[data-quota-empty]') && !document.querySelector('[data-quota-agent]')`))
+    check('footer is empty with no limits', await evaluate(`!!document.querySelector('[data-next-footer]') && !document.querySelector('[data-quota-empty]') && !document.querySelector('[data-quota-agent]')`))
     await evaluate(`(() => { const e = ${S}.get('extras'); const iso = (m) => new Date(Date.now() + m * 60000).toISOString(); e.limits = { updatedAt: new Date().toISOString(), fiveHour: { usedPct: 42, resetsAt: iso(95) }, sevenDay: { usedPct: 91, resetsAt: iso(3 * 1440) } }; e.codexLimits = { updatedAt: new Date().toISOString(), fiveHour: { usedPct: 7, resetsAt: iso(200) } } })()`)
     await sleep(500)
     const q = JSON.parse(await evaluate(`JSON.stringify([...document.querySelectorAll('[data-quota-agent]')].map((a) => ({ id: a.dataset.quotaAgent, text: a.textContent.replace(/\\s+/g, ' ').trim() })))`))

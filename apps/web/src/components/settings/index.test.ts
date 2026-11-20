@@ -7,7 +7,7 @@ import vi from '../../i18n/vi'
 import v79 from '../../i18n/ui-v79-settings'
 import remoteV97 from '../../i18n/remote-v97'
 import { useSettingsStore } from '../../stores/settings'
-import { NEXT_ONLY_PAGES, NOTIFY_ROWS, SETTINGS_PAGES, entries, nextEntries, pageAvailable, isSettingsPage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv } from './index'
+import { NEXT_ONLY_PAGES, NOTIFY_ROWS, SETTINGS_PAGES, entries, nextEntries, pageAvailable, isSettingsPage, resolvePage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv } from './index'
 
 const all: SettingsEnv = {
   terminals: true,
@@ -110,9 +110,8 @@ describe('settings metadata', () => {
     expect(ids).not.toContain('autoSave')
     expect(ids).not.toContain('github')
     expect(ids).not.toContain('phone')
-    expect(pageVisible('editor', env)).toBe(false)
-    expect(pageVisible('github', env)).toBe(false)
     expect(pageVisible('notify', env)).toBe(true)
+    expect(pageVisible('workspace', env)).toBe(true)
   })
 })
 
@@ -159,17 +158,37 @@ describe('remembered page', () => {
     expect(pageAvailable('general', all, false)).toBe(true)
   })
 
+  it('has 7 pages and old page ids resolve to the merged page', () => {
+    expect([...SETTINGS_PAGES]).toEqual(['general', 'appearance', 'workspace', 'notify', 'integrations', 'data', 'about'])
+    const old = { editor: 'workspace', telegram: 'notify', remote: 'notify', github: 'integrations', deepseek: 'integrations', access: 'data', disk: 'data' }
+    for (const [from, to] of Object.entries(old)) expect(resolvePage(from)).toBe(to)
+    expect(resolvePage('nope')).toBeNull()
+    localStorage.setItem('ccm.settings.page', 'remote')
+    expect(loadPage()).toBe('notify')
+  })
+
+  it('every entry sits on a current page and keeps its id', () => {
+    const find = (id: string) => entries(false).find((e) => e.id === id)?.page
+    expect(find('remoteRelay')).toBe('notify')
+    expect(find('telegram')).toBe('notify')
+    expect(find('github')).toBe('integrations')
+    expect(find('dsKey')).toBe('integrations')
+    expect(find('sensitive')).toBe('data')
+    expect(find('autoSave')).toBe('workspace')
+    for (const e of [...entries(false), ...nextEntries(false)]) expect(SETTINGS_PAGES as readonly string[]).toContain(e.page)
+  })
+
   it('next entries move v100 and v101 rows to their own pages with unique ids and resolvable keys', () => {
     const list = nextEntries(false)
     const page = (id: string) => list.find((e) => e.id === id)?.page
     expect(page('clickMenu')).toBe('workspace')
     expect(page('menuToast')).toBe('workspace')
-    expect(page('diskMap')).toBe('disk')
-    expect(page('disk')).toBe('disk')
+    expect(page('diskMap')).toBe('data')
+    expect(page('disk')).toBe('data')
     expect(page('reduceGlass')).toBe('appearance')
     const ids = list.map((e) => `${e.page}:${e.id}`)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(entries(false).find((e) => e.id === 'clickMenu')?.page).toBe('editor')
+    expect(entries(false).find((e) => e.id === 'clickMenu')?.page).toBe('workspace')
     for (const locale of ['en', 'vi'] as const) {
       const { te } = translator(locale)
       expect(list.flatMap((e) => [e.labelKey, e.hintKey].filter((k): k is string => !!k && !te(k)))).toEqual([])

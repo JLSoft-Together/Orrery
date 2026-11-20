@@ -18,11 +18,12 @@ function make() {
 describe('NextQuotaBar', () => {
   beforeEach(() => localStorage.clear())
 
-  it('shows only the placeholder while no agent reports', () => {
+  it('renders an empty footer while no agent reports', () => {
     const { w } = make()
     expect(w.find('[data-next-footer]').exists()).toBe(true)
     expect(w.findAll('[data-quota-agent]')).toHaveLength(0)
-    expect(w.find('[data-quota-empty]').exists()).toBe(true)
+    expect(w.find('[data-quota-empty]').exists()).toBe(false)
+    expect(w.find('[data-next-footer]').text()).toBe('')
   })
 
   it('renders one cluster per agent with its percentages, reset time only in the tooltip', async () => {
@@ -39,7 +40,6 @@ describe('NextQuotaBar', () => {
     expect(agents[0]!.element.tagName).toBe('BUTTON')
     expect(agents[0]!.attributes('title')).toContain('reset')
     expect(agents[1]!.findAll('[data-quota]')).toHaveLength(1)
-    expect(w.find('[data-quota-empty]').exists()).toBe(false)
   })
 
   it('marks an agent stale and leaves a missing one out', async () => {
@@ -85,5 +85,14 @@ describe('NextQuotaBar', () => {
     await w.vm.$nextTick()
     expect(w.find('[data-quota="5h"] [data-quota-level]').exists()).toBe(false)
     expect(w.find('[data-quota="7d"] [data-quota-level]').exists()).toBe(true)
+  })
+
+  it('hides the bar track of an ok window until hover and keeps it for warn and critical', async () => {
+    const { w, extras } = make()
+    extras.limits = { updatedAt: fresh(), fiveHour: { usedPct: 30 }, sevenDay: { usedPct: 95 } }
+    await w.vm.$nextTick()
+    expect(w.find('[data-quota="5h"] [data-quota-track]').classes()).toContain('hidden')
+    expect(w.find('[data-quota="7d"] [data-quota-track]').classes()).not.toContain('hidden')
+    expect(w.find('[data-quota="5h"]').text()).toContain('30%')
   })
 })

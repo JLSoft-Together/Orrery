@@ -32,23 +32,21 @@ vi.mock('../../lib/diskSnap', async (orig) => ({
 }))
 
 import SettingsAbout from './SettingsAbout.vue'
-import SettingsAccess from './SettingsAccess.vue'
 import SettingsAppearance from './SettingsAppearance.vue'
-import SettingsData from './SettingsData.vue'
-import SettingsEditor from './SettingsEditor.vue'
 import SettingsGeneral from './SettingsGeneral.vue'
-import SettingsNotify from './SettingsNotify.vue'
-import SettingsWorkspace from './SettingsWorkspace.vue'
+import PageData from './PageData.vue'
+import PageIntegrations from './PageIntegrations.vue'
+import PageNotify from './PageNotify.vue'
+import PageWorkspace from './PageWorkspace.vue'
 
 const PAGES: Partial<Record<SettingsPage, Component>> = {
   general: SettingsGeneral,
   appearance: SettingsAppearance,
-  editor: SettingsEditor,
-  notify: SettingsNotify,
-  access: SettingsAccess,
-  data: SettingsData,
+  notify: PageNotify,
+  integrations: PageIntegrations,
+  data: PageData,
   about: SettingsAbout,
-  workspace: SettingsWorkspace,
+  workspace: PageWorkspace,
 }
 
 const MOUNTABLE = new Set<keyof SettingsEnv>(['terminals', 'toast', 'notifyData'])

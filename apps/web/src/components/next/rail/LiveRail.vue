@@ -643,9 +643,8 @@ const clusterKeyOf = (id: string): string => id.slice(2)
     @click.capture="onClickCapture"
     @keydown="onNavKey"
   >
-    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-2 px-2 pt-1 pb-1">
-      <span class="hidden shrink-0 text-2xs font-medium text-ink-faint @[280px]:inline" aria-hidden="true">{{ t('mist.rail.group.name') }}</span>
-      <SegmentedControl v-model="uigen.railGroup" :options="groupOptions" :label="t('mist.rail.group.label')" size="sm" fill class="min-w-0 flex-1" data-rail-group />
+    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-2 px-2.5 pt-0.5 pb-1.5">
+      <slot name="search" />
       <button
         v-if="openable"
         type="button"
@@ -660,6 +659,10 @@ const clusterKeyOf = (id: string): string => id.slice(2)
         <LoaderCircle v-if="picking" :size="15" class="ccm-spin" aria-hidden="true" />
         <Plus v-else :size="15" aria-hidden="true" />
       </button>
+    </div>
+    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-2 px-2 pb-1">
+      <span class="hidden shrink-0 text-2xs font-medium text-ink-faint @[280px]:inline" aria-hidden="true">{{ t('mist.rail.group.name') }}</span>
+      <SegmentedControl v-model="uigen.railGroup" :options="groupOptions" :label="t('mist.rail.group.label')" size="sm" fill class="min-w-0 flex-1" data-rail-group />
     </div>
     <div ref="listEl" class="ccm-scroll min-h-0 flex-1 overflow-y-auto px-1.5 py-1" data-rail-list>
       <p v-if="empty && !props.collapsed" class="px-2 py-3 text-2xs text-ink-faint">{{ t('mist.rail.empty') }}</p>
@@ -676,24 +679,28 @@ const clusterKeyOf = (id: string): string => id.slice(2)
             >
               <button
                 type="button"
-                class="inline-grid size-5 shrink-0 cursor-pointer place-items-center rounded-control text-ink-faint outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+                class="inline-flex h-5 shrink-0 cursor-pointer items-center gap-0.5 rounded-control text-ink-faint outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
                 :aria-expanded="!folded.has(clusterKeyOf(s.id))"
                 :aria-label="t('mist.rail.project', { name: clusterName(clusterKeyOf(s.id)) })"
                 data-no-drag
                 @click="toggleFold(clusterKeyOf(s.id))"
               >
-                <ChevronRight v-if="folded.has(clusterKeyOf(s.id))" :size="14" aria-hidden="true" />
-                <ChevronDown v-else :size="14" aria-hidden="true" />
+                <ChevronRight v-if="folded.has(clusterKeyOf(s.id))" :size="12" aria-hidden="true" />
+                <ChevronDown v-else :size="12" aria-hidden="true" />
+                <span class="ccm-next-rail-mono inline-grid size-5 shrink-0 place-items-center rounded-[6px] text-[11px] font-bold" :data-tone="sectionRows(s)[0]?.tone ?? 0" aria-hidden="true">{{
+                  monogram(clusterName(clusterKeyOf(s.id)))
+                }}</span>
               </button>
-              <span class="ccm-next-rail-mono inline-grid size-5 shrink-0 place-items-center rounded-[6px] text-[11px] font-bold" :data-tone="sectionRows(s)[0]?.tone ?? 0" aria-hidden="true">{{
-                monogram(clusterName(clusterKeyOf(s.id)))
-              }}</span>
               <span class="min-w-0 truncate text-xs font-semibold text-ink">{{ clusterName(clusterKeyOf(s.id)) }}</span>
-              <span v-if="branchOf(clusterKeyOf(s.id))" class="min-w-0 shrink truncate text-2xs text-ink-faint">{{ branchOf(clusterKeyOf(s.id)) }}</span>
-              <span class="ccm-tabular ml-auto shrink-0 text-2xs text-ink-faint">{{ splitOf(s).main.length }}</span>
+              <span
+                v-if="branchOf(clusterKeyOf(s.id))"
+                class="min-w-0 shrink truncate text-2xs text-ink-faint opacity-0 transition-opacity group-focus-within/head:opacity-100 group-hover/head:opacity-100 [@media(hover:none)]:opacity-100"
+                data-rail-branch
+                >{{ branchOf(clusterKeyOf(s.id)) }}</span
+              >
               <button
                 type="button"
-                class="inline-grid size-6 shrink-0 cursor-pointer place-items-center rounded-control text-ink-muted opacity-0 outline-none group-hover/head:opacity-100 hover:bg-fill focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-focus"
+                class="ml-auto inline-grid size-6 shrink-0 cursor-pointer place-items-center rounded-control text-ink-muted opacity-0 outline-none group-hover/head:opacity-100 hover:bg-fill focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-focus"
                 :aria-label="t('mist.rail.projectMenu')"
                 data-no-drag
                 @click="onHeadButton(clusterKeyOf(s.id), $event)"

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { TourId } from '../lib/tour'
-import type { SettingsPage } from '../components/settings'
+import type { SettingsPageInput } from '../components/settings'
 import type { DevTool } from '../lib/devTools'
 import { ref, watch } from 'vue'
 import type { FocusWindowResult, OpenApp, OpenResult, TerminalApp } from '@ccm/shared'
@@ -266,7 +266,7 @@ export const useUiStore = defineStore('ui', () => {
   const whatsNewOpen = ref(false)
   const settingsOpen = ref(false)
   /** Page Settings should show next (SettingsMenu consumes it); null = the last page visited. */
-  const settingsPage = ref<SettingsPage | null>(null)
+  const settingsPage = ref<SettingsPageInput | null>(null)
   const breakDue = ref<{ at: number; minutes: number } | null>(null)
   const focusingWindow = ref<string | null>(null)
   const windowResult = ref<{ terminalId: string; result: WindowResult } | null>(null)

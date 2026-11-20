@@ -109,6 +109,7 @@ import v105U3 from './v105-u3'
 import v105U2 from './v105-u2'
 import v106Rail from './v106-rail'
 import v106Install from './v106-install'
+import v107Gon from './v107-gon'
 
 export default {
   ...v25.en,
@@ -119,6 +120,7 @@ export default {
   ...v105U2.en,
   ...v106Rail.en,
   ...v106Install.en,
+  ...v107Gon.en,
   ...diskV101.en,
   ...diskCleanV101.en,
   ...diskOrganizeV101.en,

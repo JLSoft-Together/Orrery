@@ -27,7 +27,7 @@ const columns = computed(() =>
   MONITOR_COLUMNS.map((key) => {
     const ids = props.groups.find((g) => g.key === key)?.ids ?? []
     return { key, ids, strip: isStrip(ids.length, !!expanded[key]) }
-  }),
+  }).filter((c) => c.ids.length > 0 || (c.key !== 'needs' && c.key !== 'ended')),
 )
 const template = computed(() => columnTemplate(columns.value.map((c) => c.strip)))
 const DOT: Record<Provider, string> = { claude: 'bg-agent-claude', codex: 'bg-agent-codex', deepseek: 'bg-agent-deepseek' }

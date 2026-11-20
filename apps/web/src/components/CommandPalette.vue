@@ -609,7 +609,7 @@ const localMatches = computed<Item[]>(() => {
 
 function openPhone(pair: boolean): void {
   if (pair && remote.enabled) remote.askPair()
-  openSetting('remote', pair ? (remote.enabled ? 'remoteAdd' : 'remote') : 'remoteDevices')
+  openSetting('notify', pair ? (remote.enabled ? 'remoteAdd' : 'remote') : 'remoteDevices')
 }
 
 function openSetting(page: SettingsPage, id: string): void {
@@ -902,7 +902,7 @@ const HINTS = [
             >
               <X :size="16" aria-hidden="true" />
             </button>
-            <kbd v-else class="hidden shrink-0 rounded-inner bg-fill px-1.5 py-0.5 font-sans text-2xs text-ink-faint sm:inline">Esc</kbd>
+            <kbd v-else-if="!isNext" class="hidden shrink-0 rounded-inner bg-fill px-1.5 py-0.5 font-sans text-2xs text-ink-faint sm:inline">Esc</kbd>
           </div>
 
           <div class="flex gap-4 border-b border-line px-5" role="radiogroup" :aria-label="isNext ? t('mist.cmdk.scopeLabel') : t('palette.scopeLabel')" @keydown="onScopeKey">
@@ -940,7 +940,7 @@ const HINTS = [
               </button>
             </div>
             <div v-for="g in groups" :key="g.key" role="group" :aria-label="g.label" class="pt-3">
-              <p class="px-3 pb-1.5 text-2xs font-medium text-ink-faint">{{ g.label }}<span v-if="isNext" class="ccm-tabular ml-1.5" data-palette-group-count>{{ g.total }}</span></p>
+              <p class="px-3 pb-1.5 text-2xs font-medium text-ink-faint">{{ g.label }}</p>
               <div class="flex flex-col gap-0.5">
                 <template v-for="item in g.items" :key="'more' in item ? `more:${item.more}` : item.id">
                 <div
@@ -990,6 +990,7 @@ const HINTS = [
                       <span v-if="item.meta.project" class="shrink-0 font-medium">{{ item.meta.project }}</span>
                       <span v-if="item.meta.branch" class="max-w-[14ch] shrink truncate">{{ item.meta.branch }}</span>
                       <span v-if="item.meta.model" class="shrink-0">{{ item.meta.model }}</span>
+                      <span v-if="isNext && item.meta.ago" class="shrink-0 tabular" data-palette-ago>{{ item.meta.ago }}</span>
                     </span>
                     <span v-else-if="item.sub" class="mt-0.5 block truncate text-2xs" :class="item.index === active ? 'text-on-accent' : 'text-ink-faint'">{{ item.sub }}</span>
                   </span>
@@ -1001,7 +1002,7 @@ const HINTS = [
                     <span class="size-1.5 rounded-full" :class="item.on ? (item.index === active ? 'bg-on-accent' : 'bg-success') : 'border border-current'" aria-hidden="true" />
                     {{ item.on ? t('palette.on') : t('palette.off') }}
                   </span>
-                  <span v-if="item.meta?.ago && item.index !== active" class="shrink-0 text-2xs text-ink-faint tabular" data-palette-ago>{{ item.meta.ago }}</span>
+                  <span v-if="!isNext && item.meta?.ago && item.index !== active" class="shrink-0 text-2xs text-ink-faint tabular" data-palette-ago>{{ item.meta.ago }}</span>
                   <span v-if="item.index === active" class="hidden shrink-0 items-center gap-2 text-2xs text-on-accent sm:inline-flex">
                     <span v-if="item.alt" class="inline-flex items-center gap-1"
                       ><AppWindow v-if="item.group === 'sessions'" :size="12" aria-hidden="true" />{{ item.altHint }}
@@ -1016,20 +1017,10 @@ const HINTS = [
             <p v-if="scopeNow === 'files' && files?.truncated && flat.length" class="px-3 pt-3 text-2xs text-ink-faint">{{ t('paletteV80.files.truncated', { n: files.files.length }) }}</p>
           </div>
 
-          <div class="hidden flex-wrap items-center gap-x-5 gap-y-1 border-t border-line px-5 py-3 text-2xs text-ink-faint sm:flex">
-            <template v-if="isNext">
-              <span class="inline-flex items-center gap-1.5"><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">↑ ↓</kbd>{{ t('mist.cmdk.hints.move') }}</span>
-              <span class="inline-flex items-center gap-1.5"><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">Enter</kbd>{{ t('mist.cmdk.hints.open') }}</span>
-              <span class="inline-flex items-center gap-1.5"
-                ><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ keyCombo(['Shift', 'Enter'], isMac) }}</kbd>{{ t('mist.cmdk.hints.openNew') }}</span
-              >
-              <span class="inline-flex items-center gap-1.5"><kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">Esc</kbd>{{ t('mist.cmdk.hints.close') }}</span>
-            </template>
-            <template v-else>
+          <div v-if="!isNext" class="hidden flex-wrap items-center gap-x-5 gap-y-1 border-t border-line px-5 py-3 text-2xs text-ink-faint sm:flex">
               <span v-for="h in HINTS" :key="h.key" class="inline-flex items-center gap-1.5">
                 <kbd class="rounded-inner bg-fill px-1.5 py-px font-sans text-ink-muted">{{ h.keys }}</kbd>{{ t(`palette.hints.${h.key}`) }}
               </span>
-            </template>
             <span class="ml-auto inline-flex items-center gap-3">
               <button
                 v-for="m in MODES"

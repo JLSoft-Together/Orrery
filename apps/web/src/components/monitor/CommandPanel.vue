@@ -33,7 +33,7 @@ const panelId = 'cmd-panel-body'
 </script>
 
 <template>
-  <section :aria-label="t('monitorV88.cmd.title')" class="shrink-0 border-t border-line bg-canvas" data-cmd-panel>
+  <section v-if="rows.length" :aria-label="t('monitorV88.cmd.title')" class="shrink-0 border-t border-line bg-canvas" data-cmd-panel>
     <button
       type="button"
       class="flex h-8 w-full min-w-0 cursor-pointer items-center gap-2 px-3 text-xs outline-none transition-colors hover:bg-raised focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"

@@ -46,13 +46,13 @@ async function main() {
 
     const chip = `document.querySelector(':is([data-pane="${pane}"], [data-pane-of="${pane}"]) [data-context-tokens], :is([data-pane="${pane}"], [data-pane-of="${pane}"]) [title*="120"]')`
     const chipText = await evaluate(`[...document.querySelectorAll('span[data-pane-chip]')].map(s => s.textContent.trim()).filter(x => /k$/i.test(x)).join(',')`)
-    check('pane chip shows 120k', /120\s?k/i.test(chipText), chipText)
+    check('pane head shows no token count under the warn line (v107)', !/120\s?k/i.test(chipText), chipText)
     check('no warning under threshold', await evaluate(`!document.querySelector('[data-context-warn]') && !document.querySelector('[data-context-warn-toast]')`))
 
     await agent(612000)
     await waitFor(`!!document.querySelector('[data-context-warn-toast="e2e-v89"]')`, 5000, 'toast').catch(() => {})
     check('toast at 612k', await evaluate(`!!document.querySelector('[data-context-warn-toast="e2e-v89"]')`))
-    check('chip turns warning', await evaluate(`!!document.querySelector('[data-pane-chip][data-context-warn]')`))
+    check('over the line the pane shows the context meter (v107)', await evaluate(`!!document.querySelector('[data-pane-meter=over]')`))
     check('toast has Compact action', await evaluate(`[...(document.querySelector('[data-context-warn-toast="e2e-v89"]')?.querySelectorAll('button') ?? [])].some(b => /Compact/.test(b.textContent))`))
     await shot('v89p-01-warn')
     await agent(615000)

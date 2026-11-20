@@ -42,6 +42,7 @@ interface Row {
 }
 
 function reasonOf(i: InboxItem): string {
+  if (!i.note && !(i.reason === 'menu' && i.question) && i.reason !== 'clash') return ''
   if (i.note) return i.note.merged ? `${i.note.text} ${t('mcpNote.more', { n: i.note.merged })}` : i.note.text
   if (i.reason === 'menu' && i.question) return i.question
   if (i.reason === 'clash') return t('v104.inbox.reason.clash', { file: i.file ?? '', peer: i.peer ?? '' })
@@ -104,7 +105,10 @@ function snooze(r: Row): void {
   focusRow()
 }
 
+const showKeys = ref(false)
+
 function onKey(e: KeyboardEvent): void {
+  if (!showKeys.value && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== 'Escape') showKeys.value = true
   if (e.ctrlKey || e.metaKey || e.altKey) return
   const n = rows.value.length
   const k = e.key.toLowerCase()
@@ -140,10 +144,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="root" class="ccm-menu fixed z-50 flex max-h-[min(70vh,520px)] flex-col overflow-hidden outline-none" :style="style" role="dialog" tabindex="-1" :aria-label="t('inbox.title')" data-inbox @keydown="onKey">
+  <div ref="root" class="group/inbox ccm-menu fixed z-50 flex max-h-[min(70vh,520px)] flex-col overflow-hidden outline-none" :style="style" role="dialog" tabindex="-1" :aria-label="t('inbox.title')" data-inbox @keydown="onKey">
     <p class="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2 text-xs font-semibold text-ink">
       <Inbox :size="14" class="text-ink-muted" aria-hidden="true" />{{ t('inbox.title') }}
-      <span class="ml-auto truncate text-2xs font-normal text-ink-faint">{{ t('v104.inbox.keys') }}</span>
+      <span class="ml-auto truncate text-2xs font-normal text-ink-faint transition-opacity duration-(--ccm-dur-fast)" :class="showKeys ? '' : 'opacity-0 group-hover/inbox:opacity-100'" data-inbox-keys>{{ t('v104.inbox.keys') }}</span>
     </p>
     <div class="ccm-scroll min-h-0 flex-1 overflow-y-auto py-1">
       <section v-for="s in sections" :key="s.group" :data-inbox-group="s.group" :aria-labelledby="`inbox-g-${s.group}`">
@@ -171,7 +175,7 @@ onMounted(() => {
                 <span class="truncate font-medium text-ink">{{ r.title }}</span>
                 <span v-if="r.project" class="shrink-0 truncate text-2xs text-ink-faint" :title="r.cwd">{{ r.project }}</span>
               </span>
-              <span class="truncate text-2xs text-ink-muted" :title="r.reason">{{ r.reason }}<template v-if="r.since">, {{ r.since }}</template></span>
+              <span class="truncate text-2xs text-ink-muted" :title="r.reason || undefined"><span v-if="!r.reason" class="sr-only">{{ t(`v104.inbox.reason.${r.item.reason}`) }}</span>{{ r.reason }}<template v-if="r.since"><template v-if="r.reason">, </template>{{ r.since }}</template></span>
             </span>
             <button
               v-if="r.item.reason === 'done' && r.cwd"

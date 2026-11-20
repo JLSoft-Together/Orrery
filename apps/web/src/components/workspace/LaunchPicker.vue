@@ -73,9 +73,24 @@ const devUrl = computed(() => (props.cwd && hasPreview ? lastDevUrl(props.cwd) :
 interface Row {
   dir: string
   label: string
+  agent?: string
+  at?: string
 }
 
 const baseName = (dir: string): string => dir.split(/[\\/]+/).filter(Boolean).pop() ?? dir
+
+const lastByDir = computed(() => {
+  const map = new Map<string, { agent: string; at: string }>()
+  for (const s of terminals.list) {
+    if (!s.cwd) continue
+    const at = s.endedAt ?? s.lastActivityAt ?? s.startedAt
+    if (!at) continue
+    const key = dirKey(s.cwd)
+    const prev = map.get(key)
+    if (!prev || at > prev.at) map.set(key, { agent: t(`workspace.preset.${s.provider ?? 'claude'}`), at })
+  }
+  return map
+})
 
 const sections = computed(() => {
   const seen = new Set<string>()
@@ -88,10 +103,14 @@ const sections = computed(() => {
         return true
       })
       .slice(0, PER_SECTION)
+      .map((row) => {
+        const last = lastByDir.value.get(dirKey(row.dir))
+        return last ? { ...row, agent: last.agent, at: last.at } : row
+      })
+  const recentRows = [...workspace.recentDirs, ...terminals.live.filter((s) => s.cwd).map((s) => s.cwd!)].map((dir) => ({ dir, label: baseName(dir) }))
   return [
-    { id: 'recent', icon: Folder, rows: take(workspace.recentDirs.map((dir) => ({ dir, label: baseName(dir) }))) },
+    { id: 'recent', icon: Folder, rows: take(recentRows) },
     { id: 'favorites', icon: Star, rows: take(favorites.list.map((f) => ({ dir: f.dir, label: f.label || baseName(f.dir) }))) },
-    { id: 'sessions', icon: Folder, rows: take(terminals.live.filter((s) => s.cwd).map((s) => ({ dir: s.cwd!, label: baseName(s.cwd!) }))) },
   ].filter((s) => s.rows.length)
 })
 
@@ -182,7 +201,7 @@ defineExpose({ focusFirst })
       >
         <component :is="a.icon" :size="18" :class="a.warn ? 'text-warning' : 'text-(--ccm-pane-accent)'" aria-hidden="true" />
         <span class="w-full truncate text-xs font-semibold text-ink">{{ a.label }}</span>
-        <span class="w-full truncate text-2xs text-ink-faint">{{ a.hint }}</span>
+        <span v-if="a.hint !== a.label" class="w-full truncate text-2xs text-ink-faint">{{ a.hint }}</span>
       </button>
     </div>
     <p v-if="dsNote" class="flex items-start gap-1.5 px-1 text-2xs text-ink-muted" role="status" data-launch-deepseek-note>
@@ -214,6 +233,7 @@ defineExpose({ focusFirst })
               <component :is="s.icon" :size="14" class="shrink-0 text-ink-muted group-focus-visible/row:text-on-accent" aria-hidden="true" />
               <span class="shrink-0 truncate font-medium">{{ r.label }}</span>
               <span class="min-w-0 truncate text-xs text-ink-faint group-focus-visible/row:text-on-accent">{{ shortPath(r.dir) }}</span>
+              <span v-if="r.agent && r.at" class="ml-auto shrink-0 text-2xs text-ink-faint group-focus-visible/row:text-on-accent" :class="s.id === 'recent' ? 'group-hover:invisible' : ''" data-launch-meta>{{ r.agent }}, {{ ago(r.at) }}</span>
             </button>
             <button
               v-if="s.id === 'recent'"

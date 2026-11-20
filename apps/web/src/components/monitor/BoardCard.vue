@@ -19,11 +19,11 @@ import { useToolSpansStore } from '../../stores/toolSpans'
 import { useUiStore } from '../../stores/ui'
 import { useWorkspaceStore } from '../../stores/workspace'
 import { useUiGenStore } from '../../stores/uiGen'
+import { useRevealInWorkspace } from '../../composables/useRevealInWorkspace'
 import Chip from '../next/ui/Chip.vue'
 import StatusIcon from '../StatusIcon.vue'
 import PresetIcon from '../workspace/PresetIcon.vue'
 import SubagentOrbit from '../workspace/SubagentOrbit.vue'
-import OpenPaneButton from './OpenPaneButton.vue'
 
 const props = defineProps<{ terminal: TerminalSession }>()
 const emit = defineEmits<{ menu: [e: MouseEvent]; key: [e: KeyboardEvent] }>()
@@ -35,6 +35,7 @@ const settings = useSettingsStore()
 const spans = useToolSpansStore()
 const workspace = useWorkspaceStore()
 const uiGen = useUiGenStore()
+const reveal = useRevealInWorkspace()
 
 const provider = computed<Provider>(() => props.terminal.provider ?? 'claude')
 const agentLabel = computed(() => t(`monitorV88.agentLabel.${provider.value}`))
@@ -43,7 +44,7 @@ const main = computed(() => agents.mainOf(props.terminal.id))
 const title = computed(() => displayTitle(props.terminal))
 const projectKey = computed(() => projectOf(props.terminal.cwd) ?? '')
 const project = computed(() => (projectKey.value ? folderName(projectKey.value) : t('monitorV88.noProject')))
-const subline = computed(() => t('boardV95.subline', { project: project.value, agent: agentLabel.value }))
+const subline = computed(() => project.value)
 const needs = computed(() => props.terminal.status === 'waiting')
 const working = computed(() => props.terminal.status === 'working')
 const ended = computed(() => props.terminal.status === 'stale')
@@ -69,7 +70,6 @@ const METER_FILL: Record<MeterTone, string> = { ok: 'bg-ink-faint', warn: 'bg-wa
 const contextText = computed(() => (meter.value ? t('boardV95.context', { now: compactNumber(meter.value.now, locale.value), max: compactNumber(meter.value.max, locale.value) }) : ''))
 
 const canDiff = computed(() => hasTerminals && !quiet.value && !!props.terminal.cwd && (props.terminal.diff?.files ?? 0) > 0)
-const canOpen = computed(() => hasTerminals && !ended.value && !quiet.value)
 
 const lastTurn = useBoardLastTurn(() => props.terminal)
 const lastTurnStat = computed(() => {
@@ -77,6 +77,12 @@ const lastTurnStat = computed(() => {
   if (!s || !quiet.value || ended.value) return null
   return { text: t('boardV95.lastTurn', { n: s.files }, s.files), added: s.added, removed: s.removed }
 })
+
+const hasMore = computed(() => !!branch.value || !!lastTurnStat.value || canDiff.value || meter.value?.tone === 'ok')
+
+function open(): void {
+  if (!reveal.show(props.terminal.id)) ui.focusTerminal(props.terminal.id)
+}
 
 function openDiff(): void {
   const cwd = props.terminal.cwd
@@ -88,7 +94,7 @@ function openDiff(): void {
 function onKey(e: KeyboardEvent): void {
   if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault()
-    ui.focusTerminal(props.terminal.id)
+    open()
     return
   }
   emit('key', e)
@@ -118,8 +124,9 @@ const line = computed(() => {
     class="ccm-board-card mist-card mist-card-flat group relative flex min-w-0 flex-col gap-2 rounded-card border bg-surface py-2.5 ps-3.5 pe-3 shadow-card outline-none focus-visible:ring-2 focus-visible:ring-focus"
     :class="[`ccm-agent-${provider}`, needs ? 'border-warning' : 'border-transparent', focused ? 'ring-2 ring-focus' : '', ended ? 'text-ink-muted' : '', quiet ? 'ccm-board-quiet' : '']"
     :aria-label="`${agentLabel}: ${title}`"
+    :title="t('v107gon.monitor.openWorkspace', { title })"
     :data-board-card="terminal.id"
-    @click="ui.focusTerminal(terminal.id)"
+    @click="open"
     @contextmenu="emit('menu', $event)"
     @keydown="onKey"
   >
@@ -137,7 +144,7 @@ const line = computed(() => {
         <SubagentOrbit :agents="subAgents" />
       </span>
     </div>
-    <Chip v-if="uiGen.isNext" :status="terminal.status" :tone="needs ? 'waiting' : undefined" class="self-start" :title="fileText || line" data-board-line>
+    <Chip v-if="uiGen.isNext" :status="terminal.status" :tone="needs ? 'waiting' : undefined" class="self-start" :title="[fileText || line, elapsed ? t('boardV95.elapsed', { time: elapsed }) : ''].filter(Boolean).join(', ')" data-board-line>
       <template #icon>
         <component :is="file.access === 'edit' ? Pencil : Eye" v-if="file" :size="12" aria-hidden="true" />
         <StatusIcon v-else :status="terminal.status" :size="12" />
@@ -148,22 +155,15 @@ const line = computed(() => {
       v-else
       class="flex min-w-0 items-center gap-1.5 rounded-inner px-1.5 py-0.5 text-xs tabular-nums"
       :class="needs ? 'ccm-chip ccm-chip-warning font-medium text-warning' : meta.text"
-      :title="fileText || line"
+      :title="[fileText || line, elapsed ? t('boardV95.elapsed', { time: elapsed }) : ''].filter(Boolean).join(', ')"
       data-board-line
     >
       <component :is="file.access === 'edit' ? Pencil : Eye" v-if="file" :size="13" class="shrink-0" aria-hidden="true" />
       <StatusIcon v-else :status="terminal.status" :size="13" />
       <span class="truncate">{{ fileText || line }}</span>
     </p>
-    <div v-if="elapsed || branch" class="flex min-w-0 items-center gap-3 font-mono text-xs text-ink-muted">
-      <span v-if="elapsed" class="shrink-0 tabular-nums" :title="t('boardV95.elapsed', { time: elapsed })" data-board-elapsed>{{ elapsed }}</span>
-      <span v-if="branch" class="inline-flex min-w-0 items-center gap-1" :title="t('boardV95.branch', { name: branch })" data-board-branch>
-        <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
-        <span class="truncate">{{ branch }}</span>
-      </span>
-    </div>
-    <div v-if="meter" class="flex min-w-0 flex-col gap-1" :data-board-context="meter.tone">
-      <p class="text-xs tabular-nums" :class="meter.tone === 'ok' ? 'text-ink-muted' : meter.tone === 'warn' ? 'font-medium text-warning' : 'font-medium text-st-error'">{{ contextText }}</p>
+    <div v-if="meter && meter.tone !== 'ok'" class="flex min-w-0 flex-col gap-1" :data-board-context="meter.tone">
+      <p class="text-xs font-medium tabular-nums" :class="meter.tone === 'warn' ? 'text-warning' : 'text-st-error'">{{ contextText }}</p>
       <div
         class="h-1 w-full overflow-hidden rounded-full bg-fill"
         role="meter"
@@ -176,16 +176,24 @@ const line = computed(() => {
         <div class="h-full w-full origin-left rounded-full" :class="METER_FILL[meter.tone]" :style="{ transform: `scaleX(${meter.fill})` }" />
       </div>
     </div>
-    <p v-if="lastTurnStat" class="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-ink-muted" data-board-last-turn>
-      <span>{{ lastTurnStat.text }}</span>
-      <span v-if="lastTurnStat.added" class="font-mono font-medium text-diff-add tabular-nums">+{{ fullNumber(lastTurnStat.added, locale) }}</span>
-      <span v-if="lastTurnStat.removed" class="font-mono font-medium text-diff-del tabular-nums">−{{ fullNumber(lastTurnStat.removed, locale) }}</span>
-    </p>
-    <div v-if="canOpen || canDiff" class="flex min-w-0 flex-wrap items-center gap-2" data-board-actions>
-      <OpenPaneButton v-if="canOpen" :terminal-id="terminal.id" primary compact label-key="boardV95.openWorkspace" />
-      <button v-if="canDiff" type="button" class="ccm-btn h-6 px-2 text-xs" :title="t('boardV95.viewDiffTitle')" data-board-diff @click.stop="openDiff" @keydown.stop>
-        <FileDiff :size="14" aria-hidden="true" />{{ t('boardV95.viewDiff') }}
-      </button>
+    <div v-if="hasMore" class="grid grid-rows-[0fr] transition-[grid-template-rows] duration-150 group-focus-within:grid-rows-[1fr] group-hover:grid-rows-[1fr]" data-board-more>
+      <div class="flex min-h-0 min-w-0 flex-col gap-1.5 overflow-hidden">
+        <div v-if="branch" class="inline-flex min-w-0 items-center gap-1 font-mono text-xs text-ink-muted" :title="t('boardV95.branch', { name: branch })" data-board-branch>
+          <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
+          <span class="truncate">{{ branch }}</span>
+        </div>
+        <p v-if="meter && meter.tone === 'ok'" class="text-xs tabular-nums text-ink-muted" :data-board-context="meter.tone">{{ contextText }}</p>
+        <p v-if="lastTurnStat" class="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-ink-muted" data-board-last-turn>
+          <span>{{ lastTurnStat.text }}</span>
+          <span v-if="lastTurnStat.added" class="font-mono font-medium text-diff-add tabular-nums">+{{ fullNumber(lastTurnStat.added, locale) }}</span>
+          <span v-if="lastTurnStat.removed" class="font-mono font-medium text-diff-del tabular-nums">−{{ fullNumber(lastTurnStat.removed, locale) }}</span>
+        </p>
+        <div v-if="canDiff" class="flex min-w-0 items-center">
+          <button type="button" class="ccm-btn h-6 px-2 text-xs" :title="t('boardV95.viewDiffTitle')" data-board-diff @click.stop="openDiff" @keydown.stop>
+            <FileDiff :size="14" aria-hidden="true" />{{ t('boardV95.viewDiff') }}
+          </button>
+        </div>
+      </div>
     </div>
   </article>
 </template>

@@ -1,13 +1,31 @@
 import type { ToastKind } from '@ccm/shared'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'editor', 'notify', 'telegram', 'remote', 'github', 'integrations', 'deepseek', 'access', 'data', 'about', 'workspace', 'disk'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'workspace', 'notify', 'integrations', 'data', 'about'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
 
-export const NEXT_ONLY_PAGES: readonly SettingsPage[] = ['disk']
+export const LEGACY_PAGES = {
+  editor: 'workspace',
+  telegram: 'notify',
+  remote: 'notify',
+  github: 'integrations',
+  deepseek: 'integrations',
+  access: 'data',
+  disk: 'data',
+} as const satisfies Record<string, SettingsPage>
+export type LegacySettingsPage = keyof typeof LEGACY_PAGES
+export type SettingsPageInput = SettingsPage | LegacySettingsPage
+
+export const NEXT_ONLY_PAGES: readonly SettingsPage[] = []
 
 export const pageAvailable = (page: SettingsPage, env: SettingsEnv, next: boolean): boolean => (next || !NEXT_ONLY_PAGES.includes(page)) && pageVisible(page, env)
 
 export const isSettingsPage = (v: unknown): v is SettingsPage => typeof v === 'string' && (SETTINGS_PAGES as readonly string[]).includes(v)
+
+export const resolvePage = (v: unknown): SettingsPage | null => {
+  if (isSettingsPage(v)) return v
+  if (typeof v === 'string' && Object.hasOwn(LEGACY_PAGES, v)) return LEGACY_PAGES[v as LegacySettingsPage]
+  return null
+}
 
 const PAGE_KEY = 'ccm.settings.page'
 const LEGACY_REMINDERS = 'reminders'
@@ -26,7 +44,8 @@ export function loadPage(): SettingsPage {
   try {
     const v = localStorage.getItem(PAGE_KEY)
     if (v === LEGACY_REMINDERS) return 'notify'
-    if (isSettingsPage(v)) return v
+    const r = resolvePage(v)
+    if (r) return r
   } catch {
     return 'general'
   }
@@ -76,7 +95,7 @@ export interface SettingsEntry {
   needs?: keyof SettingsEnv
 }
 
-const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { editor: 'terminals', github: 'github', deepseek: 'deepseek', telegram: 'telegram', remote: 'remote' }
+const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = {}
 
 export const pageVisible = (page: SettingsPage, env: SettingsEnv): boolean => {
   const need = PAGE_NEEDS[page]
@@ -97,7 +116,9 @@ export const NOTIFY_ROWS: { kind: ToastKind; inApp?: 'notifyWaiting' | 'notifyDo
   { kind: 'disk' },
 ]
 
-export const entries = (mac: boolean): SettingsEntry[] => [
+type RawEntry = Omit<SettingsEntry, 'page'> & { page: SettingsPageInput }
+
+const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'general', id: 'language', labelKey: 'settings.language' },
   { page: 'general', id: 'loginItem', labelKey: mac ? 'settings.loginItemMac' : 'settings.loginItem', hintKey: mac ? 'settings.loginItemHintMac' : 'settings.loginItemHint', needs: 'loginItem' },
   { page: 'general', id: 'restore', labelKey: 'wsRestore.mode', hintKey: 'wsRestore.modeHint', needs: 'terminals' },
@@ -131,7 +152,7 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'notify', id: 'toast', labelKey: 'settings.toast', hintKey: mac ? 'settings.toastHintMac' : 'settings.toastHint', needs: 'toast' },
   { page: 'notify', id: 'notifyEnable', labelKey: 'settings.notifyEnable', hintKey: 'settings.notifyHint' },
   { page: 'notify', id: 'testToast', labelKey: 'settings.toastTest.action', needs: 'toast' },
-  ...NOTIFY_ROWS.map((r): SettingsEntry => ({
+  ...NOTIFY_ROWS.map((r): RawEntry => ({
     page: 'notify',
     id: `event-${r.kind}`,
     labelKey: `settingsV79.events.${r.kind}`,
@@ -198,14 +219,14 @@ export const entries = (mac: boolean): SettingsEntry[] => [
   { page: 'about', id: 'help-habblaud', labelKey: 'settings.habblaudLicense', hintKey: 'settings.habblaudLicenseHint' },
 ]
 
+export const entries = (mac: boolean): SettingsEntry[] => rawEntries(mac).map((e): SettingsEntry => ({ ...e, page: resolvePage(e.page) ?? 'general' }))
+
 const NEXT_PAGE_OF: Record<string, SettingsPage> = {
   clickMenu: 'workspace',
   menuToast: 'workspace',
   dim: 'workspace',
   compactAuto: 'workspace',
   agentShim: 'workspace',
-  diskMap: 'disk',
-  disk: 'disk',
 }
 
 export const nextEntries = (mac: boolean): SettingsEntry[] => [

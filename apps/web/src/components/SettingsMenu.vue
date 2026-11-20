@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, BellOff, Bot, ChevronRight, Database, GitBranch, HardDrive, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Send, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, SquareTerminal, X } from 'lucide-vue-next'
+import { Bell, BellOff, ChevronRight, Database, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Settings2, SlidersHorizontal, X } from 'lucide-vue-next'
 import { clampDialogSize, readDialogSize, saveDialogSize, type DialogSize } from '../lib/dialogSize'
 import { retireOverlay } from '../lib/motion'
 import { isMac } from '../lib/platform'
@@ -23,24 +23,15 @@ import { useUiGenStore } from '../stores/uiGen'
 import { useUiStore } from '../stores/ui'
 import { useUpdateStore } from '../stores/update'
 import LottieArt from './LottieArt.vue'
-import GitHubAccountsSettings from './GitHubAccountsSettings.vue'
-import TelegramSettings from './TelegramSettings.vue'
 import SettingsAbout from './settings/SettingsAbout.vue'
-import SettingsAccess from './settings/SettingsAccess.vue'
 import SettingsAppearance from './settings/SettingsAppearance.vue'
-import SettingsData from './settings/SettingsData.vue'
-import SettingsDisk from './settings/SettingsDisk.vue'
-import SettingsWorkspace from './settings/SettingsWorkspace.vue'
-import { loadSettingsDeepSeek } from '../features/deepseek'
-import SettingsEditor from './settings/SettingsEditor.vue'
 import SettingsGeneral from './settings/SettingsGeneral.vue'
-import SettingsIntegrations from './settings/SettingsIntegrations.vue'
-import SettingsNotify from './settings/SettingsNotify.vue'
-import SettingsRemote from './settings/SettingsRemote.vue'
-import SettingEmbed from './settings/SettingEmbed.vue'
-import { SETTINGS_PAGES, entries, isSettingsPage, loadPage, pageAvailable, nextEntries, savePage, searchSettings, takeLegacyReminders, type SettingsEnv, type SettingsPage } from './settings'
+import PageData from './settings/PageData.vue'
+import PageIntegrations from './settings/PageIntegrations.vue'
+import PageNotify from './settings/PageNotify.vue'
+import PageWorkspace from './settings/PageWorkspace.vue'
+import { SETTINGS_PAGES, entries, resolvePage, loadPage, pageAvailable, nextEntries, savePage, searchSettings, takeLegacyReminders, type SettingsEnv, type SettingsPage } from './settings'
 
-const SettingsDeepSeek = defineAsyncComponent(loadSettingsDeepSeek)
 
 const { t } = useI18n()
 const settings = useSettingsStore()
@@ -122,18 +113,11 @@ const REMINDER_IDS = ['break', 'stuck', 'contextWarn', 'budget']
 const pageIcons: Record<SettingsPage, Component> = {
   general: SlidersHorizontal,
   appearance: Palette,
-  editor: SquareTerminal,
+  workspace: LayoutPanelLeft,
   notify: Bell,
-  telegram: Send,
-  remote: Smartphone,
-  github: GitBranch,
   integrations: Plug,
-  deepseek: Bot,
-  access: ShieldCheck,
   data: Database,
   about: Info,
-  workspace: LayoutPanelLeft,
-  disk: HardDrive,
 }
 
 const env = computed<SettingsEnv>(() => ({
@@ -188,6 +172,10 @@ async function flash(id: string): Promise<void> {
     content.value?.querySelector<HTMLElement>('[data-notify-more][aria-expanded="false"]')?.click()
     await nextTick()
   }
+  if (id === 'office') {
+    content.value?.querySelector<HTMLElement>('[data-general-more][aria-expanded="false"]')?.click()
+    await nextTick()
+  }
   if (REMINDER_IDS.includes(id)) {
     content.value?.querySelector<HTMLElement>('[data-reminders-more][aria-expanded="false"]')?.click()
     await nextTick()
@@ -212,7 +200,8 @@ function takeRequestedPage(): void {
   const wanted = ui.settingsPage
   if (!wanted) return
   ui.settingsPage = null
-  if (isSettingsPage(wanted)) show(wanted)
+  const target = resolvePage(wanted)
+  if (target) show(target)
 }
 
 function onKey(e: KeyboardEvent): void {
@@ -397,18 +386,11 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                 <template v-else>
                   <SettingsGeneral v-if="page === 'general'" />
                   <SettingsAppearance v-else-if="page === 'appearance'" />
-                  <SettingsEditor v-else-if="page === 'editor'" />
-                  <SettingsNotify v-else-if="page === 'notify'" />
-                  <SettingEmbed v-else-if="page === 'telegram'" id="telegram"><TelegramSettings :open="ui.settingsOpen" /></SettingEmbed>
-                  <SettingsRemote v-else-if="page === 'remote'" />
-                  <SettingEmbed v-else-if="page === 'github'" id="github"><GitHubAccountsSettings :open="ui.settingsOpen" /></SettingEmbed>
-                  <SettingsIntegrations v-else-if="page === 'integrations'" />
-                  <SettingsDeepSeek v-else-if="page === 'deepseek'" />
-                  <SettingsAccess v-else-if="page === 'access'" />
-                  <SettingsData v-else-if="page === 'data'" />
+                  <PageWorkspace v-else-if="page === 'workspace'" />
+                  <PageNotify v-else-if="page === 'notify'" />
+                  <PageIntegrations v-else-if="page === 'integrations'" />
+                  <PageData v-else-if="page === 'data'" />
                   <SettingsAbout v-else-if="page === 'about'" />
-                  <SettingsWorkspace v-else-if="page === 'workspace'" />
-                  <SettingsDisk v-else-if="page === 'disk'" />
                 </template>
               </div>
             </div>

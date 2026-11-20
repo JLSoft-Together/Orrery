@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
+import '../remote/chat_last.dart';
 import '../remote/providers.dart';
+import '../ui/chat/chat_screen.dart';
 import '../ui/commands.dart';
 import '../ui/model/workspace_model.dart';
 import '../ui/ui_providers.dart';
@@ -138,11 +140,21 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
     final tab = model.tabOfPane(paneKey);
     if (tab != null) {
       _stopWaiting();
+      final pane = tab.pane(paneKey);
+      final chat =
+          pane != null &&
+          pane.isAgent &&
+          ref.read(machineViewProvider(machineId)).chatEnabled;
       nav.push(
         machineRoute<void>(
           machineId,
-          (_) =>
-              TabPage(machineId: machineId, tabKey: tab.key, paneKey: paneKey),
+          (_) => chat
+              ? ChatScreen(machineId: machineId, paneKey: paneKey)
+              : TabPage(
+                  machineId: machineId,
+                  tabKey: tab.key,
+                  paneKey: paneKey,
+                ),
         ),
       );
       return;

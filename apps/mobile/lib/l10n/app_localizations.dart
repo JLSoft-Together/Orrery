@@ -2485,6 +2485,474 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n}d'**
   String durationDays(int n);
+
+  /// No description provided for @chatInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get chatInbox;
+
+  /// No description provided for @chatWaitingGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you, {n}'**
+  String chatWaitingGroup(int n);
+
+  /// No description provided for @chatRecentGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get chatRecentGroup;
+
+  /// No description provided for @chatNoSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions yet.'**
+  String get chatNoSessions;
+
+  /// No description provided for @chatNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No session matches.'**
+  String get chatNoMatch;
+
+  /// No description provided for @chatSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get chatSearch;
+
+  /// No description provided for @chatSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions'**
+  String get chatSearchHint;
+
+  /// No description provided for @chatMoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get chatMoreTitle;
+
+  /// No description provided for @chatNewSession.
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get chatNewSession;
+
+  /// No description provided for @chatNewShell.
+  ///
+  /// In en, this message translates to:
+  /// **'New shell'**
+  String get chatNewShell;
+
+  /// No description provided for @chatNewAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get chatNewAdvanced;
+
+  /// No description provided for @chatWhere.
+  ///
+  /// In en, this message translates to:
+  /// **'In'**
+  String get chatWhere;
+
+  /// No description provided for @chatTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Files, git, run'**
+  String get chatTools;
+
+  /// No description provided for @chatPaneActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Pane'**
+  String get chatPaneActions;
+
+  /// No description provided for @chatSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get chatSession;
+
+  /// No description provided for @chatPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get chatPlus;
+
+  /// No description provided for @chatViewTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'View terminal'**
+  String get chatViewTerminal;
+
+  /// No description provided for @chatViewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'View chat'**
+  String get chatViewChat;
+
+  /// No description provided for @chatOpenTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'open terminal'**
+  String get chatOpenTerminal;
+
+  /// No description provided for @chatGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is closed.'**
+  String get chatGone;
+
+  /// No description provided for @chatHello.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello'**
+  String get chatHello;
+
+  /// No description provided for @chatAgentAt.
+  ///
+  /// In en, this message translates to:
+  /// **'{agent} in {project}'**
+  String chatAgentAt(String agent, String project);
+
+  /// No description provided for @chatMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message {agent}'**
+  String chatMessage(String agent);
+
+  /// No description provided for @chatReplyTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to {agent}'**
+  String chatReplyTo(String agent);
+
+  /// No description provided for @chatChipSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Sum up the project'**
+  String get chatChipSummary;
+
+  /// No description provided for @chatChipTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the tests'**
+  String get chatChipTest;
+
+  /// No description provided for @chatChipGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Show git status'**
+  String get chatChipGit;
+
+  /// No description provided for @chatChipTypecheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix typecheck errors'**
+  String get chatChipTypecheck;
+
+  /// No description provided for @chatSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chatSend;
+
+  /// No description provided for @chatStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get chatStop;
+
+  /// No description provided for @chatStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc sent'**
+  String get chatStopped;
+
+  /// No description provided for @chatUnsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent'**
+  String get chatUnsent;
+
+  /// No description provided for @chatResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send again'**
+  String get chatResend;
+
+  /// No description provided for @chatOlder.
+  ///
+  /// In en, this message translates to:
+  /// **'Load older'**
+  String get chatOlder;
+
+  /// No description provided for @chatWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get chatWorking;
+
+  /// No description provided for @chatCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get chatCopy;
+
+  /// No description provided for @chatCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get chatCopied;
+
+  /// No description provided for @chatCutMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Full text in the terminal'**
+  String get chatCutMore;
+
+  /// No description provided for @chatMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} more'**
+  String chatMore(int n);
+
+  /// No description provided for @chatMoreFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} more files'**
+  String chatMoreFiles(int n);
+
+  /// No description provided for @chatFilesEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{Edited 1 file} other{Edited {n} files}}'**
+  String chatFilesEdited(int n);
+
+  /// No description provided for @chatVerbEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get chatVerbEdit;
+
+  /// No description provided for @chatVerbRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get chatVerbRun;
+
+  /// No description provided for @chatVerbRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get chatVerbRead;
+
+  /// No description provided for @chatVerbSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get chatVerbSearch;
+
+  /// No description provided for @chatVerbWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Web'**
+  String get chatVerbWeb;
+
+  /// No description provided for @chatVerbAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get chatVerbAgent;
+
+  /// No description provided for @chatLiveEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing'**
+  String get chatLiveEdit;
+
+  /// No description provided for @chatLiveRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get chatLiveRun;
+
+  /// No description provided for @chatLiveRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get chatLiveRead;
+
+  /// No description provided for @chatLiveSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching'**
+  String get chatLiveSearch;
+
+  /// No description provided for @chatLiveWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Browsing'**
+  String get chatLiveWeb;
+
+  /// No description provided for @chatLiveAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Running an agent'**
+  String get chatLiveAgent;
+
+  /// No description provided for @chatSumEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{edited 1 time} other{edited {n} times}}'**
+  String chatSumEdit(int n);
+
+  /// No description provided for @chatSumRun.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{ran 1 command} other{ran {n} commands}}'**
+  String chatSumRun(int n);
+
+  /// No description provided for @chatSumRead.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{read 1 file} other{read {n} files}}'**
+  String chatSumRead(int n);
+
+  /// No description provided for @chatSumSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{searched 1 time} other{searched {n} times}}'**
+  String chatSumSearch(int n);
+
+  /// No description provided for @chatSumWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 web lookup} other{{n} web lookups}}'**
+  String chatSumWeb(int n);
+
+  /// No description provided for @chatSumAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 agent} other{{n} agents}}'**
+  String chatSumAgent(int n);
+
+  /// No description provided for @chatSumOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 other tool} other{{n} other tools}}'**
+  String chatSumOther(int n);
+
+  /// No description provided for @chatSumNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get chatSumNone;
+
+  /// No description provided for @chatSysStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get chatSysStop;
+
+  /// No description provided for @chatSysError.
+  ///
+  /// In en, this message translates to:
+  /// **'API error'**
+  String get chatSysError;
+
+  /// No description provided for @chatSysLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit the limit'**
+  String get chatSysLimit;
+
+  /// No description provided for @chatSysCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compacted'**
+  String get chatSysCompact;
+
+  /// No description provided for @chatAskPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow this?'**
+  String get chatAskPermission;
+
+  /// No description provided for @chatAskChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one'**
+  String get chatAskChoose;
+
+  /// No description provided for @chatPicked.
+  ///
+  /// In en, this message translates to:
+  /// **'Picked {label}'**
+  String chatPicked(String label);
+
+  /// No description provided for @chatSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent {label}'**
+  String chatSent(String label);
+
+  /// No description provided for @chatUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get chatUndo;
+
+  /// No description provided for @chatReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting'**
+  String get chatReconnecting;
+
+  /// No description provided for @chatReconnectingQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting, {n} bytes not sent'**
+  String chatReconnectingQueued(int n);
+
+  /// No description provided for @chatRejoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnected'**
+  String get chatRejoined;
+
+  /// No description provided for @chatOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get chatOffline;
+
+  /// No description provided for @chatQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent yet: {n} bytes'**
+  String chatQueued(int n);
+
+  /// No description provided for @chatSlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow {n} ms'**
+  String chatSlow(int n);
+
+  /// No description provided for @chatNoNet.
+  ///
+  /// In en, this message translates to:
+  /// **'No network'**
+  String get chatNoNet;
+
+  /// No description provided for @chatContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Context {n}%'**
+  String chatContext(int n);
 }
 
 class _AppLocalizationsDelegate

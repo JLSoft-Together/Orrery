@@ -267,15 +267,53 @@ void main() {
     });
   });
 
-  test('input while not connected is dropped, not queued', () {
+  test('input while reconnecting is queued, then sent once after attach', () {
     fakeAsync((async) {
       final bed = Bed(async);
       final a = bed.attach('s1');
-      unawaited(bed.conn.disconnect());
+      final events = <Map<String, dynamic>>[];
+      a.events.listen(events.add);
+      bed.servers.last.serverClose(null);
+      async.flushMicrotasks();
+      bed.pty.input(a, Uint8List.fromList(utf8.encode('ls')), claim: true);
+      bed.pty.input(a, Uint8List.fromList(utf8.encode(' -l')));
+      async.flushMicrotasks();
+      expect(a.queued, 5);
+      expect(events.map((e) => e['t']), ['pty.queued', 'pty.queued']);
+      expect(events.last['bytes'], 5);
+      async.elapse(const Duration(seconds: 2));
+      expect(bed.servers, hasLength(2));
+      expect(bed.servers.last.ptyInput.map(utf8.decode), ['ls -l']);
+      expect(bed.servers.last.ptyClaims, [true]);
+      expect(a.queued, 0);
+      expect(events.last['t'], 'pty.flushed');
+      expect(events.last['bytes'], 5);
+      async.elapse(const Duration(seconds: 2));
+      expect(bed.servers.last.ptyInput, hasLength(1));
+    });
+  });
+
+  test('the queue keeps at most ptyQueueBytes and drops the rest', () {
+    fakeAsync((async) {
+      final bed = Bed(async);
+      final a = bed.attach('s1');
+      bed.servers.last.serverClose(null);
+      async.flushMicrotasks();
+      bed.pty.input(a, Uint8List(ptyQueueBytes - 2));
+      bed.pty.input(a, Uint8List(10));
+      bed.pty.input(a, Uint8List(10));
+      expect(a.queued, ptyQueueBytes);
+    });
+  });
+
+  test('a suspended attachment drops input instead of queueing', () {
+    fakeAsync((async) {
+      final bed = Bed(async);
+      final a = bed.attach('s1');
+      unawaited(bed.pty.suspendAll());
       async.flushMicrotasks();
       bed.pty.input(a, Uint8List.fromList([1]));
-      async.elapse(const Duration(seconds: 1));
-      expect(bed.servers.last.ptyInput, isEmpty);
+      expect(a.queued, 0);
     });
   });
 }

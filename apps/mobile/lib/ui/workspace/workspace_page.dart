@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../remote/chat_last.dart';
+import '../../remote/providers.dart';
+import '../chat/chat_home_page.dart';
 import '../commands.dart';
 import '../model/workspace_model.dart';
 import '../monitor/monitor_page.dart';
@@ -19,20 +22,31 @@ class WorkspacePage extends StatelessWidget {
   final String machineId;
 
   @override
-  Widget build(BuildContext context) =>
-      MachineScope(machineId: machineId, child: _Shell(machineId));
+  Widget build(BuildContext context) => MachineScope(
+    machineId: machineId,
+    child: Consumer(
+      builder: (context, ref, _) {
+        final chat = ref.watch(
+          machineViewProvider(machineId).select((v) => v.chatEnabled),
+        );
+        return chat
+            ? ChatHomePage(machineId: machineId)
+            : WorkspaceShell(machineId: machineId);
+      },
+    ),
+  );
 }
 
-class _Shell extends ConsumerStatefulWidget {
-  const _Shell(this.machineId);
+class WorkspaceShell extends ConsumerStatefulWidget {
+  const WorkspaceShell({super.key, required this.machineId});
 
   final String machineId;
 
   @override
-  ConsumerState<_Shell> createState() => _ShellState();
+  ConsumerState<WorkspaceShell> createState() => _ShellState();
 }
 
-class _ShellState extends ConsumerState<_Shell> {
+class _ShellState extends ConsumerState<WorkspaceShell> {
   int _index = 0;
 
   void _openTerminal(String terminalId) {

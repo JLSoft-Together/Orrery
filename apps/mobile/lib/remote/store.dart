@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'cache.dart';
+import 'chat_last.dart';
+import 'chat_protocol.dart';
 import 'json_patch.dart';
 import 'link_state.dart';
 import 'monitor_reducer.dart';
@@ -44,6 +46,7 @@ class MachineView {
     this.fromCache = false,
     this.updatedAt,
     this.revision = 0,
+    this.chatLast = const {},
   });
 
   final Map<String, dynamic>? snapshot;
@@ -58,6 +61,7 @@ class MachineView {
   final bool fromCache;
   final DateTime? updatedAt;
   final int revision;
+  final Map<String, ChatLast> chatLast;
 
   List<dynamic> get tabs {
     final value = workspace?['tabs'];
@@ -76,6 +80,7 @@ class MachineView {
     bool? stale,
     bool? fromCache,
     DateTime? updatedAt,
+    Map<String, ChatLast>? chatLast,
   }) => MachineView(
     snapshot: snapshot ?? this.snapshot,
     seq: seq ?? this.seq,
@@ -91,6 +96,7 @@ class MachineView {
     fromCache: fromCache ?? this.fromCache,
     updatedAt: updatedAt ?? this.updatedAt,
     revision: revision + 1,
+    chatLast: chatLast ?? this.chatLast,
   );
 }
 
@@ -170,6 +176,9 @@ class MachineStore {
       case 'limit':
         _onLimit(event);
         return;
+      case 'chat.last':
+        _onChatLast(event);
+        return;
       case 'ws.snapshot':
         _onWsSnapshot(event);
       case 'ws.patch':
@@ -235,6 +244,11 @@ class MachineStore {
     final limit = SizeLimit.parse(event);
     if (limit == null) return;
     _set(_view.copyWith(limit: limit));
+  }
+
+  void _onChatLast(JsonMap event) {
+    final next = nextChatLast(_view.chatLast, event);
+    if (next != null) _set(_view.copyWith(chatLast: next));
   }
 
   void _requestResync() {

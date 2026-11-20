@@ -1321,4 +1321,278 @@ class AppLocalizationsVi extends AppLocalizations {
   String durationDays(int n) {
     return '${n}n';
   }
+
+  @override
+  String get chatInbox => 'Hộp thư';
+
+  @override
+  String chatWaitingGroup(int n) {
+    return 'Chờ bạn, $n';
+  }
+
+  @override
+  String get chatRecentGroup => 'Gần đây';
+
+  @override
+  String get chatNoSessions => 'Chưa có session nào.';
+
+  @override
+  String get chatNoMatch => 'Không có session nào khớp.';
+
+  @override
+  String get chatSearch => 'Tìm';
+
+  @override
+  String get chatSearchHint => 'Tìm session';
+
+  @override
+  String get chatMoreTitle => 'Thêm';
+
+  @override
+  String get chatNewSession => 'Session mới';
+
+  @override
+  String get chatNewShell => 'Shell mới';
+
+  @override
+  String get chatNewAdvanced => 'Tuỳ chọn khác';
+
+  @override
+  String get chatWhere => 'Ở';
+
+  @override
+  String get chatTools => 'File, git, run';
+
+  @override
+  String get chatPaneActions => 'Pane';
+
+  @override
+  String get chatSession => 'Session';
+
+  @override
+  String get chatPlus => 'Thêm';
+
+  @override
+  String get chatViewTerminal => 'Xem terminal';
+
+  @override
+  String get chatViewChat => 'Xem chat';
+
+  @override
+  String get chatOpenTerminal => 'mở terminal';
+
+  @override
+  String get chatGone => 'Session này đã đóng.';
+
+  @override
+  String get chatHello => 'Chào chủ nhân';
+
+  @override
+  String chatAgentAt(String agent, String project) {
+    return '$agent ở $project';
+  }
+
+  @override
+  String chatMessage(String agent) {
+    return 'Nhắn $agent';
+  }
+
+  @override
+  String chatReplyTo(String agent) {
+    return 'Trả lời $agent';
+  }
+
+  @override
+  String get chatChipSummary => 'Tóm tắt project';
+
+  @override
+  String get chatChipTest => 'Chạy test';
+
+  @override
+  String get chatChipGit => 'Xem git status';
+
+  @override
+  String get chatChipTypecheck => 'Sửa lỗi typecheck';
+
+  @override
+  String get chatSend => 'Gửi';
+
+  @override
+  String get chatStop => 'Dừng';
+
+  @override
+  String get chatStopped => 'Đã gửi Esc';
+
+  @override
+  String get chatUnsent => 'Chưa gửi';
+
+  @override
+  String get chatResend => 'Gửi lại';
+
+  @override
+  String get chatOlder => 'Tải cũ hơn';
+
+  @override
+  String get chatWorking => 'Đang làm';
+
+  @override
+  String get chatCopy => 'Chép';
+
+  @override
+  String get chatCopied => 'Đã chép';
+
+  @override
+  String get chatCutMore => 'Xem đầy đủ trong terminal';
+
+  @override
+  String chatMore(int n) {
+    return 'Thêm $n';
+  }
+
+  @override
+  String chatMoreFiles(int n) {
+    return 'Thêm $n file';
+  }
+
+  @override
+  String chatFilesEdited(int n) {
+    return 'Đã sửa $n file';
+  }
+
+  @override
+  String get chatVerbEdit => 'Sửa';
+
+  @override
+  String get chatVerbRun => 'Chạy';
+
+  @override
+  String get chatVerbRead => 'Đọc';
+
+  @override
+  String get chatVerbSearch => 'Tìm';
+
+  @override
+  String get chatVerbWeb => 'Web';
+
+  @override
+  String get chatVerbAgent => 'Agent';
+
+  @override
+  String get chatLiveEdit => 'Đang sửa';
+
+  @override
+  String get chatLiveRun => 'Đang chạy';
+
+  @override
+  String get chatLiveRead => 'Đang đọc';
+
+  @override
+  String get chatLiveSearch => 'Đang tìm';
+
+  @override
+  String get chatLiveWeb => 'Đang tra web';
+
+  @override
+  String get chatLiveAgent => 'Đang chạy agent';
+
+  @override
+  String chatSumEdit(int n) {
+    return 'đã sửa $n lần';
+  }
+
+  @override
+  String chatSumRun(int n) {
+    return 'chạy $n lệnh';
+  }
+
+  @override
+  String chatSumRead(int n) {
+    return 'đọc $n file';
+  }
+
+  @override
+  String chatSumSearch(int n) {
+    return 'tìm $n lần';
+  }
+
+  @override
+  String chatSumWeb(int n) {
+    return 'tra web $n lần';
+  }
+
+  @override
+  String chatSumAgent(int n) {
+    return '$n agent';
+  }
+
+  @override
+  String chatSumOther(int n) {
+    return '$n tool khác';
+  }
+
+  @override
+  String get chatSumNone => 'Tool';
+
+  @override
+  String get chatSysStop => 'Đã dừng';
+
+  @override
+  String get chatSysError => 'Lỗi API';
+
+  @override
+  String get chatSysLimit => 'Chạm limit';
+
+  @override
+  String get chatSysCompact => 'Đã compact';
+
+  @override
+  String get chatAskPermission => 'Cho chạy lệnh này?';
+
+  @override
+  String get chatAskChoose => 'Chọn một';
+
+  @override
+  String chatPicked(String label) {
+    return 'Đã chọn $label';
+  }
+
+  @override
+  String chatSent(String label) {
+    return 'Đã gửi $label';
+  }
+
+  @override
+  String get chatUndo => 'Hoàn tác';
+
+  @override
+  String get chatReconnecting => 'Đang nối lại';
+
+  @override
+  String chatReconnectingQueued(int n) {
+    return 'Đang nối lại, $n byte chưa gửi';
+  }
+
+  @override
+  String get chatRejoined => 'Đã nối lại';
+
+  @override
+  String get chatOffline => 'Mất kết nối';
+
+  @override
+  String chatQueued(int n) {
+    return 'Chưa gửi: $n byte';
+  }
+
+  @override
+  String chatSlow(int n) {
+    return 'Chậm $n ms';
+  }
+
+  @override
+  String get chatNoNet => 'Mất mạng';
+
+  @override
+  String chatContext(int n) {
+    return 'Context $n%';
+  }
 }

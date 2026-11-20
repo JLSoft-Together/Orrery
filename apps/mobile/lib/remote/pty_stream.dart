@@ -8,6 +8,7 @@ import 'protocol.dart';
 const int ptyTailBytes = 64 * 1024;
 const int maxAttach = 4;
 const List<String> ptyCaps = ['pty.snapshot'];
+const int ptyQueueBytes = 8 * 1024;
 
 class PtyAttachment {
   PtyAttachment._(
@@ -28,6 +29,8 @@ class PtyAttachment {
   final StreamController<JsonMap> _events = StreamController.broadcast();
   final List<Uint8List> _pendingInput = [];
   bool _pendingClaim = false;
+  final BytesBuilder _queued = BytesBuilder(copy: true);
+  bool _queuedClaim = false;
   Timer? _throttle;
   bool _suspended = false;
   Uint8List _tail = Uint8List(0);
@@ -37,6 +40,22 @@ class PtyAttachment {
   Stream<JsonMap> get events => _events.stream;
 
   Uint8List get tail => _tail;
+
+  int get queued => _queued.length;
+
+  void _queue(Uint8List bytes, bool claim) {
+    final room = ptyQueueBytes - _queued.length;
+    if (room <= 0) return;
+    _queued.add(bytes.length > room ? bytes.sublist(0, room) : bytes);
+    _queuedClaim = _queuedClaim || claim;
+    if (!_events.isClosed) {
+      _events.add({
+        't': 'pty.queued',
+        'stream': stream,
+        'bytes': _queued.length,
+      });
+    }
+  }
 
   void _appendTail(Uint8List bytes) {
     if (bytes.length >= ptyTailBytes) {
@@ -132,6 +151,7 @@ class PtyStreams {
       if (entry._suspended) continue;
       try {
         await _sendAttach(session, entry);
+        _flushQueued(session, entry);
       } on RemoteCommandException catch (error) {
         entry._events.add({
           't': 'pty.error',
@@ -139,6 +159,21 @@ class PtyStreams {
           'error': error.code,
         });
       }
+    }
+  }
+
+  void _flushQueued(RemoteSession session, PtyAttachment entry) {
+    if (entry._queued.isEmpty || !connection.isReady) return;
+    final bytes = entry._queued.takeBytes();
+    final claim = entry._queuedClaim;
+    entry._queuedClaim = false;
+    session.sendPtyInput(entry.stream, bytes, claim: claim);
+    if (!entry._events.isClosed) {
+      entry._events.add({
+        't': 'pty.flushed',
+        'stream': entry.stream,
+        'bytes': bytes.length,
+      });
     }
   }
 
@@ -190,7 +225,10 @@ class PtyStreams {
   void input(PtyAttachment entry, Uint8List bytes, {bool claim = false}) {
     if (bytes.isEmpty || entry._suspended) return;
     final session = connection.session;
-    if (session == null || !connection.isReady) return;
+    if (session == null || !connection.isReady) {
+      entry._queue(bytes, claim);
+      return;
+    }
     if (entry._throttle == null) {
       session.sendPtyInput(entry.stream, bytes, claim: claim);
       entry._throttle = Timer(coalesce, () => _flushInput(entry));
@@ -211,7 +249,10 @@ class PtyStreams {
     final claim = entry._pendingClaim;
     entry._pendingClaim = false;
     final session = connection.session;
-    if (session == null || !connection.isReady) return;
+    if (session == null || !connection.isReady) {
+      entry._queue(builder.takeBytes(), claim);
+      return;
+    }
     session.sendPtyInput(entry.stream, builder.takeBytes(), claim: claim);
     entry._throttle = Timer(coalesce, () => _flushInput(entry));
   }

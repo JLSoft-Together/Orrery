@@ -11,6 +11,7 @@ import '../../remote/link_state.dart';
 import '../../remote/protocol.dart';
 import '../../remote/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../chat/reconnect_strip.dart';
 import '../commands.dart';
 import '../machine_api.dart';
 import '../model/workspace_model.dart';
@@ -73,6 +74,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   int _deskRows = 24;
   int _fitCols = 80;
   int _fitRows = 24;
+  int _queued = 0;
 
   late final MachineApi _api;
 
@@ -232,6 +234,9 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         });
       case 'pty.error':
         setState(() => _error = (event['error'] as String?) ?? 'internal');
+      case 'pty.queued' || 'pty.flushed':
+        final n = event['t'] == 'pty.queued' ? event['bytes'] : 0;
+        setState(() => _queued = n is int ? n : 0);
     }
   }
 
@@ -303,6 +308,11 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
           onActions: widget.onActions,
           onSwipe: widget.onSwipe,
         ),
+        ReconnectStrip(
+          machineId: widget.machineId,
+          queued: _queued,
+          showLatency: true,
+        ),
         PermissionBar(pane: pane, enabled: online, onKeys: _sendKeys),
         Expanded(
           child: TerminalSurface(
@@ -321,7 +331,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
           ExtraKeysRow(
             terminal: _terminal,
             mods: _mods,
-            enabled: online && _handle != null,
+            enabled: _handle != null,
             onUse: () {
               _beginTyping();
               _endTypingSoon();
@@ -330,7 +340,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         if (widget.showInput)
           InputBar(
             terminal: _terminal,
-            enabled: online && _handle != null && !_exited,
+            enabled: _handle != null && !_exited,
             direct: _direct,
             onToggleDirect: () {
               setState(() => _direct = !_direct);

@@ -1,3 +1,4 @@
+import '../../remote/chat_protocol.dart';
 import 'inbox_model.dart';
 
 enum RailState {
@@ -89,6 +90,7 @@ class PaneInfo {
     this.sessionId,
     this.terminalId,
     this.inbox,
+    this.menu,
   });
 
   final String key;
@@ -107,6 +109,7 @@ class PaneInfo {
   final String? sessionId;
   final String? terminalId;
   final InboxInfo? inbox;
+  final RemoteMenu? menu;
 
   PaneInfo withTitle(String next) => PaneInfo(
     key: key,
@@ -125,6 +128,7 @@ class PaneInfo {
     sessionId: sessionId,
     terminalId: terminalId,
     inbox: inbox,
+    menu: menu,
   );
 
   bool get isTerm => kind == 'term';
@@ -133,6 +137,7 @@ class PaneInfo {
   bool get isDone => attention == 'done' || rail == RailState.done;
   bool get isWaiting => attention == 'waiting';
   bool get canAttach => isTerm && sessionId != null;
+  bool get isAgent => isTerm && (agent == 'claude' || agent == 'codex');
 
   static PaneInfo? parse(Object? raw) {
     if (raw is! Map) return null;
@@ -161,6 +166,7 @@ class PaneInfo {
       sessionId: text('sessionId'),
       terminalId: text('terminalId'),
       inbox: InboxInfo.parse(raw['inbox']),
+      menu: RemoteMenu.parse(raw['menu']),
     );
   }
 }

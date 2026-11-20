@@ -247,38 +247,45 @@ void main() {
     expect(find.byKey(const ValueKey('answer-approve')), findsNothing);
   });
 
-  testWidgets('offline disables typing and keys', (tester) async {
+  testWidgets('offline keeps typing and keys on, the stream queues them', (
+    tester,
+  ) async {
     final h = await mount(tester, online: false);
     expect(h.api.attached, ['a']);
     expect(
       tester.widget<TextField>(find.byKey(const ValueKey('input'))).enabled,
-      isFalse,
+      isTrue,
     );
     final key = tester.widget<InkWell>(find.byKey(const ValueKey('key-esc')));
-    expect(key.onTap, isNull);
-    expect(h.api.inputs, isEmpty);
+    expect(key.onTap, isNotNull);
+    expect(find.byKey(const ValueKey('reconnect-text')), findsOneWidget);
   });
 
-  testWidgets(
-    'going offline mid-typing disables the field but keeps the text',
-    (tester) async {
-      final h = await mount(tester);
-      await tester.enterText(find.byKey(const ValueKey('input')), 'half typed');
-      await tester.pump();
-      h.linkNotifier.emit(linkOffline);
-      await tester.pump();
-      final field = tester.widget<TextField>(
-        find.byKey(const ValueKey('input')),
-      );
-      expect(field.enabled, isFalse);
-      expect(field.controller!.text, 'half typed');
-      final send = tester.widget<IconButton>(
-        find.byKey(const ValueKey('send')),
-      );
-      expect(send.onPressed, isNull);
-      expect(h.api.inputs, isEmpty);
-    },
-  );
+  testWidgets('queued keys show a Not sent note until they are flushed', (
+    tester,
+  ) async {
+    final h = await mount(tester);
+    h.api.handles.single.ev.add({'t': 'pty.queued', 'stream': 1, 'bytes': 7});
+    await tester.pump();
+    expect(find.text('Not sent yet: 7 bytes'), findsOneWidget);
+    h.api.handles.single.ev.add({'t': 'pty.flushed', 'stream': 1, 'bytes': 7});
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Not sent yet: 7 bytes'), findsNothing);
+  });
+
+  testWidgets('going offline mid-typing keeps the field and the text', (
+    tester,
+  ) async {
+    final h = await mount(tester);
+    await tester.enterText(find.byKey(const ValueKey('input')), 'half typed');
+    await tester.pump();
+    h.linkNotifier.emit(linkOffline);
+    await tester.pump();
+    final field = tester.widget<TextField>(find.byKey(const ValueKey('input')));
+    expect(field.enabled, isTrue);
+    expect(field.controller!.text, 'half typed');
+  });
 
   testWidgets('attach limit error is explained', (tester) async {
     final api = FakeMachineApi()

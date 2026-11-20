@@ -37,7 +37,7 @@ Future<JsonMap> sendHello(RemoteSession session, ConnectionConfig config) {
     'proto': config.proto,
     'app': config.appName,
     'platform': config.platform,
-    'caps': <String>[],
+    'caps': const <String>['chat'],
   });
 }
 

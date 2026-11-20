@@ -732,5 +732,226 @@
         "type": "int"
       }
     }
+  },
+  "chatInbox": "Inbox",
+  "chatWaitingGroup": "Waiting for you, {n}",
+  "@chatWaitingGroup": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatRecentGroup": "Recent",
+  "chatNoSessions": "No sessions yet.",
+  "chatNoMatch": "No session matches.",
+  "chatSearch": "Search",
+  "chatSearchHint": "Search sessions",
+  "chatMoreTitle": "More",
+  "chatNewSession": "New session",
+  "chatNewShell": "New shell",
+  "chatNewAdvanced": "More options",
+  "chatWhere": "In",
+  "chatTools": "Files, git, run",
+  "chatPaneActions": "Pane",
+  "chatSession": "Session",
+  "chatPlus": "Add",
+  "chatViewTerminal": "View terminal",
+  "chatViewChat": "View chat",
+  "chatOpenTerminal": "open terminal",
+  "chatGone": "This session is closed.",
+  "chatHello": "Hello",
+  "chatAgentAt": "{agent} in {project}",
+  "@chatAgentAt": {
+    "placeholders": {
+      "agent": {
+        "type": "String"
+      },
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "chatMessage": "Message {agent}",
+  "@chatMessage": {
+    "placeholders": {
+      "agent": {
+        "type": "String"
+      }
+    }
+  },
+  "chatReplyTo": "Reply to {agent}",
+  "@chatReplyTo": {
+    "placeholders": {
+      "agent": {
+        "type": "String"
+      }
+    }
+  },
+  "chatChipSummary": "Sum up the project",
+  "chatChipTest": "Run the tests",
+  "chatChipGit": "Show git status",
+  "chatChipTypecheck": "Fix typecheck errors",
+  "chatSend": "Send",
+  "chatStop": "Stop",
+  "chatStopped": "Esc sent",
+  "chatUnsent": "Not sent",
+  "chatResend": "Send again",
+  "chatOlder": "Load older",
+  "chatWorking": "Working",
+  "chatCopy": "Copy",
+  "chatCopied": "Copied",
+  "chatCutMore": "Full text in the terminal",
+  "chatMore": "{n} more",
+  "@chatMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatMoreFiles": "{n} more files",
+  "@chatMoreFiles": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatFilesEdited": "{n, plural, =1{Edited 1 file} other{Edited {n} files}}",
+  "@chatFilesEdited": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatVerbEdit": "Edit",
+  "chatVerbRun": "Run",
+  "chatVerbRead": "Read",
+  "chatVerbSearch": "Search",
+  "chatVerbWeb": "Web",
+  "chatVerbAgent": "Agent",
+  "chatLiveEdit": "Editing",
+  "chatLiveRun": "Running",
+  "chatLiveRead": "Reading",
+  "chatLiveSearch": "Searching",
+  "chatLiveWeb": "Browsing",
+  "chatLiveAgent": "Running an agent",
+  "chatSumEdit": "{n, plural, =1{edited 1 time} other{edited {n} times}}",
+  "@chatSumEdit": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumRun": "{n, plural, =1{ran 1 command} other{ran {n} commands}}",
+  "@chatSumRun": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumRead": "{n, plural, =1{read 1 file} other{read {n} files}}",
+  "@chatSumRead": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumSearch": "{n, plural, =1{searched 1 time} other{searched {n} times}}",
+  "@chatSumSearch": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumWeb": "{n, plural, =1{1 web lookup} other{{n} web lookups}}",
+  "@chatSumWeb": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumAgent": "{n, plural, =1{1 agent} other{{n} agents}}",
+  "@chatSumAgent": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumOther": "{n, plural, =1{1 other tool} other{{n} other tools}}",
+  "@chatSumOther": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSumNone": "Tools",
+  "chatSysStop": "Stopped",
+  "chatSysError": "API error",
+  "chatSysLimit": "Hit the limit",
+  "chatSysCompact": "Compacted",
+  "chatAskPermission": "Allow this?",
+  "chatAskChoose": "Pick one",
+  "chatPicked": "Picked {label}",
+  "@chatPicked": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "chatSent": "Sent {label}",
+  "@chatSent": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "chatUndo": "Undo",
+  "chatReconnecting": "Reconnecting",
+  "chatReconnectingQueued": "Reconnecting, {n} bytes not sent",
+  "@chatReconnectingQueued": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatRejoined": "Reconnected",
+  "chatOffline": "Offline",
+  "chatQueued": "Not sent yet: {n} bytes",
+  "@chatQueued": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatSlow": "Slow {n} ms",
+  "@chatSlow": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "chatNoNet": "No network",
+  "chatContext": "Context {n}%",
+  "@chatContext": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

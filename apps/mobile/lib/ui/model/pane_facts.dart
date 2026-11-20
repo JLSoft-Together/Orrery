@@ -17,6 +17,19 @@ class PaneFacts {
 
   bool get hasTool => tool != null && tool!.isNotEmpty;
 
+  @override
+  bool operator ==(Object other) =>
+      other is PaneFacts &&
+      other.tool == tool &&
+      other.toolSummary == toolSummary &&
+      other.toolSince == toolSince &&
+      other.statusSince == statusSince &&
+      other.alias == alias;
+
+  @override
+  int get hashCode =>
+      Object.hash(tool, toolSummary, toolSince, statusSince, alias);
+
   static PaneFacts of(Map<String, dynamic>? snapshot, String? terminalId) {
     if (snapshot == null || terminalId == null) return none;
     String? tool;

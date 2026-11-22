@@ -1,0 +1,280 @@
+import type { ToastKind } from '@ccm/shared'
+import { LEGACY_PAGES, SETTINGS_PAGES, type LegacySettingsPage, type SettingsPage, type SettingsPageInput } from '@core/lib/uiTypes'
+
+export { LEGACY_PAGES, SETTINGS_PAGES, type LegacySettingsPage, type SettingsPage, type SettingsPageInput }
+
+export const NEXT_ONLY_PAGES: readonly SettingsPage[] = []
+
+export const pageAvailable = (page: SettingsPage, env: SettingsEnv, next: boolean): boolean => (next || !NEXT_ONLY_PAGES.includes(page)) && pageVisible(page, env)
+
+export const isSettingsPage = (v: unknown): v is SettingsPage => typeof v === 'string' && (SETTINGS_PAGES as readonly string[]).includes(v)
+
+export const resolvePage = (v: unknown): SettingsPage | null => {
+  if (isSettingsPage(v)) return v
+  if (typeof v === 'string' && Object.hasOwn(LEGACY_PAGES, v)) return LEGACY_PAGES[v as LegacySettingsPage]
+  return null
+}
+
+const PAGE_KEY = 'ccm.settings.page'
+const LEGACY_REMINDERS = 'reminders'
+
+export function takeLegacyReminders(): boolean {
+  try {
+    if (localStorage.getItem(PAGE_KEY) !== LEGACY_REMINDERS) return false
+    localStorage.setItem(PAGE_KEY, 'notify')
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function loadPage(): SettingsPage {
+  try {
+    const v = localStorage.getItem(PAGE_KEY)
+    if (v === LEGACY_REMINDERS) return 'notify'
+    const r = resolvePage(v)
+    if (r) return r
+  } catch {
+    return 'general'
+  }
+  return 'general'
+}
+
+export function savePage(page: SettingsPage): void {
+  try {
+    localStorage.setItem(PAGE_KEY, page)
+  } catch {
+    return
+  }
+}
+
+/** What this build / platform can show; entries and pages without their flag are hidden. */
+export interface SettingsEnv {
+  terminals: boolean
+  mac: boolean
+  loginItem: boolean
+  zoom: boolean
+  awake: boolean
+  github: boolean
+  run: boolean
+  capture: boolean
+  agentData: boolean
+  phone: boolean
+  telegram: boolean
+  remote: boolean
+  disk: boolean
+  updater: boolean
+  backup: boolean
+  grants: boolean
+  statusLine: boolean
+  toast: boolean
+  notifyData: boolean
+  deepseek: boolean
+  xmlPreview: boolean
+  bugReport: boolean
+  desktop: boolean
+}
+
+export interface SettingsEntry {
+  page: SettingsPage
+  id: string
+  labelKey: string
+  hintKey?: string
+  needs?: keyof SettingsEnv
+}
+
+const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { remote: 'remote' }
+
+export const pageVisible = (page: SettingsPage, env: SettingsEnv): boolean => {
+  const need = PAGE_NEEDS[page]
+  return need ? env[need] : true
+}
+
+/** In-app notification switches in `useSettingsStore`, matched to the system-alert kind they mirror. */
+export const NOTIFY_ROWS: { kind: ToastKind; inApp?: 'notifyWaiting' | 'notifyDone' | 'notifyStuck' | 'notifyLoop' | 'notifyContext' | 'notifyLimit' }[] = [
+  { kind: 'waiting', inApp: 'notifyWaiting' },
+  { kind: 'done', inApp: 'notifyDone' },
+  { kind: 'stuck', inApp: 'notifyStuck' },
+  { kind: 'loop', inApp: 'notifyLoop' },
+  { kind: 'context', inApp: 'notifyContext' },
+  { kind: 'limit', inApp: 'notifyLimit' },
+  { kind: 'job' },
+  { kind: 'idle' },
+  { kind: 'sensitive' },
+  { kind: 'disk' },
+]
+
+type RawEntry = Omit<SettingsEntry, 'page'> & { page: SettingsPageInput }
+
+const rawEntries = (mac: boolean): RawEntry[] => [
+  { page: 'general', id: 'language', labelKey: 'settings.language' },
+  { page: 'general', id: 'loginItem', labelKey: mac ? 'settings.loginItemMac' : 'settings.loginItem', hintKey: mac ? 'settings.loginItemHintMac' : 'settings.loginItemHint', needs: 'loginItem' },
+  { page: 'general', id: 'restore', labelKey: 'wsRestore.mode', hintKey: 'wsRestore.modeHint', needs: 'terminals' },
+  { page: 'general', id: 'awake', labelKey: 'awake.setting', hintKey: 'awake.settingHint', needs: 'awake' },
+  { page: 'general', id: 'tips', labelKey: 'tips.setting', hintKey: 'tips.settingHint', needs: 'terminals' },
+  { page: 'general', id: 'office', labelKey: 'settings.office', hintKey: 'settings.officeHint' },
+  { page: 'general', id: 'keyHints', labelKey: 'keys.hints', hintKey: 'keys.hintsHint' },
+  { page: 'general', id: 'launch', labelKey: 'settings.launchTerminal', hintKey: 'settings.launchTerminalHint', needs: 'mac' },
+
+  { page: 'appearance', id: 'uiGeneration', labelKey: 'mist.switch.tryNext', hintKey: 'mist.switch.tryNextHint' },
+  { page: 'appearance', id: 'theme', labelKey: 'settings.theme' },
+  { page: 'appearance', id: 'stars', labelKey: 'themeV95.stars', hintKey: 'themeV95.starsHint' },
+  { page: 'appearance', id: 'starsPanels', labelKey: 'themeV95.starsPanels', hintKey: 'themeV95.starsPanelsHint' },
+  { page: 'appearance', id: 'starsFx', labelKey: 'themeV95.starsFx', hintKey: 'themeV95.starsFxHint' },
+  { page: 'appearance', id: 'footerSys', labelKey: 'footerSys.setting', hintKey: 'footerSys.settingHint' },
+  { page: 'appearance', id: 'uiFont', labelKey: 'fonts.ui', hintKey: 'fonts.uiHint' },
+  { page: 'appearance', id: 'codeFont', labelKey: 'fonts.code', hintKey: 'fonts.codeHint' },
+  { page: 'appearance', id: 'codesize', labelKey: 'fonts.size', hintKey: mac ? 'fonts.sizeHintMac' : 'fonts.sizeHint' },
+  { page: 'appearance', id: 'appzoom', labelKey: 'fonts.zoom', hintKey: mac ? 'fonts.zoomHintMac' : 'fonts.zoomHint', needs: 'zoom' },
+  { page: 'workspace', id: 'fileIcons', labelKey: 'settings.fileIcons', hintKey: 'settings.fileIconsHint', needs: 'terminals' },
+  { page: 'workspace', id: 'dust', labelKey: 'settings.dust', hintKey: 'settings.dustHint', needs: 'terminals' },
+  { page: 'workspace', id: 'secretGuard', labelKey: 'secretGuard.setting', hintKey: 'secretGuard.settingHint', needs: 'terminals' },
+  { page: 'workspace', id: 'shortcuts', labelKey: 'shortcutsV109.title', hintKey: 'shortcutsV109.hint', needs: 'terminals' },
+
+  { page: 'editor', id: 'autoSave', labelKey: 'settings.autoSave', hintKey: 'settings.autoSaveHint', needs: 'terminals' },
+  { page: 'editor', id: 'minimap', labelKey: 'settings.minimap', hintKey: 'settings.minimapHint', needs: 'terminals' },
+  { page: 'editor', id: 'dim', labelKey: 'workspace.dim.setting', hintKey: 'workspace.dim.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'shell', labelKey: 'shellMarks.setting', hintKey: 'shellMarks.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'shellDone', labelKey: 'shellDone.setting', hintKey: 'shellDone.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'compactAuto', labelKey: 'workspace.compact.auto.setting', hintKey: 'workspace.compact.auto.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'clickMenu', labelKey: 'clickMenu.setting', hintKey: 'clickMenu.settingHint', needs: 'terminals' },
+  { page: 'editor', id: 'menuToast', labelKey: 'clickMenu.toast', hintKey: 'clickMenu.toastHint', needs: 'terminals' },
+  { page: 'editor', id: 'agentShim', labelKey: 'shellMarks.agentShim', hintKey: 'shellMarks.agentShimHint', needs: 'terminals' },
+
+  { page: 'notify', id: 'toast', labelKey: 'settings.toast', hintKey: mac ? 'settings.toastHintMac' : 'settings.toastHint', needs: 'toast' },
+  { page: 'notify', id: 'notifyEnable', labelKey: 'settings.notifyEnable', hintKey: 'settings.notifyHint' },
+  { page: 'notify', id: 'testToast', labelKey: 'settings.toastTest.action', needs: 'toast' },
+  ...NOTIFY_ROWS.map((r): RawEntry => ({
+    page: 'notify',
+    id: `event-${r.kind}`,
+    labelKey: `settingsV79.events.${r.kind}`,
+    hintKey: `settings.toastKind.${r.kind}`,
+    needs: r.inApp ? undefined : 'toast',
+  })),
+  { page: 'notify', id: 'clash', labelKey: 'v104.clash.setting', hintKey: 'v104.clash.settingHint', needs: 'terminals' },
+  { page: 'notify', id: 'sound', labelKey: 'settings.sound', hintKey: 'settings.soundHint' },
+  { page: 'notify', id: 'quiet', labelKey: 'settings.quiet', hintKey: 'settings.quietHint', needs: 'notifyData' },
+  { page: 'notify', id: 'idle', labelKey: 'resources.idleSetting', hintKey: 'resources.idleSettingHint', needs: 'notifyData' },
+  { page: 'notify', id: 'phone', labelKey: 'phone.section', needs: 'phone' },
+  { page: 'telegram', id: 'telegram', labelKey: 'telegram.section', hintKey: 'telegram.enable', needs: 'telegram' },
+
+  { page: 'remote', id: 'remote', labelKey: 'remoteV97.enable', hintKey: 'remoteV97.enableHint', needs: 'remote' },
+  { page: 'remote', id: 'remoteAdd', labelKey: 'remoteV97.add.title', hintKey: 'remoteV97.add.hint', needs: 'remote' },
+  { page: 'remote', id: 'remoteInstall', labelKey: 'v106Install.title', hintKey: 'v106Install.hint', needs: 'remote' },
+  { page: 'remote', id: 'remoteDevices', labelKey: 'remoteV97.devices.title', needs: 'remote' },
+  { page: 'remote', id: 'remoteRelay', labelKey: 'remoteV97.relaySetup.title', hintKey: 'remoteV97.relaySetup.intro', needs: 'remote' },
+  { page: 'remote', id: 'remotePush', labelKey: 'remoteV97.pushSetup.title', hintKey: 'remoteV97.pushSetup.intro', needs: 'remote' },
+  { page: 'remote', id: 'remoteAwake', labelKey: 'remoteV97.awake', hintKey: 'remoteV97.awakeHint', needs: 'remote' },
+  { page: 'remote', id: 'remoteLog', labelKey: 'remoteV97.log.title', needs: 'remote' },
+  { page: 'remote', id: 'remoteBlocked', labelKey: 'remoteV98.guard.blockedTitle', hintKey: 'remoteV98.guard.selfHint', needs: 'remote' },
+  { page: 'remote', id: 'remoteTrusted', labelKey: 'remoteV98.guard.trustedTitle', hintKey: 'remoteV98.guard.trusted.hint', needs: 'remote' },
+  { page: 'remote', id: 'remoteAccess', labelKey: 'remoteV98.guard.logTitle', hintKey: 'remoteV98.guard.log.hint', needs: 'remote' },
+
+  { page: 'notify', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
+  { page: 'notify', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },
+  { page: 'notify', id: 'contextWarn', labelKey: 'settings.contextWarn', hintKey: 'settings.contextWarnHint' },
+  { page: 'about', id: 'bugReportNudge', labelKey: 'bugReport.nudge', hintKey: 'bugReport.nudgeHint', needs: 'bugReport' },
+  { page: 'notify', id: 'budget', labelKey: 'settings.budget', hintKey: 'settings.budgetHint' },
+
+  { page: 'github', id: 'github', labelKey: 'github.section', needs: 'github' },
+
+  { page: 'integrations', id: 'statusLine', labelKey: 'limits.setupTitle', hintKey: 'limits.setupHint', needs: 'statusLine' },
+  { page: 'integrations', id: 'run', labelKey: 'run.sdk.section', needs: 'run' },
+  { page: 'integrations', id: 'xmlPreview', labelKey: 'xmlPreview.section', hintKey: 'xmlPreview.hint', needs: 'xmlPreview' },
+  { page: 'integrations', id: 'capture', labelKey: 'capture.section', hintKey: 'capture.folderHint', needs: 'capture' },
+
+  { page: 'deepseek', id: 'dsStatus', labelKey: 'deepseekSetup.status', hintKey: 'deepseekSetup.intro', needs: 'deepseek' },
+  { page: 'deepseek', id: 'dsUpdate', labelKey: 'deepseekSetup.update.check', needs: 'deepseek' },
+  { page: 'deepseek', id: 'dsKey', labelKey: 'deepseekSetup.apiKey', hintKey: 'deepseekSetup.apiKeyHint', needs: 'deepseek' },
+  { page: 'deepseek', id: 'dsLogout', labelKey: 'deepseekSetup.logout', hintKey: 'deepseekSetup.logoutHint', needs: 'deepseek' },
+  { page: 'deepseek', id: 'dsTelemetry', labelKey: 'deepseekSetup.telemetry', hintKey: 'deepseekSetup.telemetryHint', needs: 'deepseek' },
+  { page: 'deepseek', id: 'dsSync', labelKey: 'deepseekSetup.sync', hintKey: 'deepseekSetup.syncHint', needs: 'deepseek' },
+
+  { page: 'access', id: 'sensitive', labelKey: 'sensitive.section', hintKey: 'sensitive.hint' },
+  { page: 'access', id: 'fullAccess', labelKey: 'settings.fullAccess', hintKey: 'settings.fullAccessHint', needs: 'grants' },
+  { page: 'access', id: 'forgetGrants', labelKey: 'settings.forgetGrants', hintKey: 'settings.forgetGrantsHint', needs: 'grants' },
+
+  { page: 'data', id: 'agentData', labelKey: 'agentData.section', needs: 'agentData' },
+  { page: 'data', id: 'backup', labelKey: 'backup.section', hintKey: 'backup.autoHint', needs: 'backup' },
+  { page: 'data', id: 'diskMap', labelKey: 'diskMap.settings.title', hintKey: 'diskMap.settings.hint' },
+  { page: 'data', id: 'disk', labelKey: 'disk.setting', hintKey: 'disk.settingHint', needs: 'disk' },
+
+  { page: 'about', id: 'update', labelKey: 'update.section', needs: 'updater' },
+  { page: 'about', id: 'help-whatsNew', labelKey: 'whatsNew.open' },
+  { page: 'about', id: 'help-tour', labelKey: 'tour.open', hintKey: 'settings.tourHint' },
+  { page: 'about', id: 'help-wsTour', labelKey: 'wsHelp.tour', needs: 'terminals' },
+  { page: 'about', id: 'bugReport', labelKey: 'bugReport.section', hintKey: 'bugReport.hint', needs: 'bugReport' },
+  { page: 'about', id: 'help-diag', labelKey: 'diag.open', hintKey: 'settings.diagHint' },
+  { page: 'about', id: 'help-setup', labelKey: 'setup.open', hintKey: 'setup.openHint', needs: 'desktop' },
+  { page: 'about', id: 'help-fonts', labelKey: 'fonts.licenses', hintKey: 'fonts.licensesHint' },
+  { page: 'about', id: 'help-fileIcons', labelKey: 'settings.fileIconsLicense', hintKey: 'settings.fileIconsLicenseHint', needs: 'terminals' },
+  { page: 'about', id: 'help-habblaud', labelKey: 'settings.habblaudLicense', hintKey: 'settings.habblaudLicenseHint' },
+]
+
+export const entries = (mac: boolean): SettingsEntry[] => rawEntries(mac).map((e): SettingsEntry => ({ ...e, page: resolvePage(e.page) ?? 'general' }))
+
+const NEXT_PAGE_OF: Record<string, SettingsPage> = {
+  clickMenu: 'workspace',
+  menuToast: 'workspace',
+  dim: 'workspace',
+  compactAuto: 'workspace',
+  agentShim: 'workspace',
+}
+
+export const nextEntries = (mac: boolean): SettingsEntry[] => [
+  ...entries(mac)
+    .filter((e) => !(e.page === 'appearance' && ['stars', 'starsPanels', 'starsFx'].includes(e.id)))
+    .map((e): SettingsEntry => ({ ...e, page: NEXT_PAGE_OF[e.id] ?? e.page })),
+  { page: 'appearance', id: 'mode', labelKey: 'mist.settings.mode', hintKey: 'mist.settings.modeHint' },
+  { page: 'appearance', id: 'clearTerm', labelKey: 'mist.settings.clearTerm', hintKey: 'mist.settings.clearTermHint' },
+  { page: 'appearance', id: 'motion', labelKey: 'mist.settings.motion', hintKey: 'mist.settings.motionHint' },
+  { page: 'appearance', id: 'stars', labelKey: 'mist.settings.stars', hintKey: 'mist.settings.starsOnly' },
+]
+
+const fold = (s: string): string =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/đ/g, 'd')
+    .toLowerCase()
+
+export interface SettingsHit {
+  page: SettingsPage
+  id: string
+  label: string
+}
+
+const wordStart = (hay: string, w: string): boolean => {
+  for (let i = hay.indexOf(w); i >= 0; i = hay.indexOf(w, i + 1)) if (i === 0 || !/[\p{L}\p{N}]/u.test(hay[i - 1]!)) return true
+  return false
+}
+
+/**
+ * Entries whose label or hint contains every word of `query`; hidden pages / rows are skipped.
+ * A query with accents matches exactly first ("âm" must not hit "làm"); accents are ignored only for plain queries or when nothing matched.
+ * Order: word starts a label, then inside a label, then hint only.
+ */
+export function searchSettings(query: string, all: SettingsEntry[], env: SettingsEnv, t: (key: string) => string): SettingsHit[] {
+  const raw = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!raw.length) return []
+  const accented = fold(query) !== query.toLowerCase()
+  const run = (norm: (s: string) => string, words: string[]): SettingsHit[] => {
+    const scored: { hit: SettingsHit; score: number }[] = []
+    for (const e of all) {
+      if (e.needs && !env[e.needs]) continue
+      if (!pageVisible(e.page, env)) continue
+      const label = t(e.labelKey)
+      const l = norm(label)
+      const hay = `${l} ${e.hintKey ? norm(t(e.hintKey)) : ''}`
+      if (!words.every((w) => hay.includes(w))) continue
+      const score = Math.max(...words.map((w) => (wordStart(l, w) ? 0 : l.includes(w) ? 1 : 2)))
+      scored.push({ hit: { page: e.page, id: e.id, label }, score })
+    }
+    return scored.sort((a, b) => a.score - b.score).map((s) => s.hit)
+  }
+  if (accented) {
+    const exact = run((s) => s.toLowerCase(), raw)
+    if (exact.length) return exact
+  }
+  return run(fold, fold(query).split(/\s+/).filter(Boolean))
+}

@@ -46,13 +46,13 @@
             return { u: u === 'classic' ? 'classic' : 'next', w: false }
           }
           var NP = { mist: 'ld', graphite: 'ld', mono: 'ld', galaxy: 'd', orrery: 'ld', nebula: 'ld', aurora: 'ld', dawn: 'ld', console: 'd', random: 'ld', custom: 'ld' }
-          function pickNext(u, nt, dk, g, rt, mo, rm) {
+          function pickNext(u, nt, dk, mo, rm) {
             var ui = u === 'classic' ? 'classic' : 'next'
             var id = NP.hasOwnProperty(nt) ? nt : 'mist'
             var s = NP[id]
             var dark = ui === 'next' && s.indexOf(dk ? 'd' : 'l') < 0 ? s.charAt(0) === 'd' : dk
             var motion = mo === 'full' || mo === 'reduced' || mo === 'off' ? mo : rm ? 'reduced' : 'full'
-            return { ui: ui, theme: id, dark: dark, glass: g === '1' || rt ? 'reduced' : 'full', motion: motion }
+            return { ui: ui, theme: id, dark: dark, glass: 'reduced', motion: motion }
           }
           try {
             var pu = pickUi(localStorage.getItem('ccm.uiGeneration'), localStorage.getItem('ccm.uiMigration'))
@@ -66,8 +66,6 @@
               pu.u,
               localStorage.getItem('ccm.nextTheme'),
               r.classList.contains('dark'),
-              localStorage.getItem('ccm.next.reduceGlass'),
-              matchMedia('(prefers-reduced-transparency: reduce)').matches,
               localStorage.getItem('ccm.next.motion'),
               matchMedia('(prefers-reduced-motion: reduce)').matches
             )

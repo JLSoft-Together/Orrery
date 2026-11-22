@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isNextPaletteId, NEXT_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_REMOVED_PALETTES, NEXT_THEME_IDS, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from '@ccm/mist-tokens'
+import { isNextPaletteId, NEXT_PALETTES, NEXT_LEGACY_PALETTES, NEXT_PALETTE_DEFAULT, NEXT_THEME_IDS, nextLegacyCards, nextPalette, nextPaletteCards, nextSchemeFor, type NextScheme } from '@ccm/mist-tokens'
 import { MAU_MONO, mauVars } from '../lib/next/mau'
 import { parseNextTheme, startNext, startUi, UI_MIGRATION } from '../lib/uiGeneration'
 
@@ -51,7 +51,7 @@ const TEXT = ['ink', 'ink-muted', 'ink-faint', 'accent-ink', 'working', 'waiting
 const GLYPH = ['accent', 'agent-claude', 'agent-codex', 'agent-shell-mark', 'favorite']
 const SOFT: Record<string, number> = { working: 0.1, error: 0.12, done: 0.14 }
 
-const variants = NEXT_PALETTES.flatMap((p) => p.schemes.map((s) => [p.id, s] as const))
+const variants = [...NEXT_PALETTES, ...NEXT_LEGACY_PALETTES].flatMap((p) => p.schemes.map((s) => [p.id, s] as const))
 
 describe('next palettes', () => {
   it('lists 5 palettes in 6 cards plus the random and custom cards, Sương kính first and default', () => {
@@ -76,15 +76,21 @@ describe('next palettes', () => {
       expect(Object.keys(blocks(palettesCss, sel)).length, sel).toBeGreaterThan(5)
     }
     const named = new Set([...palettesCss.matchAll(/data-next-theme='([\w-]+)'/g)].map((m) => m[1]))
-    expect([...named].sort()).toEqual(NEXT_PALETTES.filter((p) => p.id !== 'mist').map((p) => p.id).sort())
+    expect([...named].sort()).toEqual([...NEXT_PALETTES, ...NEXT_LEGACY_PALETTES].filter((p) => p.id !== 'mist').map((p) => p.id).sort())
   })
 
-  it('v108: removed palettes map to the nearest kept one', () => {
-    expect(NEXT_REMOVED_PALETTES).toEqual({ nebula: 'mist', aurora: 'mist', dawn: 'orrery', console: 'graphite' })
-    for (const [from, to] of Object.entries(NEXT_REMOVED_PALETTES)) {
-      expect(isNextPaletteId(from), from).toBe(false)
-      expect(parseNextTheme(from)).toBe(to)
+  it('v109: the older palettes stay selectable and are listed apart from the main cards', () => {
+    expect(NEXT_LEGACY_PALETTES.map((p) => p.id)).toEqual(['nebula', 'aurora', 'dawn', 'console'])
+    expect(nextLegacyCards().map((c) => c.id)).toEqual(['nebula:light', 'aurora:light', 'dawn:light', 'console:dark'])
+    expect(nextPaletteCards().some((c) => c.palette.legacy)).toBe(false)
+    expect(NEXT_PALETTES.some((p) => p.legacy)).toBe(false)
+    for (const p of NEXT_LEGACY_PALETTES) {
+      expect(isNextPaletteId(p.id), p.id).toBe(true)
+      expect(parseNextTheme(p.id), p.id).toBe(p.id)
+      for (const s of p.schemes) expect(p.preview[s], `${p.id} ${s}`).toBeTruthy()
     }
+    expect(nextSchemeFor('console', 'light')).toBe('dark')
+    expect(nextSchemeFor('nebula', 'light')).toBe('light')
     expect(parseNextTheme('nope')).toBe('mist')
     expect(parseNextTheme('mono')).toBe('mono')
   })
@@ -175,7 +181,7 @@ describe('next palettes', () => {
 })
 
 describe('pre-paint next pick', () => {
-  const src = /var NR = [^\n]*\n\s*var NP = [^\n]*\n\s*function pickNext\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
+  const src = /var NP =[^\n]*\n\s*function pickNext\([^)]*\) \{[\s\S]*?\n {10}\}/.exec(indexHtml)![0]
   const run = new Function(`${src}; return { NP: NP, pick: pickNext }`)() as {
     NP: Record<string, string>
     pick: (...a: unknown[]) => ReturnType<typeof startNext>
@@ -188,7 +194,7 @@ describe('pre-paint next pick', () => {
 
   it('mirrors startNext', () => {
     for (const ui of [null, 'classic', 'next', 'x'])
-      for (const theme of [null, 'nope', ...NEXT_THEME_IDS, ...Object.keys(NEXT_REMOVED_PALETTES)])
+      for (const theme of [null, 'nope', ...NEXT_THEME_IDS])
         for (const dark of [true, false])
           for (const glass of [null, '1', '0'])
             for (const rt of [true, false])

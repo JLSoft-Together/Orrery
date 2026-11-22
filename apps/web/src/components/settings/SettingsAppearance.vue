@@ -110,6 +110,17 @@ const starsFxOptions = computed(() => [
       </SettingRow>
     </SettingSection>
 
+    <SettingSection id="footerSys" :title="t('footerSys.label')">
+      <ToggleSwitch
+        v-model="settings.footerSys"
+        :label="t('footerSys.setting')"
+        :info="t('footerSys.settingHint')"
+        class="px-3"
+        data-setting="footer-sys"
+        data-setting-row="footerSys"
+      />
+    </SettingSection>
+
     <SettingSection id="text" :title="t('fonts.section')">
       <FontPicker kind="ui" data-setting-row="uiFont" />
       <FontPicker kind="code" data-setting-row="codeFont" />

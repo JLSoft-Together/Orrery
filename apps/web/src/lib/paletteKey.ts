@@ -1,3 +1,6 @@
+import { overridePalette, recording } from '../features/shortcuts/bindings'
+import type { KeyLike } from '../features/shortcuts/keys'
+
 export interface PaletteKeyEvent {
   key: string
   ctrlKey: boolean
@@ -6,6 +9,9 @@ export interface PaletteKeyEvent {
 }
 
 export function isPaletteKey(e: PaletteKeyEvent, inTerminal: boolean, mac: boolean): boolean {
+  if (recording.value) return false
+  const custom = 'code' in e ? overridePalette(e as PaletteKeyEvent & KeyLike, mac) : null
+  if (custom !== null) return custom
   if (e.altKey || e.key.toLowerCase() !== 'k') return false
   if (mac && e.metaKey && !e.ctrlKey) return true
   return !inTerminal && (e.ctrlKey || e.metaKey)

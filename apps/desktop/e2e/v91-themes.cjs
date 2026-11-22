@@ -32,18 +32,18 @@ async function main() {
     await waitFor(`!!window.ccmDesktop && !!${S}.get('ui')`, 30000, 'app ready')
     const fresh = await evaluate(rootTheme)
     check('fresh profile lands on Ngân hà or Orrery light', /^(galaxy|orrery-light)$/.test(fresh), fresh)
-    check('fresh profile stored the migration', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.0.2-galaxy')
+    check('fresh profile stored the migration', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.1-v108')
     check('settings store agrees', (await evaluate(`${S}.get('settings').theme`)) === fresh)
 
     await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.whatsNew.seen','${require('../package.json').version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.tips', JSON.stringify({ off: true, learned: [], shown: {} }))`)
     await evaluate(`localStorage.setItem('ccm.theme','dark'); localStorage.removeItem('ccm.themeMigration')`)
     await reload()
-    check('migration moves Apple dark to galaxy', (await evaluate(rootTheme)) === 'galaxy', await evaluate(rootTheme))
+    check('an older stored theme stays usable after migration', (await evaluate(rootTheme)) === 'dark' && (await evaluate(`${S}.get('settings').theme`)) === 'dark')
     check('migration key written', (await evaluate(`localStorage.getItem('ccm.themeMigration')`)) === '4.1-v108')
 
     await evaluate(`localStorage.setItem('ccm.theme','dracula'); localStorage.setItem('ccm.themeMigration','4.0.2-galaxy')`)
     await reload()
-    check('v108 moves a removed theme to the nearest kept one', (await evaluate(rootTheme)) === 'galaxy' && (await evaluate(`${S}.get('settings').theme`)) === 'galaxy')
+    check('dracula stays dracula', (await evaluate(rootTheme)) === 'dracula' && (await evaluate(`${S}.get('settings').theme`)) === 'dracula')
 
     await evaluate(`localStorage.setItem('ccm.theme','orrery-dark'); localStorage.setItem('ccm.themeMigration','4.1-v108')`)
     await reload()

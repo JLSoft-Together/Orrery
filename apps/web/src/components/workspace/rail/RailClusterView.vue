@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { shown } from '../../../features/shareMode/store'
 import { BellRing, ChevronRight, Ellipsis, Folder, GitBranch, Hand, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
 import { usePaneInfo } from '../../../composables/usePaneInfo'
 import { useProjectDisk } from '../../../composables/useDiskSizes'
@@ -161,7 +162,7 @@ const HEAD_BTN =
           aria-level="1"
           :aria-expanded="opener || solo ? undefined : !collapsed"
           :tabindex="headStop"
-          :title="[cluster.root, headBranch, ...projectDisk.lines.value, t('workspace.rail.moveHint', MOVE_KEYS)].filter(Boolean).join('\n')"
+          :title="shown([cluster.root, headBranch, ...projectDisk.lines.value, t('workspace.rail.moveHint', MOVE_KEYS)].filter(Boolean).join('\n'))"
           @click="onHead"
         >
           <ChevronRight
@@ -302,7 +303,7 @@ const HEAD_BTN =
             aria-level="2"
             :tabindex="isStop(checkoutId(cluster.key, item.checkout.key)) ? 0 : -1"
             class="flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-inner pr-1.5 pl-9 text-left text-2xs text-ink-muted hover:bg-fill hover:text-ink"
-            :title="item.checkout.path ?? undefined"
+            :title="shown(item.checkout.path ?? undefined)"
             @click="emit('checkout', item.checkout)"
             @contextmenu.prevent.stop="emit('contextCheckout', item.checkout, $event)"
           >

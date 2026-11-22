@@ -21,8 +21,9 @@ import { hasCtxSources } from '../../lib/ctxSources'
 import { hasLayouts, hasScripts, listLayouts, type SavedLayout } from '../../lib/projects'
 import type { RailDragSource } from '../../lib/rail/railDrag'
 import { isSolo, rowLines, tabStopOf, type RailCheckout, type RailCluster, type RailGroup, type RailRow } from '../../lib/rail/railModel'
+import { sectionRange } from '../../lib/rail/clusterReorder'
 import { buildSections, railMoveIndexes } from '../../lib/rail/railView'
-import { emptyMenu, groupMenu, isMenuKey, projectMenu as buildProjectMenu, rowMenu } from '../../lib/rail/railMenu'
+import { emptyMenu, groupMenu, isMenuKey, projectKindOf, projectMenu as buildProjectMenu, rowMenu } from '../../lib/rail/railMenu'
 import { clickSelect, extendSelect, NO_SELECTION, pruneSelection, selectionFacts, selectionMenu, selectionPanes, type RailSelection } from '../../lib/rail/railSelect'
 import { leaves, type SplitDir } from '../../lib/splitLayout'
 import { useRunStore } from '../../stores/run'
@@ -335,9 +336,17 @@ function moveShown(from: number, to: number): void {
   const at = railMoveIndexes(shown.value.map((c) => c.key), rail.clusters.value.map((c) => c.key), from, to)
   if (at) rail.move(at[0], at[1])
 }
-const drag = useClusterDrag(list, (from, to) => {
-  if (!props.only) moveShown(from, to)
+const shownSections = computed<number[]>(() => {
+  const s = sections.value
+  return [...s.agents.map(() => 0), ...s.opened.map(() => 1), ...(othersShown.value ? s.others.map(() => 2) : [])]
 })
+const drag = useClusterDrag(
+  list,
+  (from, to) => {
+    if (!props.only) moveShown(from, to)
+  },
+  { range: (from) => (props.only ? null : sectionRange(shownSections.value, from)) },
+)
 const announce = ref('')
 
 const railDrag = useRailDrag(
@@ -492,6 +501,7 @@ async function showProjectMenu(shownCluster: RailCluster, k: RailCheckout | unde
       canUp: at_ > 0,
       canDown: at_ >= 0 && at_ < all.length - 1,
       collapsed: isShut(c),
+      kind: dir ? projectKindOf(run.projectsFor(dir), run.detected(dir)) : null,
     },
     t,
   )

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { shown } from '../../../features/shareMode/store'
 import { BellRing, FolderPlus, LoaderCircle } from 'lucide-vue-next'
 import { useOpenProject } from '../../../composables/useOpenProject'
 import { useRail } from '../../../composables/useRail'
@@ -95,7 +96,7 @@ function label(c: RailCluster): string {
       type="button"
       class="relative inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-control text-xs font-semibold transition-colors duration-(--ccm-dur-fast)"
       :class="c.active ? 'bg-accent-soft text-accent-ink ring-1 ring-focus' : 'bg-fill text-ink-muted hover:bg-fill-strong hover:text-ink'"
-      :title="[c.root ?? nameOf(c), c.needs ? t('workspace.rail.needs', { n: c.needs }, c.needs) : ''].filter(Boolean).join('\n')"
+      :title="shown([c.root ?? nameOf(c), c.needs ? t('workspace.rail.needs', { n: c.needs }, c.needs) : ''].filter(Boolean).join('\n'))"
       :aria-label="label(c)"
       aria-haspopup="dialog"
       :aria-expanded="open?.key === c.key"

@@ -19,6 +19,7 @@ export interface NextPalette {
   preview: Partial<Record<NextScheme, NextPreview>>
   stars?: boolean
   isDefault?: boolean
+  legacy?: boolean
 }
 
 export const NEXT_PALETTES: readonly NextPalette[] = [
@@ -75,16 +76,60 @@ export const NEXT_PALETTES: readonly NextPalette[] = [
   },
 ]
 
+export const NEXT_LEGACY_PALETTES: readonly NextPalette[] = [
+  {
+    id: 'nebula',
+    nameKey: 'mist.palette.nebula',
+    descKey: 'mist.palette.desc.nebula',
+    legacy: true,
+    schemes: ['light', 'dark'],
+    preview: {
+      light: { canvas: '#F2EFFA', glowA: '#E3D6FF', glowB: '#F8D8EC', glass: 'rgb(255 255 255 / 0.6)', ink: '#241B3A', accent: '#6A4FC9', waiting: '#8A6400', well: '#15111F' },
+      dark: { canvas: '#0D0A18', glowA: 'rgb(120 90 220 / 0.4)', glowB: 'rgb(200 90 160 / 0.3)', glass: 'rgb(255 255 255 / 0.06)', ink: '#ECE8F7', accent: '#B9A3FF', waiting: '#F2D36B', well: '#08060F' },
+    },
+  },
+  {
+    id: 'aurora',
+    nameKey: 'mist.palette.aurora',
+    descKey: 'mist.palette.desc.aurora',
+    legacy: true,
+    schemes: ['light', 'dark'],
+    preview: {
+      light: { canvas: '#EDF6F2', glowA: '#C4EEDC', glowB: '#CDE8F4', glass: 'rgb(255 255 255 / 0.6)', ink: '#14302A', accent: '#287E68', waiting: '#8A6400', well: '#0E1A18' },
+      dark: { canvas: '#0C1718', glowA: 'rgb(40 160 120 / 0.38)', glowB: 'rgb(50 130 190 / 0.3)', glass: 'rgb(255 255 255 / 0.06)', ink: '#E3F2EC', accent: '#7DDDB9', waiting: '#F2D36B', well: '#070F10' },
+    },
+  },
+  {
+    id: 'dawn',
+    nameKey: 'mist.palette.dawn',
+    descKey: 'mist.palette.desc.dawn',
+    legacy: true,
+    schemes: ['light', 'dark'],
+    preview: {
+      light: { canvas: '#F7EEE9', glowA: '#FAD9C8', glowB: '#F3D9E4', glass: 'rgb(255 255 255 / 0.6)', ink: '#33201A', accent: '#B4532F', waiting: '#8A6400', well: '#1D1412' },
+      dark: { canvas: '#211512', glowA: 'rgb(220 120 80 / 0.3)', glowB: 'rgb(200 90 130 / 0.24)', glass: 'rgb(255 255 255 / 0.06)', ink: '#F5E9E4', accent: '#FFAA85', waiting: '#F2D36B', well: '#140C0A' },
+    },
+  },
+  {
+    id: 'console',
+    nameKey: 'mist.palette.console',
+    descKey: 'mist.palette.desc.console',
+    legacy: true,
+    schemes: ['dark'],
+    preview: {
+      dark: { canvas: '#0C0D10', glowA: 'rgb(61 214 245 / 0.12)', glowB: 'rgb(61 120 245 / 0.1)', glass: 'rgb(255 255 255 / 0.05)', ink: '#D8E2E6', accent: '#3DD6F5', waiting: '#F2D36B', well: '#06070A' },
+    },
+  },
+]
+
 export type NextPaletteId = string
 
 export const NEXT_PALETTE_DEFAULT: NextPaletteId = 'mist'
 export const NEXT_PALETTE_CUSTOM: NextPaletteId = 'custom'
 export const NEXT_PALETTE_RANDOM: NextPaletteId = 'random'
 
-export const NEXT_REMOVED_PALETTES: Readonly<Record<string, NextPaletteId>> = { nebula: 'mist', aurora: 'mist', dawn: 'orrery', console: 'graphite' }
-
 export function migrateNextPaletteId(value: string | null | undefined): string | null {
-  return value && Object.prototype.hasOwnProperty.call(NEXT_REMOVED_PALETTES, value) ? NEXT_REMOVED_PALETTES[value]! : (value ?? null)
+  return value ?? null
 }
 
 export const NEXT_RANDOM_PALETTE: NextPalette = {
@@ -103,9 +148,9 @@ export const NEXT_CUSTOM_PALETTE: NextPalette = {
   preview: {},
 }
 
-export const NEXT_THEME_IDS: readonly NextPaletteId[] = [...NEXT_PALETTES.map((p) => p.id), NEXT_PALETTE_RANDOM, NEXT_PALETTE_CUSTOM]
+export const NEXT_THEME_IDS: readonly NextPaletteId[] = [...NEXT_PALETTES.map((p) => p.id), ...NEXT_LEGACY_PALETTES.map((p) => p.id), NEXT_PALETTE_RANDOM, NEXT_PALETTE_CUSTOM]
 
-const byId = new Map([...NEXT_PALETTES, NEXT_RANDOM_PALETTE, NEXT_CUSTOM_PALETTE].map((p) => [p.id, p]))
+const byId = new Map([...NEXT_PALETTES, ...NEXT_LEGACY_PALETTES, NEXT_RANDOM_PALETTE, NEXT_CUSTOM_PALETTE].map((p) => [p.id, p]))
 
 export function isNextPaletteId(value: unknown): value is NextPaletteId {
   return typeof value === 'string' && byId.has(value)
@@ -120,8 +165,16 @@ export function nextSchemeFor(id: string | null | undefined, preferred: NextSche
   return p.schemes.includes(preferred) ? preferred : p.schemes[0]!
 }
 
-export function nextPaletteCards(): { id: string; scheme: NextScheme; palette: NextPalette }[] {
-  return [...NEXT_PALETTES, NEXT_RANDOM_PALETTE, NEXT_CUSTOM_PALETTE]
+function cardsOf(list: readonly NextPalette[]): { id: string; scheme: NextScheme; palette: NextPalette }[] {
+  return list
     .flatMap((palette) => palette.schemes.map((scheme) => ({ id: palette.id === NEXT_PALETTE_CUSTOM || palette.id === NEXT_PALETTE_RANDOM ? palette.id : `${palette.id}:${scheme}`, scheme, palette })))
     .filter((c) => c.palette.id === 'mist' || c.scheme === c.palette.schemes[0])
+}
+
+export function nextPaletteCards(): { id: string; scheme: NextScheme; palette: NextPalette }[] {
+  return cardsOf([...NEXT_PALETTES, NEXT_RANDOM_PALETTE, NEXT_CUSTOM_PALETTE])
+}
+
+export function nextLegacyCards(): { id: string; scheme: NextScheme; palette: NextPalette }[] {
+  return cardsOf(NEXT_LEGACY_PALETTES)
 }

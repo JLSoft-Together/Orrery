@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { shown } from '../../../features/shareMode/store'
 import { waitReason, type PtyPreset } from '@ccm/shared'
 import { ChevronDown, ChevronRight, Ellipsis, LoaderCircle, Plus, Wrench } from 'lucide-vue-next'
 import { useClusterDrag } from '../../../composables/useClusterDrag'
@@ -29,7 +30,7 @@ import { hasChanges, hasEnvCheck, hasExplorer, hasI18nScan, hasLog, hasPreview, 
 import { contextPctOf } from '../../../lib/provider'
 import { monogram, projectTone } from '../../../lib/rail/projectRow'
 import type { RailDragSource } from '../../../lib/rail/railDrag'
-import { isMenuKey, projectMenu as buildProjectMenu, rowMenu } from '../../../lib/rail/railMenu'
+import { isMenuKey, projectKindOf, projectMenu as buildProjectMenu, rowMenu } from '../../../lib/rail/railMenu'
 import { folderName } from '../../../lib/sidebarRows'
 import { rowLines, type RailCluster, type RailRow } from '../../../lib/rail/railModel'
 import { clickSelect, extendSelect, NO_SELECTION, pruneSelection, selectionFacts, selectionMenu, selectionPanes, type RailSelection } from '../../../lib/rail/railSelect'
@@ -286,10 +287,13 @@ const railDrag = useRailDrag(
 )
 
 const shownProjects = computed(() => body.value.filter((s) => s.id.startsWith('p:')).map((s) => s.id.slice(2)))
-const clusterDrag = useClusterDrag(listEl, (from, to) => {
+function moveProject(from: number, to: number): void {
   const at = railMoveIndexes(shownProjects.value, clusterOrder.value, from, to)
-  if (at) rail.move(at[0], at[1])
-})
+  if (!at) return
+  rail.move(at[0], at[1])
+  sync(true)
+}
+const clusterDrag = useClusterDrag(listEl, moveProject)
 
 let handoff: { down: PointerEvent; target: DragHandoff; el: HTMLElement } | null = null
 
@@ -465,7 +469,7 @@ const diskDirOf = (c: RailCluster | undefined): string | null => (!c || c.key ==
 const projectDisks = useProjectDisks(() => rail.clusters.value.map(diskDirOf).filter((d): d is string => !!d))
 const headTip = (key: string): string => {
   const c = clusterByKey.value.get(key)
-  return [c?.root, branchOf(key), ...projectDisks.linesOf(diskDirOf(c))].filter(Boolean).join('\n')
+  return shown([c?.root, branchOf(key), ...projectDisks.linesOf(diskDirOf(c))].filter(Boolean).join('\n'))
 }
 const nameOf = (c: RailCluster): string => (c.key === 'home' ? t('workspace.side.home') : c.name)
 const clusterName = (key: string): string => {
@@ -513,6 +517,7 @@ async function showProjectMenu(c: RailCluster, at: DOMRect, trigger: HTMLElement
         canUp: index > 0,
         canDown: index >= 0 && index < shownProjects.value.length - 1,
         collapsed: folded.value.has(c.key),
+        kind: dir ? projectKindOf(run.projectsFor(dir), run.detected(dir)) : null,
       },
       t,
     )
@@ -579,8 +584,7 @@ async function pickProject(id: string, c: RailCluster, dir: string | null, ancho
     case 'move-up':
     case 'move-down': {
       const from = shownProjects.value.indexOf(c.key)
-      const at = railMoveIndexes(shownProjects.value, clusterOrder.value, from, from + (id === 'move-up' ? -1 : 1))
-      if (at) rail.move(at[0], at[1])
+      moveProject(from, from + (id === 'move-up' ? -1 : 1))
       break
     }
     case 'toggle':
@@ -671,7 +675,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
         <template v-for="s in body" :key="s.id">
           <section v-if="s.id.startsWith('p:')" class="mb-1.5" :data-group="clusterKeyOf(s.id)">
             <div
-              class="group/head flex h-8 min-w-0 items-center gap-1.5 rounded-control px-1.5"
+              class="group/head flex h-8 min-w-0 items-center gap-1.5 rounded-control px-1.5 select-none"
               data-side-head
               :data-order-key="clusterKeyOf(s.id)"
               :title="headTip(clusterKeyOf(s.id))"

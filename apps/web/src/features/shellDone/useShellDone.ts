@@ -1,10 +1,10 @@
 import { useI18n } from 'vue-i18n'
 import type { PtyServerMessage } from '@ccm/shared'
-import { useConnectionStore } from '../../stores/connection'
-import { useSettingsStore } from '../../stores/settings'
-import { useToastsStore } from '../../stores/toasts'
-import { useUiStore } from '../../stores/ui'
-import { useWorkspaceStore } from '../../stores/workspace'
+import { useConnectionStore } from '../../app/stores/connection'
+import { useSettingsStore } from '../../core/stores/settings'
+import { useToastsStore } from '../../core/stores/toasts'
+import { useUiStore } from '../../core/stores/ui'
+import { useWorkspaceStore } from '../workspace/stores/workspace'
 import { elapsedParts, shellDoneAction, shownCommand } from './shellDone'
 
 export type CmdMessage = Extract<PtyServerMessage, { t: 'cmd' }>

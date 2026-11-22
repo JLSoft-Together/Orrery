@@ -1,0 +1,132 @@
+import { isRebound, overrideAction, recording } from '../../shortcuts/bindings'
+import type { FocusDir, SplitDir } from './splitLayout'
+
+export type WorkspaceAction =
+  | { t: 'newTab' }
+  | { t: 'mru'; step: 1 | -1 }
+  | { t: 'split'; dir?: SplitDir }
+  | { t: 'closePane' }
+  | { t: 'cycleTab'; step: 1 | -1 }
+  | { t: 'tab'; index: number }
+  | { t: 'focus'; dir: FocusDir }
+  /** The focused pane trades places with the one beside it. */
+  | { t: 'swap'; dir: FocusDir }
+  /** Jump to the next pane whose agent waits for the user (or finished unseen). */
+  | { t: 'attention' }
+  | { t: 'asked' }
+  /** ⌘P on macOS, Ctrl+Shift+P elsewhere: Ctrl+P is shell history. */
+  | { t: 'quickOpen' }
+  /** Sidebar → Explorer (⇧⌘E / Ctrl+Shift+E, as in VS Code). */
+  | { t: 'explorer' }
+  /** Explorer → Search (⇧⌘F; Alt+Shift+F elsewhere: Ctrl+Shift+F is terminal find). */
+  | { t: 'search' }
+  | { t: 'termSearch' }
+  | { t: 'focusMode' }
+  | { t: 'moveTab'; step: 1 | -1 }
+  | { t: 'zoom' }
+  | { t: 'reopen' }
+  /** Prompt library (⇧⌘P; Alt+Shift+P elsewhere: Ctrl+Shift+P is Quick Open). */
+  | { t: 'prompts' }
+  /** Recent files / edit locations / bookmarks (⌘E; Alt+Shift+E elsewhere: Ctrl+E is readline end-of-line). */
+  | { t: 'recent' }
+  /** Every bookmark (Shift+F11, as in IntelliJ). */
+  | { t: 'bookmarks' }
+  /** Back / forward through file locations (⌃- / ⌃⇧- on macOS, Ctrl+Alt+← / → elsewhere). */
+  | { t: 'navBack' }
+  | { t: 'navForward' }
+  /** Project notes (⌃⌥N on macOS, Ctrl+Alt+N elsewhere). */
+  | { t: 'notes' }
+  | { t: 'shareMode' }
+  /** Drop-down shell terminal (Ctrl+` / ⌃`, as in VS Code). */
+  | { t: 'dropTerm' }
+  /** Go to project (⌃⌥P on macOS, Ctrl+Alt+P elsewhere); pressed again while held it steps the list, Shift steps back. */
+  | { t: 'projects'; back: boolean }
+  | { t: 'groupFocus'; dir: 'left' | 'right' }
+  | { t: 'groupMove'; dir: 'left' | 'right' }
+  | { t: 'addGroup' }
+  | { t: 'detachTab' }
+
+/** Chords that still work while focus is in the drop-down terminal: they open global UI, never touch the pane behind it. */
+export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'termSearch', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
+
+const ARROWS: Record<string, FocusDir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
+const PAGES: Record<string, 1 | -1> = { PageUp: -1, PageDown: 1 }
+
+/**
+ * Windows Terminal's defaults (iTerm / Terminal.app on macOS), matched on `code` so Vietnamese IMEs and other
+ * layouts keep working. Chosen to stay off the keys Claude Code and shells use (Ctrl+letter, Alt+letter).
+ */
+export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boolean, groups = false, next = false): WorkspaceAction | null {
+  if (e.type !== 'keydown' || e.isComposing || recording.value) return null
+  const custom = overrideAction(e, mac)
+  if (custom) return custom as WorkspaceAction
+  const action = defaultAction(e, mac, multiPane, groups, next)
+  return action && isRebound(action, mac) ? null : action
+}
+
+function defaultAction(e: KeyboardEvent, mac: boolean, multiPane: boolean, groups: boolean, next: boolean): WorkspaceAction | null {
+  const { ctrlKey: ctrl, shiftKey: shift, altKey: alt, metaKey: meta, code } = e
+  const side = code === 'ArrowLeft' ? 'left' : code === 'ArrowRight' ? 'right' : null
+  if (ctrl && alt && !meta && !e.getModifierState?.('AltGraph')) {
+    if (code === 'KeyG' && !shift) return { t: 'addGroup' }
+    if (code === 'KeyQ' && !shift) return { t: 'asked' }
+    if (code === 'KeyF' && !shift) return { t: 'termSearch' }
+    if (code === 'KeyH' && !shift) return { t: 'shareMode' }
+    if (side && groups) return shift ? { t: 'groupMove', dir: side } : { t: 'groupFocus', dir: side }
+  }
+  const digit = /^Digit([1-9])$/.exec(code)
+  if (code === 'F11' && shift && !ctrl && !alt && !meta) return { t: 'bookmarks' }
+  if (code === 'Backquote' && ctrl && !shift && !alt && !meta) return { t: 'dropTerm' }
+  if (code === 'Period' && !shift && !alt && (mac ? meta && !ctrl : ctrl && !meta)) return { t: 'focusMode' }
+  if (mac) {
+    if (ctrl && !meta && !alt && code === 'Tab') return { t: 'mru', step: shift ? -1 : 1 }
+    if (ctrl && !meta && !alt && code === 'Minus') return { t: shift ? 'navForward' : 'navBack' }
+    if (ctrl && alt && !meta && !shift && code === 'KeyN') return { t: 'notes' }
+    if (ctrl && alt && !meta && code === 'KeyP') return { t: 'projects', back: shift }
+    if (!meta || ctrl) return null
+    if (next && code === 'KeyT' && alt && !shift) return { t: 'detachTab' }
+    if (code === 'KeyE' && !shift && !alt) return { t: 'recent' }
+    if (code === 'KeyT' && !shift && !alt) return { t: 'newTab' }
+    if (code === 'KeyT' && shift && !alt) return { t: 'reopen' }
+    if (code === 'Enter' && shift && !alt) return { t: 'zoom' }
+    if (code === 'KeyA' && shift && !alt) return { t: 'attention' }
+    if (code === 'KeyD' && !alt) return { t: 'split', dir: shift ? 'col' : 'row' }
+    if (code === 'KeyW' && !shift && !alt) return { t: 'closePane' }
+    if (code === 'KeyP' && !shift && !alt) return { t: 'quickOpen' }
+    if (code === 'KeyE' && shift && !alt) return { t: 'explorer' }
+    if (code === 'KeyF' && shift && !alt) return { t: 'search' }
+    if (code === 'KeyP' && shift && !alt) return { t: 'prompts' }
+    if ((code === 'BracketLeft' || code === 'BracketRight') && shift && !alt) return { t: 'cycleTab', step: code === 'BracketRight' ? 1 : -1 }
+    if (PAGES[code] && shift && !alt) return { t: 'moveTab', step: PAGES[code]! }
+    if (digit && !shift && !alt) return { t: 'tab', index: Number(digit[1]) - 1 }
+    if (alt && ARROWS[code] && multiPane) return { t: shift ? 'swap' : 'focus', dir: ARROWS[code]! }
+    return null
+  }
+  if (meta) return null
+  if (ctrl && shift && !alt && code === 'KeyT') return { t: 'newTab' }
+  if (ctrl && shift && !alt && code === 'KeyW') return { t: 'closePane' }
+  if (ctrl && shift && !alt && code === 'KeyZ') return { t: 'reopen' }
+  if (ctrl && shift && !alt && code === 'Enter') return { t: 'zoom' }
+  if (ctrl && shift && !alt && code === 'KeyA') return { t: 'attention' }
+  if (ctrl && shift && !alt && code === 'KeyP') return { t: 'quickOpen' }
+  if (ctrl && shift && !alt && code === 'KeyE') return { t: 'explorer' }
+  if (ctrl && shift && !alt && PAGES[code]) return { t: 'moveTab', step: PAGES[code]! }
+  if (alt && shift && !ctrl) {
+    if (code === 'KeyD') return { t: 'split' }
+    if (code === 'KeyF') return { t: 'search' }
+    if (code === 'KeyP') return { t: 'prompts' }
+    if (code === 'KeyE') return { t: 'recent' }
+    if (code === 'Equal' || code === 'NumpadAdd') return { t: 'split', dir: 'row' }
+    if (code === 'Minus' || code === 'NumpadSubtract') return { t: 'split', dir: 'col' }
+  }
+  if (ctrl && alt && !shift && (code === 'ArrowLeft' || code === 'ArrowRight') && !e.getModifierState?.('AltGraph')) return { t: code === 'ArrowLeft' ? 'navBack' : 'navForward' }
+  if (ctrl && !alt && code === 'Tab') return { t: 'mru', step: shift ? -1 : 1 }
+  if (ctrl && !alt && !shift && PAGES[code]) return { t: 'cycleTab', step: PAGES[code]! }
+  // AltGr arrives as Ctrl+Alt on Windows; AltGr+digit types characters like @ { [ on many layouts.
+  if (ctrl && alt && !shift && digit && !e.getModifierState?.('AltGraph')) return { t: 'tab', index: Number(digit[1]) - 1 }
+  if (ctrl && alt && !shift && code === 'KeyN' && !e.getModifierState?.('AltGraph')) return { t: 'notes' }
+  if (next && ctrl && alt && !shift && code === 'KeyT' && !e.getModifierState?.('AltGraph')) return { t: 'detachTab' }
+  if (ctrl && alt && code === 'KeyP' && !e.getModifierState?.('AltGraph')) return { t: 'projects', back: shift }
+  if (alt && !ctrl && ARROWS[code] && multiPane) return { t: shift ? 'swap' : 'focus', dir: ARROWS[code]! }
+  return null
+}

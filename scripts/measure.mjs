@@ -58,7 +58,7 @@ const PROBE = `(() => {
 
 async function startup(runs) {
   const require = createRequire(import.meta.url)
-  const { launch } = require(path.join(ROOT, 'apps', 'desktop', 'e2e', 'cdp.cjs'))
+  const { launch } = require(path.join(ROOT, 'apps', 'shell', 'e2e', 'cdp.cjs'))
   const mounts = []
   const snapshots = []
   const fcps = []
@@ -88,7 +88,7 @@ async function startup(runs) {
 async function main() {
   if (!flag('no-build')) build()
   const result = bundle()
-  const version = JSON.parse(readFileSync(path.join(ROOT, 'apps', 'desktop', 'package.json'), 'utf8')).version
+  const version = JSON.parse(readFileSync(path.join(ROOT, 'apps', 'shell', 'package.json'), 'utf8')).version
   const label = opt('label')
   const out = { version, label: label ?? null, date: new Date().toISOString().slice(0, 10), ...result }
   for (const c of result.chunks.slice(0, 12)) console.log(`${c.file.padEnd(48)} ${kb(c.bytes).padStart(10)}  gzip ${kb(c.gzip).padStart(9)}`)

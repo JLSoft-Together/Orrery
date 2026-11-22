@@ -3,9 +3,9 @@ import { computed, ref } from 'vue'
 import type { PtyPreset } from '@ccm/shared'
 import { i18n } from '../../i18n'
 import { deepseekBlocker, type DeepSeekBlocker } from './gate'
-import { desktop, type DeepSeekStatus } from '../../lib/desktop'
-import { useToastsStore } from '../../stores/toasts'
-import { useUiStore } from '../../stores/ui'
+import { desktop, type DeepSeekStatus } from '../../core/lib/desktop'
+import { useToastsStore } from '../../core/stores/toasts'
+import { useUiStore } from '../../core/stores/ui'
 
 export const STATUS_TTL_MS = 60_000
 

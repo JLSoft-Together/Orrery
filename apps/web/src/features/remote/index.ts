@@ -1,0 +1,7 @@
+export { default as SettingsRemote } from './components/SettingsRemote.vue'
+export { default as PhoneSettings } from './components/PhoneSettings.vue'
+export { default as RemotePhoneChip } from './components/RemotePhoneChip.vue'
+export { hasPhone, onPhone } from './lib/phone'
+export { useRemoteStore } from './stores/remote'
+export { installRemotePhone } from './composables/useRemotePhone'
+export { installRemoteSummary } from './composables/useRemoteSummary'

@@ -4,7 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import en from '../../i18n/en'
 import viMessages from '../../i18n/vi'
-import type { SecretBlock } from '../../lib/preview'
+import type { SecretBlock } from '../../core/lib/preview'
 import SecretGuardDialog from './SecretGuardDialog.vue'
 import { groupHits, isEmptyBlock, isSecretBlock, kindKey, laterNotice, withoutPath } from './secretGuard'
 
@@ -12,10 +12,10 @@ const preview = vi.hoisted(() => ({
   gitCommit: vi.fn(),
   gitUnstage: vi.fn(),
 }))
-vi.mock('../../lib/preview', async (orig) => ({ ...(await orig<typeof import('../../lib/preview')>()), gitCommit: preview.gitCommit, gitUnstage: preview.gitUnstage }))
+vi.mock('../../core/lib/preview', async (orig) => ({ ...(await orig<typeof import('../../core/lib/preview')>()), gitCommit: preview.gitCommit, gitUnstage: preview.gitUnstage }))
 
-const { default: CommitBox } = await import('../../components/workspace/CommitBox.vue')
-const { useSettingsStore } = await import('../../stores/settings')
+const { default: CommitBox } = await import('../git/components/CommitBox.vue')
+const { useSettingsStore } = await import('../../core/stores/settings')
 
 const i18n = createI18n({ legacy: false, locale: 'en', messages: { en, vi: viMessages } })
 

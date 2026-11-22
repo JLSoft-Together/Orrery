@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { parseUnifiedDiff } from '../../lib/diff'
-import type { Pane } from '../../stores/workspace'
+import { parseUnifiedDiff } from '../git/lib/diff'
+import type { Pane } from '../workspace/stores/workspace'
 import { agentTargets, useDiffCommentsStore } from './store'
 
 const ROOT = 'C:\\repo'

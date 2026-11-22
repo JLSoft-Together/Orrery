@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process'
 
-const electron = process.argv.includes('--electron')
-const SCRIPTS = electron ? { win32: 'dist:electron:win', darwin: 'dist:electron:mac' } : { win32: 'dist:win', darwin: 'dist:mac' }
+const SCRIPTS = { win32: 'dist:win', darwin: 'dist:mac' }
 
 const script = SCRIPTS[process.platform]
 if (!script) {

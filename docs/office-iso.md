@@ -8,7 +8,7 @@ timelapse and theme packs; only the renderer and the art differ. Plan and decisi
 
 - Stored in `localStorage['ccm.office.style']`: `'pixel'` (default) or `'iso'`. UI: Office options popover →
   "Pixel / 3D (beta)" (`OfficeOptions.vue`, strings `i18n/office-v63.ts`). Changing it rebuilds the world.
-- The 3D code is a lazy chunk: `apps/web/src/office/iso/index.ts` `loadIso()` returns the projection, the renderer
+- The 3D code is a lazy chunk: `apps/web/src/features/office/lib/iso/index.ts` `loadIso()` returns the projection, the renderer
   factory, the zoom cap, the overlay text style and the persona hook. If the 3D art is missing the options popover
   says so and every item falls back to a placeholder (boxes, pixel billboards).
 

@@ -1,0 +1,446 @@
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { bracketMatching, indentOnInput } from '@codemirror/language'
+import { lintGutter, lintKeymap, setDiagnostics, type Diagnostic } from '@codemirror/lint'
+import { unifiedMergeView } from '@codemirror/merge'
+import { highlightSelectionMatches, openSearchPanel, search, searchKeymap } from '@codemirror/search'
+import { Compartment, EditorSelection, EditorState, RangeSet, StateEffect, StateField, Text, type Extension } from '@codemirror/state'
+import {
+  crosshairCursor,
+  drawSelection,
+  dropCursor,
+  EditorView,
+  GutterMarker,
+  gutterLineClass,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  keymap,
+  lineNumbers,
+  rectangularSelection,
+} from '@codemirror/view'
+import type { BuildError } from '@ccm/shared'
+import { editorHighlight, editorTheme } from '../lib/editor/cmTheme'
+import { languageFor } from '../lib/editor/cmLanguage'
+import { colorSwatches } from '../lib/editor/colorSwatches'
+import { isMac } from '../../../core/lib/platform'
+import { useSettingsStore } from '../../../core/stores/settings'
+
+const props = withDefaults(
+  defineProps<{ doc: string; base?: string | null; grammar: string | null; wrap?: boolean; compare?: string | null; line?: number | null; problems?: readonly BuildError[] | null; bookmarks?: readonly number[] }>(),
+  {
+  bookmarks: () => [],
+  problems: null,
+  base: null,
+  wrap: false,
+  compare: null,
+  line: null,
+  },
+)
+const emit = defineEmits<{
+  dirty: [dirty: boolean]
+  change: []
+  save: []
+  cursorLine: [line: number]
+  /** Fractional 1-based line at the top of the viewport, on scroll. */
+  topLine: [line: number]
+}>()
+
+const { t } = useI18n()
+const settings = useSettingsStore()
+const host = ref<HTMLElement | null>(null)
+let view: EditorView | null = null
+let baseline: Text | null = null
+let dirty = false
+let scrollFrame = 0
+
+const language = new Compartment()
+const wrapping = new Compartment()
+const merge = new Compartment()
+const phrases = new Compartment()
+const swatches = new Compartment()
+const swatchExt = (): Extension => colorSwatches(props.grammar, t('workspace.colorSwatch.pick'))
+
+const PHRASES = [
+  'Find', 'Replace', 'next', 'previous', 'all', 'match case', 'by word', 'regexp', 'replace', 'replace all', 'close',
+  'current match', 'on line', 'replaced $ matches', 'replaced match on line $', 'Go to line', 'go', 'Accept', 'Reject',
+] as const
+
+function phraseMap(): Record<string, string> {
+  return Object.fromEntries(PHRASES.map((p, i) => [p, t(`editor.cm.p${i}`)]))
+}
+
+/** Replace field focused (Ctrl+H / ⌥⌘F); the search panel holds both fields. */
+function openReplace(target: EditorView): boolean {
+  openSearchPanel(target)
+  requestAnimationFrame(() => target.dom.querySelector<HTMLInputElement>('.cm-search input[name=replace]')?.select())
+  return true
+}
+
+function emitTopLine(): void {
+  scrollFrame = 0
+  if (!view) return
+  const top = view.scrollDOM.scrollTop
+  const block = view.lineBlockAtHeight(top)
+  const line = view.state.doc.lineAt(block.from).number
+  emit('topLine', line + (block.height > 0 ? Math.min(1, Math.max(0, (top - block.top) / block.height)) : 0))
+}
+
+function onScroll(): void {
+  if (!scrollFrame) scrollFrame = requestAnimationFrame(emitTopLine)
+}
+
+function setDirty(next: boolean): void {
+  if (next === dirty) return
+  dirty = next
+  emit('dirty', next)
+}
+
+class BookmarkMarker extends GutterMarker {
+  override elementClass = 'cm-bookmark'
+}
+const bookmarkMarker = new BookmarkMarker()
+const setBookmarks = StateEffect.define<readonly number[]>()
+const bookmarkRanges = (doc: Text, lines: readonly number[]): RangeSet<GutterMarker> =>
+  RangeSet.of(
+    [...new Set(lines)].filter((l) => l >= 1 && l <= doc.lines).sort((a, b) => a - b).map((l) => bookmarkMarker.range(doc.line(l).from)),
+  )
+// Mapped through edits so a mark stays on its text until the store's line list replaces it.
+const bookmarkField = StateField.define<RangeSet<GutterMarker>>({
+  create: () => RangeSet.empty,
+  update(value, tr) {
+    let next = value.map(tr.changes)
+    for (const e of tr.effects) if (e.is(setBookmarks)) next = bookmarkRanges(tr.state.doc, e.value)
+    return next
+  },
+  provide: (f) => gutterLineClass.from(f),
+})
+
+const mergeExt = (original: string | null): Extension => (original === null ? [] : unifiedMergeView({ original, gutter: true, mergeControls: true }))
+
+function extensions(): Extension[] {
+  return [
+    lineNumbers(),
+    highlightActiveLineGutter(),
+    highlightSpecialChars(),
+    history(),
+    drawSelection(),
+    dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(),
+    bracketMatching(),
+    closeBrackets(),
+    rectangularSelection(),
+    crosshairCursor(),
+    highlightActiveLine(),
+    highlightSelectionMatches(),
+    lintGutter(),
+    bookmarkField,
+    search({ top: true }),
+    keymap.of([
+      { key: 'Mod-s', preventDefault: true, run: () => (emit('save'), true) },
+      { key: isMac ? 'Mod-Alt-f' : 'Ctrl-h', preventDefault: true, run: openReplace },
+      ...closeBracketsKeymap,
+      ...defaultKeymap,
+      ...searchKeymap,
+      ...lintKeymap,
+      ...historyKeymap,
+      indentWithTab,
+    ]),
+    editorTheme,
+    editorHighlight,
+    language.of([]),
+    wrapping.of(props.wrap ? EditorView.lineWrapping : []),
+    merge.of(mergeExt(props.compare)),
+    phrases.of(EditorState.phrases.of(phraseMap())),
+    swatches.of(swatchExt()),
+    EditorView.contentAttributes.of({ 'aria-label': t('editor.label'), spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
+    EditorView.updateListener.of((u) => {
+      if (u.docChanged) {
+        setDirty(!!baseline && !u.state.doc.eq(baseline))
+        emit('change')
+      }
+      if (u.selectionSet || u.docChanged) emit('cursorLine', u.state.doc.lineAt(u.state.selection.main.head).number)
+    }),
+  ]
+}
+
+async function applyLanguage(grammar: string | null): Promise<void> {
+  const ext = await languageFor(grammar).catch(() => null)
+  if (view && grammar === props.grammar) view.dispatch({ effects: language.reconfigure(ext ?? []) })
+}
+
+function diagnostics(state: EditorState, list: readonly BuildError[] | null): Diagnostic[] {
+  const doc = state.doc
+  const out: Diagnostic[] = []
+  for (const e of list ?? []) {
+    if (e.line < 1 || e.line > doc.lines) continue
+    const l = doc.line(e.line)
+    const from = Math.min(l.from + Math.max(0, e.col - 1), l.to)
+    const word = /^[\w$.]+/.exec(doc.sliceString(from, l.to))?.[0].length ?? 0
+    out.push({ from, to: word ? from + word : l.to, severity: e.severity, message: e.message })
+  }
+  return out
+}
+
+function applyProblems(): void {
+  if (view) view.dispatch(setDiagnostics(view.state, diagnostics(view.state, props.problems)))
+}
+
+function applyBookmarks(): void {
+  view?.dispatch({ effects: setBookmarks.of(props.bookmarks) })
+}
+
+function revealLine(line: number, select = false): void {
+  if (!view) return
+  const doc = view.state.doc
+  const l = doc.line(Math.min(Math.max(1, line), doc.lines))
+  view.dispatch({
+    selection: select ? EditorSelection.range(l.from, l.to) : EditorSelection.cursor(l.from),
+    effects: EditorView.scrollIntoView(l.from, { y: 'center' }),
+  })
+}
+
+/** Disk text replaces the buffer (reload); scroll and cursor stay where they were as far as the new text allows. */
+function setText(text: string): void {
+  if (!view) return
+  const top = view.scrollDOM.scrollTop
+  const head = view.state.selection.main.head
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: EditorSelection.cursor(Math.min(head, text.length)) })
+  baseline = view.state.doc
+  setDirty(false)
+  requestAnimationFrame(() => view && (view.scrollDOM.scrollTop = top))
+}
+
+/** Whole-buffer edit (Local History restore, Format): undoable, the saved baseline stays, so the buffer turns dirty. */
+function replace(text: string): void {
+  if (!view || text === view.state.doc.toString()) return
+  const head = view.state.selection.main.head
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: EditorSelection.cursor(Math.min(head, text.length)), scrollIntoView: true })
+}
+
+defineExpose({
+  text: (): string => view?.state.doc.toString() ?? props.doc,
+  replace,
+  /** Text just written to disk: the buffer is clean until edited again. */
+  markSaved: (saved?: string): void => {
+    if (!view) return
+    if (saved === undefined || saved === view.state.doc.toString()) baseline = view.state.doc
+    setDirty(!!baseline && !view.state.doc.eq(baseline))
+  },
+  setText,
+  revealLine,
+  focus: (): void => view?.focus(),
+  topLine: (): number => {
+    if (!view) return 1
+    const block = view.lineBlockAtHeight(view.scrollDOM.scrollTop)
+    return view.state.doc.lineAt(block.from).number
+  },
+  lineCount: (): number => view?.state.doc.lines ?? 1,
+  openFind: (): void => void (view && openSearchPanel(view)),
+  /** Selected text, else the word at the cursor. */
+  lineText: (line: number): string => (view && line >= 1 && line <= view.state.doc.lines ? view.state.doc.line(line).text : ''),
+  word: (): string => {
+    if (!view) return ''
+    const sel = view.state.selection.main
+    const range = sel.empty ? view.state.wordAt(sel.head) : sel
+    return range ? view.state.sliceDoc(range.from, range.to) : ''
+  },
+})
+
+onMounted(() => {
+  if (!host.value) return
+  view = new EditorView({ parent: host.value, state: EditorState.create({ doc: props.doc, extensions: extensions() }) })
+  // Re-entering edit mode with unsaved text: the baseline is the disk text, so the buffer is dirty at once.
+  baseline = props.base === null ? view.state.doc : Text.of(props.base.split(/\r\n|\r|\n/))
+  setDirty(!view.state.doc.eq(baseline))
+  void applyLanguage(props.grammar)
+  applyProblems()
+  applyBookmarks()
+  if (props.line) revealLine(props.line)
+  view.scrollDOM.addEventListener('scroll', onScroll, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  if (scrollFrame) cancelAnimationFrame(scrollFrame)
+  view?.scrollDOM.removeEventListener('scroll', onScroll)
+  view?.destroy()
+  view = null
+})
+
+watch(
+  () => props.grammar,
+  (g) => {
+    void applyLanguage(g)
+    view?.dispatch({ effects: swatches.reconfigure(swatchExt()) })
+  },
+)
+watch(() => props.problems, applyProblems)
+watch(() => props.bookmarks, applyBookmarks)
+watch(
+  () => props.wrap,
+  (on) => view?.dispatch({ effects: wrapping.reconfigure(on ? EditorView.lineWrapping : []) }),
+)
+watch(
+  () => props.compare,
+  (original) => view?.dispatch({ effects: merge.reconfigure(mergeExt(original)) }),
+)
+watch(
+  () => settings.locale,
+  () => view?.dispatch({ effects: [phrases.reconfigure(EditorState.phrases.of(phraseMap())), swatches.reconfigure(swatchExt())] }),
+)
+// Font family / size come from CSS variables; CodeMirror caches glyph metrics, so re-measure after a change.
+watch(
+  () => [settings.codeFont, settings.codeFontSize],
+  () => void document.fonts.ready.then(() => view?.requestMeasure()),
+)
+</script>
+
+<template>
+  <div ref="host" class="ccm-editor ccm-no-liga min-h-0 min-w-0 flex-1 overflow-hidden" data-code-zoom data-file-editor />
+</template>
+
+<style>
+/* Check problems: theme tokens instead of @codemirror/lint's fixed colours (one extra class to beat its scoped theme). */
+.ccm-editor .cm-content .cm-lintRange-error,
+.ccm-editor .cm-content .cm-lintRange-warning {
+  background-image: none;
+  text-decoration: underline wavy var(--ccm-error);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+.ccm-editor .cm-content .cm-lintRange-warning {
+  text-decoration-color: var(--ccm-warning);
+}
+.ccm-editor .cm-tooltip.cm-tooltip-lint {
+  background: var(--ccm-surface);
+  color: var(--ccm-ink);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+.ccm-editor .cm-tooltip .cm-diagnostic-error {
+  border-left-color: var(--ccm-error);
+}
+.ccm-editor .cm-tooltip .cm-diagnostic-warning {
+  border-left-color: var(--ccm-warning);
+}
+.ccm-editor .cm-gutter .cm-lint-marker-error,
+.ccm-editor .cm-gutter .cm-lint-marker-warning {
+  content: '';
+  display: block;
+  width: 0.5em;
+  height: 0.5em;
+  margin: 0.25em;
+  border-radius: 50%;
+  background: var(--ccm-error);
+}
+.ccm-editor .cm-gutter .cm-lint-marker-warning {
+  background: var(--ccm-warning);
+}
+.ccm-editor .cm-lineNumbers .cm-gutterElement.cm-bookmark {
+  position: relative;
+}
+.ccm-editor .cm-lineNumbers .cm-gutterElement.cm-bookmark::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  width: 6px;
+  height: 9px;
+  translate: 0 -50%;
+  background: var(--ccm-favorite);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%);
+}
+/* Swatch fill is the literal's own colour (data); the checkerboard behind shows its alpha. */
+.ccm-editor .cm-color-swatch {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 0.8em;
+  height: 0.8em;
+  margin: 0 0.25em 0 0.05em;
+  overflow: hidden;
+  vertical-align: -0.05em;
+  border: 1px solid var(--ccm-line-strong);
+  border-radius: 2px;
+  background-color: var(--ccm-surface);
+  background-image: conic-gradient(var(--ccm-fill-strong) 25%, transparent 0 50%, var(--ccm-fill-strong) 0 75%, transparent 0);
+  background-size: 6px 6px;
+  cursor: pointer;
+}
+.ccm-editor .cm-color-swatch > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Search / replace panel = chrome (material), outside the scoped block because CodeMirror builds it. */
+.ccm-editor .cm-panels {
+  background: var(--ccm-material);
+  color: var(--ccm-ink);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+.ccm-editor .cm-panels-top {
+  border-bottom: 1px solid var(--ccm-line);
+}
+.ccm-editor .cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 6px 28px 6px 8px;
+}
+.ccm-editor .cm-search br {
+  flex-basis: 100%;
+  content: '';
+}
+.ccm-editor .cm-search .cm-textfield {
+  height: 24px;
+  min-width: 0;
+  flex: 1 1 140px;
+  padding: 0 6px;
+  border: 1px solid var(--ccm-line-strong);
+  border-radius: 6px;
+  background: var(--ccm-surface);
+  color: var(--ccm-ink);
+  font: inherit;
+}
+.ccm-editor .cm-search .cm-textfield:focus-visible {
+  outline: 2px solid var(--ccm-focus);
+  outline-offset: 0;
+}
+.ccm-editor .cm-search .cm-button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--ccm-line);
+  border-radius: 6px;
+  background: var(--ccm-fill);
+  background-image: none;
+  color: var(--ccm-ink);
+  font: inherit;
+}
+.ccm-editor .cm-search .cm-button:hover {
+  background: var(--ccm-fill-strong);
+}
+.ccm-editor .cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ccm-ink-muted);
+}
+.ccm-editor .cm-search button[name='close'] {
+  color: var(--ccm-ink-muted);
+  font-size: 16px;
+}
+.ccm-editor .cm-merge-revert button,
+.ccm-editor .cm-chunkButtons button {
+  border: 1px solid var(--ccm-line);
+  border-radius: 4px;
+  background: var(--ccm-surface);
+  color: var(--ccm-ink);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+</style>

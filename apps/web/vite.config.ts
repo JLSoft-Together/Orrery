@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
-const desktopPkg = JSON.parse(readFileSync(new URL('../desktop/package.json', import.meta.url), 'utf8')) as { version: string }
+const desktopPkg = JSON.parse(readFileSync(new URL('../shell/package.json', import.meta.url), 'utf8')) as { version: string }
 const collector = `http://127.0.0.1:${process.env.CCM_PORT ?? '4317'}`
 
 export default defineConfig({
@@ -23,7 +23,11 @@ export default defineConfig({
   // Habblaud's shared/i18n.ts statically imports every dictionary through ./locales/all; the browser (and these tests)
   // swap it for an empty one and load only the active dictionary (apps/web/src/office/i18n.ts), as upstream does.
   resolve: {
-    alias: [{ find: /^\.\/locales\/all$/, replacement: fileURLToPath(new URL('../../packages/habblaud/shared/locales/none.ts', import.meta.url)) }],
+    alias: [
+      { find: /^\.\/locales\/all$/, replacement: fileURLToPath(new URL('../../packages/habblaud/shared/locales/none.ts', import.meta.url)) },
+      { find: /^@core(?=\/|$)/, replacement: fileURLToPath(new URL('./src/core', import.meta.url)) },
+      { find: /^@features(?=\/|$)/, replacement: fileURLToPath(new URL('./src/features', import.meta.url)) },
+    ],
   },
   // ES worker: the highlight worker lazy-loads shiki grammars (code splitting is not possible in an iife worker).
   worker: { format: 'es' },

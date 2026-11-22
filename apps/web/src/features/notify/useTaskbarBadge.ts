@@ -1,10 +1,10 @@
 import { watch } from 'vue'
 import { inQuietHours } from '@ccm/shared'
-import { desktop } from '../../lib/desktop'
-import { useConnectionStore } from '../../stores/connection'
-import { useExtrasStore } from '../../stores/extras'
-import { useInboxStore } from '../../stores/inbox'
-import { useSettingsStore } from '../../stores/settings'
+import { desktop } from '../../core/lib/desktop'
+import { useConnectionStore } from '../../app/stores/connection'
+import { useExtrasStore } from '../../core/stores/extras'
+import { useInboxStore } from '@features/click-menu'
+import { useSettingsStore } from '../../core/stores/settings'
 import { badgeCount, hasFresh, needIds, shouldFlash } from './badge'
 
 export function useTaskbarBadge(): void {

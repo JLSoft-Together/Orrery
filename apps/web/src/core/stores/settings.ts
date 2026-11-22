@@ -1,0 +1,359 @@
+import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+import { STUCK_CHOICES } from '@ccm/shared'
+import { i18n, initialLocale, type Locale } from '../../i18n'
+import { readLook } from '../lib/appearance'
+import { AUTO_SAVE_DELAY_DEFAULT, AUTO_SAVE_DELAYS, isAutoSaveMode, type AutoSaveMode } from '../lib/autoSave'
+import { desktop } from '../lib/desktop'
+import { setDustEnabled } from '../lib/dustFlag'
+import { clampContextWarn, CONTEXT_WARN_DEFAULT, clampShellDoneSeconds, SHELL_DONE_SECONDS_DEFAULT } from '../lib/settingLimits'
+import { clampCodeSize,CODE_SIZE_DEFAULT, fontEntry, fontStack, isFontId } from '../lib/fonts'
+import { applyTheme, isThemeId, startTheme, THEME_MIGRATION, themeMeta, toggleTarget, variantFor, type ThemeId } from '../lib/themes'
+
+export type Theme = ThemeId
+export type NotifyPermission = NotificationPermission | 'unsupported'
+
+// index.html already applied the start theme before paint (and ran the 4.0.2 migration); read it back from the root.
+function initialTheme(): Theme {
+  const id = document.documentElement.dataset.theme
+  if (isThemeId(id)) return id
+  const light = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches
+  const start = startTheme(read('ccm.theme'), read('ccm.themeMigration'), light)
+  if (start.migrate) persist('ccm.themeMigration', THEME_MIGRATION)
+  return start.theme
+}
+
+function read(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function persist(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    return
+  }
+}
+
+export { STUCK_CHOICES }
+
+/** Explorer tree icons: Atom Material (v59) or the lucide glyphs from before. */
+/** Untracked setup files copied into a new worktree (desktop `pty/wtCopy.ts` patterns). */
+export const DEFAULT_WORKTREE_COPY = ['.env*', 'local.properties', 'key.properties', '**/google-services.json']
+function readWorktreeCopy(): string[] {
+  try {
+    const v: unknown = JSON.parse(read('ccm.worktreeCopy') ?? 'null')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 20) : [...DEFAULT_WORKTREE_COPY]
+  } catch {
+    return [...DEFAULT_WORKTREE_COPY]
+  }
+}
+
+export type FileIconStyle = 'atom' | 'simple'
+const isFileIconStyle = (value: unknown): value is FileIconStyle => value === 'atom' || value === 'simple'
+export type StarsFx = 'off' | 'twinkle' | 'meteors'
+const isStarsFx = (value: unknown): value is StarsFx => value === 'off' || value === 'twinkle' || value === 'meteors'
+export const ACTIVITY_PAGE_SIZES = [50, 100, 200, 500]
+
+function readPinned(): Set<string> {
+  try {
+    const list: unknown = JSON.parse(read('ccm.pinned') ?? '[]')
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string').slice(0, 100) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function permissionNow(): NotifyPermission {
+  return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+}
+
+export const useSettingsStore = defineStore('settings', () => {
+  const theme = ref<Theme>(initialTheme())
+  const themeFollow = ref(read('ccm.themeFollow') === '1')
+  const themeBase = ref<Theme>(isThemeId(read('ccm.themeBase')) ? (read('ccm.themeBase') as Theme) : theme.value)
+  const systemMedia = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: light)') : null
+  const systemMode = (): 'light' | 'dark' => (systemMedia?.matches ? 'light' : 'dark')
+  const locale = ref<Locale>(initialLocale())
+  const hideFinished = ref(read('ccm.hideFinished') === '1')
+  const notifyEnabled = ref(read('ccm.notify') === '1' && permissionNow() === 'granted')
+  const notifyWaiting = ref(read('ccm.notify.waiting') !== '0')
+  const notifyDone = ref(read('ccm.notify.done') !== '0')
+  const notifyContext = ref(read('ccm.notify.context') !== '0')
+  const notifyStuck = ref(read('ccm.notify.stuck') !== '0')
+  const notifyLimit = ref(read('ccm.notify.limit') !== '0')
+  const notifyLoop = ref(read('ccm.notify.loop') !== '0')
+  const clashWarn = ref(read('ccm.notify.clash') === '1')
+  const notifyPermission = ref<NotifyPermission>(permissionNow())
+  const sound = ref(read('ccm.sound') === '1')
+  const stuckMinutes = ref((STUCK_CHOICES as readonly number[]).includes(Number(read('ccm.stuckMin'))) ? Number(read('ccm.stuckMin')) : 10)
+  const hideTools = ref(read('ccm.hideTools') === '1')
+  const keyHints = ref(read('ccm.keyHints') !== '0')
+  const breakReminder = ref(read('ccm.breakReminder') !== '0')
+  const bugReportNudge = ref(read('ccm.bugReport.nudge') !== '0')
+  const minimap = ref(read('ccm.minimap') !== '0')
+  const autoSave = ref<AutoSaveMode>(isAutoSaveMode(read('ccm.autoSave')) ? (read('ccm.autoSave') as AutoSaveMode) : 'off')
+  const autoSaveDelay = ref(AUTO_SAVE_DELAYS.includes(Number(read('ccm.autoSaveDelay'))) ? Number(read('ccm.autoSaveDelay')) : AUTO_SAVE_DELAY_DEFAULT)
+  const compactAuto = ref(read('ccm.compactAuto') !== '0')
+  const clickMenu = ref(read('ccm.clickMenu') !== '0')
+  const secretGuard = ref(read('ccm.secretGuard') !== '0')
+  const menuToast = ref(read('ccm.menuToast') !== '0')
+  const taskbarBadge = ref(read('ccm.taskbarBadge') !== '0')
+  const footerSys = ref(read('ccm.footerSys') !== '0')
+  const dimInactive = ref(read('ccm.workspace.dim') === '1')
+  /** Shell panes started with command marks (OSC 633); read at spawn, so it applies to new shells. */
+  const shellIntegration = ref(read('ccm.shellIntegration') !== '0')
+  const shellDoneNotify = ref(read('ccm.shellDone') !== '0')
+  const shellDoneSeconds = ref(clampShellDoneSeconds(Number(read('ccm.shellDoneSeconds') ?? SHELL_DONE_SECONDS_DEFAULT)))
+  /** Shell panes run a typed `claude` / `codex` through the host's shims (orrery MCP, session id); read at spawn. */
+  const agentShim = ref(read('ccm.agentShim') !== '0')
+  const dustEffect = ref(read('ccm.dust') === '1')
+  const officeEnabled = ref(read('ccm.office') === '1')
+  const stars = ref(read('ccm.stars') !== '0')
+  const starsPanels = ref(read('ccm.starsPanels') !== '0')
+  const starsFx = ref<StarsFx>(isStarsFx(read('ccm.starsFx')) ? (read('ccm.starsFx') as StarsFx) : 'twinkle')
+  const fileIcons = ref<FileIconStyle>(isFileIconStyle(read('ccm.fileIcons')) ? (read('ccm.fileIcons') as FileIconStyle) : 'atom')
+  const worktreeCopy = ref<string[]>(readWorktreeCopy())
+  const pinned = ref<Set<string>>(readPinned())
+  const budgetRaw = Number(read('ccm.budget'))
+  /** Daily spend budget in USD at API list prices; 0 = off. */
+  const dailyBudget = ref(Number.isFinite(budgetRaw) && budgetRaw > 0 ? budgetRaw : 0)
+  const contextWarnTokens = ref(read('ccm.contextWarn') === null ? CONTEXT_WARN_DEFAULT : clampContextWarn(Number(read('ccm.contextWarn'))))
+  const codeFont = ref(isFontId('code', read('ccm.font.code')) ? read('ccm.font.code')! : 'system')
+  const uiFont = ref(isFontId('ui', read('ccm.font.ui')) ? read('ccm.font.ui')! : 'system')
+  const codeFontSize = ref(read('ccm.font.codeSize') === null ? CODE_SIZE_DEFAULT : clampCodeSize(Number(read('ccm.font.codeSize'))))
+  const activityPageSize = ref(ACTIVITY_PAGE_SIZES.includes(Number(read('ccm.activityPage'))) ? Number(read('ccm.activityPage')) : 50)
+
+  watch(hideFinished, (value) => persist('ccm.hideFinished', value ? '1' : '0'))
+  watch(notifyEnabled, (value) => persist('ccm.notify', value ? '1' : '0'))
+  watch(notifyWaiting, (value) => persist('ccm.notify.waiting', value ? '1' : '0'))
+  watch(notifyDone, (value) => persist('ccm.notify.done', value ? '1' : '0'))
+  watch(notifyContext, (value) => persist('ccm.notify.context', value ? '1' : '0'))
+  watch(notifyStuck, (value) => persist('ccm.notify.stuck', value ? '1' : '0'))
+  watch(notifyLimit, (value) => persist('ccm.notify.limit', value ? '1' : '0'))
+  watch(notifyLoop, (value) => persist('ccm.notify.loop', value ? '1' : '0'))
+  watch(clashWarn, (value) => persist('ccm.notify.clash', value ? '1' : '0'))
+  watch(sound, (value) => persist('ccm.sound', value ? '1' : '0'))
+  watch(stuckMinutes, (value) => persist('ccm.stuckMin', String(value)))
+  watch(contextWarnTokens, (value) => persist('ccm.contextWarn', String(clampContextWarn(value))))
+  watch(hideTools,(value) => persist('ccm.hideTools', value ? '1' : '0'))
+  watch(keyHints, (value) => persist('ccm.keyHints', value ? '1' : '0'))
+  watch(breakReminder, (value) => persist('ccm.breakReminder', value ? '1' : '0'))
+  watch(bugReportNudge, (value) => persist('ccm.bugReport.nudge', value ? '1' : '0'))
+  watch(minimap, (value) => persist('ccm.minimap', value ? '1' : '0'))
+  watch(autoSave, (value) => persist('ccm.autoSave', value))
+  watch(autoSaveDelay, (value) => persist('ccm.autoSaveDelay', String(value)))
+  watch(compactAuto, (value) => persist('ccm.compactAuto', value ? '1' : '0'))
+  watch(clickMenu, (value) => persist('ccm.clickMenu', value ? '1' : '0'))
+  watch(secretGuard, (value) => persist('ccm.secretGuard', value ? '1' : '0'))
+  watch(menuToast, (value) => persist('ccm.menuToast', value ? '1' : '0'))
+  watch(taskbarBadge, (value) => persist('ccm.taskbarBadge', value ? '1' : '0'))
+  watch(footerSys, (value) => persist('ccm.footerSys', value ? '1' : '0'))
+  watch(dimInactive, (value) => persist('ccm.workspace.dim', value ? '1' : '0'))
+  watch(shellIntegration, (value) => persist('ccm.shellIntegration', value ? '1' : '0'))
+  watch(shellDoneNotify, (value) => persist('ccm.shellDone', value ? '1' : '0'))
+  watch(shellDoneSeconds, (value) => persist('ccm.shellDoneSeconds', String(clampShellDoneSeconds(value))))
+  watch(agentShim, (value) => persist('ccm.agentShim', value ? '1' : '0'))
+  watch(dustEffect, (value) => persist('ccm.dust', value ? '1' : '0'))
+  watch(dustEffect, setDustEnabled, { flush: 'sync', immediate: true })
+  watch(officeEnabled, (value) => persist('ccm.office', value ? '1' : '0'))
+  watch(stars, (value) => persist('ccm.stars', value ? '1' : '0'))
+  watch(stars, (value) => document.documentElement.setAttribute('data-stars', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
+  watch(starsPanels, (value) => persist('ccm.starsPanels', value ? '1' : '0'))
+  watch(starsPanels, (value) => document.documentElement.setAttribute('data-stars-panels', value ? 'on' : 'off'), { flush: 'sync', immediate: true })
+  watch(starsFx, (value) => persist('ccm.starsFx', value))
+  watch(starsFx, (value) => document.documentElement.setAttribute('data-stars-fx', value), { flush: 'sync', immediate: true })
+  watch(fileIcons, (value) => persist('ccm.fileIcons', value))
+  watch(worktreeCopy, (value) => persist('ccm.worktreeCopy', JSON.stringify(value)))
+  watch(pinned, (value) => persist('ccm.pinned', JSON.stringify([...value])))
+  watch(activityPageSize, (value) => persist('ccm.activityPage', String(value)))
+  watch(dailyBudget, (value) => persist('ccm.budget', String(value)))
+
+  watch(
+    theme,
+    (value) => {
+      applyTheme(document.documentElement, value)
+      persist('ccm.theme', value)
+      const look = desktop?.setAppearance ? readLook() : null
+      if (look) void desktop!.setAppearance!(look)
+      else void desktop?.setWindowBackground?.(themeMeta(value).swatch[0])
+    },
+    { flush: 'sync', immediate: true },
+  )
+
+  // Tailwind v4 reads --font-mono / --font-sans through var(), so every font-mono / font-sans text follows.
+  watch(
+    [codeFont, uiFont, codeFontSize],
+    ([code, ui, size]) => {
+      const style = document.documentElement.style
+      style.setProperty('--font-mono', fontStack(fontEntry('code', code)))
+      style.setProperty('--font-sans', fontStack(fontEntry('ui', ui)))
+      style.setProperty('--ccm-code-size', `${size}px`)
+      persist('ccm.font.code', code)
+      persist('ccm.font.ui', ui)
+      persist('ccm.font.codeSize', String(size))
+    },
+    { immediate: true },
+  )
+
+  function setCodeFont(id: string): void {
+    if (isFontId('code', id)) codeFont.value = id
+  }
+
+  function setUiFont(id: string): void {
+    if (isFontId('ui', id)) uiFont.value = id
+  }
+
+  function stepCodeSize(delta: number): void {
+    codeFontSize.value = delta === 0 ? CODE_SIZE_DEFAULT : clampCodeSize(codeFontSize.value + delta)
+  }
+
+  watch(
+    locale,
+    (value) => {
+      i18n.global.locale.value = value
+      document.documentElement.lang = value
+      persist('ccm.locale', value)
+      void desktop?.setLocale?.(value)
+    },
+    { immediate: true },
+  )
+
+  watch(themeFollow, (value) => persist('ccm.themeFollow', value ? '1' : '0'))
+  watch(themeBase, (value) => persist('ccm.themeBase', value))
+
+  function syncFollow(): void {
+    if (themeFollow.value) theme.value = variantFor(themeBase.value, systemMode())
+  }
+
+  systemMedia?.addEventListener?.('change', syncFollow)
+  if (themeFollow.value) syncFollow()
+
+  function toggleTheme(): void {
+    themeFollow.value = false
+    theme.value = toggleTarget(theme.value)
+    themeBase.value = theme.value
+  }
+
+  function setTheme(id: ThemeId): void {
+    if (!isThemeId(id)) return
+    themeBase.value = id
+    theme.value = themeFollow.value ? variantFor(id, systemMode()) : id
+  }
+
+  function setThemeMode(mode: 'light' | 'dark' | 'system'): void {
+    if (mode === 'system') {
+      themeFollow.value = true
+      themeBase.value = theme.value
+      syncFollow()
+      return
+    }
+    themeFollow.value = false
+    theme.value = variantFor(themeBase.value, mode)
+  }
+
+  function toggleLocale(): void {
+    locale.value = locale.value === 'en' ? 'vi' : 'en'
+  }
+
+  function toggleHideFinished(): void {
+    hideFinished.value = !hideFinished.value
+  }
+
+  function togglePin(terminalId: string): void {
+    const next = new Set(pinned.value)
+    if (!next.delete(terminalId)) next.add(terminalId)
+    pinned.value = next
+  }
+
+  /** Drops pins of sessions that no longer exist (ids are per process, so they never come back). */
+  function prunePins(existing: Iterable<string>): void {
+    const keep = new Set(existing)
+    const next = new Set([...pinned.value].filter((id) => keep.has(id)))
+    if (next.size !== pinned.value.size) pinned.value = next
+  }
+
+  /** Must run from a click: browsers only show the permission prompt on a user gesture. */
+  async function toggleNotifications(): Promise<void> {
+    if (notifyEnabled.value) {
+      notifyEnabled.value = false
+      return
+    }
+    if (typeof Notification === 'undefined') return
+    if (Notification.permission === 'default') {
+      try {
+        await Notification.requestPermission()
+      } catch {
+        // Older engines throw instead of resolving; permission stays as is.
+      }
+    }
+    notifyPermission.value = permissionNow()
+    notifyEnabled.value = notifyPermission.value === 'granted'
+  }
+
+  return {
+    theme,
+    locale,
+    hideFinished,
+    notifyEnabled,
+    notifyWaiting,
+    notifyDone,
+    notifyContext,
+    notifyStuck,
+    notifyLimit,
+    notifyLoop,
+    clashWarn,
+    notifyPermission,
+    sound,
+    stuckMinutes,
+    contextWarnTokens,
+    breakReminder,
+    bugReportNudge,
+    hideTools,
+    keyHints,
+    minimap,
+    worktreeCopy,
+    autoSave,
+    autoSaveDelay,
+    dimInactive,
+    shellIntegration,
+    shellDoneNotify,
+    shellDoneSeconds,
+    agentShim,
+    compactAuto,
+    clickMenu,
+    secretGuard,
+    menuToast,
+    taskbarBadge,
+    footerSys,
+    dustEffect,
+    officeEnabled,
+    stars,
+    starsPanels,
+    starsFx,
+    fileIcons,
+    pinned,
+    activityPageSize,
+    dailyBudget,
+    codeFont,
+    uiFont,
+    codeFontSize,
+    setCodeFont,
+    setUiFont,
+    stepCodeSize,
+    togglePin,
+    prunePins,
+    toggleTheme,
+    setTheme,
+    setThemeMode,
+    themeFollow,
+    themeBase,
+    toggleLocale,
+    toggleHideFinished,
+    toggleNotifications,
+  }
+})

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const PRELOAD = path.join(ROOT, 'apps', 'desktop', 'src', 'preload.ts')
+const PRELOAD = path.join(ROOT, 'apps', 'shell', 'shim', 'preload.ts')
 const OUT = path.join(ROOT, 'apps', 'shell', 'src', 'shim.js')
 
 const ELECTRON = `

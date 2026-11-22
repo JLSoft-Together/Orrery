@@ -8,7 +8,10 @@
       "desc": "Gate nhanh theo git diff: typecheck workspace đang đổi, vitest related, cargo test crate liên quan, E2E map sẵn",
       "when": "Sau khi sửa code TS/Vue/Rust, thay cho chạy rời npm run typecheck / npm test; bỏ --no-e2e khi cần E2E",
       "flags": "--dry · --no-e2e · --no-cargo · --e2e=a,b · --base=<ref> · --jobs=<n>",
-      "covers": ["npm run typecheck", "npm test"],
+      "covers": [
+        "npm run typecheck",
+        "npm test"
+      ],
       "created": "2026-11-13",
       "estSaveTokens": 22000
     },
@@ -19,9 +22,41 @@
       "desc": "Gate điện thoại: vitest + vue-tsc PWA, cargo test remote:: của shell (-j 6), E2E PWA scenario remote chromium + webkit (đo tràn ngang 375/390/430, chat mặc định, Vừa màn gửi pty.resize claim, box không gãy, chat steps), check Android; in tóm tắt OK/FAIL, log .jin/logs/qa-remote-<giờ>.log, ảnh chỉ khi FAIL",
       "when": "Sau khi sửa apps/pwa, apps/shell/src/remote, apps/mobile hoặc giao thức remote",
       "flags": "--only=pwa,rust,e2e,mobile, --no-mobile, --browsers=chromium,webkit, --no-build",
-      "covers": ["npm test -w @ccm/pwa", "npm run typecheck -w @ccm/pwa", "cargo test remote::", "npm run e2e -w @ccm/pwa", "node apps/mobile/scripts/check.mjs"],
+      "covers": [
+        "npm test -w @ccm/pwa",
+        "npm run typecheck -w @ccm/pwa",
+        "cargo test remote::",
+        "npm run e2e -w @ccm/pwa",
+        "node apps/mobile/scripts/check.mjs"
+      ],
       "created": "2026-11-22",
       "estSaveTokens": 18000
+    },
+    {
+      "name": "web-move",
+      "file": "scripts/web-move.mjs",
+      "run": "node scripts/web-move.mjs",
+      "desc": "Dời file trong apps/web/src bằng git mv rồi sửa mọi import tương đối / alias (import, import(), vi.mock, ?raw, new URL) trỏ tới file đó và import bên trong file vừa dời; chỉ in số file dời và số import sửa",
+      "when": "Chia apps/web/src theo feature (đợt P3 của PLAN-v110-modules): dời file hoặc thư mục sang features/<feature>/ hoặc core/",
+      "flags": "--dry · --no-git · --root <dir> · --map <file.json> · \"cũ -> mới\" (đường dẫn tính từ apps/web/src, file hoặc thư mục)",
+      "covers": [
+        "git mv + sửa import thủ công"
+      ],
+      "created": "2026-11-22",
+      "estSaveTokens": 15000
+    },
+    {
+      "name": "index-check",
+      "file": "scripts/index-check.mjs",
+      "run": "node scripts/index-check.mjs",
+      "desc": "Quét đường dẫn trong CLAUDE.md và .code_index/*.md (trừ archive): file / symbol không tồn tại, file index vượt 8 KB, CLAUDE.md vượt 7.5 KB; in lỗi BAD, thoát 1 nếu có",
+      "when": "Sau khi sửa .code_index hoặc CLAUDE.md, hoặc sau khi dời file",
+      "flags": "--sizes",
+      "covers": [
+        "rg thủ công từng đường dẫn index"
+      ],
+      "created": "2026-11-22",
+      "estSaveTokens": 6000
     }
   ]
 }

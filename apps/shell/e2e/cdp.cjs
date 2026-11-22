@@ -1,0 +1,199 @@
+// Minimal CDP driver: launches the dev (or a packaged) app isolated from any installed copy and exposes eval/screenshot/keys.
+const { spawn, execFileSync } = require('node:child_process')
+const fs = require('node:fs')
+const path = require('node:path')
+const http = require('node:http')
+const os = require('node:os')
+const REPO = path.resolve(__dirname, '../../..')
+const WS = require(path.join(REPO, 'node_modules/ws'))
+const { uiGenFromArgs, uiGenScript } = require('./ui-gen.cjs')
+const OUT = process.env.CCM_E2E_OUT || path.join(os.tmpdir(), 'ccm-e2e')
+const PORT = Number(process.env.CCM_E2E_PORT) || 4399
+const DBG = Number(process.env.CCM_E2E_DBG) || 9333
+const TMP = path.join(OUT, 'run')
+const SHELL_EXE = process.env.CCM_E2E_SHELL_EXE || path.join(REPO, 'apps/shell/target/debug', process.platform === 'win32' ? 'orrery-shell.exe' : 'orrery-shell')
+fs.mkdirSync(OUT, { recursive: true })
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const getJson = (url) =>
+  new Promise((res, rej) => http.get(url, (r) => { let b = ''; r.on('data', (d) => (b += d)); r.on('end', () => { try { res(JSON.parse(b)) } catch (e) { rej(e) } }) }).on('error', rej))
+
+const ALT = 1, CTRL = 2, META = 4, SHIFT = 8
+const ARROW = /^Arrow(Left|Right|Up|Down)$/
+const VK = { KeyT: 84, KeyD: 68, BracketRight: 221, BracketLeft: 219, Minus: 189 }
+const MAC_KEYS = [
+  [CTRL | SHIFT, 'KeyT', META, 'KeyT'],
+  [CTRL | SHIFT, 'KeyW', META, 'KeyW'],
+  [CTRL | SHIFT, 'KeyZ', META | SHIFT, 'KeyT'],
+  [CTRL | SHIFT, 'Enter', META | SHIFT, 'Enter'],
+  [CTRL | SHIFT, 'KeyA', META | SHIFT, 'KeyA'],
+  [CTRL | SHIFT, 'KeyP', META, 'KeyP'],
+  [CTRL | SHIFT, 'KeyE', META | SHIFT, 'KeyE'],
+  [CTRL | SHIFT, 'KeyO', META | SHIFT, 'KeyO'],
+  [CTRL | SHIFT, 'PageUp', META | SHIFT, 'PageUp'],
+  [CTRL | SHIFT, 'PageDown', META | SHIFT, 'PageDown'],
+  [ALT | SHIFT, 'KeyD', META, 'KeyD'],
+  [ALT | SHIFT, 'KeyF', META | SHIFT, 'KeyF'],
+  [ALT | SHIFT, 'KeyP', META | SHIFT, 'KeyP'],
+  [ALT | SHIFT, 'KeyE', META, 'KeyE'],
+  [ALT | SHIFT, 'Equal', META, 'KeyD'],
+  [ALT | SHIFT, 'Minus', META | SHIFT, 'KeyD'],
+  [CTRL, 'Tab', META | SHIFT, 'BracketRight'],
+  [CTRL | SHIFT, 'Tab', META | SHIFT, 'BracketLeft'],
+  [CTRL, 'KeyK', META, 'KeyK'],
+  [CTRL, 'F12', META, 'F12'],
+  [CTRL, 'ArrowUp', META, 'ArrowUp'],
+  [CTRL, 'ArrowDown', META, 'ArrowDown'],
+]
+
+function macKey(p) {
+  const mods = p.modifiers ?? 0
+  const code = p.code ?? ''
+  if (mods & META) return p
+  if (mods === CTRL && p.commands?.length) return { ...p, modifiers: META }
+  const hit = MAC_KEYS.find(([m, c]) => m === mods && c === code)
+  if (hit) return { ...p, modifiers: hit[2], code: hit[3], windowsVirtualKeyCode: hit[3] === code ? p.windowsVirtualKeyCode : VK[hit[3]] ?? p.windowsVirtualKeyCode, key: hit[3] === code ? p.key : hit[3].replace(/^Key/, '').replace('BracketRight', ']').replace('BracketLeft', '[') }
+  if (mods === (CTRL | ALT) && /^Digit[1-9]$/.test(code)) return { ...p, modifiers: META }
+  if ((mods === ALT || mods === (ALT | SHIFT)) && ARROW.test(code)) return { ...p, modifiers: mods | META }
+  return p
+}
+
+async function launch(opts = {}) {
+  if (opts.exe && opts.exe.startsWith('--')) opts = { ...opts, exe: undefined }
+  if (!opts.exe && process.env.CCM_E2E_EXE) opts = { ...opts, exe: process.env.CCM_E2E_EXE }
+  for (let i = 0; !opts.keep; i++) {
+    try {
+      fs.rmSync(TMP, { recursive: true, force: true })
+      break
+    } catch (e) {
+      if (i >= 40) throw e
+      await sleep(250)
+    }
+  }
+  fs.mkdirSync(TMP, { recursive: true })
+  // Decided "no" up front: the first-visit full-access confirm would otherwise sit modal over every run.
+  fs.mkdirSync(path.join(TMP, 'data'), { recursive: true })
+  fs.mkdirSync(path.join(TMP, 'appdata'), { recursive: true })
+  if (!fs.existsSync(path.join(TMP, 'data', 'preview-full-access.json'))) fs.writeFileSync(path.join(TMP, 'data', 'preview-full-access.json'), '{"full":false}')
+  const flags = ['--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding']
+  const env = { ...process.env, ...opts.env, CCM_PORT: String(PORT), CCM_DATA_DIR: path.join(TMP, 'data'), CCM_TOAST: '0', ...(process.platform === 'win32' ? { APPDATA: path.join(TMP, 'appdata') } : {}) }
+  const stdio = ['ignore', fs.openSync(path.join(OUT, 'shell.log'), 'w'), fs.openSync(path.join(OUT, 'shell.err'), 'w')]
+  const child = spawn(opts.exe ?? SHELL_EXE, opts.args ?? [], { env: { ...env, CCM_SHELL_WEBVIEW_DIR: path.join(TMP, 'ud'), CCM_E2E_DEVTOOLS: '1', CCM_E2E_CDP_PORT: String(DBG), CCM_KEYRING_SERVICE: env.CCM_KEYRING_SERVICE || 'Orrery E2E', CCM_ELECTRON_USER_DATA: env.CCM_ELECTRON_USER_DATA || path.join(TMP, 'electron-ud'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${DBG}`, ...flags].join(' ') }, stdio })
+  let target
+  for (let i = 0; i < 120 && !target; i++) {
+    await sleep(500)
+    try {
+      const list = await getJson(`http://127.0.0.1:${DBG}/json`)
+      target = list.find((t) => t.type === 'page' && t.url.startsWith(`http://127.0.0.1:${PORT}/`))
+    } catch {}
+  }
+  if (!target) throw new Error('no app page')
+  const ws = new WS(target.webSocketDebuggerUrl)
+  await new Promise((r) => ws.once('open', r))
+  let id = 0
+  const pending = new Map()
+  const loads = []
+  ws.on('message', (raw) => {
+    const m = JSON.parse(raw)
+    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id) }
+    if (m.method === 'Page.loadEventFired') loads.splice(0).forEach((r) => r())
+  })
+  ws.on('close', () => {
+    for (const r of pending.values()) r({ error: { message: 'cdp closed' }, result: { exceptionDetails: { text: 'cdp closed' } } })
+    pending.clear()
+  })
+  const send = (method, params = {}) => new Promise((r) => { if (ws.readyState > 1) return r({ error: { message: 'cdp closed' }, result: { exceptionDetails: { text: 'cdp closed' } } }); const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
+  await send('Page.enable')
+  if (process.platform === 'darwin') await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] })
+  const appUp = async () => {
+    const end = Date.now() + 15000
+    while (Date.now() < end) {
+      const r = await send('Runtime.evaluate', { expression: "!!document.querySelector('#app')?.__vue_app__", returnByValue: true })
+      if (r.result?.result?.value === true) return
+      await sleep(100)
+    }
+  }
+  const cmd = async (method, params = {}) => {
+    if (method === 'Input.dispatchKeyEvent' && process.platform === 'darwin') params = macKey(params)
+    if (method === 'Input.dispatchMouseEvent' && params.type !== 'mouseWheel' && process.platform === 'darwin' && (params.modifiers ?? 0) & CTRL && !((params.modifiers ?? 0) & META)) params = { ...params, modifiers: (params.modifiers & ~CTRL) | META }
+    if (method !== 'Page.reload') return send(method, params)
+    const loaded = new Promise((r) => { loads.push(r); setTimeout(r, 15000) })
+    const res = await send(method, params)
+    await loaded
+    await appUp()
+    return res
+  }
+  const evaluate = async (expr) => {
+    const r = await cmd('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })
+    if (r.result?.exceptionDetails) throw new Error('eval: ' + JSON.stringify(r.result.exceptionDetails).slice(0, 400))
+    return r.result?.result?.value
+  }
+  const shot = async (name) => {
+    await cmd('Page.bringToFront')
+    await sleep(150)
+    let r = await cmd('Page.captureScreenshot', { format: 'png' })
+    if (!r.result?.data) {
+      await sleep(500)
+      r = await cmd('Page.captureScreenshot', { format: 'png' })
+    }
+    if (!r.result?.data) throw new Error('screenshot ' + name + ': ' + JSON.stringify(r.error ?? r).slice(0, 200))
+    fs.writeFileSync(path.join(OUT, name + '.png'), Buffer.from(r.result.data, 'base64'))
+  }
+  const type = async (text) => cmd('Input.insertText', { text })
+  const key = async (k, code, vk, mods = 0) => {
+    await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods, text: k === 'Enter' ? '\r' : undefined })
+    await cmd('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods })
+  }
+  const waitFor = async (expr, ms = 20000, label = expr) => {
+    const end = Date.now() + ms
+    while (Date.now() < end) {
+      try { const v = await evaluate(expr); if (v) return v } catch {}
+      await sleep(250)
+    }
+    throw new Error('timeout: ' + label)
+  }
+  const ui = opts.ui ?? uiGenFromArgs()
+  if (!opts.invite) {
+    await appUp()
+    await evaluate(`localStorage.getItem('ccm.next.invite') || localStorage.setItem('ccm.next.invite', 'closed')`).catch(() => null)
+  }
+  if (ui === 'next') {
+    await appUp()
+    const cur = await evaluate(`localStorage.getItem('ccm.uiGeneration')`).catch(() => null)
+    if (cur !== 'next' || opts.palette) {
+      await evaluate(uiGenScript('next', { palette: opts.palette, motion: opts.motion }))
+      await cmd('Page.reload')
+    }
+    await waitFor(`document.documentElement.dataset.ui === 'next'`, 20000, 'data-ui=next')
+  }
+  if (ui === 'classic') {
+    await appUp()
+    const cur = await evaluate(`localStorage.getItem('ccm.uiGeneration')`).catch(() => null)
+    if (cur !== 'classic') {
+      await evaluate(uiGenScript('classic'))
+      await cmd('Page.reload')
+    }
+    await waitFor(`document.documentElement.dataset.ui === 'classic'`, 20000, 'data-ui=classic')
+  }
+  const stop = () => {
+    if (process.platform === 'win32') {
+      try { execFileSync('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore' }) } catch {}
+      return
+    }
+    try { process.kill(child.pid, 'SIGKILL') } catch {}
+    const end = Date.now() + 5000
+    while (Date.now() < end) {
+      try {
+        if (/Z|^$/.test(execFileSync('ps', ['-o', 'stat=', '-p', String(child.pid)], { encoding: 'utf8' }).trim())) return
+      } catch { return }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
+    }
+  }
+  return { child, cmd, evaluate, shot, type, key, waitFor, stop, sleep }
+}
+
+const selOpen = (el) => `const el = ${el}; if (!el) return null; if (el.getAttribute('aria-expanded') !== 'true') el.click(); let list = null; for (let i = 0; i < 40 && !(list = document.getElementById(el.getAttribute('aria-controls'))); i++) await new Promise((r) => setTimeout(r, 25)); const opts = [...(list?.querySelectorAll('[role=option]') ?? [])]; const label = (o) => [...o.querySelectorAll('span')].map((s) => s.textContent.trim()).filter(Boolean).join(' ');`
+const selOptions = (el) => `(async () => { ${selOpen(el)} const out = opts.map((o) => ({ text: label(o), value: o.dataset.value, selected: o.getAttribute('aria-selected') === 'true' })); if (el.getAttribute('aria-expanded') === 'true') el.click(); return out })()`
+const selPick = (el, test) => `(async () => { ${selOpen(el)} const i = opts.findIndex((o, i) => (${test})(label(o), i, o.dataset.value)); if (i < 0) { el.click(); return false } opts[i].click(); return true })()`
+
+module.exports = { launch, sleep, PORT, REPO, OUT, UI: uiGenFromArgs(), selOptions, selPick }

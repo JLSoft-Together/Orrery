@@ -1,0 +1,196 @@
+import { compactEntry, type CompactState } from '../../agent-tools/lib/compactHandoff'
+import type { MenuEntry } from '../../../core/lib/menu'
+
+const M = 'workspace.rail.menu.'
+
+export const NEW_CHOICES = ['claude', 'codex', 'deepseek', 'shell', 'browser'] as const
+export type NewChoice = (typeof NEW_CHOICES)[number]
+
+/** DeepSeek only with the desktop's CCM_DEEPSEEK_FEATURE bridge (owner pause, 2026-11-03). */
+export const newChoices = (deepseek: boolean): NewChoice[] => NEW_CHOICES.filter((c) => c !== 'deepseek' || deepseek)
+
+export interface ProjectMenuCtx {
+  mac: boolean
+  /** Folder the menu acts on (checkout path, else the header's); null = Home cluster or unknown. */
+  dir: string | null
+  home: boolean
+  /** Has open tabs (not only remembered). */
+  live: boolean
+  /** A pane of this checkout can anchor the Explorer. */
+  anchored: boolean
+  viewers: { file: boolean; changes: boolean; log: boolean }
+  scripts: boolean
+  run: boolean
+  /** null: no layouts bridge. */
+  layouts: Array<{ id: string; name: string; openOnStart?: boolean }> | null
+  explorer: boolean
+  /** Desktop `ccm:env-check` exists. */
+  env?: boolean
+  /** Desktop `ccm:i18n-scan` exists. */
+  i18n?: boolean
+  /** Desktop `ccm:perm-read` exists. */
+  perms?: boolean
+  /** Desktop `ccm:build-scan` exists (v77 R8). */
+  buildClean?: boolean
+  /** Desktop `ccm:reveal` exists (OS file manager). */
+  reveal: boolean
+  canUp: boolean
+  canDown: boolean
+  collapsed: boolean
+  /** Offer DeepSeek panes (desktop bridge present). */
+  deepseek?: boolean
+  kind?: ProjectKind
+}
+
+export type ProjectKind = 'android' | 'flutter' | 'other' | null
+
+export function projectKindOf(projects: Array<{ kind: string }>, detected: boolean): ProjectKind {
+  if (!detected) return null
+  if (projects.some((p) => p.kind === 'flutter')) return 'flutter'
+  if (projects.some((p) => p.kind === 'android')) return 'android'
+  return 'other'
+}
+
+type T = (key: string, params?: Record<string, unknown>) => string
+
+/** Header / checkout line menu; ids: `new:<choice|file|changes|log>`, `layout:<id>`, plain ids otherwise. */
+export function projectMenu(ctx: ProjectMenuCtx, t: T): MenuEntry[] {
+  const noDir = !ctx.dir
+  const newKids: MenuEntry[] = newChoices(!!ctx.deepseek).map((c) => ({ id: `new:${c}`, label: t(c === 'browser' ? 'workspace.open.browser' : `workspace.preset.${c}`) }))
+  if (ctx.viewers.file) newKids.push({ id: 'new:file', label: t('workspace.open.openFile') })
+  if (ctx.viewers.changes && ctx.dir) newKids.push({ id: 'new:changes', label: t('workspace.open.changes') })
+  if (ctx.viewers.log && ctx.dir) newKids.push({ id: 'new:log', label: t('workspace.log.open') })
+  const entries: MenuEntry[] = []
+  if (ctx.dir || ctx.home) entries.push({ id: 'new', label: t(`${M}newTab`), children: newKids })
+  if (ctx.run && ctx.dir) entries.push({ id: 'run', label: t('run.open') })
+  const mobile = ctx.kind == null || ctx.kind === 'android' || ctx.kind === 'flutter'
+  const tools: MenuEntry[] = []
+  if (ctx.dir) {
+    if (ctx.scripts) tools.push({ id: 'scripts', label: t('workspace.scripts.open') })
+    if (ctx.explorer) tools.push({ id: 'plan', label: t('workspace.plan.open') })
+    if (ctx.env) tools.push({ id: 'env', label: t('workspace.envCheck.open') })
+    if (ctx.i18n) tools.push({ id: 'i18n', label: t('workspace.i18nScan.open') })
+    if (ctx.perms && mobile) tools.push({ id: 'perms', label: t('permAdvisor.open') })
+    if (ctx.buildClean && !ctx.home) tools.push({ id: 'build-clean', label: t('buildClean.open') })
+  }
+  if (tools.length) entries.push({ id: 'tools', label: t(`${M}tools`), children: tools })
+  if (ctx.layouts && ctx.dir) {
+    const kids: MenuEntry[] = [{ id: 'layout-save', label: t('workspace.layouts.save') }]
+    if (ctx.layouts.length) kids.push({ id: 'layout-manage', label: t('workspace.layouts.manage') }, { separator: true })
+    for (const l of ctx.layouts) kids.push({ id: `layout:${l.id}`, label: l.name, hint: l.openOnStart ? t('workspace.layouts.onStart') : undefined })
+    entries.push({ id: 'layouts', label: t(`${M}layouts`), children: kids })
+  }
+  if (entries.length) entries.push({ separator: true })
+  const unanchored = ctx.anchored ? undefined : t(`${M}noPane`)
+  if (ctx.explorer) entries.push({ id: 'explorer', label: t(`${M}showExplorer`), disabled: !ctx.anchored || noDir, hint: unanchored })
+  entries.push({ id: 'copy-path', label: t(`${M}copyPath`), disabled: noDir })
+  if (ctx.reveal) entries.push({ id: 'reveal', label: t(`${M}${ctx.mac ? 'finder' : 'fileManager'}`), disabled: noDir })
+  entries.push(
+    { separator: true },
+    { id: 'move-up', label: t(`${M}moveUp`), shortcut: ctx.mac ? '⌥↑' : 'Alt+↑', disabled: !ctx.canUp },
+    { id: 'move-down', label: t(`${M}moveDown`), shortcut: ctx.mac ? '⌥↓' : 'Alt+↓', disabled: !ctx.canDown },
+    { id: 'toggle', label: t(`${M}${ctx.collapsed ? 'expand' : 'collapse'}`), shortcut: ctx.collapsed ? '→' : '←' },
+    { separator: true },
+  )
+  if (ctx.live) entries.push({ id: 'close-project', label: t('workspace.rail.closeProject') })
+  else entries.push({ id: 'forget', label: t(`${M}forget`) })
+  return entries
+}
+
+export interface RowMenuCtx {
+  /** Offer DeepSeek panes (desktop bridge present). */
+  deepseek?: boolean
+  /** Row stands for a whole tab without agent / run panes (✕ closes the tab). */
+  tabRow: boolean
+  cwd: string | null
+  explorer: boolean
+  /** Agent row: offers "Show session in Monitor". */
+  agent: boolean
+  /** Linked monitor terminal (agent process seen by the collector). */
+  linked: boolean
+  /** Claude pane with desktop `ccm:ctx-sources`: offers "Background context…". */
+  context?: boolean
+  /** Other panes in the same tab. */
+  others: number
+  targets: Array<{ key: string; title: string }>
+  compact?: CompactState | null
+  /** Agent session that can get its own Telegram topic; 'linked' when it has one. */
+  telegram?: 'linked' | 'unlinked'
+  /** The linked topic has a t.me link. */
+  telegramOpen?: boolean
+  turnChanges?: number
+}
+
+const splitKids = (dir: 'row' | 'col', deepseek: boolean, t: T): MenuEntry[] => [
+  ...newChoices(deepseek).map((c) => ({ id: `split:${dir}:${c}`, label: t(c === 'browser' ? 'workspace.open.browser' : `workspace.preset.${c}`) })),
+  { id: `split:${dir}:project`, label: t('splitV97.otherProject') },
+]
+
+/** Session / pane row menu; split ids `split:<row|col>:<choice>`. */
+export function rowMenu(ctx: RowMenuCtx, t: T): MenuEntry[] {
+  const entries: MenuEntry[] = [
+    { id: 'focus', label: t(`${M}focus`) },
+    { separator: true },
+    { id: 'split-right', label: t(`${M}splitRight`), children: splitKids('row', !!ctx.deepseek, t) },
+    { id: 'split-down', label: t(`${M}splitDown`), children: splitKids('col', !!ctx.deepseek, t) },
+    { separator: true },
+    { id: 'rename-tab', label: t('workspace.railGroup.renameTab'), shortcut: 'F2' },
+    {
+      id: 'move-to',
+      label: t('workspace.tabActions.moveTo'),
+      disabled: !ctx.targets.length,
+      hint: ctx.targets.length ? undefined : t('workspace.tabActions.noTargets'),
+      children: ctx.targets.length ? ctx.targets.map((x) => ({ id: `move-to:${x.key}`, label: x.title })) : undefined,
+    },
+    { id: 'move-out', label: t('workspace.tabActions.moveOut'), disabled: ctx.tabRow || ctx.others === 0 },
+    { separator: true },
+    { id: 'copy-cwd', label: t(`${M}copyCwd`), disabled: !ctx.cwd },
+  ]
+  if (ctx.explorer) entries.push({ id: 'explorer', label: t(`${M}showExplorer`), disabled: !ctx.cwd })
+  if (ctx.agent && ctx.turnChanges !== undefined)
+    entries.push({ id: 'changesOfTurn', label: t('v104.turnChanges.menu'), disabled: !ctx.turnChanges || !ctx.cwd, hint: ctx.turnChanges ? String(ctx.turnChanges) : t('v104.turnChanges.menuNone') })
+  if (ctx.agent) entries.push({ id: 'monitor', label: t(`${M}showInMonitor`), disabled: !ctx.linked, hint: ctx.linked ? undefined : t(`${M}notLinked`) })
+  if (ctx.context && ctx.cwd) entries.push({ id: 'context', label: t('ctxSources.open') })
+  if (ctx.telegram) entries.push({ id: 'telegram-link', label: t(ctx.telegram === 'linked' ? 'telegram.connect.menuLinked' : 'telegram.connect.menu') })
+  if (ctx.telegramOpen) entries.push({ id: 'telegram-open', label: t('telegram.connect.menuOpen') })
+  const compact = compactEntry(ctx.compact, t)
+  if (compact.length) entries.push({ separator: true }, ...compact)
+  entries.push(
+    { separator: true },
+    { id: 'close', label: t(`${M}${ctx.tabRow ? 'closeTab' : 'close'}`) },
+    { id: 'close-others', label: t(`${M}closeOthers`), disabled: ctx.tabRow || ctx.others === 0 },
+  )
+  return entries
+}
+
+export function groupMenu(ctx: { folded: boolean }, t: T): MenuEntry[] {
+  return [
+    { id: 'open', label: t('workspace.tabActions.open') },
+    { id: 'rename', label: t('workspace.tabActions.rename'), shortcut: 'F2' },
+    ctx.folded ? { id: 'unfold', label: t('workspace.tabActions.unfold'), shortcut: '→' } : { id: 'fold', label: t('workspace.tabActions.fold'), shortcut: '←' },
+    { id: 'ungroup', label: t('workspace.tabActions.ungroup') },
+    { separator: true },
+    { id: 'close', label: t('workspace.tabActions.close') },
+  ]
+}
+
+/** Right-click on the rail's empty space. */
+export function emptyMenu(ctx: { open: boolean; any: boolean; autoCollapse?: boolean }, t: T): MenuEntry[] {
+  const entries: MenuEntry[] = []
+  if (ctx.open) entries.push({ id: 'open-project', label: t('workspace.rail.openProject') })
+  if (ctx.any) {
+    if (entries.length) entries.push({ separator: true })
+    entries.push(
+      { id: 'collapse-others', label: t('railCollapse.others') },
+      { id: 'collapse-all', label: t(`${M}collapseAll`) },
+      { id: 'expand-all', label: t(`${M}expandAll`) },
+      { separator: true },
+      { id: 'auto-collapse', label: t('railCollapse.auto'), hint: t(ctx.autoCollapse ? 'railCollapse.on' : 'railCollapse.off') },
+    )
+  }
+  return entries
+}
+
+/** ContextMenu / Shift+F10 opens the rail menu on the focused header, checkout line or row. */
+export const isMenuKey = (e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean =>
+  !e.ctrlKey && !e.altKey && !e.metaKey && ((e.key === 'ContextMenu' && !e.shiftKey) || (e.key === 'F10' && e.shiftKey))

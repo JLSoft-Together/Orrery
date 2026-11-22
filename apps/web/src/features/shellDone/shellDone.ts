@@ -1,12 +1,7 @@
-export const SHELL_DONE_SECONDS_DEFAULT = 10
-export const SHELL_DONE_SECONDS_MIN = 1
-export const SHELL_DONE_SECONDS_MAX = 3600
-export const SHELL_COMMAND_SHOWN = 80
+import { clampShellDoneSeconds, SHELL_DONE_SECONDS_DEFAULT, SHELL_DONE_SECONDS_MAX, SHELL_DONE_SECONDS_MIN } from '../../core/lib/settingLimits'
 
-export function clampShellDoneSeconds(v: number): number {
-  if (!Number.isFinite(v)) return SHELL_DONE_SECONDS_DEFAULT
-  return Math.min(SHELL_DONE_SECONDS_MAX, Math.max(SHELL_DONE_SECONDS_MIN, Math.round(v)))
-}
+export { clampShellDoneSeconds, SHELL_DONE_SECONDS_DEFAULT, SHELL_DONE_SECONDS_MAX, SHELL_DONE_SECONDS_MIN }
+export const SHELL_COMMAND_SHOWN = 80
 
 export interface ShellDoneInput {
   ms: number

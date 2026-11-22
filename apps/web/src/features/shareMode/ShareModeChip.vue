@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff } from 'lucide-vue-next'
-import { isMac } from '../../lib/platform'
-import { SHARE_KEYS, shareOn, toggleShareMode } from './store'
+import { isMac } from '../../core/lib/platform'
+import { SHARE_KEYS, shareOn, toggleShareMode } from '../../core/lib/shareMode'
 
 const { t } = useI18n()
 const keys = computed(() => (isMac ? SHARE_KEYS.mac : SHARE_KEYS.win))

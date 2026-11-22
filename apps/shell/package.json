@@ -1,0 +1,9 @@
+{
+  "name": "@ccm/shell",
+  "version": "4.0.7",
+  "private": true,
+  "description": "Orrery desktop app (Tauri shell, Windows, macOS)",
+  "scripts": {
+    "e2e": "node e2e/run.cjs"
+  }
+}

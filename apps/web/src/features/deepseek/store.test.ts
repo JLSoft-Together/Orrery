@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import type { DeepSeekStatus } from '../../lib/desktop'
+import type { DeepSeekStatus } from '../../core/lib/desktop'
 
 const bridge = vi.hoisted(() => ({ status: vi.fn() }))
 
-vi.mock('../../lib/desktop', async (original) => ({
-  ...(await original<typeof import('../../lib/desktop')>()),
+vi.mock('../../core/lib/desktop', async (original) => ({
+  ...(await original<typeof import('../../core/lib/desktop')>()),
   desktop: { platform: 'win32', deepseekStatus: (fresh?: boolean) => bridge.status(fresh) },
   hasDeepSeek: true,
 }))
@@ -13,9 +13,9 @@ vi.mock('../../lib/desktop', async (original) => ({
 import { autoSyncAfterLogin, deepseekBlocker, setupSteps } from './gate'
 import { loadDeepSeek } from './index'
 import { STATUS_TTL_MS, useDeepSeekStore } from './store'
-import { useToastsStore } from '../../stores/toasts'
-import { useUiStore } from '../../stores/ui'
-import { useWorkspaceStore } from '../../stores/workspace'
+import { useToastsStore } from '../../core/stores/toasts'
+import { useUiStore } from '../../core/stores/ui'
+import { useWorkspaceStore } from '../workspace/stores/workspace'
 
 const status = (over: Partial<DeepSeekStatus> = {}): DeepSeekStatus => ({
   installed: true,

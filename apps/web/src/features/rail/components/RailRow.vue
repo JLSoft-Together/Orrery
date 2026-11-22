@@ -1,0 +1,229 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { LoaderCircle, Network, Send, X } from 'lucide-vue-next'
+import { usePaneInfo, usePeerSweep } from '../../workspace/composables/usePaneInfo'
+import { openTelegramGlyph, useTelegramLinks, useTelegramTopicUrl } from '@features/telegram'
+import { useRailSelected, useRailTabStop } from '../composables/useRail'
+import { duration, now as clock } from '../../../core/lib/format'
+import { isBusyState, needsUser, peerSlot, rowId, rowLines, stateWord, type RailRow, type RailState } from '../lib/railModel'
+import { waitDisplay } from '../../../core/lib/wait'
+import TabRenameInput from '../../workspace/components/TabRenameInput.vue'
+
+const props = defineProps<{ row: RailRow; member?: boolean; renaming?: boolean }>()
+const emit = defineEmits<{ focus: [paneKey: string]; close: [row: RailRow]; menu: [row: RailRow, event: MouseEvent]; renamed: [tabKey: string, saved: boolean] }>()
+
+const { t } = useI18n()
+const { sessionOf, activityOf, peerView, peerLines, coordinatingOf } = usePaneInfo()
+const isStop = useRailTabStop()
+const telegramOf = useTelegramLinks()
+const telegram = computed(() => (props.row.run ? null : telegramOf(props.row.pane)))
+const topicUrlOf = useTelegramTopicUrl()
+const telegramGlyphTip = computed(() => (telegram.value ? t(topicUrlOf(props.row.pane) ? 'telegram.connect.openTopic' : 'telegram.connect.linkedTo', { where: telegram.value }) : ''))
+const telegramLabel = computed(() => (telegram.value ? t('telegram.connect.linkedTo', { where: telegram.value }) : ''))
+const stop = computed(() => (isStop(rowId(props.row.key)) ? 0 : -1))
+const isSelected = useRailSelected()
+const selected = computed(() => isSelected(props.row.key))
+
+const word = computed(() => {
+  const row = props.row
+  if (row.run) return t(`run.badge.${row.run}`)
+  if (row.state === 'asked') {
+    const s = sessionOf(row.pane)
+    const wait = s?.status === 'waiting' ? waitDisplay(s.waitingFor, undefined, t) : null
+    if (wait) return wait.text
+  }
+  const w = stateWord(row.state, row.subagents)
+  return w.n === undefined ? t(w.key) : t(w.key, { n: w.n }, w.n)
+})
+const activity = computed(() => (props.row.run ? null : activityOf(props.row.pane)))
+const working = computed(() => props.row.state === 'working')
+const peer = computed(() => (props.row.peer ? peerView(props.row.peer) : null))
+const slot = computed(() => peerSlot(props.row.state, peer.value))
+const peerLine = computed(() => (slot.value === 'line' ? peer.value : null))
+const tool = computed(() => (working.value && !peerLine.value ? (activity.value?.tool ?? null) : null))
+const lines = computed(() => rowLines(props.row, peerLine.value?.text ?? tool.value ?? word.value))
+const peerPrefix = computed(() => (peerLine.value ? rowLines(props.row, '').second : ''))
+const plainFirst = computed(() => rowLines({ ...props.row, twin: undefined }, '').first)
+const elapsed = computed(() => (working.value && !peerLine.value && activity.value?.since ? duration(activity.value.since, clock.value) : null))
+const tail = computed(() => (elapsed.value ? t('workspace.activity.tool', { tool: '', time: elapsed.value }) : ''))
+const diff = computed(() => {
+  const d = activity.value?.diff
+  return d && d.files > 0 ? d : null
+})
+const diffTitle = computed(() =>
+  diff.value ? t('workspace.activity.diffTitle', { files: diff.value.files, ins: diff.value.insertions, del: diff.value.deletions }, diff.value.files) : '',
+)
+const coordinating = computed(() => (props.row.run ? null : coordinatingOf(props.row.pane)))
+const relations = computed(() => (props.row.run ? [] : peerLines(props.row.pane)))
+const peerSpoken = computed(() => (peerLine.value ? peerLine.value.label : ''))
+const spoken = computed(() => {
+  if (peerLine.value) return peerPrefix.value + peerSpoken.value
+  const base = tool.value ? `${lines.value.second} (${word.value})` : lines.value.second
+  return slot.value === 'badge' && peer.value ? `${base}, ${peer.value.label}` : base
+})
+const label = computed(() => [t('workspace.rail.rowLabel', { first: lines.value.first, second: spoken.value }), coordinating.value?.label, telegramLabel.value].filter(Boolean).join(', '))
+const attention = computed(() => needsUser(props.row.state))
+const tip = computed(() => [...new Set([lines.value.first, spoken.value, elapsed.value ?? '', diffTitle.value, ...relations.value, telegramLabel.value].filter(Boolean))].join('\n'))
+const tone = computed(() =>
+  props.row.state === 'failed'
+    ? 'text-st-error'
+    : props.row.state === 'asked'
+      ? 'text-st-waiting'
+      : props.row.focused
+        ? 'text-ink'
+        : peerLine.value
+          ? 'text-ink'
+          : 'text-ink-muted',
+)
+const sweep = usePeerSweep(() => props.row.peer)
+const busy = computed(() => isBusyState(props.row.state))
+const AGENT_CLASS: Partial<Record<string, string>> = { claude: 'ccm-agent-claude', codex: 'ccm-agent-codex', shell: 'ccm-agent-shell', deepseek: 'ccm-agent-deepseek' }
+const agentClass = computed(() => AGENT_CLASS[props.row.preset] ?? '')
+const DOT: Partial<Record<RailState, string>> = {
+  working: 'bg-st-working',
+  subagents: 'bg-st-working',
+  asked: 'bg-st-waiting',
+  failed: 'bg-st-error',
+  done: 'bg-st-done',
+  ended: 'bg-st-idle',
+  parked: 'bg-st-stale',
+  idle: 'bg-st-idle',
+}
+const dot = computed(() => DOT[props.row.state] ?? 'bg-st-idle')
+const showSecond = computed(() => attention.value || !!tool.value)
+
+const FLASH: Partial<Record<RailState, string>> = { asked: 'text-st-waiting', done: 'text-st-done', failed: 'text-st-error' }
+
+const flashKey = ref(0)
+watch(
+  () => props.row.state,
+  (now, was) => {
+    if (now !== was && FLASH[now]) flashKey.value++
+  },
+)
+const renameKey = ref(0)
+watch(
+  () => lines.value.first,
+  (now, was) => {
+    if (now !== was) renameKey.value++
+  },
+)
+
+const unstamp = (el: Element): void => el.removeAttribute('data-rail-second')
+</script>
+
+<template>
+  <div
+    class="group/row relative grid min-h-6 grid-cols-[10px_minmax(0,1fr)_auto_24px] items-center gap-x-2 rounded-inner py-px pr-0.5 outline-1 -outline-offset-1 outline-transparent transition-[background-color,outline-color] duration-(--ccm-dur-fast) data-dragging:bg-fill data-drop-on:bg-accent-soft data-rail-selected:bg-accent-soft data-rail-selected:text-ink data-rail-selected:outline-accent"
+    :class="[agentClass, member ? 'pl-12' : 'pl-9 data-drop-on:outline-accent', row.focused ? 'bg-selection text-ink' : 'text-ink-muted hover:bg-fill hover:text-ink']"
+    data-rail-row
+    :data-rail-selected="selected ? '' : undefined"
+    :data-rail-member="member ? row.tabKey : undefined"
+    :data-state="row.state"
+    data-rail-drag
+    :data-drag-kind="row.key.startsWith('tab:') ? 'tab' : 'pane'"
+    :data-drag-pane="row.paneKey"
+    :data-drag-tab="row.tabKey"
+    :data-drag-title="lines.first"
+    data-rail-drop
+    :data-drop-tab="row.tabKey"
+    @contextmenu.prevent.stop="emit('menu', row, $event)"
+  >
+    <span v-if="member" class="pointer-events-none absolute inset-y-0 left-[39px] w-px bg-line" aria-hidden="true" />
+    <span v-if="busy" class="ccm-rail-bar" aria-hidden="true" />
+    <span v-if="row.focused" class="pointer-events-none absolute inset-y-1 left-0 w-0.5 rounded-full bg-(--ccm-pane-accent,var(--ccm-accent))" aria-hidden="true" data-rail-row-mark />
+    <span v-if="sweep" :key="sweep" class="ccm-peer-sweep absolute top-1.5 bottom-1.5 left-[3px] w-0.5" aria-hidden="true" data-rail-peer-sweep />
+    <span v-if="flashKey" :key="flashKey" class="ccm-flash pointer-events-none absolute inset-0 rounded-inner" :class="FLASH[row.state]" aria-hidden="true" />
+    <button
+      v-if="!renaming"
+      type="button"
+      data-side-item
+      data-side-row
+      :data-side-id="rowId(row.key)"
+      :data-side-pane="row.paneKey"
+      :data-row-key="row.key"
+      :data-tab-key="row.tabKey"
+      class="absolute inset-0 cursor-pointer rounded-inner"
+      role="treeitem"
+      :aria-level="member ? 3 : 2"
+      :aria-selected="row.focused || selected"
+      :aria-current="row.focused ? 'true' : undefined"
+      :aria-label="label"
+      :tabindex="stop"
+      :title="tip"
+      @click="emit('focus', row.paneKey)"
+    />
+    <span class="pointer-events-none relative inline-flex size-2.5 items-center justify-center">
+      <LoaderCircle v-if="row.state === 'starting'" :size="10" class="ccm-spin text-ink-faint" aria-hidden="true" />
+      <span v-else class="size-1.5 rounded-full" :class="dot" aria-hidden="true" data-rail-dot />
+      <Transition name="ccm-fade">
+        <span v-if="slot === 'badge' && peer" class="absolute -top-1.5 -right-1.5 inline-flex rounded-full bg-surface p-px" aria-hidden="true" data-rail-peer-badge>
+          <component :is="peer.glyph" :size="8" :class="peer.tone" />
+        </span>
+      </Transition>
+    </span>
+    <span class="min-w-0" :class="renaming ? 'relative z-10' : 'pointer-events-none'">
+      <TabRenameInput v-if="renaming" :tab-key="row.tabKey" :initial="plainFirst" @done="(saved) => emit('renamed', row.tabKey, saved)" />
+      <span
+        v-else
+        :key="renameKey"
+        class="block truncate rounded-[4px] text-xs"
+        :class="[row.focused ? 'font-semibold' : '', renameKey ? 'ccm-highlight' : '']"
+        data-rail-first
+        >{{ lines.first }}</span
+      >
+    </span>
+    <span class="pointer-events-none flex min-w-0 shrink-0 items-center gap-1.5 text-[11px] tabular-nums" :class="tone">
+      <span v-if="showSecond" class="relative flex h-4 max-w-[9rem] min-w-0 items-center overflow-hidden" :class="attention ? 'font-medium' : ''">
+        <Transition name="ccm-rail-word" @before-leave="unstamp">
+          <span :key="lines.second" class="block min-w-0 truncate" data-rail-second>{{ attention ? word : lines.second }}</span>
+        </Transition>
+      </span>
+      <span v-else class="sr-only" aria-hidden="true" data-rail-second :data-rail-peer="peerLine ? row.peer?.dir : undefined"
+        >{{ peerLine ? peerPrefix + peerLine.text : lines.second }}</span
+      >
+      <Transition name="ccm-fade">
+        <component :is="peerLine.glyph" v-if="peerLine && !attention" :size="12" :class="peerLine.tone" aria-hidden="true" data-rail-peer-glyph />
+      </Transition>
+      <Transition name="ccm-fade">
+        <span v-if="tail" class="whitespace-pre" data-rail-activity>{{ tail }}</span>
+      </Transition>
+      <Transition name="ccm-fade">
+        <span v-if="diff" aria-hidden="true" data-rail-diff
+          ><span class="text-diff-add">+{{ diff.insertions }}</span> <span class="text-diff-del">−{{ diff.deletions }}</span></span
+        >
+      </Transition>
+      <Transition name="ccm-fade">
+        <span v-if="coordinating" class="inline-flex items-center text-ink-faint" aria-hidden="true" :data-rail-coordinating="coordinating.n"
+          ><Network :size="11"
+        /></span>
+      </Transition>
+      <button
+        v-if="telegram"
+        type="button"
+        class="pointer-events-auto relative z-10 inline-flex cursor-pointer items-center rounded-[3px] text-ink-faint hover:text-ink"
+        :title="telegramGlyphTip"
+        :aria-label="telegramGlyphTip"
+        :tabindex="stop"
+        data-rail-telegram
+        data-no-drag
+        @click.stop="openTelegramGlyph(row.pane, lines.first)"
+      >
+        <Send :size="10" aria-hidden="true" />
+      </button>
+    </span>
+    <button
+      type="button"
+      class="relative z-10 inline-flex size-6 cursor-pointer items-center justify-center rounded-[6px] text-ink-faint opacity-0 transition-opacity duration-(--ccm-dur-fast) ease-out-quint group-hover/row:opacity-100 group-focus-within/row:opacity-100 hover:bg-fill-strong hover:text-ink focus-visible:opacity-100"
+      :title="t('workspace.rail.closeRow', { name: lines.first })"
+      :aria-label="t('workspace.rail.closeRow', { name: lines.first })"
+      :tabindex="stop"
+      data-rail-close
+      data-no-drag
+      @click.stop="emit('close', row)"
+    >
+      <X :size="12" aria-hidden="true" />
+    </button>
+  </div>
+</template>

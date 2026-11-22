@@ -1,6 +1,6 @@
 import { shallowRef } from 'vue'
 import { defineStore } from 'pinia'
-import { desktop } from '../../lib/desktop'
+import { desktop } from '../../core/lib/desktop'
 import { parseSample, sysChanged, SYS_POLL_MS, type SysSample } from './format'
 
 interface SysBridge {

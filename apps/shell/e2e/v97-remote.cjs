@@ -4,11 +4,10 @@ const fs = require('node:fs')
 const { spawn, execFileSync } = require('node:child_process')
 const REPO = path.resolve(__dirname, '../../..')
 const OUT_DIR = process.env.CCM_E2E_OUT || path.join(os.tmpdir(), 'ccm-e2e-v97')
-process.env.CCM_E2E_SHELL = 'tauri'
 process.env.CCM_E2E_PORT = process.env.CCM_E2E_PORT || '4419'
 process.env.CCM_E2E_DBG = process.env.CCM_E2E_DBG || '9343'
 process.env.CCM_E2E_OUT = OUT_DIR
-const { launch, OUT } = require(path.join(REPO, 'apps/desktop/e2e/cdp.cjs'))
+const { launch, OUT } = require('./cdp.cjs')
 const WS = require(path.join(REPO, 'node_modules/ws'))
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -225,7 +224,7 @@ function pairCli(qr, state, name) {
     app = await launch({ env: { CCM_E2E_CONFIRM: 'ok', CCM_REMOTE_PORT: String(REMOTE_PORT), CCM_CORE_BIN: CORE, CCM_KEYRING_SERVICE: 'Orrery E2E v97' } })
     const { evaluate, waitFor, shot, cmd } = app
     await waitFor(`!!${D} && !!${UI}`, 40000, 'app ready')
-    const version = require(path.join(REPO, 'apps/desktop/package.json')).version
+    const version = require('../package.json').version
     await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.workspace.explorerOpen','0'); localStorage.setItem('ccm.whatsNew.seen','${version}')`)
     await cmd('Page.reload')
     await waitFor(`!!${UI}`, 40000, 'reloaded')

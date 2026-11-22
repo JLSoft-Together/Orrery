@@ -1,4 +1,4 @@
-import type { DiffFile } from '../../lib/diff'
+import type { DiffFile } from '../git/lib/diff'
 
 export type CommentSide = 'new' | 'old'
 

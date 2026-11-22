@@ -1,4 +1,4 @@
-import { desktop } from '../../lib/desktop'
+import { desktop } from '../../core/lib/desktop'
 import { applyItems, applyPage, CHAT_POLL_MS, emptyLog, parseChatPage, parseChatPoll, type ChatLog } from './model'
 
 export interface ChatTarget {

@@ -2,8 +2,8 @@
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from 'lucide-vue-next'
-import { useResourcesStore } from '../../stores/resources'
-import { useSettingsStore } from '../../stores/settings'
+import { useResourcesStore } from '../resources/stores/resources'
+import { useSettingsStore } from '../../core/stores/settings'
 import { sysLevel, sysPct, sysTips } from './format'
 import { useSysStatsStore } from './store'
 

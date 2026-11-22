@@ -1,7 +1,7 @@
 import { shallowRef } from 'vue'
 import type { PtyPreset } from '@ccm/shared'
 import { i18n } from '../../i18n'
-import { hasDeepSeek } from '../../lib/desktop'
+import { hasDeepSeek } from '../../core/lib/desktop'
 
 type Store = typeof import('./store')
 

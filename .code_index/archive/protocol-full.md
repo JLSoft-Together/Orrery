@@ -1,0 +1,156 @@
+# protocol — packages/shared
+
+Dashboard WebSocket (collector ↔ web) plus the shared types the desktop shell uses over IPC / the PTY socket. Paths are relative to `packages/shared/src` unless they name an app. Unions: `types.ts` `MonitorEvent` (server → client) and `ClientMessage` (client → server).
+
+## Invariants
+
+- On connect the server sends one `snapshot`, then `ServerMessage {seq, events[]}` batches (`batchMs` 50). Snapshot `seq` = last flushed seq; next message is seq+1; a gap → client sends `resync`.
+- Direct replies: `ServerMessage.direct = true`, `seq: -1`, sent to the asking socket only (`ClientContext.reply`, collector `server.ts`); web applies them without the seq check.
+- Batches merge `terminal|agent|link.updated` per id (last value per field, folded into a pending `created`, never across `removed`). `Patch<T>`: `null` = field cleared.
+- Unknown event types / fields are ignored; unknown statuses map to `unknown` (`status.ts` `normalize*Status`).
+- Terminal / session id comes from process / session identity, never the title. `TerminalSession.alias` = dashboard name, `title` = registry name.
+- `ActivityEvent.data` carries labels only, never raw tool arguments or session content.
+- Tokens: input = input + cache_creation; cacheRead separate; total = input + output; deduped per `message.id`.
+
+## Server → client events
+
+Emitter = collector `MonitorStore` method (`store.ts`) unless noted; consumer = `apply` in web `stores/connection.ts`.
+
+| Event | Emitter | Web consumer |
+|---|---|---|
+| `snapshot` | `snapshotMessage` on connect + `resync` | `hydrate` (all stores) |
+| `sessions.loading {loading}` | `setLoading` (true before listen, false after the first pass) | `connection.sessionsLoading` |
+| `terminal.created/updated/removed` | `upsertTerminal` / `removeTerminal` | `terminals` (removed also clears `toolSpans`, `peers`) |
+| `agent.created/updated/removed` | `upsertAgent` / `removeAgent` | `agents` |
+| `link.created/updated/removed` | `upsertLink` / `removeLink` ← `peers.ts` `PeerLinkStore` | `peers` |
+| `activity` | `pushActivity` | `activity` |
+| `usage.reset` / `usage.updated` / `usage.scan` | `resetUsage` / `updateUsage` / `setUsageScan` (`usage.ts` `UsageIndex`) | `usage.reset/update/setScan` |
+| `usage.roots {roots}` | `setProjectRoots` (additions only) | `usage.setRoots` |
+| `favorites.updated` | `setFavorites` | `favorites.replaceAll` |
+| `favorite.rejected {dir, reason}` | `rejectFavorite` (broadcast; tab matches its pending add) | `favorites.reject` |
+| `tool.span` | `toolSpan` (on open + close; v93 optional `path` abs + `access` edit\|read for Edit/Write/MultiEdit/NotebookEdit/Read only, documented exception docs §11ar) | `toolSpans.upsert`, `agentTouches` store → ExplorerTree |
+| `jobs.updated` / `limits.updated` / `codexLimits.updated` / `response.updated` / `models.updated` | `setJobs` / `setLimits` / `setCodexLimits` / `setResponse` / `setModelNames` | `extras.*` |
+| `notify.settings` / `snooze.updated` | `setNotify` / `setSnoozes` | `extras.setNotify` / `snooze.replaceAll` |
+| `history.added` | `historyAdded` | `history.add` |
+| `history.data`, `timeline.data`, `toolSpans.data` | direct reply (`Monitor.sendHistory` / `sendTimeline` / `sendToolSpans`) | `history`, `toolSpans.applyData` |
+| `terminal.focusResult`, `terminal.openResult` | direct reply (`Monitor.focusWindow` / `openFolder`) | `ui.reportWindowResult` / `reportOpenResult` |
+| `folder.picked {requestId, result, dir?}` | direct reply (`Monitor.pickFolder`), else `store.folderPicked` | `connection.pickFolder` resolver by requestId |
+| `diagnostics.data`, `notify.testResult` | direct reply (collector `index.ts`) | `extras.setDiagnostics` / `setToastTest` |
+
+Snapshot (`MonitorSnapshot`) also carries `favorites`, `jobs`, `limits`, `codexLimits`, `response`, `modelNames`, `statusLineCommand`, `dayStartedAt` (first start of the local day, break reminders), `notify`, `snoozes`, `loading`, `peerLinks`.
+
+## Client → server messages
+
+Shape-checked in collector `server.ts` (unknown / malformed dropped, `maxPayload` 128 KB), dispatched in `index.ts`.
+
+| Message | Handler | Notes |
+|---|---|---|
+| `resync` | `server.ts` | resend snapshot |
+| `terminal.alias {terminalId, alias\|null}` | `Monitor.setAlias` | `aliases.ts` `sanitizeAlias` (control chars → space, trimmed, max length) |
+| `terminal.note {terminalId, note\|null}` | `Monitor.setNote` | |
+| `terminal.dismiss {terminalId?}` | `Monitor.dismissEnded` | ended sessions only; no id = all ended |
+| `terminal.focusWindow {terminalId}` | `Monitor.focusWindow` | → `FocusWindowResult` (`appOnly`, `denied` on macOS) |
+| `terminal.open {terminalId, app}` | `Monitor.openFolder` | `OpenApp` explorer \| vscode |
+| `terminal.snooze {terminalId, minutes\|null}` | collector `snooze.ts` → `setSnoozes` | |
+| `favorite.toggle / remove / rename / reorder / add` | `Monitor.toggleFavorite` / `removeFavorite` / `renameFavorite` / `reorderFavorites` / `addFavorite` | rename blank → folder name; reorder ≤ 100 dirs × 1024 chars; add = local absolute dir, else `favorite.rejected` |
+| `favorite.open {dir, mode, terminalApp?}` | `Monitor.openFavorite` | `LaunchMode` new \| continue; `TerminalApp` terminal \| iterm (macOS, other values dropped); failures → activity `launch.failed` `LaunchErrorCode` |
+| `folder.pick {requestId}` | `Monitor.pickFolder` | requestId ≤ 64; result ok \| cancelled \| busy \| failed \| unsupported |
+| `history.get`, `timeline.get`, `toolSpans.get {terminalId?, since?}`, `diagnostics.get` | `Monitor.send*` / `diagnostics` | direct replies |
+| `job.dismiss {jobId?}`, `job.stop {jobId}` | `Monitor.dismissJobs` / `stopJob` | jobId ≤ 64; `JobStopResult` ok \| notFound \| notRunning \| unconfirmed \| noCli \| failed |
+| `client.presence {attentive, locale?}` | `Toaster.setPresence` | per socket, dropped on close |
+| `notify.update {toast?, kinds?, quiet?, stuckMinutes?}`, `notify.test` | `Toaster.update` / `test` | sanitized via `notify.ts` |
+
+## Shared modules
+
+- `types.ts` — wire models: `TerminalSession`, `Agent` (role main \| subagent, `provider`, `contextPct`, `msgIn` / `msgOut`), `ActivityEvent`, `MonitorSnapshot`, `MonitorEvent`, `ClientMessage`, `ServerMessage`, `Patch<T>`, `UsageBucket` / `UsageSnapshot`, `Favorite`, `BackgroundJob`, `PlanLimits` / `LimitWindow.forecast`, `ResponseStats`, `SessionRecord`, `DayTimeline`, `ToolSpan`, `GitDiffStat`, `Diagnostics`, `NotifySettings`, `SnoozeEntry`, `PeerLink`, `Provider` (claude \| codex \| deepseek), `TerminalSession.deepseekSessionId`, `ActivityKind` `turn.started|completed|failed|interrupted` (DeepSeek), `Diagnostics.deepseek`. Collector + web.
+- `status.ts` — `PROTOCOL_VERSION`, `SUPPORTED_CLAUDE_VERSION`, `mapRegistryStatus`, `mapTaskNotificationStatus`, `mainAgentStatus`, `normalizeTerminalStatus` / `normalizeAgentStatus`, `isAgentFinished`, `waitReason` → `WaitReason`. Collector + web.
+- `context.ts` — `contextWindowOf` (reported → catalog / guess), `contextUsedPct` / `contextRawPct` / `usablePct` (`AUTOCOMPACT_BUFFER_PCT` 16.5), `contextLevel`, `modelFamily`. Collector + web.
+- `pricing.ts` — `priceOf`, `estimateCost` (API list prices, `PRICING_CHECKED_AT`). Collector usage + web.
+- `notify.ts` — `TOAST_KINDS`, quiet hours / kinds / stuck sanitizers, `quietFor`, `remindersDue`, `snoozedUntil`, `errorLoops`, `ToastMessage` + `parseToastMessage` / `badgeCount` (collector → desktop `attention.ts` over parentPort, no body / url). Collector, web, desktop.
+- `pty.ts` — PTY socket (desktop `pty-host.cjs`, separate from the dashboard WS; keystrokes / output are binary frames): `PTY_PRESETS`, `isAgentSessionId` (spawn `resume`, claude / codex only), `PtyClientMessage` (spawn / attach / resize / cwd / kill / owners / `wt.*`), `PtyServerMessage` (ready / pid / exit / gone / error / owners / branch / cwd / `wt.*`), `WorktreeError`, `PtyEndpoint`, `PtySessionInfo`, pane open `PaneOpenRequest` / `PaneOpenResult` / `PaneOpenError` / `cleanPanePrompt` (`PANE_OPEN_PROMPT_MAX` 8000; v87-2: `PtyBroker.openFrom` trong main gọi thẳng `onOrrery`, main ↔ page `ccm:orrery*`). Desktop + web.
+- `ptyControl.ts` (v87 bước 2) — control channel main ↔ PTY core (host Node qua `parentPort` / stdio NDJSON, Rust `orrery-core` qua stdin / stdout): main → core `init {token, origins, appVersion}` (dòng đầu, token không qua env / argv), `resolved {rid, ok, id, file, args, env, cwd, agentSession?, si?} | {rid, ok:false, message: preset|cwd|limit|spawn}`, `cwd-ok {rid, cwd|null}`, `wt-reply {rid, reply}`, `branch {id, branch|null}`, `census`, `kill-all`, `shutdown`; core → main `listening {port}`, `resolve {rid, msg: spawn}`, `spawned {id, pid}`, `pid {id, pid}` (ConPTY muộn), `exited {id, code}` (số nguyên, có thể > i32), `removed {id}` (kill, reaper, hoặc core từ chối sau `resolved ok`), `cwd {rid, id, cwd}` (chuỗi không rỗng), `wt {rid, msg}`, `census-reply {sessions}` (1 dòng sai → bỏ cả reply). Validators `parseCoreToMain` / `parseMainToCore`, `NdjsonReader` (≤ 1 MB / dòng tính byte), `PtyFrameQueue` (input lúc resolve ≤ 4 MB, bỏ binary vượt), `PTY_RESOLVE_TIMEOUT_MS` 15 s. Fixture `apps/desktop/test/fixtures/pty-control.json`. Desktop only (không export qua `index.ts`).
+- `extensions.ts` — `CATALOG`, `PM_SKILLS`, `checkFields`, name regexes, `ExtStatus` / `ExtResult`, install / remove / source requests, `parseMcpLine`. Desktop IPC + web.
+- `gitlog.ts` — `LOG_PAGE`, `LogQuery` (`notRef`), `LogCommit`, refs / detail / contains results, `isHash`. Desktop IPC + web.
+- `gitBranch.ts` — `checkBranchName`, `BranchOpError`, `BranchOpResult`. Desktop + web.
+- `run.ts` — Run projects / envs / devices / configs, `RunState` + `isRunLive`, `RunEvent`, `RunStartRequest` / `RunResult`, `RUN_SHARED_DIR`. Desktop IPC + web.
+- `flutterPreview.ts` — `FwpEntry` (v55 `kind?: 'class'`, skip reasons `ctor` / `web`) / `FwpScanResult` / `FwpSnapshot` / `FwpError` / `FwpResult` (`ccm:fwp-*`). Desktop IPC + web.
+- `drawable.ts` — `drawableKind`, `drawableFolderKind`, `xmlRootName`, `DRAWABLE_ROOTS`. Desktop `layout/ipc.ts` + web `lib/drawablePreview.ts`.
+- `layoutXml.ts` — `isLayoutRootName`, `isLooseLayoutXml`. Desktop + web layout preview.
+- `entryName.ts` — `checkEntryName` (new file / folder names). Desktop `preview/explorer.ts` + web `CreateEntryDialog.vue`.
+- `index.ts` — re-exports.
+
+`office.enable {on: boolean}` (client -> server, `ClientMessage` in `types.ts`; sent by `stores/connection.ts` on connect and on every change of `settings.officeEnabled`, default off; validated in `server.ts`; consumed by `index.ts` → `OfficeRuntime.setEnabled`) starts / stops the hub and timelapse recorder. It has no reply. `office.subscribe {on}` (client -> server, boolean checked in `server.ts`) is remembered by `OfficeRuntime` and applied to the hub when it runs (no hub → nothing sent); `office.snapshot {payload: OfficeSnapshot}` (server -> client) is a direct reply from `OfficeHub` to clients that sent `office.subscribe {on}`; never batched into `seq`. `GET /api/timeline/days` and `/api/timeline/:day` are plain HTTP behind the app key.
+
+## Devices (v61, desktop IPC, not the WS protocol)
+
+- `devices.ts` — `AdbDevice`, `AdbState`, `AdbTransport`, `AdbMdnsService`, `DevErrorCode`, `DevResult` / `DevBatchResult`, `DevSnapshot`, `QrStatus`, `DevEvent` (`devices` / `qr`). Desktop `src/devices/*` emits, web `stores/devices.ts` consumes over `ccm:dev-*`; the collector and the WebSocket protocol are untouched.
+
+## v66 / v67 (2026-10-29)
+
+- `heatmap.get` (client → server) → `heatmap.data {payload: UsageHeatmap}` (direct reply, not batched).
+- `Agent.firstContextTokens` (v72, main only): prompt size of the first reply in the transcript.
+- `TerminalSession` optional `compactingSince`, `compactTrigger` (`manual` | `auto`), `deniedCount`, `deniedTools` (≤ 5 tool names) — from the hook bridge, absent when it is off.
+- `pty.ts`: `wt.add.copy?: string[]` (glob list), `wt.added.copied?: string[]` (paths copied).
+
+## v73 (2026-10-29)
+
+- `toolstats.get {days: 7|30, project: string|null}` (client → server) → `toolstats.data {payload: ToolStats}` (direct reply). `ToolStats` / `ToolStatEntry` / `ToolStatDays` in `types.ts`; names only.
+- `TerminalSession.limitHit?: LimitHit {at, resetsAt?, window?, autoResume?}` (collector `tracker.ts`, web `TermPane` → `LimitResumeChip`).
+- Desktop IPC types (v73): `apk.ts` (`ApkReport`, `ApkGroup`, `ApkDiff`, `ApkResult`, `ApkCompareResult`), `appData.ts` (`AppDataList`, `AppDbOpen`, `AppDbRows`, `AppDbCell`, `AppPrefs`, `PrefEntry`, `PrefEdit`, `AppDataErrorCode` = `DevErrorCode` + inspector codes).
+- PTY (v73 shell marks): `PtyClientMessage` spawn `integrate?: boolean` (shell only); `PtyServerMessage` ready `si?: string` = nonce of the shell's OSC 633;E marks (re-sent on attach).
+- PTY (v109 F6): `PtyServerMessage` `{t:'cmd', phase:'start', command}` / `{t:'cmd', phase:'end', command, code, ms, cwd?}` từ core-pty (chỉ pane có `si`); `ClientMessage` `shell.done {paneKey, name, command, code, ms}` web → core-serve toaster (`connection.shellDone`).
+
+## v74 (2026-10-29)
+
+- `emulators.ts` — `AvdInfo` (name, displayName, api, abi, device, tag, serial when running), `AvdErrorCode` = `DevErrorCode` + emulator-missing / emulator-failed / avd-running / avd-not-running, `AvdList`, `AvdResult`, `AvdStartMode` normal / cold / wipe. Desktop `devices/emulators.ts` answers `ccm:avd-*`, web `stores/emulators.ts`.
+- `backup.ts` — `BACKUP_SECTIONS` / `BackupSectionId`, `BackupSectionInfo` (count, missingPaths), `BackupErrorCode`, `BackupExportResult`, `BackupPreview` (token), `BackupApplyResult` (local entries + GitHub logins). Desktop `backup/*` over `ccm:backup-*`, web `BackupSettings.vue`.
+- `libVersions.ts` — `LibEco` maven / pub / npm, `LibRegistry`, `LibQuery`, `LibLookup` (stable, pre, registry, checkedAt | error invalid / not-found / network / timeout / bad-response), `LibCheckResult`, `LIBS_MAX`; pure `isLibName` (URL-safe names), `parseLibVersion` / `isPrereleaseVersion` (alpha, beta, rc, M1, dev, snapshot…; `-jre` / `.Final` stable), `compareLibVersions`, `pickLatest`, `bumpKind`. Desktop `libs/*` over `ccm:libs-check`, web `lib/libVersions.ts`.
+- `claudeHooks.ts` — `HookSource` user / project / local / plugin, `HOOK_EVENT_ORDER` + `hookEventRank`, `HookRow` (id, event, matcher, type, masked text, timeout, async, source, plugin, pluginEnabled, orrery, enabled, toggleable, testable), `HooksListResult` (rows, file states, disableAll), `HookToggleResult` / `HookToggleError`, `HookTestResult`, `HOOK_TEST_TIMEOUT_MS` 10 s, `HOOK_TEST_OUTPUT_MAX` 4 KB. Desktop `claudeHooks/*` over `ccm:hooks-*`, web `lib/claudeHooks.ts`.
+
+## v75 (2026-10-29)
+
+- `libVersions.ts` (v75): `VulnSeverity`, `LibVuln` {id, aliases, summary, severity, fixed}, `LibVulnQuery` (+ version), `LibVulnLookup`, `LibVulnResult` (invalid / too-many / unavailable / network / timeout / bad-response), `isLibVersion`, `VULN_RANK`, `worstSeverity`. Desktop `LibChecker.vulns` over `ccm:libs-vulns`.
+- `ctxSources.ts` (v75): `MemLintKind` (broken-link, index-missing-file, not-indexed, frontmatter, duplicate-name, missing-path, missing-import, too-large, index-too-long), `MemFinding` {file, line, kind, text (token only), limit?, openable}, `MemDoctorResult` {cwd, home, memoryDir, files, findings, truncated}. Desktop `preview/memoryDoctorIo.ts` over `ccm:memory-doctor`, web `lib/memoryDoctor.ts`.
+- `devices.ts` (v75): `DevUiNode.focusable?`, `DevUiDump.density?` (dpi from `wm density`), `DevErrorCode` + `busy` / `record-failed`, `DevRecStart` {startedAt, limitMs}, `DevRecResult` {token, bytes, durationMs, frames (PNG data URLs), framesFailed}, `DevRecSave` {name}; desktop `devices/recorder.ts` → web `DeviceCaptureDialog.vue`.
+- `devPerf.ts` (v75): `PerfFrames` {total, janky, jankyPct, p50/p90/p95/p99 ms | null}, `PerfMemory` (KB: totalPss, javaHeap, nativeHeap, graphics, totalRss), `PerfColdStart` {totalMs, waitMs, launchState}, `PerfSample` {id, at, pkg, device, kind measure | cold, sinceResetMs?}, `PERF_HISTORY_MAX` 10, `PerfHistory` / `PerfMeasure` / `PerfReset`, `PerfErrorCode` = `DevErrorCode` + not-running / no-launcher / start-failed / parse-failed. Desktop `devices/perf.ts` → web `DevicePerfDialog.vue`.
+- `devFiles.ts` (v75): `DevFsScope` {sdcard} | {app, pkg}, `DevFsEntry` {name, kind dir | file | link | other, size, modified (device text), target?}, `DevFsList`, `DevFsResult`, `DevFsDest` pick | dir, `DevFsSource` pick | paths, `DevFsPullReq` / `DevFsPushReq` (transfer 16 hex), `DevFsPulled` {local, name, inDir}, `DevFsPushed` {pushed, skipped}, `DevFsProgress` {transfer, name, done, total | null, index, count} (event `ccm:devfs-progress`), `DevFsErrorCode` = `AppDataErrorCode` + not-found / permission / not-dir / exists / outside / failed. Desktop `devices/fileBrowser.ts` → web `DeviceFilesDialog.vue`.
+- `releaseCheck.ts` (v75): `ReleaseStatus` ok | warn | fail | unknown, `ReleaseSection`, `RELEASE_RULES`, `ReleaseFinding` {rule, section, status, detail (i18n key), params, file, line}, `ReleaseApp` {kind, dir, name, version, released, cert, findings}, `ReleaseCheckResult`, `ReleaseVerifyResult`, `isCertSha256`, `PLAY_TARGET_SDK` 36 since `PLAY_TARGET_SDK_SINCE` 2026-08-31 (bump each August).
+- `promptSearch.ts` (v75): `PROMPT_SEARCH_DAYS` 7|30|90|0 (all), `PROMPT_SEARCH_MAX_SESSIONS` 200, `_SNIPPETS` 3, `_SNIPPET_MAX` 200, `_QUERY_MAX` 200, `_TERMS_MAX` 8; `PromptSearchHit` {sessionId, cwd, cwdExists, startedAt?, lastAt, gitBranch?, title?, matches, snippets}, `PromptSearchProgress` {searchId, filesDone, filesTotal, hits (new only)}, `PromptSearchDone` {state done | capped | cancelled | failed}; `promptSearchTerms`, `highlightSegments` (no v-html), `maskSecrets` (copy of desktop `maskLog` + key=value). Client `promptSearch.start {searchId, query, days, project}` / `.cancel {searchId}` / `.open {searchId, sessionId}` → direct `promptSearch.progress` / `.done` / `.openResult {result: OpenResult}`.
+
+## v76 (2026-11-01)
+
+- `resources.ts` (v76): `ResKind` shell | dev-server | daemon | emulator | other, `DaemonInfo` {type gradle | kotlin | dart | flutter | emulator, version?, jdk?, avd?, serial?}, `ResPort` {port, address, established} (R2 fills), `SessionRes` {sessionId (= TerminalSession.id), pid, ramBytes, cpuPct, idleSinceMs, forgotten}, `ServerRes` {pid, start (echo for kill), kind, name, cmd (masked ≤ 200), cwd?, ports, ramBytes, cpuPct, idleSinceMs, lastBusyAt, forgotten, sessionId, orphan, daemon?}, `ResourceTotals` {ramBytes, cpuPct, forgotten, forgottenRamBytes}, `ResourceReport` {at, idleMinutes, cores, sessions, servers, totals}; `RES_SAMPLE_MS` 30 s, `RES_IDLE_CPU_PCT` 1, `RES_CMD_MAX` 200; desktop → collector utilityProcess message `DeviceUsedMessage` {type device.used, serial, avd?, at} + `parseDeviceUsed`. Event `resources {ResourceReport}` + `MonitorSnapshot.resources?`. `notify.ts`: `ToastKind` + `idle` (default on), `IDLE_CHOICES` 0/15/30/60/120/240, `DEFAULT_IDLE_MINUTES` 60, `sanitizeIdle`, `NotifySettings.idleMinutes`, client `notify.update.idleMinutes`.
+- R2 (Agent B): `SessionRes.start? / name?`, `OutsidePort` {pid, name, ports}, `PortConflict` {port, sessionId, at, holder {pid, name, sessionId} | null}, `ResourceReport.outside? / conflicts?`, `RES_CONFLICT_MS` 15 min, `RES_OUTSIDE_MAX` 100, `RES_BUSY_GUARD_MS` 2 min; desktop IPC types `ResKillTarget` {pid, start, label?}, `ResKillResult` (`ok, killed` | error invalid / gone / busy / cancelled / failed / unavailable), `parseKillTargets` (≤ 50, pid > 4, start `[A-Za-z0-9 :.+-]`, label cleaned ≤ 120). Collector → desktop parentPort `{type: 'resources', report}`.
+- `power.ts` (Agent C, R3 / R4): `AwakeMode` off | running | plugged (`DEFAULT_AWAKE_MODE` plugged), `BusyMessage` + `parseBusy` + `busyCounts` (collector → desktop port, not WS), `AwakeState` {mode, holding, reason off | idle | working | grace | battery, agents, jobs, releaseAt}; `CaptureConfig` {dir, asFile, keepDays, maxGb}, `CAPTURE_KEEP_DAYS` / `CAPTURE_MAX_GB`, `DEFAULT_CAPTURE`, `CaptureStatus` {config, active, problem}, `CaptureShotResult`.
+- `sensitive.ts` + `phone.ts` (Agent D, R5 / R6): `SENSITIVE_GROUPS` secrets | outside | git | delete | data | custom, `SECRET_FILE_GLOBS` (rule id = glob), `COMMAND_RULES`, `OUTSIDE_RULE`, `custom:<glob>`, `ruleGroup`, `SensitiveSettings` {groups, globs, ignore: project → rules} + sanitizers; activity kind `sensitive` (data `rule`, `path`, `file`, `project`, `tool`), toast kind `sensitive`, snapshot `sensitive`, event `sensitive.settings`, client `sensitive.update` / `sensitive.ignore {project, rule, on}`. Phone: `PhoneEpisodeMessage` (collector → desktop over parentPort, `parsePhoneEpisode`), `PhoneState` (no URL / topic), `PhonePatch` (write-only secrets, `sanitizePhonePatch`), `PHONE_IDLE_CHOICES` 0 / 5 / 10 / 15.
+- `secretMask.ts` (follow-up): single masking rule set. `maskSecrets(text, home, platform)` = home → `~` (win32 every separator form, case-insensitive), tokens sk- / gh*_ / github_pat_ / AKIA / xox*, bare opaque runs ≥ 32, `password|passwd|secret|token|api_key` = / : value, mixed-case runs ≥ 32 (a run starting with `/` stays). `createLogMasker(home, platform)` = same minus the bare-run rule, dotted runs judged per segment (Gradle tasks, class names). Moved out of `promptSearch.ts`; desktop `log-mask.ts` is gone.
+- `toolSummary.ts` (v88): `Agent.currentToolSummary` / `currentToolStartedAt` (ISO of the `tool_use` record, cleared with `currentTool`). `sanitizeToolSummary` (whitespace → 1 space, `maskSecrets`, `://user:pass@`, `Bearer x`, `-password|-token|-secret|-api-key <v>`, max 200 UTF-16 + `…`), `toolSummaryOf` (Claude input key per tool), `codexToolSummaryOf` (exec `cmd` / `command`, apply_patch paths). Rust twin `core-transcript/src/toolsum.rs`; shared cases `packages/shared/test/toolSummary.cases.json`.
+- `sensitive.ts` R5b: `DENY_SCOPES` project | local | user, `DenyRequest {project, rule, tool, scope}` (page → desktop IPC, never rule text), `DenyResult`, `denyRulesFor(rule, tool)` — Claude Code 2.1.294 deny rules per sensitive rule (`Edit(**/G)` for file globs, `Bash|PowerShell(git push --force *)`… for commands, `[]` when no faithful rule).
+- `agentData.ts` R7 (desktop IPC only, not WS): `DataAgent`, `DataKind` cache | history | config | program | unknown, `DATA_GROUPS` (verified top-level names per agent, `cleanable`, `idleOnly`), `classifyEntry`, `groupRule`, `CLEAN_AGE_DAYS` / `CLEAN_MIN_AGE_MS` (24 h) / `STRIP_AGE_DAYS`, `AgentDataSize` / `DataGroupSize` / `DataEntrySize`, `MoveRecord` (phases copying → copied → switching → linked, undoing, interrupted), `AgentDataState`, `AgentDataProgress`, `AgentDataResult` / `AgentDataError`, `parseCleanRequest`, `movedName`.
+
+## v77 (2026-11-01)
+- shared `buildClean.ts` (`BuildKind`, `BUILD_DIR_NAMES`, `buildDirKind`, `isBuildRel`, `BuildProject` / `BuildDir` / `BuildCleanRequest` / `BuildCleanResult` / `BuildProgress`, `parseBuildRoots` / `parseBuildClean`) and `disk.ts` (`DISK_WARN_CHOICES`, `diskLevel`, `diskRearmed`, `DiskState` / `DiskDrive`, desktop → collector `DiskAlertMessage` + `parseDiskAlert`, `formatGb`); `ToastKind` + `disk`; `PHONE_REASONS` + `disk`, `PhoneEpisodeMessage.freeBytes`.
+
+## v80 (2026-11-03)
+
+- `packages/shared/src/mcpCall.ts` (`McpPageCall` / `McpPageResult` union, `cleanNoteText`, `parseMcpPageResult`, `parseAgentNote`; exported). `mcpRun.ts` (`McpRunCall` / `McpRunResult`, `isMcpRunId`, `runPhase`, `cleanRunText`, `parseMcpRunResult`; exported). `mcpDesk.ts` (`McpDeskCall` / `McpDeskResult`, `DESK_ERRORS`, `parseMcpDeskResult`; imported by relative path, not exported from index). `phone.ts` reason `note` + `text`.
+- Collector -> desktop: `agent.note` (desktop host posts, collector parses again). `SessionRecord.sessionId?` (monitor `recordOf` -> `history.json`) lets History resume.
+- `telegram.ts` (v82): `TelegramEpisodeMessage` (collector → desktop port, not WS) + `parseTelegramEpisode`, `TelegramState` / `TelegramPatch` / `TelegramRoute` / `TelegramRouteInput` / `TelegramChat` / `TelegramTopic` + sanitizers, `parseTopicLink`, `isSecretFileName`; `mcpDesk.ts` calls `telegram_notify` / `telegram_send`.
+- `telegram.ts` WP4: `TelegramButton`, `TELEGRAM_BUTTONS_MAX` 6 / `_LABEL_MAX` 32 / `_VALUE_MAX` 200, `parseTelegramButtons` (undefined | null | list); inbound `answer {text, target: pane, from}` → result `{action: answer, name, submitted}`; `mcpDesk.ts` `telegram_send.buttons` + result `buttons: n`, error `buttons-file`; `orreryApi.ts` `session.answer` (source telegram).
+- `orreryApi.ts` (GĐ1, docs §11ao) — the single action table: `ORRERY_ACTIONS` (`runs` page|desk|main, `sources` mcp|url|telegram, `parse`), `OrreryCaller` / `OrreryRequest` / `OrreryError` (`unknown|source|args|unavailable|failed`), `parseMcpPageCall` / `parseMcpDeskCall` / `parseOrreryCaller`, `MCP_TOOL_ACTION`, `TELEGRAM_INBOUND_ACTION`, `OPEN_POLICY` (`submit` / `limit` / `dock` / `askSubmit`: mcp may ask `submit: true`, kept by `parsePaneOpen` only with `from` + prompt + non-shell; `PaneOpenRequest.submit` in `pty.ts`); main → page IPC `ccm:orrery` / `ccm:orrery-reply` (replaces `ccm:pane-open`, `ccm:mcp-call`, `ccm:telegram-inbound`). `mcpCall.ts` adds `list_sessions` / `send_to_session` / `close_session` calls + results (`SessionRef`, errors `target` | `busy`); 2026-11-08 `SessionRef.limit?: SessionLimit {resetsAt?, window?}` + `idleSince?` (ISO, checked in `parseSessionRef`). `pty.ts` spawn `shim?`.
+- Telegram 8 (docs §11an-j): `telegram.ts` key `esc`, inbound `compact` / `close` / `focus` (carry `since`), `send.images?` / `imageText?` + `TELEGRAM_IMAGES_MAX` (10), result `images?`, `lastSentAt` / `lastError` on `TelegramRoute` and session routes; `orreryApi.ts` actions `session.compact` / `session.closeOwner` / `session.focus` (source `telegram` only); `phone.ts` limit episode fields `window` / `usedPct` / `resetsAt` / `hit`.
+
+## Remote (v97, Orrery Remote — điện thoại)
+
+- Hợp đồng: `docs/remote-integration.md` (proto 1: lớp LAN / relay, Noise XXpsk3 ghép + IK phiên, frame `[kind][flags][stream]`, lệnh `ws.*` / `pty.*` / `fs.*` / `git.*` / `confirm.*`, mã lỗi, mã đóng 44xx).
+- `remote.ts`: hằng `REMOTE_PROTO`, `REMOTE_PORT` 4320, `REMOTE_TEXT_MAX` 2000, `REMOTE_ATTACH_MAX` 4, `REMOTE_CONFIRM_MS` 60 s, `REMOTE_SUMMARY_DEBOUNCE_MS` 200; type `RemotePane`, `RemoteTab`, `RemoteWorkspaceSnapshot` / `Patch`, `RemoteCommand` (lệnh `ws.*`), `RemoteConfirmAsk`, `RemoteDevice`, `RemoteStatus`. `remoteLayout.ts` `LayoutNodeLike` (= cây chia `splitLayout.ts`, tách để shared không phụ thuộc web). Emitter: gateway `apps/shell/src/remote/` (chưa có); consumer: renderer `useRemoteSummary` (WP-7), app `apps/mobile`.
+- WP-7 (renderer ↔ gateway): `orreryApi.ts` thêm source `phone` (`OPEN_POLICY.phone` = `{submit:false, limit:true, dock:false, askSubmit:true}`: prompt chỉ submit khi lệnh `submit:true`) và action `runs:'page'`, source `['phone']`: `remote.summary.get` (args `{}` → `RemoteWorkspaceSnapshot`) + `ws.open|close|rename|move|reopen|compact|send|keys` (args `RemotePhoneCall` = `{device, cmd: RemoteCommand, confirmed?}`; parser `parseRemotePhoneCall` / `parseRemoteCommand` / `parseRemoteKeys` trong `remote.ts`, text ≤ `REMOTE_TEXT_MAX`). Trả lời renderer: `{ok:true,…}` | `{ok:false,error: RemoteErrorCode}` | `{needsConfirm: RemoteNeedsConfirm}`. `remote.ts` thêm `RemotePhoneCall`, `RemoteNeedsConfirm`, `RemotePairStart {qr, exp, relay?, lan?}` (WP-52; `RemoteStatus.pairing? {exp, relay}`, `pairEnded? "tries"`), `RemoteKeyPress`. PTY: `claim` / `resized` (WP-3) dùng ở `ptyClient.ts`.
+
+- WP-18: action page `remote.typed` (source phone, args {sessionId}) trong `ORRERY_ACTIONS`; `RemoteDevice.platform` thêm `unknown`.
+- v97 WP-19: `packages/shared/src/remote.ts` `RelaySetupStatus` / `RelayTokenResult` / `RelayDeployResult` / `RelayRemoveResult` / `RelayDeployProgress` (IPC `ccm:remote-relay-*`, shell `remote/relay_setup.rs`; preload `remoteRelay*`).
+- v97 WP-20: `packages/shared/src/remote.ts` `PushStatus` / `PushSetupResult` / `PushTestResult` / `PushSetupError` / `PushTestError` (IPC `ccm:remote-push-*`); `push.config` do `apps/shell/src/remote/push.rs` phát.
+
+- v98 WP-59: `remote.ts` `RemoteGuardState` / `RemoteGuardBlock` / `RemoteGuardLogLine` / `RemoteGuardOp` / `RemoteGuardReply` / `RemoteGuardError`, `RemoteStatus.guardRev?`; IPC `ccm:remote-guard` (shell `remote/guard_ops.rs`). Control relay mới: `docs/remote-integration.md` §1 + §5.1.
+
+## v98 WP-56a
+- `RemoteDevice` thêm `push?: 'web'|'fcm'|'none'`, `pushOn?`, `pushContent?` (`packages/shared/src/remote.ts`). Phiên Noise: event `webpush.config {key?}` (desktop → web app), `push.register {kind:"webpush", endpoint, p256dh, auth, locale, mute, content}` (docs/remote-integration.md §7.6).

@@ -5,9 +5,9 @@ import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import en from '../../i18n/en'
 import vi_ from '../../i18n/vi'
-import { useConnectionStore } from '../../stores/connection'
-import { useToastsStore } from '../../stores/toasts'
-import { useWorkspaceStore } from '../../stores/workspace'
+import { useConnectionStore } from '../../app/stores/connection'
+import { useToastsStore } from '../../core/stores/toasts'
+import { useWorkspaceStore } from '../workspace/stores/workspace'
 import { useShellDone, type CmdMessage } from './useShellDone'
 
 const i18n = createI18n({ legacy: false, locale: 'vi', messages: { en, vi: vi_ } })

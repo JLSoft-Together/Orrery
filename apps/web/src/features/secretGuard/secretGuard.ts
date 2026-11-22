@@ -1,4 +1,4 @@
-import type { SecretBlock, SecretHit } from '../../lib/preview'
+import type { SecretBlock, SecretHit } from '../../core/lib/preview'
 
 export const SECRET_KINDS = ['github', 'aws', 'openai', 'slack', 'cloudflare', 'private-key', 'env', 'assignment'] as const
 

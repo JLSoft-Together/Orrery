@@ -1,0 +1,263 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { ChevronDown } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import type { LaneStatus } from '@ccm/shared'
+import { duration, now } from '../../../core/lib/format'
+import { displayTitle } from '../../../core/lib/title'
+import { useHistoryStore } from '../stores/history'
+import { useTerminalsStore } from '../../../core/stores/terminals'
+import { useUiStore } from '../../../core/stores/ui'
+import StatusIcon from '../../../core/components/StatusIcon.vue'
+import { summaryLine } from './summary'
+
+const { t, locale } = useI18n()
+const history = useHistoryStore()
+const terminals = useTerminalsStore()
+const ui = useUiStore()
+
+const HOUR = 3_600_000
+const STATUSES: LaneStatus[] = ['working', 'waiting', 'idle']
+// Idle is the background state, so it is drawn as a quiet tint instead of competing with the two that matter.
+const FILL: Record<LaneStatus, string> = { working: 'bg-st-working', waiting: 'bg-st-waiting', idle: 'bg-st-idle' }
+const TEXT: Record<LaneStatus, string> = { working: 'text-st-working', waiting: 'text-st-waiting', idle: 'text-ink-muted' }
+const clock = computed(() => new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', hour12: false }))
+const dur = (msVal: number) => duration(new Date(0).toISOString(), msVal) ?? ''
+
+interface Seg {
+  from: number
+  to: number
+  status: LaneStatus
+  open: boolean
+}
+
+const lanes = computed(() => {
+  const tl = history.timeline
+  if (!tl) return []
+  return tl.lanes
+    .map((lane) => {
+      const segs: Seg[] = lane.segments.map((s) => ({ from: Date.parse(s.from), to: s.to ? Date.parse(s.to) : now.value, status: s.status, open: !s.to }))
+      const totals: Record<LaneStatus, number> = { working: 0, waiting: 0, idle: 0 }
+      for (const s of segs) totals[s.status] += Math.max(0, s.to - s.from)
+      const live = terminals.byId[lane.id]
+      const current = segs.at(-1)?.open ? segs.at(-1)!.status : null
+      return { id: lane.id, title: (live && displayTitle(live)) || lane.title, segs, totals, current, live: !!live && live.status !== 'stale', start: segs[0]?.from ?? 0 }
+    })
+    .filter((l) => l.segs.length)
+    .sort((a, b) => a.start - b.start)
+})
+
+const overall = computed(() => {
+  const out: Record<LaneStatus, number> = { working: 0, waiting: 0, idle: 0 }
+  for (const l of lanes.value) for (const k of STATUSES) out[k] += l.totals[k]
+  const sum = out.working + out.waiting + out.idle
+  return { totals: out, sum }
+})
+
+const span = computed(() => {
+  if (!lanes.value.length) return null
+  const first = Math.min(...lanes.value.map((l) => l.start))
+  const start = Math.floor(first / HOUR) * HOUR
+  const end = Math.max(start + HOUR, Math.ceil(now.value / HOUR) * HOUR)
+  const hours = (end - start) / HOUR
+  const step = hours <= 6 ? 1 : hours <= 12 ? 2 : 3
+  const ticks: { at: number; pct: number; label: string }[] = []
+  for (let at = start; at <= end; at += step * HOUR) ticks.push({ at, pct: ((at - start) / (end - start)) * 100, label: clock.value.format(at) })
+  return { start, end, ticks }
+})
+
+const pct = (at: number) => (span.value ? ((at - span.value.start) / (span.value.end - span.value.start)) * 100 : 0)
+const pos = (s: Seg) => ({ left: `${pct(s.from)}%`, width: `max(3px, ${pct(s.to) - pct(s.from)}%)` })
+const nowPct = computed(() => pct(now.value))
+
+const hover = ref<{ lane: string; seg: Seg } | null>(null)
+// Near the lane ends the tooltip hangs off the matching edge so it never leaves the lane.
+const tipStyle = (s: Seg) => {
+  const mid = (pct(s.from) + pct(s.to)) / 2
+  if (mid < 25) return { left: '0' }
+  if (mid > 75) return { right: '0' }
+  return { left: `${mid}%`, transform: 'translateX(-50%)' }
+}
+const showHours = ref(false)
+
+const short = (msVal: number) => {
+  const min = Math.round(msVal / 60_000)
+  if (min <= 0) return msVal > 0 ? t('history.dur.lt1') : '-'
+  const h = Math.floor(min / 60)
+  return h ? t('history.dur.hm', { h, m: min % 60 }) : t('history.dur.m', { m: min })
+}
+
+const rows = computed(() =>
+  [...lanes.value]
+    .map((l) => {
+      const sum = l.totals.working + l.totals.waiting + l.totals.idle
+      const share = (k: LaneStatus) => (sum ? (l.totals[k] / sum) * 100 : 0)
+      return { ...l, sum, share: { working: share('working'), waiting: share('waiting'), idle: share('idle') } }
+    })
+    .sort((a, b) => b.totals.working - a.totals.working),
+)
+
+const PAT: Record<LaneStatus, string> = { working: 'ccm-pat-working', waiting: 'ccm-pat-waiting', idle: 'ccm-pat-idle' }
+const activeRows = computed(() => rows.value.filter((r) => r.totals.working + r.totals.waiting > 0))
+const idleOnly = computed(() => {
+  const list = rows.value.filter((r) => r.totals.working + r.totals.waiting === 0)
+  return { count: list.length, idle: list.reduce((n, r) => n + r.totals.idle, 0) }
+})
+
+const summary = computed(() =>
+  lanes.value.length
+    ? summaryLine(overall.value.totals, dur, { working: (d) => t('history.worked', { d }), waiting: (d) => t('history.waited', { d }), idle: (d) => t('pagesV79.history.idleFor', { d }) })
+    : '',
+)
+
+const range = (s: Seg) => `${clock.value.format(s.from)} - ${s.open ? t('history.now') : clock.value.format(s.to)}`
+</script>
+
+<template>
+  <div>
+    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <h3 id="timeline-title" class="font-semibold">{{ t('history.timeline') }}</h3>
+      <p v-if="summary" class="text-sm text-ink-muted tabular" data-history-summary>{{ summary }}</p>
+    </div>
+    <p class="mb-3 text-xs text-ink-muted">{{ t('history.timelineHint') }}</p>
+    <p v-if="!lanes.length" class="py-6 text-center text-sm text-ink-muted">{{ t('history.timelineEmpty') }}</p>
+    <template v-else-if="span">
+      <ul class="divide-y divide-line">
+        <li
+          v-for="r in activeRows"
+          :key="r.id"
+          class="grid grid-cols-[minmax(7rem,13rem)_minmax(0,1fr)_auto] items-start gap-x-3 py-2 sm:gap-x-4"
+          :title="t('history.laneLabel', { title: r.title, working: short(r.totals.working), waiting: short(r.totals.waiting) })"
+          data-history-row
+        >
+          <button
+            type="button"
+            class="inline-flex min-w-0 cursor-pointer items-center gap-1.5 text-left text-sm font-medium hover:underline disabled:cursor-default disabled:no-underline"
+            :class="r.live ? 'text-ink' : 'text-ink-muted'"
+            :disabled="!r.live"
+            @click="(ui.setView('monitor'), ui.focusTerminal(r.id))"
+          >
+            <StatusIcon v-if="r.current && r.live" :status="r.current" :size="13" :animate="false" class="shrink-0" />
+            <span class="truncate">{{ r.title }}</span>
+          </button>
+          <div class="min-w-0">
+            <div
+              class="mt-1 flex h-2.5 min-w-0 gap-0.5 overflow-hidden rounded-full bg-fill"
+              role="img"
+              :aria-label="t('history.laneLabel', { title: r.title, working: short(r.totals.working), waiting: short(r.totals.waiting) })"
+            >
+              <span v-for="k in STATUSES" v-show="r.share[k] > 0" :key="k" class="h-full" :class="PAT[k]" :style="{ width: `${r.share[k]}%` }" />
+            </div>
+            <p class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-2xs tabular" data-history-legend>
+              <span v-for="k in STATUSES" v-show="r.totals[k] > 0" :key="k" class="inline-flex items-center gap-1" :class="TEXT[k]">
+                <span class="inline-block h-2 w-3 rounded-[2px]" :class="PAT[k]" aria-hidden="true" />{{ t(`v107gon.history.pattern.${k}`) }} {{ short(r.totals[k]) }}
+              </span>
+            </p>
+          </div>
+          <span class="whitespace-nowrap text-right text-xs text-ink-muted tabular" data-history-pct>{{ t('v107gon.history.doingPct', { n: Math.round(r.share.working) }) }}</span>
+        </li>
+        <li v-if="idleOnly.count" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2 text-xs text-ink-muted" data-history-idle-only>
+          <span class="inline-flex min-w-0 items-center gap-1.5">
+            <span class="inline-block h-2 w-3 shrink-0 rounded-[2px]" :class="PAT.idle" aria-hidden="true" />
+            <span class="truncate">{{ t(idleOnly.count === 1 ? 'v107gon.history.idleOnlyOne' : 'v107gon.history.idleOnly', { n: idleOnly.count }) }}</span>
+          </span>
+          <span class="tabular">{{ t('v107gon.history.pattern.idle') }} {{ short(idleOnly.idle) }}</span>
+        </li>
+      </ul>
+
+      <button
+        type="button"
+        class="ccm-btn mt-4"
+        :aria-expanded="showHours"
+        @click="showHours = !showHours"
+      >
+        <ChevronDown :size="14" class="transition-transform" :class="showHours ? 'rotate-180' : ''" aria-hidden="true" />{{ showHours ? t('history.hideHours') : t('history.showHours') }}
+      </button>
+
+      <div v-if="showHours" class="mt-4">
+      <p class="mb-3 text-xs text-ink-muted">{{ t('history.hoursHint') }}</p>
+      <div class="relative mb-1 h-5 text-2xs text-ink-faint tabular" aria-hidden="true">
+        <span
+          v-for="(tk, i) in span.ticks"
+          :key="tk.at"
+          class="absolute top-0 whitespace-nowrap"
+          :class="i === 0 ? '' : i === span.ticks.length - 1 ? '-translate-x-full' : '-translate-x-1/2'"
+          :style="{ left: `${tk.pct}%` }"
+        >{{ tk.label }}</span>
+      </div>
+
+      <ul class="space-y-1">
+        <li v-for="lane in lanes" :key="lane.id" class="rounded-lg px-0 py-2">
+          <div class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button
+              type="button"
+              class="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 text-left text-sm font-medium hover:underline disabled:cursor-default disabled:no-underline"
+              :class="lane.live ? 'text-ink' : 'text-ink-muted'"
+              :title="lane.title"
+              :disabled="!lane.live"
+              @click="(ui.setView('monitor'), ui.focusTerminal(lane.id))"
+            >
+              <StatusIcon v-if="lane.current && lane.live" :status="lane.current" :size="13" :animate="false" class="shrink-0" />
+              <span class="truncate">{{ lane.title }}</span>
+            </button>
+            <span class="ml-auto inline-flex items-center gap-3 text-xs tabular">
+              <span class="inline-flex items-center gap-1 text-st-working">
+                <span class="size-2 rounded-full bg-st-working" aria-hidden="true" />{{ t('history.worked', { d: dur(lane.totals.working) }) }}
+              </span>
+              <span v-if="lane.totals.waiting" class="inline-flex items-center gap-1 text-st-waiting">
+                <span class="size-2 rounded-full bg-st-waiting" aria-hidden="true" />{{ t('history.waited', { d: dur(lane.totals.waiting) }) }}
+              </span>
+            </span>
+          </div>
+          <div
+            class="relative h-7 rounded-md border border-line bg-canvas"
+            role="img"
+            :aria-label="t('history.laneLabel', { title: lane.title, working: dur(lane.totals.working), waiting: dur(lane.totals.waiting) })"
+            @pointerleave="hover = null"
+          >
+            <span v-for="tk in span.ticks" :key="tk.at" class="absolute inset-y-0 w-px bg-line" :style="{ left: `${tk.pct}%` }" aria-hidden="true" />
+            <span
+              v-for="(s, i) in lane.segs"
+              :key="i"
+              class="ccm-grow-x absolute inset-y-1 origin-left rounded-[3px] ring-1 ring-surface transition-[filter]"
+              :class="[FILL[s.status], hover?.lane === lane.id && hover.seg === s ? 'brightness-110 ring-ink/40' : '']"
+              :style="pos(s)"
+              tabindex="0"
+              :aria-label="`${t(`status.${s.status}`)} ${range(s)}, ${dur(s.to - s.from)}`"
+              @pointerenter="hover = { lane: lane.id, seg: s }"
+              @focus="hover = { lane: lane.id, seg: s }"
+              @blur="hover = null"
+              @click="hover = { lane: lane.id, seg: s }"
+            />
+            <span class="absolute -inset-y-1 w-0.5 rounded-full bg-accent" :style="{ left: `${nowPct}%` }" aria-hidden="true" />
+            <div
+              v-if="hover?.lane === lane.id"
+              class="pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-control bg-surface px-2.5 py-1.5 text-xs shadow-pop"
+              :style="tipStyle(hover.seg)"
+              role="tooltip"
+            >
+              <p class="inline-flex items-center gap-1.5 font-medium" :class="TEXT[hover.seg.status]">
+                <StatusIcon :status="hover.seg.status" :size="12" :animate="false" />{{ t(`status.${hover.seg.status}`) }}
+                <span class="font-semibold text-ink tabular">{{ dur(hover.seg.to - hover.seg.from) }}</span>
+              </p>
+              <p class="text-ink-muted tabular">{{ range(hover.seg) }}</p>
+            </div>
+          </div>
+        </li>
+      </ul>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.ccm-pat-working {
+  background: var(--color-st-working);
+}
+.ccm-pat-waiting {
+  background: repeating-linear-gradient(135deg, var(--color-st-waiting) 0 3px, var(--ccm-surface) 3px 5px);
+}
+.ccm-pat-idle {
+  background: radial-gradient(circle, var(--color-st-idle) 0 1px, transparent 1.2px) 0 0 / 4px 4px, var(--ccm-fill);
+}
+</style>

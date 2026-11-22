@@ -1,317 +1,36 @@
-# Tính năng đã có (catalog)
+# features: catalog tính năng
 
-Rà trước khi đề xuất ý tưởng mới. Cập nhật khi thêm / bỏ tính năng. Ý tưởng đã đề xuất nhưng chưa làm / đã gạt: xem `.planning/IDEAS-*.md`.
+Rà trước khi đề xuất ý tưởng mới; cập nhật khi thêm / bỏ tính năng. Mỗi dòng: tính năng (plan) -> file index. Ý tưởng đã gạt: `.planning/IDEAS-*.md`. Bản dài cũ: `archive/features-full.md`. Lịch sử: `docs/features-history.md`.
 
-Đường dẫn: `apps/web/src/` (web), `apps/collector/src/` (collector), `apps/desktop/src/` (Electron), tính từ repo root. vNN = plan `.planning/PLAN-vNN-*.md`.
+## Quan sát (Monitor)
+- Session Claude Code / Codex realtime, card, nhóm theo việc cần làm, waiting strip, done tray (v1, v79) -> `web-monitor.md`, `core-monitor.md`
+- Agent Map, Quỹ đạo (Orbit), Board (v47, v95) -> `web-monitor.md`
+- History (heatmap, timeline, tool stats, tìm prompt), Away summary, Recap (v73, v75) -> `web-monitor.md`
+- Usage: chi phí / token / limit plan, forecast 5 giờ (v53) -> `web-monitor.md`
+- Sensitive (deny / settings), Resources (CPU / RAM / port), DevTools, Diagnostics (v76) -> `web-small.md`
+- Toast / alert OS, Telegram report, push điện thoại (v13, v82, v98) -> `core-toast-bridge.md`
+- Office pixel-art Habblaud (v60, tạm dừng) -> `office.md`
 
-## Monitor (theo dõi session)
+## Workspace
+- Terminal / Browser pane, tab, split, layout, undo đóng pane, zoom pane, dust (v50, v52) -> `web-workspace.md`, `core-pty.md`
+- Rail classic + UI next "Sương kính", palette, glass, drop compass (v92, v102, v108) -> `web-rail.md`, `web-next.md`
+- Ctrl+K palette (v80), phím tắt tuỳ biến, MRU, tìm trong terminal (v109) -> `web-small.md`
+- Trả lời menu Claude / Codex bằng chuột, Inbox "Chờ trả lời" (v100) -> `web-small.md`
+- Chat view session, shell done toast (OSC 633), share mode (v109) -> `web-small.md`
+- Compact handoff, prompt library, turn review, clash, permission advisor, context meter (v51, v72, v89, v104) -> `web-agent-tools.md`
+- MCP `orrery` (`open_session`, `list_sessions`, `run_app`...), deep link `agent-monitor://` (v49) -> `core-desk-mcp.md`
 
-- **Theo dõi session Claude Code realtime** (v1) — process, transcript, trạng thái, tên terminal; snapshot rồi chỉ gửi event tăng dần · `apps/collector/src/monitor.ts`
-- **Session card** — tên tự đặt / đổi tên, ghi chú, ghim, context %, đếm token, hành động hover, Shift+F10 · `apps/web/src/components/SessionCard.vue`
-- **Danh sách session** — sắp xếp (ghim trước, thứ tự đóng băng khi trỏ chuột), Xoá session đã kết thúc · `apps/web/src/components/SessionList.vue`
-- **Dải chờ chủ nhân** (v79, WaitingStrip) — khi cột Session đóng: một dòng "Cần chủ nhân · N" + session chờ lâu nhất, bấm để mở cột · `apps/web/src/components/WaitingStrip.vue`
-- **Nhóm session theo việc cần làm** (v79) — Cần chủ nhân → Đang chạy → Rảnh → Đã đóng; thẻ 3 dòng, menu ⋯ trên thẻ · `apps/web/src/lib/sessionGroups.ts`, `apps/web/src/components/SessionCard.vue`
-- **Lọc theo project** (v66) — dải project, lọc danh sách session theo repo đang live · `apps/web/src/components/ProjectStrip.vue`
-- **Yêu thích** — thêm / đổi tên / sắp xếp thư mục yêu thích, tối đa 50 · `apps/collector/src/favorites.ts`
-- **Mở thư mục / nhảy tới terminal** — mở folder ở Explorer / Finder / VS Code; focus cửa sổ terminal chứa session · `apps/collector/src/opener.ts`, `apps/collector/src/focus.ts`
-- **Khởi chạy Claude** — mở wt.exe tab hoặc Terminal / iTerm trên macOS tại thư mục đã chọn · `apps/collector/src/launcher.ts`
-- **Job nền** — liệt kê, ẩn (job.dismiss), dừng bằng `claude stop` · `apps/collector/src/job-stop.ts`
-- **Ghi nhận phản hồi** — thời gian chờ → busy trong ngày · `apps/collector/src/response.ts`
-- **Cảnh báo kẹt / vòng lặp lỗi / cache nguội** — gắn cờ session stuck, lặp lỗi, cache hết hạn · `apps/web/src/lib/attention.ts`
-- **Xung đột file giữa session** — cảnh báo hai session sửa cùng file · `apps/web/src/lib/conflicts.ts`
-- **Tin nhắn giữa main agent** (v54) — hiệu ứng gửi / nhận giữa hai session, cạnh peer · `apps/collector/src/peers.ts`
-- **Thanh tiến độ hạn mức (PlanLimits)** — còn bao nhiêu quota, dự báo, delta (v79 trong popover trạng thái header) · `apps/web/src/components/PlanLimits.vue`
-- **Thống kê nhanh (MetricsStrip)** — ô số liệu: thời gian phản hồi, chi phí hôm nay / ngân sách · `apps/web/src/components/MetricsStrip.vue`
-- **Tóm tắt "đi vắng" (AwaySummary)** — việc đã xong khi chủ nhân không có mặt · `apps/web/src/components/AwaySummary.vue`
-- **Ghi chú session** (v9) — `Monitor.setNote` · `apps/collector/src/store.ts`
-- **Tên terminal / đổi tên alias** — alias lưu trong `aliases.json` · `apps/collector/src/aliases.ts`
-- **Chế độ thu gọn (Compact view)** — cửa sổ nhỏ `?mode=compact`: đang chờ / đang làm · `apps/web/src/components/CompactView.vue`
-- **Tự ẩn session đã kết thúc / ẩn tool call** — `settings.hideFinished`, "Hide tool calls" trong Activity · `apps/web/src/stores/settings.ts`
-- **Bottom sheet Sessions trên màn hẹp** (< 768 px) — v-ngang điện thoại / cửa sổ nhỏ · `apps/web/src/components/MonitorView.vue`
-- **Diagnostics** — poll `diagnostics.get`, lưu / copy log desktop · `apps/web/src/components/DiagnosticsDialog.vue`
+## Code
+- Explorer + editor CodeMirror 6, icon Atom Material, auto save (v59, v62) -> `web-files.md`
+- Diff inline / split, Changes, commit, Git Log, branches, worktree, checkpoints, secret guard (v30, v36, v58, v109) -> `web-git.md`
+- Run pane Android / Flutter, XML Layout / Drawable / Flutter preview, strings, release check, lib updates (v31, v32) -> `web-run.md`
+- Devices (adb USB / Wi-Fi / QR), emulator, capture, APK size (v61, v73) -> `web-devices.md`
+- Extensions (MCP / plugin cho Claude Code), Hooks panel (v28, v74) -> `web-settings.md`
+- DeepSeek CLI Codewhale, `hand_back` (v81, tạm dừng) -> `web-small.md`
 
-## Agent Map (sơ đồ agent)
-
-- **Bản đồ main agent → sub-agent** (v1, v14, v53) — node MainNode / SubPill / DoneTray, bố cục cây `pickLayout` · `apps/web/src/components/AgentMap.vue`
-- **Node kéo, đổi cỡ, nhớ vị trí** — lưu `ccm.mapLayout.v53` · `apps/web/src/components/AgentMap.vue`
-- **Điều hướng bằng phím, tìm trên bản đồ, menu node** (v47) — `apps/web/src/lib/mapNav.ts`, `apps/web/src/lib/mapMenu.ts`
-- **Hiện đường chạy tool và cạnh peer** — TreeEdge, PeerEdge, mẫu đường cố định · `apps/web/src/components/TreeEdge.vue`
-- **Toàn màn hình bản đồ** — phím Shift+F, `useFullscreen` · `apps/web/src/composables/useFullscreen.ts`
-- **Bộ điều khiển cảnh (Map | Office)** — chuyển giữa bản đồ và Office · `apps/web/src/stores/ui.ts`
-- **Đếm sub-agent đang chạy trong status** (v50) — `apps/web/src/lib/subagents.ts`
-
-## Office (Habblaud, phòng pixel-art)
-
-- **Office pixel-art** (v60) — mỗi project một phòng, mỗi agent một nhân vật, hành vi xã hội · `apps/web/src/components/office/OfficeView.vue`
-- **Timelapse ngày** (v60) — chọn ngày, tốc độ 60–600x, thanh cuộn, phím L · `apps/web/src/components/office/OfficeTimelapse.vue`
-- **Âm thanh báo hiệu + thanh âm lượng** (v60) — `apps/web/src/components/office/OfficeView.vue`
-- **Bấm nhân vật đang hỏi để nhảy tới session** — `apps/web/src/components/office/OfficeView.vue` (`jumpIfAsking`)
-- **Theme pack + tùy chọn theme mùa** (v62) — gói giao diện, cài theme trong `OfficeOptions` · `apps/web/src/lib/office/packs.ts`
-- **Office toàn màn hình** (v62) — Shift+F · `apps/web/src/components/office/OfficeView.vue`
-- **Kiểu 3D isometric** (v63, beta) — chuyển Pixel / 3D mượt, art 3D tải theo nhu cầu, giảm hiệu ứng khi fps thấp · `apps/web/src/lib/office/iso/IsoRenderer.ts`
-- **Dữ liệu Office phía collector** (v60) — `OfficeModel` (phòng, nhân vật, tool), `OfficeHub` phát snapshot · `apps/collector/src/office/model.ts`, `apps/collector/src/office/hub.ts`
-- **Lưu timeline ngày** — `<dataDir>/timeline/*.jsonl`, giữ 7 ngày · `apps/collector/src/timeline.ts`
-
-## Usage & History (thống kê)
-
-- **Trang Usage** (v2, v53) — tổng, biểu đồ theo ngày, hạn mức, xếp hạng project / model; chi phí ước tính · `apps/web/src/components/usage/UsageView.vue`
-- **Chọn project cho Usage** — hộp chọn có resize, bảng project · `apps/web/src/components/usage/ProjectPickerDialog.vue`
-- **Usage index bền vững** — quét mọi `projects/**/*.jsonl`, lưu `usage-index.json`, chỉ đếm số, không lưu nội dung · `apps/collector/src/usage.ts`
-- **Dự báo hạn mức** — hồi quy bình phương tối thiểu, `limit-history.json` · `apps/collector/src/forecast.ts`
-- **Tab History** — bảng tổng, timeline trạng thái theo giờ · `apps/web/src/components/history/HistoryView.vue`
-- **Dòng tóm tắt hôm nay** (v79) — một dòng trên timeline: số session đang làm / chờ · `apps/web/src/components/history/summary.ts`
-- **Tìm session cũ theo prompt + Resume** (v75) — quét transcript khi bấm, che secret, Resume trong pane / mở thư mục / chép id · `apps/web/src/components/history/PromptSearchCard.vue`, `apps/collector/src/prompt-search.ts`
-- **Lịch sử session đã kết thúc** — tối đa 1000 session · `apps/collector/src/history.ts`
-- **Heatmap giờ × ngày** (2026-10-29) — 28 ngày, `heatmap.get` · `apps/web/src/components/history/HeatmapChart.vue`
-- **Thống kê tool / skill / MCP** (v73) — theo project, 7 / 30 ngày · `apps/web/src/components/history/ToolStatsCard.vue`
-- **Tóm tắt (Recap) xuất được** — ngày hoặc 7 ngày, so với 7 ngày trước · `apps/web/src/components/RecapDialog.vue`
-- **Ngân sách chi phí hằng ngày** — `settings.dailyBudget` · `apps/web/src/stores/settings.ts`
-- **Đo thời gian tool (Tool timeline / spans)** — ghép tool_use với kết quả · `apps/collector/src/tool-spans.ts`
-- **Ngữ cảnh nền của session** (v72) — token lượt đầu và kích thước CLAUDE.md, memory, skill · `apps/desktop/src/preview/contextSources.ts`
-- **Bác sĩ CLAUDE.md / memory** (v75) — nút Kiểm tra trong dialog ngữ cảnh nền: link `[[ ]]` gãy, index MEMORY.md trỏ file không có / thiếu mục, frontmatter thiếu, trùng tên, `@import` / đường dẫn không còn, file quá giới hạn Claude Code; mở đúng dòng, Điền vào agent; chỉ đọc · `apps/desktop/src/preview/memoryDoctor.ts`, `apps/web/src/components/workspace/ContextSourcesDialog.vue`
-
-## Thông báo, toast, nhắc nghỉ
-
-- **Toast Windows** (v9–v11) — chờ input, kẹt, đầy context, job, hạn mức; hoãn (snooze), giờ yên lặng, test · `apps/collector/src/toast.ts`
-- **Toast trên macOS** — badge dock và nảy icon · `apps/desktop/src/attention.ts`
-- **Thông báo trình duyệt / tiếng chuông / tiêu đề tab nhấp nháy** — chỉ khi cửa sổ ẩn · `apps/web/src/composables/useNotifications.ts`
-- **Nhắc nghỉ giải lao** — toast nhắc sau một khoảng thời gian · `apps/web/src/composables/useBreakReminder.ts`
-- **Link từ toast** — hoãn (snooze), focus session, mở pane · `apps/desktop/src/main.ts`
-- **Cài đặt thông báo** — từng loại, âm thanh, giờ yên lặng · `apps/web/src/components/settings/SettingsNotify.vue`
-- **Process agent + bỏ quên** (v76) — RAM / CPU cây session, shell / dev server, daemon Gradle / Kotlin / Dart, emulator, mồ côi; nhàn rỗi ≥ ngưỡng (Settings, mặc định 60 phút) → toast `idle` gộp · `apps/collector/src/resources/`
-- **Thẻ Tài nguyên + bản đồ cổng** (v76) — Session / Server / Daemon & emulator / Cổng, lọc bỏ quên, Tắt từng dòng / tất cả (confirm native, pane → đóng pane), Mở `localhost:<port>` trong Browser, badge ở header / rail / cạnh Mission Control, báo đụng cổng · `apps/web/src/components/ResourcesDialog.vue`, `apps/collector/src/resources/ports.ts`, `apps/desktop/src/resources/kill.ts`
-- **Canh file / lệnh nhạy cảm** (v76) — Edit / Write file bí mật (.env, keystore, …), file ngoài project, git push -f / reset --hard / clean -fd, rm -rf / del /s / Remove-Item ngoài project, adb uninstall, DROP TABLE → badge card (bấm mở danh sách từng lần) + toast `sensitive`; Mở file / Mở diff / Bỏ qua theo project; Cài đặt nhóm, mẫu riêng, danh sách bỏ qua; chỉ cảnh báo · `apps/collector/src/sensitive/`, `apps/web/src/components/SensitiveSettings.vue`
-- **Chặn lần sau** (v76 R5b) — từ cảnh báo nhạy cảm thêm luật deny Claude Code vào `.claude/settings.json` / `settings.local.json` / user settings sau confirm native có diff, backup `.orrery-bak` · `apps/desktop/src/preview/denyRules.ts`, `apps/web/src/components/SensitiveDenyMenu.vue`
-- **Báo ra điện thoại** (v76) — ntfy / Discord webhook, mặc định tắt, chỉ khi máy rảnh ≥ N phút; chờ / xin quyền / xong việc ≥ 5 phút / job / hạn mức; 20 tin / giờ, secret bằng safeStorage · `apps/desktop/src/phone/`, `apps/web/src/components/PhoneSettings.vue`
-- **Báo Telegram theo topic project** (v82) — token trong Cài đặt, quét group / topic, tạo topic cho project, xong việc / chờ → topic của project, câu trả lời cuối (tuỳ chọn), MCP `telegram_send` (tóm tắt + file ≤ 50 MB), `/bot-tele-send-notify on|off`, nút trên thanh trên · `apps/desktop/src/telegram/`, `apps/web/src/components/TelegramSettings.vue`
-
-## Workspace & terminal (lõi)
-
-- **Terminal nhúng (PTY)** (v18) — xterm, nhiều pane, chia tab, lưu / khôi phục bố cục · `apps/desktop/src/pty/host.ts`
-- **PTY host cách ly** — utilityProcess riêng, token mới mỗi lần fork · `apps/desktop/src/pty/supervisor.ts`
-- **Chia pane, tab, đổi tên tab, nhóm tab** (v18, v50) — cây chia nhị phân · `apps/web/src/lib/splitLayout.ts`
-- **Kéo thả pane / tab** (v48) — vùng thả trên pane · `apps/web/src/composables/usePaneDrag.ts`
-- **Phóng to pane, hoàn tác đóng pane** (v52) — `Tab.zoom`, `closedStack`, UndoToast · `apps/web/src/components/workspace/UndoToast.vue`
-- **Header pane trên thanh tab** (v79) — pane đứng một mình đưa header lên thanh tab, việc phụ nằm trong ⋯ · `apps/web/src/components/workspace/TermPane.vue`, `apps/web/src/lib/paneHead.ts`
-- **Làm mờ pane không hoạt động** (v52; v79 nằm trong menu ⋯ của thanh tab) — `apps/web/src/components/workspace/WorkspaceView.vue`
-- **Dust hiệu ứng khi đóng pane** (v50, tùy chọn) — `apps/web/src/lib/dust.ts`
-- **Khôi phục workspace, chọn project để chạy** (v64) — pane ngủ "parked" · `apps/web/src/components/workspace/RestorePicker.vue`
-- **Khôi phục sau khởi động lại** (v77) — Hỏi / Tự mở lại / Không làm gì, báo thoát bất thường, shell về thư mục đã cd, gợi ý chạy cùng Windows · `apps/web/src/lib/workspaceRestore.ts`, `apps/desktop/src/restore/runState.ts`
-- **Hàng đợi spawn** — tối đa 2 pane khởi động cùng lúc, ưu tiên pane đang nhìn thấy · `apps/web/src/lib/spawnQueue.ts`
-- **Thả xuống terminal (Ctrl+`)** — terminal kéo từ trên xuống · `apps/web/src/components/workspace/DropTerminal.vue`
-- **Nhận diện agent trong shell** — pane shell đang chạy `claude` / `codex` được coi là agent · `apps/web/src/composables/useWorkspaceLinks.ts`
-- **Agent thoát về shell** — Ctrl+C ×2 hoặc `/exit` · `apps/web/src/stores/workspace.ts`
-- **Thẻ chú thích shell (shell marks)** (v73) — đánh dấu lệnh, nhảy giữa lệnh, copy output · `apps/web/src/lib/shellMarks.ts`
-- **Báo lệnh shell chạy lâu xong** (v109 B3) — lệnh từ ngưỡng (mặc định 10 s) xong lúc pane khuất: toast trong app (tab khác) hoặc toast OS qua core-toast (cửa sổ không focus), chấm tab / rail, exit khác 0 tone lỗi; Settings Editor switch + số giây · `apps/web/src/features/shellDone/`
-- **Link trong terminal** — OSC 8, URL bị xuống dòng, copy đúng · `apps/web/src/components/workspace/TermPane.vue`
-- **Cảnh báo lỗi terminal → Problems** (2026-10-29) — quét lỗi trong buffer shell · `apps/web/src/lib/terminalProblems.ts`
-- **Nerd Font fallback cho terminal** (2.2.0) — `apps/web/src/lib/fonts.ts`
-- **Phím tắt Workspace** — WT / macOS chords, bảng phím · `apps/web/src/lib/workspaceKeys.ts`
-- **Hộp thoại xác nhận đóng pane** (close confirm) — `apps/web/src/components/workspace/WorkspaceView.vue`
-- **Hộp đính kèm (attachments)** — kéo thả file, ảnh vào prompt; xoá bằng Backspace · `apps/web/src/stores/attachments.ts`
-- **Compact… cho agent** (v51, v52) — handoff rồi /compact rồi resume; prompt do chủ nhân duyệt · `apps/web/src/lib/compactHandoff.ts`
-- **Mở pane qua API / deep link** (v49) — agent tự mở pane, prefill, không tự gửi · `apps/desktop/src/pty/mcp.ts`
-- **Ghi log khi PTY thoát sớm** (< 15 s) vào `pty.log` · `apps/desktop/src/pty/host.ts`
-
-## Rail, dự án
-
-- **Rail nhóm dự án** (v38) — cụm, checkout, hàng pane, nhãn trạng thái · `apps/web/src/lib/rail/railModel.ts`
-- **Lọc rail, nhóm Đang có agent / Đã mở** (v79) — ô lọc, nút mở project dạng icon, một dòng cho mỗi session · `apps/web/src/lib/rail/railView.ts`, `apps/web/src/components/workspace/WorkspaceSidebar.vue`
-- **Sắp xếp và kéo rail** — kéo nhóm dự án, Alt+↑/↓ · `apps/web/src/composables/useRailDrag.ts`
-- **Menu rail** (v43) — mở, đóng, menu project · `apps/web/src/lib/rail/railMenu.ts` (v109 F1: mục con `tools` gom scripts / plan / env / i18n / perms / build-clean, `perms` chỉ khi `ctx.kind` là android / flutter / chưa biết, `projectKindOf` từ `run.projectsFor` + `run.detected`, `i18n/workspace-rail.ts` `menu.tools`)
-- **Bố cục đã lưu theo project** (v24) — tối đa 20 mỗi project, một bố cục tự mở khi khởi động · `apps/desktop/src/layouts.ts`
-- **Menu script theo project** (v24) — chạy script từ package.json / Makefile / Cargo / pyproject · `apps/desktop/src/preview/scripts.ts`
-- **Worktree** — tạo worktree, sao chép file cấu hình, so sánh, gộp (ff / squash) · `apps/web/src/components/workspace/WorktreeMenu.vue`
-- **Mission Control** — đã bỏ ở v103 (`MissionControl.vue`, `workspace/mission/`, `lib/rail/mission*.ts`); trả lời menu v100 còn ở chip "Chờ trả lời" + toast + thanh dưới pane
-- **Cần chủ nhân (Attention)** — popover liệt kê pane cần xử lý · `apps/web/src/components/workspace/AttentionPopover.vue`
-- **Nút + mở chọn loại pane** (kiểu trình duyệt) — `apps/web/src/components/workspace/LaunchPicker.vue`
-
-## Viewer & editor file
-
-- **Trình xem file** (v21, v42) — xem / sửa / lưu, cảnh báo xung đột trên đĩa, markdown · `apps/web/src/components/workspace/FilePane.vue`
-- **Editor CodeMirror 6** (v42) — tìm, thay, gấp dòng, ngôn ngữ, đọc file lớn theo cửa sổ · `apps/web/src/components/workspace/CodeEditor.vue`
-- **Tự lưu như VS Code** (v62, tắt mặc định) — sau delay / đổi focus / đổi cửa sổ · `apps/web/src/lib/autoSave.ts`
-- **Xem trước Markdown, chia đôi cuộn đồng bộ** (v70) — `apps/web/src/lib/markdownSync.ts`
-- **HTML hiển thị được** (2.3.0) — webview riêng, partition `persist:ccm-preview` · `apps/desktop/src/preview/ipc.ts`
-- **Outline, đi tới ký hiệu, F12 / Shift+F12** (v69) — `apps/web/src/lib/editor/outline.ts`
-- **Bookmark, file gần đây, Quick open** (v70) — `apps/web/src/lib/fuzzy.ts`
-- **Local History** (v70) — lưu bản cũ mỗi lần ghi, so sánh, khôi phục · `apps/desktop/src/preview/localHistory.ts`
-- **Format file** (v70) — prettier, dart, ktlint theo ngôn ngữ · `apps/desktop/src/preview/format.ts`
-- **Cây JSON / YAML** (v70) — gấp, lọc, copy đường dẫn · `apps/web/src/lib/jsonTree.ts`
-- **Xem file log** (v70) — `*.log`, `logcat*.txt`, đọc từng đoạn tới 200 MB · `apps/desktop/src/preview/logRead.ts`
-- **Ô màu** (v70) — swatch trong code CSS · `apps/web/src/lib/editor/colorSwatches.ts`
-- **So sánh hai file** (v70) — chọn trong Explorer rồi so sánh · `apps/web/src/components/workspace/TextCompareDialog.vue`
-- **Bản đồ thu nhỏ code (minimap)** — `settings.minimap` · `apps/web/src/components/workspace/CodeMinimap.vue`
-- **Chỉnh sửa khối (edit block) và xung đột** — `apps/web/src/lib/fileEditor.ts`
-
-## Explorer (cây file)
-
-- **Explorer có panel riêng bên phải** (v53, 2.1.0) — `apps/web/src/components/workspace/ExplorerPanel.vue`
-- **Cây file có icon Atom Material** (v59) — chọn Atom / Simple trong Cài đặt · `apps/web/src/lib/explorer/fileIcons.ts`
-- **Kéo file vào terminal (@mention)** (v2.0.0) — `apps/web/src/lib/explorer/dragPath.ts`
-- **Tạo, đổi tên, chuyển vào thùng rác** (v35) — menu chuột phải · `apps/desktop/src/preview/explorer.ts`
-- **Tìm trong file** (v67) — git grep, huỷ được, hơn 2000 kết quả bị cắt · `apps/desktop/src/preview/search.ts`
-- **Thay thế trong nhiều file** (v70) — xem trước từng dòng, bỏ qua từng dòng · `apps/desktop/src/preview/replaceFiles.ts`
-- **TODO / FIXME** (v70) — quét qua `ccm:search` · `apps/web/src/components/workspace/ExplorerTodo.vue`
-- **Checks** (v67) — chạy script kiểm tra, parse lỗi, gửi cho agent · `apps/web/src/components/workspace/ExplorerChecks.vue`
-- **Ghi chú dự án** (v70, Ctrl+Alt+N) — `apps/desktop/src/preview/notes.ts`
-
-## Git (Changes, diff, Log, commit)
-
-- **Diff kiểu Android Studio** (v29, v33, v34) — inline và split, minimap, ←/→ đổi file, F7 nhảy đoạn · `apps/web/src/components/workspace/ChangesPane.vue`
-- **Diff theo đoạn (hunk)** — đổi, bỏ đoạn; popup từng đoạn · `apps/desktop/src/preview/changes.ts`
-- **Blame** (v68) — gutter và hover · `apps/desktop/src/preview/blame.ts`
-- **Stage / unstage file và đoạn, commit trong app** (v67) — `apps/web/src/components/workspace/CommitBox.vue`
-- **Sửa commit (amend)** — chỉ khi commit chưa đẩy · `apps/desktop/src/preview/commit.ts`
-- **Xem so sánh ảnh** (v70) — ảnh bản HEAD và bản đang sửa · `apps/web/src/components/workspace/ImageCompare.vue`
-- **Turn review + checkpoint theo lượt** (v68, 2.4.0) — giữ hoặc bỏ từng đoạn của lượt · `apps/desktop/src/preview/checkpoints.ts`
-- **Xử lý xung đột gộp từng khối** (v69) — ours / theirs / both / edit · `apps/web/src/components/workspace/ConflictView.vue`
-- **Git Log có đồ thị commit** (v30, v36) — nhánh, tag, tìm, diff · `apps/web/src/components/workspace/log/LogPane.vue`
-- **Thanh nhánh Git Log gọn** (v79) — nút chính + ⋯ (nhánh mới, so sánh, yêu thích, xoá, gom nhóm) · `apps/web/src/components/workspace/log/LogRefsToolbar.vue`
-- **Thanh Branches của Log** (v36) — tạo, fast-forward, fetch, xoá nhánh (xoá có xác nhận) · `apps/desktop/src/preview/branches.ts`
-- **Push trong app** (v54) — xem trước, ahead / behind, chọn tài khoản · `apps/web/src/components/workspace/log/PushDialog.vue`
-- **Chặn lộ secret trước commit / push** (v109 C1) — quét dòng thêm (staged / commit sắp push) ở Rust, hộp cảnh báo file:dòng + giá trị đã che, Bỏ khỏi stage / Vẫn commit, allowlist `.orrery-secret-allow`, switch Settings → Workspace · `apps/core/crates/core-desk/src/preview/secrets.rs`, `apps/web/src/features/secretGuard/`
-- **Bảo vệ git bằng xác nhận gốc** — xoá nhánh, merge, restore cần xác nhận · `apps/desktop/src/main.ts`
-- **Overlap** (v69) — cảnh báo hai agent cùng sửa một file · `apps/desktop/src/preview/overlap.ts`
-
-## GitHub
-
-- **Nhiều tài khoản GitHub bằng token** (v58) — lưu bằng safeStorage của OS, không gửi lại cho trang · `apps/desktop/src/github/accounts.ts`
-- **Chọn tài khoản theo repo** — tự động theo quyền truy cập · `apps/web/src/components/GitHubAccountsSettings.vue`
-- **Phát hiện repo private không có quyền** — báo lỗi auth rõ ràng · `apps/desktop/src/preview/branches.ts`
-
-## Problems, Inbox, Prompt & Plan
-
-- **Problems trong editor** (v68) — lỗi Checks hiện như chẩn đoán, F8 / Shift+F8 · `apps/web/src/components/workspace/ProblemBar.vue`
-- **Inbox việc cần chủ nhân** (v69) — J/K, Enter, E, badge trên header · `apps/web/src/components/inbox/InboxPanel.vue`
-- **Thư viện prompt** (v69) — biến, chèn vào pane (chỉ điền, không gửi) · `apps/web/src/components/workspace/PromptPicker.vue` (`apps/desktop/src/preview/commands.ts` chỉ là slash command)
-- **Mẫu prompt + nhập / xuất thư viện** (v77) — 12 mẫu en / vi, nhân bản để sửa, ẩn mẫu; xuất / nhập JSON qua hộp thoại native, trùng tên hỏi Ghi đè / Giữ cả hai / Bỏ qua · `apps/web/src/lib/promptSamples.ts`, `apps/web/src/lib/promptTransfer.ts`
-- **Hàng đợi prompt theo pane** (v70) — điền khi agent chuyển sang idle · `apps/web/src/lib/promptQueue.ts`
-- **Plan board** (v70) — đọc checklist `- [ ]` trong Markdown, đi tới dòng · `apps/web/src/components/workspace/PlanBoard.vue`
-- **Gợi ý luật allow từ hỏi quyền lặp** (v72) — gợi ý luật allow từ các lần hỏi lặp, ghi `settings.local.json` sau xác nhận · `apps/desktop/src/preview/permRules.ts`
-- **Hook bridge: PreCompact / PostCompact / PermissionDenied** (2026-10-29) — hiện trạng thái compacting / bị từ chối · `apps/desktop/src/hooks.ts`
-
-## Extensions (MCP / plugin)
-
-- **Cài MCP server, plugin, skill qua claude CLI** (v28) — toàn cục hoặc theo project, có xác nhận gốc · `apps/web/src/components/extensions/ExtensionsView.vue`
-- **Danh mục curated** — `packages/shared/src/extensions.ts` (`CATALOG`)
-- **Đăng nhập MCP** — chạy `claude mcp login` trong shell workspace · `apps/web/src/stores/extensions.ts`
-- **Thêm nguồn (marketplace) tuỳ ý** — `apps/desktop/src/extensions/ipc.ts`
-- **Quản lý hook Claude Code** (v74) — bảng hook theo event (user / project / local / plugin), tắt / bật hook settings (cất vào `<DATA_DIR>/hooks-disabled.json`, confirm diff, `.ccm-backup`), hook Orrery khoá, chạy thử 10 s payload giả · `apps/desktop/src/claudeHooks/manager.ts`, `apps/web/src/components/extensions/HooksPanel.vue`
-
-## Devices (Android / adb)
-
-- **Kết nối thiết bị USB và Wi-Fi** (v61) — mã ghép, QR, mDNS, nhớ thiết bị, tự kết nối · `apps/web/src/components/devices/DevicesView.vue`
-- **Thêm thiết bị** (v79) — nút accent ở tiêu đề mở panel ghép / kết nối · `apps/web/src/components/devices/DevicesView.vue`
-- **Chuyển USB sang Wi-Fi** — `apps/desktop/src/devices/manager.ts`
-- **Chụp màn hình thiết bị** (2.4.0, v72) — gửi vào agent đính kèm · `apps/web/src/components/devices/DeviceCaptureDialog.vue`
-- **Soi view tree** — id, chữ, khung trên ảnh chụp, tìm trong file · `apps/desktop/src/devices/uiDump.ts`
-- **Kiểm trợ năng màn thiết bị** (v75) — thiếu nhãn, vùng chạm < 48 dp, tương phản chữ ước lượng từ ảnh, trùng mô tả; điền prompt sửa kèm file · `apps/web/src/lib/deviceA11y.ts`
-- **Quay màn hình thiết bị** (v75) — tối đa 30 s, lưu MP4, đính kèm 6 khung hình cho agent · `apps/desktop/src/devices/recorder.ts`
-- **Hiệu năng app trên thiết bị** (v75) — Đặt lại / Đo: khung giật %, p50–p99, PSS, Java / native heap, đồ hoạ; mở nguội `am start -W -S` (confirm); 10 lần đo / app, so trước–sau, điền số liệu vào agent · `apps/desktop/src/devices/perf.ts`, `apps/web/src/components/devices/DevicePerfDialog.vue`
-- **Trình duyệt file thiết bị** (v75) — `/sdcard`, `/data/local/tmp`, thư mục app debug qua run-as; kéo về thư mục / dự án, đẩy (picker hoặc thả), tiến độ byte + huỷ, thư mục mới, xoá (confirm) · `apps/desktop/src/devices/fileBrowser.ts`, `apps/web/src/components/devices/DeviceFilesDialog.vue`
-- **Thử UI trên máy** (v72) — tối / sáng, cỡ chữ, cỡ hiển thị, ngôn ngữ app, tắt animation, Trả về như cũ · `apps/desktop/src/devices/uiTester.ts`
-- **Mở deep link và activity exported** (v72) — `apps/desktop/src/devices/manifest.ts`
-- **Xem dữ liệu app debug** (v73) — database, SharedPreferences, chỉ đọc có chặn SQL · `apps/desktop/src/devices/appData.ts`
-- **Phân tích dung lượng APK / AAB** (v73) — so với bản trước, top 20 · `apps/desktop/src/apk/analyze.ts`
-- **Emulator (AVD)** (v74) — danh sách AVD (API, ABI, máy), Chạy / Cold boot / Tắt / Xoá dữ liệu (xác nhận), đánh dấu AVD đang chạy · `apps/desktop/src/devices/emulators.ts`, `apps/web/src/components/devices/DeviceEmulators.vue`
-- **Thư mục chụp / quay** (v76) — video quay giữ trong `<dir>/recordings/`, ảnh chụp / khung hình gửi agent dạng file `<dir>/shots/…png` (điền `@đường dẫn`, không qua clipboard), dọn 7 ngày / 2 GB chỉ file Orrery đặt tên, ổ mất → về temp + báo 1 lần · `apps/desktop/src/capture/folder.ts`, `apps/web/src/components/CaptureSettings.vue`
-
-## Preview (XML layout / drawable / Flutter / web)
-
-- **XML Layout Preview** (v32, v44, v46) — render layout Android qua daemon layoutlib, không cần Gradle model · `apps/web/src/components/workspace/LayoutPreview.vue`
-- **Chọn thiết bị, chế độ tối, cỡ chữ cho preview layout** — `apps/web/src/lib/layoutPreview.ts`
-- **Drawable Preview** (v41) — xem drawable / vector · `apps/web/src/components/workspace/DrawablePreview.vue`
-- **Flutter Widget Preview** (v40, v55, v57) — `@Preview`, và danh sách class widget không có `@Preview` · `apps/web/src/components/workspace/FlutterPreviewPanel.vue`
-- **Wrapper ProviderScope / AppLocalizations** (v57) — `apps/desktop/src/flutterPreview/host.ts`
-- **Trình duyệt trong workspace** (v21) — webview, thiết bị giả lập, chụp màn gửi cho agent · `apps/web/src/components/workspace/BrowserPane.vue`
-- **Cấp quyền đường dẫn cho trình duyệt** — `apps/desktop/src/preview/grants.ts`
-- **Chế độ toàn quyền truy cập (full access)** — bật một lần, cảnh báo rõ · `apps/desktop/src/preview/grants.ts`
-
-## Run pane (Android / Flutter)
-
-- **Chạy app Android / Flutter** (v31) — cấu hình, thiết bị, log, dừng · `apps/web/src/components/workspace/RunPane.vue`
-- **Đọc crash và ANR** (2.4.0, v72) — gom stack, mở frame trong dự án, gửi cho agent (đã che bí mật) · `apps/web/src/lib/runCrash.ts`
-- **Kiểm phát hành** (v75) — đọc tĩnh: versionCode / versionName so với bản đã đánh dấu phát hành, release minify / shrink / debuggable / signing, targetSdk so mức Play (`PLAY_TARGET_SDK`), manifest (cleartext, debuggable, exported, quyền nhạy cảm), ID test AdMob, UMP / acknowledge / Firebase; kiểm chứng chỉ APK / AAB bằng apksigner / keytool, nhớ SHA-256 theo app; mở đúng dòng, Điền vào agent · `apps/desktop/src/releaseCheck/`, `apps/web/src/components/workspace/ReleaseCheckDialog.vue`
-- **Chọn JDK / Flutter SDK theo dự án** — `apps/desktop/src/run/android/jdkPick.ts`
-- **Tự biên dịch layout khi cần** — `apps/desktop/src/run/sessions.ts`
-
-## Công cụ tiện ích
-
-- **HTTP client cho file .http / .rest** (2026-10-29) — gửi request, huỷ, xác nhận host · `apps/web/src/components/workspace/HttpPanel.vue`
-- **Kiểm tra .env** (2026-10-29) — so khoá, che / hiện giá trị · `apps/web/src/components/workspace/EnvCheckDialog.vue`
-- **Quét khoá i18n còn thiếu** (2026-10-29) — Android strings, ARB, JSON · `apps/web/src/components/workspace/I18nScanDialog.vue`
-- **Bảng chuỗi đa ngữ** (v74) — key × ngôn ngữ cho strings.xml / ARB / JSON, ô thiếu, placeholder lệch, sửa ô ghi file sau khi xem diff (file không chắc chắn → chỉ đọc), Điền vào agent các key thiếu · `apps/web/src/components/workspace/StringsDialog.vue`, `apps/web/src/lib/strings/`
-- **Kiểm bản mới của thư viện** (v74) — libs.versions.toml, build.gradle(.kts), pubspec.yaml, package.json: đang dùng · mới nhất ổn định · patch / minor / major, link changelog, cache 1 giờ, không sửa file, Điền vào agent · `apps/desktop/src/libs/checker.ts`, `apps/web/src/components/workspace/LibUpdatesDialog.vue`
-- **Lỗ hổng thư viện (OSV)** (v75) — nút Bảo mật trong Kiểm bản mới: hỏi osv.dev (chỉ tên + version) khi bấm, cột số lỗ hổng · mức cao nhất · bản đã vá, danh sách advisory mở osv.dev, lọc chỉ lib có lỗ hổng, prompt nâng cấp đưa lib lỗ hổng lên đầu, cache chung 1 giờ · `apps/desktop/src/libs/osv.ts`, `LibChecker.vulns`
-- **Công cụ dev (Ctrl+K)** — giải mã JWT, v.v., không kiểm chữ ký · `apps/web/src/components/DevToolsDialog.vue`
-
-- **Dữ liệu agent** (v76 R7) — Cài đặt › Dữ liệu agent: đo `~/.claude` / `~/.codex` theo nhóm (dọn được / lịch sử / cài đặt / đã cài / không rõ), dọn cache cũ, gỡ ảnh khỏi transcript cũ (có backup), chuyển sang ổ khác bằng junction + hoàn tác / xoá bản gốc · `apps/desktop/src/agentData/service.ts`, `apps/web/src/components/AgentDataSettings.vue`
-- **Dọn đồ build của project** (v77 R8) — node_modules / build / .gradle / dist / target… của project đã biết, chỉ thư mục git ignore, đo khi bấm, confirm native, chặn khi project đang chạy · `apps/web/src/components/BuildCleanDialog.vue`, `apps/desktop/src/buildClean/`
-- **Cảnh báo ổ sắp đầy** (v77 R9) — badge + popover trên thanh trên, toast `disk` / điện thoại khi < 2 GB, ngưỡng ở Cài đặt › Thông báo · `apps/web/src/components/DiskBadge.vue`, `apps/desktop/src/disk/watch.ts`
-
-## Codex CLI
-
-- **Theo dõi lượt chạy Codex** (v16) — hiện dưới agent Claude đã gọi nó · `apps/collector/src/codex/monitor.ts`
-- **Liên kết Codex với Claude** — `apps/collector/src/codex/link.ts`
-- **Hạn mức Codex** — hiện trong popover trạng thái header (PlanLimits) · `apps/collector/src/codex/monitor.ts`
-
-## Desktop shell (tray, deep link, MCP orrery)
-
-- **Tray và đóng về tray** — thoát chỉ qua tray, có xác nhận khi còn pane chạy · `apps/desktop/src/main.ts`
-- **Header nằm trên thanh tiêu đề cửa sổ** (2.3.0) — `apps/desktop/src/main.ts` (`titleBarOverlay`)
-- **Deep link `agent-monitor://`** — mở session, focus, snooze; `open` không hỏi, giới hạn 10 lượt / phút · `apps/desktop/src/openLink.ts`
-- **MCP server `orrery`** (v49) — tool `open_session`, token theo pane · `apps/desktop/src/pty/mcp.ts`
-- **Khởi động cùng Windows** (login item) — `ccm:login-item` · `apps/desktop/src/main.ts`
-- **Giữ máy thức khi agent chạy** (v76) — chặn ngủ (không chặn tắt màn hình) khi có session / subagent / job nền đang chạy + 2 phút; Tắt / Khi agent chạy / Chỉ khi cắm sạc; huy hiệu cốc cà phê ở header · `apps/desktop/src/power/awake.ts`, `apps/web/src/components/KeepAwakeBadge.vue`
-- **Popover trạng thái trên header** (v79) — hạn mức, giữ máy thức, ổ đĩa, tài nguyên, collector gom một nút · `apps/web/src/components/HeaderStatusPopover.vue`
-- **Status line bridge** — cài script, sao lưu `settings.json` trước khi ghi · `apps/desktop/src/statusline.ts`
-- **Chép / lưu log chẩn đoán** — gom log đã che bí mật · `apps/desktop/src/main.ts` (`logReport`)
-- **Nhật ký đã che bí mật** — một bộ luật chung `maskSecrets` / `createLogMasker` · `packages/shared/src/secretMask.ts`
-- **Lưu giao diện desktop** (nền, look, zoom) — `apps/desktop/src/appearance.ts`
-- **Thiết lập menu macOS, Dock** — `apps/desktop/src/mac.ts`
-- **Màn hình khởi động và giới thiệu** — `apps/desktop/src/pages.ts`
-- **Cập nhật trong app** (v74, 2.5.0) — báo bản mới từ GitHub Releases, bấm mới tải, kiểm SHA-256, cài NSIS / portable / macOS rồi mở lại; Cài đặt › Cập nhật, chip ở header · `apps/desktop/src/update/manager.ts`, `apps/web/src/components/UpdateDialog.vue`
-
-## Cài đặt, giao diện & hướng dẫn
-
-- **Chủ đề màu** (v25) — Apple (mặc định), Xcode, GitHub, Solarized, Monokai, Dracula, Material, One Dark, JetBrains Islands · `apps/web/src/lib/themes.ts`
-- **Font giao diện và font code** (v27) — font đi kèm sẵn, không tải từ mạng · `apps/web/src/components/ui/FontPicker.vue`
-- **Phóng to / thu nhỏ bằng Ctrl+cuộn** (v27) — `apps/web/src/composables/useWheelZoom.ts`
-- **Hướng dẫn làm quen (tour)** (v25) — `apps/web/src/components/OnboardingTour.vue`
-- **Mẹo (tips)** (v25) — `apps/web/src/stores/tips.ts`
-- **Thiết lập nhanh lần đầu** (v27) — `apps/web/src/components/QuickSetup.vue`
-- **"Có gì mới" dialog** (v71, 2.4.0) — mở lại trong Cài đặt và Ctrl+K · `apps/web/src/components/WhatsNewDialog.vue`
-- **Bảng phím tắt (?)** (v1.2.0) — `apps/web/src/components/ShortcutsDialog.vue`
-- **Chuyển tới dự án (Ctrl+Alt+P / ⌃⌥P)** (v78) — tìm mờ mọi project đang mở / đã đóng / yêu thích, dùng gần nhất trước · `apps/web/src/components/workspace/ProjectSwitcher.vue`
-- **Bảng lệnh Ctrl+K** — tìm session, lệnh, công cụ · `apps/web/src/components/CommandPalette.vue`
-- **Ngôn ngữ giao diện en / vi** — `apps/web/src/i18n/en.ts`, `apps/web/src/i18n/vi.ts`
-- **Chế độ sáng / tối** — nhớ lựa chọn, tuỳ chọn trong Cài đặt · `apps/web/src/stores/settings.ts`
-- **Bộ nút điều khiển chung** (ToggleSwitch, SegmentedControl, ContextMenu) — `apps/web/src/components/ui/SegmentedControl.vue`
-- **Chuyển động có thể tắt** (reduced motion) — `apps/web/src/lib/motion.ts`
-- **Cửa sổ Cài đặt** (v79) — sidebar 9 trang + ô tìm, bảng chọn sự kiện báo bằng cảnh báo hệ thống / thông báo, Ctrl+, · `apps/web/src/components/SettingsMenu.vue`, `apps/web/src/components/settings/index.ts`
-- **Sao lưu / chuyển cấu hình** (v74) — xuất một file JSON (ccm.* localStorage + file cấu hình trong data dir, không token), nhập có xem trước theo mục, cờ đường dẫn không có, tự sao lưu trước khi cài update (giữ 3) · `apps/desktop/src/backup/service.ts`, `apps/web/src/components/BackupSettings.vue`
-
-## v80 (2026-11-03)
-
-- **Công cụ MCP cho agent** — notify_owner (Inbox + toast / điện thoại), open_in_workspace, who_is_editing, run_app / run_status / run_log, device_screenshot, preview_layout, list_servers, free_port (confirm native); mọi tool: token theo pane, kiểm path / tham số, rate limit, không gửi prompt · `apps/desktop/src/pty/mcpTools/`, `apps/desktop/src/mcpDesk.ts`, docs §11w
-- **Hàng đợi review trong Changes** — nhóm "Chưa xem", nhớ file đã xem theo repo · `apps/web/src/lib/reviewQueue.ts`, `ChangesPane.vue`
-- **Tiếp tục session từ History** — nút Tiếp tục dùng `SessionRecord.sessionId` · `apps/web/src/components/history/HistoryView.vue`
-- **Run tự reload khi agent xong** (mặc định tắt) + nhớ thiết bị theo dự án, nối lại Wi-Fi · `apps/web/src/lib/runAutoReload.ts`, `stores/run.ts`
-- **Dự báo hạn mức** — "hết lúc…" trong popover, chấm trên nút, cảnh báo khi mở agent · `apps/web/src/lib/headerStatus.ts` `limitRisk`
-- **Ctrl+K gộp** session / dự án / file / cài đặt, tiền tố > @ # : · `apps/web/src/lib/paletteSearch.ts`, `CommandPalette.vue`; timeline tool trong panel sub-agent · `lib/agentTools.ts`
-- **Chồng toast chung** (tối đa 3, dừng khi rê chuột, Esc) · `apps/web/src/stores/toasts.ts`, `components/ToastHost.vue`
-- **Dialog ít dùng tải ngầm** · `apps/web/src/lib/lazyOverlay.ts`; đo bundle / khởi động · `scripts/measure.mjs`
-
-## v97 (2026-11-12)
-
-- **Orrery Remote (điện thoại điều khiển Workspace)** — Settings → Điều khiển từ xa (bật, QR ghép 2 phút LAN + relay, thu hồi, giữ máy thức, log lệnh), chip điện thoại trên pane; gateway LAN port 4320 + relay Cloudflare, Noise đầu-cuối; app Flutter Android (terminal, pane, Explorer, file, Changes, Git Log, Run, Monitor dạng list); nút "Mở trên điện thoại" trong tin Telegram / ntfy. Chưa có: push APNs / FCM, build iOS · `apps/shell/src/remote/`, `apps/core/crates/core-remote-proto`, `apps/relay`, `apps/mobile`, `apps/web/src/components/settings/SettingsRemote.vue`, docs §11as, `docs/orrery-remote.md`
-
-- v109 footer CPU / RAM máy (kiểu C wireframe `.planning/wireframes/v109-footer-sys.html`): `apps/web/src/features/footerSys/` (`format.ts` ngưỡng 85 / tooltip / đổi >= 1%, `store.ts` Pinia `sysStats` poll 3s chỉ khi visible, `FooterSysChip.vue` đặt trong `NextQuotaBar.vue` và `WorkspaceFooter.vue`, click mở `resources.show()`). Settings → Appearance switch `ccm.footerSys` (`settings.footerSys`, mặc định bật). E2E `apps/desktop/e2e/v109-footer-sys.cjs` (classic + next).
-
-## notify (v109 F2: A2 gộp thông báo + A3 badge taskbar / Dock)
-- `apps/web/src/features/notify/`: `grouping.ts` (`joinGroup` cửa sổ `GROUP_WINDOW_MS` 8s, `groupCounts` / `groupLead` / `groupNames` / `groupTag`), `badge.ts` (`needIds` / `badgeCount` = nhóm Inbox menu + permission + question, `hasFresh`, `shouldFlash`), `useTaskbarBadge.ts` (watch `inbox.items`, gọi `desktop.taskbarBadge(count, flash)`, bỏ nháy khi focus / quiet hours / switch tắt, lần đầu sau `hasData` chỉ đặt số), `i18n.ts` (`notifyGroup`, `taskbarBadge`), test `notify.test.ts`. Gắn ở `App.vue`; `useNotifications.ts` `notify()` gộp `done` / `waiting` (không gộp terminal đang có menu trong `menuQueue`): thông báo đầu ra ngay, sau đó cùng `tag` `ccm-group|<mốc đầu>` thay nội dung, bấm mở session đang chờ đầu tiên. Settings → Notifications switch `settings.taskbarBadge` (`ccm.taskbarBadge`, mặc định bật, chỉ hiện khi bridge có `taskbarBadge`).
-- Đường toast OS của Tauri nằm ở core: `core-toast/src/toaster/group.rs` (`Group`, `Toaster::show_grouped`, key `group:all`): `show_done` / `show_waiting` gộp trong 8s thành 1 toast `Text::group_title` / `group_more`, hide các toast riêng, url mở session chờ trước; waiting có `ask` (menu v100) luôn riêng; reminder không gộp; `set_presence(attentive)` xoá nhóm. Test `tests/toast.rs` (3 test gộp).
-- Shell: `apps/shell/src/badge.rs` (`label` 1-9 / `9+`, `icon_rgba` 32x32 đĩa đỏ + font 3x5, `apply`: Windows `set_overlay_icon`, macOS `set_badge_label`, khác `set_badge_count`; `request_user_attention(Informational)` khi `should_flash` và cửa sổ main không focus), kênh `ccm:badge` (`ccm.rs`, chỉ webview main), preload `taskbarBadge`, `lib/desktop.ts`. E2E `apps/shell/e2e/v109-notify.cjs` (bắt fetch `ccm:badge`, stub `Notification`) trong `E2E_MAP`.
-- v109 B1 quota dự báo giờ hết: `apps/web/src/features/quota/` (`forecast.ts` pushSample 1 mẫu / phút giữ 2 giờ, reset thì xoá mẫu; `forecastFullAt` cần >= 15 phút trong 30 phút gần nhất, tốc độ >= 0.5 %/giờ, hết trước giờ reset; `quotaForecast.ts` Pinia theo dõi `extras.limits` / `codexLimits`), `lib/next/quotaBar.ts` `QuotaWindowView.fullAt` (tone ok thành warn sớm), `NextQuotaBar.vue` icon TrendingUp + dòng "Hết khoảng" ở popover + tooltip, strings `v105.quota.forecast*`. Classic `PlanLimits.vue` đã có dự báo từ collector (`LimitWindow.forecast`), giữ nguyên.
-- v109 C3 chế độ chia sẻ màn hình: `apps/web/src/features/shareMode/` (`mask.ts` `maskUserPath` / `maskEmail` / `maskToken` / `maskText` che `C:\Users\<user>`, `/Users/`, `/home/`, `/mnt/c/Users/`, email (giữ `git@`), token GitHub; `store.ts` `shareOn` ref lưu `ccm.shareMode`, gắn `data-share="on"` lên `<html>`, `shown(text)` / `shownName(text)` dùng ở điểm render; `ShareModeChip.vue` nút ở footer classic `WorkspaceFooter` + next `NextQuotaBar`; `ShareBar.vue` thanh nổi "Đang chia sẻ màn hình" + nút Tắt, gắn ở `App.vue`; `useShareModeKey.ts` phím `wsShareMode` Ctrl+Alt+H, đăng ký ở `shortcuts/defaults.ts` + `bindings.ts COMMANDS` + `lib/workspaceKeys.ts`). Điểm đã áp `shown`: `lib/format.ts shortPath`, `usePaneInfo` (`labelOf` / `titleOf` / `viewDetail`), `TermPane.vue` tooltip cwd / project, `WorkspaceView.vue tabTip`, `RailClusterView` / `RailColumn` / `LiveRail headTip`, `ExplorerTree` / `ExplorerChanges` tooltip root. Che bằng CSS `[data-share-hide]` (`style.css`, chữ trong suốt + nền fill, con `visibility:hidden`) cho: login / tên GitHub (`GitHubAccountsSettings.vue`), QR + host điện thoại (`PhoneSettings.vue`, `RemotePairPanel.vue`), tên máy (`RemoteDeviceRow.vue`), số / tên Telegram (`TelegramAccountScan.vue`). Palette `c:shareMode`. Toast OS: web gửi `client.presence { share }` (`stores/connection.ts`, `packages/shared types.ts`) -> `core-http client/mod.rs ClientPresence.share` -> `core-serve dispatch.rs` -> `Toaster::set_share` / `sharing()`, `show()` đổi title thành `TextPack::shared_title` và xoá body; Notification fallback ở `useNotifications.ts`. Test: `shareMode/mask.test.ts`, `store.test.ts`, `core-toast/tests/toast.rs share_mode_*`, E2E `v109-share-mode` (`E2E_MAP` `scripts/qa-fast.mjs`).
+## Hệ thống
+- Disk: scan / MFT, treemap, Clean up, dupes, Organize Downloads, Apps, RAM, Move, snapshots, MCP `disk_*` (v101) -> `web-disk.md`, `core-disk.md`
+- Settings, Backup, GitHub accounts, Capture, bug report, tour, What's new, update -> `web-settings.md`
+- Telegram bot nhận lệnh + nút trả lời (v82) -> `web-remote.md`, `core-desk-telegram.md`
+- Orrery Remote: app Flutter + PWA, Noise, relay Cloudflare, push FCM / Web Push, chat, chạy lệnh từ xa (v97, v98, v107) -> `web-remote.md`, `shell-remote.md`, `pwa.md`, `relay.md`
+- Theme (Orrery, Ngân hà, Orrery dark, legacy sau "View all"), font tuỳ chọn, sao nền (v91-v96, v109) -> `web-core.md`, `docs/visual-style.md`

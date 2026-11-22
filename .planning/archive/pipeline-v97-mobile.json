@@ -1,0 +1,44 @@
+{
+  "kind": "v97-mobile",
+  "args": "Orrery Remote v97: làm theo .planning/PLAN-v97-mobile.md + PROGRESS-2026-11-12-v97.md, brief .planning/wp/v97/; chạy liên tục, commit từng gói ĐẠT, push feat/v97-mobile cuối mỗi lượt",
+  "dir": "D:\\work\\web\\claude-code-monitor",
+  "status": "running",
+  "startedAt": "2026-11-11T18:32:55.008Z",
+  "phases": [
+    {
+      "id": "wave1",
+      "status": "done",
+      "at": "2026-11-11T19:03:58.326Z",
+      "note": "WP-0/2/3/9 ĐẠT, WP-1 chờ đo trên máy"
+    },
+    {
+      "id": "wave2",
+      "status": "done",
+      "at": "2026-11-11T19:56:01.286Z",
+      "note": "WP-4/9/10 ĐẠT"
+    },
+    {
+      "id": "wave3",
+      "status": "done",
+      "at": "2026-11-11T21:12:22.768Z",
+      "note": "WP-5/6/7/8/11/11b/13 ĐẠT"
+    },
+    {
+      "id": "wave4",
+      "status": "done",
+      "at": "2026-11-12T01:10:16.163Z",
+      "note": "viewer + QA + docs"
+    },
+    {
+      "id": "wave5",
+      "status": "done",
+      "at": "2026-11-12T03:33:34.319Z"
+    }
+  ],
+  "updatedAt": "2026-11-12T03:33:34.320Z",
+  "answer": {
+    "gate": "firebase",
+    "text": "A21 rảnh; cho tự deploy relay; đã tạo Firebase orrery-remote",
+    "at": "2026-11-12T01:18:23.686Z"
+  }
+}

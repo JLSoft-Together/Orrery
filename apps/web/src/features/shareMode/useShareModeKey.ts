@@ -1,8 +1,8 @@
 import { onScopeDispose } from 'vue'
-import { editorKeepsKey, inEditor } from '../../lib/fileEditor'
-import { isMac } from '../../lib/platform'
-import { workspaceAction } from '../../lib/workspaceKeys'
-import { toggleShareMode } from './store'
+import { editorKeepsKey, inEditor } from '../files/lib/fileEditor'
+import { isMac } from '../../core/lib/platform'
+import { workspaceAction } from '../workspace/lib/workspaceKeys'
+import { toggleShareMode } from '../../core/lib/shareMode'
 
 export function useShareModeKey(): void {
   function onKey(e: KeyboardEvent): void {

@@ -197,7 +197,7 @@ impl LineSplitter {
 mod tests {
     use super::*;
 
-    const FIXTURE: &str = include_str!("../../../../desktop/test/fixtures/pty-control.json");
+    const FIXTURE: &str = include_str!("../tests/fixtures/pty-control.json");
 
     #[test]
     fn parses_init() {

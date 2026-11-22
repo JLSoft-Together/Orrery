@@ -1,0 +1,37 @@
+# core-desk-preview: files, Git, search, gate
+
+Đường vào: `apps/core/crates/core-desk/src/preview/mod.rs` (`register`). Ba nhóm kênh: Git (`ipc_git.rs`, `ipc_wt.rs`), file (`ipc_files.rs`), công cụ (`ipc_tools.rs`).
+
+## File chính
+
+| File | Vai trò |
+|---|---|
+| `apps/core/crates/core-desk/src/preview/gate.rs` | quyền đường dẫn: root đã grant, realpath, chặn `..` / symlink ra ngoài |
+| `apps/core/crates/core-desk/src/preview/changes.rs` | trạng thái Changes (stage / discard) |
+| `apps/core/crates/core-desk/src/preview/commit.rs` | commit, amend, hook |
+| `apps/core/crates/core-desk/src/preview/log.rs` | Git Log (đồ thị, refs, filter) |
+| `apps/core/crates/core-desk/src/preview/branches.rs` | tạo / fast-forward / fetch / xoá nhánh, push range |
+| `apps/core/crates/core-desk/src/preview/worktrees.rs` | worktree |
+| `apps/core/crates/core-desk/src/preview/checkpoints.rs` | checkpoint theo turn |
+| `apps/core/crates/core-desk/src/preview/history.rs` | Local History |
+| `apps/core/crates/core-desk/src/preview/explorer.rs` | cây Explorer, list-dir |
+| `apps/core/crates/core-desk/src/preview/search.rs` | tìm trong file, tìm session |
+| `apps/core/crates/core-desk/src/preview/secrets.rs` | `scan_staged`, `scan_push` (chặn lộ token khi commit / push) |
+| `apps/core/crates/core-desk/src/preview/deny.rs`, `perm.rs` | quyền deny / permission advisor |
+| `apps/core/crates/core-desk/src/preview/i18n.rs` | quét chuỗi i18n dự án |
+| `apps/core/crates/core-desk/src/preview/envcheck.rs`, `scripts.rs`, `checks.rs` | .env, Scripts, kiểm dự án |
+| `apps/core/crates/core-desk/src/preview/memdoctor.rs`, `memlint.rs` | kiểm file memory / CLAUDE.md |
+| `apps/core/crates/core-desk/src/preview/exec.rs`, `spawn.rs` | chạy git / lệnh ngoài có timeout |
+
+Phía vỏ: `apps/shell/src/preview_host.rs` (callback `preview.*`), `preview_grants.rs` (`GrantStore`), `preview_serve.rs` (server file ảnh `http://127.0.0.1:<port>/<token>/<rel>`), `files_ipc.rs` (`ccm:preview-url`, `ccm:open-path`, `ccm:reveal`), `preview_watch.rs`.
+
+## Bất biến
+
+- Thiếu arm `preview.*` ở `apps/shell/src/hosts.rs` thì list-dir / Git / search trả null hoặc `denied` (lỗi Explorer rỗng 4.0.x).
+- Xoá nhánh, push, ghi file ngoài root đều cần xác nhận / grant; push dùng tài khoản GitHub của repo, token không về trang.
+- File thực thi bị chặn mở (`EXECUTABLE_EXT` trong `files_ipc.rs`).
+- Watcher bỏ `node_modules`, `.git`, `build`, `.gradle`, `.dart_tool`, `dist`; debounce 150 ms.
+
+## Liên kết
+
+- Web: `web-git.md`, `web-files.md`. Plan: `.planning/PLAN-v30-git-log.md`, `PLAN-v109-*.md` (secret guard). E2E: `log`, `split-diff`, `explorer`, `v109-secret-guard`.

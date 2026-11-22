@@ -1,10 +1,9 @@
-process.env.CCM_E2E_SHELL = 'tauri'
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const http = require('node:http')
 const REPO = path.resolve(__dirname, '../../..')
-const { launch, OUT } = require(path.join(REPO, 'apps/desktop/e2e/cdp.cjs'))
+const { launch, OUT } = require('./cdp.cjs')
 const WS = require(path.join(REPO, 'node_modules/ws'))
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -81,7 +80,7 @@ async function guestEval(prefix, expr) {
   }
   try {
     await waitFor(`!!window.ccmDesktop && !!${S}.get('ui')`, 30000, 'app ready')
-    await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','en'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.workspace.explorerOpen','0'); localStorage.setItem('ccm.whatsNew.seen','${require(path.join(REPO, 'apps/desktop/package.json')).version}')`)
+    await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','en'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.setItem('ccm.workspace.preset','shell'); localStorage.setItem('ccm.workspace.explorerOpen','0'); localStorage.setItem('ccm.whatsNew.seen','${require('../package.json').version}')`)
     await cmd('Page.reload')
     await waitFor(`!!${S}.get('ui')`, 30000, 'reloaded')
     await evaluate(`${S}.get('ui').view = 'workspace'`)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseUnifiedDiff } from '../../lib/diff'
+import { parseUnifiedDiff } from '../git/lib/diff'
 import { addComment, buildPrompt, COMMENTS_MAX, normRange, parseComments, PROMPT_MAX, rangeLabel, reconcile, snippetOf, type DiffComment } from './diffComments'
 
 const PATCH = (body: string) => `diff --git a/src/api.ts b/src/api.ts

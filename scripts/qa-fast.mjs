@@ -11,11 +11,10 @@ const opt = (name) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.l
 
 const HELP = `node scripts/qa-fast.mjs [options]
   --base=<ref>      so sánh với ref này (mặc định: thay đổi chưa commit + file mới)
-  --e2e=a,b         chạy thêm các E2E này (tên file trong apps/desktop/e2e, bỏ .cjs)
+  --e2e=a,b         chạy thêm các E2E này (tên file trong apps/shell/e2e, bỏ .cjs)
   --no-e2e          bỏ E2E
   --no-cargo        bỏ cargo test
   --all-e2e-map     in bảng map file → E2E rồi thoát
-  --electron        E2E chạy Electron (mặc định Tauri)
   --jobs=<n>        số E2E chạy song song (mặc định 3)
   --dry             chỉ in kế hoạch`
 if (flag('help') || flag('h')) {
@@ -25,7 +24,7 @@ if (flag('help') || flag('h')) {
 
 const E2E_MAP = [
   [/bugReport|bug_report|errorLog|SettingsAbout|DiagnosticsDialog/, ['v90-bug-report']],
-  [/extensions[\\/]|SessionToolsSheet|sessionTools|useSessionTools/, ['v89-session-tools', 'v89-pane']],
+  [/features[\\/]extensions[\\/]components[\\/]|SessionToolsSheet|sessionTools|useSessionTools/, ['v89-session-tools', 'v89-pane']],
   [/contextWarn|ContextTokens|useNotifications|BoardCard/, ['v89-pane']],
   [/stores[\\/]toasts|ToastHost/, ['v80-toasts']],
   [/[\\/]explorer[\\/]|Explorer/, ['explorer']],
@@ -38,7 +37,7 @@ const E2E_MAP = [
   [/termIme|TermPane\.vue|DropTerminal\.vue/, ['term-ime']],
   [/features[\\/]deepseek[\\/]|deepseek|DeepSeek/, ['v104-deepseek-lazy']],
   [/clash|Clash|agentTouches|RailRowItem|railLive/, ['v104-clash']],
-  [/lib[\/]rail[\/]railMenu|LiveRail|WorkspaceSidebar|ProjectMenu/, ['v109-project-menu']],
+  [/features[\\/]rail[\\/]lib[\\/]railMenu|LiveRail|WorkspaceSidebar|ProjectMenu/, ['v109-project-menu']],
   [/useClusterDrag|clusterReorder|railOrder|railView|WorkspaceSidebar|RailClusterView|LiveRail|railLive|usePaneDrag|useRail\.ts/, ['rail-reorder']],
   [/inbox|Inbox|menuQueue|MenuToast|useInboxGlobal|remoteSummary/, ['v104-inbox', 'v100-menu-queue']],
   [/turnEdits|turnEdges|TurnChanges|SessionFilterBar|ChangesPane|reviewQueue/, ['v104-turn-changes']],
@@ -52,7 +51,13 @@ const E2E_MAP = [
   [/features[\\/]termSearch[\\/]|TermFind\.vue|TermPane\.vue|workspaceKeys/, ['v109-term-search']],
   [/features[\\/]secretGuard[\\/]|CommitBox|PushDialog|preview[\\/](secrets|ipc_git)|core-transcript[\\/]src[\\/]mask\.rs/, ['v109-secret-guard']],
   [/core-monitor[\\/]src[\\/]native[\\/]|apps[\\/]shell[\\/]src[\\/]folder_pick\.rs|core-serve[\\/]src[\\/](lib|host_ops)\.rs/, ['v110-external-open']],
-  [/features[\\/]shareMode[\\/]|ShareBar|ShareModeChip|GitHubAccountsSettings|core-toast[\\/]src[\\/]toaster[\\/]mod/, ['v109-share-mode']],
+  [/features[\\/]devices[\\/]/, ['devices', 'v97-device', 'v25']],
+  [/features[\\/]disk[\\/]/, ['v101-diskmap-ui', 'v101-diskclean', 'v101-dupes', 'v101-organize']],
+  [/features[\\/]remote[\\/]/, ['v97-remote', 'v98-remote-next']],
+  [/features[\\/]files[\\/]/, ['explorer', 'file-editor']],
+  [/features[\\/]git[\\/]/, ['log', 'diff']],
+  [/features[\\/]agent-tools[\\/]/, ['v104-clash', 'v104-turn-changes', 'v89-pane']],
+  [/features[\\/]shareMode[\\/]|core[\\/]lib[\\/](shareMode|mask)\.ts|ShareBar|ShareModeChip|GitHubAccountsSettings|core-toast[\\/]src[\\/]toaster[\\/]mod/, ['v109-share-mode']],
 ]
 if (flag('all-e2e-map')) {
   for (const [re, list] of E2E_MAP) console.log(`${re.source}  →  ${list.join(', ')}`)
@@ -66,8 +71,6 @@ const changed = [...new Set([...(base ? git('diff', '--name-only', `${base}...HE
 
 const WS = {
   'apps/web': '@ccm/web',
-  'apps/desktop': '@ccm/desktop',
-  'apps/collector': '@ccm/collector',
   'packages/shared': '@ccm/shared',
 }
 const SRC = /\.(ts|tsx|vue|mts|cts|js|mjs)$/
@@ -90,14 +93,13 @@ for (const f of changed) {
 const e2e = new Set(opt('e2e')?.split(',').map((s) => s.trim()).filter(Boolean) ?? [])
 if (!flag('no-e2e')) for (const f of changed) for (const [re, list] of E2E_MAP) if (re.test(f)) list.forEach((x) => e2e.add(x))
 for (const f of changed) {
-  const m = f.match(/^apps\/desktop\/e2e\/([^/]+)\.cjs$/)
+  const m = f.match(/^apps\/shell\/e2e\/([^/]+)\.cjs$/)
   if (m && m[1] !== 'cdp' && !flag('no-e2e')) e2e.add(m[1])
 }
-const e2eFile = (x) => ['apps/desktop/e2e', 'apps/shell/e2e'].map((d) => path.join(d, x + '.cjs')).find((p) => existsSync(path.join(REPO, p)))
+const e2eFile = (x) => [path.join('apps/shell/e2e', x + '.cjs')].find((p) => existsSync(path.join(REPO, p)))
 for (const x of [...e2e]) if (!e2eFile(x)) e2e.delete(x)
-const tauri = !flag('electron')
 const webChanged = touchedWs.has('apps/web') || touchedWs.has('packages/shared')
-const needShellBuild = tauri && e2e.size > 0 && (shell || crates.size > 0 || changed.includes('apps/shell/src/shim.js'))
+const needShellBuild = e2e.size > 0 && (shell || crates.size > 0 || changed.includes('apps/shell/src/shim.js'))
 const threads = Number(process.env.JIN_MAX_THREADS) || Math.max(2, Math.floor(os.cpus().length * 0.6))
 const jobs = Math.max(1, Number(opt('jobs')) || 3)
 
@@ -106,7 +108,7 @@ const plan = [
   `typecheck: ${typecheckWs.map((w) => WS[w]).join(', ') || '-'}`,
   `vitest related: ${Object.entries(relatedBy).map(([w, l]) => `${WS[w]} (${l.length})`).join(', ') || '-'}`,
   `cargo test: ${flag('no-cargo') ? 'bỏ' : [...[...crates].map((c) => `-p ${c}`), shell ? 'apps/shell' : ''].filter(Boolean).join(', ') || '-'}`,
-  `E2E (${tauri ? 'tauri' : 'electron'}, ${jobs} song song): ${[...e2e].join(', ') || '-'}${e2e.size && webChanged ? ' · vite build' : ''}${needShellBuild ? ' · cargo build shell' : ''}`,
+  `E2E (tauri, ${jobs} song song): ${[...e2e].join(', ') || '-'}${e2e.size && webChanged ? ' · vite build' : ''}${needShellBuild ? ' · cargo build shell' : ''}`,
 ]
 console.log(plan.join('\n'))
 if (flag('dry') || !changed.length && !e2e.size) process.exit(0)
@@ -151,7 +153,7 @@ if (e2e.size && !buildFailed) {
   const outRoot = path.join(os.tmpdir(), 'ccm-qa-fast')
   mkdirSync(outRoot, { recursive: true })
   const tasks = [...e2e].map((name) => (i) => {
-    return run(`e2e ${name}`, process.execPath, [e2eFile(name), ...(tauri ? ['--shell=tauri'] : [])], {
+    return run(`e2e ${name}`, process.execPath, [e2eFile(name)], {
       env: { CCM_E2E_PORT: String(4399 + i * 10), CCM_E2E_DBG: String(9333 + i * 10), CCM_E2E_OUT: path.join(outRoot, name) },
     })
   })

@@ -1,0 +1,180 @@
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { LayoutDashboard, X } from 'lucide-vue-next'
+import { duration, now } from '../../../core/lib/format'
+import { badgeOf } from '../../../core/lib/provider'
+import { statusMeta } from '../../../core/lib/status'
+import { displayTitle } from '../../../core/lib/title'
+import { useConnectionStore } from '../../../app/stores/connection'
+import { useSnoozeStore } from '../stores/snooze'
+import { useTerminalsStore } from '../../../core/stores/terminals'
+import { useUiStore } from '../../../core/stores/ui'
+import KeyHint from '../../../core/components/KeyHint.vue'
+import ProviderBadge from './ProviderBadge.vue'
+import StatusIcon from '../../../core/components/StatusIcon.vue'
+
+const { t } = useI18n()
+const terminals = useTerminalsStore()
+const ui = useUiStore()
+const snooze = useSnoozeStore()
+const connection = useConnectionStore()
+const strip = ref<HTMLElement | null>(null)
+
+const tabs = computed(() =>
+  terminals.list.map((x) => {
+    const waiting = x.status === 'waiting' && !snooze.isSnoozed(x, now.value)
+    return {
+      id: x.id,
+      title: displayTitle(x) || x.id,
+      status: x.status,
+      ended: x.status === 'stale',
+      badge: badgeOf(x),
+      mode: x.entrypoint,
+      waiting,
+      waited: waiting ? duration(x.statusSince, now.value) : null,
+      meta: statusMeta(x.status),
+    }
+  }),
+)
+const ids = computed(() => [null, ...tabs.value.map((x) => x.id)])
+const liveCount = computed(() => terminals.live.length)
+const waitingCount = computed(() => tabs.value.filter((x) => x.waiting).length)
+
+watch(
+  () => ui.sessionTab && !terminals.byId[ui.sessionTab],
+  (gone) => {
+    if (gone && connection.hasData) ui.openSessionTab(null)
+  },
+  { immediate: true },
+)
+
+function select(id: string | null): void {
+  ui.openSessionTab(id)
+}
+
+async function reveal(): Promise<void> {
+  await nextTick()
+  strip.value?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+watch(() => ui.sessionTab, reveal)
+
+// One highlight slides between tabs instead of each tab switching its own background.
+const pill = ref<{ x: number; w: number; waiting: boolean } | null>(null)
+const pillReady = ref(false)
+let watched: HTMLElement | null = null
+const sizeObserver = new ResizeObserver(() => measure())
+function measure(): void {
+  const el = strip.value?.querySelector<HTMLElement>('[data-selected]') ?? null
+  if (el !== watched) {
+    if (watched) sizeObserver.unobserve(watched)
+    if (el) sizeObserver.observe(el)
+    watched = el
+  }
+  pill.value = el ? { x: el.offsetLeft, w: el.offsetWidth, waiting: el.dataset.waiting === '1' } : null
+  if (pill.value && !pillReady.value) requestAnimationFrame(() => (pillReady.value = true))
+}
+watch(() => [ui.sessionTab, tabs.value.map((x) => `${x.id}:${x.waiting}`).join()], measure, { flush: 'post' })
+onMounted(measure)
+onBeforeUnmount(() => sizeObserver.disconnect())
+
+function onKey(e: KeyboardEvent): void {
+  const list = ids.value
+  const at = list.indexOf(ui.sessionTab)
+  let next: number | null = null
+  if (e.key === 'ArrowRight') next = (at + 1) % list.length
+  else if (e.key === 'ArrowLeft') next = (at - 1 + list.length) % list.length
+  else if (e.key === 'Home') next = 0
+  else if (e.key === 'End') next = list.length - 1
+  if (next === null) return
+  e.preventDefault()
+  select(list[next] ?? null)
+  void nextTick(() => strip.value?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus())
+}
+
+function close(id: string): void {
+  if (ui.sessionTab === id) select(null)
+  connection.dismissEnded(id)
+}
+</script>
+
+<template>
+  <div
+    ref="strip"
+    role="tablist"
+    :aria-label="t('tabs.label')"
+    class="ccm-scroll relative flex min-w-0 items-center gap-1 overflow-x-auto py-1"
+    @keydown="onKey"
+  >
+    <span
+      v-if="pill"
+      aria-hidden="true"
+      class="pointer-events-none absolute top-1 left-0 h-7 rounded-inner shadow-control"
+      :class="[
+        pill.waiting ? 'bg-st-waiting-soft' : 'bg-control',
+        pillReady ? 'transition-[transform,width,background-color] duration-(--ccm-dur-slow) ease-spring' : '',
+      ]"
+      :style="{ width: `${pill.w}px`, transform: `translateX(${pill.x}px)` }"
+    />
+    <button
+      type="button"
+      role="tab"
+      :aria-selected="ui.sessionTab === null"
+      :tabindex="ui.sessionTab === null ? 0 : -1"
+      aria-keyshortcuts="0"
+      :data-selected="ui.sessionTab === null || undefined"
+      class="ccm-press relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-inner px-2.5 text-xs font-medium transition-colors"
+      :class="ui.sessionTab === null ? 'text-ink' : 'text-ink-muted hover:bg-fill hover:text-ink'"
+      @click="select(null)"
+    >
+      <LayoutDashboard :size="15" aria-hidden="true" />
+      {{ t('tabs.all') }}
+      <span class="rounded-full bg-fill px-1.5 text-2xs text-ink-muted tabular">{{ liveCount }}</span>
+      <span v-if="waitingCount" class="rounded-full bg-st-waiting-soft px-1.5 text-2xs font-semibold text-st-waiting tabular" :title="t('tabs.waiting', { n: waitingCount })">
+        {{ waitingCount }}
+      </span>
+      <KeyHint keys="0" />
+    </button>
+    <div
+      v-for="(tab, i) in tabs"
+      :key="tab.id"
+      :data-selected="ui.sessionTab === tab.id || undefined"
+      :data-waiting="tab.waiting ? '1' : undefined"
+      class="group/tab relative flex h-7 max-w-[220px] min-w-[110px] shrink-0 items-center rounded-inner transition-colors"
+      :class="[
+        ui.sessionTab === tab.id ? '' : 'hover:bg-fill',
+        tab.waiting && ui.sessionTab !== tab.id ? 'bg-st-waiting-soft/60' : '',
+      ]"
+    >
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="ui.sessionTab === tab.id"
+        :tabindex="ui.sessionTab === tab.id ? 0 : -1"
+        :aria-keyshortcuts="i < 9 ? String(i + 1) : undefined"
+        :title="tab.title"
+        class="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 pr-1.5 pl-2.5 text-left text-xs font-medium"
+        :class="ui.sessionTab === tab.id ? 'text-ink' : tab.ended ? 'text-ink-faint hover:text-ink' : 'text-ink-muted hover:text-ink'"
+        @click="select(tab.id)"
+      >
+        <StatusIcon :status="tab.status" :size="14" class="shrink-0" />
+        <ProviderBadge v-if="tab.badge" variant="icon" :mode="tab.mode" :provider="tab.badge" />
+        <span class="min-w-0 flex-1 truncate">{{ tab.title }}</span>
+        <span class="sr-only">{{ t(tab.meta.labelKey) }}</span>
+        <span v-if="tab.waited" class="shrink-0 text-2xs font-semibold text-st-waiting tabular">{{ tab.waited }}</span>
+        <KeyHint v-if="i < 9" :keys="String(i + 1)" />
+      </button>
+      <button
+        v-if="tab.ended"
+        type="button"
+        tabindex="-1"
+        class="mr-0.5 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-faint transition-colors hover:bg-fill hover:text-st-error"
+        :aria-label="t('terminal.dismiss', { title: tab.title })"
+        :title="t('terminal.dismiss', { title: tab.title })"
+        @click="close(tab.id)"
+      >
+        <X :size="13" aria-hidden="true" />
+      </button>
+    </div>
+  </div>
+</template>

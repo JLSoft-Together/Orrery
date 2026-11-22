@@ -4,7 +4,7 @@ project: Orrery
 category: ui
 tags: [ime, telex, xterm, wkwebview, webview2, terminal, vietnamese]
 status: fixed
-files: [apps/web/src/lib/termIme.ts::installReplacementIme, apps/web/src/components/workspace/TermPane.vue::installReplacementIme, apps/web/src/components/workspace/DropTerminal.vue::installReplacementIme]
+files: [apps/web/src/features/workspace/lib/termIme.ts::installReplacementIme, apps/web/src/features/workspace/components/TermPane.vue::installReplacementIme, apps/web/src/features/workspace/components/DropTerminal.vue::installReplacementIme]
 ---
 
 # Gõ tiếng Việt (Telex) trong terminal mất / trùng chữ
@@ -25,7 +25,7 @@ macOS (Tauri WKWebView), bộ gõ Apple Vietnamese Telex: gõ trong Claude pane 
 
 Kiểm tra:
 - Unit test `termIme.test.ts`.
-- E2E `apps/desktop/e2e/term-ime.cjs` trên WebView2: composition kiểu Microsoft Telex, Backspace + ký tự kiểu Unikey, xoá giữa chừng → byte vào PTY đúng từng phím.
+- E2E `apps/shell/e2e/term-ime.cjs` trên WebView2: composition kiểu Microsoft Telex, Backspace + ký tự kiểu Unikey, xoá giữa chừng → byte vào PTY đúng từng phím.
 - Chủ nhân đã gõ tay: macOS Telex và Windows Unikey / EVKey đều OK.
 
 ## Context

@@ -21,7 +21,7 @@ fn tmp(name: &str) -> PathBuf {
 }
 
 fn fake_script() -> String {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../desktop/test/fixtures/fake-layout-daemon.cjs").to_string_lossy().to_string()
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/fake-layout-daemon.cjs").to_string_lossy().to_string()
 }
 
 fn have_node() -> bool {

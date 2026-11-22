@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describeZip, KIT_FILE, kitNames, makeKitPin, packDaemonKit, readKitPin, writeKitPin } from '../apps/desktop/daemon-kit.mjs'
+import { describeZip, KIT_FILE, kitNames, makeKitPin, packDaemonKit, readKitPin, writeKitPin } from './lib/daemon-kit.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DAEMON = path.join(ROOT, 'apps', 'layout-daemon')

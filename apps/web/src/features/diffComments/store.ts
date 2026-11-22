@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { DiffFile } from '../../lib/diff'
-import { dirKey } from '../../stores/favorites'
-import { isTerm, presetOf, type Pane } from '../../stores/workspace'
-import { inRoot } from '../../lib/runUi'
+import type { DiffFile } from '../git/lib/diff'
+import { dirKey } from '../../core/stores/favorites'
+import { isTerm, presetOf, type Pane } from '../workspace/stores/workspace'
+import { inRoot } from '@features/run'
 import { addComment, normRange, parseComments, reconcile, snippetOf, type CommentDraft, type CommentSide, type DiffComment } from './diffComments'
 
 const STORAGE = 'ccm.diffComments.'

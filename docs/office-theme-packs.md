@@ -248,6 +248,6 @@ As built (v62): the loader takes the additive option (`createWorld(…, { assetP
 patch D); `roomTheme` reads `setRoomThemes(rooms)` (patch E, 1–32 rooms, the whole list is rejected if one entry is
 invalid). Fallbacks, all silent except the note in the options popover: an id missing from `index.json` or a malformed
 saved id → classic; a missing / invalid `theme.json` → classic rooms ("not installed" note); a missing or art-less pack
-`manifest.json` → classic wall art. Orrery side: `apps/web/src/office/packs.ts`, `stores/office.ts` (`pack`,
+`manifest.json` → classic wall art. Orrery side: `apps/web/src/features/office/lib/packs.ts`, `stores/office.ts` (`pack`,
 `activePack`, `packMissing`), `OfficeView.vue` `build()`, `OfficeOptions.vue` (pack cards with `preview.png`, seasonal
 theme segmented control).

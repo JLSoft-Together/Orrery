@@ -3,7 +3,7 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSy
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { kitEmbed, readKitPin } from '../apps/desktop/daemon-kit.mjs'
+import { kitEmbed, readKitPin } from './lib/daemon-kit.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SHELL = path.join(ROOT, 'apps', 'shell')
@@ -83,7 +83,7 @@ function main() {
     console.error(`dist-tauri: unsupported platform "${process.platform}" (Windows or macOS only)`)
     process.exit(1)
   }
-  const version = JSON.parse(readFileSync(path.join(ROOT, 'apps', 'desktop', 'package.json'), 'utf8')).version
+  const version = JSON.parse(readFileSync(path.join(ROOT, 'apps', 'shell', 'package.json'), 'utf8')).version
   const j = jobs(process.env, os.cpus().length)
   run('npm', ['run', 'build', '-w', '@ccm/web'], { cwd: ROOT })
   run('node', [path.join(ROOT, 'scripts', 'gen-desk-shim.mjs')])

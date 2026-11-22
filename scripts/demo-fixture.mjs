@@ -230,7 +230,7 @@ if (canMessage) for (let k = 0; k < PEERS; k++) sendPeer(...peerPair())
 
 console.log(`[demo] fixture root ${ROOT}`)
 console.log(`[demo] ${SESSIONS} sessions, ${SUBAGENTS} subagents each, tick ${TICK_MS}ms${canMessage ? `, ${PEERS} peer messages seeded` : ''}`)
-console.log(`[demo] run collector: CLAUDE_CONFIG_DIR=${ROOT} CCM_VERIFY_PROCESSES=0 npm run dev -w @ccm/collector`)
+console.log(`[demo] run core: CLAUDE_CONFIG_DIR=${ROOT} CCM_VERIFY_PROCESSES=0 npm run dev`)
 
 let ticks = 0
 const timer = setInterval(() => {

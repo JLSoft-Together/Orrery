@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { EyeOff } from 'lucide-vue-next'
-import { setShareMode, shareOn } from './store'
+import { setShareMode, shareOn } from '../../core/lib/shareMode'
 
 const { t } = useI18n()
 </script>

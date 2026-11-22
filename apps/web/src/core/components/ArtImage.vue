@@ -1,0 +1,41 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+
+export type ArtName =
+  | 'logo'
+  | 'empty-sessions'
+  | 'empty-favorites'
+  | 'empty-project-search'
+  | 'empty-stats'
+  | 'agent-map-bg'
+  | 'empty-activity'
+  | 'empty-history'
+  | 'all-quiet'
+  | 'break'
+  | 'tour-welcome'
+
+const props = defineProps<{ name: ArtName }>()
+
+const files = import.meta.glob<string>('../../assets/art/*.svg', { query: '?raw', import: 'default', eager: true })
+
+// The art was drawn with fixed warm colours; swap them for theme tokens so it follows the theme + dark mode.
+// The logo keeps its own colours on purpose: it is the fixed brand mark, not themed art.
+const TOKENS: Record<string, string> = {
+  '#8a8880': 'var(--ccm-ink-faint)',
+  '#b4532f': 'var(--ccm-agent-claude)',
+  '#e08a68': 'var(--ccm-agent-claude)',
+  '#121211': 'var(--ccm-surface)',
+  '#e3b552': 'var(--ccm-ink-faint)',
+}
+
+const markup = computed(() => {
+  const entry = Object.entries(files).find(([path]) => path.endsWith(`-${props.name}.svg`))
+  if (!entry) return ''
+  return entry[1].replace(/#[0-9a-f]{6}\b/gi, (hex) => TOKENS[hex.toLowerCase()] ?? hex)
+})
+</script>
+
+<template>
+  <!-- eslint-disable-next-line vue/no-v-html -->
+  <span class="block [&>svg]:block [&>svg]:size-full" aria-hidden="true" v-html="markup" />
+</template>

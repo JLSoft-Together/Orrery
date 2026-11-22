@@ -1,64 +1,62 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppToasts } from './composables/useAppToasts'
-import { useBugReportPrompts } from './composables/useBugReportPrompts'
-import { useBreakReminder } from './composables/useBreakReminder'
-import { useNotifications } from './composables/useNotifications'
-import { startClock } from './lib/format'
-import { useAwayStore } from './stores/away'
-import { useConnectionStore } from './stores/connection'
-import { useSettingsStore } from './stores/settings'
-import { useUiStore } from './stores/ui'
-import { useWorkspaceStore } from './stores/workspace'
+import { useAppToasts } from './app/composables/useAppToasts'
+import { useBugReportPrompts } from './features/agent-tools/composables/useBugReportPrompts'
+import { useBreakReminder } from './core/composables/useBreakReminder'
+import { useNotifications } from './app/composables/useNotifications'
+import { startClock } from './core/lib/format'
+import { HistoryView, useAwayStore } from '@features/history'
+import { useConnectionStore } from './app/stores/connection'
+import { useSettingsStore } from './core/stores/settings'
+import { useUiStore } from './core/stores/ui'
+import { useWorkspaceStore } from './features/workspace/stores/workspace'
 import { useTaskbarBadge } from './features/notify/useTaskbarBadge'
 import { gateDeepSeekAgent, warmDeepSeek } from './features/deepseek'
-import AppHeader from './components/AppHeader.vue'
-import NextShell from './components/next/NextShell.vue'
-import ExplorerDrawer from './components/next/explorer/ExplorerDrawer.vue'
-import { useUiGenStore } from './stores/uiGen'
-import CommandPalette from './components/CommandPalette.vue'
-import OnboardingTour from './components/OnboardingTour.vue'
-import ToastHost from './components/ToastHost.vue'
-import { hasBuildClean } from './lib/buildClean'
-import QuickSetup from './components/QuickSetup.vue'
-import WhatsNewDialog from './components/WhatsNewDialog.vue'
-import NextInvite from './components/next/NextInvite.vue'
-import { lazyOverlay } from './lib/lazyOverlay'
-import { useResourcesStore } from './stores/resources'
-import { useUpdateStore } from './stores/update'
-import ZoomHud from './components/ZoomHud.vue'
-import { useWheelZoom } from './composables/useWheelZoom'
-import WorkspaceFooter from './components/workspace/WorkspaceFooter.vue'
-import CompactView from './components/CompactView.vue'
-import UsageView from './components/usage/UsageView.vue'
-import HistoryView from './components/history/HistoryView.vue'
-import { desktop, hasDeepSeek, hasExtensions, hasTerminals, titleBar } from './lib/desktop'
-import { hasDevices } from './lib/devices'
-import { hasDiskMap } from './lib/diskMap'
-import { hasDiskClean } from './lib/diskClean'
-import { useDiskCleanStore } from './stores/diskClean'
-import { useRevealInWorkspace } from './composables/useRevealInWorkspace'
-import { handleOrrery, installOrreryApi } from './composables/useOrreryApi'
-import { installRemotePhone } from './composables/useRemotePhone'
-import { installRemoteSummary } from './composables/useRemoteSummary'
-import { useInboxGlobal } from './composables/useInboxGlobal'
+import AppHeader from './app/components/AppHeader.vue'
+import NextShell from './features/next/components/NextShell.vue'
+import ExplorerDrawer from './features/next/components/explorer/ExplorerDrawer.vue'
+import { useUiGenStore } from './features/next/stores/uiGen'
+import { CommandPalette } from '@features/palette'
+import OnboardingTour from './features/settings/components/OnboardingTour.vue'
+import ToastHost from './core/components/ToastHost.vue'
+import { hasBuildClean } from '@features/disk'
+import QuickSetup from './features/settings/components/QuickSetup.vue'
+import { WhatsNewDialog, useUpdateStore } from '@features/update'
+import NextInvite from './features/next/components/NextInvite.vue'
+import { lazyOverlay } from './core/lib/lazyOverlay'
+import { useResourcesStore } from '@features/resources'
+import ZoomHud from './app/components/ZoomHud.vue'
+import { useWheelZoom } from './features/workspace/composables/useWheelZoom'
+import WorkspaceFooter from './features/workspace/components/WorkspaceFooter.vue'
+import CompactView from './features/monitor/components/CompactView.vue'
+import { UsageView } from '@features/usage'
+import { desktop, hasDeepSeek, hasExtensions, hasTerminals, titleBar } from './core/lib/desktop'
+import { hasDevices } from '@features/devices'
+import { hasDiskMap } from '@features/disk'
+import { hasDiskClean } from '@features/disk'
+import { useDiskCleanStore } from '@features/disk'
+import { useRevealInWorkspace } from './features/workspace/composables/useRevealInWorkspace'
+import { handleOrrery, installOrreryApi } from './core/composables/useOrreryApi'
+import { installRemotePhone } from '@features/remote'
+import { installRemoteSummary } from '@features/remote'
+import { useInboxGlobal } from './features/click-menu/composables/useInboxGlobal'
 import ShareBar from './features/shareMode/ShareBar.vue'
 import { useShareModeKey } from './features/shareMode/useShareModeKey'
-import { useRemoteStore } from './stores/remote'
-import { useTurnCheckpoints } from './composables/useTurnCheckpoints'
-import { isMac } from './lib/platform'
-import { restoreMode, restoreWith, startupRun, uncleanExit } from './lib/workspaceRestore'
+import { useRemoteStore } from '@features/remote'
+import { useTurnCheckpoints } from './features/git/composables/useTurnCheckpoints'
+import { isMac } from './core/lib/platform'
+import { restoreMode, restoreWith, startupRun, uncleanExit } from './features/workspace/lib/workspaceRestore'
+import { ExtensionsView } from '@features/extensions'
 
 // xterm + addons (~400 KB) load only when the workspace is first opened.
-const MonitorView = defineAsyncComponent(() => import('./components/MonitorView.vue'))
-const WorkspaceView = defineAsyncComponent(() => import('./components/workspace/WorkspaceView.vue'))
-const ExtensionsView = defineAsyncComponent(() => import('./components/extensions/ExtensionsView.vue'))
-const DevicesView = defineAsyncComponent(() => import('./components/devices/DevicesView.vue'))
-const DiskView = defineAsyncComponent(() => import('./components/disk/DiskView.vue'))
-const DevToolsDialog = defineAsyncComponent(() => import('./components/DevToolsDialog.vue'))
-const SessionToolsSheet = defineAsyncComponent(() => import('./components/workspace/SessionToolsSheet.vue'))
-const BuildCleanDialog = defineAsyncComponent(() => import('./components/BuildCleanDialog.vue'))
+const MonitorView = defineAsyncComponent(() => import('./features/monitor/components/MonitorView.vue'))
+const WorkspaceView = defineAsyncComponent(() => import('./features/workspace/components/WorkspaceView.vue'))
+const DevicesView = defineAsyncComponent(() => import('./features/devices/components/DevicesView.vue'))
+const DiskView = defineAsyncComponent(() => import('./features/disk/components/DiskView.vue'))
+const DevToolsDialog = defineAsyncComponent(() => import('./features/resources/components/DevToolsDialog.vue'))
+const SessionToolsSheet = defineAsyncComponent(() => import('./features/agent-tools/components/SessionToolsSheet.vue'))
+const BuildCleanDialog = defineAsyncComponent(() => import('./features/disk/components/BuildCleanDialog.vue'))
 
 const { t } = useI18n()
 const connection = useConnectionStore()
@@ -78,11 +76,11 @@ update.start()
 const resources = useResourcesStore()
 
 // Opened only by a menu / shortcut / palette entry; QuickSetup, OnboardingTour and WhatsNewDialog stay eager because they open themselves at launch, CommandPalette because it owns Ctrl+K.
-const recap = lazyOverlay(() => import('./components/RecapDialog.vue'), () => ui.recapOpen)
-const diagnostics = lazyOverlay(() => import('./components/DiagnosticsDialog.vue'), () => ui.diagnosticsOpen)
-const resourcesDialog = lazyOverlay(() => import('./components/ResourcesDialog.vue'), () => resources.open)
-const shortcuts = lazyOverlay(() => import('./components/ShortcutsDialog.vue'), () => ui.shortcutsOpen)
-const updateDialog = lazyOverlay(() => import('./components/UpdateDialog.vue'), () => update.dialogOpen)
+const recap = lazyOverlay(() => import('./features/history/components/RecapDialog.vue'), () => ui.recapOpen)
+const diagnostics = lazyOverlay(() => import('./features/resources/components/DiagnosticsDialog.vue'), () => ui.diagnosticsOpen)
+const resourcesDialog = lazyOverlay(() => import('./features/resources/components/ResourcesDialog.vue'), () => resources.open)
+const shortcuts = lazyOverlay(() => import('./features/shortcuts/ShortcutsDialog.vue'), () => ui.shortcutsOpen)
+const updateDialog = lazyOverlay(() => import('./features/update/components/UpdateDialog.vue'), () => update.dialogOpen)
 
 // Windows toast buttons reach the app through agent-monitor://; a session running in a pane opens that pane.
 const reveal = useRevealInWorkspace()

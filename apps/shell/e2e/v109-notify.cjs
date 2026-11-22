@@ -2,7 +2,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 process.env.CCM_E2E_PORT = process.env.CCM_E2E_PORT || '4433'
 process.env.CCM_E2E_DBG = process.env.CCM_E2E_DBG || '9361'
-const { launch, OUT } = require(path.join(__dirname, '../../desktop/e2e/cdp.cjs'))
+const { launch, OUT } = require('./cdp.cjs')
 
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const T = `${S}.get('terminals')`
@@ -18,7 +18,7 @@ const check = (name, ok, extra = '') => {
   const { evaluate, waitFor, shot, sleep } = app
   try {
     await waitFor(`!!window.ccmDesktop && !!${S}.get('ui')`, 30000, 'app ready')
-    await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.whatsNew.seen','${require('../../desktop/package.json').version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.removeItem('ccm.taskbarBadge')`)
+    await evaluate(`localStorage.setItem('ccm.tourDone','1'); localStorage.setItem('ccm.locale','vi'); localStorage.setItem('ccm.whatsNew.seen','${require('../package.json').version}'); localStorage.setItem('ccm.setupDone','1'); localStorage.setItem('ccm.tourWorkspaceDone','1'); localStorage.removeItem('ccm.taskbarBadge')`)
     await app.cmd('Page.reload')
     await sleep(1500)
     await waitFor(`!!${S}.get('ui') && !${S}.get('ui').tourOpen && ${S}.get('connection').hasData`, 30000, 'reloaded')

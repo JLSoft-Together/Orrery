@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { isMac } from '../../lib/platform'
-import { keyCombo } from '../../lib/shortcuts'
-import SettingSection from '../../components/settings/SettingSection.vue'
+import { isMac } from '../../core/lib/platform'
+import { keyCombo } from './lib/shortcuts'
+import { SettingSection } from '@features/settings'
 import { availableCommands, effectiveKeys, isOverridden, overrides, recording, resetAllBindings, resetBinding, setBinding } from './bindings'
 import { chordFromEvent, chordKeys } from './keys'
 

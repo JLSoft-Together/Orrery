@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LoaderCircle, ShieldAlert, X } from 'lucide-vue-next'
-import type { SecretBlock } from '../../lib/preview'
+import type { SecretBlock } from '../../core/lib/preview'
 import { groupHits, kindKey } from './secretGuard'
 
 const props = defineProps<{ block: SecretBlock | null; mode: 'commit' | 'push'; unstaging?: string | null; note?: string | null }>()

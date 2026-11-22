@@ -102,7 +102,7 @@ pub fn client(rt: &mut Runtime, s: &mut Store, m: ClientMessage, ctx: &ClientCon
         ClientMessage::OfficeEnable { on: true } => {
             if !rt.office_noted {
                 rt.office_noted = true;
-                eprintln!("[collector] Office needs CCM_CORE=node; orrery-core serve has no Office yet");
+                eprintln!("[collector] Office is not available in this build");
             }
         }
         m => alerts(rt, s, m, ctx),

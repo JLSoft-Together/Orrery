@@ -1,0 +1,8 @@
+export { default as WhatsNewDialog } from './components/WhatsNewDialog.vue'
+export { default as UpdateSettings } from './components/UpdateSettings.vue'
+export { APP_VERSION } from './lib/changelog'
+export { hasUpdater } from './lib/update'
+export { tipKeys } from './lib/tips'
+export type { TipAction } from './lib/tips'
+export { useTipsStore } from './stores/tips'
+export { useUpdateStore } from './stores/update'

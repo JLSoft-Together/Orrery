@@ -1,44 +1,106 @@
 {
-  "kind": "v97-mobile",
-  "args": "Orrery Remote v97: làm theo .planning/PLAN-v97-mobile.md + PROGRESS-2026-11-12-v97.md, brief .planning/wp/v97/; chạy liên tục, commit từng gói ĐẠT, push feat/v97-mobile cuối mỗi lượt",
-  "dir": "D:\\work\\web\\claude-code-monitor",
+  "kind": "v110-modules",
+  "args": "v110: theo .planning/PLAN-v110-modules.md + 3 file AUDIT-v110-*; P1 xoá Electron+collector, P2 Office lazy (= P3 đợt 1), P3 web theo feature đợt 0-12, P4 index + CLAUDE.md gọn, P5 đo lại. Không commit khi chủ nhân chưa bảo.",
+  "dir": "F:\\work\\web\\Orrery",
   "status": "running",
-  "startedAt": "2026-11-11T18:32:55.008Z",
+  "startedAt": "2026-11-22T13:37:34.387Z",
   "phases": [
     {
-      "id": "wave1",
+      "id": "p1",
       "status": "done",
-      "at": "2026-11-11T19:03:58.326Z",
-      "note": "WP-0/2/3/9 ĐẠT, WP-1 chờ đo trên máy"
+      "at": "2026-11-22T13:55:16.432Z",
+      "note": "Electron + collector xoá, E2E sang apps/shell/e2e, version apps/shell/package.json"
     },
     {
-      "id": "wave2",
+      "id": "p2",
       "status": "done",
-      "at": "2026-11-11T19:56:01.286Z",
-      "note": "WP-4/9/10 ĐẠT"
+      "at": "2026-11-22T13:54:25.326Z",
+      "note": "Office lazy features/office, chunk chính -33kB, 84 key rời bundle"
     },
     {
-      "id": "wave3",
+      "id": "p3-0",
       "status": "done",
-      "at": "2026-11-11T21:12:22.768Z",
-      "note": "WP-5/6/7/8/11/11b/13 ĐẠT"
+      "at": "2026-11-22T13:42:00.492Z",
+      "note": "alias, web-move.mjs, importRules, i18n key snapshot"
     },
     {
-      "id": "wave4",
+      "id": "p3-2",
       "status": "done",
-      "at": "2026-11-12T01:10:16.163Z",
-      "note": "viewer + QA + docs"
+      "at": "2026-11-22T14:06:41.771Z",
+      "note": "lô A"
     },
     {
-      "id": "wave5",
+      "id": "p3-3",
       "status": "done",
-      "at": "2026-11-12T03:33:34.319Z"
+      "at": "2026-11-22T14:06:41.820Z",
+      "note": "lô A"
+    },
+    {
+      "id": "p3-4",
+      "status": "done",
+      "at": "2026-11-22T14:34:26.438Z",
+      "note": "lô B"
+    },
+    {
+      "id": "p3-5",
+      "status": "done",
+      "at": "2026-11-22T14:34:26.509Z",
+      "note": "lô B"
+    },
+    {
+      "id": "p3-6",
+      "status": "done",
+      "at": "2026-11-22T14:48:35.730Z",
+      "note": "lô C"
+    },
+    {
+      "id": "p3-7",
+      "status": "done",
+      "at": "2026-11-22T14:48:35.796Z",
+      "note": "lô C"
+    },
+    {
+      "id": "p3-8",
+      "status": "done",
+      "at": "2026-11-22T15:22:43.823Z",
+      "note": "lô D + 10 nhẹ"
+    },
+    {
+      "id": "p3-9",
+      "status": "done",
+      "at": "2026-11-22T15:22:43.908Z",
+      "note": "lô D + 10 nhẹ"
+    },
+    {
+      "id": "p3-10",
+      "status": "done",
+      "at": "2026-11-22T15:22:43.990Z",
+      "note": "lô D + 10 nhẹ"
+    },
+    {
+      "id": "p3-11",
+      "status": "done",
+      "at": "2026-11-22T15:32:13.193Z",
+      "note": "lô 11 nhẹ"
+    },
+    {
+      "id": "p3-12",
+      "status": "done",
+      "at": "2026-11-22T15:47:19.430Z",
+      "note": "lô 12 core/app nhẹ"
+    },
+    {
+      "id": "p4",
+      "status": "done",
+      "at": "2026-11-22T15:56:58.596Z",
+      "note": "index 696→88 KB, CLAUDE.md 25.6→7.3 KB"
+    },
+    {
+      "id": "p5",
+      "status": "done",
+      "at": "2026-11-22T15:57:16.186Z",
+      "note": "đếm dòng xong, gate full chờ máy rảnh"
     }
   ],
-  "updatedAt": "2026-11-12T03:33:34.320Z",
-  "answer": {
-    "gate": "firebase",
-    "text": "A21 rảnh; cho tự deploy relay; đã tạo Firebase orrery-remote",
-    "at": "2026-11-12T01:18:23.686Z"
-  }
+  "updatedAt": "2026-11-22T15:57:16.187Z"
 }

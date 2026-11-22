@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 const flag = vi.hoisted(() => ({ on: false }))
 
-vi.mock('../../lib/desktop', async (original) => ({
-  ...(await original<typeof import('../../lib/desktop')>()),
+vi.mock('../../core/lib/desktop', async (original) => ({
+  ...(await original<typeof import('../../core/lib/desktop')>()),
   get hasDeepSeek() {
     return flag.on
   },

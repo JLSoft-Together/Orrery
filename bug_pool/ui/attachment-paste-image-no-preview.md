@@ -4,7 +4,7 @@ project: Orrery
 category: ui
 tags: [attachment, paste, clipboard, image, alt+v, preview, terminal]
 status: fixed
-files: [apps/web/src/stores/attachments.ts::reconcile, apps/web/src/composables/usePaneAttachments.ts::fillPixels, apps/web/src/components/workspace/TermPane.vue::paste]
+files: [apps/web/src/features/agent-tools/stores/attachments.ts::reconcile, apps/web/src/features/agent-tools/composables/usePaneAttachments.ts::fillPixels, apps/web/src/features/workspace/components/TermPane.vue::paste]
 ---
 
 # Ảnh paste vào session hiện trong Attachments nhưng không preview

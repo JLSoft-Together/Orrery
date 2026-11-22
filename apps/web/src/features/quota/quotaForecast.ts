@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import type { PlanLimits } from '@ccm/shared'
-import { useExtrasStore } from '../../stores/extras'
+import { useExtrasStore } from '../../core/stores/extras'
 import { forecastFullAt, pushSample, type QuotaSample } from './forecast'
-import type { QuotaAgentId, QuotaKey } from '../../lib/next/quotaBar'
+import type { QuotaAgentId, QuotaKey } from '../next/lib/quotaBar'
 
 const id = (agent: QuotaAgentId, key: QuotaKey): string => `${agent}:${key}`
 

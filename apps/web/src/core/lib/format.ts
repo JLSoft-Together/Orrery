@@ -1,0 +1,123 @@
+import { ref } from 'vue'
+import { shown } from './shareMode'
+
+export const now = ref(Date.now())
+let timer: ReturnType<typeof setInterval> | null = null
+let started = false
+
+const tick = (): void => {
+  now.value = Date.now()
+}
+
+function syncClock(): void {
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+  if (hidden) {
+    if (timer) clearInterval(timer)
+    timer = null
+  } else if (!timer) {
+    tick()
+    timer = setInterval(tick, 1_000)
+  }
+}
+
+/** 1 s clock for every age / duration label; stops while the window is hidden (tray), ticks at once on return. */
+export function startClock(): void {
+  if (started) return
+  started = true
+  syncClock()
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', syncClock)
+}
+
+export function stopClock(): void {
+  started = false
+  if (timer) clearInterval(timer)
+  timer = null
+  if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', syncClock)
+}
+
+const ts = (iso: string | undefined): number | null => {
+  if (!iso) return null
+  const n = Date.parse(iso)
+  return Number.isFinite(n) ? n : null
+}
+
+const rtfCache = new Map<string, Intl.RelativeTimeFormat>()
+
+function relativeFormat(locale: string): Intl.RelativeTimeFormat {
+  let rtf = rtfCache.get(locale)
+  if (!rtf) {
+    rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' })
+    rtfCache.set(locale, rtf)
+  }
+  return rtf
+}
+
+export function relativeTime(iso: string | number | undefined | null, locale: string, nowMs: number): string | null {
+  const t = typeof iso === 'number' ? iso : ts(iso ?? undefined)
+  if (t === null) return null
+  const sec = Math.round((t - nowMs) / 1000)
+  const abs = Math.abs(sec)
+  const rtf = relativeFormat(locale)
+  if (abs < 60) return rtf.format(sec, 'second')
+  if (abs < 3600) return rtf.format(Math.round(sec / 60), 'minute')
+  if (abs < 86400) return rtf.format(Math.round(sec / 3600), 'hour')
+  return rtf.format(Math.round(sec / 86400), 'day')
+}
+
+export function duration(fromIso: string | undefined, toMs: number): string | null {
+  const from = ts(fromIso)
+  if (from === null) return null
+  let s = Math.max(0, Math.floor((toMs - from) / 1000))
+  const h = Math.floor(s / 3600)
+  s -= h * 3600
+  const m = Math.floor(s / 60)
+  s -= m * 60
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`
+  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
+  return `${s}s`
+}
+
+export function clockTime(iso: string, locale: string): string {
+  const t = ts(iso)
+  if (t === null) return ''
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(t)
+}
+
+const compactFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+const fullFormats = new Map<string, Intl.NumberFormat>()
+
+export function compactNumber(n: number | undefined, _locale?: string): string {
+  if (n === undefined) return ''
+  return compactFormat.format(n)
+}
+
+export function fullNumber(n: number | undefined, locale: string): string {
+  if (n === undefined) return '0'
+  let f = fullFormats.get(locale)
+  if (!f) fullFormats.set(locale, (f = new Intl.NumberFormat(locale)))
+  return f.format(n)
+}
+
+export function shortPath(path: string | undefined): string {
+  if (!path) return ''
+  const parts = path.split(/[\\/]+/).filter(Boolean)
+  if (parts.length <= 2) return shown(path)
+  return shown(`…/${parts.slice(-2).join('/')}`)
+}
+
+export function formatCost(n: number, locale: string): string {
+  const digits = n >= 100 ? 0 : n >= 1 ? 2 : 3
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
+}
+
+export function formatDay(day: string, locale: string, style: 'short' | 'long' = 'short'): string {
+  const [y, m, d] = day.split('-').map(Number)
+  if (!y || !m || !d) return day
+  const opts: Intl.DateTimeFormatOptions = style === 'short' ? { day: 'numeric', month: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
+  return new Intl.DateTimeFormat(locale, opts).format(new Date(y, m - 1, d))
+}
+
+export function baseName(path: string): string {
+  const parts = path.split(/[\\/]+/).filter(Boolean)
+  return parts.at(-1) ?? path
+}

@@ -188,8 +188,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_app_version_is_the_desktop_package_version() {
-        let pkg: serde_json::Value = serde_json::from_str(include_str!("../../desktop/package.json")).unwrap();
+    fn the_app_version_is_the_shell_package_version() {
+        let pkg: serde_json::Value = serde_json::from_str(include_str!("../package.json")).unwrap();
         assert_eq!(pkg["version"].as_str(), Some(APP_VERSION));
     }
 

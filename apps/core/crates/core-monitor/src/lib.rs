@@ -10,6 +10,7 @@ pub mod host;
 pub mod job_stop;
 pub mod jobs;
 pub mod monitor;
+pub mod native;
 pub mod peers;
 pub mod process;
 pub mod registry;

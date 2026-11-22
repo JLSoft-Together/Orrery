@@ -18,6 +18,29 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.9',
+    date: '2026-11-23',
+    items: [
+      { en: 'Mist uses solid panels: no more blur that froze the window after many resizes', vi: 'Sương kính dùng panel đặc: bỏ blur làm cửa sổ mờ, đứng khi đổi size nhiều lần' },
+      { en: 'Minimizing Orrery no longer squeezes terminals and wipes what agents printed', vi: 'Thu nhỏ Orrery không còn bóp terminal làm mất nội dung agent đã in' },
+      { en: 'Phone remote never resizes the desktop terminal; phone terminal fits the width', vi: 'Điện thoại không còn đổi cỡ terminal trên máy; terminal điện thoại vừa bề ngang' },
+      { en: 'One grouped notification per burst, with a badge on the taskbar / Dock', vi: 'Gộp thông báo dồn dập thành 1, kèm badge trên taskbar / Dock' },
+      { en: 'Ctrl+Tab switches panes by recent use; shortcuts can be changed in Settings', vi: 'Ctrl+Tab đổi pane theo lần dùng gần nhất; đổi được phím tắt trong Cài đặt' },
+      { en: 'Quota bar shows when the limit will run out at the current pace', vi: 'Thanh quota báo giờ sẽ hết theo tốc độ đang dùng' },
+      { en: 'Comment on diff lines and send them to the agent as a prefilled prompt', vi: 'Góp ý trên từng dòng diff, gửi sang agent thành prompt điền sẵn' },
+      { en: 'Long shell commands tell you when they finish', vi: 'Lệnh shell chạy lâu báo khi xong' },
+      { en: 'Commit and push warn before a secret leaves the machine', vi: 'Commit và push cảnh báo trước khi lộ secret ra ngoài' },
+      { en: 'Chat view for Claude / Codex sessions on the desktop', vi: 'Xem session Claude / Codex dạng chat ngay trên máy' },
+      { en: 'Share mode hides paths, emails and pairing codes while you share the screen', vi: 'Chế độ chia sẻ che path, email, mã ghép khi chia sẻ màn hình' },
+      { en: 'Search across every terminal with Ctrl+Alt+F', vi: 'Tìm trong mọi terminal bằng Ctrl+Alt+F' },
+      { en: 'Footer shows machine CPU and RAM', vi: 'Footer hiện % CPU và % RAM của máy' },
+      { en: 'Shorter project menu; drag to reorder projects in the rail', vi: 'Menu project gọn hơn; kéo để sắp xếp project trên rail' },
+      { en: 'Older themes moved behind View all', vi: 'Theme cũ gom vào mục Xem tất cả' },
+      { en: 'Electron and the Node collector are gone; the app runs on Tauri and Rust only', vi: 'Bỏ hẳn Electron và collector Node; app chỉ chạy trên Tauri + Rust' },
+      { en: 'Office loads only when you turn it on, so the app opens lighter', vi: 'Văn phòng chỉ tải khi bật, mở app nhẹ hơn' },
+    ],
+  },
+  {
     version: '4.0.8',
     date: '2026-11-20',
     items: [

@@ -1,6 +1,6 @@
 {
   "name": "@ccm/shell",
-  "version": "4.0.7",
+  "version": "4.0.9",
   "private": true,
   "description": "Orrery desktop app (Tauri shell, Windows, macOS)",
   "scripts": {

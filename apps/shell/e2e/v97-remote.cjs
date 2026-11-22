@@ -357,7 +357,8 @@ function pairCli(qr, state, name) {
     await sleep(1200)
     const settingsText = await evaluate('document.body.innerText')
     check(12, 'Settings hiện log lệnh (data-remote-log có ≥ 2 dòng)', (await evaluate("document.querySelectorAll('[data-remote-log] li').length")) >= 2)
-    check(12, 'F2: hàng thiết bị hiện "Không rõ" thay vì key thô', /Không rõ/.test(settingsText) && !/remoteV97\.devices\.platform/.test(settingsText), (settingsText.match(/E2E Phone One[^\n]*\n?[^\n]*/) || [''])[0])
+    const deviceRow = (await evaluate(`document.querySelector('[data-remote-devices] > *')?.innerText ?? ''`)) || ''
+    check(12, 'F2: hàng thiết bị hiện nhãn nền tảng (Android / Web app / Không rõ), không phải key thô', /\n(Android|Web app \(iPhone\)|Không rõ)\n/.test(deviceRow) && !/remoteV97\.devices\.platform/.test(settingsText), JSON.stringify(deviceRow.slice(0, 120)))
     await shot('v97-settings-remote-log')
     fs.copyFileSync(path.join(OUT, 'v97-settings-remote-log.png'), path.join(SHOTS, 'settings-remote-log.png'))
     await evaluate(`${UI}.settingsOpen = false`)

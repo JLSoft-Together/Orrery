@@ -8,7 +8,7 @@
 |---|---|
 | `apps/web/src/features/workspace/stores/workspace.ts::useWorkspaceStore` | state pane / tab / split / project root (83 KB, nên tách) |
 | `apps/web/src/features/workspace/components/WorkspaceView.vue` | khung Workspace (104 KB, nên tách) |
-| `apps/web/src/features/workspace/components/TermPane.vue` | pane terminal xterm (76 KB) |
+| `apps/web/src/features/workspace/components/TermPane.vue` | pane terminal xterm (76 KB); `refit` bỏ qua khi `viewportFits` (`lib/splitLayout.ts`) sai: minimize trên Windows thu webview còn 144x19, refit lúc đó resize PTY còn 1 cột làm mất màn |
 | `apps/web/src/features/workspace/components/BrowserPane.vue` | pane trình duyệt (child webview) |
 | `apps/web/src/features/workspace/components/LaunchPicker.vue` | chọn preset / project khi mở pane |
 | `apps/web/src/features/workspace/components/ProjectSwitcher.vue` | đổi project |

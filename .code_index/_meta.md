@@ -14,6 +14,7 @@ Mỗi dòng 1-2 câu: gì, rồi file / symbol chính. Lịch sử trước v110
 - 2026-11-17 v104: E2E mặc định Tauri, turn changes, clash chip, inbox, deepseek lazy.
 - 2026-11-15 v102: UI next gen "Sương kính" (`apps/web/src/features/next/components/NextShell.vue`), mặc định từ v103.
 - 2026-11-15 v101: Disk manager (`apps/core/crates/core-disk/src/lib.rs`, `apps/shell/src/disk_map.rs`), MCP `disk_*`.
+- 2026-11-23: terminal không refit khi cửa sổ minimize (`apps/web/src/features/workspace/lib/splitLayout.ts::viewportFits`).
 - 2026-11-23: Sương kính bỏ blur, luôn panel đặc (`apps/web/src/features/next/stores/uiGen.ts`).
 - 2026-11-15 v100: click menu Claude / Codex bằng chuột (`apps/web/src/features/click-menu/lib/termMenu.ts`).
 - 2026-11-12 v97 / v98: Orrery Remote (app Flutter `apps/mobile`, PWA `apps/pwa`, relay `apps/relay`, gateway `apps/shell/src/remote/mod.rs`), push FCM / Web Push.

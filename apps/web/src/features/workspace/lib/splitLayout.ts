@@ -61,6 +61,8 @@ export type Edge = 'left' | 'right' | 'top' | 'bottom'
 export const MIN_PANE = { w: 220, h: 140 } as const
 export const GROUP_CHROME = { head: 30, pad: 4 } as const
 
+export const viewportFits = (w: number, h: number): boolean => w >= MIN_PANE.w && h >= MIN_PANE.h
+
 /**
  * Where a new pane joins the tab: the roomiest pane (`prefer` wins a tie), split along its longer side, the other
  * side when that one would be too small. Two, three, four panes grow into halves, a half split again, then a 2 × 2 grid.

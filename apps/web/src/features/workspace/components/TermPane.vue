@@ -70,7 +70,7 @@ import { HIDDEN_MENU_THROTTLE_MS, MENU_THROTTLE_MS, useTermMenu } from '../../cl
 import { useMenuQueueStore } from '../../click-menu/stores/menuQueue'
 import { useTermMenuMouse } from '../../click-menu/composables/useTermMenuMouse'
 import { needsUser } from '../../rail/lib/railModel'
-import { leaves } from '../lib/splitLayout'
+import { leaves, viewportFits } from '../lib/splitLayout'
 import PaneMore from './PaneMore.vue'
 import TermMenuBar from '../../click-menu/components/TermMenuBar.vue'
 import PresetIcon from './PresetIcon.vue'
@@ -730,7 +730,7 @@ async function applyCodeFont(): Promise<void> {
 }
 
 function refit(): void {
-  if (backlog || !props.visible || !fit || !host.value?.offsetWidth) return
+  if (backlog || !props.visible || !fit || !host.value?.offsetWidth || !viewportFits(window.innerWidth, window.innerHeight)) return
   try {
     const dims = fit.proposeDimensions()
     if (term && conn && dims && dims.cols < term.cols && term.buffer.active.type === 'normal') {
@@ -738,6 +738,7 @@ function refit(): void {
       if (refitTimer) clearTimeout(refitTimer)
       refitTimer = setTimeout(() => {
         refitTimer = null
+        if (!viewportFits(window.innerWidth, window.innerHeight)) return
         try {
           fit?.fit()
         } catch {

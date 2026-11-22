@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxes, cleanGroups, dividers, dockGroup, dockSpot, dockTree, dropTargetAt, edgeAt, foldedKeys, foldLayout, GROUP_NAME_MAX, groupBoxes, groupOf, groupsOf, hasGroups, isLayout, metaOf, neighborGroup, setGroupMeta, leaves, moveGroup, movePane, neighbor, removeLeaf, setRatio, settleGroups, splitLeaf, swapPanes, takeGroup, ungrouped, type LayoutNode, type Rect } from './splitLayout'
+import { boxes, cleanGroups, dividers, dockGroup, dockSpot, dockTree, dropTargetAt, edgeAt, foldedKeys, foldLayout, GROUP_NAME_MAX, groupBoxes, groupOf, groupsOf, hasGroups, isLayout, metaOf, neighborGroup, setGroupMeta, leaves, moveGroup, movePane, neighbor, removeLeaf, setRatio, settleGroups, splitLeaf, swapPanes, takeGroup, ungrouped, viewportFits, type LayoutNode, type Rect } from './splitLayout'
 
 // a | (b / c)
 const tree: LayoutNode = splitLeaf(splitLeaf({ pane: 'a' }, 'a', 'b', 'row'), 'b', 'c', 'col')
@@ -232,5 +232,15 @@ describe('project group options', () => {
     expect(neighborGroup(t, 'B', 'left')).toBe('A')
     expect(neighborGroup(t, 'A', 'left')).toBeNull()
     expect(neighborGroup({ pane: 'a1' }, 'A', 'left')).toBeNull()
+  })
+})
+
+describe('viewport fits', () => {
+  it('a minimized window (144 x 19) never fits a pane, a normal one does', () => {
+    expect(viewportFits(144, 19)).toBe(false)
+    expect(viewportFits(219, 900)).toBe(false)
+    expect(viewportFits(1200, 139)).toBe(false)
+    expect(viewportFits(220, 140)).toBe(true)
+    expect(viewportFits(1360, 860)).toBe(true)
   })
 })

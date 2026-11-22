@@ -13,6 +13,7 @@ import { shortPath } from '../../../core/lib/format'
 import { isMac } from '../../../core/lib/platform'
 import { PtyConnection } from '../lib/ptyClient'
 import { TERM_SCROLLBACK } from '../lib/termBuffer'
+import { viewportFits } from '../lib/splitLayout'
 import { installReplacementIme } from '../lib/termIme'
 import { useSettingsStore } from '../../../core/stores/settings'
 
@@ -80,7 +81,7 @@ function setRenderer(on: boolean): void {
 }
 
 function refit(): void {
-  if (!props.open || !fit || !host.value?.offsetWidth) return
+  if (!props.open || !fit || !host.value?.offsetWidth || !viewportFits(window.innerWidth, window.innerHeight)) return
   try {
     fit.fit()
   } catch {

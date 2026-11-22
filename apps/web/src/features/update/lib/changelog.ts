@@ -18,6 +18,31 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.8',
+    date: '2026-11-20',
+    items: [
+      { en: 'Orrery Remote: Android app and iPhone web app to follow and drive sessions from your phone', vi: 'Orrery Remote: app Android và web app iPhone để theo dõi, điều khiển session từ điện thoại' },
+      { en: 'Phone chat: inbox with waiting first, send into the session, Stop, tap to answer menus', vi: 'Chat trên điện thoại: hộp thư ưu tiên chờ bạn, gửi vào session, Dừng, chạm để trả lời menu' },
+      { en: 'Remote over LAN or your own Cloudflare relay, end-to-end encrypted; one tap relay setup', vi: 'Remote qua LAN hoặc relay Cloudflare của bạn, mã hoá đầu cuối; dựng relay 1 chạm' },
+      { en: 'Push notifications with secret-masked content; Remote has its own Settings page', vi: 'Push có nội dung đã che secret; Remote có trang riêng trong Cài đặt' },
+      { en: 'Phone and Telegram messages go into the session even while the agent is working', vi: 'Tin nhắn từ điện thoại và Telegram vào thẳng session, kể cả khi agent đang chạy' },
+      { en: 'Inbox (Ctrl+Shift+A) gathers menus, permissions, questions, file clashes, errors and done', vi: 'Inbox (Ctrl+Shift+A) gom menu, xin quyền, câu hỏi, đụng file, lỗi và việc xong' },
+      { en: 'A warning when two sessions edit the same file; Changes can show one session\'s edits', vi: 'Cảnh báo khi 2 session sửa cùng 1 file; Changes xem được phần sửa của từng session' },
+      { en: 'New UI is the default: rail rows show status, running tool and time', vi: 'Giao diện mới là mặc định: rail hiện trạng thái, tool đang chạy và thời gian' },
+      { en: 'New UI: file, Changes and log panes sit under a collapsible Tools line in the rail', vi: 'Giao diện mới: pane file, Changes, log nằm trong nhóm Công cụ thu gọn được trên rail' },
+      { en: 'Settings regrouped into 8 pages, with search', vi: 'Cài đặt gom lại còn 8 trang, có ô tìm kiếm' },
+      { en: 'MCP & plugins: tick your changes, then apply them all at once', vi: 'MCP & plugin: đánh dấu thay đổi rồi áp dụng một lần' },
+      { en: 'Colours: plain Đen trắng palette and Ngẫu nhiên, a new palette at every launch', vi: 'Màu: bảng Đen trắng và Ngẫu nhiên, mỗi lần mở app một bảng màu mới' },
+      { en: 'Classic UI keeps Orrery light, Orrery dark and Ngân hà; other classic themes were removed', vi: 'Giao diện cũ còn Orrery sáng, Orrery tối, Ngân hà; các theme cũ khác đã bỏ' },
+      { en: 'Disk: scans and idle rescans cover only the drives you picked', vi: 'Disk: quét và quét lại khi rảnh chỉ trên các ổ đã chọn' },
+      { en: 'macOS: Cmd+Q asks before closing running terminals; the Dock icon reopens the window', vi: 'macOS: Cmd+Q hỏi trước khi đóng terminal đang chạy; bấm icon Dock mở lại cửa sổ' },
+      { en: 'macOS: Esc closes dialogs, Cmd+K works inside terminals', vi: 'macOS: Esc đóng hộp thoại, Cmd+K dùng được trong terminal' },
+      { en: 'Windows: Ctrl+C reaches programs running in terminal panes', vi: 'Windows: Ctrl+C tới được chương trình đang chạy trong pane terminal' },
+      { en: 'Fixed a tab bar freeze that could leave a file pane empty', vi: 'Sửa lỗi thanh tab treo làm pane file trống' },
+      { en: 'The classic UI will be removed in 4.1.0', vi: 'Giao diện cũ sẽ bỏ ở bản 4.1.0' },
+    ],
+  },
+  {
     version: '4.0.7',
     date: '2026-11-16',
     items: [

@@ -42,7 +42,7 @@ Tải bản mới nhất ở [GitHub Releases](https://github.com/JLSoft-Togethe
 - **Windows**: exe chưa ký số. SmartScreen cảnh báo lần đầu: **More info > Run anyway**. Đóng cửa sổ = ẩn xuống tray.
 - **macOS**: app ký ad-hoc, chưa notarize. Kéo vào Applications, mở, bị chặn thì **System Settings > Privacy & Security > Open Anyway**, hoặc `xattr -dr com.apple.quarantine "/Applications/Orrery.app"`.
 - Cần Claude Code CLI `2.1.289` (bản khác vẫn chạy, có cảnh báo). Mở app rồi chạy `claude` ở terminal bất kỳ, session hiện lên trong khoảng 1 giây.
-- **Điện thoại**: Cài đặt > Thông báo & Remote > Điều khiển từ xa: bật, thẻ **Cài app lên điện thoại** (Android: QR tải APK qua Wi-Fi; iPhone: QR mở `<relay>/app/`, rồi Thêm vào MH chính), sau đó **Thêm điện thoại** để ghép bằng QR. Chi tiết: `docs/orrery-remote.md`.
+- **Điện thoại**: Cài đặt > Remote > Điều khiển từ xa: bật, thẻ **Cài app lên điện thoại** (Android: QR tải APK qua Wi-Fi; iPhone: QR mở `<relay>/app/`, rồi Thêm vào MH chính), sau đó **Thêm điện thoại** để ghép bằng QR. Chi tiết: `docs/orrery-remote.md`.
 
 Gặp lỗi: Cài đặt > Cập nhật & trợ giúp > Chẩn đoán, lưu file log để gửi kèm.
 
@@ -58,7 +58,7 @@ npm run qa          # gate nhanh theo git diff: typecheck, vitest related, cargo
 npm run dist        # đóng gói cho OS đang chạy (Windows: NSIS, macOS: dmg arm64 + x64), không cross build
 ```
 
-Bộ cài ra `apps/shell/release/`. Cấu trúc repo, E2E, app điện thoại (`apps/mobile`), relay (`apps/relay`) và mọi lệnh khác: `CLAUDE.md`.
+E2E (`npm run e2e -w @ccm/shell`) chạy trên Windows (WebView2) và macOS (cổng CDP giả cho WKWebView, chỉ bản dev). Bộ cài ra `apps/shell/release/`. Cấu trúc repo, E2E, app điện thoại (`apps/mobile`), relay (`apps/relay`) và mọi lệnh khác: `CLAUDE.md`.
 
 ## Biến môi trường
 

@@ -98,6 +98,7 @@ Shape-checked in collector `server.ts` (unknown / malformed dropped, `maxPayload
 - `TerminalSession.limitHit?: LimitHit {at, resetsAt?, window?, autoResume?}` (collector `tracker.ts`, web `TermPane` → `LimitResumeChip`).
 - Desktop IPC types (v73): `apk.ts` (`ApkReport`, `ApkGroup`, `ApkDiff`, `ApkResult`, `ApkCompareResult`), `appData.ts` (`AppDataList`, `AppDbOpen`, `AppDbRows`, `AppDbCell`, `AppPrefs`, `PrefEntry`, `PrefEdit`, `AppDataErrorCode` = `DevErrorCode` + inspector codes).
 - PTY (v73 shell marks): `PtyClientMessage` spawn `integrate?: boolean` (shell only); `PtyServerMessage` ready `si?: string` = nonce of the shell's OSC 633;E marks (re-sent on attach).
+- PTY (v109 F6): `PtyServerMessage` `{t:'cmd', phase:'start', command}` / `{t:'cmd', phase:'end', command, code, ms, cwd?}` từ core-pty (chỉ pane có `si`); `ClientMessage` `shell.done {paneKey, name, command, code, ms}` web → core-serve toaster (`connection.shellDone`).
 
 ## v74 (2026-10-29)
 

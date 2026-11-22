@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v109 Mở lại theme</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--mut:#6e6e73;--line:#d2d2d7;--acc:#bd5128;--soft:#fbe9e1}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,"Segoe UI",system-ui,sans-serif}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:28px 0 10px}
+p.n{margin:0 0 16px;color:var(--mut);font-size:13px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
+.pane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.tag{display:inline-block;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.seg span{padding:4px 12px;font-size:12px}
+.seg .on{background:var(--soft);color:var(--acc);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.t{border:1px solid var(--line);border-radius:10px;padding:6px;font-size:12px}
+.t.sel{border:2px solid var(--acc);padding:5px}
+.sw{height:46px;border-radius:6px;margin-bottom:5px;position:relative;overflow:hidden}
+.sw i{position:absolute;left:5px;right:5px;top:5px;height:9px;border-radius:2px;background:rgba(255,255,255,.7)}
+.sw b{position:absolute;right:8px;top:7px;width:5px;height:5px;border-radius:50%}
+.nm{font-weight:600}
+.sub{color:var(--mut);font-size:11px}
+.more{display:flex;align-items:center;gap:8px;margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:600}
+.btn::after{content:" \25BE"}
+.btn.up::after{content:" \25B4"}
+.cnt{color:var(--mut);font-size:12px}
+.grp{margin:12px 0 6px;font-size:11px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:3px 8px;font-size:12px}
+.chip.sel{border:2px solid var(--acc);padding:2px 7px;background:var(--soft);color:var(--acc)}
+.chip .sw2{width:22px;height:14px;border-radius:3px;position:relative}
+.chip .sw2::after{content:"";position:absolute;right:3px;bottom:3px;width:5px;height:5px;border-radius:50%;background:var(--a)}
+.chip small{color:var(--mut);font-size:11px}
+ul.rules{margin:8px 0 0;padding-left:18px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<h1>v109 Mở lại theme cũ, gọn</h1>
+<p class="n">Mặc định chỉ hiện bộ đang giữ. Nút "Xem tất cả" mở thêm nhóm theme cũ. Đang dùng theme cũ thì danh sách tự mở.</p>
+
+<h2>1. Giao diện classic (Settings, Appearance, Theme)</h2>
+<div class="row">
+  <div class="pane">
+    <span class="tag">Mặc định</span><br>
+    <div class="seg"><span>Sáng</span><span class="on">Tối</span><span>Theo hệ thống</span></div>
+    <div class="grid">
+      <div class="t"><div class="sw" style="background:#f3f3f6"><i></i><b style="background:#bd5128"></b></div><div class="nm">Orrery</div><div class="sub">Sáng, mặc định</div></div>
+      <div class="t sel"><div class="sw" style="background:#000"><i style="background:#222"></i><b style="background:#e8835d"></b></div><div class="nm">Ngân hà</div><div class="sub">Tối, mặc định</div></div>
+      <div class="t"><div class="sw" style="background:#131315"><i style="background:#2a2a2e"></i><b style="background:#e8835d"></b></div><div class="nm">Orrery</div><div class="sub">Tối</div></div>
+    </div>
+    <div class="more"><span class="btn">Xem tất cả</span><span class="cnt">thêm 15 theme</span></div>
+  </div>
+
+  <div class="pane">
+    <span class="tag">Sau khi bấm Xem tất cả</span><br>
+    <div class="seg"><span>Sáng</span><span class="on">Tối</span><span>Theo hệ thống</span></div>
+    <div class="grid">
+      <div class="t"><div class="sw" style="background:#f3f3f6"><i></i><b style="background:#bd5128"></b></div><div class="nm">Orrery</div><div class="sub">Sáng, mặc định</div></div>
+      <div class="t sel"><div class="sw" style="background:#000"><i style="background:#222"></i><b style="background:#e8835d"></b></div><div class="nm">Ngân hà</div><div class="sub">Tối, mặc định</div></div>
+      <div class="t"><div class="sw" style="background:#131315"><i style="background:#2a2a2e"></i><b style="background:#e8835d"></b></div><div class="nm">Orrery</div><div class="sub">Tối</div></div>
+    </div>
+    <div class="grp">Theme cũ</div>
+    <div class="chips">
+      <span class="chip" style="--a:#0071e3"><span class="sw2" style="background:#ececee"></span>Apple <small>Sáng</small></span>
+      <span class="chip" style="--a:#0071e3"><span class="sw2" style="background:#1e1e1e"></span>Apple <small>Tối</small></span>
+      <span class="chip" style="--a:#0a63d8"><span class="sw2" style="background:#ececec"></span>Xcode <small>Sáng</small></span>
+      <span class="chip" style="--a:#0a6cdf"><span class="sw2" style="background:#18181c"></span>Xcode <small>Tối</small></span>
+      <span class="chip" style="--a:#0969da"><span class="sw2" style="background:#f6f8fa"></span>GitHub <small>Sáng</small></span>
+      <span class="chip" style="--a:#1f6feb"><span class="sw2" style="background:#010409"></span>GitHub <small>Tối</small></span>
+      <span class="chip" style="--a:#1f6fa8"><span class="sw2" style="background:#eee8d5"></span>Solarized <small>Sáng</small></span>
+      <span class="chip" style="--a:#1f6fa8"><span class="sw2" style="background:#00212b"></span>Solarized <small>Tối</small></span>
+      <span class="chip" style="--a:#3871e1"><span class="sw2" style="background:#e9eaee"></span>Islands <small>Sáng</small></span>
+      <span class="chip" style="--a:#3871e1"><span class="sw2" style="background:#26282c"></span>Islands <small>Tối</small></span>
+      <span class="chip" style="--a:#66d9ef"><span class="sw2" style="background:#1e1f1c"></span>Monokai</span>
+      <span class="chip" style="--a:#bd93f9"><span class="sw2" style="background:#1e1f29"></span>Dracula</span>
+      <span class="chip" style="--a:#80cbc4"><span class="sw2" style="background:#1e272c"></span>Material</span>
+      <span class="chip sel" style="--a:#61afef"><span class="sw2" style="background:#21252b"></span>One Dark</span>
+      <span class="chip" style="--a:#3dd6f5"><span class="sw2" style="background:#0c0d10"></span>Console</span>
+    </div>
+    <div class="more"><span class="btn up">Thu gọn</span></div>
+  </div>
+</div>
+<ul class="rules">
+  <li>Theme cũ là chip nhỏ (đổi màu, giữ nguyên chuỗi chip như trước v108), không phải thẻ lớn có mô tả.</li>
+  <li>Đang chọn một theme cũ (ví dụ One Dark) thì nhóm tự mở, nút ghi "Thu gọn".</li>
+  <li>Trạng thái mở nhớ trong máy, mở app lại vẫn giữ.</li>
+</ul>
+
+<h2>2. Giao diện mới Sương kính (Settings, Appearance, Palette)</h2>
+<div class="row">
+  <div class="pane">
+    <span class="tag">Mặc định</span>
+    <div class="grid">
+      <div class="t sel"><div class="sw" style="background:linear-gradient(135deg,#c9ece2,#d3e0fb)"><i></i><b style="background:#2a7f9e"></b></div><div class="nm">Sương kính</div><div class="sub">Sáng</div></div>
+      <div class="t"><div class="sw" style="background:linear-gradient(135deg,#1f5a58,#2b3170)"><i style="background:#ffffff22"></i><b style="background:#73c6dc"></b></div><div class="nm">Sương kính</div><div class="sub">Tối</div></div>
+      <div class="t"><div class="sw" style="background:#e9e9ec"><i></i><b style="background:#555"></b></div><div class="nm">Than chì</div></div>
+      <div class="t"><div class="sw" style="background:#f7f7f7"><i></i><b style="background:#262626"></b></div><div class="nm">Đen trắng</div></div>
+      <div class="t"><div class="sw" style="background:#000"><i style="background:#222"></i><b style="background:#e8835d"></b></div><div class="nm">Ngân hà</div></div>
+      <div class="t"><div class="sw" style="background:#f1efee"><i></i><b style="background:#bd5128"></b></div><div class="nm">Orrery</div></div>
+      <div class="t"><div class="sw" style="background:linear-gradient(90deg,#c26,#26c,#2c6)"><i></i></div><div class="nm">Ngẫu nhiên</div></div>
+      <div class="t"><div class="sw" style="background:repeating-linear-gradient(45deg,#ddd 0 6px,#eee 6px 12px)"><i></i></div><div class="nm">Tuỳ chỉnh</div></div>
+    </div>
+    <div class="more"><span class="btn">Xem tất cả</span><span class="cnt">thêm 4 palette</span></div>
+  </div>
+
+  <div class="pane">
+    <span class="tag">Sau khi bấm Xem tất cả</span>
+    <div class="grid">
+      <div class="t sel"><div class="sw" style="background:linear-gradient(135deg,#c9ece2,#d3e0fb)"><i></i><b style="background:#2a7f9e"></b></div><div class="nm">Sương kính</div><div class="sub">Sáng</div></div>
+      <div class="t"><div class="sw" style="background:linear-gradient(135deg,#1f5a58,#2b3170)"><i style="background:#ffffff22"></i><b style="background:#73c6dc"></b></div><div class="nm">Sương kính</div><div class="sub">Tối</div></div>
+      <div class="t"><div class="sw" style="background:#e9e9ec"><i></i><b style="background:#555"></b></div><div class="nm">Than chì</div></div>
+      <div class="t"><div class="sw" style="background:#f7f7f7"><i></i><b style="background:#262626"></b></div><div class="nm">Đen trắng</div></div>
+      <div class="t"><div class="sw" style="background:#000"><i style="background:#222"></i><b style="background:#e8835d"></b></div><div class="nm">Ngân hà</div></div>
+      <div class="t"><div class="sw" style="background:#f1efee"><i></i><b style="background:#bd5128"></b></div><div class="nm">Orrery</div></div>
+      <div class="t"><div class="sw" style="background:linear-gradient(90deg,#c26,#26c,#2c6)"><i></i></div><div class="nm">Ngẫu nhiên</div></div>
+      <div class="t"><div class="sw" style="background:repeating-linear-gradient(45deg,#ddd 0 6px,#eee 6px 12px)"><i></i></div><div class="nm">Tuỳ chỉnh</div></div>
+    </div>
+    <div class="grp">Palette cũ</div>
+    <div class="grid">
+      <div class="t"><div class="sw" style="background:linear-gradient(135deg,#e3d6ff,#f8d8ec)"><i></i><b style="background:#6a4fc9"></b></div><div class="nm">Tinh vân</div></div>
+      <div class="t"><div class="sw" style="background:linear-gradient(135deg,#c4eedc,#cde8f4)"><i></i><b style="background:#287e68"></b></div><div class="nm">Cực quang</div></div>
+      <div class="t"><div class="sw" style="background:linear-gradient(135deg,#fad9c8,#f3d9e4)"><i></i><b style="background:#b4532f"></b></div><div class="nm">Bình minh sương</div></div>
+      <div class="t"><div class="sw" style="background:#0c0d10"><i style="background:#ffffff18"></i><b style="background:#3dd6f5"></b></div><div class="nm">Console</div><div class="sub">Chỉ tối</div></div>
+    </div>
+    <div class="more"><span class="btn up">Thu gọn</span></div>
+  </div>
+</div>
+<ul class="rules">
+  <li>Thẻ palette cũ cùng kiểu thẻ hiện tại, nằm dưới nhóm "Palette cũ", sau Ngẫu nhiên và Tuỳ chỉnh.</li>
+  <li>Đang dùng palette cũ thì nhóm tự mở. Thanh Ngẫu nhiên và Tuỳ chỉnh giữ nguyên.</li>
+  <li>PWA không đổi.</li>
+</ul>
+</body>
+</html>

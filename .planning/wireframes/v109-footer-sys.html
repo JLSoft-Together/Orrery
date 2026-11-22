@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Footer CPU RAM</title>
+<style>
+:root{--bg:#f3f3f6;--panel:#fff;--ink:#18181c;--muted:#6b6b75;--line:#e2e2e8;--accent:#bd5128;--claude:#c15f3c;--codex:#6a4fc9;--warn:#b7791f;--crit:#c0392b;--well:#ececf1}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--panel:#0d0d10;--ink:#ececf1;--muted:#8d8d98;--line:#24242a;--accent:#e8835d;--claude:#d97757;--codex:#9d8cf8;--warn:#e0a84a;--crit:#ef6b5b;--well:#1a1a1f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,"Segoe UI",system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:980px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px}
+p.sub{color:var(--muted);margin:0 0 24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:18px}
+.card h2{font-size:15px;margin:0 0 4px}
+.card .why{color:var(--muted);font-size:13px;margin:0 0 12px}
+.app{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.canvas{height:70px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.foot{height:26px;display:flex;align-items:center;gap:14px;padding:0 12px;border-top:1px solid var(--line);background:var(--panel);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.q{display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:3px}
+.bar{width:48px;height:5px;border-radius:3px;background:var(--well);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.sp{flex:1}
+.mono{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+.sep{width:1px;height:14px;background:var(--line)}
+.sys{display:flex;align-items:center;gap:10px}
+.k{letter-spacing:.06em;font-size:9.5px;font-weight:600;color:var(--muted)}
+.v{color:var(--ink)}
+.warn .v{color:var(--warn)}
+.spark{display:block}
+.ring{width:14px;height:14px}
+.chip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;height:18px}
+.label{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--well);margin-bottom:8px}
+.rec{background:var(--accent);color:#fff}
+ul{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+.pick{display:flex;gap:8px;margin-top:12px}
+.pick button{font:inherit;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.pick button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<main>
+<h1>Footer: thêm CPU và RAM</h1>
+<p class="sub">Quota bên trái giữ nguyên. CPU / RAM của máy nằm bên phải, khác kiểu để không lẫn.</p>
+
+<div class="card">
+<span class="label">Trước</span>
+<div class="app"><div class="canvas">Workspace</div>
+<div class="foot">
+<span class="q"><span class="dot" style="background:var(--claude)"></span>5h <span class="bar"><i style="width:42%;background:var(--claude)"></i></span> 42%</span>
+<span class="q">tuần <span class="bar"><i style="width:61%;background:var(--claude)"></i></span> 61%</span>
+<span class="q"><span class="dot" style="background:var(--codex)"></span>5h <span class="bar"><i style="width:18%;background:var(--codex)"></i></span> 18%</span>
+</div></div>
+</div>
+
+<div class="card">
+<span class="label rec">A. Chữ mono + sparkline (đề xuất)</span>
+<p class="why">Quota = thanh màu agent. CPU / RAM = số mono xám + đường nhỏ 60 giây, không thanh, không màu agent.</p>
+<div class="app"><div class="canvas">Workspace</div>
+<div class="foot">
+<span class="q"><span class="dot" style="background:var(--claude)"></span>5h <span class="bar"><i style="width:42%;background:var(--claude)"></i></span> 42%</span>
+<span class="q">tuần <span class="bar"><i style="width:61%;background:var(--claude)"></i></span> 61%</span>
+<span class="q"><span class="dot" style="background:var(--codex)"></span>5h <span class="bar"><i style="width:18%;background:var(--codex)"></i></span> 18%</span>
+<span class="sp"></span><span class="sep"></span>
+<span class="sys mono">
+<span><span class="k">CPU</span> <span class="v">23%</span></span>
+<svg class="spark" width="40" height="12" viewBox="0 0 40 12"><polyline fill="none" stroke="currentColor" stroke-width="1.2" points="0,9 5,8 10,10 15,6 20,7 25,4 30,8 35,7 40,6"/></svg>
+<span><span class="k">RAM</span> <span class="v">71%</span></span>
+<svg class="spark" width="40" height="12" viewBox="0 0 40 12"><polyline fill="none" stroke="currentColor" stroke-width="1.2" points="0,4 5,4 10,4 15,3 20,4 25,3 30,3 35,4 40,3"/></svg>
+</span>
+</div></div>
+<ul><li>Từ 85% thì số đổi màu cảnh báo, kèm icon.</li><li>Hover: "RAM 45,6 / 64 GB", "CPU 23%, 20 luồng". Bấm mở Tài nguyên.</li></ul>
+</div>
+
+<div class="card">
+<span class="label">B. Vòng tròn nhỏ</span>
+<p class="why">Mỗi chỉ số 1 vòng tròn viền mảnh, màu trung tính.</p>
+<div class="app"><div class="canvas">Workspace</div>
+<div class="foot">
+<span class="q"><span class="dot" style="background:var(--claude)"></span>5h <span class="bar"><i style="width:42%;background:var(--claude)"></i></span> 42%</span>
+<span class="q"><span class="dot" style="background:var(--codex)"></span>5h <span class="bar"><i style="width:18%;background:var(--codex)"></i></span> 18%</span>
+<span class="sp"></span><span class="sep"></span>
+<span class="sys mono">
+<span class="q"><svg class="ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="var(--well)" stroke-width="3"/><circle cx="10" cy="10" r="8" fill="none" stroke="var(--muted)" stroke-width="3" stroke-dasharray="11.6 50.3" transform="rotate(-90 10 10)"/></svg><span class="k">CPU</span> <span class="v">23%</span></span>
+<span class="q warn"><svg class="ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="var(--well)" stroke-width="3"/><circle cx="10" cy="10" r="8" fill="none" stroke="var(--warn)" stroke-width="3" stroke-dasharray="44 50.3" transform="rotate(-90 10 10)"/></svg><span class="k">RAM</span> <span class="v">88%</span></span>
+</span>
+</div></div>
+</div>
+
+<div class="card">
+<span class="label">C. Chip viền</span>
+<p class="why">CPU / RAM trong 1 chip viền, như nhãn thiết bị.</p>
+<div class="app"><div class="canvas">Workspace</div>
+<div class="foot">
+<span class="q"><span class="dot" style="background:var(--claude)"></span>5h <span class="bar"><i style="width:42%;background:var(--claude)"></i></span> 42%</span>
+<span class="q"><span class="dot" style="background:var(--codex)"></span>5h <span class="bar"><i style="width:18%;background:var(--codex)"></i></span> 18%</span>
+<span class="sp"></span>
+<span class="chip mono"><span class="k">CPU</span> <span class="v">23%</span><span class="sep"></span><span class="k">RAM</span> <span class="v">71%</span></span>
+</div></div>
+</div>
+
+<div class="card">
+<h2>Chọn kiểu</h2>
+<div class="pick" id="pick"><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button></div>
+<ul><li>Cập nhật mỗi 3 giây, chỉ khi cửa sổ đang hiện; ẩn cửa sổ thì dừng.</li><li>Có ở cả UI classic (footer) và UI next.</li><li>Tắt được trong Settings.</li></ul>
+</div>
+</main>
+<script>
+const p=document.getElementById('pick');let v=null;try{v=localStorage.getItem('fsys')}catch(e){}
+function draw(){[...p.children].forEach(b=>b.classList.toggle('on',b.dataset.v===v))}
+p.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;v=b.dataset.v;try{localStorage.setItem('fsys',v)}catch(e){}draw()});draw();
+</script>
+</body>
+</html>

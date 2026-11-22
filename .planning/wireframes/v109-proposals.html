@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Orrery v109 đề xuất</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--ink2:#6e6e73;--line:#d2d2d7;--wf:#fafafa;--bar:#d9d9de;--acc:#e8702a;--acc-s:#fde9dc;--ok:#1f9d55;--ok-s:#dcf3e5;--warn:#b7791f;--warn-s:#fbefd5;--err:#d64545;--err-s:#fbe1e1;--sel:#e7f0ff}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--ink:#f5f5f7;--ink2:#a1a1a6;--line:#38383a;--wf:#141416;--bar:#3a3a3e;--acc:#f08a4b;--acc-s:#3a2516;--ok:#4cc77f;--ok-s:#143222;--warn:#e0a84a;--warn-s:#3a2c12;--err:#ff6b6b;--err-s:#3d1717;--sel:#1b2a44}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 120px}
+h1{font-size:24px;margin:8px 0 4px}
+.sub{color:var(--ink2);margin:0 0 12px;font-size:14px}
+.tabs{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:6px;padding:8px 0;overflow-x:auto}
+.tabs a{flex:none;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px}
+h2{font-size:18px;margin:24px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
+.head{display:flex;gap:8px;align-items:flex-start}
+.id{flex:none;font-weight:700;color:var(--acc);font-size:13px;padding-top:2px}
+.t{font-weight:600;font-size:16px;flex:1}
+.prob{color:var(--ink2);font-size:14px;margin:4px 0 10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tag{font-size:12px;border-radius:999px;padding:2px 9px;background:var(--bg);border:1px solid var(--line)}
+.tag b{font-weight:700}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ba>div>p{margin:0 0 4px;font-size:12px;font-weight:600;color:var(--ink2)}
+.ba>div:last-child>p{color:var(--acc)}
+.wf{background:var(--wf);border:1px dashed var(--line);border-radius:10px;padding:8px;font-size:10px;line-height:1.35;min-height:118px;overflow:hidden}
+.ln{height:6px;border-radius:3px;background:var(--bar);margin:5px 0}
+.row{display:flex;align-items:center;gap:4px;margin:3px 0;min-width:0}
+.row>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;border-radius:999px;padding:1px 6px;background:var(--bar);font-size:9px;white-space:nowrap}
+.acc{background:var(--acc-s);color:var(--acc)}
+.ok{background:var(--ok-s);color:var(--ok)}
+.warn{background:var(--warn-s);color:var(--warn)}
+.err{background:var(--err-s);color:var(--err)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--bar);flex:none;display:inline-block}
+.dot.g{background:var(--ok)}.dot.r{background:var(--err)}.dot.a{background:var(--acc)}
+.mi{padding:3px 5px;border-radius:4px}
+.mi.h{background:var(--acc-s);color:var(--acc);font-weight:600}
+.sep{border-top:1px solid var(--line);margin:3px 0}
+.toast{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:4px 6px;margin:3px 0}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.sel{background:var(--sel)}
+.box{border:1px solid var(--line);border-radius:6px;padding:4px 5px;background:var(--card);margin:3px 0}
+.btn{display:inline-block;border-radius:5px;padding:1px 6px;border:1px solid var(--line);background:var(--card);font-size:9px}
+.btn.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+.fade{opacity:.45}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.pick button{font:inherit;font-size:14px;padding:9px 4px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;min-height:44px}
+.pick button[aria-pressed=true][data-v=lam]{background:var(--ok);border-color:var(--ok);color:#fff}
+.pick button[aria-pressed=true][data-v=sau]{background:var(--warn);border-color:var(--warn);color:#fff}
+.pick button[aria-pressed=true][data-v=bo]{background:var(--err);border-color:var(--err);color:#fff}
+.foot{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;justify-content:center;z-index:9}
+.foot span{font-size:13px;color:var(--ink2)}
+.foot button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:10px 18px;background:var(--acc);color:#fff;cursor:pointer;min-height:44px}
+.foot button.g{background:var(--bg);color:var(--ink);border:1px solid var(--line);font-weight:500}
+.legend{font-size:13px;color:var(--ink2)}
+.tb{display:flex;gap:6px;align-items:flex-end;background:var(--bar);border-radius:6px;padding:6px;margin-top:20px}
+.ico{position:relative;width:22px;height:22px;border-radius:5px;background:var(--card);border:1px solid var(--line)}
+.ico.o{background:var(--acc)}
+.badge{position:absolute;right:-5px;bottom:-5px;background:var(--err);color:#fff;border-radius:999px;font-size:9px;padding:0 4px;font-weight:700}
+.tabsw{display:flex;gap:2px}
+.tabsw span{flex:1;text-align:center;border:1px solid var(--line);border-radius:4px;padding:2px 0;background:var(--card)}
+.tabsw span.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+.bub{background:var(--acc-s);border-radius:8px 8px 2px 8px;padding:3px 6px;margin:3px 0 3px 20%}
+.q{height:6px;border-radius:3px;background:var(--bar);overflow:hidden;margin:3px 0}
+.q i{display:block;height:100%;background:var(--acc)}
+.q i.w{background:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Orrery v109: 12 đề xuất</h1>
+<p class="sub">Mỗi mục: Trước / Sau, công sức, giá trị. Bấm Làm, Để sau hoặc Bỏ rồi Chép lựa chọn.</p>
+<p class="legend">S dưới 1 ngày, M 1 đến 3 ngày, L trên 3 ngày. Không tốn token, mọi thứ chạy local.</p>
+<nav class="tabs" aria-label="Nhóm"><a href="#g-a">UI/UX</a><a href="#g-b">Chức năng đã có</a><a href="#g-c">Chức năng mới</a></nav>
+<div id="list"></div>
+</div>
+<div class="foot"><span id="count">0/12 đã chọn</span><button type="button" class="g" id="reset">Xoá chọn</button><button type="button" id="copy">Chép lựa chọn</button></div>
+<script>
+var G={a:'UI/UX',b:'Chức năng đã có',c:'Chức năng mới'};
+var ITEMS=[
+{id:'A1',g:'a',t:'Menu project gọn',p:'Menu "..." của project có 7 công cụ ngang hàng, project web vẫn thấy công cụ Android.',e:'S',v:'Menu ngắn một nửa',
+b:'<div class="mi">Tab mới ›</div><div class="mi">Run</div><div class="mi">Scripts</div><div class="mi">Plan</div><div class="mi">Kiểm env</div><div class="mi">Quét i18n</div><div class="mi">Quyền Android</div><div class="mi">Build clean</div><div class="mi">Layouts ›</div><div class="sep"></div><div class="mi">Explorer</div><div class="mi">Copy path</div>',
+a:'<div class="mi">Tab mới ›</div><div class="mi">Run</div><div class="mi h">Công cụ dự án ›</div><div class="mi">Layouts ›</div><div class="sep"></div><div class="mi">Explorer</div><div class="mi">Copy path</div><div class="sep"></div><div class="mi fade">chỉ công cụ hợp loại project</div>'},
+{id:'A2',g:'a',t:'Gộp thông báo dồn dập',p:'4 session xong gần nhau thì ra 4 thông báo và 4 toast.',e:'S',v:'Bớt ngộp ngay',
+b:'<div class="toast">Claude api xong</div><div class="toast">Codex web xong</div><div class="toast">Claude docs xong</div><div class="toast">Claude app chờ bạn</div>',
+a:'<div class="toast"><b>3 session xong, 1 chờ bạn</b><div class="row"><span class="chip warn">Chờ bạn: app</span></div><div class="row"><span class="btn p">Mở Inbox</span></div></div><div class="fade">gom trong 8 giây</div>'},
+{id:'A3',g:'a',t:'Badge "chờ bạn" trên taskbar / Dock',p:'Orrery nằm nền thì không biết có agent đang chờ, chỉ tiêu đề cửa sổ đổi.',e:'S',v:'Không cần mở app vẫn thấy',
+b:'<div class="ln" style="width:70%"></div><div class="ln" style="width:50%"></div><div class="tb"><div class="ico"></div><div class="ico o"></div><div class="ico"></div></div><div class="fade" style="margin-top:4px">icon trơn</div>',
+a:'<div class="ln" style="width:70%"></div><div class="ln" style="width:50%"></div><div class="tb"><div class="ico"></div><div class="ico o"><span class="badge">2</span></div><div class="ico"></div></div><div style="margin-top:4px">số chờ bạn, nháy 1 lần khi có mới</div>'},
+{id:'A4',g:'a',t:'Ctrl+Tab về tab vừa dùng',p:'Ctrl+Tab đi lần lượt từng tab, qua lại 2 tab đang làm phải bấm nhiều lần.',e:'S',v:'Đổi tab 1 phím',
+b:'<div class="tabsw"><span>1</span><span class="on">2</span><span>3</span><span>4</span><span>5</span></div><div style="margin-top:8px">Ở tab 5, về tab 2:</div><div class="mono">Ctrl+Tab x2 lượt</div><div class="fade">5 > 1 > 2</div>',
+a:'<div class="tabsw"><span>1</span><span class="on">2</span><span>3</span><span>4</span><span>5</span></div><div style="margin-top:8px">Ở tab 5, về tab 2:</div><div class="mono">Ctrl+Tab x1</div><div class="box"><div class="mi h">2 api</div><div class="mi">5 web</div><div class="mi">3 docs</div></div>'},
+{id:'B1',g:'b',t:'Quota: dự báo giờ hết',p:'Chỉ thấy % đã dùng và giờ reset, không biết có kịp tới reset không.',e:'S',v:'Biết trước để chuyển Codex',
+b:'<div class="row"><span>5 giờ</span><span style="margin-left:auto">62%</span></div><div class="q"><i style="width:62%"></i></div><div class="row"><span>7 ngày</span><span style="margin-left:auto">40%</span></div><div class="q"><i style="width:40%"></i></div><div class="fade">reset 17:00</div>',
+a:'<div class="row"><span>5 giờ</span><span style="margin-left:auto">62%</span></div><div class="q"><i class="w" style="width:62%"></i></div><div class="row"><span class="chip warn">Hết khoảng 15:40</span></div><div class="row"><span>7 ngày</span><span style="margin-left:auto">40%</span></div><div class="q"><i style="width:40%"></i></div><div class="fade">reset 17:00</div>'},
+{id:'B2',g:'b',t:'Góp ý trên diff, điền sẵn cho agent',p:'Xem diff xong muốn bảo agent sửa phải tự gõ lại file và dòng.',e:'M',v:'Review nhanh như Conductor',
+b:'<div class="mono">api.ts</div><div class="mono ok">+ const t = 500</div><div class="mono ok">+ retry(t)</div><div class="mono err">- retry()</div><div class="fade" style="margin-top:6px">tự gõ vào terminal: "api.ts dòng 12..."</div>',
+a:'<div class="mono">api.ts</div><div class="mono ok sel">+ const t = 500</div><div class="box">Đọc từ config <span class="fade">dòng 12</span></div><div class="mono ok">+ retry(t)</div><div class="row"><span class="btn p">Điền vào Claude</span><span class="fade">bạn bấm Enter</span></div>'},
+{id:'B3',g:'b',t:'Shell pane báo lệnh dài xong',p:'Build 5 phút trong pane shell xong không ai báo, lỗi hay ok phải tự nhìn.',e:'M',v:'Khỏi canh terminal',
+b:'<div class="mono">$ npm run build</div><div class="ln" style="width:80%"></div><div class="ln" style="width:60%"></div><div class="ln" style="width:70%"></div><div class="mono">$ _</div><div class="fade">không báo gì</div>',
+a:'<div class="row"><span class="dot g"></span><span>tab shell</span></div><div class="mono">$ npm run build</div><div class="ln" style="width:60%"></div><div class="toast"><span class="chip ok">mã 0</span> build xong sau 5 phút</div><div class="fade">lỗi thì chấm đỏ + mã lỗi</div>'},
+{id:'B4',g:'b',t:'Đổi phím tắt',p:'Phím cứng, Ctrl+Shift+A hay Ctrl+Alt+Q có thể đụng app khác hoặc bộ gõ.',e:'M',v:'Hết đụng phím',
+b:'<div class="row"><span>Inbox</span><span class="chip" style="margin-left:auto">Ctrl+Shift+A</span></div><div class="row"><span>Mục kế</span><span class="chip" style="margin-left:auto">Ctrl+Alt+Q</span></div><div class="row"><span>Thu rail</span><span class="chip" style="margin-left:auto">Ctrl+Shift+B</span></div><div class="fade">chỉ xem</div>',
+a:'<div class="row"><span>Inbox</span><span class="chip acc" style="margin-left:auto">Nhấn phím mới...</span></div><div class="row"><span class="chip warn">Trùng với Thu rail</span></div><div class="row"><span>Mục kế</span><span class="chip" style="margin-left:auto">Ctrl+Alt+Q</span></div><div class="row"><span class="btn">Khôi phục mặc định</span></div>'},
+{id:'C1',g:'c',t:'Chặn lộ secret trước commit / push',p:'Agent hay ghi token vào file, commit đi thẳng không kiểm.',e:'S-M',v:'An toàn, tránh lộ key',
+b:'<div class="box">Sửa retry api</div><div class="row"><span class="btn p">Commit</span></div><div class="row"><span class="chip ok">Đã commit</span></div><div class="mono fade">.env: ghp_A1b2...</div>',
+a:'<div class="box"><b>Có 1 secret</b><div class="mono">.env:3 ghp_****</div><div class="row"><span class="btn">Bỏ stage</span><span class="btn">Vẫn commit</span></div></div><div class="fade">quét local, không mạng</div>'},
+{id:'C2',g:'c',t:'Xem dạng chat trên desktop',p:'Đọc lại agent trả lời gì phải cuộn terminal dài; parser chat đã có cho điện thoại.',e:'M',v:'Đọc nhanh, dùng lại code',
+b:'<div class="mono">● Read src/api.ts</div><div class="ln" style="width:90%"></div><div class="ln" style="width:85%"></div><div class="mono">● Edit src/api.ts</div><div class="ln" style="width:95%"></div><div class="ln" style="width:75%"></div><div class="ln" style="width:88%"></div>',
+a:'<div class="bub">Sửa retry api</div><div>Đã đổi retry sang 500ms, đọc từ config.</div><div class="row"><span class="chip">Đã sửa 2 file, chạy 1 lệnh ›</span></div><div class="bub">Thêm test</div><div class="fade">chỉ đọc, gõ vẫn ở terminal</div>'},
+{id:'C3',g:'c',t:'Chế độ chia sẻ màn hình',p:'Share màn hình thì lộ tên user trong path, email GitHub, mã ghép điện thoại.',e:'S-M',v:'Yên tâm khi quay / share',
+b:'<div class="mono">C:\\Users\\dauph\\work\\api</div><div class="row"><span>GitHub</span><span class="chip">jin@mail.com</span></div><div class="row"><span>Mã ghép</span><span class="chip">482 913</span></div>',
+a:'<div class="row"><span class="chip acc">Đang che</span></div><div class="mono">~\\work\\api</div><div class="row"><span>GitHub</span><span class="chip">j***@***</span></div><div class="row"><span>Mã ghép</span><span class="chip">*** ***</span></div>'},
+{id:'C4',g:'c',t:'Tìm trong mọi terminal',p:'Tìm chữ chỉ trong 1 pane, nhớ lỗi ở đâu đó trong 8 pane phải mở từng cái.',e:'M',v:'Thấy lỗi ngay',
+b:'<div class="box">ECONNREFUSED <span class="fade">1 pane</span></div><div class="ln" style="width:80%"></div><div class="ln" style="width:65%"></div><div class="fade">không có kết quả ở pane này</div>',
+a:'<div class="box">ECONNREFUSED <span class="fade">mọi pane</span></div><div class="row"><span class="dot a"></span><b>shell web</b><span class="chip">2</span></div><div class="mono sel">connect ECONNREFUSED :5432</div><div class="row"><span class="dot a"></span><b>Claude api</b><span class="chip">1</span></div><div class="fade">bấm để nhảy tới dòng</div>'}
+];
+var KEY='orrery.v109.picks',L={lam:'Làm',sau:'Để sau',bo:'Bỏ'},picks={};
+try{picks=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){picks={}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(picks))}catch(e){}}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var html='',last='';
+ITEMS.forEach(function(it){
+ if(it.g!==last){html+='<h2 id="g-'+it.g+'">'+G[it.g]+'</h2>';last=it.g}
+ html+='<article class="card" data-id="'+it.id+'"><div class="head"><span class="id">'+it.id+'</span><span class="t">'+esc(it.t)+'</span></div>'+
+ '<p class="prob">'+esc(it.p)+'</p><div class="tags"><span class="tag">Công sức <b>'+it.e+'</b></span><span class="tag">'+esc(it.v)+'</span></div>'+
+ '<div class="ba"><div><p>Trước</p><div class="wf">'+it.b+'</div></div><div><p>Sau</p><div class="wf">'+it.a+'</div></div></div>'+
+ '<div class="pick" role="group" aria-label="Chọn cho '+it.id+'">'+['lam','sau','bo'].map(function(v){return '<button type="button" data-v="'+v+'" aria-pressed="'+(picks[it.id]===v)+'">'+L[v]+'</button>'}).join('')+'</div></article>';
+});
+document.getElementById('list').innerHTML=html;
+function count(){var n=ITEMS.filter(function(i){return picks[i.id]}).length;document.getElementById('count').textContent=n+'/'+ITEMS.length+' đã chọn'}
+count();
+document.getElementById('list').addEventListener('click',function(e){
+ var b=e.target.closest('.pick button');if(!b)return;
+ var card=b.closest('.card'),id=card.getAttribute('data-id'),v=b.getAttribute('data-v');
+ if(picks[id]===v)delete picks[id];else picks[id]=v;
+ card.querySelectorAll('.pick button').forEach(function(x){x.setAttribute('aria-pressed',String(picks[id]===x.getAttribute('data-v')))});
+ save();count();
+});
+document.getElementById('reset').addEventListener('click',function(){picks={};save();document.querySelectorAll('.pick button').forEach(function(x){x.setAttribute('aria-pressed','false')});count()});
+function summary(){
+ var out=['Orrery v109, lựa chọn:'];
+ ['lam','sau','bo'].forEach(function(v){
+  var l=ITEMS.filter(function(i){return picks[i.id]===v}).map(function(i){return i.id+' '+i.t+' ('+i.e+')'});
+  if(l.length)out.push(L[v]+': '+l.join('; '));
+ });
+ var none=ITEMS.filter(function(i){return !picks[i.id]}).map(function(i){return i.id});
+ if(none.length)out.push('Chưa chọn: '+none.join(', '));
+ return out.join('\n');
+}
+document.getElementById('copy').addEventListener('click',function(){
+ var txt=summary(),btn=this;
+ function done(){btn.textContent='Đã chép';setTimeout(function(){btn.textContent='Chép lựa chọn'},1600)}
+ function fallback(){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){prompt('Chép đoạn này:',txt)}document.body.removeChild(ta)}
+ if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(done,fallback)}else fallback();
+});
+</script>
+</body>
+</html>

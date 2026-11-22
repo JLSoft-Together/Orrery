@@ -288,7 +288,7 @@ impl<D: RamDeps> Service<D> {
 }
 
 #[cfg(windows)]
-fn memory() -> (u64, u64) {
+pub fn memory() -> (u64, u64) {
     #[repr(C)]
     struct MemoryStatusEx {
         length: u32,
@@ -313,7 +313,7 @@ fn memory() -> (u64, u64) {
 }
 
 #[cfg(target_os = "macos")]
-fn memory() -> (u64, u64) {
+pub fn memory() -> (u64, u64) {
     fn read(name: &str) -> u64 {
         let c = std::ffi::CString::new(name).unwrap_or_default();
         let mut v: u64 = 0;
@@ -333,7 +333,7 @@ fn memory() -> (u64, u64) {
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
-fn memory() -> (u64, u64) {
+pub fn memory() -> (u64, u64) {
     (0, 0)
 }
 

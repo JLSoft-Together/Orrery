@@ -11,6 +11,17 @@
       "covers": ["npm run typecheck", "npm test"],
       "created": "2026-11-13",
       "estSaveTokens": 22000
+    },
+    {
+      "name": "qa-remote",
+      "file": "scripts/qa-remote.mjs",
+      "run": "node scripts/qa-remote.mjs",
+      "desc": "Gate điện thoại: vitest + vue-tsc PWA, cargo test remote:: của shell (-j 6), E2E PWA scenario remote chromium + webkit (đo tràn ngang 375/390/430, chat mặc định, Vừa màn gửi pty.resize claim, box không gãy, chat steps), check Android; in tóm tắt OK/FAIL, log .jin/logs/qa-remote-<giờ>.log, ảnh chỉ khi FAIL",
+      "when": "Sau khi sửa apps/pwa, apps/shell/src/remote, apps/mobile hoặc giao thức remote",
+      "flags": "--only=pwa,rust,e2e,mobile, --no-mobile, --browsers=chromium,webkit, --no-build",
+      "covers": ["npm test -w @ccm/pwa", "npm run typecheck -w @ccm/pwa", "cargo test remote::", "npm run e2e -w @ccm/pwa", "node apps/mobile/scripts/check.mjs"],
+      "created": "2026-11-22",
+      "estSaveTokens": 18000
     }
   ]
 }

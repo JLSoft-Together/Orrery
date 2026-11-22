@@ -8,7 +8,7 @@ const crypto = require('node:crypto')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { launch, OUT, REPO, SHELL, selOptions } = require('./cdp.cjs')
+const { launch, OUT, REPO, selOptions } = require('./cdp.cjs')
 const { apk, appDb, PREFS } = require('./fixtures/v73-fixtures.cjs')
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
@@ -308,7 +308,6 @@ async function main() {
     })
 
     await step('shell marks', async () => {
-      if (SHELL) { console.log('SKIP shell marks: Tauri shell has no OSC 633 shell integration yet (AUDIT-v104-tauri-parity row 11)'); return }
       await evaluate(`${UI}.setView('workspace')`)
       await evaluate(`${W}.activate('${shellKey}')`)
       await sleep(500)

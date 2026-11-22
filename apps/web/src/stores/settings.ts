@@ -7,6 +7,7 @@ import { AUTO_SAVE_DELAY_DEFAULT, AUTO_SAVE_DELAYS, isAutoSaveMode, type AutoSav
 import { desktop } from '../lib/desktop'
 import { setDustEnabled } from '../lib/dust'
 import { clampContextWarn, CONTEXT_WARN_DEFAULT } from '../lib/contextWarn'
+import { clampShellDoneSeconds, SHELL_DONE_SECONDS_DEFAULT } from '../features/shellDone/shellDone'
 import { clampCodeSize,CODE_SIZE_DEFAULT, fontEntry, fontStack, isFontId } from '../lib/fonts'
 import { applyTheme, isThemeId, startTheme, THEME_MIGRATION, themeMeta, toggleTarget, variantFor, type ThemeId } from '../lib/themes'
 
@@ -100,10 +101,15 @@ export const useSettingsStore = defineStore('settings', () => {
   const autoSaveDelay = ref(AUTO_SAVE_DELAYS.includes(Number(read('ccm.autoSaveDelay'))) ? Number(read('ccm.autoSaveDelay')) : AUTO_SAVE_DELAY_DEFAULT)
   const compactAuto = ref(read('ccm.compactAuto') !== '0')
   const clickMenu = ref(read('ccm.clickMenu') !== '0')
+  const secretGuard = ref(read('ccm.secretGuard') !== '0')
   const menuToast = ref(read('ccm.menuToast') !== '0')
+  const taskbarBadge = ref(read('ccm.taskbarBadge') !== '0')
+  const footerSys = ref(read('ccm.footerSys') !== '0')
   const dimInactive = ref(read('ccm.workspace.dim') === '1')
   /** Shell panes started with command marks (OSC 633); read at spawn, so it applies to new shells. */
   const shellIntegration = ref(read('ccm.shellIntegration') !== '0')
+  const shellDoneNotify = ref(read('ccm.shellDone') !== '0')
+  const shellDoneSeconds = ref(clampShellDoneSeconds(Number(read('ccm.shellDoneSeconds') ?? SHELL_DONE_SECONDS_DEFAULT)))
   /** Shell panes run a typed `claude` / `codex` through the host's shims (orrery MCP, session id); read at spawn. */
   const agentShim = ref(read('ccm.agentShim') !== '0')
   const dustEffect = ref(read('ccm.dust') === '1')
@@ -144,9 +150,14 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(autoSaveDelay, (value) => persist('ccm.autoSaveDelay', String(value)))
   watch(compactAuto, (value) => persist('ccm.compactAuto', value ? '1' : '0'))
   watch(clickMenu, (value) => persist('ccm.clickMenu', value ? '1' : '0'))
+  watch(secretGuard, (value) => persist('ccm.secretGuard', value ? '1' : '0'))
   watch(menuToast, (value) => persist('ccm.menuToast', value ? '1' : '0'))
+  watch(taskbarBadge, (value) => persist('ccm.taskbarBadge', value ? '1' : '0'))
+  watch(footerSys, (value) => persist('ccm.footerSys', value ? '1' : '0'))
   watch(dimInactive, (value) => persist('ccm.workspace.dim', value ? '1' : '0'))
   watch(shellIntegration, (value) => persist('ccm.shellIntegration', value ? '1' : '0'))
+  watch(shellDoneNotify, (value) => persist('ccm.shellDone', value ? '1' : '0'))
+  watch(shellDoneSeconds, (value) => persist('ccm.shellDoneSeconds', String(clampShellDoneSeconds(value))))
   watch(agentShim, (value) => persist('ccm.agentShim', value ? '1' : '0'))
   watch(dustEffect, (value) => persist('ccm.dust', value ? '1' : '0'))
   watch(dustEffect, setDustEnabled, { flush: 'sync', immediate: true })
@@ -311,10 +322,15 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSaveDelay,
     dimInactive,
     shellIntegration,
+    shellDoneNotify,
+    shellDoneSeconds,
     agentShim,
     compactAuto,
     clickMenu,
+    secretGuard,
     menuToast,
+    taskbarBadge,
+    footerSys,
     dustEffect,
     officeEnabled,
     stars,

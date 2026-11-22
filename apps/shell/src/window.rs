@@ -266,6 +266,7 @@ pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
     }
     if matches!(event, WindowEvent::Focused(true)) {
         crate::menu_toast::settle(window.app_handle());
+        crate::attention::settle(window.app_handle());
     }
     if let WindowEvent::CloseRequested { api, .. } = event {
         save_bounds(window);

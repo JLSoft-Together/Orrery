@@ -153,6 +153,7 @@ export function paneState(pane: Pane, session: RailSession | undefined): RailSta
   if (pane.state === 'starting') return 'starting'
   if (pane.state === 'error' || pane.state === 'gone' || session?.status === 'error') return 'failed'
   if (pane.attention === 'waiting' || session?.status === 'waiting') return 'asked'
+  if (pane.attention === 'done' && pane.shellLast && pane.shellLast.code !== 0) return 'failed'
   if (pane.state === 'exited') return 'ended'
   if (session?.status === 'working') return 'working'
   if (session?.status === 'idle' && session.subagents > 0) return 'subagents'

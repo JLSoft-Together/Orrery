@@ -5,8 +5,11 @@ import { ArrowUpFromLine, LoaderCircle, TriangleAlert, X } from 'lucide-vue-next
 import { checkBranchName, pushArgs, type BranchOpResult, type GhAccount, type GhRepoAccount, type PushPreview } from '@ccm/shared'
 import { retireOverlay } from '../../../lib/motion'
 import { ghAccounts, ghRepoAccount, ghRepoAccountSet, hasGitHub } from '../../../lib/github'
-import { gitPush, gitPushPreview } from '../../../lib/preview'
+import { gitPush, gitPushPreview, type SecretBlock } from '../../../lib/preview'
 import { useUiStore } from '../../../stores/ui'
+import { useSettingsStore } from '../../../stores/settings'
+import SecretGuardDialog from '../../../features/secretGuard/SecretGuardDialog.vue'
+import { isSecretBlock, laterNotice } from '../../../features/secretGuard/secretGuard'
 import AppSelect from '../../AppSelect.vue'
 
 /** `ref` = `refs/heads/<local>` to push from the repo `root`. */
@@ -14,6 +17,9 @@ const props = defineProps<{ request: { root: string; ref: string } | null }>()
 const emit = defineEmits<{ done: [res: BranchOpResult, name: string]; close: [] }>()
 const { t, locale } = useI18n()
 const ui = useUiStore()
+const settings = useSettingsStore()
+const guard = shallowRef<SecretBlock | null>(null)
+const scanning = ref(false)
 const L = (k: string, named?: Record<string, unknown>, plural?: number): string =>
   plural === undefined ? t(`workspace.log.branches.${k}`, named ?? {}) : t(`workspace.log.branches.${k}`, named ?? {}, plural)
 
@@ -128,6 +134,7 @@ watch(
     busy.value = false
     failure.value = null
     authFailed.value = false
+    guard.value = null
     await load()
     await nextTick()
     ;(pushBtn.value && !pushBtn.value.disabled ? pushBtn.value : sheet.value?.querySelector<HTMLElement>('[data-push-cancel]'))?.focus()
@@ -149,10 +156,15 @@ function onBranch(): void {
 }
 
 function close(): void {
-  if (!busy.value) emit('close')
+  if (!busy.value && !guard.value) emit('close')
 }
 
-async function submit(): Promise<void> {
+function pushAnyway(): void {
+  guard.value = null
+  void submit(true)
+}
+
+async function submit(force = false): Promise<void> {
   const req = props.request
   const p = ok.value
   if (!req || !p || !canPush.value) return
@@ -160,9 +172,17 @@ async function submit(): Promise<void> {
   failure.value = null
   authFailed.value = false
   const name = `${p.local} → ${target.value}`
-  const res = await gitPush(req.root, req.ref, remote.value, branch.value, setUpstream.value)
+  const scan = settings.secretGuard && !force
+  const stopNotice = scan ? laterNotice(() => (scanning.value = true)) : () => undefined
+  const res = await gitPush(req.root, req.ref, remote.value, branch.value, setUpstream.value, { scan })
+  stopNotice()
+  scanning.value = false
   busy.value = false
   if (props.request !== req) return
+  if (isSecretBlock(res)) {
+    guard.value = res
+    return
+  }
   if (res.ok || res.error === 'cancelled') return emit('done', res, name)
   const text = res.error === 'non-ff' ? L('pushError.non-ff', { name: target.value }) : L(`error.${res.error}`, { name: target.value })
   failure.value = [text, res.detail].filter(Boolean).join(' - ')
@@ -193,6 +213,7 @@ function trap(e: KeyboardEvent): void {
           @keydown.esc.stop="close"
           @keydown="trap"
         >
+          <SecretGuardDialog :block="guard" mode="push" @proceed="pushAnyway" @cancel="guard = null" />
           <header class="flex items-center gap-2 border-b border-line px-4 py-3">
             <ArrowUpFromLine :size="16" class="shrink-0 text-ink-muted" aria-hidden="true" />
             <div class="min-w-0 flex-1">
@@ -204,7 +225,7 @@ function trap(e: KeyboardEvent): void {
             </button>
           </header>
 
-          <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="submit">
+          <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="submit()">
             <div v-if="ok || remote" class="flex flex-col gap-1 px-4 pt-3">
               <div class="flex min-w-0 items-end gap-2">
                 <div v-if="remoteOptions.length > 1" class="flex shrink-0 flex-col gap-1 text-xs font-medium text-ink-muted">
@@ -290,7 +311,7 @@ function trap(e: KeyboardEvent): void {
                 <button type="button" class="ccm-btn" :disabled="busy" data-push-cancel @click="close">{{ L('cancel') }}</button>
                 <button ref="pushBtn" type="submit" class="ccm-btn ccm-btn-primary" :disabled="!canPush" :aria-busy="busy" data-push-submit>
                   <LoaderCircle v-if="busy" :size="13" class="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                  {{ busy ? L('pushing') : count ? L('pushN', { n: count }, count) : L('pushButton') }}
+                  {{ scanning ? t('secretGuard.scanning') : busy ? L('pushing') : count ? L('pushN', { n: count }, count) : L('pushButton') }}
                 </button>
               </div>
             </footer>

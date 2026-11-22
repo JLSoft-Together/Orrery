@@ -297,13 +297,13 @@ pub struct Drawer {
     pub grace: Duration,
 }
 
-pub fn drawer_from(get: &dyn Fn(&str) -> Option<String>, test_build: bool, windows: bool) -> Option<Drawer> {
+pub fn drawer_from(get: &dyn Fn(&str) -> Option<String>, test_build: bool, native: bool) -> Option<Drawer> {
     let log = test_build.then(|| get("CCM_E2E_MENU_TOAST_LOG")).flatten().filter(|v| !v.is_empty());
     let toast_off = get("CCM_TOAST").as_deref() == Some("0");
     if toast_off && log.is_none() {
         return None;
     }
-    let real = windows && (!toast_off || (test_build && get("CCM_E2E_MENU_TOAST_REAL").as_deref() == Some("1")));
+    let real = native && (!toast_off || (test_build && get("CCM_E2E_MENU_TOAST_REAL").as_deref() == Some("1")));
     let grace = log.as_ref().and_then(|_| get("CCM_E2E_MENU_TOAST_GRACE_MS")).and_then(|v| v.trim().parse::<u64>().ok()).filter(|ms| *ms > 0).map_or(GRACE, Duration::from_millis);
     Some(Drawer { log, real, grace })
 }
@@ -316,7 +316,10 @@ pub struct MenuToasts {
 pub fn install(app: &AppHandle) {
     let get = |k: &str| std::env::var(k).ok();
     let test_build = cfg!(debug_assertions) || crate::config::e2e_isolated();
-    let Some(drawer) = drawer_from(&get, test_build, cfg!(windows)) else { return };
+    let Some(drawer) = drawer_from(&get, test_build, cfg!(any(windows, target_os = "macos"))) else { return };
+    if drawer.real && !cfg!(windows) {
+        crate::mac_note::install(app);
+    }
     app.manage(MenuToasts { core: Mutex::new(Core::new(crate::config::random_hex(16))), drawer });
 }
 
@@ -340,8 +343,10 @@ fn apply(app: &AppHandle, ops: Vec<Op>) {
         }
         if m.drawer.real {
             match op {
-                Op::Show(c) => crate::toast::show_on_worker(app, toast_of(&c)),
-                Op::Hide(tag) => crate::toast::hide_on_worker(app, tag),
+                Op::Show(c) if cfg!(windows) => crate::toast::show_on_worker(app, toast_of(&c)),
+                Op::Hide(tag) if cfg!(windows) => crate::toast::hide_on_worker(app, tag),
+                Op::Show(c) => crate::mac_note::show(app, c),
+                Op::Hide(tag) => crate::mac_note::hide(app, &tag),
             }
         }
     }

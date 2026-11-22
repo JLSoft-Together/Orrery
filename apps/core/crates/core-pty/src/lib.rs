@@ -2,6 +2,7 @@ pub mod control;
 pub mod flow;
 pub mod hub;
 pub mod jobs;
+pub mod marks;
 pub mod owners;
 #[cfg(unix)]
 pub mod pty_unix;

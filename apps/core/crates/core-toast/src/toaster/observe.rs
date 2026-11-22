@@ -160,6 +160,7 @@ impl Toaster {
         let since = if t.status_since.is_some() { date_ms(t.status_since.as_deref(), self.zone) } else { now };
         let tool_opt = tool.clone().filter(|s| !s.is_empty());
         let ask = if kind == "question" { ask } else { None };
+        let ask_given = ask.is_some();
         self.telegram(t, kind, TelegramEpisode { since: Some(JsNum(if since.is_finite() { since } else { now })), tool: tool_opt.clone(), ask, ..Default::default() });
         self.phone_waiting(t, now, tool.clone(), snoozed);
         if !self.can("waiting") || snoozed {
@@ -172,7 +173,12 @@ impl Toaster {
         let text = self.text();
         let reason = t.waiting_for.as_deref().map(|w| slice_units(w, 120));
         let d = Draft { title: text.waiting_title(&name_of(t)), body: text.waiting_body(reason.as_deref(), tool.as_deref()), url: self.link_for(Some(&t.id)), open: text.open(), persistent: true, snooze: true };
-        self.show(&format!("waiting:{}", t.id), d);
+        let key = format!("waiting:{}", t.id);
+        if ask_given {
+            self.show(&key, d);
+        } else {
+            self.show_grouped(&key, &t.id, &name_of(t), true, d);
+        }
     }
 
     fn remind(&mut self, t: &TerminalSession, episode: &str, now: f64, tool: Option<String>, snoozed: bool) {
@@ -232,7 +238,7 @@ impl Toaster {
         }
         let text = self.text();
         let d = Draft { title: text.done_title(&name_of(t)), body: text.done_body(), url: self.link_for(Some(&t.id)), open: text.open(), persistent: false, snooze: false };
-        self.show(&format!("done:{}", t.id), d);
+        self.show_grouped(&format!("done:{}", t.id), &t.id, &name_of(t), false, d);
     }
 
     fn observe_jobs(&mut self, jobs: &[BackgroundJob]) {

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, GitCommitHorizontal, LoaderCircle, X } from 'lucide-vue-next'
 import { isMac } from '../../lib/platform'
-import { gitCommit, gitCommitCancel, type ChangesStatus } from '../../lib/preview'
+import { gitCommit, gitCommitCancel, gitUnstage, type ChangesStatus, type SecretBlock } from '../../lib/preview'
 import { stagedCount } from '../../lib/changesView'
+import { useSettingsStore } from '../../stores/settings'
+import SecretGuardDialog from '../../features/secretGuard/SecretGuardDialog.vue'
+import { isEmptyBlock, isSecretBlock, laterNotice, withoutPath } from '../../features/secretGuard/secretGuard'
 
 const props = defineProps<{ status: Extract<ChangesStatus, { ok: true }> }>()
 const emit = defineEmits<{ committed: [subject: string] }>()
@@ -16,6 +19,11 @@ const message = ref(drafts.get(props.status.root) ?? '')
 const amend = ref(false)
 const busy = ref(false)
 const notice = ref<{ ok: boolean; text: string } | null>(null)
+const settings = useSettingsStore()
+const block = shallowRef<SecretBlock | null>(null)
+const scanning = ref(false)
+const unstaging = ref<string | null>(null)
+const guardNote = ref<string | null>(null)
 
 watch(
   () => props.status.root,
@@ -24,6 +32,7 @@ watch(
     message.value = drafts.get(root) ?? ''
     amend.value = false
     notice.value = null
+    block.value = null
   },
 )
 
@@ -36,12 +45,23 @@ watch(mayAmend, (v) => {
 const canCommit = computed(() => !busy.value && !!message.value.trim() && (staged.value > 0 || amend.value))
 const keys = isMac ? '⌘↩' : 'Ctrl+Enter'
 
-async function submit(): Promise<void> {
+async function submit(force = false): Promise<void> {
   if (!canCommit.value) return
   busy.value = true
   notice.value = null
-  const res = await gitCommit(props.status.root, message.value, amend.value)
+  const scan = settings.secretGuard && !force
+  const stopNotice = scan ? laterNotice(() => (scanning.value = true)) : () => undefined
+  const root = props.status.root
+  const res = await gitCommit(root, message.value, amend.value, { scan })
+  stopNotice()
+  scanning.value = false
   busy.value = false
+  if (isSecretBlock(res)) {
+    if (props.status.root !== root) return
+    guardNote.value = null
+    block.value = res
+    return
+  }
   if (res.ok) {
     message.value = ''
     drafts.delete(props.status.root)
@@ -51,6 +71,31 @@ async function submit(): Promise<void> {
   } else if (res.error !== 'cancelled') {
     notice.value = { ok: false, text: t(`workspace.commit.error.${res.error}`, { detail: res.detail ?? '' }) }
   }
+}
+
+function proceed(): void {
+  block.value = null
+  void submit(true)
+}
+
+async function unstage(path: string): Promise<void> {
+  const root = props.status.root
+  unstaging.value = path
+  const res = await gitUnstage(root, [path])
+  unstaging.value = null
+  if (!block.value || props.status.root !== root) return
+  if (!res.ok) {
+    guardNote.value = t('secretGuard.unstageFailed', { path })
+    return
+  }
+  const next = withoutPath(block.value, path)
+  if (isEmptyBlock(next)) {
+    block.value = null
+    notice.value = { ok: true, text: t('secretGuard.allRemoved') }
+    return
+  }
+  block.value = next
+  guardNote.value = t('secretGuard.unstaged', { path })
 }
 
 function onKey(e: KeyboardEvent): void {
@@ -79,11 +124,12 @@ function onKey(e: KeyboardEvent): void {
         class="ccm-btn ccm-btn-primary h-6 min-w-0 flex-1 justify-center gap-1 px-2 text-2xs"
         :disabled="!canCommit"
         :title="`${t('workspace.commit.action')} (${keys})`"
-        @click="submit"
+        data-commit-submit
+        @click="submit()"
       >
         <LoaderCircle v-if="busy" :size="12" class="ccm-spin" aria-hidden="true" />
         <GitCommitHorizontal v-else :size="13" aria-hidden="true" />
-        <span class="truncate">{{ amend ? t('workspace.commit.amendAction') : t('workspace.commit.actionN', { n: staged }, staged) }}</span>
+        <span class="truncate">{{ scanning ? t('secretGuard.scanning') : amend ? t('workspace.commit.amendAction') : t('workspace.commit.actionN', { n: staged }, staged) }}</span>
       </button>
       <button v-if="busy" type="button" class="ccm-btn h-6 px-2 text-2xs" @click="gitCommitCancel(status.root)">
         {{ t('workspace.commit.cancel') }}
@@ -94,7 +140,8 @@ function onKey(e: KeyboardEvent): void {
       </label>
     </div>
     <p v-if="!staged && !amend && message.trim()" class="text-2xs text-ink-faint">{{ t('workspace.commit.nothingStaged') }}</p>
-    <p v-if="notice" class="flex items-start gap-1 text-2xs" :class="notice.ok ? 'text-ink-muted' : 'text-st-error'" role="status">
+    <SecretGuardDialog :block="block" mode="commit" :unstaging="unstaging" :note="guardNote" @unstage="unstage" @proceed="proceed" @cancel="block = null" />
+    <p v-if="notice" data-commit-notice class="flex items-start gap-1 text-2xs" :class="notice.ok ? 'text-ink-muted' : 'text-st-error'" role="status">
       <Check v-if="notice.ok" :size="12" class="mt-px shrink-0 text-success" aria-hidden="true" />
       <span class="min-w-0 flex-1 break-words">{{ notice.text }}</span>
       <button type="button" class="shrink-0 cursor-pointer text-ink-faint hover:text-ink" :aria-label="t('workspace.explorer.status.dismiss')" @click="notice = null">

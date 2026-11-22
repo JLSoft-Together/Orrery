@@ -15,7 +15,8 @@ use std::sync::{Arc, Mutex};
 use core_http::control::{spawn_stdin, write_line, ControlIn};
 use core_http::{start, ClientContext, ClientMessage, Config, Hooks, StartError, StoreHandle, PORT_IN_USE_EXIT};
 use core_monitor::host::{HostClient, HostDeps};
-use core_monitor::{Deps, SystemDeps};
+use core_monitor::native::{NativeDeps, Picker};
+use core_monitor::Deps;
 use core_store::persist::daystart::first_start_today;
 use core_store::persist::localtime::Zone;
 use core_store::time::now_ms;
@@ -55,18 +56,22 @@ fn sender(tx: &std::sync::mpsc::Sender<Cmd>) -> Mutex<std::sync::mpsc::Sender<Cm
 }
 
 pub fn run(cfg: ServeConfig) -> i32 {
-    serve(cfg, Arc::new(write_line), false, None)
+    serve(cfg, Arc::new(write_line), false, None, None)
 }
 
 pub fn run_with(cfg: ServeConfig, emit: Emit) -> i32 {
-    serve(cfg, emit, true, None)
+    serve(cfg, emit, true, None, None)
 }
 
 pub fn run_with_tap(cfg: ServeConfig, emit: Emit, on_tap: TapSink) -> i32 {
-    serve(cfg, emit, true, Some(on_tap))
+    serve(cfg, emit, true, Some(on_tap), None)
 }
 
-fn serve(cfg: ServeConfig, emit: Emit, embedded: bool, on_tap: Option<TapSink>) -> i32 {
+pub fn run_embedded(cfg: ServeConfig, emit: Emit, on_tap: TapSink, picker: Option<Picker>) -> i32 {
+    serve(cfg, emit, true, Some(on_tap), picker)
+}
+
+fn serve(cfg: ServeConfig, emit: Emit, embedded: bool, on_tap: Option<TapSink>, picker: Option<Picker>) -> i32 {
     let cfg = ServeConfig { host_events: cfg.host_events || embedded, ..cfg };
     if cfg.app_key.is_none() && !cfg.dev {
         eprintln!("[collector] {}", ConfigError::NoAppKey);
@@ -106,7 +111,7 @@ fn serve(cfg: ServeConfig, emit: Emit, embedded: bool, on_tap: Option<TapSink>) 
     let host_client = cfg.host_rpc.then(|| HostClient::new(Box::new(std::io::stdout())));
     let deps: Arc<dyn Deps> = match &host_client {
         Some(c) => Arc::new(HostDeps::new(c.clone())),
-        None => Arc::new(SystemDeps),
+        None => Arc::new(NativeDeps::new(picker)),
     };
     let host = Arc::new(HostOps::new(deps.clone(), cfg.monitor.claude_root.join("projects"), tx.clone()));
     let sampling = Sampling::start(cfg.res_fixture.clone(), handle.clone(), alerts.clone(), emit.clone());

@@ -68,7 +68,7 @@ impl Serve {
         let control = take_stdin().map_err(|e| ServeError::Io(e.to_string()))?;
         let tap = Arc::new(OnceLock::new());
         let slot = tap.clone();
-        let thread = std::thread::Builder::new().name("core-serve".into()).spawn(move || core_serve::run_with_tap(cfg, crate::episodes::sink(), Box::new(move |t| drop(slot.set(t))))).map_err(|e| ServeError::Io(e.to_string()))?;
+        let thread = std::thread::Builder::new().name("core-serve".into()).spawn(move || core_serve::run_embedded(cfg, crate::episodes::sink(), Box::new(move |t| drop(slot.set(t))), Some(crate::folder_pick::picker()))).map_err(|e| ServeError::Io(e.to_string()))?;
         let mut serve = Serve { control, thread: Some(thread), tap };
         let deadline = Instant::now() + BOOT_TIMEOUT;
         while Instant::now() < deadline {

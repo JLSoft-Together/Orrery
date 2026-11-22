@@ -39,6 +39,16 @@ export interface ProjectMenuCtx {
   collapsed: boolean
   /** Offer DeepSeek panes (desktop bridge present). */
   deepseek?: boolean
+  kind?: ProjectKind
+}
+
+export type ProjectKind = 'android' | 'flutter' | 'other' | null
+
+export function projectKindOf(projects: Array<{ kind: string }>, detected: boolean): ProjectKind {
+  if (!detected) return null
+  if (projects.some((p) => p.kind === 'flutter')) return 'flutter'
+  if (projects.some((p) => p.kind === 'android')) return 'android'
+  return 'other'
 }
 
 type T = (key: string, params?: Record<string, unknown>) => string
@@ -53,12 +63,17 @@ export function projectMenu(ctx: ProjectMenuCtx, t: T): MenuEntry[] {
   const entries: MenuEntry[] = []
   if (ctx.dir || ctx.home) entries.push({ id: 'new', label: t(`${M}newTab`), children: newKids })
   if (ctx.run && ctx.dir) entries.push({ id: 'run', label: t('run.open') })
-  if (ctx.scripts && ctx.dir) entries.push({ id: 'scripts', label: t('workspace.scripts.open') })
-  if (ctx.explorer && ctx.dir) entries.push({ id: 'plan', label: t('workspace.plan.open') })
-  if (ctx.env && ctx.dir) entries.push({ id: 'env', label: t('workspace.envCheck.open') })
-  if (ctx.i18n && ctx.dir) entries.push({ id: 'i18n', label: t('workspace.i18nScan.open') })
-  if (ctx.perms && ctx.dir) entries.push({ id: 'perms', label: t('permAdvisor.open') })
-  if (ctx.buildClean && ctx.dir && !ctx.home) entries.push({ id: 'build-clean', label: t('buildClean.open') })
+  const mobile = ctx.kind == null || ctx.kind === 'android' || ctx.kind === 'flutter'
+  const tools: MenuEntry[] = []
+  if (ctx.dir) {
+    if (ctx.scripts) tools.push({ id: 'scripts', label: t('workspace.scripts.open') })
+    if (ctx.explorer) tools.push({ id: 'plan', label: t('workspace.plan.open') })
+    if (ctx.env) tools.push({ id: 'env', label: t('workspace.envCheck.open') })
+    if (ctx.i18n) tools.push({ id: 'i18n', label: t('workspace.i18nScan.open') })
+    if (ctx.perms && mobile) tools.push({ id: 'perms', label: t('permAdvisor.open') })
+    if (ctx.buildClean && !ctx.home) tools.push({ id: 'build-clean', label: t('buildClean.open') })
+  }
+  if (tools.length) entries.push({ id: 'tools', label: t(`${M}tools`), children: tools })
   if (ctx.layouts && ctx.dir) {
     const kids: MenuEntry[] = [{ id: 'layout-save', label: t('workspace.layouts.save') }]
     if (ctx.layouts.length) kids.push({ id: 'layout-manage', label: t('workspace.layouts.manage') }, { separator: true })

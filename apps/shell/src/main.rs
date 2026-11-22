@@ -1,9 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod appearance;
+mod attention;
+mod badge;
 mod bug_report;
 mod capture;
 mod ccm;
+mod chat_ipc;
 mod collector;
 mod config;
 mod desk;
@@ -23,6 +26,7 @@ mod disk_clean_dev;
 mod disk_clean_sys;
 mod disk_clean_text;
 mod disk_ram;
+mod sys_sample;
 mod disk_organize;
 mod disk_organize_fs;
 mod disk_organize_junk;
@@ -34,6 +38,7 @@ mod disk_text;
 mod drop_paths;
 mod e2e_cdp;
 mod episodes;
+mod folder_pick;
 mod files_ipc;
 mod guest;
 mod guest_ipc;
@@ -45,6 +50,10 @@ mod legacy;
 mod lifecycle;
 mod links;
 mod log;
+mod mac_env;
+mod mac_menu;
+mod mac_move;
+mod mac_note;
 mod mcp;
 mod menu_toast;
 mod native;
@@ -77,6 +86,7 @@ mod window;
 mod worktree;
 mod wtcopy;
 mod shim;
+mod shell_init;
 
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
@@ -128,6 +138,8 @@ fn capability(app: &AppHandle, origin: &str) -> tauri::Result<()> {
 }
 
 fn main() {
+    #[cfg(target_os = "macos")]
+    mac_env::adopt_login_shell_path();
     let args: Vec<String> = std::env::args().collect();
     let cfg = ShellConfig::from_env(&args).unwrap_or_else(|e| fail(e));
     let appearance = appearance::Store::open(cfg.data_dir.join("shell-appearance.json"));
@@ -180,6 +192,7 @@ fn main() {
         .setup(move |app| {
             let handle = app.handle().clone();
             capability(&handle, &origin)?;
+            folder_pick::install(&handle);
             desk::wire(&handle);
             remote::host::install(&handle);
             disk_map::manage(&handle, core_bin.clone());
@@ -194,6 +207,16 @@ fn main() {
             tray::create(&handle)?;
             #[cfg(target_os = "macos")]
             tray::install_app_menu(&handle)?;
+            #[cfg(target_os = "macos")]
+            {
+                let mover = handle.clone();
+                std::thread::spawn(move || {
+                    if mac_move::offer(&mover) {
+                        mover.state::<Shell>().shutdown();
+                        mover.exit(0);
+                    }
+                });
+            }
             e2e_cdp::start(&handle);
             let links_app = handle.clone();
             app.deep_link().on_open_url(move |event| {

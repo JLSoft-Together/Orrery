@@ -1,7 +1,9 @@
+import { isRebound, overrideAction, recording } from '../features/shortcuts/bindings'
 import type { FocusDir, SplitDir } from './splitLayout'
 
 export type WorkspaceAction =
   | { t: 'newTab' }
+  | { t: 'mru'; step: 1 | -1 }
   | { t: 'split'; dir?: SplitDir }
   | { t: 'closePane' }
   | { t: 'cycleTab'; step: 1 | -1 }
@@ -18,6 +20,7 @@ export type WorkspaceAction =
   | { t: 'explorer' }
   /** Explorer → Search (⇧⌘F; Alt+Shift+F elsewhere: Ctrl+Shift+F is terminal find). */
   | { t: 'search' }
+  | { t: 'termSearch' }
   | { t: 'focusMode' }
   | { t: 'moveTab'; step: 1 | -1 }
   | { t: 'zoom' }
@@ -33,6 +36,7 @@ export type WorkspaceAction =
   | { t: 'navForward' }
   /** Project notes (⌃⌥N on macOS, Ctrl+Alt+N elsewhere). */
   | { t: 'notes' }
+  | { t: 'shareMode' }
   /** Drop-down shell terminal (Ctrl+` / ⌃`, as in VS Code). */
   | { t: 'dropTerm' }
   /** Go to project (⌃⌥P on macOS, Ctrl+Alt+P elsewhere); pressed again while held it steps the list, Shift steps back. */
@@ -43,7 +47,7 @@ export type WorkspaceAction =
   | { t: 'detachTab' }
 
 /** Chords that still work while focus is in the drop-down terminal: they open global UI, never touch the pane behind it. */
-export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
+export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'termSearch', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
 
 const ARROWS: Record<string, FocusDir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
 const PAGES: Record<string, 1 | -1> = { PageUp: -1, PageDown: 1 }
@@ -53,12 +57,21 @@ const PAGES: Record<string, 1 | -1> = { PageUp: -1, PageDown: 1 }
  * layouts keep working. Chosen to stay off the keys Claude Code and shells use (Ctrl+letter, Alt+letter).
  */
 export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boolean, groups = false, next = false): WorkspaceAction | null {
-  if (e.type !== 'keydown' || e.isComposing) return null
+  if (e.type !== 'keydown' || e.isComposing || recording.value) return null
+  const custom = overrideAction(e, mac)
+  if (custom) return custom as WorkspaceAction
+  const action = defaultAction(e, mac, multiPane, groups, next)
+  return action && isRebound(action, mac) ? null : action
+}
+
+function defaultAction(e: KeyboardEvent, mac: boolean, multiPane: boolean, groups: boolean, next: boolean): WorkspaceAction | null {
   const { ctrlKey: ctrl, shiftKey: shift, altKey: alt, metaKey: meta, code } = e
   const side = code === 'ArrowLeft' ? 'left' : code === 'ArrowRight' ? 'right' : null
   if (ctrl && alt && !meta && !e.getModifierState?.('AltGraph')) {
     if (code === 'KeyG' && !shift) return { t: 'addGroup' }
     if (code === 'KeyQ' && !shift) return { t: 'asked' }
+    if (code === 'KeyF' && !shift) return { t: 'termSearch' }
+    if (code === 'KeyH' && !shift) return { t: 'shareMode' }
     if (side && groups) return shift ? { t: 'groupMove', dir: side } : { t: 'groupFocus', dir: side }
   }
   const digit = /^Digit([1-9])$/.exec(code)
@@ -66,6 +79,7 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
   if (code === 'Backquote' && ctrl && !shift && !alt && !meta) return { t: 'dropTerm' }
   if (code === 'Period' && !shift && !alt && (mac ? meta && !ctrl : ctrl && !meta)) return { t: 'focusMode' }
   if (mac) {
+    if (ctrl && !meta && !alt && code === 'Tab') return { t: 'mru', step: shift ? -1 : 1 }
     if (ctrl && !meta && !alt && code === 'Minus') return { t: shift ? 'navForward' : 'navBack' }
     if (ctrl && alt && !meta && !shift && code === 'KeyN') return { t: 'notes' }
     if (ctrl && alt && !meta && code === 'KeyP') return { t: 'projects', back: shift }
@@ -106,7 +120,8 @@ export function workspaceAction(e: KeyboardEvent, mac: boolean, multiPane: boole
     if (code === 'Minus' || code === 'NumpadSubtract') return { t: 'split', dir: 'col' }
   }
   if (ctrl && alt && !shift && (code === 'ArrowLeft' || code === 'ArrowRight') && !e.getModifierState?.('AltGraph')) return { t: code === 'ArrowLeft' ? 'navBack' : 'navForward' }
-  if (ctrl && !alt && code === 'Tab') return { t: 'cycleTab', step: shift ? -1 : 1 }
+  if (ctrl && !alt && code === 'Tab') return { t: 'mru', step: shift ? -1 : 1 }
+  if (ctrl && !alt && !shift && PAGES[code]) return { t: 'cycleTab', step: PAGES[code]! }
   // AltGr arrives as Ctrl+Alt on Windows; AltGr+digit types characters like @ { [ on many layouts.
   if (ctrl && alt && !shift && digit && !e.getModifierState?.('AltGraph')) return { t: 'tab', index: Number(digit[1]) - 1 }
   if (ctrl && alt && !shift && code === 'KeyN' && !e.getModifierState?.('AltGraph')) return { t: 'notes' }

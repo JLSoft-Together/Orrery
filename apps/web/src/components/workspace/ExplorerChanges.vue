@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { shown } from '../../features/shareMode/store'
 import { ArrowUpFromLine, Circle, CircleCheck, CircleDot, GitBranch, GitCompare, GitGraph, Minus, Plus, RotateCw } from 'lucide-vue-next'
 import { absoluteIn, dirOfRel, groupChanges, isShowDiffKey, KIND_CLASS, KIND_LETTER, stageState } from '../../lib/changesView'
 import { setDragPath } from '../../lib/explorer/dragPath'
@@ -90,7 +91,7 @@ const title = (e: ChangeEntry): string =>
   <div class="flex min-h-0 flex-1 flex-col">
     <div class="flex h-7 min-w-0 shrink-0 items-center gap-1 px-2 text-xs text-ink-muted">
       <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
-      <span class="min-w-0 flex-1 truncate" :title="ok?.root">{{ ok ? (ok.branch ?? t('workspace.explorer.changesView.noBranch')) : '' }}</span>
+      <span class="min-w-0 flex-1 truncate" :title="shown(ok?.root)">{{ ok ? (ok.branch ?? t('workspace.explorer.changesView.noBranch')) : '' }}</span>
       <button
         v-if="pushable"
         type="button"

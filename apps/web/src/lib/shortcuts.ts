@@ -1,3 +1,6 @@
+import { effectiveKeys, overrides } from '../features/shortcuts/bindings'
+import { defaultWorkspaceShortcuts } from '../features/shortcuts/defaults'
+
 /**
  * Keys are tokens: `Mod` is the command key (⌘ on macOS, Ctrl elsewhere), `Ctrl` the real Control key (⌃ on macOS),
  * `Alt`, `Shift`, `Enter`; anything else prints as is. `formatKeys` maps them per platform.
@@ -28,85 +31,8 @@ export const SHORTCUTS: Shortcut[] = [
   { id: 'settings', keys: ['Mod', ','], group: 'help' },
 ]
 
-/** Workspace chords, mirroring `workspaceAction` in lib/workspaceKeys.ts (they work even while a terminal has focus). */
 export function workspaceShortcuts(mac: boolean): Shortcut[] {
-  const group = 'workspace' as const
-  if (mac)
-    return [
-      { id: 'wsNew', keys: ['Mod', 'T'], group },
-      { id: 'wsSplitRight', keys: ['Mod', 'D'], group },
-      { id: 'wsSplitDown', keys: ['Mod', 'Shift', 'D'], group },
-      { id: 'wsClose', keys: ['Mod', 'W'], group },
-      { id: 'wsReopen', keys: ['Mod', 'Shift', 'T'], group },
-      { id: 'wsZoom', keys: ['Mod', 'Shift', 'Enter'], group },
-      { id: 'wsAttention', keys: ['Mod', 'Shift', 'A'], group },
-      { id: 'wsAsked', keys: ['Ctrl', 'Alt', 'Q'], group },
-      { id: 'wsCycle', keys: ['Mod', 'Shift', '[', ']'], group },
-      { id: 'wsMoveTab', keys: ['Mod', 'Shift', 'PgUp', 'PgDn'], group },
-      { id: 'wsTab', keys: ['Mod', '1', '…', '9'], group },
-      { id: 'wsFocus', keys: ['Alt', 'Mod', '←↑↓→'], group },
-      { id: 'wsSwap', keys: ['Alt', 'Mod', 'Shift', '←↑↓→'], group },
-      { id: 'wsQuickOpen', keys: ['Mod', 'P'], group },
-      { id: 'wsExplorer', keys: ['Mod', 'Shift', 'E'], group },
-    { id: 'wsSearch', keys: ['Mod', 'Shift', 'F'], group },
-      { id: 'wsFocusMode', keys: ['Mod', '.'], group },
-      { id: 'wsProjects', keys: ['Ctrl', 'Alt', 'P'], group },
-      { id: 'wsPrompts', keys: ['Mod', 'Shift', 'P'], group },
-      { id: 'wsOutline', keys: ['Mod', 'F12'], group },
-      { id: 'wsUsages', keys: ['Shift', 'F12'], group },
-      { id: 'wsRecent', keys: ['Mod', 'E'], group },
-      { id: 'wsBookmark', keys: ['F11'], group },
-      { id: 'wsNavBack', keys: ['Ctrl', '-'], group },
-      { id: 'wsNavForward', keys: ['Ctrl', 'Shift', '-'], group },
-      { id: 'wsNotes', keys: ['Ctrl', 'Alt', 'N'], group },
-      { id: 'wsGroupAdd', keys: ['Ctrl', 'Alt', 'G'], group },
-      { id: 'wsGroupFocus', keys: ['Ctrl', 'Alt', '←', '→'], group },
-      { id: 'wsGroupMove', keys: ['Ctrl', 'Alt', 'Shift', '←', '→'], group },
-      { id: 'wsDropTerm', keys: ['Ctrl', '`'], group },
-      { id: 'wsFind', keys: ['Mod', 'F'], group },
-      { id: 'wsNextChange', keys: ['F7', 'Shift', 'F7'], group },
-      { id: 'wsDiffFile', keys: ['[', ']'], group },
-      { id: 'wsJumpSource', keys: ['F4'], group },
-      { id: 'wsShowDiff', keys: ['Alt', 'Mod', 'D'], group },
-    ]
-  return [
-    { id: 'wsNew', keys: ['Ctrl', 'Shift', 'T'], group },
-    { id: 'wsSplit', keys: ['Alt', 'Shift', 'D'], group },
-    { id: 'wsSplitRight', keys: ['Alt', 'Shift', '+'], group },
-    { id: 'wsSplitDown', keys: ['Alt', 'Shift', '-'], group },
-    { id: 'wsClose', keys: ['Ctrl', 'Shift', 'W'], group },
-    { id: 'wsReopen', keys: ['Ctrl', 'Shift', 'Z'], group },
-    { id: 'wsZoom', keys: ['Ctrl', 'Shift', 'Enter'], group },
-    { id: 'wsAttention', keys: ['Ctrl', 'Shift', 'A'], group },
-    { id: 'wsAsked', keys: ['Ctrl', 'Alt', 'Q'], group },
-    { id: 'wsCycle', keys: ['Ctrl', 'Tab'], group },
-    { id: 'wsMoveTab', keys: ['Ctrl', 'Shift', 'PgUp', 'PgDn'], group },
-    { id: 'wsTab', keys: ['Ctrl', 'Alt', '1', '…', '9'], group },
-    { id: 'wsFocus', keys: ['Alt', '←↑↓→'], group },
-    { id: 'wsSwap', keys: ['Alt', 'Shift', '←↑↓→'], group },
-    { id: 'wsQuickOpen', keys: ['Ctrl', 'Shift', 'P'], group },
-    { id: 'wsExplorer', keys: ['Ctrl', 'Shift', 'E'], group },
-    { id: 'wsSearch', keys: ['Alt', 'Shift', 'F'], group },
-    { id: 'wsFocusMode', keys: ['Ctrl', '.'], group },
-    { id: 'wsProjects', keys: ['Ctrl', 'Alt', 'P'], group },
-    { id: 'wsPrompts', keys: ['Alt', 'Shift', 'P'], group },
-    { id: 'wsOutline', keys: ['Ctrl', 'F12'], group },
-    { id: 'wsUsages', keys: ['Shift', 'F12'], group },
-    { id: 'wsRecent', keys: ['Alt', 'Shift', 'E'], group },
-    { id: 'wsBookmark', keys: ['F11'], group },
-    { id: 'wsNavBack', keys: ['Ctrl', 'Alt', '←'], group },
-    { id: 'wsNavForward', keys: ['Ctrl', 'Alt', '→'], group },
-    { id: 'wsNotes', keys: ['Ctrl', 'Alt', 'N'], group },
-    { id: 'wsGroupAdd', keys: ['Ctrl', 'Alt', 'G'], group },
-    { id: 'wsGroupFocus', keys: ['Ctrl', 'Alt', '←', '→'], group },
-    { id: 'wsGroupMove', keys: ['Ctrl', 'Alt', 'Shift', '←', '→'], group },
-    { id: 'wsDropTerm', keys: ['Ctrl', '`'], group },
-    { id: 'wsFind', keys: ['Ctrl', 'Shift', 'F'], group },
-    { id: 'wsNextChange', keys: ['F7', 'Shift', 'F7'], group },
-    { id: 'wsDiffFile', keys: ['[', ']'], group },
-    { id: 'wsJumpSource', keys: ['F4'], group },
-    { id: 'wsShowDiff', keys: ['Ctrl', 'D'], group },
-  ]
+  return defaultWorkspaceShortcuts(mac).map((s) => (s.id in overrides.value ? { ...s, keys: effectiveKeys(s.id, mac) } : s))
 }
 
 /** App zoom and code size (useWheelZoom + the main process). */
@@ -161,6 +87,10 @@ export function shortcutText(id: string, mac: boolean): string {
   return keyCombo(workspaceShortcuts(mac).find((s) => s.id === id)?.keys ?? [], mac)
 }
 
+export function globalShortcuts(group: Shortcut['group'], mac: boolean): Shortcut[] {
+  return SHORTCUTS.filter((s) => s.group === group).map((s) => (s.id in overrides.value ? { ...s, keys: effectiveKeys(s.id, mac) } : s))
+}
+
 export function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   if (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return true
@@ -171,7 +101,7 @@ export function isTyping(target: EventTarget | null): boolean {
 export const ASKED_KEYS: readonly string[] = ['Ctrl', 'Alt', 'Q']
 
 export function askedShortcutText(mac: boolean): string {
-  return keyCombo(ASKED_KEYS, mac)
+  return keyCombo(effectiveKeys('wsAsked', mac), mac)
 }
 
 export const detachKeys = (mac: boolean): readonly string[] => (mac ? ['Alt', 'Mod', 'T'] : ['Ctrl', 'Alt', 'T'])

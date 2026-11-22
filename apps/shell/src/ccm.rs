@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 44] = [
+const LOCAL: [&str; 45] = [
     "ccm:window",
     "ccm:pty-endpoint",
     "ccm:editor-dirty",
@@ -57,6 +57,7 @@ const LOCAL: [&str; 44] = [
     "ccm:remote-install",
     "ccm:drop-paths",
     "ccm:menu-toast-sync",
+    "ccm:badge",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -203,6 +204,13 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             }
             Ok(Value::Null)
         }
+        "ccm:badge" => {
+            if answers_asks(webview.label()) {
+                let count = arg(&args, 0).as_u64().unwrap_or(0).min(999) as u32;
+                crate::badge::apply(&app, count, arg(&args, 1) == &Value::Bool(true));
+            }
+            Ok(Value::Null)
+        }
         "ccm:focus-reply" => {
             if answers_asks(webview.label()) {
                 shell.reply("focus", json!(arg(&args, 0) == &Value::Bool(true)));
@@ -291,6 +299,11 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
         c if crate::disk_ram::handles(c) => {
             let (handle, channel) = (app.clone(), c.to_owned());
             blocking(move || crate::disk_ram::dispatch(&handle, &channel, &args)).await?
+        }
+        c if crate::chat_ipc::handles(c) => blocking(move || crate::chat_ipc::dispatch(&args)).await?,
+        c if crate::sys_sample::handles(c) => {
+            let channel = c.to_owned();
+            blocking(move || crate::sys_sample::dispatch(&channel)).await?
         }
         c if crate::preview_ipc::handles(c) => {
             let (handle, owner, channel) = (app.clone(), webview.label().to_owned(), c.to_owned());

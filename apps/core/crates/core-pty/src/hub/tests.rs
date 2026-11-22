@@ -187,3 +187,44 @@ fn early_exit_note_matches_node() {
     assert_eq!(early_exit_note("claude", 3221225794, None, 5, true), "pty early exit: preset=claude code=3221225794 (0xC0000142) after=5ms killed-by-app");
     assert_eq!(early_exit_note("codex", -1073741502, Some("SIGHUP"), 7, false), "pty early exit: preset=codex code=-1073741502 (0xC0000142) signal=SIGHUP after=7ms");
 }
+
+#[tokio::test]
+async fn command_marks_in_the_output_become_cmd_frames_after_the_bytes() {
+    let (tx, _rx) = unbounded_channel();
+    let log = Log::default();
+    let mut hub = Hub::new(log.clone(), tx);
+    let t0 = Instant::now();
+    let at = Arc::new(Mutex::new(t0));
+    let clock = at.clone();
+    hub.set_clock(Arc::new(move || *clock.lock().unwrap()));
+    let (otx, mut orx) = unbounded_channel();
+    hub.handle(Event::Open { conn: 1, tx: otx, meter: Meter::new() });
+    let key = spawn_long(&mut hub, &log, 1, "M1");
+    hub.sessions.get_mut(&key).unwrap().marks = Some(crate::marks::Marks::new("n0nce"));
+    drain(&mut orx);
+    hub.handle(Event::Pty { key, ev: PtyEvent::Data(b"\x1b]633;E;Start-Sleep 2;n0nce\x07\x1b]63".to_vec()), credit: None });
+    hub.handle(Event::Pty { key, ev: PtyEvent::Data(b"3;C\x07".to_vec()), credit: None });
+    let outs = drain(&mut orx);
+    assert!(matches!(&outs[..], [Out::Binary(_), Out::Binary(_), Out::Text(t)] if t.contains("\"phase\":\"start\"") && t.contains("Start-Sleep 2")), "{:?}", outs.len());
+    *at.lock().unwrap() = t0 + Duration::from_millis(2_500);
+    hub.handle(Event::Pty { key, ev: PtyEvent::Data(b"\x1b]633;D;3\x07".to_vec()), credit: None });
+    let outs = drain(&mut orx);
+    let Some(Out::Text(t)) = outs.last() else { panic!("no cmd frame") };
+    let v: Value = serde_json::from_str(t).unwrap();
+    assert_eq!(v, json!({ "t": "cmd", "phase": "end", "command": "Start-Sleep 2", "code": 3, "ms": 2500 }));
+    hub.handle(Event::Control(Some(MainToCore::KillAll)));
+}
+
+#[tokio::test]
+async fn a_session_without_marks_sends_no_cmd_frames() {
+    let (tx, _rx) = unbounded_channel();
+    let log = Log::default();
+    let mut hub = Hub::new(log.clone(), tx);
+    let (otx, mut orx) = unbounded_channel();
+    hub.handle(Event::Open { conn: 1, tx: otx, meter: Meter::new() });
+    let key = spawn_long(&mut hub, &log, 1, "M2");
+    drain(&mut orx);
+    hub.handle(Event::Pty { key, ev: PtyEvent::Data(b"\x1b]633;C\x07\x1b]633;D;0\x07".to_vec()), credit: None });
+    assert!(drain(&mut orx).iter().all(|o| matches!(o, Out::Binary(_))));
+    hub.handle(Event::Control(Some(MainToCore::KillAll)));
+}

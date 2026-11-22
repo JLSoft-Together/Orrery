@@ -110,6 +110,15 @@ import v105U2 from './v105-u2'
 import v106Rail from './v106-rail'
 import v106Install from './v106-install'
 import v107Gon from './v107-gon'
+import notifyV109 from '../features/notify/i18n'
+import footerSysV109 from '../features/footerSys/i18n'
+import shellDoneV109 from '../features/shellDone/i18n'
+import chatViewV109 from '../features/chat/i18n'
+import shortcutsV109 from '../features/shortcuts/i18n'
+import diffCommentsV109 from '../features/diffComments/i18n'
+import secretGuardV109 from '../features/secretGuard/i18n'
+import termSearchV109 from '../features/termSearch/i18n'
+import shareModeV109 from '../features/shareMode/i18n'
 import v105U3 from './v105-u3'
 
 const vi: typeof en = {
@@ -121,6 +130,15 @@ const vi: typeof en = {
   ...v106Rail.vi,
   ...v106Install.vi,
   ...v107Gon.vi,
+  ...notifyV109.vi,
+  ...footerSysV109.vi,
+  ...shellDoneV109.vi,
+  ...chatViewV109.vi,
+  ...shortcutsV109.vi,
+  ...diffCommentsV109.vi,
+  ...secretGuardV109.vi,
+  ...termSearchV109.vi,
+  ...shareModeV109.vi,
   ...v105U3.vi,
   ...diskV101.vi,
   ...diskCleanV101.vi,
@@ -760,7 +778,8 @@ const vi: typeof en = {
       wsZoom: 'Phóng to pane đang chọn cho đầy tab, hoặc hiện lại mọi pane',
       wsAttention: 'Mở hoặc đóng Inbox',
       wsAsked: 'Tới mục kế trong Inbox',
-      wsCycle: 'Tab kế tiếp của dự án này (thêm Shift để lùi)',
+      wsMru: 'Chuyển về tab vừa dùng (giữ để chọn, thả để chuyển; thêm Shift để lùi)',
+      wsCycle: 'Tab kế tiếp theo thứ tự tab (Shift để lùi)',
       wsMoveTab: 'Chuyển tab sang trái / phải',
       wsTab: 'Tab 1-9 của dự án này',
       wsFocusMode: 'Chế độ tập trung: ẩn rail và Explorer của tab này',
@@ -774,6 +793,7 @@ const vi: typeof en = {
       wsNavBack: 'Quay lại vị trí trước',
       wsNavForward: 'Tới vị trí sau',
       wsNotes: 'Ghi chú dự án',
+      wsShareMode: 'Chế độ chia sẻ màn hình: che tên user, email và mã ghép',
       wsGroupAdd: 'Thêm project khác thành nhóm',
       wsGroupFocus: 'Chuyển focus sang nhóm project bên cạnh',
       wsGroupMove: 'Chuyển nhóm project sang trái / phải',
@@ -781,6 +801,7 @@ const vi: typeof en = {
       wsDropTerm: 'Terminal thả xuống',
       wsExplorer: 'Hiện cây thư mục (Explorer)',
     wsSearch: 'Tìm trong file của project',
+      wsTermSearch: 'Tìm trong mọi terminal đang mở',
       wsNextChange: 'Thay đổi kế / trước (xem tệp, Thay đổi)',
       wsDiffFile: 'Tệp trước / sau trong Thay đổi',
       wsJumpSource: 'Mở tệp tại thay đổi đang chọn (Thay đổi)',

@@ -72,6 +72,7 @@ impl<C: Control> Hub<C> {
                 exit_code: None,
                 branch: None,
                 si: r.si.clone(),
+                marks: r.si.as_deref().map(crate::marks::Marks::new),
                 started: Instant::now(),
                 exited_at: None,
                 known: true,

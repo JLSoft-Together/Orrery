@@ -5,6 +5,7 @@ import { ExternalLink, LoaderCircle, Trash2, TriangleAlert } from 'lucide-vue-ne
 import { GH_TOKEN_URL, type GhAccount, type GhAccountsResult } from '@ccm/shared'
 import { ghAccountAdd, ghAccountDefault, ghAccountRemove, ghAccounts } from '../lib/github'
 import { openExternal } from '../lib/preview'
+import { shownName } from '../features/shareMode/store'
 
 /** Settings › GitHub accounts (v58): tokens go to main once and are never shown again. Read when the panel opens. */
 const props = defineProps<{ open: boolean }>()
@@ -72,17 +73,17 @@ const initial = (login: string): string => login.slice(0, 1).toUpperCase()
     <h3 id="set-github" class="mb-1.5 px-3 text-2xs font-semibold text-ink-muted">{{ t('github.section') }}</h3>
     <div class="ccm-group divide-y divide-line overflow-hidden">
       <div v-for="a in accounts" :key="a.id" class="flex min-w-0 items-center gap-2.5 px-3 py-2" :data-github-account="a.login">
-        <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill text-xs font-semibold text-ink-muted" aria-hidden="true">{{ initial(a.login) }}</span>
+        <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill text-xs font-semibold text-ink-muted" aria-hidden="true" data-share-hide>{{ initial(a.login) }}</span>
         <div class="min-w-0 flex-1">
           <p class="flex min-w-0 items-center gap-1.5 text-sm text-ink">
-            <span class="truncate" :title="a.login">{{ a.login }}</span>
+            <span class="truncate" :title="shownName(a.login)" data-share-hide>{{ a.login }}</span>
             <span v-if="a.isDefault" class="shrink-0 rounded-inner bg-fill px-1.5 py-px text-2xs font-medium text-ink-muted" data-github-default>{{ t('github.default') }}</span>
           </p>
           <p v-if="missingRepo(a)" class="mt-0.5 flex min-w-0 items-center gap-1 text-2xs text-warning">
             <TriangleAlert :size="11" class="shrink-0" aria-hidden="true" />
             <span class="truncate" :title="t('github.noRepoScope')">{{ t('github.noRepoScope') }}</span>
           </p>
-          <p v-else class="mt-0.5 truncate text-2xs text-ink-faint" :title="a.scopes ? a.scopes.join(', ') : t('github.fineGrained')">
+          <p v-else class="mt-0.5 truncate text-2xs text-ink-faint" data-share-hide :title="a.scopes ? a.scopes.join(', ') : t('github.fineGrained')">
             {{ [a.name, a.scopes ? a.scopes.join(', ') : t('github.fineGrained')].filter(Boolean).join(', ') }}
           </p>
         </div>
@@ -90,8 +91,8 @@ const initial = (login: string): string => login.slice(0, 1).toUpperCase()
         <button
           type="button"
           class="ccm-btn-plain shrink-0"
-          :title="t('github.removeFor', { login: a.login })"
-          :aria-label="t('github.removeFor', { login: a.login })"
+          :title="t('github.removeFor', { login: shownName(a.login) })"
+          :aria-label="t('github.removeFor', { login: shownName(a.login) })"
           data-github-remove
           @click="remove(a)"
         >
@@ -123,7 +124,7 @@ const initial = (login: string): string => login.slice(0, 1).toUpperCase()
           </button>
         </div>
         <p v-if="error" class="text-2xs text-st-error" role="alert" data-github-error>{{ error }}</p>
-        <p v-else-if="added" class="text-2xs text-success" role="status">{{ t('github.added', { login: added }) }}</p>
+        <p v-else-if="added" class="text-2xs text-success" role="status" data-share-hide>{{ t('github.added', { login: added }) }}</p>
         <button type="button" class="ccm-btn-plain self-start text-xs" @click="openExternal(GH_TOKEN_URL)">
           <ExternalLink :size="12" aria-hidden="true" />
           {{ t('github.generate') }}

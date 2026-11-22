@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ArrowRightLeft, CornerDownRight, Mail, Send } from 'lucide-vue-next'
 import type { GitDiffStat, PeerLink, TerminalSession, TerminalStatus } from '@ccm/shared'
 import { now, relativeTime, shortPath } from '../lib/format'
+import { shown } from '../features/shareMode/store'
 import { isPeerNews, paneState, stateWord, type RailPeer, type RailState } from '../lib/rail/railModel'
 import { modelLabel } from '../lib/model'
 import { waitDisplay } from '../lib/wait'
@@ -106,20 +107,20 @@ export function usePaneInfo() {
 
   /** Full URL / path / repo root, for tooltips. */
   function viewDetail(pane: Pane): string | undefined {
-    if (pane.kind === 'file') return pane.path
-    if (pane.kind === 'changes' || pane.kind === 'log') return pane.root ?? pane.cwd
-    if (pane.kind === 'run') return pane.cwd
-    return pane.url || undefined
+    if (pane.kind === 'file') return shown(pane.path)
+    if (pane.kind === 'changes' || pane.kind === 'log') return shown(pane.root ?? pane.cwd)
+    if (pane.kind === 'run') return shown(pane.cwd)
+    return shown(pane.url || undefined)
   }
 
   function labelOf(pane: Pane): string {
-    if (!isTerm(pane)) return viewLabel(pane)
+    if (!isTerm(pane)) return shown(viewLabel(pane))
     const session = sessionOf(pane)
-    return session ? displayTitle(session) : t(`workspace.preset.${presetOf(pane)}`)
+    return session ? shown(displayTitle(session)) : t(`workspace.preset.${presetOf(pane)}`)
   }
 
   function titleOf(pane: Pane): string {
-    return isTerm(pane) && presetOf(pane) === 'shell' && !sessionOf(pane) ? (shellTitle(pane) ?? labelOf(pane)) : labelOf(pane)
+    return isTerm(pane) && presetOf(pane) === 'shell' && !sessionOf(pane) ? shown(shellTitle(pane) ?? labelOf(pane)) : labelOf(pane)
   }
 
   function tabTitle(tab: Tab): string {

@@ -161,6 +161,45 @@ impl Text {
         self.pick("Windows notifications from Orrery work.", "Thông báo Windows của Orrery đang chạy.")
     }
 
+    pub fn group_title(self, done: usize, waiting: usize) -> String {
+        let mut parts = Vec::new();
+        if done > 0 {
+            parts.push(if self.vi() { format!("{done} session xong") } else { format!("{done} {} finished", if done == 1 { "session" } else { "sessions" }) });
+        }
+        if waiting > 0 {
+            parts.push(if self.vi() { format!("{waiting} đang chờ chủ nhân") } else { format!("{waiting} {} you", if waiting == 1 { "needs" } else { "need" }) });
+        }
+        parts.join(", ")
+    }
+
+    pub fn elapsed(self, ms: u64) -> String {
+        let s = ms / 1000;
+        let (h, m, sec) = (s / 3600, s % 3600 / 60, s % 60);
+        match (h, m, self.vi()) {
+            (0, 0, true) => format!("{sec} giây"),
+            (0, 0, false) => format!("{sec} s"),
+            (0, _, true) => format!("{m} phút {sec} giây"),
+            (0, _, false) => format!("{m} min {sec} s"),
+            (_, _, true) => format!("{h} giờ {m} phút"),
+            (_, _, false) => format!("{h} h {m} min"),
+        }
+    }
+
+    pub fn shell_title(self, code: i64, ms: u64, command: &str) -> String {
+        let head = match (code == 0, self.vi()) {
+            (true, true) => "Lệnh xong",
+            (true, false) => "Command finished",
+            (false, true) => "Lệnh lỗi",
+            (false, false) => "Command failed",
+        };
+        let facts = format!("{head} (exit {code}, {})", self.elapsed(ms));
+        if command.is_empty() { facts } else { format!("{facts}: {command}") }
+    }
+
+    pub fn group_more(self, n: usize) -> String {
+        if self.vi() { format!(" (+{n} session nữa)") } else { format!(" (+{n} more)") }
+    }
+
     pub fn snooze(self, minutes: u64) -> String {
         if self.vi() { format!("Hoãn {minutes} phút") } else { format!("Snooze {minutes} min") }
     }
@@ -175,6 +214,10 @@ impl Text {
 
     pub fn dismiss(self) -> String {
         self.pick("Dismiss", "Bỏ qua")
+    }
+
+    pub fn shared_title(self) -> String {
+        self.pick("Orrery: new notification (hidden while sharing the screen)", "Orrery: có thông báo mới (ẩn khi đang chia sẻ màn hình)")
     }
 }
 
@@ -191,5 +234,8 @@ mod tests {
         assert_eq!(en.sensitive_body("git-clean", "Bash", Some("x")), "Bash, git clean -fd, x");
         assert_eq!(en.idle_title(1, "2 GB"), "1 forgotten item uses 2 GB");
         assert_eq!(en.idle_title(2, "2 GB"), "2 forgotten items use 2 GB");
+        assert_eq!(en.group_title(3, 1), "3 sessions finished, 1 needs you");
+        assert_eq!(en.group_title(2, 0), "2 sessions finished");
+        assert_eq!(Text(ToastLocale::Vi).group_title(3, 1), "3 session xong, 1 đang chờ chủ nhân");
     }
 }

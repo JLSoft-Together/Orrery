@@ -28,6 +28,7 @@ pub mod perm;
 pub mod replace;
 pub mod scripts;
 pub mod search;
+pub mod secrets;
 pub mod spawn;
 pub mod worktrees;
 

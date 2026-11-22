@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { shown } from '../../features/shareMode/store'
 import { BellRing, FolderTree, LayoutTemplate, Mail, Maximize2, PanelLeft, PanelRight, Play, Plus, Send, X } from 'lucide-vue-next'
 import type { TerminalStatus } from '@ccm/shared'
 import { useCompact } from '../../composables/useCompact'
@@ -25,6 +26,8 @@ import type { MenuEntry } from '../../lib/menu'
 import { isMac } from '../../lib/platform'
 import { boxes, clampRatio, dividers, foldedKeys, foldLayout, GROUP_CHROME, GROUP_TONES, groupBoxes, groupsOf, leaves, MIN_PANE, type Box, type Divider, type Edge, type GroupMeta, type SplitDir } from '../../lib/splitLayout'
 import { DROP_TERM_KEYS, workspaceAction } from '../../lib/workspaceKeys'
+import MruSwitcher from '../../features/shortcuts/MruSwitcher.vue'
+import { mruStart, mruStep } from '../../features/shortcuts/mru'
 import { editorKeepsKey, inEditor, onSaveAllRequest, reportDirty } from '../../lib/fileEditor'
 import { isTyping, keyCombo, shortcutText } from '../../lib/shortcuts'
 import { moveTargetOf, tabMenu } from '../../lib/tabMenu'
@@ -58,6 +61,8 @@ import LogPane from './log/LogPane.vue'
 import ScriptsDialog from './ScriptsDialog.vue'
 import PaneIcon from './PaneIcon.vue'
 import QuickOpen from './QuickOpen.vue'
+import TermSearchPanel from '../../features/termSearch/TermSearchPanel.vue'
+import { toggleTermSearch } from '../../features/termSearch/registry'
 import { useProjectMru } from '../../composables/useProjectMru'
 import ProjectSwitcher from './ProjectSwitcher.vue'
 
@@ -609,7 +614,7 @@ function onPlusClick(): void {
   void openMenu()
 }
 
-const KEY_TIP: Partial<Record<string, TipAction>> = { newTab: 'newTab', split: 'split', closePane: 'closePane', attention: 'attention', cycleTab: 'tab', tab: 'tab', focus: 'focus' }
+const KEY_TIP: Partial<Record<string, TipAction>> = { newTab: 'newTab', split: 'split', closePane: 'closePane', attention: 'attention', cycleTab: 'tab', mru: 'tab', tab: 'tab', focus: 'focus' }
 
 // Help: shortcuts list + this view's guide (ShortcutsDialog / OnboardingTour live in App.vue).
 const paneBar = ref<HTMLElement | null>(null)
@@ -969,6 +974,15 @@ function tabAttention(tab: Tab): Pane['attention'] {
   return kinds.includes('waiting') ? 'waiting' : kinds.includes('done') ? 'done' : undefined
 }
 
+function tabMark(tab: Tab): Pane['attention'] | 'fail' {
+  const a = tabAttention(tab)
+  return a === 'done' && tabShellCode(tab) !== undefined ? 'fail' : a
+}
+
+function tabShellCode(tab: Tab): number | undefined {
+  return leaves(tab.root).map((k) => paneOf(k)).find((p) => p?.attention === 'done' && !!p.shellLast && p.shellLast.code !== 0)?.shellLast?.code
+}
+
 function tabEnded(tab: Tab): boolean {
   return leaves(tab.root).every((k) => {
     const s = paneOf(k)?.state
@@ -1073,13 +1087,48 @@ function resumeInto(item: ResumeItem): void {
   if (splitTarget.value) splitInto(item.cwd, item.id)
 }
 
+const mru = ref<{ keys: string[]; index: number } | null>(null)
+const mruItems = computed(() => (mru.value?.keys ?? []).map((key) => ({ key, name: mruName(key) })))
+
+function mruName(key: string): string {
+  const tab = workspace.tabs.find((x) => x.key === key)
+  return tab ? tabName(tab) : key
+}
+
+function mruMove(step: 1 | -1): void {
+  const cur = mru.value
+  if (cur) {
+    cur.index = mruStep(cur.index, step, cur.keys.length)
+    return
+  }
+  const keys = workspace.recentTabs(visibleTabKeys.value)
+  if (keys.length > 1) mru.value = { keys, index: mruStart(keys.length, step) }
+}
+
+function mruCommit(): void {
+  const cur = mru.value
+  mru.value = null
+  const key = cur?.keys[cur.index]
+  if (cur && key && key !== cur.keys[0]) workspace.activateTab(key)
+}
+
+function onGlobalKeyUp(e: KeyboardEvent): void {
+  if (mru.value && (e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta')) mruCommit()
+}
+
 function onGlobalKey(e: KeyboardEvent): void {
+  if (mru.value && e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    mru.value = null
+    return
+  }
   if (!props.visible || e.defaultPrevented) return
   // Alt+↑/↓ on a rail project header reorders projects (WorkspaceSidebar), not pane focus.
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.target as Element | null)?.closest?.('[data-side-head]')) return
   if (inEditor(e.target) && editorKeepsKey(e, isMac)) return
   const action = workspaceAction(e, isMac, multiPane.value, !!workspace.activeTab && groupsOf(workspace.activeTab.root).length > 1, isNext.value)
-  if (!action || action.t === 'attention' || action.t === 'asked') return
+  if (!action || action.t === 'attention' || action.t === 'asked' || action.t === 'shareMode') return
   // The drop-down terminal floats over the active pane: chords aimed at that pane stay with the shell.
   if (!DROP_TERM_KEYS.has(action.t) && (e.target as Element | null)?.closest?.('[data-drop-term]')) return
   // ⌃- is readline undo in a macOS terminal.
@@ -1102,6 +1151,9 @@ function onGlobalKey(e: KeyboardEvent): void {
     case 'cycleTab':
       workspace.cycleTab(action.step, visibleTabKeys.value)
       break
+    case 'mru':
+      mruMove(action.step)
+      break
     case 'tab': {
       const tab = visibleTabs.value[action.index]
       if (tab) workspace.activateTab(tab.key)
@@ -1119,6 +1171,9 @@ function onGlobalKey(e: KeyboardEvent): void {
       break
     case 'explorer':
       if (!isNext.value) void showExplorer()
+      break
+    case 'termSearch':
+      toggleTermSearch()
       break
     case 'search':
       void showSearch()
@@ -1682,7 +1737,7 @@ function tabTip(tab: Tab): string | undefined {
   const subs = tabState(tab)?.subagents ?? 0
   const running = subs ? t('workspace.subagentState.count', { n: subs }, subs) : ''
   const where = telegramWhere(tab)
-  return [tabName(tab), running, ...tabPeerLines(tab), tabDetail(tab), where ? t('telegram.connect.linkedTo', { where }) : '', hints, dock].filter(Boolean).join('\n') || undefined
+  return shown([tabName(tab), running, ...tabPeerLines(tab), tabDetail(tab), where ? t('telegram.connect.linkedTo', { where }) : '', hints, dock].filter(Boolean).join('\n')) || undefined
 }
 
 function tabDetail(tab: Tab): string | undefined {
@@ -1709,6 +1764,8 @@ onMounted(() => {
   void fullAccess('first')
   // Capture: runs before xterm's own handler sees the key.
   window.addEventListener('keydown', onGlobalKey, true)
+  window.addEventListener('keyup', onGlobalKeyUp, true)
+  window.addEventListener('blur', mruCommit)
   window.addEventListener('focus', clearSeenAttention)
   window.addEventListener('resize', onViewportResize)
   canvasObserver = new ResizeObserver(([entry]) => {
@@ -1720,6 +1777,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   unregisterBridge?.()
   window.removeEventListener('keydown', onGlobalKey, true)
+  window.removeEventListener('keyup', onGlobalKeyUp, true)
+  window.removeEventListener('blur', mruCommit)
   window.removeEventListener('focus', clearSeenAttention)
   window.removeEventListener('resize', onViewportResize)
   document.removeEventListener('pointerdown', onOutside, true)
@@ -1914,9 +1973,10 @@ onBeforeUnmount(() => {
             </span>
             <span v-if="isNext && !tabAttention(tab) && tabState(tab)?.status === 'error'" class="sr-only" data-tab-attention="error">{{ t('v107gon.tabs.error') }}</span>
             <span v-if="tabAttention(tab) === 'waiting'" class="sr-only" data-tab-attention="waiting">{{ t('paneV92.wait') }}</span>
-            <span v-else-if="tabAttention(tab)" class="inline-flex shrink-0" aria-hidden="true" :data-tab-attention="tabAttention(tab)">
-              <StatusIcon status="completed" :size="12" :animate="false" />
+            <span v-else-if="tabAttention(tab)" class="inline-flex shrink-0" aria-hidden="true" :data-tab-attention="tabMark(tab)">
+              <StatusIcon :status="tabMark(tab) === 'fail' ? 'error' : 'completed'" :size="12" :animate="false" />
             </span>
+            <span v-if="tabMark(tab) === 'fail'" class="sr-only">{{ t('shellDone.tabFail', { code: tabShellCode(tab) }) }}</span>
             <span v-if="tabStatusText(tab)" class="sr-only">{{ tabStatusText(tab) }}</span>
           </button>
           <button
@@ -2332,7 +2392,9 @@ onBeforeUnmount(() => {
     <LibUpdatesDialog v-if="ui.libUpdates && visible" :path="ui.libUpdates.path" :root="ui.libUpdates.root" @close="ui.libUpdates = null" />
     <TelegramLinkDialog v-if="ui.telegramLink && visible" :cwd="ui.telegramLink.cwd" :session="ui.telegramLink.session" :name="ui.telegramLink.name" @close="ui.telegramLink = null" />
     <ContextSourcesDialog v-if="ui.contextSources && visible" :cwd="ctxTarget.cwd" :terminal-id="ctxTarget.terminalId" @close="ui.contextSources = null" />
+    <MruSwitcher v-if="mru && visible" :items="mruItems" :index="mru.index" />
     <ProjectSwitcher :open="ui.projectSwitcher && visible" :step="projectStep" @close="ui.projectSwitcher = false" />
+    <TermSearchPanel />
     <QuickOpen :open="quickOpen" :root="quickRoot" @close="quickOpen = false" @open="onQuickPick" @scripts="scriptsFromQuick" />
     <ScriptsDialog
       :open="!!scripts"

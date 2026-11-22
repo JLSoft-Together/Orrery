@@ -110,6 +110,15 @@ import v105U2 from './v105-u2'
 import v106Rail from './v106-rail'
 import v106Install from './v106-install'
 import v107Gon from './v107-gon'
+import notifyV109 from '../features/notify/i18n'
+import footerSysV109 from '../features/footerSys/i18n'
+import shellDoneV109 from '../features/shellDone/i18n'
+import chatViewV109 from '../features/chat/i18n'
+import shortcutsV109 from '../features/shortcuts/i18n'
+import diffCommentsV109 from '../features/diffComments/i18n'
+import secretGuardV109 from '../features/secretGuard/i18n'
+import termSearchV109 from '../features/termSearch/i18n'
+import shareModeV109 from '../features/shareMode/i18n'
 
 export default {
   ...v25.en,
@@ -121,6 +130,15 @@ export default {
   ...v106Rail.en,
   ...v106Install.en,
   ...v107Gon.en,
+  ...notifyV109.en,
+  ...footerSysV109.en,
+  ...shellDoneV109.en,
+  ...chatViewV109.en,
+  ...shortcutsV109.en,
+  ...diffCommentsV109.en,
+  ...secretGuardV109.en,
+  ...termSearchV109.en,
+  ...shareModeV109.en,
   ...diskV101.en,
   ...diskCleanV101.en,
   ...diskOrganizeV101.en,
@@ -759,7 +777,8 @@ export default {
       wsZoom: 'Zoom the focused pane to fill the tab, or show all panes again',
       wsAttention: 'Open or close the Inbox',
       wsAsked: 'Jump to the next item in the Inbox',
-      wsCycle: 'Next tab of this project (add Shift to go back)',
+      wsMru: 'Switch to the recent tab (hold to pick, release to go; add Shift to go back)',
+      wsCycle: 'Next tab of this project in tab order (Shift: back)',
       wsMoveTab: 'Move the tab left / right',
       wsTab: 'Tab 1-9 of this project',
       wsFocusMode: 'Focus mode: hide the rail and the Explorer for this tab',
@@ -773,6 +792,7 @@ export default {
       wsNavBack: 'Back to the previous location',
       wsNavForward: 'Forward to the next location',
       wsNotes: 'Project notes',
+      wsShareMode: 'Screen share mode: hide user names, emails and pairing codes',
       wsGroupAdd: 'Add another project as a group',
       wsGroupFocus: 'Focus the project group beside it',
       wsGroupMove: 'Move the project group left / right',
@@ -780,6 +800,7 @@ export default {
       wsDropTerm: 'Drop-down terminal',
       wsExplorer: 'Show the file explorer',
     wsSearch: 'Search in project files',
+      wsTermSearch: 'Find in every open terminal',
       wsNextChange: 'Next / previous change (file viewer, Changes)',
       wsDiffFile: 'Previous / next file in Changes',
       wsJumpSource: 'Open the file at the current change (Changes)',

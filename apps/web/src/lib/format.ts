@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { shown } from '../features/shareMode/store'
 
 export const now = ref(Date.now())
 let timer: ReturnType<typeof setInterval> | null = null
@@ -100,8 +101,8 @@ export function fullNumber(n: number | undefined, locale: string): string {
 export function shortPath(path: string | undefined): string {
   if (!path) return ''
   const parts = path.split(/[\\/]+/).filter(Boolean)
-  if (parts.length <= 2) return path
-  return `…/${parts.slice(-2).join('/')}`
+  if (parts.length <= 2) return shown(path)
+  return shown(`…/${parts.slice(-2).join('/')}`)
 }
 
 export function formatCost(n: number, locale: string): string {

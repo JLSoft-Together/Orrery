@@ -11,6 +11,7 @@ import { useConnectionStore } from './stores/connection'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useWorkspaceStore } from './stores/workspace'
+import { useTaskbarBadge } from './features/notify/useTaskbarBadge'
 import { gateDeepSeekAgent, warmDeepSeek } from './features/deepseek'
 import AppHeader from './components/AppHeader.vue'
 import NextShell from './components/next/NextShell.vue'
@@ -42,6 +43,8 @@ import { handleOrrery, installOrreryApi } from './composables/useOrreryApi'
 import { installRemotePhone } from './composables/useRemotePhone'
 import { installRemoteSummary } from './composables/useRemoteSummary'
 import { useInboxGlobal } from './composables/useInboxGlobal'
+import ShareBar from './features/shareMode/ShareBar.vue'
+import { useShareModeKey } from './features/shareMode/useShareModeKey'
 import { useRemoteStore } from './stores/remote'
 import { useTurnCheckpoints } from './composables/useTurnCheckpoints'
 import { isMac } from './lib/platform'
@@ -64,6 +67,7 @@ useSettingsStore()
 const uiGen = useUiGenStore()
 useTurnCheckpoints()
 useNotifications()
+useTaskbarBadge()
 useBreakReminder()
 useAppToasts()
 useBugReportPrompts()
@@ -100,6 +104,7 @@ watch(showWorkspace, (shown) => shown && (workspaceOpened.value = true), { immed
 const remote = useRemoteStore()
 if (hasTerminals && !ui.compact) {
   useInboxGlobal()
+  useShareModeKey()
   void remote.start()
   installRemotePhone()
   installRemoteSummary()
@@ -256,6 +261,7 @@ onBeforeUnmount(() => {
     <NextInvite />
     <component :is="updateDialog.Comp" v-if="updateDialog.mounted.value" />
     <ToastHost />
+    <ShareBar />
     <component :is="shortcuts.Comp" v-if="shortcuts.mounted.value" />
     <ZoomHud />
   </div>

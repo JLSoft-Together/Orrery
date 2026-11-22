@@ -12,6 +12,20 @@ pub struct Strings {
     pub port_in_use: &'static str,
     pub start_failed: &'static str,
     pub tokens_lost: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub menu_edit: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub menu_window: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub menu_close: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub move_title: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub move_detail: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub move_confirm: &'static str,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub move_later: &'static str,
 }
 
 const EN: Strings = Strings {
@@ -28,6 +42,13 @@ const EN: Strings = Strings {
     port_in_use: "Port {port} is taken: an older Orrery (.bat / npm start) or another app (4317 is also the OpenTelemetry collector default). Close it or set CCM_PORT.",
     start_failed: "Orrery could not start its monitor: {reason}",
     tokens_lost: "Orrery could not read a token saved by the previous version. Add the GitHub account / Telegram token again in Settings.",
+    menu_edit: "Edit",
+    menu_window: "Window",
+    menu_close: "Close Window",
+    move_title: "Move to the Applications folder?",
+    move_detail: "Claude Code's status line runs through this app, so it should not run from the disk image or Downloads.",
+    move_confirm: "Move to Applications",
+    move_later: "Not now",
 };
 
 const VI: Strings = Strings {
@@ -44,6 +65,13 @@ const VI: Strings = Strings {
     port_in_use: "Cổng {port} đang bị chiếm: Orrery bản cũ (.bat / npm start) hoặc app khác (4317 cũng là cổng mặc định của OpenTelemetry collector). Hãy tắt nó hoặc đặt CCM_PORT.",
     start_failed: "Orrery không khởi động được phần monitor: {reason}",
     tokens_lost: "Orrery không đọc được token bản cũ đã lưu. Hãy thêm lại tài khoản GitHub / token Telegram trong Settings.",
+    menu_edit: "Sửa",
+    menu_window: "Cửa sổ",
+    menu_close: "Đóng cửa sổ",
+    move_title: "Chuyển vào thư mục Applications?",
+    move_detail: "Status line của Claude Code chạy qua app này, nên đừng chạy app từ ổ đĩa DMG hay thư mục Downloads.",
+    move_confirm: "Chuyển vào Applications",
+    move_later: "Để sau",
 };
 
 pub fn strings(locale: &str) -> &'static Strings {

@@ -79,9 +79,7 @@ export const NEXT_CODE_FONT = 'jetbrains-mono'
 export const useUiGenStore = defineStore('uiGen', () => {
   const settings = useSettingsStore()
   const generation = ref<UiGeneration>(initialGeneration())
-  const storedTheme = read(NEXT_KEYS.theme)
-  const nextTheme = ref<NextPaletteId>(parseNextTheme(storedTheme))
-  if (storedTheme !== null && storedTheme !== nextTheme.value) persist(NEXT_KEYS.theme, nextTheme.value)
+  const nextTheme = ref<NextPaletteId>(parseNextTheme(read(NEXT_KEYS.theme)))
   const storedRandom = parseRandomPalette(read(NEXT_KEYS.random))
   const randomState = ref<RandomPaletteState | null>(nextTheme.value === NEXT_PALETTE_RANDOM ? launchRandomPalette(storedRandom, mauSeed) : storedRandom)
   const railGroup = ref<RailGroup>(isRailGroup(read(NEXT_KEYS.railGroup)) ? (read(NEXT_KEYS.railGroup) as RailGroup) : 'project')

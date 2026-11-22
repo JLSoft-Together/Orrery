@@ -54,6 +54,7 @@ import {
   Undo2,
   QrCode,
   SmartphoneNfc,
+  EyeOff,
 } from 'lucide-vue-next'
 import { DEV_TOOLS } from '../lib/devTools'
 import { retireOverlay, withViewTransition } from '../lib/motion'
@@ -68,6 +69,7 @@ import { hasCtxSources } from '../lib/ctxSources'
 import { visibleFonts } from '../lib/fonts'
 import { stepCodeSize } from '../composables/useWheelZoom'
 import { useFocusMode } from '../composables/useFocusMode'
+import { shareOn, toggleShareMode } from '../features/shareMode/store'
 import { useTipsStore } from '../stores/tips'
 import { now, relativeTime, shortPath } from '../lib/format'
 import { highlightRuns } from '../lib/fuzzy'
@@ -83,7 +85,9 @@ import { useRevealInWorkspace } from '../composables/useRevealInWorkspace'
 import { useSettingsEnv } from '../composables/useSettingsEnv'
 import { isMac } from '../lib/platform'
 import { isPaletteKey } from '../lib/paletteKey'
-import { keyCombo } from '../lib/shortcuts'
+import { keyCombo, shortcutText } from '../lib/shortcuts'
+import { TextSearch } from 'lucide-vue-next'
+import { openTermSearch } from '../features/termSearch/registry'
 import { statusMeta } from '../lib/status'
 import { APP_VERSION } from '../lib/changelog'
 import { badgeOf } from '../lib/provider'
@@ -415,6 +419,17 @@ const items = computed<Item[]>(() => {
               prompts.open = true
             },
           },
+          {
+            id: 'c:termSearch',
+            group: 'actions' as const,
+            label: t('termSearchV109.palette'),
+            sub: shortcutText('wsTermSearch', isMac),
+            icon: TextSearch,
+            run: () => {
+              ui.setView('workspace')
+              openTermSearch()
+            },
+          },
         ]
       : []),
     ...(hasTerminals && hasExplorer
@@ -583,6 +598,7 @@ const items = computed<Item[]>(() => {
     { id: 'c:tools', group: 'prefs', label: t('palette.toolsPref'), icon: ListFilter, on: !settings.hideTools, run: () => (settings.hideTools = !settings.hideTools) },
     { id: 'c:lang', group: 'prefs', label: t('palette.language'), sub: settings.locale === 'vi' ? 'Tiếng Việt → English' : 'English → Tiếng Việt', icon: Languages, run: () => settings.toggleLocale() },
     { id: 'c:settings', group: 'help', label: t('palette.openSettings'), icon: Settings2, run: () => (ui.settingsOpen = true) },
+    { id: 'c:shareMode', group: 'actions' as const, label: t(shareOn.value ? 'shareMode.paletteOn' : 'shareMode.palette'), sub: isMac ? '⌃⌥H' : 'Ctrl+Alt+H', icon: EyeOff, run: toggleShareMode },
     { id: 'c:whatsNew', group: 'help', label: t('whatsNew.open'), sub: APP_VERSION, icon: Sparkles, run: () => (ui.whatsNewOpen = true) },
     { id: 'c:keys', group: 'help', label: t('keys.title'), sub: '?', icon: Keyboard, run: () => (ui.shortcutsOpen = true) },
     { id: 'c:tour', group: 'help', label: t('tour.open'), icon: GraduationCap, run: () => (ui.tourOpen = 'monitor') },
@@ -610,7 +626,7 @@ const localMatches = computed<Item[]>(() => {
 
 function openPhone(pair: boolean): void {
   if (pair && remote.enabled) remote.askPair()
-  openSetting('notify', pair ? (remote.enabled ? 'remoteAdd' : 'remote') : 'remoteDevices')
+  openSetting('remote', pair ? (remote.enabled ? 'remoteAdd' : 'remote') : 'remoteDevices')
 }
 
 function openSetting(page: SettingsPage, id: string): void {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { shown } from '../../features/shareMode/store'
 import {
   ChevronRight,
   ChevronsDownUp,
@@ -399,7 +400,7 @@ const ACTION = 'inline-flex size-[18px] shrink-0 cursor-pointer items-center jus
             row.outOfRoot ? 'text-ink-faint' : '',
           ]"
           :style="{ top: `${index * ROW}px`, height: `${ROW}px`, paddingLeft: `${4 + Math.max(0, row.depth - 1) * INDENT}px` }"
-          :title="row.depth === 0 ? (explorer.root ?? undefined) : row.outOfRoot ? t('workspace.explorer.outOfRoot') : row.directory ? row.name : t('workspace.explorer.openHint')"
+          :title="row.depth === 0 ? shown(explorer.root ?? undefined) : row.outOfRoot ? t('workspace.explorer.outOfRoot') : row.directory ? row.name : t('workspace.explorer.openHint')"
           :draggable="row.depth > 0"
           @dragstart="setDragPath($event.dataTransfer, row.path)"
           @focus="explorer.setFocused(index === 0 ? null : row.path), warmOnIntent(row.directory ? null : row.path)"

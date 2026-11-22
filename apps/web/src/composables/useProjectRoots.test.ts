@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const projectRootInfo = vi.fn<(dir: string, remembered?: boolean) => Promise<{ root: string; repo: boolean } | null>>()
 vi.mock('../lib/projects', () => ({ projectRootInfo: (dir: string, remembered?: boolean) => projectRootInfo(dir, remembered) }))
@@ -9,6 +9,10 @@ async function fresh() {
 }
 
 const flush = () => vi.advanceTimersByTimeAsync(0)
+
+beforeAll(async () => {
+  await import('./useProjectRoots')
+}, 60_000)
 
 beforeEach(() => {
   vi.useFakeTimers()

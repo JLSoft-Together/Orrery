@@ -38,6 +38,7 @@ import {
 } from '../../lib/preview'
 import type { MenuEntry } from '../../lib/menu'
 import DiffView from './DiffView.vue'
+import DiffCommentBar from '../../features/diffComments/DiffCommentBar.vue'
 import DiscardConfirm from './DiscardConfirm.vue'
 import PaneMore from './PaneMore.vue'
 import SessionFilterBar from './SessionFilterBar.vue'
@@ -1096,6 +1097,14 @@ function pickHead(id: string): void {
         <p v-if="hiddenImports && (diffState === 'idle' || diffState === 'empty')" class="shrink-0 border-b border-well-line px-3 py-1 text-2xs text-well-ink" data-diff-imports-hidden>
           {{ t('workspace.diff.importsHidden', { n: hiddenImports }, hiddenImports) }}
         </p>
+        <DiffCommentBar
+          v-if="repoRoot"
+          :root="repoRoot"
+          :file="diffState === 'idle' ? diffFile : null"
+          :path="selectedEntry?.path ?? null"
+          :layout="opts.layout"
+          @reveal="(p: string) => entries.some((e) => e.path === p) && select(p)"
+        />
         <ConflictView
           v-if="selectedEntry?.kind === 'conflict' && repoRoot"
           :root="repoRoot"
@@ -1136,6 +1145,8 @@ function pickHead(id: string): void {
             :can-revert="canRevert"
             :revert-blocked="revertBlocked"
             :current="currentBlock"
+            :comment-root="repoRoot"
+            :comment-path="selectedEntry?.path ?? null"
             @revert="askDiscard"
             @focus-block="focusBlock"
           />

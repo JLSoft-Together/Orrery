@@ -1,4 +1,4 @@
-import { isNextPaletteId, migrateNextPaletteId, NEXT_PALETTE_DEFAULT, nextSchemeFor, type NextPaletteId } from '@ccm/mist-tokens'
+import { isNextPaletteId, NEXT_PALETTE_DEFAULT, nextSchemeFor, type NextPaletteId } from '@ccm/mist-tokens'
 
 export type UiGeneration = 'classic' | 'next'
 export type NextMotion = 'full' | 'reduced' | 'off'
@@ -25,10 +25,7 @@ export const isNextMotion = (v: unknown): v is NextMotion => v === 'full' || v =
 export const isRailGroup = (v: unknown): v is RailGroup => v === 'project' || v === 'status'
 
 export const parseUiGeneration = (v: string | null): UiGeneration => (v === 'classic' ? 'classic' : 'next')
-export const parseNextTheme = (v: string | null): NextPaletteId => {
-  const id = migrateNextPaletteId(v)
-  return isNextPaletteId(id) ? id : NEXT_PALETTE_DEFAULT
-}
+export const parseNextTheme = (v: string | null): NextPaletteId => (isNextPaletteId(v) ? v : NEXT_PALETTE_DEFAULT)
 
 export function startUi(stored: string | null, migration: string | null): { ui: UiGeneration; migrate: boolean } {
   if (migration !== UI_MIGRATION) return { ui: 'next', migrate: true }

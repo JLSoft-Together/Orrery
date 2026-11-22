@@ -155,6 +155,7 @@ pub fn zsh_files() -> Vec<(&'static str, String)> {
         ZSH_SHIM_FIRST,
         r#"__agent_monitor_cwd() { builtin printf '\e]7;file://%s%s\e\\' "$HOST" "$PWD" }"#,
         "autoload -Uz add-zsh-hook && add-zsh-hook precmd __agent_monitor_cwd",
+        &crate::shell_init::zsh_integration(),
         "",
     ]
     .join("\n");

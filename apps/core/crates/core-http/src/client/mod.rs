@@ -112,6 +112,8 @@ pub enum ClientMessage {
         attentive: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
         locale: Option<Locale>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        share: Option<bool>,
     },
     #[serde(rename = "notify.update")]
     NotifyUpdate {
@@ -143,6 +145,8 @@ pub enum ClientMessage {
     },
     #[serde(rename = "sensitive.ignore")]
     SensitiveIgnore { project: String, rule: String, on: bool },
+    #[serde(rename = "shell.done")]
+    ShellDone { pane_key: String, name: String, command: String, code: i64, ms: u64 },
 }
 
 struct Fields<'a>(&'a Map<String, Value>);
@@ -283,7 +287,7 @@ pub fn parse_client_message(raw: &Value) -> Option<ClientMessage> {
                 Some("vi") => Some(Locale::Vi),
                 _ => None,
             };
-            ClientMessage::ClientPresence { attentive: f.bool("attentive")?, locale }
+            ClientMessage::ClientPresence { attentive: f.bool("attentive")?, locale, share: f.bool("share") }
         }
         "notify.update" => {
             let toast = match obj.get("toast") {
@@ -319,6 +323,13 @@ pub fn parse_client_message(raw: &Value) -> Option<ClientMessage> {
             }
             ClientMessage::SensitiveUpdate { groups: groups.flatten(), globs: globs.flatten(), ignore: ignore.flatten() }
         }
+        "shell.done" => ClientMessage::ShellDone {
+            pane_key: f.string_max("paneKey", 200).filter(|k| !k.is_empty())?,
+            name: f.string_max("name", 200)?,
+            command: f.string_max("command", 2000)?,
+            code: obj.get("code")?.as_i64().filter(|c| c.unsigned_abs() <= u64::from(u32::MAX))?,
+            ms: obj.get("ms")?.as_u64()?,
+        },
         "sensitive.ignore" => ClientMessage::SensitiveIgnore {
             project: f.string_max("project", 1024)?,
             rule: f.string("rule").filter(|r| is_rule(r))?,

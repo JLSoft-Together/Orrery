@@ -49,6 +49,7 @@ fn home_forms(home: &str, platform: &str) -> Vec<String> {
 }
 
 struct Token {
+    kind: &'static str,
     prefix: &'static str,
     class: fn(char) -> bool,
     min: usize,
@@ -75,25 +76,30 @@ fn class_xox(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '-'
 }
 
+fn token_end(t: &[char], i: usize, tok: &Token) -> Option<usize> {
+    let p: Vec<char> = tok.prefix.chars().collect();
+    let boundary = i == 0 || !is_word(t[i - 1]);
+    if !boundary || i + p.len() > t.len() || t[i..i + p.len()] != p[..] {
+        return None;
+    }
+    let mut j = i + p.len();
+    let start = j;
+    while j < t.len() && (tok.class)(t[j]) && (!tok.exact || j - start < tok.min) {
+        j += 1;
+    }
+    let ok = j - start >= tok.min && (!tok.exact || t.get(j).is_none_or(|c| !is_word(*c)));
+    ok.then_some(j)
+}
+
 fn replace_token(text: &str, tok: &Token) -> String {
     let t: Vec<char> = text.chars().collect();
-    let p: Vec<char> = tok.prefix.chars().collect();
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
     while i < t.len() {
-        let boundary = i == 0 || !is_word(t[i - 1]);
-        if boundary && i + p.len() <= t.len() && t[i..i + p.len()] == p[..] {
-            let mut j = i + p.len();
-            let start = j;
-            while j < t.len() && (tok.class)(t[j]) && (!tok.exact || j - start < tok.min) {
-                j += 1;
-            }
-            let ok = j - start >= tok.min && (!tok.exact || t.get(j).is_none_or(|c| !is_word(*c)));
-            if ok {
-                out.push_str("[masked]");
-                i = j;
-                continue;
-            }
+        if let Some(j) = token_end(&t, i, tok) {
+            out.push_str("[masked]");
+            i = j;
+            continue;
         }
         out.push(t[i]);
         i += 1;
@@ -103,15 +109,29 @@ fn replace_token(text: &str, tok: &Token) -> String {
 
 fn tokens() -> [Token; 8] {
     [
-        Token { prefix: "sk-", class: class_sk, min: 8, exact: false },
-        Token { prefix: "ghp_", class: class_alnum, min: 16, exact: false },
-        Token { prefix: "gho_", class: class_alnum, min: 16, exact: false },
-        Token { prefix: "ghu_", class: class_alnum, min: 16, exact: false },
-        Token { prefix: "ghs_", class: class_alnum, min: 16, exact: false },
-        Token { prefix: "ghr_", class: class_alnum, min: 16, exact: false },
-        Token { prefix: "github_pat_", class: class_pat, min: 16, exact: false },
-        Token { prefix: "AKIA", class: class_akia, min: 16, exact: true },
+        Token { kind: "openai", prefix: "sk-", class: class_sk, min: 8, exact: false },
+        Token { kind: "github", prefix: "ghp_", class: class_alnum, min: 16, exact: false },
+        Token { kind: "github", prefix: "gho_", class: class_alnum, min: 16, exact: false },
+        Token { kind: "github", prefix: "ghu_", class: class_alnum, min: 16, exact: false },
+        Token { kind: "github", prefix: "ghs_", class: class_alnum, min: 16, exact: false },
+        Token { kind: "github", prefix: "ghr_", class: class_alnum, min: 16, exact: false },
+        Token { kind: "github", prefix: "github_pat_", class: class_pat, min: 16, exact: false },
+        Token { kind: "aws", prefix: "AKIA", class: class_akia, min: 16, exact: true },
     ]
+}
+
+fn xox_end(t: &[char], i: usize) -> Option<usize> {
+    let boundary = i == 0 || !is_word(t[i - 1]);
+    if boundary && i + 4 <= t.len() && t[i] == 'x' && t[i + 1] == 'o' && t[i + 2] == 'x' && (t[i + 3] == 'b' || t[i + 3] == 'p') && t.get(i + 4) == Some(&'-') {
+        let mut j = i + 5;
+        while j < t.len() && class_xox(t[j]) {
+            j += 1;
+        }
+        if j - (i + 5) >= 8 {
+            return Some(j);
+        }
+    }
+    None
 }
 
 fn replace_xox(text: &str) -> String {
@@ -119,20 +139,39 @@ fn replace_xox(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
     while i < t.len() {
-        let boundary = i == 0 || !is_word(t[i - 1]);
-        if boundary && i + 4 <= t.len() && t[i] == 'x' && t[i + 1] == 'o' && t[i + 2] == 'x' && (t[i + 3] == 'b' || t[i + 3] == 'p') && t.get(i + 4) == Some(&'-') {
-            let mut j = i + 5;
-            while j < t.len() && class_xox(t[j]) {
-                j += 1;
-            }
-            if j - (i + 5) >= 8 {
-                out.push_str("[masked]");
-                i = j;
-                continue;
-            }
+        if let Some(j) = xox_end(&t, i) {
+            out.push_str("[masked]");
+            i = j;
+            continue;
         }
         out.push(t[i]);
         i += 1;
+    }
+    out
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenHit {
+    pub kind: &'static str,
+    pub prefix: &'static str,
+    pub value: String,
+}
+
+pub fn find_tokens(text: &str) -> Vec<TokenHit> {
+    let t: Vec<char> = text.chars().collect();
+    let toks = tokens();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < t.len() {
+        let hit = toks.iter().find_map(|tok| token_end(&t, i, tok).map(|j| (tok.kind, tok.prefix, j)));
+        let hit = hit.or_else(|| xox_end(&t, i).map(|j| ("slack", if t[i + 3] == 'b' { "xoxb-" } else { "xoxp-" }, j)));
+        match hit {
+            Some((kind, prefix, j)) => {
+                out.push(TokenHit { kind, prefix, value: t[i..j].iter().collect() });
+                i = j;
+            }
+            None => i += 1,
+        }
     }
     out
 }
@@ -306,5 +345,14 @@ mod tests {
         assert_eq!(mask_secrets("c:\\users\\ME\\x and C:/Users/me/y and C:\\\\Users\\\\me\\\\z", "C:\\Users\\me", "win32"), "~\\x and ~/y and ~\\\\z");
         assert_eq!(mask_secrets("/home/me/x", "/home/me", "linux"), "~/x");
         assert_eq!(mask_secrets("/x", "/", "linux"), "/x");
+    }
+
+    #[test]
+    fn finds_token_kinds() {
+        let hits = find_tokens("a=ghp_abcdefghijklmnop1234 b AKIAABCDEFGHIJKLMNOP xoxb-1234567890 sk-x");
+        let kinds: Vec<_> = hits.iter().map(|h| (h.kind, h.prefix)).collect();
+        assert_eq!(kinds, vec![("github", "ghp_"), ("aws", "AKIA"), ("slack", "xoxb-")]);
+        assert_eq!(hits[0].value, "ghp_abcdefghijklmnop1234");
+        assert!(find_tokens("noghp_abcdefghijklmnop1234").is_empty());
     }
 }

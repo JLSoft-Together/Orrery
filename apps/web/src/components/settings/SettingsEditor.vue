@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { clampShellDoneSeconds, SHELL_DONE_SECONDS_MAX, SHELL_DONE_SECONDS_MIN } from '../../features/shellDone/shellDone'
 import { AUTO_SAVE_DELAYS, AUTO_SAVE_MODES } from '../../lib/autoSave'
 import { useSettingsStore } from '../../stores/settings'
 import { useUiGenStore } from '../../stores/uiGen'
@@ -41,6 +42,31 @@ const autoSaveDelays = computed(() => AUTO_SAVE_DELAYS.map((ms) => ({ value: ms,
         data-setting="shell-integration"
         data-setting-row="shell"
       />
+      <ToggleSwitch
+        v-model="settings.shellDoneNotify"
+        :label="t('shellDone.setting')"
+        :info="t('shellDone.settingHint')"
+        :disabled="!settings.shellIntegration"
+        class="px-3"
+        data-setting="shell-done"
+        data-setting-row="shellDone"
+      />
+      <SettingRow v-if="settings.shellIntegration && settings.shellDoneNotify" :label="t('shellDone.seconds')" label-for="set-shell-done-seconds" data-setting-row="shellDoneSeconds">
+        <div class="ccm-field flex w-20 shrink-0 items-center">
+          <input
+            id="set-shell-done-seconds"
+            :value="settings.shellDoneSeconds"
+            type="number"
+            :min="SHELL_DONE_SECONDS_MIN"
+            :max="SHELL_DONE_SECONDS_MAX"
+            step="1"
+            inputmode="numeric"
+            class="ccm-bare-input h-full min-w-0 flex-1 bg-transparent tabular outline-none"
+            data-setting="shell-done-seconds"
+            @change="settings.shellDoneSeconds = clampShellDoneSeconds(Number(($event.target as HTMLInputElement).value))"
+          />
+        </div>
+      </SettingRow>
       <ToggleSwitch
         v-if="!uiGen.isNext"
         v-model="settings.agentShim"

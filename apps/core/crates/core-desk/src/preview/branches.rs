@@ -246,6 +246,30 @@ fn valid_branch_name(root: &str, name: &Value) -> bool {
     check_branch_name(name) && git(root, &["check-ref-format", "--branch", name.as_str().unwrap_or("")], &local()).ok()
 }
 
+fn not_arg(root: &str, target: &str, to: &str) -> (String, bool) {
+    let tracking = format!("refs/remotes/{target}/{to}");
+    let exists = git(root, &["rev-parse", "--verify", "-q", &format!("{tracking}^{{commit}}")], &local()).ok();
+    let not = if exists {
+        tracking
+    } else if target.contains(['?', '*', '[']) {
+        "--remotes".to_string()
+    } else {
+        format!("--remotes={target}")
+    };
+    (not, exists)
+}
+
+pub fn push_range(root: &str, r: &Value, remote: &Value, branch: &Value) -> Option<(String, String)> {
+    local_branch_of(root, r)?;
+    let remotes = list_remotes(root);
+    let target = remote.as_str().filter(|x| remotes.iter().any(|r| r == x))?;
+    if !valid_branch_name(root, branch) {
+        return None;
+    }
+    let (not, _) = not_arg(root, target, branch.as_str()?);
+    Some((r.as_str()?.to_string(), not))
+}
+
 pub fn push_preview(root: &str, r: &Value, remote: &Value, branch: &Value) -> Value {
     let Some(local_name) = local_branch_of(root, r) else { return denied() };
     let s = r.as_str().unwrap_or("");
@@ -279,15 +303,7 @@ pub fn push_preview(root: &str, r: &Value, remote: &Value, branch: &Value) -> Va
         return invalid();
     }
     let to = to.as_str().unwrap_or("").to_string();
-    let tracking = format!("refs/remotes/{target}/{to}");
-    let exists = git(root, &["rev-parse", "--verify", "-q", &format!("{tracking}^{{commit}}")], &local()).ok();
-    let not = if exists {
-        tracking.clone()
-    } else if target.contains(['?', '*', '[']) {
-        "--remotes".to_string()
-    } else {
-        format!("--remotes={target}")
-    };
+    let (not, exists) = not_arg(root, &target, &to);
     let fmt = format!("--format={LOG_FORMAT}");
     let n = (PUSH_PREVIEW_MAX + 1).to_string();
     let log = git(root, &["log", "-z", &fmt, "-n", &n, s, "--not", &not, "--"], &local());

@@ -147,6 +147,7 @@ interface DesktopBridge {
   windowControl?: (action: 'minimize' | 'toggle-maximize' | 'close' | 'state') => Promise<boolean | null>
   onWindowMaximized?: (handler: (maximized: boolean) => void) => () => void
   /** Start with Windows / open at login: no argument reads, a boolean sets; null in a dev build. */
+  taskbarBadge?: (count: number, flash?: boolean) => Promise<null>
   loginItem?: (on?: boolean) => Promise<boolean | null>
   /** Claude Code's settings.json statusLine vs the bridge (quick setup). */
   statusLineState?: () => Promise<StatusLineState | null>

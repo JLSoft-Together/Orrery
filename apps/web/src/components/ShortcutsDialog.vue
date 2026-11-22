@@ -5,7 +5,7 @@ import { X } from 'lucide-vue-next'
 import { desktop, hasTerminals } from '../lib/desktop'
 import { isMac } from '../lib/platform'
 import { retireOverlay } from '../lib/motion'
-import { formatKeys, SHORTCUTS, viewShortcuts, workspaceShortcuts, type Shortcut } from '../lib/shortcuts'
+import { formatKeys, globalShortcuts, viewShortcuts, workspaceShortcuts, type Shortcut } from '../lib/shortcuts'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 import ToggleSwitch from './ToggleSwitch.vue'
@@ -19,7 +19,7 @@ let restoreFocus: HTMLElement | null = null
 const groups = computed(() => {
   const list: { id: Shortcut['group']; items: Shortcut[] }[] = (['panels', 'map', 'help'] as const).map((g) => ({
     id: g,
-    items: SHORTCUTS.filter((s: Shortcut) => s.group === g),
+    items: globalShortcuts(g, isMac),
   }))
   if (hasTerminals) list.splice(2, 0, { id: 'workspace', items: workspaceShortcuts(isMac) })
   if (desktop) list.splice(list.length - 1, 0, { id: 'view', items: viewShortcuts(isMac) })

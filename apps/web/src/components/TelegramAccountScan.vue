@@ -72,7 +72,7 @@ const canSubmit = computed(() => {
     <p v-if="!hasKeys && !account" class="pl-6 text-2xs text-ink-muted" data-telegram-account-keys>{{ t('telegram.account.needKeys') }}</p>
 
     <div v-else-if="account" class="flex flex-wrap items-center gap-2 pl-6" data-telegram-account-on>
-      <span class="inline-flex min-w-0 items-center gap-1 text-xs text-success"><UserCheck :size="13" class="shrink-0" aria-hidden="true" /><span class="truncate">{{ t('telegram.account.signedIn', { name: account }) }}</span></span>
+      <span class="inline-flex min-w-0 items-center gap-1 text-xs text-success"><UserCheck :size="13" class="shrink-0" aria-hidden="true" /><span class="truncate" data-share-hide>{{ t('telegram.account.signedIn', { name: account }) }}</span></span>
       <button type="button" class="ccm-btn-plain text-xs" :disabled="tg.scanning" data-telegram-account-scan @click="tg.discover()">
         <RefreshCw :size="12" :class="tg.scanning ? 'ccm-spin' : ''" aria-hidden="true" />{{ tg.scanning ? t('telegram.scanning') : t('telegram.scan') }}
       </button>
@@ -84,7 +84,7 @@ const canSubmit = computed(() => {
     </div>
 
     <form v-else class="flex flex-col gap-1.5 pl-6" autocomplete="off" @submit.prevent="submit">
-      <label :for="`tg-account-${step}`" class="text-2xs text-ink-muted">{{ t(`telegram.account.${step}Label`, { phone }) }}</label>
+      <label :for="`tg-account-${step}`" class="text-2xs text-ink-muted" :data-share-hide="step !== 'phone' ? '' : undefined">{{ t(`telegram.account.${step}Label`, { phone }) }}</label>
       <div class="flex flex-wrap items-center gap-2">
         <input
           v-if="step === 'phone'"
@@ -98,6 +98,7 @@ const canSubmit = computed(() => {
           :placeholder="t('telegram.account.phonePlaceholder')"
           class="ccm-field w-48 font-mono text-xs"
           data-telegram-account-phone
+          data-share-hide
         />
         <input
           v-else-if="step === 'code'"

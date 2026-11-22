@@ -95,6 +95,13 @@ describe('rail state', () => {
     expect(paneState(pane({ attention: 'done' }), s('idle', 0))).toBe('done')
   })
 
+  it('tones a shell pane whose long command failed out of sight until it is seen', () => {
+    const shell = (over: Partial<Pane>): Pane => pane({ preset: 'shell', ...over })
+    expect(paneState(shell({ attention: 'done', shellLast: { code: 2, ms: 12_000, command: 'npm test' } }), undefined)).toBe('failed')
+    expect(paneState(shell({ attention: 'done', shellLast: { code: 0, ms: 12_000, command: 'npm test' } }), undefined)).toBe('done')
+    expect(paneState(shell({ shellLast: { code: 2, ms: 12_000, command: 'npm test' } }), undefined)).toBe('idle')
+  })
+
   it('names subagent states without guessing a word for the others', () => {
     expect(stateWord('subagents', 2)).toEqual({ key: 'workspace.subagentState.waiting', n: 2 })
     expect(stateWord('working', 1)).toEqual({ key: 'workspace.subagentState.working', n: 1 })

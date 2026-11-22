@@ -23,7 +23,8 @@ describe('NextQuotaBar', () => {
     expect(w.find('[data-next-footer]').exists()).toBe(true)
     expect(w.findAll('[data-quota-agent]')).toHaveLength(0)
     expect(w.find('[data-quota-empty]').exists()).toBe(false)
-    expect(w.find('[data-next-footer]').text()).toBe('')
+    expect(w.find('[data-next-footer]').text().replace(/Share/, '').trim()).toBe('')
+    expect(w.find('[data-share-chip]').exists()).toBe(true)
   })
 
   it('renders one cluster per agent with its percentages, reset time only in the tooltip', async () => {

@@ -57,7 +57,7 @@ describe('workspaceAction', () => {
     expect(workspaceAction(key('PageUp', { ctrlKey: true, shiftKey: true }), false, false)).toEqual({ t: 'moveTab', step: -1 })
     expect(workspaceAction(key('PageDown', { ctrlKey: true, shiftKey: true }), false, false)).toEqual({ t: 'moveTab', step: 1 })
     expect(workspaceAction(key('PageDown', { metaKey: true, shiftKey: true }), true, false)).toEqual({ t: 'moveTab', step: 1 })
-    expect(workspaceAction(key('PageUp', { ctrlKey: true }), false, false)).toBeNull()
+    expect(workspaceAction(key('PageUp', { ctrlKey: true }), false, false)).toEqual({ t: 'cycleTab', step: -1 })
     expect(workspaceAction(key('PageUp', { ctrlKey: true, shiftKey: true, altKey: true }), false, false)).toBeNull()
     expect(workspaceAction(key('PageUp', { metaKey: true }), true, false)).toBeNull()
   })

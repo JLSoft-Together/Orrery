@@ -32,6 +32,8 @@ notify = { version = "8.2", default-features = false, features = ["macos_fsevent
 core-serve = { path = "../core/crates/core-serve" }
 core-desk = { path = "../core/crates/core-desk" }
 core-procs = { path = "../core/crates/core-procs" }
+core-monitor = { path = "../core/crates/core-monitor" }
+core-store = { path = "../core/crates/core-store" }
 core-transcript = { path = "../core/crates/core-transcript" }
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 aes-gcm = "0.10"

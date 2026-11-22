@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, Send } from 'lucide-vue-next'
 import AppSelect from '../AppSelect.vue'
 import { DEFAULT_IDLE_MINUTES, DEFAULT_QUIET, IDLE_CHOICES, isHm, type QuietHours, type ToastKind } from '@ccm/shared'
-import { hasTerminals } from '../../lib/desktop'
+import { desktop, hasTerminals } from '../../lib/desktop'
 import { hasPhone } from '../../lib/phone'
 import { isMac } from '../../lib/platform'
 import { playChime } from '../../lib/sound'
@@ -27,6 +27,7 @@ const extras = useExtrasStore()
 const connection = useConnectionStore()
 const ui = useUiStore()
 
+const hasBadge = typeof desktop?.taskbarBadge === 'function'
 const offline = computed(() => connection.state !== 'connected')
 const blocked = computed(() => settings.notifyPermission === 'denied')
 const unsupported = computed(() => settings.notifyPermission === 'unsupported')
@@ -126,6 +127,14 @@ onBeforeUnmount(() => extras.setToastTest(null))
         :disabled="unsupported"
         class="px-3"
         data-setting-row="notifyEnable"
+      />
+      <ToggleSwitch
+        v-if="hasBadge"
+        v-model="settings.taskbarBadge"
+        :label="t('taskbarBadge.setting')"
+        :info="t('taskbarBadge.settingHint')"
+        class="border-t-[0.5px] border-line px-3"
+        data-setting-row="taskbarBadge"
       />
     </SettingSection>
 

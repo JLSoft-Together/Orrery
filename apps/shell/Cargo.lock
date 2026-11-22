@@ -3562,6 +3562,7 @@ dependencies = [
  "cbc",
  "core-desk",
  "core-http",
+ "core-monitor",
  "core-procs",
  "core-remote-proto",
  "core-serve",

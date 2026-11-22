@@ -5,7 +5,7 @@ use core_store::event::{MonitorEvent, NotifyTestResult, OpenApp};
 use core_store::extra::{QuietHours, ToolStats, UsageHeatmap};
 use core_store::persist::notify_file::ToastLocale;
 use core_store::Store;
-use core_toast::NotifyPatch;
+use core_toast::{NotifyPatch, ShellDone};
 use serde_json::Value;
 
 use crate::alerts::lock;
@@ -112,7 +112,10 @@ pub fn client(rt: &mut Runtime, s: &mut Store, m: ClientMessage, ctx: &ClientCon
 fn alerts(rt: &mut Runtime, s: &mut Store, m: ClientMessage, ctx: &ClientContext) {
     let mut a = lock(&rt.alerts);
     match m {
-        ClientMessage::ClientPresence { attentive, locale } => a.toaster.set_presence(ctx.client_id, attentive, locale.map(locale_of)),
+        ClientMessage::ClientPresence { attentive, locale, share } => {
+            a.toaster.set_share(ctx.client_id, share.unwrap_or(false));
+            a.toaster.set_presence(ctx.client_id, attentive, locale.map(locale_of));
+        }
         ClientMessage::NotifyUpdate { toast, kinds, quiet, stuck_minutes, idle_minutes } => {
             let quiet = quiet.and_then(|q| serde_json::from_value::<QuietHours>(q).ok());
             a.toaster.update(&NotifyPatch::from_client(toast, kinds.as_ref(), quiet, stuck_minutes, idle_minutes));
@@ -143,6 +146,7 @@ fn alerts(rt: &mut Runtime, s: &mut Store, m: ClientMessage, ctx: &ClientContext
                 s.set_sensitive(w.settings().clone());
             }
         }
+        ClientMessage::ShellDone { pane_key, name, command, code, ms } => a.toaster.observe_shell(&ShellDone { pane: pane_key, name, command, code, ms }),
         ClientMessage::SensitiveIgnore { project, rule, on } => {
             if let Ok(mut w) = rt.sensitive.lock() {
                 if w.ignore(&project, &rule, on) {

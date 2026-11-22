@@ -347,3 +347,121 @@ fn toast_link_key_survives_a_restart_so_toasts_left_in_the_action_center_keep_wo
     assert_eq!(saved["key"], json!(first.key()));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn groups_sessions_that_finish_within_8_seconds_into_one_toast() {
+    let mut r = Rig::new(true);
+    r.t.update(&kinds(&[("done", true)]));
+    r.see(&[term("a", "working", json!({})), term("b", "working", json!({})), term("c", "working", json!({}))]);
+    r.see(&[term("a", "idle", json!({})), term("b", "working", json!({})), term("c", "working", json!({}))]);
+    assert_eq!(r.shows(), 1);
+    assert_eq!(r.shown[0].title, "title-a đã xong");
+    r.advance(3_000);
+    r.see(&[term("a", "idle", json!({})), term("b", "idle", json!({})), term("c", "working", json!({}))]);
+    r.advance(3_000);
+    r.see(&[term("a", "idle", json!({})), term("b", "idle", json!({})), term("c", "idle", json!({}))]);
+    let group = tag("group:all");
+    assert_eq!(r.calls.iter().filter(|c| **c == format!("show:{group}")).count(), 2);
+    let last = r.shown.last().unwrap();
+    assert_eq!(last.title, "3 session xong");
+    assert_eq!(last.body, "title-a, title-b, title-c");
+    assert!(last.url.ends_with("&t=a"));
+    assert!(r.calls.contains(&format!("hide:{}", tag("done:a"))));
+}
+
+#[test]
+fn a_session_finishing_after_the_window_gets_its_own_toast() {
+    let mut r = Rig::new(true);
+    r.t.update(&kinds(&[("done", true)]));
+    r.see(&[term("a", "working", json!({})), term("b", "working", json!({}))]);
+    r.see(&[term("a", "idle", json!({})), term("b", "working", json!({}))]);
+    r.advance(9_000);
+    r.see(&[term("a", "idle", json!({})), term("b", "idle", json!({}))]);
+    assert_eq!(r.titles(), ["title-a đã xong", "title-b đã xong"]);
+    assert!(!r.calls.iter().any(|c| c.contains(&tag("group:all"))));
+}
+
+#[test]
+fn a_menu_question_is_never_merged_and_a_waiting_session_leads_the_group() {
+    let mut r = Rig::new(true);
+    r.t.update(&kinds(&[("done", true)]));
+    r.see(&[term("a", "working", json!({})), term("b", "working", json!({})), term("c", "working", json!({}))]);
+    r.see(&[term("a", "idle", json!({})), term("b", "working", json!({})), term("c", "working", json!({}))]);
+    r.advance(1_000);
+    r.see(&[term("a", "idle", json!({})), term("b", "waiting", json!({ "waitingFor": "permission" })), term("c", "working", json!({}))]);
+    let last = r.shown.last().unwrap();
+    assert_eq!(last.title, "1 session xong, 1 đang chờ chủ nhân");
+    assert!(last.persistent);
+    assert!(last.url.ends_with("&t=b"));
+
+    let mut m = Rig::new(true);
+    m.t.update(&kinds(&[("done", true)]));
+    m.see(&[term("a", "working", json!({})), term("b", "working", json!({}))]);
+    m.see(&[term("a", "idle", json!({})), term("b", "working", json!({}))]);
+    let ask = |id: &str| (id == "b").then(|| json!({ "question": "pick" }));
+    m.t.observe(&ToastSnapshot {
+        terminals: vec![&term("a", "idle", json!({})), &term("b", "waiting", json!({ "waitingFor": "input needed" }))],
+        ask_of: Some(&ask),
+        ..Default::default()
+    });
+    m.flush();
+    assert_eq!(m.titles().last().copied(), Some("title-b đang chờ chủ nhân"));
+    assert!(!m.calls.iter().any(|c| c.contains(&tag("group:all"))));
+}
+
+#[test]
+fn a_long_shell_command_toasts_with_exit_code_time_and_joins_the_8s_group() {
+    use core_toast::ShellDone;
+    let mut r = Rig::new(true);
+    let done = |pane: &str, code: i64, ms: u64, command: &str| ShellDone { pane: pane.into(), name: format!("shell {pane}"), command: command.into(), code, ms };
+    r.t.observe_shell(&done("p1", 0, 133_000, "npm run build"));
+    r.flush();
+    assert_eq!(r.shown[0].title, "Lệnh xong (exit 0, 2 phút 13 giây): npm run build");
+    assert_eq!(r.shown[0].body, "shell p1");
+    assert_eq!(r.calls, [format!("show:{}", tag("done:shell:p1"))]);
+    r.advance(2_000);
+    r.t.observe_shell(&done("p2", 2, 15_000, "npm   test\n--run"));
+    r.flush();
+    assert_eq!(r.calls[1], format!("hide:{}", tag("done:shell:p1")));
+    assert_eq!(r.shown.last().map(|c| c.title.as_str()), Some("2 session xong"));
+    r.t.set_presence(1, false, Some(ToastLocale::En));
+    r.advance(20_000);
+    r.t.observe_shell(&done("p3", 1, 3_725_000, ""));
+    r.flush();
+    assert_eq!(r.shown.last().map(|c| c.title.as_str()), Some("Command failed (exit 1, 1 h 2 min)"));
+}
+
+#[test]
+fn shell_toasts_stay_quiet_while_the_owner_looks_or_toasts_are_off() {
+    use core_toast::ShellDone;
+    let m = ShellDone { pane: "p".into(), name: "shell".into(), command: "make".into(), code: 0, ms: 60_000 };
+    let mut r = Rig::new(true);
+    r.t.set_presence(1, true, None);
+    r.t.observe_shell(&m);
+    r.flush();
+    assert!(r.calls.is_empty());
+    let mut off = Rig::new(false);
+    off.t.observe_shell(&m);
+    off.flush();
+    assert!(off.calls.is_empty());
+    let mut empty = Rig::new(true);
+    empty.t.observe_shell(&ShellDone { pane: String::new(), ..m });
+    empty.flush();
+    assert!(empty.calls.is_empty());
+}
+
+#[test]
+fn share_mode_hides_toast_content_for_every_toast() {
+    let mut r = Rig::new(true);
+    r.t.set_share(1, true);
+    r.see(&[term("a", "working", json!({}))]);
+    r.see(&[term("a", "waiting", json!({ "waitingFor": "permission" }))]);
+    assert_eq!(r.shown[0].title, "Orrery: có thông báo mới (ẩn khi đang chia sẻ màn hình)");
+    assert_eq!(r.shown[0].body, "");
+    r.t.drop_client(1);
+    r.advance(TOAST_THROTTLE_MS as i64 + 1_000);
+    assert!(!r.t.sharing());
+    r.see(&[term("a", "working", json!({})), term("b", "working", json!({}))]);
+    r.see(&[term("a", "working", json!({})), term("b", "waiting", json!({ "waitingFor": "permission" }))]);
+    assert_eq!(r.shown.last().map(|c| c.title.as_str()), Some("title-b đang chờ chủ nhân"));
+}

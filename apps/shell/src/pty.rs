@@ -11,6 +11,7 @@ use crate::config::{random_hex, uuid};
 use crate::mcp::McpLink;
 use crate::pty_branch::Branches;
 use crate::presets::{child_env, is_session_id, preset_command_with, resolve_cwd, AgentOpts, PRESETS};
+use crate::shell_init::write_bash_init;
 use crate::shim::{apply_shim_env, init_dir_for, shim_dir_for, write_shims, write_zsh_init};
 use crate::worktree::{self, PaneDir};
 
@@ -93,8 +94,9 @@ pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path, mcp: Option<&Mc
     let config = mcp.and_then(|m| m.config.as_deref());
     let want_shim = preset == "shell" && msg.get("shim").and_then(Value::as_bool) == Some(true);
     let shim_dir = config.filter(|_| want_shim).and_then(shim_dir_for).filter(|d| write_shims(d, cfg!(windows)));
-    let zsh_init = config.filter(|_| shim_dir.is_some() && !cfg!(windows)).and_then(init_dir_for).filter(|d| write_zsh_init(d));
-    let opts = AgentOpts { mcp: config.is_some(), name: ticket_name, shim: shim_dir.is_some(), zsh_init: zsh_init.map(|d| d.to_string_lossy().into_owned()) };
+    let nonce = (preset == "shell" && msg.get("integrate").and_then(Value::as_bool) == Some(true)).then(|| random_hex(16));
+    let zsh_init = config.filter(|_| (shim_dir.is_some() || nonce.is_some()) && !cfg!(windows)).and_then(init_dir_for).filter(|d| write_zsh_init(d) && (nonce.is_none() || write_bash_init(d)));
+    let opts = AgentOpts { mcp: config.is_some(), name: ticket_name, shim: shim_dir.is_some(), zsh_init: zsh_init.map(|d| d.to_string_lossy().into_owned()), nonce: nonce.clone() };
     let get = |k: &str| std::env::var(k).ok();
     let spec = preset_command_with(preset, cfg!(windows), &get, resume, session, &opts);
     let mut env: serde_json::Map<String, Value> = serde_json::Map::new();
@@ -118,6 +120,9 @@ pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path, mcp: Option<&Mc
     let mut reply = json!({ "t": "resolved", "rid": rid, "ok": true, "id": id, "file": spec.file, "args": spec.args, "env": env, "cwd": cwd.to_string_lossy() });
     if let Some(agent) = agent {
         reply["agentSession"] = json!(agent);
+    }
+    if let Some(n) = nonce.filter(|_| spec.integrated) {
+        reply["si"] = json!(n);
     }
     (reply, Some(id))
 }
@@ -404,5 +409,18 @@ mod tests {
             PaneDir { cwd: "/gone".into(), live_cwd: Some("/gone/x".into()), exited: true },
         ];
         assert_eq!(live_roots(&dirs), vec!["/a".to_owned(), "/a/b".to_owned()]);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn an_integrated_shell_gets_a_nonce_and_powershell_keeps_its_marks() {
+        let home = std::env::temp_dir();
+        let on = resolve("r", &json!({ "preset": "shell", "integrate": true }), 0, &home, None).0;
+        let si = on["si"].as_str().unwrap_or_default().to_owned();
+        assert!(crate::shell_init::is_nonce(&si), "{on}");
+        assert_eq!(on["env"]["ORRERY_SI_NONCE"], si.as_str());
+        let off = resolve("r", &json!({ "preset": "shell" }), 0, &home, None).0;
+        assert!(off.get("si").is_none() && off["env"].get("ORRERY_SI_NONCE").is_none());
+        let agent = resolve("r", &json!({ "preset": "claude", "integrate": true }), 0, &home, None).0;
+        assert!(agent.get("si").is_none());
     }
 }

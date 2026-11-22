@@ -4,8 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { CaseSensitive, ChevronDown, ChevronUp, Regex, X } from 'lucide-vue-next'
 import type { ISearchOptions, SearchAddon } from '@xterm/addon-search'
 import { isMac } from '../../lib/platform'
+import type { FindSeed } from '../../features/termSearch/registry'
 
-const props = defineProps<{ addon: SearchAddon | null }>()
+const props = defineProps<{ addon: SearchAddon | null; seed?: FindSeed | null }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n()
@@ -66,6 +67,19 @@ watch(
   (addon) => {
     sub?.dispose()
     sub = addon?.onDidChangeResults((e) => (result.value = { index: e.resultIndex, count: e.resultCount })) ?? null
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.seed,
+  (s) => {
+    if (!s) return
+    const same = query.value === s.query && caseSensitive.value === s.caseSensitive && regex.value === s.regex
+    query.value = s.query
+    caseSensitive.value = s.caseSensitive
+    regex.value = s.regex
+    if (same) find(1, true)
   },
   { immediate: true },
 )

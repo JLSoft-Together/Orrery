@@ -1,7 +1,21 @@
 use super::{early_exit_note, text, Control, Hub, Out, Session, EARLY_EXIT, EXITED_TTL};
 use crate::control::{CoreToMain, MainToCore};
+use crate::marks::CmdEvent;
 use crate::session::PtyEvent;
 use serde_json::{json, Map, Value};
+
+pub(super) fn cmd_json(c: &CmdEvent) -> Value {
+    match c {
+        CmdEvent::Started { command } => json!({ "t": "cmd", "phase": "start", "command": command }),
+        CmdEvent::Finished { command, code, ms, cwd } => {
+            let mut o = json!({ "t": "cmd", "phase": "end", "command": command, "code": code, "ms": ms });
+            if let Some(dir) = cwd {
+                o["cwd"] = json!(dir);
+            }
+            o
+        }
+    }
+}
 
 impl<C: Control> Hub<C> {
     pub(super) fn on_main(&mut self, msg: MainToCore) {
@@ -139,8 +153,12 @@ impl<C: Control> Hub<C> {
                 if s.exit_code.is_some() {
                     return;
                 }
+                let cmds = s.marks.as_mut().map(|m| m.feed(&d, now)).unwrap_or_default();
                 s.ring.push(&d);
                 self.fanout(key, None, Out::Binary(d));
+                for c in cmds {
+                    self.fanout(key, None, text(cmd_json(&c)));
+                }
             }
             PtyEvent::Draining => s.gate.drain(),
             PtyEvent::Exit { code, signal } => {

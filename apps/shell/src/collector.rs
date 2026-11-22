@@ -10,6 +10,7 @@ pub fn stop(app: &AppHandle) -> Value {
     if let Some(mut serve) = taken {
         serve.stop();
         crate::power::idle(app);
+        crate::attention::clear(app);
     }
     Value::Null
 }

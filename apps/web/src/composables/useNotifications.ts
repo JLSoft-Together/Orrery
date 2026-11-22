@@ -2,18 +2,21 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CONTEXT_THRESHOLDS, inQuietHours, remindersDue, type TerminalSession, type TerminalStatus, type ToastKind } from '@ccm/shared'
 import { FileDiff, FileWarning, TriangleAlert } from 'lucide-vue-next'
+import { groupCounts, groupLead, groupNames, groupTag, isMerged, joinGroup, type GroupState } from '../features/notify/grouping'
 import { quietFor } from '../lib/attention'
 import { contextCrossings, loadWarned, saveWarned } from '../lib/contextWarn'
 import { compactNumber, duration, now } from '../lib/format'
 import { contextPctOf } from '../lib/provider'
 import { playChime } from '../lib/sound'
 import { displayTitle } from '../lib/title'
+import { shareOn } from '../features/shareMode/store'
 import { waitDisplay } from '../lib/wait'
 import { useAgentsStore } from '../stores/agents'
 import { useAgentTouchesStore } from '../stores/agentTouches'
 import { useAttentionStore } from '../stores/attention'
 import { useConnectionStore } from '../stores/connection'
 import { useExtrasStore } from '../stores/extras'
+import { useMenuQueueStore } from '../stores/menuQueue'
 import { useSettingsStore } from '../stores/settings'
 import { useSnoozeStore } from '../stores/snooze'
 import { useTerminalsStore } from '../stores/terminals'
@@ -58,6 +61,7 @@ export function useNotifications(): void {
   const snooze = useSnoozeStore()
   const toasts = useToastsStore()
   const workspace = useWorkspaceStore()
+  const menuQueue = useMenuQueueStore()
   const compactFlow = useCompact()
   const touches = useAgentTouchesStore()
   const clashActions = useClashActions()
@@ -89,6 +93,11 @@ export function useNotifications(): void {
   )
 
   const lastSent = new Map<string, number>()
+  let group: GroupState | null = null
+  const hasMenu = (terminalId: string): boolean => {
+    const pane = workspace.paneByTerminal.get(terminalId)
+    return !!pane && menuQueue.entries.some((e) => e.paneKey === pane.key)
+  }
 
   function enabled(kind: NotifyKind): boolean {
     if (!settings.notifyEnabled) return false
@@ -122,14 +131,37 @@ export function useNotifications(): void {
     if (toastKind && extras.toastCovers(toastKind)) return
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
     if (document.visibilityState === 'visible' && document.hasFocus()) return
+    let shownTitle = title
+    let shownBody = body
+    let shownTag = tag
+    let reveal: string | null = terminal?.id ?? null
+    if (terminal && (kind === 'done' || kind === 'waiting') && !hasMenu(terminal.id)) {
+      group = joinGroup(group, at, { id: terminal.id, name: nameOf(terminal), waiting: kind === 'waiting' })
+      if (isMerged(group)) {
+        const { done, waiting } = groupCounts(group)
+        const { shown, more } = groupNames(group)
+        const parts = []
+        if (done) parts.push(t('notifyGroup.done', { n: done }, done))
+        if (waiting) parts.push(t('notifyGroup.waiting', { n: waiting }, waiting))
+        shownTitle = parts.join(', ')
+        shownBody = more ? `${shown}${t('notifyGroup.more', { n: more })}` : shown
+        shownTag = groupTag(group)
+        reveal = groupLead(group)?.id ?? reveal
+        onClick = undefined
+      } else shownTag = groupTag(group)
+    }
+    if (shareOn.value) {
+      shownTitle = t('shareMode.hiddenToast')
+      shownBody = ''
+    }
     try {
-      const n = new Notification(title, { body, tag, icon: '/favicon.svg' })
+      const n = new Notification(shownTitle, { body: shownBody, tag: shownTag, icon: '/favicon.svg' })
       n.onclick = () => {
         window.focus()
         if (onClick) onClick()
-        else if (!terminal || !useRevealInWorkspace().show(terminal.id)) {
+        else if (!reveal || !useRevealInWorkspace().show(reveal)) {
           ui.setView('monitor')
-          if (terminal) ui.focusTerminal(terminal.id)
+          if (reveal) ui.focusTerminal(reveal)
         }
         n.close()
       }

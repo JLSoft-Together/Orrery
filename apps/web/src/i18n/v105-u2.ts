@@ -12,6 +12,8 @@ const en = {
       unitMin: 'min',
       unitD: 'd',
       lessThanMin: 'under 1 min',
+      forecast: 'Runs out around {at}',
+      forecastShort: 'May run out before reset',
     },
   },
 }
@@ -30,6 +32,8 @@ const vi = {
       unitMin: 'phút',
       unitD: 'ngày',
       lessThanMin: 'dưới 1 phút',
+      forecast: 'Hết khoảng {at}',
+      forecastShort: 'Có thể hết trước giờ reset',
     },
   },
 }

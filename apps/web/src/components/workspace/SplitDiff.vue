@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { ChevronsRight } from 'lucide-vue-next'
 import { escapeHtml } from '../../lib/codeView'
 import { isMac } from '../../lib/platform'
-import type { DiffFile } from '../../lib/diff'
+import type { DiffFile, DiffLine } from '../../lib/diff'
 import type { Block } from '../../lib/diffBlocks'
 import type { DiffHighlight } from '../../lib/diffOpts'
 import { connectorPath, mapRow, midRow, scrollTopFor, splitModel, visibleFragments, type Fragment, type Side, type SplitRow } from '../../lib/splitDiff'
@@ -26,8 +26,10 @@ const props = defineProps<{
   sides: { left: string; right: string }
   align: boolean
   sync: boolean
+  commenting?: boolean
+  commentLines?: ReadonlySet<string>
 }>()
-const emit = defineEmits<{ revert: [index: number]; focusBlock: [index: number] }>()
+const emit = defineEmits<{ revert: [index: number]; focusBlock: [index: number]; commentAt: [side: 'new' | 'old', line: number, shift: boolean] }>()
 
 const { t } = useI18n()
 const GUTTER_W = 44
@@ -56,6 +58,13 @@ const other = (side: Side): Side => (side === 'left' ? 'right' : 'left')
 
 const num = (n: number | undefined): string => (n === undefined ? '' : String(n))
 
+function commentOf(l: DiffLine, side: Side): string | null {
+  if (!props.commenting) return null
+  if (side === 'left' && l.type === 'del' && l.old !== undefined) return `old:${l.old}`
+  if (l.type !== 'del' && l.new !== undefined) return `new:${l.new}`
+  return null
+}
+
 function rowHtml(r: SplitRow, side: Side, i: number): string {
   const at = ` data-i="${i}"`
   if (r.kind === 'gap') return `<div class="sd-row gap"${at} aria-hidden="true"><span class="n"></span><span class="c">⋯</span></div>`
@@ -69,11 +78,14 @@ function rowHtml(r: SplitRow, side: Side, i: number): string {
   const n = num(side === 'left' ? l.old : l.new)
   // Unchanged rows carry the new-side number on both sides (F4 from the left side).
   const newAttr = l.new ? ` data-new="${l.new}"` : ''
-  if (r.block === null) return `<div class="sd-row"${at}${newAttr}><span class="n">${n}</span><span class="c">${code(l, 'w-mod')}\n</span></div>`
+  const cm = commentOf(l, side)
+  const add = cm ? `<button type="button" class="cm-add" data-cm-add="${cm}" title="${escapeHtml(t('diffComments.addHint'))}" aria-label="${escapeHtml(t('diffComments.add'))}">+</button>` : ''
+  const on = cm && props.commentLines?.has(cm) ? ' cm-in' : ''
+  if (r.block === null) return `<div class="sd-row${on}"${at}${newAttr}>${add}<span class="n">${n}</span><span class="c">${code(l, 'w-mod')}\n</span></div>`
   const type = props.blocks[r.block]!.type
   const kind = escapeHtml(t(`workspace.gutter.kind.${type}`))
   const words = type === 'deleted' ? 'w-del' : type === 'added' ? 'w-add' : 'w-mod'
-  return `<div class="sd-row ${type}"${at} data-block="${r.block}"${newAttr}><span class="n" title="${kind}">${n}</span><span class="c">${code(l, words)}\n</span></div>`
+  return `<div class="sd-row ${type}${on}"${at} data-block="${r.block}"${newAttr}>${add}<span class="n" title="${kind}">${n}</span><span class="c">${code(l, words)}\n</span></div>`
 }
 
 // v45: past WINDOW_MIN_ROWS each side renders only rows near its scroll position (rows are all `lh` high).
@@ -206,6 +218,12 @@ function onClick(e: MouseEvent): void {
   const fold = target?.closest<HTMLElement>('[data-fold]')
   if (fold) {
     expanded.value = new Set([...expanded.value, fold.dataset.fold!])
+    return
+  }
+  const add = target?.closest<HTMLElement>('[data-cm-add]')
+  if (add) {
+    const [side, n] = add.dataset.cmAdd!.split(':')
+    emit('commentAt', side === 'old' ? 'old' : 'new', Number(n), e.shiftKey)
     return
   }
   const row = target?.closest<HTMLElement>('[data-block]')
@@ -418,6 +436,39 @@ defineExpose({ scrollToBlock, sourceLine, switchSide })
 }
 .is-split :deep(.c) {
   padding-right: 1.5em;
+}
+.is-split :deep(.sd-row) {
+  position: relative;
+}
+.is-split :deep(.cm-add) {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.25em;
+  height: 1.25em;
+  margin-top: -0.625em;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ccm-on-accent);
+  background: var(--ccm-accent);
+  opacity: 0;
+  cursor: pointer;
+}
+.is-split :deep(.sd-row:hover .cm-add),
+.is-split :deep(.cm-add:focus-visible) {
+  opacity: 1;
+}
+.is-split :deep(.cm-add:focus-visible) {
+  outline: 2px solid var(--ccm-focus);
+  outline-offset: 1px;
+}
+.is-split :deep(.sd-row.cm-in > .n) {
+  box-shadow: inset -2px 0 0 var(--ccm-accent);
 }
 .is-split :deep(.sd-row.modified) {
   background: var(--mod-bg);

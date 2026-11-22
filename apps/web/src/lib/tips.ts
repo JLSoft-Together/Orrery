@@ -50,7 +50,7 @@ export function tipKeys(action: TipAction, mac: boolean): Record<string, string>
     case 'closePane':
       return { keys: k('wsClose') }
     case 'tab':
-      return { keys: mac ? '⌘1…9' : 'Ctrl+Alt+1…9', cycle: k('wsCycle') }
+      return { keys: mac ? '⌘1…9' : 'Ctrl+Alt+1…9', cycle: k('wsMru') }
     case 'attention':
       return { keys: k('wsAttention') }
     case 'focus':

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Code } from 'lucide-vue-next'
+import { Code, TrendingUp } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useDismiss } from '../../composables/useDismiss'
 import { now } from '../../lib/format'
 import { LIMIT_ALERT_LEFT, LIMIT_WARN_LEFT } from '../../lib/headerStatus'
 import { QUOTA_TONE_CLASS, quotaAgents, resetLabel, resetRelative, type QuotaAgent, type QuotaAgentId } from '../../lib/next/quotaBar'
+import { useQuotaForecastStore } from '../../features/quota/quotaForecast'
+import FooterSysChip from '../../features/footerSys/FooterSysChip.vue'
+import ShareModeChip from '../../features/shareMode/ShareModeChip.vue'
 import { useExtrasStore } from '../../stores/extras'
 import { BRAND_ICONS } from '../extensions/brandIcons'
 
@@ -15,8 +18,9 @@ const CRITICAL_AT = 100 - LIMIT_ALERT_LEFT
 
 const { t, locale } = useI18n()
 const extras = useExtrasStore()
+const forecast = useQuotaForecastStore()
 
-const agents = computed(() => quotaAgents(extras.limits, extras.codexLimits, now.value))
+const agents = computed(() => quotaAgents(extras.limits, extras.codexLimits, now.value, (agent, key, resetsAt) => forecast.fullAt(agent, key, now.value, resetsAt)))
 const open = ref(false)
 const popover = ref<HTMLElement | null>(null)
 
@@ -27,9 +31,14 @@ const keyLabel = (key: '5h' | '7d'): string => t(key === '5h' ? 'mist.shell.quot
 function tip(agent: QuotaAgent): string {
   const parts = agent.windows.map((w) => {
     const reset = resetLabel(w.resetsAt, now.value, locale.value)
-    return reset ? t('mist.shell.quotaTip', { key: keyLabel(w.key), pct: w.used, at: reset }) : `${keyLabel(w.key)} ${w.used}%`
+    const base = reset ? t('mist.shell.quotaTip', { key: keyLabel(w.key), pct: w.used, at: reset }) : `${keyLabel(w.key)} ${w.used}%`
+    return w.fullAt === null ? base : `${base}, ${fullText(w.fullAt)}`
   })
   return [agent.name, ...parts, agent.stale ? t('mist.shell.quotaStale') : ''].filter(Boolean).join(', ')
+}
+
+function fullText(fullAt: number): string {
+  return t('v105.quota.forecast', { at: resetLabel(fullAt, now.value, locale.value) })
 }
 
 function resetText(resetsAt: number | null): string {
@@ -83,6 +92,7 @@ function pick(id: QuotaAgentId): void {
           </span>
           <span class="font-semibold" :class="w.tone === 'critical' ? 'text-st-error' : w.tone === 'warn' ? 'text-warning' : 'text-ink'">{{ w.used }}%</span>
           <span v-if="w.tone === 'critical'" class="font-semibold text-st-error" data-quota-level>{{ t('v105.quota.critical') }}</span>
+          <TrendingUp v-if="w.fullAt !== null && w.tone !== 'critical'" :size="11" class="shrink-0 text-warning" :aria-label="t('v105.quota.forecastShort')" data-quota-forecast-icon />
         </span>
       </button>
     </TransitionGroup>
@@ -113,10 +123,13 @@ function pick(id: QuotaAgentId): void {
               <span class="absolute inset-y-0 w-px bg-ink-faint" :style="{ left: `${CRITICAL_AT}%` }" />
             </div>
             <span class="text-2xs text-ink-muted" data-quota-reset>{{ resetText(w.resetsAt) }}</span>
+            <span v-if="w.fullAt !== null" class="text-2xs font-semibold text-warning" data-quota-forecast>{{ fullText(w.fullAt) }}</span>
           </div>
         </section>
       </div>
     </Transition>
+    <ShareModeChip />
+    <FooterSysChip />
   </footer>
 </template>
 

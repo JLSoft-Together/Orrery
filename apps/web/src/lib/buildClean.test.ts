@@ -44,7 +44,7 @@ describe('build clean helpers', () => {
       collapsed: false,
       buildClean: true,
     }
-    const ids = (ctx: ProjectMenuCtx) => projectMenu(ctx, t).map((e) => ('id' in e ? e.id : null))
+    const ids = (ctx: ProjectMenuCtx) => projectMenu(ctx, t).flatMap((e) => ('id' in e ? [e.id, ...(e.children ?? []).map((k) => ('id' in k ? k.id : ''))] : []))
     expect(ids(base)).toContain('build-clean')
     expect(ids({ ...base, home: true, dir: null })).not.toContain('build-clean')
     expect(ids({ ...base, buildClean: false })).not.toContain('build-clean')

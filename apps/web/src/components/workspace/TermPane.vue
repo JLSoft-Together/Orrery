@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Blocks, Columns2, FileText, FolderOpen, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, TriangleAlert, X } from 'lucide-vue-next'
+import { shown } from '../../features/shareMode/store'
+import { Blocks, Columns2, FileText, FolderOpen, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -25,6 +26,8 @@ import { headMode, isHeadBlank, processChip, STATE_BADGE, statusWordShown, sugge
 import { contextPctOf } from '../../lib/provider'
 import { retireOverlay } from '../../lib/motion'
 import { registerSnapshot } from '../../lib/paneSnapshots'
+import { registerTermSource, type FindSeed, type RevealTarget } from '../../features/termSearch/registry'
+import { MAX_ROWS, type TermDump, type TermRow } from '../../features/termSearch/search'
 import { HiddenOutput, TERM_SCROLLBACK } from '../../lib/termBuffer'
 import { webglPool } from '../../lib/webglLru'
 import { isMac } from '../../lib/platform'
@@ -57,6 +60,8 @@ import ContextGauge from '../ContextGauge.vue'
 import ContextTokens from '../ContextTokens.vue'
 import AttachmentsPanel from './AttachmentsPanel.vue'
 import TermFind from './TermFind.vue'
+import ChatView from '../../features/chat/ChatView.vue'
+import { hasChatView, type ChatTarget } from '../../features/chat/feed'
 import StatusIcon from '../StatusIcon.vue'
 import { statusMeta } from '../../lib/status'
 import { usePaneInfo, usePeerSweep } from '../../composables/usePaneInfo'
@@ -83,6 +88,7 @@ import { shouldAutoFill } from '../../lib/promptQueue'
 import { usePromptQueueStore } from '../../stores/promptQueue'
 import { useResumeScheduleStore } from '../../stores/resumeSchedule'
 import { useShellMarks } from '../../composables/useShellMarks'
+import { useShellDone } from '../../features/shellDone/useShellDone'
 import ContextMenu from '../ui/ContextMenu.vue'
 
 const props = defineProps<{ pane: Pane; visible: boolean; focused: boolean; multi: boolean; zoomed: boolean; hiddenCount: number; dim: boolean; grouped?: boolean }>()
@@ -114,6 +120,7 @@ let ticket: SpawnTicket | null = null
 const queued = ref(false)
 const findOpen = ref(false)
 const find = ref<InstanceType<typeof TermFind> | null>(null)
+const findSeed = ref<FindSeed | null>(null)
 const searchAddon = ref<SearchAddon | null>(null)
 const devUrls = ref<string[]>([])
 const linkHint = ref<string | undefined>(undefined)
@@ -389,7 +396,7 @@ const canMeterCompact = computed(() => compactFlow.stateOf(props.pane) === 'read
 
 const barSlot = inject<Ref<HTMLElement | null>>('ccm-pane-bar', ref(null))
 const inBar = computed(() => !isNext.value && headMode(props.multi, props.zoomed) === 'bar' && props.visible && !!barSlot.value)
-const headTip = computed(() => [cwd.value, activityText.value, session.value ? sessionTitle.value : ''].filter(Boolean).join('\n') || undefined)
+const headTip = computed(() => shown([cwd.value, activityText.value, session.value ? sessionTitle.value : ''].filter(Boolean).join('\n')) || undefined)
 
 const zoomLabel = computed(() => t(props.zoomed ? 'workspace.paneHead.unzoom' : 'workspace.paneHead.zoom', { key: zoomKeys(isMac) }))
 
@@ -452,6 +459,24 @@ const preset = computed(() => presetOf(props.pane))
 let reportedCwd: string | null = null
 
 const isShell = computed(() => preset.value === 'shell')
+const chatOn = ref(false)
+const canChat = computed(() => hasChatView && (preset.value === 'claude' || preset.value === 'codex'))
+const chatTarget = computed<ChatTarget | null>(() => {
+  if (!canChat.value) return null
+  const term = props.pane.terminalId ? terminals.byId[props.pane.terminalId] : undefined
+  const agent = preset.value === 'codex' ? 'codex' : 'claude'
+  const own = agent === 'claude' ? term?.claudeSessionId : (term?.codexSessionId ?? (term?.id.startsWith('codex:') ? term.id.slice(6) : undefined))
+  return { key: props.pane.key, agent, session: own ?? props.pane.agentSessionId ?? '', cwd: term?.cwd ?? cwd.value ?? '' }
+})
+const chatLabel = computed(() => t(chatOn.value ? 'chatView.toTerminal' : 'chatView.toChat'))
+watch(canChat, (ok) => {
+  if (!ok) chatOn.value = false
+})
+function toggleChat(): void {
+  chatOn.value = !chatOn.value
+  if (chatOn.value) findOpen.value = false
+  else void nextTick(() => term?.focus())
+}
 const termMenu = useTermMenu({
   term: () => term,
   enabled: () => settings.clickMenu && props.visible && props.pane.state === 'running' && (preset.value === 'claude' || preset.value === 'codex'),
@@ -515,6 +540,7 @@ const marks = useShellMarks({
   notice: showNotice,
 })
 const { active: marksOn, menu: markMenu, entries: markEntries } = marks
+const shellDone = useShellDone({ paneKey: () => props.pane.key, paneTitle: () => props.pane.title || shortPath(cwd.value ?? '') || t('workspace.preset.shell'), visible: () => props.visible })
 
 const queues = usePromptQueueStore()
 const queueButton = ref<InstanceType<typeof PromptQueueButton> | null>(null)
@@ -765,6 +791,50 @@ const offSnapshot = registerSnapshot(props.pane.key, (n) => {
 })
 onBeforeUnmount(offSnapshot)
 
+function dumpTerm(): TermDump | null {
+  const b = term?.buffer.active
+  if (!term || !b) return null
+  const end = b.length
+  const start = Math.max(0, end - MAX_ROWS)
+  const rows: TermRow[] = []
+  for (let y = start; y < end; y++) {
+    const line = b.getLine(y)
+    const next = y + 1 < end ? b.getLine(y + 1) : undefined
+    rows.push({ text: line?.translateToString(!next?.isWrapped) ?? '', wrapped: !!line?.isWrapped })
+  }
+  return { rows, firstRow: start, cols: term.cols }
+}
+
+function afterFlush(fn: () => void): void {
+  let done = false
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const run = (): void => {
+    if (done) return
+    done = true
+    if (timer) clearTimeout(timer)
+    fn()
+  }
+  timer = setTimeout(run, 1500)
+  output.flush(run)
+}
+
+async function revealMatch(target: RevealTarget): Promise<void> {
+  await nextTick()
+  afterFlush(() => {
+    if (!term || target.row >= term.buffer.active.length) return
+    term.scrollToLine(Math.max(0, target.row - Math.floor(term.rows / 2)))
+    term.select(target.col, target.row, target.len)
+    findSeed.value = { query: target.query, caseSensitive: target.caseSensitive, regex: target.regex, n: (findSeed.value?.n ?? 0) + 1 }
+    findOpen.value = true
+  })
+}
+
+const offTermSource = registerTermSource(props.pane.key, {
+  read: () => new Promise((resolve) => (term ? afterFlush(() => resolve(dumpTerm())) : resolve(null))),
+  reveal: (target) => void revealMatch(target),
+})
+onBeforeUnmount(offTermSource)
+
 const att = usePaneAttachments({
   paneKey: () => props.pane.key,
   preset: () => preset.value,
@@ -943,6 +1013,9 @@ function onMessage(msg: PtyServerMessage): void {
       break
     case 'cwd':
       if (msg.cwd) workspace.update(key, { liveCwd: msg.cwd })
+      break
+    case 'cmd':
+      shellDone.onCmd(msg)
       break
     case 'exit':
       stopBoot()
@@ -1313,7 +1386,7 @@ onBeforeUnmount(() => {
       <span
         v-if="ownProject"
         class="inline-flex min-w-0 shrink items-center gap-1 text-2xs font-medium text-accent-ink @max-[360px]:hidden"
-        :title="`${t('splitV97.paneProject', { name: ownProject })}\n${pane.project}`"
+        :title="shown(`${t('splitV97.paneProject', { name: ownProject })}\n${pane.project}`)"
         data-pane-project
         data-pane-chip
       >
@@ -1349,7 +1422,7 @@ onBeforeUnmount(() => {
           ref="wtButton"
           type="button"
           class="inline-flex h-5 shrink-[10] cursor-pointer items-center gap-1 rounded-inner bg-[var(--ccm-control)] px-1.5 font-mono text-2xs text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-expanded:bg-fill aria-expanded:text-ink"
-          :title="[branch ? t('workspace.paneHead.branch', { branch }) : t('workspace.wt.title'), cwd].join('\n')"
+          :title="shown([branch ? t('workspace.paneHead.branch', { branch }) : t('workspace.wt.title'), cwd].join('\n'))"
           aria-haspopup="dialog"
           :aria-expanded="!!wtAnchor"
           data-pane-worktrees
@@ -1378,6 +1451,22 @@ onBeforeUnmount(() => {
             aria-hidden="true"
             >{{ attachCount }}</span
           >
+        </button>
+        <button
+          v-if="canChat"
+          type="button"
+          class="inline-flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-inner px-1 text-2xs font-medium text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-pressed:bg-fill aria-pressed:text-ink"
+          :class="isNext ? `${REVEAL} aria-pressed:opacity-100` : ''"
+          :title="chatLabel"
+          :aria-label="chatLabel"
+          :aria-pressed="chatOn"
+          data-no-drag
+          data-pane-chat-toggle
+          @click="toggleChat"
+        >
+          <SquareTerminal v-if="chatOn" :size="12" class="shrink-0" aria-hidden="true" />
+          <MessageSquareText v-else :size="12" class="shrink-0" aria-hidden="true" />
+          <span class="@max-[560px]:hidden" aria-hidden="true">{{ chatOn ? t('chatView.terminal') : t('chatView.chat') }}</span>
         </button>
         <button
           v-if="canTools"
@@ -1584,7 +1673,12 @@ onBeforeUnmount(() => {
         <div ref="host" class="size-full" data-code-zoom :title="linkHint" />
         <div v-if="menuMouse.hover.value" class="pointer-events-none absolute rounded-inner bg-accent/20" :style="{ left: menuMouse.hover.value.left + 'px', top: menuMouse.hover.value.top + 'px', width: menuMouse.hover.value.width + 'px', height: menuMouse.hover.value.height + 'px' }" data-term-menu-hover />
       </div>
-      <TermMenuBar v-if="termMenu.menu.value" :menu="termMenu.menu.value" :busy="termMenu.busy.value" @pick="termMenu.pick" />
+      <TermMenuBar v-if="termMenu.menu.value" :class="chatOn && canChat ? 'relative z-12 rounded-b-card bg-well' : ''" :menu="termMenu.menu.value" :busy="termMenu.busy.value" @pick="termMenu.pick" />
+      <Transition name="ccm-fade">
+        <div v-if="chatOn && canChat" class="absolute inset-0 z-11 overflow-hidden rounded-card bg-well" :class="termMenu.menu.value ? 'rounded-b-none' : ''" data-pane-chat>
+          <ChatView :target="chatTarget" :active="visible && chatOn" :agent-label="t(`workspace.preset.${preset}`)" @open-file="(path) => emit('openLink', { kind: 'file', path }, {})" />
+        </div>
+      </Transition>
       <Transition name="ccm-fade">
         <div v-if="booting" class="absolute inset-0 z-11 flex items-center justify-center rounded-card bg-well p-4" data-pane-boot>
           <div class="flex max-w-80 flex-col items-center gap-3 text-center" role="status" aria-live="polite">
@@ -1621,7 +1715,7 @@ onBeforeUnmount(() => {
         </p>
       </Transition>
       <ContextMenu v-if="markMenu" :at="markMenu.at" :entries="markEntries" :label="t('shellMarks.menuLabel')" :trigger="markMenu.trigger" @pick="marks.pick" @close="marks.closeMenu" />
-      <TermFind v-if="findOpen" ref="find" :addon="searchAddon" class="absolute top-1 right-2 z-10" @close="closeFind" />
+      <TermFind v-if="findOpen" ref="find" :addon="searchAddon" :seed="findSeed" class="absolute top-1 right-2 z-10" @close="closeFind" />
       <span
         v-if="pane.attention"
         :key="`${pane.attention}:${visible}`"

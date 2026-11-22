@@ -9,7 +9,10 @@ export interface QuotaWindowView {
   used: number
   tone: LimitLevel
   resetsAt: number | null
+  fullAt: number | null
 }
+
+export type FullAtOf = (agent: QuotaAgentId, key: QuotaKey, resetsAt: number | null) => number | null
 
 export interface QuotaAgent {
   id: QuotaAgentId
@@ -20,7 +23,7 @@ export interface QuotaAgent {
 
 const NAMES: Record<QuotaAgentId, string> = { claude: 'Claude Code', codex: 'Codex' }
 
-function windowsOf(limits: PlanLimits): QuotaWindowView[] {
+function windowsOf(agent: QuotaAgentId, limits: PlanLimits, fullAtOf?: FullAtOf): QuotaWindowView[] {
   const out: QuotaWindowView[] = []
   for (const [key, w] of [
     ['5h', limits.fiveHour],
@@ -29,19 +32,22 @@ function windowsOf(limits: PlanLimits): QuotaWindowView[] {
     if (!w || !Number.isFinite(w.usedPct)) continue
     const used = Math.min(100, Math.max(0, Math.round(w.usedPct)))
     const at = w.resetsAt ? Date.parse(w.resetsAt) : NaN
-    out.push({ key, used, tone: limitLevel(100 - used), resetsAt: Number.isFinite(at) ? at : null })
+    const resetsAt = Number.isFinite(at) ? at : null
+    const fullAt = used < 100 ? (fullAtOf?.(agent, key, resetsAt) ?? null) : null
+    const level = limitLevel(100 - used)
+    out.push({ key, used, tone: fullAt !== null && level === 'ok' ? 'warn' : level, resetsAt, fullAt })
   }
   return out
 }
 
-export function quotaAgents(claude: PlanLimits | null | undefined, codex: PlanLimits | null | undefined, nowMs: number): QuotaAgent[] {
+export function quotaAgents(claude: PlanLimits | null | undefined, codex: PlanLimits | null | undefined, nowMs: number, fullAtOf?: FullAtOf): QuotaAgent[] {
   const list: QuotaAgent[] = []
   for (const [id, limits] of [
     ['claude', claude],
     ['codex', codex],
   ] as const) {
     if (!limits) continue
-    const windows = windowsOf(limits)
+    const windows = windowsOf(id, limits, fullAtOf)
     if (windows.length) list.push({ id, name: NAMES[id], stale: limitsStale(limits, nowMs), windows })
   }
   return list

@@ -58,6 +58,14 @@ const fileIconStyles = computed(() => [
         data-setting-row="agentShim"
       />
       <ToggleSwitch v-model="settings.dustEffect" :label="t('settings.dust')" :info="t('settings.dustHint')" class="px-3" data-setting-row="dust" />
+      <ToggleSwitch
+        v-model="settings.secretGuard"
+        :label="t('secretGuard.setting')"
+        :info="t('secretGuard.settingHint')"
+        class="px-3"
+        data-setting="secret-guard"
+        data-setting-row="secretGuard"
+      />
       <SettingRow :label="t('settings.fileIcons')" :info="t('settings.fileIconsHint')" data-setting-row="fileIcons">
         <SegmentedControl v-model="settings.fileIcons" :options="fileIconStyles" :label="t('settings.fileIcons')" data-setting="file-icons" />
       </SettingRow>

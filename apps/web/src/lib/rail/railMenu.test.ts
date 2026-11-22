@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { findAction, isSeparator, type MenuEntry } from '../menu'
-import { emptyMenu, groupMenu, isMenuKey, projectMenu, rowMenu, type ProjectMenuCtx, type RowMenuCtx } from './railMenu'
+import { emptyMenu, groupMenu, isMenuKey, projectKindOf, projectMenu, rowMenu, type ProjectMenuCtx, type RowMenuCtx } from './railMenu'
 
 const t = (k: string) => k.split('.').pop()!
 const ids = (e: MenuEntry[]) => e.map((x) => (isSeparator(x) ? '-' : x.id))
@@ -18,7 +18,7 @@ const row = (p: Partial<RowMenuCtx> = {}): RowMenuCtx => ({
 describe('projectMenu', () => {
   it('lists the project actions in order', () => {
     expect(ids(projectMenu(project(), t))).toEqual([
-      'new', 'run', 'scripts', 'plan', 'env', 'i18n', 'layouts', '-', 'explorer', 'copy-path', 'reveal', '-', 'move-up', 'move-down', 'toggle', '-', 'close-project',
+      'new', 'run', 'tools', 'layouts', '-', 'explorer', 'copy-path', 'reveal', '-', 'move-up', 'move-down', 'toggle', '-', 'close-project',
     ])
   })
   it('new tab offers agents, browser and the viewers that exist', () => {
@@ -43,9 +43,27 @@ describe('projectMenu', () => {
     expect(m).not.toContain('scripts')
     expect(m).not.toContain('reveal')
     expect(m).not.toContain('explorer')
-    expect(m).not.toContain('plan')
-    expect(m).not.toContain('env')
-    expect(m).not.toContain('i18n')
+    expect(m).not.toContain('tools')
+  })
+  it('groups the tools in one submenu', () => {
+    const m = projectMenu(project({ perms: true, buildClean: true }), t)
+    expect(kids(m, 'tools')).toEqual(['scripts', 'plan', 'env', 'i18n', 'perms', 'build-clean'])
+    expect(ids(m)).not.toContain('scripts')
+    expect(ids(m).filter((x) => x !== '-').length).toBeLessThanOrEqual(11)
+  })
+  it('Android permissions only for Android / Flutter or an unknown type', () => {
+    const has = (kind: ProjectMenuCtx['kind']) => kids(projectMenu(project({ perms: true, kind }), t), 'tools').includes('perms')
+    expect(has(undefined)).toBe(true)
+    expect(has(null)).toBe(true)
+    expect(has('android')).toBe(true)
+    expect(has('flutter')).toBe(true)
+    expect(has('other')).toBe(false)
+  })
+  it('reads the project type from the detected projects', () => {
+    expect(projectKindOf([], false)).toBeNull()
+    expect(projectKindOf([], true)).toBe('other')
+    expect(projectKindOf([{ kind: 'android' }], true)).toBe('android')
+    expect(projectKindOf([{ kind: 'android' }, { kind: 'flutter' }], true)).toBe('flutter')
   })
   it('disables what cannot apply, with a reason', () => {
     const m = projectMenu(project({ anchored: false, canUp: false, canDown: false }), t)

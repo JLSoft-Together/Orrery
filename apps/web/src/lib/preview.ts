@@ -128,7 +128,26 @@ export interface SearchMatch {
 }
 export type CommitError = 'denied' | 'no-git' | 'not-repo' | 'failed' | 'conflict' | 'stale' | 'missing' | 'nothing' | 'empty-message' | 'pushed' | 'cancelled' | 'hook' | 'timeout' | 'unavailable'
 export type StageResult = { ok: true } | { ok: false; error: CommitError; detail?: string }
-export type CommitResult = { ok: true; hash: string; subject: string } | { ok: false; error: CommitError; detail?: string }
+export interface SecretHit {
+  path: string
+  line: number
+  kind: string
+  masked: string
+  commit?: string
+}
+export interface SecretBlock {
+  ok: false
+  error: 'secrets'
+  hits: SecretHit[]
+  skipped?: string[]
+  truncated?: boolean
+  scanError?: string
+}
+export interface SecretScanOpts {
+  scan?: boolean
+}
+export type CommitResult = { ok: true; hash: string; subject: string } | { ok: false; error: CommitError; detail?: string } | SecretBlock
+export type PushResult = BranchOpResult | SecretBlock
 export interface CheckRequest {
   source: string
   name: string
@@ -283,7 +302,7 @@ interface PreviewBridge {
   gitStage?: (root: string, paths: string[], hunk?: string) => Promise<StageResult>
   gitUnstage?: (root: string, paths: string[]) => Promise<StageResult>
   gitCanAmend?: (root: string) => Promise<boolean>
-  gitCommit?: (root: string, message: string, amend: boolean) => Promise<CommitResult>
+  gitCommit?: (root: string, message: string, amend: boolean, opts?: SecretScanOpts) => Promise<CommitResult>
   gitCommitCancel?: (root: string) => Promise<boolean>
   checkRun?: (dir: string, check: CheckRequest) => Promise<CheckResult>
   checkCancel?: (dir: string) => Promise<boolean>
@@ -324,7 +343,7 @@ interface PreviewBridge {
   gitFetch?: (root: string) => Promise<BranchOpResult>
   gitBranchUpdate?: (root: string, ref: string) => Promise<BranchOpResult>
   gitPushPreview?: (root: string, ref: string, remote?: string, branch?: string) => Promise<PushPreview>
-  gitPush?: (root: string, ref: string, remote: string, branch: string, setUpstream: boolean) => Promise<BranchOpResult>
+  gitPush?: (root: string, ref: string, remote: string, branch: string, setUpstream: boolean, opts?: SecretScanOpts) => Promise<PushResult>
   changesDiscard?: (root: string, path: string, hunk?: string) => Promise<ChangesResult>
   changesWatch?: (root: string) => Promise<boolean>
   changesUnwatch?: (root: string) => Promise<boolean>
@@ -390,7 +409,8 @@ export const hasCommit = typeof bridge?.gitCommit === 'function'
 export const gitStage = (root: string, paths: string[], hunk?: string): Promise<StageResult> => bridge?.gitStage?.(root, paths, hunk) ?? Promise.resolve(unavailable)
 export const gitUnstage = (root: string, paths: string[]): Promise<StageResult> => bridge?.gitUnstage?.(root, paths) ?? Promise.resolve(unavailable)
 export const gitCanAmend = (root: string): Promise<boolean> => bridge?.gitCanAmend?.(root) ?? Promise.resolve(false)
-export const gitCommit = (root: string, message: string, amend: boolean): Promise<CommitResult> => bridge?.gitCommit?.(root, message, amend) ?? Promise.resolve(unavailable)
+export const gitCommit = (root: string, message: string, amend: boolean, opts?: SecretScanOpts): Promise<CommitResult> =>
+  bridge?.gitCommit?.(root, message, amend, opts) ?? Promise.resolve(unavailable)
 export const gitCommitCancel = (root: string): Promise<boolean> => bridge?.gitCommitCancel?.(root) ?? Promise.resolve(false)
 export const hasChecks = typeof bridge?.checkRun === 'function'
 export const checkRun = (dir: string, check: CheckRequest): Promise<CheckResult> => bridge?.checkRun?.(dir, check) ?? Promise.resolve(unavailable)
@@ -479,8 +499,8 @@ export const hasPush = typeof bridge?.gitPush === 'function'
 /** Omitted `remote` / `branch` = main's defaults (upstream, else push remote / origin with the local name). */
 export const gitPushPreview = (root: string, ref: string, remote?: string, branch?: string): Promise<PushPreview> =>
   bridge?.gitPushPreview?.(root, ref, remote, branch) ?? Promise.resolve(noPush)
-export const gitPush = (root: string, ref: string, remote: string, branch: string, setUpstream: boolean): Promise<BranchOpResult> =>
-  bridge?.gitPush?.(root, ref, remote, branch, setUpstream) ?? Promise.resolve(noBranchOps)
+export const gitPush = (root: string, ref: string, remote: string, branch: string, setUpstream: boolean, opts?: SecretScanOpts): Promise<PushResult> =>
+  bridge?.gitPush?.(root, ref, remote, branch, setUpstream, opts) ?? Promise.resolve(noBranchOps)
 export const changesDiscard = (root: string, path: string, hunk?: string): Promise<ChangesResult> =>
   bridge?.changesDiscard?.(root, path, hunk) ?? Promise.resolve(unavailable)
 export const changesWatch = (root: string): Promise<boolean> => bridge?.changesWatch?.(root) ?? Promise.resolve(false)

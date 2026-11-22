@@ -71,6 +71,7 @@ struct Session {
     exit_code: Option<i64>,
     branch: Option<String>,
     si: Option<String>,
+    marks: Option<crate::marks::Marks>,
     started: Instant,
     exited_at: Option<Instant>,
     known: bool,

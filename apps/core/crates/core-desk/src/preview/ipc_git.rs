@@ -1,7 +1,7 @@
 use super::branches::{self, Auth};
 use super::gate::{self, denied, Latest};
 use super::paths::{dirname, root_key};
-use super::{changes, commit, gitmisc, log};
+use super::{changes, commit, gitmisc, log, secrets};
 use crate::{arg, Ctx, Desk};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -14,6 +14,10 @@ fn field<'a>(req: &'a Value, key: &str) -> &'a Value {
 
 fn opt_field<'a>(req: &'a Value, key: &str) -> Option<&'a Value> {
     req.get(key)
+}
+
+fn wants_scan(req: &Value) -> bool {
+    req.get("scan") == Some(&json!(true))
 }
 
 fn failed_err() -> Value {
@@ -157,6 +161,11 @@ pub fn register(desk: &mut Desk) {
     desk.on(MODULE, "ccm:git-push", |ctx, args| {
         let req = arg(args, 0);
         let Some(repo) = gate::repo_of(ctx, field(req, "root")) else { return Ok(denied()) };
+        if wants_scan(req) {
+            if let Some(stop) = secrets::blocked(&secrets::scan_push(&repo, field(req, "ref"), field(req, "remote"), field(req, "branch"))) {
+                return Ok(stop);
+            }
+        }
         Ok(run_auth(ctx, &repo, |a| branches::push_branch(&repo, field(req, "ref"), field(req, "remote"), field(req, "branch"), field(req, "setUpstream"), a)))
     });
     desk.on(MODULE, "ccm:gh-repo-account", |ctx, args| {
@@ -212,6 +221,11 @@ pub fn register(desk: &mut Desk) {
         let key = root_key(&repo);
         if commits.has(&key) {
             return Ok(json!({"ok": false, "error": "failed", "detail": "busy"}));
+        }
+        if wants_scan(req) {
+            if let Some(stop) = secrets::blocked(&secrets::scan_staged(&repo)) {
+                return Ok(stop);
+            }
         }
         if input.amend {
             if !commit::head_unpushed(&repo) {

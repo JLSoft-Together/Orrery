@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 
 use base64::Engine;
 
+use crate::shell_init::{is_nonce, BASH_INIT_FILE, PS_SHELL_INTEGRATION};
+
 pub const PRESETS: [&str; 3] = ["claude", "codex", "shell"];
 
 pub const PS_CWD_HOOK: &str = "if (-not $global:__AgentMonitorPrompt) {\n$global:__AgentMonitorPrompt = $function:prompt\nfunction global:prompt {\n$out = (& $global:__AgentMonitorPrompt) -join ''\n$loc = $executionContext.SessionState.Path.CurrentLocation\nif ($loc.Provider.Name -eq 'FileSystem') { $out += \"$([char]27)]9;9;`\"$($loc.ProviderPath)`\"$([char]27)\\\" }\n$out\n}\n}";
@@ -30,6 +32,7 @@ pub struct LaunchSpec {
     pub file: String,
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
+    pub integrated: bool,
 }
 
 pub fn is_session_id(v: &str) -> bool {
@@ -56,6 +59,7 @@ pub struct AgentOpts {
     pub name: Option<String>,
     pub shim: bool,
     pub zsh_init: Option<String>,
+    pub nonce: Option<String>,
 }
 
 pub fn is_pane_name(v: &str) -> bool {
@@ -104,28 +108,45 @@ pub fn preset_command(preset: &str, windows: bool, env: &dyn Fn(&str) -> Option<
 }
 
 pub fn preset_command_with(preset: &str, windows: bool, env: &dyn Fn(&str) -> Option<String>, resume: Option<&str>, session: Option<&str>, opts: &AgentOpts) -> LaunchSpec {
+    let nonce = opts.nonce.as_deref().filter(|n| preset == "shell" && is_nonce(n));
+    let si = |n: &str| ("ORRERY_SI_NONCE".to_owned(), n.to_owned());
     if windows {
         let file = windows_powershell(env("SystemRoot").or_else(|| env("SYSTEMROOT")).as_deref());
         let shell_hook = if opts.shim { format!("{PS_CWD_HOOK}\n{}", crate::shim::PS_SHIM_FIRST) } else { PS_CWD_HOOK.to_owned() };
-        let script = if preset == "shell" { shell_hook } else { format!("{PS_CWD_HOOK}; {}", agent_command(preset, true, resume, session, opts)) };
+        let script = match (preset, nonce) {
+            ("shell", Some(_)) => format!("{shell_hook}\n{PS_SHELL_INTEGRATION}"),
+            ("shell", None) => shell_hook,
+            _ => format!("{PS_CWD_HOOK}; {}", agent_command(preset, true, resume, session, opts)),
+        };
         let args = vec!["-NoLogo".into(), "-NoExit".into(), "-EncodedCommand".into(), encode_powershell(&script)];
-        return LaunchSpec { file, args, env: Vec::new() };
+        return LaunchSpec { file, args, env: nonce.map(si).into_iter().collect(), integrated: nonce.is_some() };
     }
     let shell = safe_shell(env("SHELL").as_deref(), cfg!(target_os = "macos"));
     let bash = Path::new(&shell).file_name().is_some_and(|n| n == "bash");
     let hook = if bash { vec![("PROMPT_COMMAND".to_owned(), BASH_PROMPT_COMMAND.to_owned())] } else { Vec::new() };
     if preset == "shell" {
         let zsh = Path::new(&shell).file_name().is_some_and(|n| n == "zsh");
+        let init = opts.zsh_init.as_deref().filter(|i| Path::new(i).is_absolute() && !i.contains('\''));
         let mut vars = hook;
-        if let Some(init) = opts.zsh_init.as_deref().filter(|i| opts.shim && zsh && Path::new(i).is_absolute() && !i.contains('\'')) {
-            let user = env("ZDOTDIR").filter(|z| Path::new(z).is_absolute()).unwrap_or_default();
-            vars.push(("ZDOTDIR".to_owned(), init.to_owned()));
-            vars.push(("AGENT_MONITOR_ZDOTDIR".to_owned(), user));
+        if let (Some(n), Some(dir), true) = (nonce, init, bash) {
+            vars.push(si(n));
+            let file = Path::new(dir).join(BASH_INIT_FILE).to_string_lossy().into_owned();
+            return LaunchSpec { file: shell, args: vec!["--init-file".into(), file, "-i".into()], env: vars, integrated: true };
         }
-        return LaunchSpec { file: shell, args: vec!["-l".into()], env: vars };
+        let wrap = zsh && (opts.shim || nonce.is_some());
+        if let Some(dir) = init.filter(|_| wrap) {
+            let user = env("ZDOTDIR").filter(|z| Path::new(z).is_absolute()).unwrap_or_default();
+            vars.push(("ZDOTDIR".to_owned(), dir.to_owned()));
+            vars.push(("AGENT_MONITOR_ZDOTDIR".to_owned(), user));
+            if let Some(n) = nonce {
+                vars.push(si(n));
+                return LaunchSpec { file: shell, args: vec!["-l".into()], env: vars, integrated: true };
+            }
+        }
+        return LaunchSpec { file: shell, args: vec!["-l".into()], env: vars, integrated: false };
     }
     let command = format!("{}; exec {shell} -l", agent_command(preset, false, resume, session, opts));
-    LaunchSpec { file: shell, args: vec!["-l".into(), "-i".into(), "-c".into(), command], env: hook }
+    LaunchSpec { file: shell, args: vec!["-l".into(), "-i".into(), "-c".into(), command], env: hook, integrated: false }
 }
 
 pub fn child_env(vars: impl Iterator<Item = (String, String)>) -> Vec<(String, String)> {
@@ -266,5 +287,33 @@ mod tests {
         std::fs::write(&file, "x").unwrap();
         assert_eq!(resolve_cwd(Some(&file.to_string_lossy()), &home), None);
         let _ = std::fs::remove_file(file);
+    }
+
+    #[test]
+    fn integrated_shells_get_the_marks_script_and_the_nonce_only_for_shell_panes() {
+        let n = "0123456789abcdef0123456789abcdef";
+        let dir = std::env::temp_dir().join("shell-init-tauri").to_string_lossy().into_owned();
+        let on = AgentOpts { nonce: Some(n.into()), zsh_init: Some(dir.clone()), ..Default::default() };
+        let win = preset_command_with("shell", true, &|_| None, None, None, &on);
+        assert!(win.integrated);
+        assert_eq!(win.args[3], encode_powershell(&format!("{PS_CWD_HOOK}\n{PS_SHELL_INTEGRATION}")));
+        assert_eq!(win.env, vec![("ORRERY_SI_NONCE".to_owned(), n.to_owned())]);
+        let agent = preset_command_with("claude", true, &|_| None, None, None, &on);
+        assert!(!agent.integrated && agent.env.is_empty());
+        let bad = preset_command_with("shell", true, &|_| None, None, None, &AgentOpts { nonce: Some("x; calc".into()), ..Default::default() });
+        assert!(!bad.integrated && bad.env.is_empty());
+        let bash = |k: &str| (k == "SHELL").then(|| "/bin/bash".to_owned());
+        let b = preset_command_with("shell", false, &bash, None, None, &on);
+        assert!(b.integrated);
+        assert_eq!(b.args, vec!["--init-file".to_owned(), Path::new(&dir).join(BASH_INIT_FILE).to_string_lossy().into_owned(), "-i".to_owned()]);
+        assert!(b.env.contains(&("ORRERY_SI_NONCE".to_owned(), n.to_owned())) && b.env.iter().any(|(k, _)| k == "PROMPT_COMMAND"));
+        let no_dir = preset_command_with("shell", false, &bash, None, None, &AgentOpts { nonce: Some(n.into()), ..Default::default() });
+        assert!(!no_dir.integrated && no_dir.args == ["-l"]);
+        let zsh = |k: &str| (k == "SHELL").then(|| "/bin/zsh".to_owned());
+        let z = preset_command_with("shell", false, &zsh, None, None, &on);
+        assert!(z.integrated && z.args == ["-l"]);
+        assert!(z.env.contains(&("ZDOTDIR".to_owned(), dir.clone())) && z.env.contains(&("ORRERY_SI_NONCE".to_owned(), n.to_owned())));
+        let fish = |k: &str| (k == "SHELL").then(|| "/usr/bin/fish".to_owned());
+        assert!(!preset_command_with("shell", false, &fish, None, None, &on).integrated);
     }
 }

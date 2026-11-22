@@ -28,6 +28,10 @@ fn is_count(name: &str, value: &str) -> bool {
     (name.eq_ignore_ascii_case("session") || name.eq_ignore_ascii_case("sessions")) && (1..=4).contains(&value.len()) && value.bytes().all(|b| b.is_ascii_digit())
 }
 
+pub fn named_secrets(text: &str) -> Vec<(String, String)> {
+    rules().named.captures_iter(text).filter(|c| !is_count(&c[1], &c[3])).map(|c| (c[1].to_owned(), c[3].to_owned())).collect()
+}
+
 pub fn mask_hook_text(text: &str, home: &str, platform: &str) -> String {
     let r = rules();
     let out = r.userinfo.replace_all(text, "${1}••••@");

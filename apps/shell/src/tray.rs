@@ -49,25 +49,13 @@ pub fn refresh(app: &AppHandle) {
 static CONFIRMING: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_os = "macos")]
-const APP_QUIT: &str = "app-quit";
-
-#[cfg(target_os = "macos")]
 pub fn install_app_menu(app: &AppHandle) -> tauri::Result<()> {
-    use tauri::menu::MenuItemKind;
-    let menu = Menu::default(app)?;
-    if let Some(MenuItemKind::Submenu(sub)) = menu.items()?.into_iter().next() {
-        let items = sub.items()?;
-        if let Some(MenuItemKind::Predefined(last)) = items.last() {
-            let text = last.text()?;
-            sub.remove(last)?;
-            sub.append(&MenuItem::with_id(app, APP_QUIT, text, true, Some("CmdOrCtrl+Q"))?)?;
-        }
-    }
+    let menu = crate::mac_menu::build(app, app.state::<Shell>().t())?;
     app.set_menu(menu)?;
-    app.on_menu_event(|app, event| {
-        if event.id().as_ref() == APP_QUIT {
-            quit(app);
-        }
+    app.on_menu_event(|app, event| match event.id().as_ref() {
+        crate::mac_menu::QUIT_ID => quit(app),
+        crate::mac_menu::CLOSE_ID => crate::mac_menu::close_focused(app),
+        _ => {}
     });
     Ok(())
 }

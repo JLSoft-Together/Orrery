@@ -135,11 +135,16 @@ describe('uiGen store', () => {
     expect(root.dataset.glass).toBeUndefined()
   })
 
-  it('maps a removed palette to the nearest kept one and stores it', () => {
-    localStorage.setItem('ccm.nextTheme', 'dawn')
-    const gen = useUiGenStore()
-    expect(gen.nextTheme).toBe('orrery')
-    expect(localStorage.getItem('ccm.nextTheme')).toBe('orrery')
+  it('an older palette id stays selected and applies', () => {
+    for (const id of ['nebula', 'aurora', 'dawn', 'console']) {
+      localStorage.setItem('ccm.nextTheme', id)
+      setActivePinia(createPinia())
+      const gen = useUiGenStore()
+      expect(gen.nextTheme).toBe(id)
+      expect(localStorage.getItem('ccm.nextTheme')).toBe(id)
+      gen.setGeneration('next')
+      expect(root.dataset.nextTheme).toBe(id)
+    }
   })
 
   it('random mixes a palette inline, mixes again, keeps a seed and rolls at the next launch only while not kept', async () => {

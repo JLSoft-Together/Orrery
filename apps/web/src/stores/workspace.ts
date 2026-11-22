@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { mruOrder } from '../features/shortcuts/mru'
 import type { CompactFlow } from '../lib/compactHandoff'
 import type { SearchQuery } from '../lib/preview'
 import { computed, ref, shallowRef, watch } from 'vue'
@@ -120,6 +121,7 @@ export interface Pane {
   untouchedSession?: string
   /** Latched when the agent starts waiting or finishes while the pane is out of sight; cleared when focused. */
   attention?: 'waiting' | 'done'
+  shellLast?: { code: number; ms: number; command: string }
   /** Git branch of the pane's folder, pushed by the PTY host when HEAD changes. */
   branch?: string
   /** A command was entered in this shell: closing it may stop a dev server or build the monitor cannot see. */
@@ -1514,7 +1516,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function activateTab(tabKey: string): void {
     const tab = tabs.value.find((t) => t.key === tabKey)
-    if (tab) activeKey.value = tab.focus
+    if (!tab) return
+    activeKey.value = tab.focus
+    const pane = paneOf(tab.focus)
+    if (pane) pane.focusedAt = Date.now()
+  }
+
+  function recentTabs(scope?: readonly string[]): string[] {
+    const keys = scope?.length ? scope : tabs.value.map((t) => t.key)
+    const stamp = (k: string): number => {
+      const tab = tabs.value.find((t) => t.key === k)
+      return tab ? Math.max(0, ...leaves(tab.root).map((l) => paneOf(l)?.focusedAt ?? 0)) : 0
+    }
+    return mruOrder(keys, activeTab.value?.key ?? null, stamp)
   }
 
   /** Next / previous tab; `scope` (tab keys in display order) limits it to the tabs on screen. */
@@ -1968,6 +1982,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     closeTab,
     activate,
     activateTab,
+    recentTabs,
     cycleTab,
     moveFocus,
     movePane,

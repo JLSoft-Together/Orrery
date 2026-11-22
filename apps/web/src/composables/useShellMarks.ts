@@ -5,9 +5,7 @@ import type { IDecoration, IDisposable, IMarker, Terminal } from '@xterm/xterm'
 import { shortPath } from '../lib/format'
 import type { MenuEntry, Rect } from '../lib/menu'
 import { handoffPaneFor } from '../lib/runUi'
-import { CommandTracker, elapsedText, LONG_COMMAND_MS, outputPrompt, parseMark, type ShellCommand } from '../lib/shellMarks'
-import { useSettingsStore } from '../stores/settings'
-import { useUiStore } from '../stores/ui'
+import { CommandTracker, elapsedText, outputPrompt, parseMark, type ShellCommand } from '../lib/shellMarks'
 import { useWorkspaceStore } from '../stores/workspace'
 
 export interface ShellMarksHost {
@@ -31,9 +29,7 @@ const ICON_FAIL = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'
 /** Command marks (OSC 633) of a shell pane: gutter decorations, ⌘/Ctrl+↑↓ jumps, per-command actions. */
 export function useShellMarks(host: ShellMarksHost) {
   const { t } = useI18n()
-  const settings = useSettingsStore()
   const workspace = useWorkspaceStore()
-  const ui = useUiStore()
 
   let term: Terminal | null = null
   let nonce: string | null = null
@@ -99,7 +95,6 @@ export function useShellMarks(host: ShellMarksHost) {
       if (!cmd) return
       decorate(cmd)
       cmd.output?.onDispose(() => tracker.drop(cmd))
-      maybeNotify(cmd)
     }
   }
 
@@ -223,30 +218,6 @@ export function useShellMarks(host: ShellMarksHost) {
     if (target) term.scrollToLine((target.prompt ?? target.start ?? target.output)!.line)
     else if (dir > 0) term.scrollToBottom()
     return true
-  }
-
-  function maybeNotify(cmd: Cmd): void {
-    if (cmd.elapsedMs === undefined || cmd.elapsedMs < LONG_COMMAND_MS) return
-    if (host.visible() && host.focused() && document.hasFocus()) return
-    if (!settings.notifyEnabled || !settings.notifyDone) return
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-    const key = host.paneKey()
-    const name = cmd.command.length > 60 ? `${cmd.command.slice(0, 59)}…` : cmd.command
-    try {
-      const n = new Notification(t('shellMarks.toastTitle', { cmd: name }), {
-        body: t('shellMarks.toastBody', { code: cmd.exitCode, time: elapsedText(cmd.elapsedMs), pane: host.paneTitle() }),
-        tag: `ccm-shell-${key}`,
-        icon: '/favicon.svg',
-      })
-      n.onclick = () => {
-        window.focus()
-        if (ui.view !== 'workspace') ui.setView('workspace')
-        workspace.activate(key)
-        n.close()
-      }
-    } catch {
-      // Notifications unavailable; the mark in the gutter still shows the result.
-    }
   }
 
   return { active, menu, entries, install, attach, reset, dispose, pick, closeMenu, jump }

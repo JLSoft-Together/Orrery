@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import type { Agent, AgentPatch, ClientMessage, FolderPickResult, LaunchMode, OpenApp, MonitorEvent, MonitorSnapshot, QuietHours, SensitiveSettings, ServerMessage, ToastKind, ToolStatDays, TerminalPatch, TerminalSession } from '@ccm/shared'
 import type { EntityOp } from '../lib/patch'
 import { officeFeed } from '../office/feed'
+import { shareOn } from '../features/shareMode/store'
 import { useActivityStore } from './activity'
 import { useAgentsStore } from './agents'
 import { useExtrasStore } from './extras'
@@ -476,10 +477,10 @@ export const useConnectionStore = defineStore('connection', () => {
   let lastPresence: string | null = null
   function sendPresence(): void {
     const attentive = document.visibilityState === 'visible' && document.hasFocus()
-    const key = `${attentive}|${settings.locale}`
+    const key = `${attentive}|${settings.locale}|${shareOn.value}`
     if (key === lastPresence || socket?.readyState !== WebSocket.OPEN) return
     lastPresence = key
-    send({ type: 'client.presence', attentive, locale: settings.locale })
+    send({ type: 'client.presence', attentive, locale: settings.locale, share: shareOn.value })
   }
 
   function start(): void {
@@ -489,6 +490,7 @@ export const useConnectionStore = defineStore('connection', () => {
     window.addEventListener('focus', sendPresence)
     window.addEventListener('blur', sendPresence)
     watch(() => settings.locale, sendPresence)
+    watch(shareOn, sendPresence)
     watch(
       () => settings.officeEnabled,
       (on) => {
@@ -583,6 +585,7 @@ export const useConnectionStore = defineStore('connection', () => {
     request({ type: 'sensitive.update', ...patch })
   const ignoreSensitive = (project: string, rule: string, on: boolean): boolean => request({ type: 'sensitive.ignore', project, rule, on })
   const snoozeTerminal = (terminalId: string, minutes: number | null): boolean => request({ type: 'terminal.snooze', terminalId, minutes })
+  const shellDone = (m: { paneKey: string; name: string; command: string; code: number; ms: number }): boolean => request({ type: 'shell.done', ...m })
 
   function focusWindow(terminalId: string): boolean {
     if (!request({ type: 'terminal.focusWindow', terminalId })) return false
@@ -619,6 +622,7 @@ export const useConnectionStore = defineStore('connection', () => {
     updateSensitive,
     ignoreSensitive,
     snoozeTerminal,
+    shellDone,
     setNote,
     testToast,
     loadHistory,

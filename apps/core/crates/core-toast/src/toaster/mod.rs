@@ -1,5 +1,7 @@
 mod extra;
+mod group;
 mod observe;
+mod shell;
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -19,6 +21,7 @@ use crate::util::{encode_uri_component, in_quiet_hours, random_key, same_key, to
 
 pub use extra::{error_loops, ErrorLoop};
 pub use observe::ToastSnapshot;
+pub use shell::ShellDone;
 
 pub const LONG_JOB_MS: f64 = 5.0 * 60_000.0;
 pub const TOAST_THROTTLE_MS: f64 = 30_000.0;
@@ -81,6 +84,7 @@ pub struct Toaster {
     prev: IndexMap<String, TerminalStatus>,
     terms: IndexMap<String, TerminalSession>,
     shown: IndexMap<String, String>,
+    group: group::Group,
     last_at: HashMap<String, f64>,
     reminded: HashMap<String, f64>,
     job_prev: IndexMap<String, JobState>,
@@ -88,6 +92,7 @@ pub struct Toaster {
     limit_sent: HashSet<String>,
     limits_primed: bool,
     presence: IndexMap<u64, bool>,
+    sharing: IndexMap<u64, bool>,
     work_since: HashMap<String, f64>,
     outbox: Vec<HostMessage>,
 }
@@ -112,6 +117,7 @@ impl Toaster {
             prev: IndexMap::new(),
             terms: IndexMap::new(),
             shown: IndexMap::new(),
+            group: group::Group::default(),
             last_at: HashMap::new(),
             reminded: HashMap::new(),
             job_prev: IndexMap::new(),
@@ -119,6 +125,7 @@ impl Toaster {
             limit_sent: HashSet::new(),
             limits_primed: false,
             presence: IndexMap::new(),
+            sharing: IndexMap::new(),
             work_since: HashMap::new(),
             outbox: Vec::new(),
         }
@@ -250,12 +257,22 @@ impl Toaster {
             self.file.save();
         }
         if attentive {
+            self.group.clear();
             self.hide_all();
         }
     }
 
+    pub fn set_share(&mut self, client_id: u64, on: bool) {
+        self.sharing.insert(client_id, on);
+    }
+
+    pub fn sharing(&self) -> bool {
+        self.sharing.values().any(|on| *on)
+    }
+
     pub fn drop_client(&mut self, client_id: u64) {
         self.presence.shift_remove(&client_id);
+        self.sharing.shift_remove(&client_id);
     }
 
     pub fn attentive(&self) -> bool {
@@ -316,8 +333,12 @@ impl Toaster {
         self.outbox.push(HostMessage::Phone(m));
     }
 
-    pub(crate) fn show(&mut self, key: &str, d: Draft) {
+    pub(crate) fn show(&mut self, key: &str, mut d: Draft) {
         let text = self.text();
+        if self.sharing() {
+            d.title = text.shared_title();
+            d.body = String::new();
+        }
         let (snooze_url, snooze_label) = match d.snooze {
             true => {
                 let id = key.split_once(':').map_or("", |(_, id)| id);

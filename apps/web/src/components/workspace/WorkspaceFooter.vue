@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleDot, Focus, GitBranch, Hand, Network } from 'lucide-vue-next'
 import { useFocusMode } from '../../composables/useFocusMode'
+import FooterSysChip from '../../features/footerSys/FooterSysChip.vue'
+import ShareModeChip from '../../features/shareMode/ShareModeChip.vue'
 import { isMac } from '../../lib/platform'
 import { usePaneInfo } from '../../composables/usePaneInfo'
 import { changedCount, contextPair, devPorts, footerCounts, portsLabel, sessionCounts } from '../../lib/footerStatus'
@@ -171,6 +173,8 @@ const btn =
         <Focus :size="12" class="shrink-0" aria-hidden="true" />
         <span class="truncate">{{ t('tabsV93.focus') }}</span>
       </button>
+      <ShareModeChip />
+      <FooterSysChip />
     </div>
   </footer>
 </template>

@@ -161,11 +161,11 @@ pub fn hide_on_worker(app: &AppHandle, tag: String) {
 }
 
 pub fn enabled(app: &AppHandle) -> bool {
-    cfg!(windows) && app.state::<Shell>().serve_cfg.toast.is_some()
+    app.state::<Shell>().serve_cfg.toast.is_some()
 }
 
 pub fn refresh_health(app: &AppHandle) {
-    if !enabled(app) {
+    if !cfg!(windows) || !enabled(app) {
         return;
     }
     let (id, handle) = (app_id_for(app), app.clone());
@@ -179,6 +179,10 @@ pub fn refresh_health(app: &AppHandle) {
 
 pub fn handle(app: &AppHandle, msg: &Value) {
     if !enabled(app) {
+        return;
+    }
+    if !cfg!(windows) {
+        crate::attention::handle(app, msg);
         return;
     }
     match msg.get("type").and_then(Value::as_str) {

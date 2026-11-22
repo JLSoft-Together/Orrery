@@ -8,7 +8,7 @@ import '../ui_providers.dart';
 import '../widgets/common.dart';
 import 'pane_actions.dart';
 import 'pane_card.dart';
-import 'workspace_page.dart';
+import '../chat/chat_nav.dart';
 
 class SingleMode extends ConsumerWidget {
   const SingleMode({
@@ -110,7 +110,8 @@ class SingleMode extends ConsumerWidget {
                       key: ValueKey('pane-card-${pane.key}'),
                       machineId: machineId,
                       pane: pane,
-                      onOpen: () => openPane(context, machineId, tab, pane.key),
+                      onOpen: () =>
+                          openSession(context, ref, machineId, tab, pane),
                       onLongPress: () => showTabActions(
                         context,
                         ref,

@@ -149,6 +149,11 @@ fn command(desk: &mut Desk, conns: &mut HashMap<u16, Conn>, line: &str) -> Vec<(
                 outs.extend(conn.resize_burst(line == "resizesnap").into_iter().map(|o| (*id, o)));
             }
         }
+        "wide" => {
+            for (id, conn) in conns.iter_mut() {
+                outs.extend(conn.wide(180).into_iter().map(|o| (*id, o)));
+            }
+        }
         "demo" => {
             for (id, conn) in conns.iter_mut() {
                 outs.extend(conn.demo().into_iter().map(|o| (*id, o)));

@@ -168,6 +168,7 @@ const BLOCK = { key: '203.0.113.7', source: 'relay', why: 'token', count: 6, at:
     await sleep(600)
     await snap('12-settings-phone-mono-dark')
     await closeSettings()
+    await evaluate(`${R}.blocked = [${JSON.stringify(BLOCK)}]; true`)
 
     await evaluate(`document.querySelector('[data-rail-collapse]')?.click()`)
     await sleep(700)

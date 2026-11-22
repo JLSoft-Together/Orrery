@@ -580,7 +580,7 @@ export type ClientMessage =
   | { type: 'diagnostics.get' }
   | { type: 'job.dismiss'; jobId?: string }
   | { type: 'job.stop'; jobId: string }
-  | { type: 'client.presence'; attentive: boolean; locale?: 'en' | 'vi' }
+  | { type: 'client.presence'; attentive: boolean; locale?: 'en' | 'vi'; share?: boolean }
   | { type: 'notify.update'; toast?: boolean; kinds?: Partial<Record<ToastKind, boolean>>; quiet?: QuietHours; stuckMinutes?: number; idleMinutes?: number }
   | { type: 'notify.test' }
   | { type: 'terminal.note'; terminalId: string; note: string | null }
@@ -588,3 +588,4 @@ export type ClientMessage =
   | { type: 'sensitive.update'; groups?: Partial<SensitiveSettings['groups']>; globs?: string[]; ignore?: Record<string, string[]> }
   /** Ignore (or stop ignoring) one rule for one project folder. */
   | { type: 'sensitive.ignore'; project: string; rule: string; on: boolean }
+  | { type: 'shell.done'; paneKey: string; name: string; command: string; code: number; ms: number }

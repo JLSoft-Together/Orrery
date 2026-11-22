@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { RemoteStatus } from '@ccm/shared'
 import { i18n } from '../../../i18n'
 import { useRemoteStore } from '../../../stores/remote'
+import { now } from '../../../lib/format'
 
 const api = vi.hoisted(() => ({ remotePairStart: vi.fn(), remotePairCancel: vi.fn() }))
 
@@ -17,6 +18,7 @@ const status = (extra: Partial<RemoteStatus>): RemoteStatus => ({ enabled: true,
 
 async function mountPanel(relay: boolean): Promise<VueWrapper> {
   i18n.global.locale.value = 'en'
+  now.value = Date.now()
   api.remotePairStart.mockResolvedValue({ qr: 'eyJ2IjoyfQ', exp: Math.floor(Date.now() / 1000) + 120, relay, lan: 1 })
   api.remotePairCancel.mockResolvedValue(true)
   w = mount(RemotePairPanel, { attachTo: document.body, global: { plugins: [i18n] } })

@@ -178,19 +178,17 @@ void main() {
     expect(await press('enter'), '\r');
   });
 
-  testWidgets('focusing the input switches to the phone size', (tester) async {
-    final h = await mount(tester);
-    expect(h.api.resizes, isEmpty);
-    await tester.tap(find.byKey(const ValueKey('input')));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('You are typing'), findsOneWidget);
-    expect(h.api.resizes, isNotEmpty);
-    expect(h.api.resizes.last.$1, lessThan(80));
-  });
-
-  testWidgets('view only keeps the desktop size and scrolls sideways', (
+  testWidgets('focusing the input marks typing and never resizes the pty', (
     tester,
   ) async {
+    final h = await mount(tester);
+    await tester.tap(find.byKey(const ValueKey('input')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('You are typing'), findsOneWidget);
+    expect(h.api.commands.map((c) => c.$1), isNot(contains('pty.resize')));
+  });
+
+  testWidgets('the terminal keeps the desktop size', (tester) async {
     final h = await mount(tester);
     h.api.handles.single.ev.add({
       't': 'pty.ready',
@@ -204,7 +202,6 @@ void main() {
         .terminal;
     expect(terminal.viewWidth, 160);
     expect(find.text('View only'), findsOneWidget);
-    expect(find.byType(SingleChildScrollView), findsWidgets);
   });
 
   testWidgets('permission bar answers with ws.keys and the statusSince', (

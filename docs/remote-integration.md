@@ -58,7 +58,7 @@ Control chỉ đọc từ socket desktop đã ký (`/m/`) và chưa bị thay; b
 
 ## 3. Frame trong Noise
 
-`[u8 kind][u8 flags][u32 stream BE][payload]`, flags bit 0 = `more` (`FLAG_MORE`), bit 1 = `claim` (`FLAG_CLAIM`, `Frame.claim` trong crate `core-remote-proto`; chỉ kind 2, kind khác mang bit này → `BadFrame`; `Message.claim` = có ít nhất 1 khúc mang bit; phím người dùng thật gõ / dán → gateway gửi `claim` cho hub; phím tự trả lời query của terminal không bật bit này). Payload mỗi khúc ≤ 60 KiB, ghép lại max 1 MiB.
+`[u8 kind][u8 flags][u32 stream BE][payload]`, flags bit 0 = `more` (`FLAG_MORE`), bit 1 = `claim` (`FLAG_CLAIM`, `Frame.claim` trong crate `core-remote-proto`; chỉ kind 2, kind khác mang bit này → `BadFrame`; `Message.claim` = có ít nhất 1 khúc mang bit; client cũ bật bit cho phím người dùng thật gõ / dán; từ v109 WP-R1 gateway bỏ qua bit này, không gửi `claim` cho hub, PWA mới không bật nữa). Payload mỗi khúc ≤ 60 KiB, ghép lại max 1 MiB.
 
 | kind | Tên | stream | payload |
 |---|---|---|---|
@@ -116,8 +116,8 @@ Event `ws.snapshot {rev, tabs[], inbox?}` / `ws.patch {base, rev, ops[]}` (`ops`
 |---|---|
 | `pty.attach {stream, sessionId, cols, rows, caps?}` | xem pane (viewer); output về kind 1 cùng `stream`; event `pty.ready {stream, cols, rows}` rồi replay (`caps` có `pty.snapshot` thì replay là 1 event `pty.snapshot` thay tail byte thô) |
 | `pty.detach {stream}` | thôi xem |
-| `pty.resize {stream, cols, rows}` | lưu cỡ của điện thoại; chỉ áp khi điện thoại đang gõ |
-| kind 2 trên `stream` | gõ (ghi vào PTY); gateway gửi `claim` cho hub khi đó là phím người dùng thật, điện thoại thành người gõ, cỡ của nó áp vào PTY |
+| `pty.resize {stream, cols, rows}` | bị bỏ qua từ v109 WP-R1 (chủ nhân 2026-11-22: điện thoại không bao giờ đổi cỡ PTY của PC); gateway vẫn trả `{re, ok:true}` (stream lạ → `notFound`) để client cũ không lỗi, không gửi gì cho hub |
+| kind 2 trên `stream` | gõ (ghi vào PTY như phím máy tính); hub ghi input của mọi viewer nên gateway không gửi `claim` nữa, bit `claim` của frame bị bỏ qua, PTY giữ cỡ PC |
 
 Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Workspace summary (không thì `notFound`). Event: `pty.resized {stream, cols, rows}`, `pty.exit {stream, code}` (`code:null` = mất hub), `pty.overflow {stream}` (attach lại để lấy replay). Max 4 attach / thiết bị (thứ 5 → `limit`). Ngay sau khi điện thoại nối (hello), summary được coi là cũ tới lần `publish` kế (max 10 s): `pty.attach` với pane chưa có trong summary chờ summary mới tối đa 2 s rồi mới trả `notFound`.
 
@@ -125,7 +125,9 @@ Reply `pty.attach` = `{re, ok, stream}`; `sessionId` phải là pane trong Works
 - lần flush đầu sau attach / nối lại: thay byte replay (ring tail + byte tới cùng đợt);
 - ngay sau mỗi `pty.resized` (cùng kênh JSON, sau byte cũ, trước byte ConPTY vẽ lại).
 
-`data` = chuỗi ANSI dựng lại: các dòng scrollback rồi các hàng màn hình (mỗi dòng mở bằng `ESC[m`, nối bằng CRLF, dòng mềm wrap thành dòng cứng), rồi vị trí con trỏ (CUP tuyệt đối), SGR hiện tại, mode nhập (app cursor, keypad, bracketed paste, mouse) và `ESC[?25l` khi ẩn con trỏ; đang alt screen thì `ESC[?1049h` + nội dung alt screen (không kèm scrollback). Max 512 KiB sau escape JSON: quá thì bỏ dòng scrollback cũ nhất. Khi thu số hàng mà con trỏ nằm dưới hàng mới, terminal ảo cuộn các hàng trên vào scrollback trước (như ConPTY giữ con trỏ trong màn); tăng hàng thì thêm hàng trống dưới đáy, không kéo scrollback xuống. Nội dung chỉ là output terminal như kind 1, không thêm env / secret.
+`data` = chuỗi ANSI dựng lại: các dòng scrollback rồi các hàng màn hình (mỗi dòng mở bằng `ESC[m`, nối bằng CRLF; hàng mềm wrap nối bằng `ESC[m` + space + BS + `ESC[X` để giữ wrap, v109), rồi vị trí con trỏ (CUP tuyệt đối), SGR hiện tại, mode nhập (app cursor, keypad, bracketed paste, mouse) và `ESC[?25l` khi ẩn con trỏ; đang alt screen thì `ESC[?1049h` + nội dung alt screen (không kèm scrollback). Max 512 KiB sau escape JSON: quá thì bỏ dòng scrollback cũ nhất. Khi thu số hàng mà con trỏ nằm dưới hàng mới, terminal ảo cuộn các hàng trên vào scrollback trước (như ConPTY giữ con trỏ trong màn); tăng hàng thì thêm hàng trống dưới đáy, không kéo scrollback xuống. Nội dung chỉ là output terminal như kind 1, không thêm env / secret.
+
+Điện thoại không bao giờ đổi cỡ PTY (v109 WP-R1, chủ nhân 2026-11-22): gateway attach hub với `mode:"view"` và không gửi `cols` / `rows` (viewer không có cỡ, nên kể cả khi hub chuyển quyền gõ sang nó, `fit_owner` không resize), không bao giờ gửi `resize` / `claim`. `cols` / `rows` của `pty.attach` chỉ để dựng terminal ảo trước `resized` đầu tiên. Client luôn giữ terminal đúng cỡ PTY (số cột / hàng của `pty.ready` / `pty.resized` / `pty.snapshot`), vì byte ConPTY vẽ theo cỡ đó; tự đổi số cột (vd về cỡ điện thoại khi gõ) là nguyên nhân khung TUI gãy / chồng chữ. Vẽ vừa màn bằng cỡ chữ + scale (PWA `TerminalSurface.vue`, `terminal/fitLayout.ts`): font = clamp(floor(rộng / (cols × 0.602)), 9, 13) px, scale = min(1, rộng / bề ngang thật của `.xterm-screen`), pinch zoom 1 → max(1, min(6, 1.5 / scale)), pan kẹp trong nội dung, double tap về vừa ngang. Dòng mềm wrap trong snapshot giữ là mềm (hàng wrap có ô cuối có chữ thì nối sang hàng sau bằng `ESC[m` + space + BS + `ESC[X` thay CRLF), nên reflow của xterm nối lại được.
 
 Client nhận `pty.snapshot`: bỏ byte còn chờ ghi, reset terminal (thoát alt screen, xoá scrollback, mode về mặc định), resize đúng `cols` × `rows`, ghi `data`, rồi ghi tiếp byte sau. Mọi byte và event `pty.*` của 1 stream xử lý đúng thứ tự nhận; `pty.resized` ghi hết byte trước nó ở cỡ cũ rồi mới resize (PWA `src/terminal/termPipe.ts`, Android `ui/terminal/pty_snapshot.dart` + `anchored_terminal.dart`).
 

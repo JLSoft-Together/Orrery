@@ -10,7 +10,7 @@ use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::Message;
 
 use super::phone_pty::wants_snapshot;
-use super::pty_bridge::{spawn, FromHub, Slot, Spec};
+use super::pty_bridge::{spawn, FromHub, Slot, Spec, ToHub};
 use super::pty_vt::{Vt, SCROLLBACK, SNAP_MAX};
 use super::test_util::*;
 use crate::state::lock;
@@ -135,6 +135,51 @@ fn a_huge_history_is_cut_from_the_oldest_lines() {
     assert!(nums.windows(2).all(|w| w[1] == w[0] + 1));
 }
 
+fn wraps(parser: &mut vt100::Parser) -> Vec<(String, bool)> {
+    let (rows, cols) = parser.screen().size();
+    parser.screen_mut().set_scrollback(usize::MAX);
+    let mut offset = parser.screen().scrollback();
+    let mut out = Vec::new();
+    while offset > 0 {
+        parser.screen_mut().set_scrollback(offset);
+        let take = offset.min(usize::from(rows));
+        let s = parser.screen();
+        out.extend(s.rows(0, cols).take(take).enumerate().map(|(r, t)| (t, s.row_wrapped(r as u16))));
+        offset -= take;
+    }
+    parser.screen_mut().set_scrollback(0);
+    let s = parser.screen();
+    out.extend(s.rows(0, cols).enumerate().map(|(r, t)| (t, s.row_wrapped(r as u16))));
+    out
+}
+
+#[test]
+fn a_snapshot_keeps_soft_wrapped_rows_soft_so_a_reflow_can_join_them() {
+    let mut vt = Vt::new(20, 6);
+    let mut feed = Vec::new();
+    for n in 0..8 {
+        feed.extend(format!("\x1b[3{}m{}\x1b[m\r\n", n % 8, format!("{n}").repeat(45)).into_bytes());
+    }
+    feed.extend_from_slice(b"\x1b[44m");
+    feed.extend("x".repeat(20).into_bytes());
+    feed.extend_from_slice(b"\x1b[m   indented\r\n");
+    feed.extend("y".repeat(18).into_bytes());
+    feed.extend("\u{4e2d}".as_bytes());
+    feed.extend_from_slice(b"tail\r\n$ ");
+    vt.feed(&feed);
+    let mut want = vt100::Parser::new(6, 20, 20_000);
+    want.process(&feed);
+    let mut phone = Client::new();
+    phone.snapshot(20, 6, &vt.snapshot());
+    let got = wraps(&mut phone.parser);
+    let expect = wraps(&mut want);
+    assert_eq!(got.len(), expect.len());
+    assert_eq!(got, expect);
+    assert!(got.iter().filter(|(_, w)| *w).count() >= 16, "{got:?}");
+    assert_eq!(phone.parser.screen().cursor_position(), want.screen().cursor_position());
+    assert_eq!(phone.parser.screen().cell(5, 0).map(|c| c.contents().to_owned()), want.screen().cell(5, 0).map(|c| c.contents().to_owned()));
+}
+
 #[test]
 fn only_clients_that_ask_get_snapshots() {
     assert!(wants_snapshot(&json!({ "caps": ["x", "pty.snapshot"] })));
@@ -247,4 +292,53 @@ fn an_old_client_still_gets_the_raw_tail_and_no_snapshot() {
     let raw: Vec<u8> = got.iter().filter_map(|m| if let FromHub::Out(_, _, b) = m { Some(b.clone()) } else { None }).flatten().collect();
     assert!(raw.starts_with(b"line-1\r\nline-2\r\n"));
     assert!(String::from_utf8_lossy(&raw).ends_with("line-3000\r\n"));
+}
+
+#[test]
+fn the_phone_never_resizes_the_pane_it_attaches_without_a_size_and_never_claims() {
+    let rig = rig("pty-nosize", "", false);
+    let ctx = rig.remote.ctx().unwrap();
+    runtime().block_on(async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        *lock(&rig.host.pty) = Some((format!("ws://{}", listener.local_addr().unwrap()), "ccm-pty".into()));
+        let (seen_tx, mut seen_rx) = tokio::sync::mpsc::channel::<Message>(16);
+        let hub = tokio::spawn(async move {
+            let (tcp, _) = listener.accept().await.unwrap();
+            let echo = |req: &Request, mut res: Response| {
+                if let Some(p) = req.headers().get("sec-websocket-protocol") {
+                    res.headers_mut().insert("sec-websocket-protocol", HeaderValue::from_str(p.to_str().unwrap()).unwrap());
+                }
+                Ok(res)
+            };
+            let mut ws = tokio_tungstenite::accept_hdr_async(tcp, echo).await.unwrap();
+            let attach = ws.next().await.unwrap().unwrap();
+            seen_tx.send(attach).await.unwrap();
+            for msg in [text_msg(json!({ "t": "ready", "id": "s" })), text_msg(json!({ "t": "resized", "cols": 180, "rows": 40 })), Message::Binary(b"desk wide\r\n".to_vec().into())] {
+                ws.send(msg).await.unwrap();
+            }
+            while let Some(Ok(m)) = ws.next().await {
+                seen_tx.send(m).await.unwrap();
+            }
+        });
+        let (back, mut rx) = tokio::sync::mpsc::channel(256);
+        let spec = Spec { re: "a".into(), stream: 4, session: "s".into(), cols: 50, rows: 20, gen: 1, backlog: Arc::new(AtomicUsize::new(0)), snapshot: true };
+        let tx = spawn(ctx.host.clone(), spec, Slot::take(&ctx, "d").unwrap(), back);
+        let attach: Value = serde_json::from_str(tokio::time::timeout(Duration::from_secs(5), seen_rx.recv()).await.unwrap().unwrap().to_text().unwrap()).unwrap();
+        assert_eq!((attach["t"].as_str(), attach["mode"].as_str()), (Some("attach"), Some("view")));
+        assert!(attach.get("cols").is_none() && attach.get("rows").is_none(), "{attach}");
+        let mut snap = None;
+        while snap.is_none() {
+            if let FromHub::Json(_, _, v) = tokio::time::timeout(Duration::from_secs(10), rx.recv()).await.unwrap().unwrap() {
+                if v["t"] == "pty.snapshot" {
+                    snap = Some(v);
+                }
+            }
+        }
+        assert_eq!(snap.unwrap()["cols"], 180);
+        tx.send(ToHub::Input(b"ls\r".to_vec())).await.unwrap();
+        let got = tokio::time::timeout(Duration::from_secs(5), seen_rx.recv()).await.unwrap().unwrap();
+        assert!(matches!(&got, Message::Binary(b) if b.as_ref() == b"ls\r"), "{got:?}");
+        assert!(tokio::time::timeout(Duration::from_millis(300), seen_rx.recv()).await.is_err());
+        hub.abort();
+    });
 }

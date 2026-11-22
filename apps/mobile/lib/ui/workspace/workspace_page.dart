@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../remote/chat_last.dart';
 import '../../remote/providers.dart';
 import '../chat/chat_home_page.dart';
+import '../chat/chat_nav.dart';
 import '../commands.dart';
 import '../model/workspace_model.dart';
 import '../monitor/monitor_page.dart';
@@ -60,7 +61,7 @@ class _ShellState extends ConsumerState<WorkspaceShell> {
       toast(context, context.l10n.vNotInWorkspace);
       return;
     }
-    openPane(context, id, tab, pane.key);
+    openSession(context, ref, id, tab, pane);
   }
 
   @override

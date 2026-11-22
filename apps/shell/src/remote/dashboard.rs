@@ -261,7 +261,7 @@ impl Phone {
         match message.kind {
             Kind::Json => self.command(&message.payload).await,
             Kind::Ping => self.pong().await,
-            Kind::PtyIn => self.pty_input(message.stream, message.payload, message.claim).await,
+            Kind::PtyIn => self.pty_input(message.stream, message.payload).await,
             Kind::PtyOut => true,
         }
     }

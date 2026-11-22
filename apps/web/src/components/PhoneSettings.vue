@@ -124,7 +124,7 @@ async function copyTopic(): Promise<void> {
         <p class="text-sm">{{ t('phone.channel') }}</p>
         <SegmentedControl :model-value="state.channel" :options="channelOptions" :label="t('phone.channel')" fill class="mt-2 w-full" data-phone-channel @update:model-value="(c: PhoneChannel) => apply({ channel: c })" />
         <p class="mt-2 flex min-w-0 items-center gap-1.5 text-2xs" :class="state.configured ? 'text-ink-muted' : 'text-ink-faint'" data-phone-status>
-          <Smartphone :size="12" class="shrink-0" aria-hidden="true" /><span class="truncate">{{ status }}</span>
+          <Smartphone :size="12" class="shrink-0" aria-hidden="true" /><span class="truncate" data-share-hide>{{ status }}</span>
         </p>
       </div>
       <details class="group px-3 py-2" :open="!state.configured" data-phone-guide :data-phone-guide-channel="state.channel">
@@ -178,7 +178,7 @@ async function copyTopic(): Promise<void> {
             </div>
           </div>
           <div v-if="qrSvg" class="flex items-start gap-3" data-phone-qr>
-            <div class="size-28 shrink-0 rounded-inner bg-page p-1 [&>svg]:block [&>svg]:size-full" role="img" :aria-label="t('phone.qrTitle')" data-phone-qr-tile v-html="qrSvg" />
+            <div class="size-28 shrink-0 rounded-inner bg-page p-1 [&>svg]:block [&>svg]:size-full" role="img" :aria-label="t('phone.qrTitle')" data-phone-qr-tile data-share-hide v-html="qrSvg" />
             <div class="min-w-0">
               <p class="text-xs font-medium">{{ t('phone.qrTitle') }}</p>
               <p class="mt-0.5 text-2xs leading-relaxed text-ink-faint">{{ t('phone.qrHint') }}</p>

@@ -946,8 +946,7 @@
     }
   },
   "termSendUnsent": "Send",
-  "termDropUnsent": "Drop",
-  "chatSlow": "Slow {n} ms",
+  "termDropUnsent": "Drop",  "chatSlow": "Slow {n} ms",
   "@chatSlow": {
     "placeholders": {
       "n": {

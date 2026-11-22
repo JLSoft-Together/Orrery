@@ -130,14 +130,13 @@ void main() {
     },
   );
 
-  test('resize and detach send commands, detach frees the slot', () {
+  test('detach sends its command and frees the slot, no pty.resize', () {
     fakeAsync((async) {
       final bed = Bed(async);
       final a = bed.attach('s1');
-      unawaited(bed.pty.resize(a, 100, 30));
+      bed.pty.input(a, Uint8List.fromList(utf8.encode('ls')), claim: true);
       async.flushMicrotasks();
-      final resize = bed.commands.firstWhere((c) => c['t'] == 'pty.resize');
-      expect([resize['stream'], resize['cols'], resize['rows']], [1, 100, 30]);
+      expect(bed.commands.any((c) => c['t'] == 'pty.resize'), isFalse);
       unawaited(bed.pty.detach(a));
       async.flushMicrotasks();
       expect(bed.commands.any((c) => c['t'] == 'pty.detach'), isTrue);
@@ -243,6 +242,44 @@ void main() {
     });
   });
 
+  test('bytes and pty events of a burst reach the pane in arrival order', () {
+    fakeAsync((async) {
+      final bed = Bed(async);
+      final a = bed.attach('s1');
+      final got = <String>[];
+      a.output.listen((b) => got.add(utf8.decode(b)));
+      a.events.listen((e) => got.add('${e['t']}'));
+      final server = bed.servers.last;
+      for (var round = 0; round < 3; round++) {
+        server.pushPty(1, utf8.encode('old$round'));
+        server.pushJson({
+          't': 'pty.resized',
+          'stream': 1,
+          'cols': 40,
+          'rows': 10,
+        });
+        server.pushJson({
+          't': 'pty.snapshot',
+          'stream': 1,
+          'cols': 40,
+          'rows': 10,
+          'gen': round,
+          'data': 's',
+        });
+        server.pushPty(1, utf8.encode('new$round'));
+      }
+      async.flushMicrotasks();
+      expect(got, [
+        for (var round = 0; round < 3; round++) ...[
+          'old$round',
+          'pty.resized',
+          'pty.snapshot',
+          'new$round',
+        ],
+      ]);
+    });
+  });
+
   test('attach asks for pty.snapshot and a snapshot replaces the tail', () {
     fakeAsync((async) {
       final bed = Bed(async);
@@ -267,36 +304,39 @@ void main() {
     });
   });
 
-  test('input while reconnecting is queued and waits for the owner to send', () {
-    fakeAsync((async) {
-      final bed = Bed(async);
-      final a = bed.attach('s1');
-      final events = <Map<String, dynamic>>[];
-      a.events.listen(events.add);
-      bed.servers.last.serverClose(null);
-      async.flushMicrotasks();
-      bed.pty.input(a, Uint8List.fromList(utf8.encode('ls')), claim: true);
-      bed.pty.input(a, Uint8List.fromList(utf8.encode(' -l')));
-      async.flushMicrotasks();
-      expect(a.queued, 5);
-      expect(events.map((e) => e['t']), ['pty.queued', 'pty.queued']);
-      expect(events.last['bytes'], 5);
-      async.elapse(const Duration(seconds: 2));
-      expect(bed.servers, hasLength(2));
-      expect(bed.servers.last.ptyInput, isEmpty);
-      expect(a.queued, 5);
-      expect(bed.pty.sendQueued(a), isTrue);
-      async.flushMicrotasks();
-      expect(bed.servers.last.ptyInput.map(utf8.decode), ['ls -l']);
-      expect(bed.servers.last.ptyClaims, [true]);
-      expect(a.queued, 0);
-      expect(events.last['t'], 'pty.flushed');
-      expect(events.last['bytes'], 5);
-      expect(bed.pty.sendQueued(a), isFalse);
-      async.elapse(const Duration(seconds: 2));
-      expect(bed.servers.last.ptyInput, hasLength(1));
-    });
-  });
+  test(
+    'input while reconnecting is queued and waits for the owner to send',
+    () {
+      fakeAsync((async) {
+        final bed = Bed(async);
+        final a = bed.attach('s1');
+        final events = <Map<String, dynamic>>[];
+        a.events.listen(events.add);
+        bed.servers.last.serverClose(null);
+        async.flushMicrotasks();
+        bed.pty.input(a, Uint8List.fromList(utf8.encode('ls')), claim: true);
+        bed.pty.input(a, Uint8List.fromList(utf8.encode(' -l')));
+        async.flushMicrotasks();
+        expect(a.queued, 5);
+        expect(events.map((e) => e['t']), ['pty.queued', 'pty.queued']);
+        expect(events.last['bytes'], 5);
+        async.elapse(const Duration(seconds: 2));
+        expect(bed.servers, hasLength(2));
+        expect(bed.servers.last.ptyInput, isEmpty);
+        expect(a.queued, 5);
+        expect(bed.pty.sendQueued(a), isTrue);
+        async.flushMicrotasks();
+        expect(bed.servers.last.ptyInput.map(utf8.decode), ['ls -l']);
+        expect(bed.servers.last.ptyClaims, [true]);
+        expect(a.queued, 0);
+        expect(events.last['t'], 'pty.flushed');
+        expect(events.last['bytes'], 5);
+        expect(bed.pty.sendQueued(a), isFalse);
+        async.elapse(const Duration(seconds: 2));
+        expect(bed.servers.last.ptyInput, hasLength(1));
+      });
+    },
+  );
 
   test('dropping the queue sends nothing and reports zero', () {
     fakeAsync((async) {

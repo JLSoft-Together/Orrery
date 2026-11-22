@@ -116,7 +116,7 @@ export async function runScenario({ browserName, launch, env, record }) {
       peer.send('patch')
       await byId(page, 'home-settings').click()
       await byId(page, 'open-debug').click()
-      await expectText(page, `[data-testid="debug-machine-${id}"]`, /seq 2 · ws rev 2 · 1 tab · 4 terminal · mới/)
+      await expectText(page, `[data-testid="debug-machine-${id}"]`, /seq 2, ws rev 2, 1 tab, 4 terminal, mới/)
       await home(page)
     })
 

@@ -11,6 +11,7 @@ import PaneChips from '../components/PaneChips.vue'
 import PaneGrid from '../components/PaneGrid.vue'
 import SendSheet from '../components/SendSheet.vue'
 import UndoBar from '../components/UndoBar.vue'
+import { preferChat } from '../lib/chatInbox'
 import { undoOffer } from '../lib/closeUndo'
 import { errorCode, reopenPane } from '../lib/paneActions'
 import { parseActivity, parseSessions, type ActivityItem } from '../lib/monitorModel'
@@ -67,7 +68,7 @@ watch(
 const attention = (x: { panes: { rail: string }[] }): number => x.panes.filter((p) => p.rail === 'asked' || p.rail === 'failed').length
 
 function open(key: string): void {
-  navigate({ name: 'workspace', machine: props.machine, pane: key })
+  navigate(preferChat({ name: 'workspace', machine: props.machine, pane: key }, view.value.hello, tabs.value))
 }
 
 function step(by: number): void {

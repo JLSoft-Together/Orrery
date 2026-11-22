@@ -5,9 +5,17 @@
 }
 
 html,
-body,
-#app {
+body {
   height: 100%;
+}
+
+#app {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--app-top, 0px);
+  height: var(--app-h, 100dvh);
+  overflow: hidden;
 }
 
 html {

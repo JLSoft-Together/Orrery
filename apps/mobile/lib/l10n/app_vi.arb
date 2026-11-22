@@ -475,8 +475,7 @@
   "chatQueued": "Chưa gửi: {n} byte",
   "termUnsent": "Chưa gửi {n} ký tự",
   "termSendUnsent": "Gửi",
-  "termDropUnsent": "Bỏ",
-  "chatSlow": "Chậm {n} ms",
+  "termDropUnsent": "Bỏ",  "chatSlow": "Chậm {n} ms",
   "chatNoNet": "Mất mạng",
   "chatContext": "Context {n}%"
 }

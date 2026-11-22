@@ -95,39 +95,47 @@ class _NavTile extends StatelessWidget {
                   color: c.accent,
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Badge(
-                    isLabelVisible: item.badge > 0,
-                    label: Text('${item.badge}'),
-                    backgroundColor: c.waiting,
-                    textColor: c.onAccent,
-                    child: AnimatedSwitcher(
-                      duration: motion(context, 150),
-                      child: Icon(
-                        selected ? item.selectedIcon : item.icon,
-                        key: ValueKey(selected),
-                        size: 22,
-                        color: tint,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Badge(
+                      isLabelVisible: item.badge > 0,
+                      label: Text('${item.badge}'),
+                      backgroundColor: c.waiting,
+                      textColor: c.onAccent,
+                      child: AnimatedSwitcher(
+                        duration: motion(context, 150),
+                        child: Icon(
+                          selected ? item.selectedIcon : item.icon,
+                          key: ValueKey(selected),
+                          size: 22,
+                          color: tint,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  AnimatedDefaultTextStyle(
-                    duration: motion(context),
-                    style:
-                        (Theme.of(context).textTheme.bodyMedium ??
-                                const TextStyle())
-                            .copyWith(
-                              fontSize: 12,
-                              height: 16 / 12,
-                              fontWeight: FontWeight.w600,
-                              color: tint,
-                            ),
-                    child: Text(item.label),
-                  ),
-                ],
+                    const SizedBox(height: 3),
+                    AnimatedDefaultTextStyle(
+                      duration: motion(context),
+                      style:
+                          (Theme.of(context).textTheme.bodyMedium ??
+                                  const TextStyle())
+                              .copyWith(
+                                fontSize: 12,
+                                height: 16 / 12,
+                                fontWeight: FontWeight.w600,
+                                color: tint,
+                              ),
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

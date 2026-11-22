@@ -8,7 +8,7 @@ import '../ui_providers.dart';
 import '../widgets/common.dart';
 import 'pane_actions.dart';
 import 'pane_grid.dart';
-import 'workspace_page.dart';
+import '../chat/chat_nav.dart';
 
 enum MissionFilter { all, needs, running, done, idle }
 
@@ -136,8 +136,13 @@ class _MissionBodyState extends ConsumerState<MissionBody> {
                       machineId: widget.machineId,
                       pane: pane,
                       caption: widget.tabKey == null ? tab.displayName : null,
-                      onOpen: () =>
-                          openPane(context, widget.machineId, tab, pane.key),
+                      onOpen: () => openSession(
+                        context,
+                        ref,
+                        widget.machineId,
+                        tab,
+                        pane,
+                      ),
                       onLongPress: () => showTabActions(
                         context,
                         ref,

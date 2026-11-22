@@ -16,9 +16,9 @@ import '../commands.dart';
 import '../machine_api.dart';
 import '../model/workspace_model.dart';
 import '../ui_providers.dart';
-import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import 'anchored_terminal.dart';
+import 'terminal_strips.dart';
 import 'input_bar.dart';
 import 'pane_header.dart';
 import 'pane_notice.dart';
@@ -66,15 +66,12 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
   bool _attaching = false;
   bool _typing = false;
   bool _direct = false;
-  bool _claimed = false;
   bool _writing = false;
   String? _error;
   bool _exited = false;
   int? _exitCode;
   int _deskCols = 80;
   int _deskRows = 24;
-  int _fitCols = 80;
-  int _fitRows = 24;
   int _queued = 0;
 
   late final MachineApi _api;
@@ -84,7 +81,9 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     super.initState();
     _api = ref.read(machineApiProvider(widget.machineId));
     _terminal.onOutput = _onOutput;
-    _terminal.onResize = _onTerminalResize;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _attach();
+    });
   }
 
   @override
@@ -152,13 +151,6 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     _api.input(handle, Uint8List.fromList(utf8.encode(out)), claim: true);
   }
 
-  void _onTerminalResize(int cols, int rows, int pw, int ph) {
-    if (!_typing) return;
-    final handle = _handle;
-    if (handle == null) return;
-    unawaited(_api.resize(handle, cols, rows).catchError((Object _) {}));
-  }
-
   Future<void> _attach() async {
     final sessionId = widget.pane.sessionId;
     if (_attaching || _handle != null || sessionId == null) return;
@@ -167,8 +159,8 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     try {
       final handle = await api.attach(
         sessionId,
-        _fitCols,
-        _fitRows,
+        _deskCols,
+        _deskRows,
         paneKey: widget.pane.key,
       );
       if (!mounted || widget.pane.sessionId != sessionId) {
@@ -214,7 +206,6 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
       case 'pty.resized':
         _flushOut();
         _applyDesk(event);
-        if (_claimed && !_typing) setState(() => _claimed = false);
       case 'pty.snapshot':
         final snap = PtySnapshot.parse(event);
         if (snap == null) return;
@@ -248,18 +239,13 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     final changed = cols.toInt() != _deskCols || rows.toInt() != _deskRows;
     _deskCols = cols.toInt();
     _deskRows = rows.toInt();
-    if (!_typing) _terminal.fitTo(_deskCols, _deskRows);
+    _terminal.fitTo(_deskCols, _deskRows);
     if (changed && mounted) setState(() {});
   }
 
   void _beginTyping() {
     _typingTimer?.cancel();
-    if (!_typing || !_claimed) {
-      setState(() {
-        _typing = true;
-        _claimed = true;
-      });
-    }
+    if (!_typing) setState(() => _typing = true);
   }
 
   void _endTypingSoon() {
@@ -267,16 +253,6 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     _typingTimer = Timer(const Duration(seconds: 8), () {
       if (mounted && !_direct) setState(() => _typing = false);
     });
-  }
-
-  void _onFit(int cols, int rows) {
-    _fitCols = cols;
-    _fitRows = rows;
-    if (_handle == null && !_attaching) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _attach();
-      });
-    }
   }
 
   Future<void> _sendKeys(String keys) async {
@@ -304,28 +280,40 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         PaneHeader(
           pane: pane,
           facts: facts,
-          claimed: _claimed && online,
+          claimed: _typing && online,
           compact: widget.compactHeader,
           onActions: widget.onActions,
           onSwipe: widget.onSwipe,
         ),
         ReconnectStrip(machineId: widget.machineId, showLatency: true),
-        if (_queued > 0) _unsentStrip(context, online),
-        PermissionBar(pane: pane, enabled: online, onKeys: _sendKeys),
+        if (_queued > 0)
+          UnsentStrip(
+            queued: _queued,
+            onSend: online && _handle != null
+                ? () => _api.sendQueued(_handle!)
+                : null,
+            onDrop: _handle != null ? () => _api.dropQueued(_handle!) : null,
+          ),
+        Flexible(
+          child: SingleChildScrollView(
+            child: PermissionBar(
+              pane: pane,
+              enabled: online,
+              onKeys: _sendKeys,
+            ),
+          ),
+        ),
         Expanded(
           child: TerminalSurface(
             terminal: _terminal,
             controller: _controller,
-            typing: _typing,
             direct: _direct,
             deskCols: _deskCols,
             deskRows: _deskRows,
-            onFit: _onFit,
             overlay: _overlay(l, pane),
           ),
         ),
-        if (widget.showInput &&
-            (MediaQuery.sizeOf(context).height >= 520 || _typing))
+        if (widget.showInput && _keysFit(context))
           ExtraKeysRow(
             terminal: _terminal,
             mods: _mods,
@@ -364,53 +352,13 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
     );
   }
 
-  Widget _unsentStrip(BuildContext context, bool online) {
-    final c = context.orrery;
-    final l = context.l10n;
-    final handle = _handle;
-    final style = TextButton.styleFrom(
-      minimumSize: const Size(48, 40),
-      foregroundColor: c.ink,
-      disabledForegroundColor: c.inkFaint,
-      textStyle: const TextStyle(fontWeight: FontWeight.w700),
-    );
-    return Container(
-      key: const ValueKey('term-unsent'),
-      color: c.waiting.withValues(alpha: 0.12),
-      padding: const EdgeInsets.only(left: 12, right: 4),
-      child: Row(
-        children: [
-          Icon(Icons.link_off_rounded, size: 16, color: c.waiting),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              l.termUnsent(_queued),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: c.waiting,
-              ),
-            ),
-          ),
-          TextButton(
-            key: const ValueKey('term-unsent-send'),
-            style: style,
-            onPressed: online && handle != null
-                ? () => _api.sendQueued(handle)
-                : null,
-            child: Text(l.termSendUnsent),
-          ),
-          TextButton(
-            key: const ValueKey('term-unsent-drop'),
-            style: style,
-            onPressed: handle != null ? () => _api.dropQueued(handle) : null,
-            child: Text(l.termDropUnsent),
-          ),
-        ],
-      ),
-    );
+  bool _keysFit(BuildContext context) {
+    final room =
+        MediaQuery.sizeOf(context).height -
+        MediaQuery.viewInsetsOf(context).bottom;
+    if (_typing) return room >= 360;
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return room >= 520 * scale.clamp(1, 1.6);
   }
 
   Widget? _overlay(AppLocalizations l, PaneInfo pane) {

@@ -36,8 +36,9 @@ ChatSysKind? chatSysKindOf(Object? value) => switch (value) {
 
 String? _str(Object? v) => v is String ? v : null;
 
-int? _int(Object? v) =>
-    v is int ? v : (v is double && v.isFinite && v == v.roundToDouble() ? v.toInt() : null);
+int? _int(Object? v) => v is int
+    ? v
+    : (v is double && v.isFinite && v == v.roundToDouble() ? v.toInt() : null);
 
 int? _count(Object? v) {
   final n = _int(v);
@@ -46,7 +47,8 @@ int? _count(Object? v) {
 
 bool _flag(Object? v) => v == true;
 
-bool _okId(String? v) => v != null && v.isNotEmpty && v.length <= ChatLimits.idMax;
+bool _okId(String? v) =>
+    v != null && v.isNotEmpty && v.length <= ChatLimits.idMax;
 
 List<T> _list<T>(Object? raw, T? Function(Object?) parse, int max) {
   if (raw is! List) return const [];
@@ -60,7 +62,12 @@ List<T> _list<T>(Object? raw, T? Function(Object?) parse, int max) {
 }
 
 class ChatTool {
-  const ChatTool({required this.tool, required this.cat, this.target, this.err = false});
+  const ChatTool({
+    required this.tool,
+    required this.cat,
+    this.target,
+    this.err = false,
+  });
 
   final String tool;
   final ChatToolCat cat;
@@ -81,7 +88,12 @@ class ChatTool {
 }
 
 class ChatFile {
-  const ChatFile({required this.path, this.add, this.del, this.outside = false});
+  const ChatFile({
+    required this.path,
+    this.add,
+    this.del,
+    this.outside = false,
+  });
 
   final String path;
   final int? add;
@@ -92,12 +104,22 @@ class ChatFile {
     if (raw is! Map) return null;
     final path = _str(raw['path']);
     if (path == null || path.isEmpty) return null;
-    return ChatFile(path: path, add: _count(raw['add']), del: _count(raw['del']), outside: _flag(raw['out']));
+    return ChatFile(
+      path: path,
+      add: _count(raw['add']),
+      del: _count(raw['del']),
+      outside: _flag(raw['out']),
+    );
   }
 }
 
 sealed class ChatItem {
-  const ChatItem({required this.id, required this.seq, required this.rev, this.at});
+  const ChatItem({
+    required this.id,
+    required this.seq,
+    required this.rev,
+    this.at,
+  });
 
   final String id;
   final int seq;
@@ -111,14 +133,34 @@ sealed class ChatItem {
     if (!_okId(id) || seq == null) return null;
     final rev = _count(raw['rev']) ?? 0;
     final atMs = _int(raw['at']);
-    final at = atMs != null && atMs > 0 ? DateTime.fromMillisecondsSinceEpoch(atMs) : null;
+    final at = atMs != null && atMs > 0
+        ? DateTime.fromMillisecondsSinceEpoch(atMs)
+        : null;
     switch (raw['k']) {
       case 'me':
         final text = _str(raw['text']);
-        return text == null ? null : ChatMe(id: id!, seq: seq, rev: rev, at: at, text: text, cut: _flag(raw['cut']));
+        return text == null
+            ? null
+            : ChatMe(
+                id: id!,
+                seq: seq,
+                rev: rev,
+                at: at,
+                text: text,
+                cut: _flag(raw['cut']),
+              );
       case 'ai':
         final text = _str(raw['text']);
-        return text == null ? null : ChatAi(id: id!, seq: seq, rev: rev, at: at, text: text, cut: _flag(raw['cut']));
+        return text == null
+            ? null
+            : ChatAi(
+                id: id!,
+                seq: seq,
+                rev: rev,
+                at: at,
+                text: text,
+                cut: _flag(raw['cut']),
+              );
       case 'tools':
         final sum = <ChatToolCat, int>{};
         final rawSum = raw['sum'];
@@ -153,7 +195,16 @@ sealed class ChatItem {
         );
       case 'sys':
         final kind = chatSysKindOf(raw['kind']);
-        return kind == null ? null : ChatSys(id: id!, seq: seq, rev: rev, at: at, kind: kind, text: _str(raw['text']));
+        return kind == null
+            ? null
+            : ChatSys(
+                id: id!,
+                seq: seq,
+                rev: rev,
+                at: at,
+                kind: kind,
+                text: _str(raw['text']),
+              );
       default:
         return null;
     }
@@ -161,14 +212,28 @@ sealed class ChatItem {
 }
 
 class ChatMe extends ChatItem {
-  const ChatMe({required super.id, required super.seq, required super.rev, super.at, required this.text, this.cut = false});
+  const ChatMe({
+    required super.id,
+    required super.seq,
+    required super.rev,
+    super.at,
+    required this.text,
+    this.cut = false,
+  });
 
   final String text;
   final bool cut;
 }
 
 class ChatAi extends ChatItem {
-  const ChatAi({required super.id, required super.seq, required super.rev, super.at, required this.text, this.cut = false});
+  const ChatAi({
+    required super.id,
+    required super.seq,
+    required super.rev,
+    super.at,
+    required this.text,
+    this.cut = false,
+  });
 
   final String text;
   final bool cut;
@@ -210,7 +275,14 @@ class ChatFiles extends ChatItem {
 }
 
 class ChatSys extends ChatItem {
-  const ChatSys({required super.id, required super.seq, required super.rev, super.at, required this.kind, this.text});
+  const ChatSys({
+    required super.id,
+    required super.seq,
+    required super.rev,
+    super.at,
+    required this.kind,
+    this.text,
+  });
 
   final ChatSysKind kind;
   final String? text;
@@ -219,7 +291,13 @@ class ChatSys extends ChatItem {
 enum ChatAgent { claude, codex }
 
 class ChatPage {
-  const ChatPage({required this.paneKey, required this.agent, required this.gen, required this.items, required this.older});
+  const ChatPage({
+    required this.paneKey,
+    required this.agent,
+    required this.gen,
+    required this.items,
+    required this.older,
+  });
 
   final String paneKey;
   final ChatAgent agent;
@@ -257,7 +335,9 @@ class ChatLast {
     return ChatLast(
       paneKey: paneKey,
       text: _str(raw['text']),
-      at: atMs != null && atMs > 0 ? DateTime.fromMillisecondsSinceEpoch(atMs) : null,
+      at: atMs != null && atMs > 0
+          ? DateTime.fromMillisecondsSinceEpoch(atMs)
+          : null,
     );
   }
 }
@@ -272,14 +352,21 @@ sealed class ChatEvent {
         final paneKey = _str(raw['paneKey']);
         final gen = _str(raw['gen']);
         if (paneKey == null || gen == null) return null;
-        return ChatItemsEvent(paneKey, gen, _list(raw['items'], ChatItem.parse, 1000));
+        return ChatItemsEvent(
+          paneKey,
+          gen,
+          _list(raw['items'], ChatItem.parse, 1000),
+        );
       case 'chat.reset':
         final paneKey = _str(raw['paneKey']);
         final gen = _str(raw['gen']);
         if (paneKey == null || gen == null) return null;
         return ChatResetEvent(paneKey, gen);
       case 'chat.last':
-        return ChatLastEvent(_flag(raw['full']), _list(raw['items'], ChatLast.parse, 1000));
+        return ChatLastEvent(
+          _flag(raw['full']),
+          _list(raw['items'], ChatLast.parse, 1000),
+        );
       default:
         return null;
     }
@@ -389,7 +476,15 @@ class ChatLog {
   }
 }
 
-enum RemoteMenuKind { ask, askMulti, permission, plan, picker, codexApproval, unknown }
+enum RemoteMenuKind {
+  ask,
+  askMulti,
+  permission,
+  plan,
+  picker,
+  codexApproval,
+  unknown,
+}
 
 RemoteMenuKind remoteMenuKindOf(Object? value) => switch (value) {
   'ask' => RemoteMenuKind.ask,
@@ -422,7 +517,12 @@ class RemoteMenuItem {
     if (raw is! Map) return null;
     final index = _int(raw['index']);
     final label = _str(raw['label']);
-    if (index == null || index < 1 || index > ChatLimits.menuItemsMax || label == null) return null;
+    if (index == null ||
+        index < 1 ||
+        index > ChatLimits.menuItemsMax ||
+        label == null) {
+      return null;
+    }
     final checked = raw['checked'];
     return RemoteMenuItem(
       index: index,
@@ -460,7 +560,11 @@ class RemoteMenu {
     if (raw is! Map) return null;
     final sig = _str(raw['sig']);
     if (sig == null || sig.isEmpty) return null;
-    final items = _list(raw['items'], RemoteMenuItem.parse, ChatLimits.menuItemsMax);
+    final items = _list(
+      raw['items'],
+      RemoteMenuItem.parse,
+      ChatLimits.menuItemsMax,
+    );
     if (items.isEmpty) return null;
     final since = _int(raw['since']);
     return RemoteMenu(
@@ -470,7 +574,9 @@ class RemoteMenu {
       items: items,
       numbered: _flag(raw['numbered']),
       confident: _flag(raw['confident']),
-      since: since != null && since > 0 ? DateTime.fromMillisecondsSinceEpoch(since) : null,
+      since: since != null && since > 0
+          ? DateTime.fromMillisecondsSinceEpoch(since)
+          : null,
     );
   }
 }

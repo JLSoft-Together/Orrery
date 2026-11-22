@@ -59,13 +59,20 @@ const groupMeta: Record<Rail, { icon: typeof Clock; tone: string }> = {
   idle: { icon: MoonStar, tone: 'idle' },
 }
 
+function chatFor(id: string): ReturnType<typeof preferChat> | null {
+  const pane = paneOf.value.get(id)
+  if (!pane) return null
+  const v = view.value
+  return preferChat({ name: 'workspace', machine: props.machine, pane }, v.hello, parseWorkspace(v.workspace, parseSessions(v.snapshot)))
+}
+
 function open(id: string): void {
-  navigate({ name: 'session', machine: props.machine, terminal: id })
+  const chat = chatFor(id)
+  navigate(chat?.name === 'chat' ? chat : { name: 'session', machine: props.machine, terminal: id })
 }
 
 function answer(id: string): void {
-  const pane = paneOf.value.get(id)
-  navigate(pane ? { name: 'workspace', machine: props.machine, pane } : { name: 'session', machine: props.machine, terminal: id })
+  navigate(chatFor(id) ?? { name: 'session', machine: props.machine, terminal: id })
 }
 
 function openInbox(row: InboxRow): void {

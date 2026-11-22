@@ -28,8 +28,7 @@ const TO_HUB: usize = 64;
 type Hub = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 pub enum ToHub {
-    Input(Vec<u8>, bool),
-    Resize(u16, u16),
+    Input(Vec<u8>),
 }
 
 pub enum FromHub {
@@ -244,7 +243,7 @@ async fn run(host: Arc<dyn Host>, spec: Spec, mut rx: mpsc::Receiver<ToHub>, bac
         fail(back, &spec, "offline").await;
         return false;
     };
-    let attach = json!({ "t": "attach", "id": spec.session, "mode": "view", "cols": spec.cols, "rows": spec.rows });
+    let attach = json!({ "t": "attach", "id": spec.session, "mode": "view" });
     if ws.send(Message::Text(attach.to_string().into())).await.is_err() {
         fail(back, &spec, "offline").await;
         return false;
@@ -298,11 +297,7 @@ async fn run(host: Arc<dyn Host>, spec: Spec, mut rx: mpsc::Receiver<ToHub>, bac
             }
             cmd = rx.recv() => {
                 let sent = match cmd {
-                    Some(ToHub::Input(bytes, claim)) => {
-                        let claimed = !claim || ws.send(Message::Text(json!({ "t": "claim" }).to_string().into())).await.is_ok();
-                        claimed && ws.send(Message::Binary(bytes.into())).await.is_ok()
-                    }
-                    Some(ToHub::Resize(cols, rows)) => ws.send(Message::Text(json!({ "t": "resize", "cols": cols, "rows": rows }).to_string().into())).await.is_ok(),
+                    Some(ToHub::Input(bytes)) => ws.send(Message::Binary(bytes.into())).await.is_ok(),
                     None => break,
                 };
                 if !sent {

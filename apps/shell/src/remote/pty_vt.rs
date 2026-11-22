@@ -43,7 +43,15 @@ impl Vt {
         }
     }
 
-    fn lines(&mut self) -> (Vec<Vec<u8>>, usize) {
+    fn joins(screen: &vt100::Screen, take: usize) -> impl Iterator<Item = bool> + '_ {
+        let last = screen.size().1.saturating_sub(1);
+        (0..take).map(move |r| {
+            let r = r as u16;
+            screen.row_wrapped(r) && screen.cell(r, last).is_some_and(|c| c.has_contents() || c.is_wide_continuation())
+        })
+    }
+
+    fn lines(&mut self) -> (Vec<(Vec<u8>, bool)>, usize) {
         let rows = usize::from(self.parser.screen().size().0);
         self.parser.screen_mut().set_scrollback(usize::MAX);
         let total = self.parser.screen().scrollback();
@@ -52,11 +60,13 @@ impl Vt {
         while offset > 0 {
             self.parser.screen_mut().set_scrollback(offset);
             let take = offset.min(rows);
-            lines.extend(self.parser.screen().rows_formatted(0, u16::MAX).take(take));
+            let screen = self.parser.screen();
+            lines.extend(screen.rows_formatted(0, u16::MAX).take(take).zip(Self::joins(screen, take)));
             offset -= take;
         }
         self.parser.screen_mut().set_scrollback(0);
-        lines.extend(self.parser.screen().rows_formatted(0, u16::MAX));
+        let screen = self.parser.screen();
+        lines.extend(screen.rows_formatted(0, u16::MAX).zip(Self::joins(screen, rows)));
         (lines, total)
     }
 
@@ -67,19 +77,23 @@ impl Vt {
             return text(out);
         }
         let (lines, history) = self.lines();
-        let mut budget: usize = lines.iter().map(|l| escaped_len(l)).sum();
+        let mut budget: usize = lines.iter().map(|(l, _)| escaped_len(l)).sum();
         let mut skip = 0;
         while skip < history && budget > SNAP_MAX {
-            budget -= escaped_len(&lines[skip]);
+            budget -= escaped_len(&lines[skip].0);
             skip += 1;
         }
         let mut out = Vec::with_capacity(budget);
-        for (i, line) in lines[skip..].iter().enumerate() {
-            if i > 0 {
+        let mut joined = false;
+        for (i, (line, join)) in lines[skip..].iter().enumerate() {
+            if joined {
+                out.extend_from_slice(b"\x1b[m \x08\x1b[X");
+            } else if i > 0 {
                 out.extend_from_slice(b"\x1b[m\r\n");
             }
             out.extend_from_slice(b"\x1b[m");
             out.extend_from_slice(line);
+            joined = *join;
         }
         let screen = self.parser.screen();
         let (_, cols) = screen.size();

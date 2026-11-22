@@ -108,20 +108,30 @@ fn a_phone_views_and_types_into_a_desktop_pane_through_the_real_hub() {
         let ready = until_json(&mut ws, &mut t, |v| v["t"] == "pty.ready").await;
         assert_eq!((ready["stream"].as_u64(), ready["cols"].as_u64(), ready["rows"].as_u64()), (Some(7), Some(80), Some(24)));
         phone_output(&mut ws, &mut t, 7, "desk-first").await;
+        send_json(&mut ws, &mut t, json!({ "id": "r0", "t": "pty.resize", "stream": 7, "cols": 44, "rows": 18 })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "r0").await["ok"], true);
+        send_json(&mut ws, &mut t, json!({ "id": "r1", "t": "pty.resize", "stream": 7, "cols": 44, "rows": 18, "claim": true })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "r1").await["ok"], true);
         send_raw(&mut ws, &mut t, 2, FLAG_CLAIM, 7, b"echo phone-mark\r").await;
-        desk_until(&mut d, |m| matches!(m, Message::Text(t) if t.as_str().contains("\"resized\"") && t.as_str().contains("50"))).await;
-        desk_until(&mut d, |m| matches!(m, Message::Binary(b) if String::from_utf8_lossy(b).contains("phone-mark"))).await;
-        phone_output(&mut ws, &mut t, 7, "phone-mark").await;
+        let mut resized = false;
+        desk_until(&mut d, |m| {
+            resized |= matches!(m, Message::Text(t) if t.as_str().contains("\"resized\""));
+            matches!(m, Message::Binary(b) if String::from_utf8_lossy(b).contains("phone-mark"))
+        })
+        .await;
+        assert!(!resized, "the phone resized the desktop pane");
+        let events = phone_output(&mut ws, &mut t, 7, "phone-mark").await;
+        assert!(!events.iter().any(|e| e["t"] == "pty.resized"), "{events:?}");
         let wait = std::time::Instant::now();
         let typed = || lock(&rig.host.asks).iter().filter(|(a, v)| a == "remote.typed" && v["sessionId"] == id.as_str() && v["device"] == "p").count();
         while typed() == 0 && wait.elapsed() < Duration::from_secs(3) {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         assert_eq!(typed(), 1);
-        d.send(Message::Text(json!({ "t": "claim" }).to_string().into())).await.unwrap();
+        d.send(Message::Text(json!({ "t": "resize", "cols": 100, "rows": 30 }).to_string().into())).await.unwrap();
         d.send(Message::Binary(b"echo desk-again\r".to_vec().into())).await.unwrap();
         let events = phone_output(&mut ws, &mut t, 7, "desk-again").await;
-        assert!(events.iter().any(|e| e["t"] == "pty.resized" && e["cols"] == 80), "{events:?}");
+        assert!(events.iter().any(|e| e["t"] == "pty.resized" && e["cols"] == 100), "{events:?}");
         for s in 0..MAX_ATTACH as u32 - 1 {
             send_json(&mut ws, &mut t, json!({ "id": format!("m{s}"), "t": "pty.attach", "stream": 20 + s, "sessionId": id })).await;
         }
@@ -167,7 +177,7 @@ async fn desk_spawn(d: &mut Desk, dir: &std::path::Path) -> String {
 }
 
 #[test]
-fn a_claimed_phone_that_stops_reading_never_stalls_the_desktop_pane() {
+fn a_typing_phone_that_stops_reading_never_stalls_the_desktop_pane() {
     let Some(bin) = core_bin() else {
         eprintln!("skip: orrery-core debug build not found");
         return;
@@ -194,8 +204,14 @@ fn a_claimed_phone_that_stops_reading_never_stalls_the_desktop_pane() {
                 FromHub::Json(..) => {}
             }
         }
-        tx.send(ToHub::Input(Vec::new(), true)).await.unwrap();
-        desk_until(&mut d, |m| matches!(m, Message::Text(t) if t.as_str().contains("\"resized\"") && t.as_str().contains("50"))).await;
+        tx.send(ToHub::Input(b"echo phone-typed\r".to_vec())).await.unwrap();
+        let mut resized = false;
+        desk_until(&mut d, |m| {
+            resized |= matches!(m, Message::Text(t) if t.as_str().contains("\"resized\""));
+            matches!(m, Message::Binary(b) if String::from_utf8_lossy(b).contains("phone-typed"))
+        })
+        .await;
+        assert!(!resized, "typing from the phone resized the desktop pane");
         let flood: &[u8] = if cfg!(windows) { b"1..150000 | % { \"flood$_\" }; 'done-' + 'mark'\r" } else { b"seq -f 'flood%g' 1 150000; echo done-''mark\r" };
         d.send(Message::Binary(flood.to_vec().into())).await.unwrap();
         let mut last = std::time::Instant::now();

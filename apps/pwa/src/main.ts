@@ -5,6 +5,7 @@ import { createAppI18n } from './i18n'
 import { resolveLocale, startAppearance } from './lib/appearance'
 import { createRuntime } from './runtime'
 import { readPushOpen } from './lib/deepLink'
+import { startViewport } from './lib/viewport'
 import { route, startRouter } from './router'
 import { useHubStore } from './stores/hub'
 import { useLockStore } from './stores/lock'
@@ -40,6 +41,7 @@ watch(() => prefs.local.language, applyLanguage)
 watch(() => [prefs.local.theme, prefs.local.palette, prefs.local.reduceTransparency], appearance.refresh)
 startRouter()
 readPushOpen(location.search, route.value)
+startViewport(window.visualViewport, document.documentElement.style)
 app.mount('#app')
 
 if (__DEV_TOOLS__) void import('./dev/devtools').then((m) => m.startDevtools())

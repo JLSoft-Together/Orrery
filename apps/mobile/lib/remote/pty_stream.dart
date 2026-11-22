@@ -25,8 +25,12 @@ class PtyAttachment {
   int cols;
   int rows;
 
-  final StreamController<Uint8List> _output = StreamController.broadcast();
-  final StreamController<JsonMap> _events = StreamController.broadcast();
+  final StreamController<Uint8List> _output = StreamController.broadcast(
+    sync: true,
+  );
+  final StreamController<JsonMap> _events = StreamController.broadcast(
+    sync: true,
+  );
   final List<Uint8List> _pendingInput = [];
   bool _pendingClaim = false;
   final BytesBuilder _queued = BytesBuilder(copy: true);
@@ -268,22 +272,6 @@ class PtyStreams {
     }
     session.sendPtyInput(entry.stream, builder.takeBytes(), claim: claim);
     entry._throttle = Timer(coalesce, () => _flushInput(entry));
-  }
-
-  Future<void> resize(PtyAttachment entry, int cols, int rows) async {
-    entry.cols = cols;
-    entry.rows = rows;
-    final session = connection.session;
-    if (session == null || !connection.isReady || entry._suspended) return;
-    try {
-      await session.request('pty.resize', {
-        'stream': entry.stream,
-        'cols': cols,
-        'rows': rows,
-      });
-    } on RemoteCommandException {
-      return;
-    }
   }
 
   void _onOutput(PtyChunk chunk) {

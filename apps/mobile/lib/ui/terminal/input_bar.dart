@@ -280,6 +280,7 @@ class _InputBarState extends State<InputBar> {
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   hintText: widget.enabled ? l.inputHint : l.inputOffline,
+                  hintMaxLines: 1,
                   isDense: true,
                   filled: false,
                   border: InputBorder.none,

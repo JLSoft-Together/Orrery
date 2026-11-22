@@ -356,3 +356,52 @@ describe('terminal resize order', () => {
     expect(textOf(t)).toEqual(run(1, 42))
   })
 })
+
+describe('TUI box and the PTY size (WP-R1)', () => {
+  const box = (cols: number): string => {
+    const inner = cols - 2
+    const top = `╭${'─'.repeat(inner)}╮`
+    const mid = `│ > ${' '.repeat(inner - 3)}│`
+    const bottom = `╰${'─'.repeat(inner)}╯`
+    return `${ESC}[H${ESC}[2J${top}${CRLF}${mid}${CRLF}${bottom}${ESC}[2;5H`
+  }
+  const screenRows = (t: Terminal): string[] => {
+    const b = t.buffer.active
+    const out: string[] = []
+    for (let i = 0; i < t.rows; i++) out.push(b.getLine(b.baseY + i)?.translateToString(true) ?? '')
+    return out.filter((l) => l.length > 0)
+  }
+
+  it('resizing xterm away from the PTY size breaks the box (the old phone layout bug)', async () => {
+    const { t, pipe, settle } = termRig(180, 20)
+    pipe.output(utf8(box(180)))
+    await settle()
+    t.resize(48, 20)
+    pipe.output(utf8(`${ESC}[1;1H${'x'.repeat(10)}`))
+    await settle()
+    const rows = screenRows(t)
+    expect(rows.length).toBeGreaterThan(3)
+    expect(rows.every((l) => l.startsWith('╭') || l.startsWith('│') || l.startsWith('╰'))).toBe(false)
+  })
+
+  it('kept at the PTY size, a 180 column box stays whole', async () => {
+    const { t, pipe, settle } = termRig(80, 20)
+    pipe.snapshot(180, 20, box(180), (cols, rows) => resizeAnchored(t, cols, rows))
+    await settle()
+    const rows = screenRows(t)
+    expect(rows).toHaveLength(3)
+    expect(rows.map((l) => [...l].length)).toEqual([180, 180, 180])
+    expect(rows[0]!.endsWith('╮') && rows[2]!.endsWith('╯')).toBe(true)
+  })
+
+  it('a snapshot that keeps soft wraps lets xterm rejoin long lines on a later resize', async () => {
+    const { t, pipe, settle } = termRig(20, 6)
+    const joined = `${ESC}[m${'a'.repeat(20)}${ESC}[m \b${ESC}[X${ESC}[m${'a'.repeat(5)}${ESC}[m${CRLF}${ESC}[mnext`
+    pipe.snapshot(20, 6, joined, (cols, rows) => t.resize(cols, rows))
+    await settle()
+    expect(t.buffer.active.getLine(1)?.isWrapped).toBe(true)
+    t.resize(40, 6)
+    await settle()
+    expect(bufferLines(t).filter((l) => l)).toEqual(['a'.repeat(25), 'next'])
+  })
+})

@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../model/inbox_model.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
-import 'workspace_page.dart';
+import '../chat/chat_nav.dart';
 
 String inboxGroupLabel(AppLocalizations l, String group) => switch (group) {
   'menu' => l.inboxGroupMenu,
@@ -120,14 +120,14 @@ class _GroupHeader extends StatelessWidget {
   }
 }
 
-class _InboxTile extends StatelessWidget {
+class _InboxTile extends ConsumerWidget {
   const _InboxTile({required this.machineId, required this.row});
 
   final String machineId;
   final InboxRow row;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final l = context.l10n;
     final pane = row.pane;
@@ -137,7 +137,7 @@ class _InboxTile extends StatelessWidget {
         : ', ${shortElapsed(l, DateTime.now().difference(since))}';
     return Card(
       child: PressScale(
-        onTap: () => openPane(context, machineId, row.tab, pane.key),
+        onTap: () => openSession(context, ref, machineId, row.tab, pane),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -168,7 +168,7 @@ class _InboxTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              StatusBadge(state: pane.rail),
+              Flexible(child: StatusBadge(state: pane.rail)),
             ],
           ),
         ),

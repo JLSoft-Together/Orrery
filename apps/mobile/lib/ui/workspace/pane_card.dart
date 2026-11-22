@@ -77,7 +77,7 @@ class PaneCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              RailChip(state: pane.rail),
+              Flexible(child: RailChip(state: pane.rail)),
             ],
           ),
           const SizedBox(height: 12),

@@ -68,23 +68,26 @@ class PanePreview extends ConsumerWidget {
               alignment: Alignment.topLeft,
               child: AnimatedSwitcher(
                 duration: motion(context, 150),
-                child: Column(
+                child: SingleChildScrollView(
                   key: ValueKey(lines.join('\n')),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final line in lines.take(maxLines))
-                      Text(
-                        line,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'OrreryMono',
-                          fontSize: 12,
-                          height: 18 / 12,
-                          color: c.wellInk,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final line in lines.take(maxLines))
+                        Text(
+                          line,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'OrreryMono',
+                            fontSize: 12,
+                            height: 18 / 12,
+                            color: c.wellInk,
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

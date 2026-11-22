@@ -2,7 +2,7 @@ mod alerts;
 pub mod awake;
 mod cf_api;
 mod chat;
-mod chat_src;
+pub mod chat_src;
 mod cf_http;
 mod config;
 mod confirm;

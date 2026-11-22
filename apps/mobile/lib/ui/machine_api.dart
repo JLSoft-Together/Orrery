@@ -23,7 +23,6 @@ abstract class MachineApi {
   void input(PtyHandle handle, Uint8List bytes, {bool claim = false});
   bool sendQueued(PtyHandle handle);
   void dropQueued(PtyHandle handle);
-  Future<void> resize(PtyHandle handle, int cols, int rows);
   Uint8List? cachedTail(String paneKey);
   Future<void> answerConfirm(String cid, bool ok);
   Future<void> retry();
@@ -103,12 +102,6 @@ class BundleMachineApi implements MachineApi {
   @override
   void dropQueued(PtyHandle handle) {
     if (handle is _RealHandle) _bundle.pty.dropQueued(handle.attachment);
-  }
-
-  @override
-  Future<void> resize(PtyHandle handle, int cols, int rows) {
-    if (handle is! _RealHandle) return Future.value();
-    return _bundle.pty.resize(handle.attachment, cols, rows);
   }
 
   @override

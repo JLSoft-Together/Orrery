@@ -2,23 +2,21 @@
 import '@xterm/xterm/css/xterm.css'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useHubStore } from '../stores/hub'
 import type { PtyAttachment } from '../terminal/ptyStreams'
 import type { StickyModifiers } from '../terminal/modifiers'
 import { TERM_FONT, TERM_THEME } from '../terminal/theme'
 import { bufferLines, resizeAnchored, TermPipe } from '../terminal/termPipe'
+import { BASE_FONT, clampView, deskFont, fitScale, IDENTITY, panView, pinchView, type Box, type Point, type TermSize, type ZoomView } from '../terminal/fitLayout'
 import { allowXtermStyles, pruneXtermStyles } from '../terminal/xtermStyles'
 import { lineBytes, utf8 } from '../terminal/keys'
-import { loadMode, nextMode, readerText, saveMode, type ModeAction, type TermMode } from '../terminal/readMode'
 import { RemoteCommandError } from '../remote/types'
 
 export type SurfaceState = 'attaching' | 'live' | 'ended' | 'error'
 
 const props = defineProps<{ machine: string; sessionId: string | null; mods: StickyModifiers; direct: boolean }>()
-const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; typing: [typing: boolean]; scrolled: [scrolled: boolean]; mode: [mode: TermMode]; unsent: [bytes: number] }>()
-const { t: tr } = useI18n()
+const emit = defineEmits<{ state: [state: SurfaceState, detail: string | null]; scrolled: [scrolled: boolean]; unsent: [bytes: number] }>()
 
 const hub = useHubStore()
 const host = ref<HTMLElement | null>(null)
@@ -27,24 +25,24 @@ const state = ref<SurfaceState>('attaching')
 const detail = ref<string | null>(null)
 const rxBytes = ref(0)
 const rxSum = ref(0)
-const claimed = ref(false)
+const scale = ref(1)
+const zoom = ref(1)
 const term = shallowRef<Terminal | null>(null)
 const fit = shallowRef<FitAddon | null>(null)
-const mode = ref<TermMode>(loadMode(props.sessionId))
-const reader = ref<HTMLElement | null>(null)
-const readText = ref('')
-let readTimer: ReturnType<typeof setTimeout> | null = null
 let scrolledNow = false
+let view: ZoomView = IDENTITY
+let base = 1
+let pinch: { start: ZoomView; dist: number; mid: Point } | null = null
+let drag: { start: ZoomView; at: Point } | null = null
+let lastTap = 0
 
-const BASE_FONT = 13
-const READ_REFRESH_MS = 200
-const AT_BOTTOM_PX = 24
+const DOUBLE_TAP_MS = 300
 const USER_WINDOW_MS = 400
-const TYPING_HOLD_MS = 8000
+const HOST_PAD = 10
 let attachment: PtyAttachment | null = null
 let userAt = 0
-let typing = false
-let typingTimer: ReturnType<typeof setTimeout> | null = null
+let scaleFrame = 0
+let paintFrame = 0
 let deskCols = 0
 let deskRows = 0
 let disposed = false
@@ -79,59 +77,9 @@ function setScrolled(value: boolean): void {
   emit('scrolled', value)
 }
 
-function readerAtBottom(): boolean {
-  const el = reader.value
-  return !el || el.scrollTop + el.clientHeight >= el.scrollHeight - AT_BOTTOM_PX
-}
-
-function refreshReader(): void {
-  readTimer = null
-  const t = term.value
-  const el = reader.value
-  if (!t || !el || mode.value !== 'read') return
-  const stick = readerAtBottom()
-  readText.value = readerText(t.buffer.active)
-  if (stick) void nextTick(() => {
-    el.scrollTop = el.scrollHeight
-  })
-}
-
-function scheduleReader(): void {
-  if (mode.value !== 'read' || readTimer) return
-  readTimer = setTimeout(refreshReader, READ_REFRESH_MS)
-}
-
-function onReaderScroll(): void {
-  setScrolled(!readerAtBottom())
-}
-
 function onTermScroll(): void {
   const b = term.value?.buffer.active
-  if (mode.value === 'desk' && b) setScrolled(b.viewportY < b.baseY)
-}
-
-function changeMode(action: ModeAction): void {
-  const next = nextMode(mode.value, action)
-  if (next === mode.value) return
-  mode.value = next
-  saveMode(props.sessionId, next)
-  emit('mode', next)
-  setScrolled(false)
-  if (next === 'read') {
-    pipe.barrier(() => {
-      refreshReader()
-      void nextTick(() => {
-        if (reader.value) reader.value.scrollTop = reader.value.scrollHeight
-      })
-    })
-  } else {
-    readText.value = ''
-    relayout()
-  }
-}
-
-function toggleMode(): void {
-  changeMode('toggle')
+  if (b) setScrolled(b.viewportY < b.baseY)
 }
 
 function onOutput(bytes: Uint8Array): void {
@@ -141,7 +89,86 @@ function onOutput(bytes: Uint8Array): void {
   }
   checksum(bytes)
   pipe.output(bytes)
-  scheduleReader()
+}
+
+function boxes(): { content: Box; box: Box } | null {
+  const el = host.value
+  const screen = term.value?.element?.querySelector<HTMLElement>('.xterm-screen')
+  if (!el || !screen) return null
+  return { content: { w: screen.offsetWidth, h: screen.offsetHeight }, box: { w: el.clientWidth - HOST_PAD, h: el.clientHeight - HOST_PAD } }
+}
+
+function paint(): void {
+  const root = term.value?.element
+  if (!root) return
+  const s = base * view.zoom
+  scale.value = s
+  zoom.value = view.zoom
+  root.style.transform = s === 1 && view.x === 0 && view.y === 0 ? '' : `translate3d(${view.x}px, ${view.y}px, 0) scale(${s})`
+}
+
+function setView(next: ZoomView): void {
+  view = next
+  if (!paintFrame) paintFrame = requestAnimationFrame(() => {
+    paintFrame = 0
+    paint()
+  })
+}
+
+function touchPoint(e: TouchEvent, i: number): Point {
+  const r = host.value!.getBoundingClientRect()
+  const t = e.touches[i]!
+  return { x: t.clientX - r.left - 6, y: t.clientY - r.top - 6 }
+}
+
+function spread(e: TouchEvent): { dist: number; mid: Point } {
+  const a = touchPoint(e, 0)
+  const b = touchPoint(e, 1)
+  return { dist: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }
+}
+
+function onTouchStart(e: TouchEvent): void {
+  if (e.touches.length === 2) {
+    pinch = { start: view, ...spread(e) }
+    drag = null
+    e.preventDefault()
+    return
+  }
+  if (e.touches.length !== 1) return
+  const now = performance.now()
+  if (now - lastTap < DOUBLE_TAP_MS && view.zoom > 1) {
+    lastTap = 0
+    setView(IDENTITY)
+    e.preventDefault()
+    return
+  }
+  lastTap = now
+  if (view.zoom > 1) drag = { start: view, at: touchPoint(e, 0) }
+}
+
+function onTouchMove(e: TouchEvent): void {
+  const b = boxes()
+  if (!b) return
+  if (pinch && e.touches.length === 2) {
+    e.preventDefault()
+    setView(pinchView(pinch.start, pinch, spread(e), base, b.content, b.box))
+    return
+  }
+  if (drag && e.touches.length === 1) {
+    e.preventDefault()
+    const p = touchPoint(e, 0)
+    setView(panView(drag.start, { x: p.x - drag.at.x, y: p.y - drag.at.y }, base, b.content, b.box))
+  }
+}
+
+function onTouchEnd(e: TouchEvent): void {
+  if (e.touches.length < 2) pinch = null
+  if (e.touches.length === 0) drag = null
+  if (e.touches.length === 1 && view.zoom > 1) drag = { start: view, at: touchPoint(e, 0) }
+}
+
+function onGesture(e: Event): void {
+  e.preventDefault()
 }
 
 function layoutFit(): void {
@@ -154,60 +181,52 @@ function layoutFit(): void {
   resizeAnchored(t, dims.cols, dims.rows)
 }
 
-function layoutDesk(): void {
+function measureScale(): void {
+  scaleFrame = 0
+  const b = boxes()
+  if (!b) return
+  const next = deskCols > 0 ? fitScale(b.content.w, b.box.w) : 1
+  if (next !== base) {
+    base = next
+    view = IDENTITY
+  } else view = clampView(view, base, b.content, b.box)
+  paint()
+}
+
+function scheduleScale(): void {
+  if (scaleFrame) cancelAnimationFrame(scaleFrame)
+  scaleFrame = requestAnimationFrame(measureScale)
+}
+
+function showDesk(): void {
   const t = term.value
   const el = host.value
-  if (!t || !el || deskCols < 2 || deskRows < 2) {
-    layoutFit()
-    return
-  }
-  const size = Math.max(9, Math.min(BASE_FONT, Math.floor((el.clientWidth - 8) / (deskCols * 0.602))))
-  t.options.fontSize = size
+  if (!t || !el) return
   resizeAnchored(t, deskCols, deskRows)
+  const font = deskFont(el.clientWidth - HOST_PAD, deskCols)
+  if (t.options.fontSize !== font) t.options.fontSize = font
+  scheduleScale()
 }
 
 function applyLayout(): void {
-  if (typing || deskCols === 0) layoutFit()
-  else layoutDesk()
-  if (typing && attachment) void streams().resize(attachment, term.value?.cols ?? attachment.cols, term.value?.rows ?? attachment.rows)
+  if (deskCols < 2 || deskRows < 2) {
+    layoutFit()
+    return
+  }
+  showDesk()
 }
 
 function relayout(): void {
   pipe.barrier(applyLayout)
 }
 
-function deskSize(event: Record<string, unknown>): { cols: number; rows: number } | null {
+function deskSize(event: Record<string, unknown>): TermSize | null {
   return typeof event.cols === 'number' && typeof event.rows === 'number' ? { cols: event.cols, rows: event.rows } : null
-}
-
-function beginTyping(): void {
-  if (typingTimer) clearTimeout(typingTimer)
-  typingTimer = setTimeout(endTyping, TYPING_HOLD_MS)
-  if (!typing) {
-    typing = true
-    claimed.value = true
-    emit('typing', true)
-    relayout()
-  }
-}
-
-function endTyping(): void {
-  typingTimer = null
-  if (props.direct && document.activeElement === term.value?.textarea) {
-    typingTimer = setTimeout(endTyping, TYPING_HOLD_MS)
-    return
-  }
-  if (!typing) return
-  typing = false
-  emit('typing', false)
-  relayout()
 }
 
 function sendBytes(bytes: Uint8Array): void {
   if (!attachment) return
-  changeMode('input')
-  beginTyping()
-  streams().input(attachment, bytes, true)
+  streams().input(attachment, bytes, false)
 }
 
 function sendText(text: string): void {
@@ -248,10 +267,7 @@ function onEvent(event: Record<string, unknown>): void {
           deskCols = size.cols
           deskRows = size.rows
         }
-        if (!typing) {
-          claimed.value = false
-          applyLayout()
-        }
+        applyLayout()
       })
       break
     }
@@ -262,9 +278,8 @@ function onEvent(event: Record<string, unknown>): void {
       pipe.snapshot(size.cols, size.rows, event.data, (cols, rows) => {
         deskCols = cols
         deskRows = rows
-        layoutDesk()
+        applyLayout()
       })
-      if (typing) relayout()
       break
     }
     case 'pty.exit': {
@@ -339,15 +354,28 @@ async function create(): Promise<void> {
   if (surface.value) surface.value.ccmLines = () => bufferLines(t)
   bindUserInput(t)
   t.onScroll(onTermScroll)
-  t.onWriteParsed(scheduleReader)
   t.onData((data) => {
     if (!attachment || performance.now() - userAt > USER_WINDOW_MS) return
-    changeMode('input')
-    beginTyping()
-    streams().input(attachment, utf8(props.mods.apply(data)), true)
+    streams().input(attachment, utf8(props.mods.apply(data)), false)
   })
   observer = new ResizeObserver(() => relayout())
   observer.observe(host.value)
+  const el = host.value
+  const opts = { passive: false } as AddEventListenerOptions
+  el.addEventListener('touchstart', onTouchStart, opts)
+  el.addEventListener('touchmove', onTouchMove, opts)
+  el.addEventListener('touchend', onTouchEnd)
+  el.addEventListener('touchcancel', onTouchEnd)
+  el.addEventListener('gesturestart', onGesture, opts)
+  el.addEventListener('gesturechange', onGesture, opts)
+  cleanups.push(() => {
+    el.removeEventListener('touchstart', onTouchStart)
+    el.removeEventListener('touchmove', onTouchMove)
+    el.removeEventListener('touchend', onTouchEnd)
+    el.removeEventListener('touchcancel', onTouchEnd)
+    el.removeEventListener('gesturestart', onGesture)
+    el.removeEventListener('gesturechange', onGesture)
+  })
   layoutFit()
   void attach()
 }
@@ -362,10 +390,10 @@ watch(
     await detach()
     wasLive = false
     resetDue = false
+    deskCols = 0
+    deskRows = 0
+    view = IDENTITY
     emit('unsent', 0)
-    mode.value = loadMode(props.sessionId)
-    readText.value = ''
-    emit('mode', mode.value)
     pipe.reset(() => {})
     rxBytes.value = 0
     rxSum.value = 0
@@ -378,8 +406,8 @@ watch(() => props.direct, applyInputMode)
 onBeforeUnmount(() => {
   disposed = true
   pipe.dispose()
-  if (typingTimer) clearTimeout(typingTimer)
-  if (readTimer) clearTimeout(readTimer)
+  if (scaleFrame) cancelAnimationFrame(scaleFrame)
+  if (paintFrame) cancelAnimationFrame(paintFrame)
   observer?.disconnect()
   for (const off of cleanups) off()
   void detach()
@@ -396,17 +424,12 @@ function dropUnsent(): void {
   if (attachment) streams().dropUnsent(attachment)
 }
 
-defineExpose({ sendText, sendLine, sendKey, sendBytes, sendUnsent, dropUnsent, focusDirect: applyInputMode, mode })
+defineExpose({ sendText, sendLine, sendKey, sendBytes, sendUnsent, dropUnsent, focusDirect: applyInputMode })
 </script>
 
 <template>
-  <div ref="surface" class="surface" data-testid="terminal" :data-state="state" :data-detail="detail ?? ''" :data-rx-bytes="rxBytes" :data-rx-sum="rxSum" :data-claimed="claimed ? '1' : '0'">
-    <div ref="host" class="host" :class="{ hidden: mode === 'read' }" />
-    <pre v-if="mode === 'read'" ref="reader" class="reader mono" data-testid="term-reader" tabindex="0" @scroll.passive="onReaderScroll">{{ readText }}</pre>
-    <button type="button" class="mode" :aria-label="tr('term.modeLabel')" :aria-pressed="mode === 'read'" :data-mode="mode" :title="mode === 'read' ? tr('term.modeReadHint') : tr('term.modeDeskHint')" data-testid="term-mode" @click="toggleMode">
-      <span :class="{ on: mode === 'desk' }">{{ tr('term.modeDesk') }}</span>
-      <span :class="{ on: mode === 'read' }">{{ tr('term.modeRead') }}</span>
-    </button>
+  <div ref="surface" class="surface" data-testid="terminal" :data-state="state" :data-detail="detail ?? ''" :data-rx-bytes="rxBytes" :data-rx-sum="rxSum" :data-scale="scale" :data-zoom="zoom">
+    <div ref="host" class="host" :class="{ zoomed: zoom > 1 }" />
   </div>
 </template>
 
@@ -423,58 +446,20 @@ defineExpose({ sendText, sendLine, sendKey, sendBytes, sendUnsent, dropUnsent, f
   position: absolute;
   inset: 0;
   padding: 6px 4px 0 6px;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.host.hidden {
-  visibility: hidden;
-}
-
-.reader {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 6px 10px 44px 10px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ccm-term-ink);
-  background: var(--ccm-term-bg);
-  user-select: text;
-  -webkit-user-select: text;
+  touch-action: pan-y;
 }
 
-.mode {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  display: flex;
-  padding: 2px;
-  gap: 2px;
-  min-height: 32px;
-  border-radius: var(--radius-control);
-  border: 1px solid var(--ccm-line-strong);
-  background: var(--ccm-surface);
-  color: var(--ccm-ink);
-  font-size: 0.75rem;
-  font-weight: 600;
+.host.zoomed {
+  overflow: hidden;
+  touch-action: none;
 }
 
-.mode span {
-  display: grid;
-  place-items: center;
-  padding: 0 10px;
-  border-radius: calc(var(--radius-control) - 2px);
-}
-
-.mode span.on {
-  background: var(--ccm-accent);
-  color: var(--ccm-on-accent);
+.host :deep(.xterm) {
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .surface :deep(.xterm-viewport) {

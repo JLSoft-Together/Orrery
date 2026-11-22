@@ -109,12 +109,11 @@ export async function workspaceSteps(c, page, peer) {
     }
   })
 
-  await step('Typing: "echo xin chào" reaches the desktop as UTF-8 with claim; Ctrl is sticky once / locked / off; direct typing claims too', async () => {
+  await step('Typing: "echo xin chào" reaches the desktop as UTF-8 without claim; Ctrl is sticky once / locked / off; the phone never asks for a resize', async () => {
     await byId(page, 'line-input').fill('echo xin chào')
     await byId(page, 'line-send').click()
     const line = await peer.waitEvent((e) => e.ev === 'pty_in' && e.hex === `${hexOf('echo xin chào')}0d`)
-    if (line.claim !== true || line.stream !== 1) throw new Error(`line ${JSON.stringify(line)}`)
-    if ((await byId(page, 'terminal').getAttribute('data-claimed')) !== '1') throw new Error('not claimed')
+    if (line.claim === true || line.stream !== 1) throw new Error(`line ${JSON.stringify(line)}`)
     const ctrl = byId(page, 'key-ctrl')
     const mods = []
     for (let i = 0; i < 3; i++) {
@@ -124,7 +123,7 @@ export async function workspaceSteps(c, page, peer) {
     if (mods.join(',') !== 'once,locked,off') throw new Error(`ctrl cycle ${mods}`)
     await ctrl.click()
     await byId(page, 'key-up').click()
-    await peer.waitEvent((e) => e.ev === 'pty_in' && e.hex === hexOf('\x1b[1;5A') && e.claim === true)
+    await peer.waitEvent((e) => e.ev === 'pty_in' && e.hex === hexOf('\x1b[1;5A') && e.claim !== true)
     if ((await ctrl.getAttribute('data-mod')) !== 'off') throw new Error('once did not clear')
     await byId(page, 'key-esc').click()
     await peer.waitEvent((e) => e.ev === 'pty_in' && e.hex === '1b')
@@ -134,9 +133,10 @@ export async function workspaceSteps(c, page, peer) {
     await wait(200)
     await page.keyboard.type('x')
     const direct = await peer.waitEvent((e) => e.ev === 'pty_in' && e.hex === '78', 3000).catch(async (e) => { throw new Error(`direct: active=${await page.evaluate(() => document.activeElement?.className + '|' + document.activeElement?.tagName + '|' + document.activeElement?.getAttribute('inputmode'))} ${e.message.slice(-200)}`) })
-    if (direct.claim !== true) throw new Error('direct typing without claim')
+    if (direct.claim === true) throw new Error('direct typing sent a claim')
     await byId(page, 'direct-toggle').click()
-    await peer.waitEvent((e) => e.ev === 'resize' && e.stream === 1)
+    await wait(300)
+    if (peer.events.some((e) => e.ev === 'resize')) throw new Error('the phone asked the desktop to resize')
   })
 
   await step('Pane picker switches pane: detach the old stream, attach the new session', async () => {

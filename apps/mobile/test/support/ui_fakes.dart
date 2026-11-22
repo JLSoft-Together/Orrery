@@ -18,8 +18,10 @@ import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
 
 class FakeHandle implements PtyHandle {
-  final StreamController<Uint8List> out = StreamController.broadcast();
-  final StreamController<JsonMap> ev = StreamController.broadcast();
+  final StreamController<Uint8List> out = StreamController.broadcast(
+    sync: true,
+  );
+  final StreamController<JsonMap> ev = StreamController.broadcast(sync: true);
   Uint8List initial = Uint8List(0);
 
   @override
@@ -36,7 +38,6 @@ class FakeMachineApi implements MachineApi {
   final List<(String, JsonMap?)> commands = [];
   final List<Uint8List> inputs = [];
   final List<bool> claims = [];
-  final List<(int, int)> resizes = [];
   final List<FakeHandle> handles = [];
   final List<String> attached = [];
   final List<String> detached = [];
@@ -107,10 +108,6 @@ class FakeMachineApi implements MachineApi {
 
   @override
   void dropQueued(PtyHandle handle) => queuedDrops++;
-
-  @override
-  Future<void> resize(PtyHandle handle, int cols, int rows) async =>
-      resizes.add((cols, rows));
 
   @override
   Uint8List? cachedTail(String paneKey) => tail;

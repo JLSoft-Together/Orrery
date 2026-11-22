@@ -5,26 +5,60 @@ import 'package:xterm/xterm.dart';
 
 import 'terminal_fonts.dart';
 
+const EdgeInsets terminalPadding = EdgeInsets.symmetric(
+  horizontal: 4,
+  vertical: 2,
+);
+
+const double terminalMinFont = 1;
+const double terminalMaxFont = 18;
+const double terminalMaxZoom = 8;
+
+Size terminalCell(double fontSize) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: 'mmmmmmmmmm',
+      style: orreryTerminalStyle(fontSize).toTextStyle(),
+    ),
+    textScaler: TextScaler.noScaling,
+    textDirection: TextDirection.ltr,
+  )..layout();
+  final size = Size(painter.width / 10, painter.height);
+  painter.dispose();
+  return size;
+}
+
+double terminalFitFont(int cols, double width) {
+  final room = width - terminalPadding.horizontal;
+  if (cols < 1 || room <= 0) return terminalMinFont;
+  const base = 12.0;
+  var font = (base * room / (cols * terminalCell(base).width)).clamp(
+    terminalMinFont,
+    terminalMaxFont,
+  );
+  for (var i = 0; i < 4 && font > terminalMinFont; i++) {
+    if (cols * terminalCell(font).width <= room) break;
+    font = math.max(terminalMinFont, font * 0.98);
+  }
+  return font;
+}
+
 class TerminalSurface extends StatefulWidget {
   const TerminalSurface({
     super.key,
     required this.terminal,
     required this.controller,
-    required this.typing,
     required this.direct,
     required this.deskCols,
     required this.deskRows,
-    required this.onFit,
     this.overlay,
   });
 
   final Terminal terminal;
   final TerminalController controller;
-  final bool typing;
   final bool direct;
   final int deskCols;
   final int deskRows;
-  final void Function(int cols, int rows) onFit;
   final Widget? overlay;
 
   @override
@@ -32,27 +66,30 @@ class TerminalSurface extends StatefulWidget {
 }
 
 class _TerminalSurfaceState extends State<TerminalSurface> {
-  static const double _minFont = 8;
-  static const double _maxFont = 22;
-
   final ScrollController _scroll = ScrollController();
   final FocusNode _focus = FocusNode();
-  final Map<int, Offset> _pointers = {};
-  double _fontSize = 12;
-  double _pinchStartDistance = 0;
-  double _pinchStartFont = 12;
-  int _lastFitCols = 0;
-  int _lastFitRows = 0;
+  final TransformationController _zoom = TransformationController();
+  int _fontCols = 0;
+  double _fontWidth = 0;
+  double _font = 12;
+  bool _zoomed = false;
+  final Map<int, (Offset, Duration)> _downs = {};
+  (Offset, Duration)? _lastTap;
 
   @override
   void initState() {
     super.initState();
+    _zoom.addListener(_onZoom);
     _syncDesk();
+  }
+
+  void _onZoom() {
+    final zoomed = _zoom.value.getMaxScaleOnAxis() > 1.01;
+    if (zoomed != _zoomed) setState(() => _zoomed = zoomed);
   }
 
   void _syncDesk() {
     final terminal = widget.terminal;
-    if (widget.typing) return;
     if (terminal.viewWidth != widget.deskCols ||
         terminal.viewHeight != widget.deskRows) {
       terminal.resize(widget.deskCols, widget.deskRows);
@@ -62,9 +99,11 @@ class _TerminalSurfaceState extends State<TerminalSurface> {
   @override
   void didUpdateWidget(TerminalSurface old) {
     super.didUpdateWidget(old);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncDesk();
-    });
+    if (widget.deskCols != old.deskCols || widget.deskRows != old.deskRows) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncDesk();
+      });
+    }
     if (widget.direct && !old.direct) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _focus.requestFocus();
@@ -77,108 +116,95 @@ class _TerminalSurfaceState extends State<TerminalSurface> {
   void dispose() {
     _scroll.dispose();
     _focus.dispose();
+    _zoom.dispose();
     super.dispose();
   }
 
-  Size _cell() {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: 'M' * 20,
-        style: orreryTerminalStyle(_fontSize).toTextStyle(),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final size = Size(painter.width / 20, painter.height);
-    painter.dispose();
-    return size;
+  double _fontFor(double width) {
+    if (_fontCols != widget.deskCols || _fontWidth != width) {
+      _fontCols = widget.deskCols;
+      _fontWidth = width;
+      _font = terminalFitFont(widget.deskCols, width);
+    }
+    return _font;
   }
+
+  void _resetZoom() => _zoom.value = Matrix4.identity();
 
   void _pointerDown(PointerDownEvent event) {
-    _pointers[event.pointer] = event.position;
-    if (_pointers.length == 2) {
-      _pinchStartDistance = _distance();
-      _pinchStartFont = _fontSize;
+    _downs[event.pointer] = (event.position, event.timeStamp);
+    if (_downs.length > 1) _lastTap = null;
+  }
+
+  void _pointerUp(PointerUpEvent event) {
+    final down = _downs.remove(event.pointer);
+    if (down == null || _downs.isNotEmpty) return;
+    final (at, since) = down;
+    final tap =
+        (event.position - at).distance < 18 &&
+        event.timeStamp - since < const Duration(milliseconds: 250);
+    if (!tap) {
+      _lastTap = null;
+      return;
     }
-  }
-
-  void _pointerMove(PointerMoveEvent event) {
-    if (!_pointers.containsKey(event.pointer)) return;
-    _pointers[event.pointer] = event.position;
-    if (_pointers.length != 2 || _pinchStartDistance < 8) return;
-    final next = (_pinchStartFont * _distance() / _pinchStartDistance).clamp(
-      _minFont,
-      _maxFont,
-    );
-    if ((next - _fontSize).abs() >= 0.5) setState(() => _fontSize = next);
-  }
-
-  void _pointerUp(PointerEvent event) {
-    _pointers.remove(event.pointer);
-  }
-
-  double _distance() {
-    final points = _pointers.values.toList();
-    return (points[0] - points[1]).distance;
+    final last = _lastTap;
+    if (last != null &&
+        event.timeStamp - last.$2 < const Duration(milliseconds: 300) &&
+        (event.position - last.$1).distance < 40) {
+      _lastTap = null;
+      _resetZoom();
+      return;
+    }
+    _lastTap = (event.position, event.timeStamp);
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cell = _cell();
-        final cols = math.max(20, (constraints.maxWidth / cell.width).floor());
-        final rows = math.max(5, (constraints.maxHeight / cell.height).floor());
-        if (cols != _lastFitCols || rows != _lastFitRows) {
-          _lastFitCols = cols;
-          _lastFitRows = rows;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) widget.onFit(cols, rows);
-          });
-        }
-        final deskWidth = widget.deskCols * cell.width;
-        final wide = !widget.typing && deskWidth > constraints.maxWidth;
-        final style = orreryTerminalStyle(_fontSize);
+        final font = _fontFor(constraints.maxWidth);
         final view = TerminalView(
           widget.terminal,
           controller: widget.controller,
           scrollController: _scroll,
           focusNode: _focus,
-          autoResize: widget.typing,
+          autoResize: false,
           hardwareKeyboardOnly: !widget.direct,
           autofocus: false,
-          textStyle: style,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          textStyle: orreryTerminalStyle(font),
+          textScaler: TextScaler.noScaling,
+          padding: terminalPadding,
           deleteDetection: true,
           keyboardType: TextInputType.multiline,
         );
-        final body = wide
-            ? SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: deskWidth + 8,
-                  height: constraints.maxHeight,
-                  child: view,
-                ),
-              )
-            : view;
-        return Listener(
-          onPointerDown: _pointerDown,
-          onPointerMove: _pointerMove,
-          onPointerUp: _pointerUp,
-          onPointerCancel: _pointerUp,
-          child: ClipRect(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: const Color(0xFF14151A),
-                    child: body,
+        return ClipRect(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ColoredBox(
+                  color: const Color(0xFF14151A),
+                  child: Listener(
+                    onPointerDown: _pointerDown,
+                    onPointerUp: _pointerUp,
+                    onPointerCancel: (e) => _downs.remove(e.pointer),
+                    child: InteractiveViewer(
+                      key: const ValueKey('term-zoom'),
+                      transformationController: _zoom,
+                      minScale: 1,
+                      maxScale: terminalMaxZoom,
+                      panEnabled: _zoomed,
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        child: view,
+                      ),
+                    ),
                   ),
                 ),
-                if (widget.overlay != null)
-                  Positioned.fill(child: widget.overlay!),
-              ],
-            ),
+              ),
+              if (widget.overlay != null)
+                Positioned.fill(child: widget.overlay!),
+            ],
           ),
         );
       },

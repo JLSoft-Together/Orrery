@@ -28,7 +28,7 @@ export async function uiSteps(c, page, peer) {
     const first = await c.text(cards().first())
     if (!/docs/.test(first) || !/Chờ bạn/.test(first)) throw new Error(`first card ${first}`)
     const t2 = await c.text(byId(page, 'session-t2'))
-    if (!/Edit · src\/app\.ts/.test(t2) || !/Đang chạy/.test(t2)) throw new Error(`t2 card ${t2}`)
+    if (!/Edit, src\/app\.ts/.test(t2) || !/Đang chạy/.test(t2)) throw new Error(`t2 card ${t2}`)
     if ((await byId(page, 'session-t2').locator('[data-testid="status-chip"] svg').count()) !== 1) throw new Error('chip icon missing')
     await byId(page, 'filter-running').click()
     await settleCount(2, 'running filter')
@@ -95,7 +95,7 @@ export async function uiSteps(c, page, peer) {
     })
     const px = Number(/blur\((\d+)px/.exec(blur)?.[1] ?? 99)
     if (px > 16) throw new Error(`tab bar blur ${blur}`)
-    for (const pal of ['mist', 'nebula', 'aurora', 'graphite', 'dawn', 'galaxy', 'orrery', 'console']) {
+    for (const pal of ['mist', 'graphite', 'mono', 'orrery', 'galaxy']) {
       await byId(page, `palette-${pal}`).click()
       await page.waitForFunction((p) => document.documentElement.dataset.nextTheme === p, pal)
       await wait(480)

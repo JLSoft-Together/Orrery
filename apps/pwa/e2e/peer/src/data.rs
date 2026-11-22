@@ -181,3 +181,11 @@ pub fn demo_payload() -> Vec<u8> {
     let text = "\x1b[2J\x1b[H\x1b[90m$ claude --resume 4f2a\x1b[0m\r\n\x1b[31m●\x1b[0m Đọc \x1b[36mapps/mobile/lib/ui/terminal/key_bar.dart\x1b[0m\r\n\x1b[31m●\x1b[0m Sửa \x1b[36mdocs/design/v97-mobile-ui/index.html\x1b[0m\r\n  \x1b[32m+ 214\x1b[0m \x1b[31m- 0\x1b[0m\r\n\x1b[31m●\x1b[0m Bash(npm run typecheck -w @ccm/web)\r\n  └ 0 lỗi, 2 cảnh báo\r\n\r\n\x1b[33m✻\x1b[0m Đang dựng khung… (2m 14s · esc)\r\n\r\n\x1b[35m> \x1b[0m";
     text.as_bytes().to_vec()
 }
+
+pub fn tui_box(cols: u64) -> String {
+    let inner = cols.saturating_sub(2) as usize;
+    let top = format!("\u{256d}{}\u{256e}", "\u{2500}".repeat(inner));
+    let mid = format!("\u{2502} > {}\u{2502}", " ".repeat(inner.saturating_sub(3)));
+    let bottom = format!("\u{2570}{}\u{256f}", "\u{2500}".repeat(inner));
+    format!("\x1b[m{top}\x1b[m\r\n\x1b[m{mid}\x1b[m\r\n\x1b[m{bottom}\x1b[m\x1b[2;5H")
+}

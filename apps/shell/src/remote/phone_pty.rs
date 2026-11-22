@@ -49,16 +49,15 @@ impl Phone {
     }
 
     pub(super) async fn pty_resize(&mut self, id: &str, v: &Value) -> bool {
-        let Some(a) = stream_of(v).and_then(|s| self.x.attaches.get(&s)) else { return self.sec.json(&error(Value::from(id), "notFound")).await };
-        let sent = a.tx.try_send(ToHub::Resize(dim(v, "cols", 80), dim(v, "rows", 24))).is_ok();
-        let reply = if sent { serde_json::json!({ "re": id, "ok": true }) } else { error(Value::from(id), "busy") };
+        let known = stream_of(v).is_some_and(|s| self.x.attaches.contains_key(&s));
+        let reply = if known { serde_json::json!({ "re": id, "ok": true }) } else { error(Value::from(id), "notFound") };
         self.sec.json(&reply).await
     }
 
-    pub(super) async fn pty_input(&mut self, stream: u32, bytes: Vec<u8>, claim: bool) -> bool {
+    pub(super) async fn pty_input(&mut self, stream: u32, bytes: Vec<u8>) -> bool {
         let entered = bytes.iter().any(|b| matches!(b, 13 | 10));
         let Some(a) = self.x.attaches.get(&stream) else { return true };
-        if a.tx.try_send(ToHub::Input(bytes, claim)).is_ok() {
+        if a.tx.try_send(ToHub::Input(bytes)).is_ok() {
             if entered {
                 self.typed(stream);
             }

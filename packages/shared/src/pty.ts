@@ -50,6 +50,8 @@ export type PtyServerMessage =
   | { t: 'branch'; branch: string | null }
   /** Validated (real, existing) shell folder; null = the reported one was refused. Re-sent on attach. */
   | { t: 'cwd'; cwd: string | null }
+  | { t: 'cmd'; phase: 'start'; command: string }
+  | { t: 'cmd'; phase: 'end'; command: string; code: number; ms: number; cwd?: string }
   | { t: 'wt.list'; repo: string | null; worktrees: PtyWorktree[] }
   | { t: 'wt.added'; path: string; branch: string; copied?: string[] }
   | { t: 'wt.removed'; path: string }

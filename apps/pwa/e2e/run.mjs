@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium, webkit } from 'playwright'
 import { cleanup, killTree, startRelay, waitHealth } from './lib/procs.mjs'
 import { runScenario, STEPS_PER_BROWSER } from './lib/scenario.mjs'
+import { REMOTE_SCENARIO_STEPS, runRemoteScenario } from './lib/remote-scenario.mjs'
 import { writeBlankVideo } from './lib/y4m.mjs'
 import { startStatic } from './lib/server.mjs'
 
@@ -19,6 +20,7 @@ const flags = Object.fromEntries(
   }),
 )
 const browsers = (flags.browsers ?? 'webkit,chromium').split(',')
+const remote = flags.scenario === 'remote'
 const relayPort = Number(flags.relayPort ?? 8791)
 const inspectorPort = Number(flags.inspectorPort ?? 9331)
 const relayHttp = `http://127.0.0.1:${relayPort}`
@@ -88,10 +90,11 @@ async function main() {
     await waitHealth(relayHttp, 90_000).catch((e) => {
       throw new Error(`${e.message}\n${relay.log.join('')}`)
     })
-    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, qaDirB, qaDirPush, qaDirC, qaDirD, qaDirE, qaDirF, qaDirG, qaDirH, videoPath, webHash: stat.state.web }
+    const failDir = flags.failDir ?? join(pwa, 'e2e/.out/fail')
+    const env = { base: `http://127.0.0.1:${stat.port}`, relayHttp, peerExe, qaDir, qaDirB, qaDirPush, qaDirC, qaDirD, qaDirE, qaDirF, qaDirG, qaDirH: remote ? join(pwa, 'e2e/.out/remote/a/b') : qaDirH, videoPath, webHash: stat.state.web, failDir }
     for (const browserName of browsers) {
       try {
-        await runScenario({ browserName, launch, env, record: (r) => results.push(r) })
+        await (remote ? runRemoteScenario : runScenario)({ browserName, launch, env, record: (r) => results.push(r) })
       } catch (error) {
         console.log(`${browserName}: stopped: ${String(error?.message ?? error).split('\n')[0]}`)
       }
@@ -106,11 +109,11 @@ async function main() {
     } catch {}
   }
   mkdirSync(join(pwa, 'e2e/.out'), { recursive: true })
-  writeFileSync(join(pwa, 'e2e/.out/results.json'), JSON.stringify({ at: new Date().toISOString(), results }, null, 2))
+  writeFileSync(join(pwa, remote ? 'e2e/.out/results-remote.json' : 'e2e/.out/results.json'), JSON.stringify({ at: new Date().toISOString(), results }, null, 2))
   for (const r of results) console.log(`${r.ok ? 'PASS' : 'FAIL'} [${r.browser}] ${r.name}${r.ok ? ` (${r.ms} ms)` : ` -> ${r.error}`}`)
   const pass = results.filter((r) => r.ok).length
   const fail = results.length - pass
-  const expected = browsers.length * STEPS_PER_BROWSER
+  const expected = browsers.length * (remote ? REMOTE_SCENARIO_STEPS : STEPS_PER_BROWSER)
   console.log(`e2e: ${pass} pass, ${fail} fail, ${results.length}/${expected} steps ran`)
   process.exitCode = fail === 0 && results.length === expected ? 0 : 1
 }

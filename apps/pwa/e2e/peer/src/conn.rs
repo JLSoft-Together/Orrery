@@ -112,6 +112,13 @@ impl Conn {
         }
     }
 
+    pub fn wide(&mut self, cols: u64) -> Vec<Out> {
+        match self {
+            Conn::Live(live) => live.wide(cols),
+            _ => Vec::new(),
+        }
+    }
+
     pub fn resize_burst(&mut self, snapshot: bool) -> Vec<Out> {
         match self {
             Conn::Live(live) => live.resize_burst(snapshot),
@@ -232,6 +239,15 @@ impl Live {
         outs
     }
 
+    pub fn wide(&mut self, cols: u64) -> Vec<Out> {
+        let mut outs = Vec::new();
+        for stream in self.attached.clone() {
+            outs.extend(json_out(&mut self.transport, &json!({"t": "pty.resized", "stream": stream, "cols": cols, "rows": 24})));
+            outs.extend(json_out(&mut self.transport, &json!({"t": "pty.snapshot", "stream": stream, "cols": cols, "rows": 24, "gen": 1, "data": data::tui_box(cols)})));
+        }
+        outs
+    }
+
     fn big(&mut self) -> Vec<Out> {
         let payload = data::big_payload();
         let mut outs = Vec::new();
@@ -309,7 +325,7 @@ impl Live {
                         json!({ "re": id, "ok": true })
                     }
                     Some("pty.resize") => {
-                        println!("{}", json!({"ev": "resize", "stream": value.get("stream"), "cols": value.get("cols"), "rows": value.get("rows")}));
+                        println!("{}", json!({"ev": "resize", "stream": value.get("stream"), "cols": value.get("cols"), "rows": value.get("rows"), "claim": value.get("claim")}));
                         json!({ "re": id, "ok": true })
                     }
                     Some("ws.keys") | Some("ws.send") | Some("ws.open") | Some("ws.close") | Some("ws.rename") | Some("ws.move") | Some("ws.reopen") | Some("ws.compact") if desk.view_only => json!({ "re": id, "ok": false, "error": "denied" }),

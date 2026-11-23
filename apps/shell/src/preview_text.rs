@@ -41,6 +41,7 @@ fn run_title(vi: bool, kind: &str, a: &str, b: &str) -> String {
         (false, "ff") => format!("Fast-forward {b} to {a}?"),
         (false, "squash") => format!("Squash {a} into one commit on {b}?"),
         (false, "abort") => format!("Abort the {a} in progress?"),
+        (false, "stashdrop") => format!("Drop {a}?"),
         (false, "take") => format!("Take {a} from {b} into this checkout?"),
         (false, "wtsetup") => "Run the worktree setup commands?".into(),
         (false, "wtcleanup") => "Run the worktree cleanup commands?".into(),
@@ -50,6 +51,7 @@ fn run_title(vi: bool, kind: &str, a: &str, b: &str) -> String {
         (true, "ff") => format!("Fast-forward {b} lên {a}?"),
         (true, "squash") => format!("Gộp {a} thành một commit trên {b}?"),
         (true, "abort") => format!("Huỷ {a} đang làm dở?"),
+        (true, "stashdrop") => format!("Xoá {a}?"),
         (true, "take") => format!("Lấy {a} từ {b} vào checkout này?"),
         (true, "wtsetup") => "Chạy các lệnh setup của worktree?".into(),
         (true, "wtcleanup") => "Chạy các lệnh dọn của worktree?".into(),
@@ -63,6 +65,7 @@ fn run_detail(vi: bool, kind: &str, lines: &[String]) -> String {
     match (vi, kind) {
         (false, "restore") => format!("These go back to how they were at the checkpoint; files that did not exist then go to the trash:\n\n{list}"),
         (false, "abort") => format!("Orrery will run:\n\n{list}\n\nConflict resolutions not yet committed are lost."),
+        (false, "stashdrop") => format!("Orrery will run:\n\n{list}\n\nThe stash is deleted and its changes cannot be brought back."),
         (false, "take") => format!("Orrery will run:\n\n{list}\n\nThe file in this checkout is replaced (it has no uncommitted changes)."),
         (false, "wtsetup") => format!("This repo's .orrery/worktree.json asks to run these in each new worktree. You see them in a terminal and can stop them. Asked again only when they change:\n\n{list}"),
         (false, "wtcleanup") => format!("This repo's .orrery/worktree.json asks to run these in the worktree before it is removed (max 2 minutes). Asked again only when they change:\n\n{list}"),
@@ -70,6 +73,7 @@ fn run_detail(vi: bool, kind: &str, lines: &[String]) -> String {
         (false, _) => format!("Orrery will run:\n\n{list}"),
         (true, "restore") => format!("Các file này trở về như lúc checkpoint; file chưa có lúc đó sẽ vào thùng rác:\n\n{list}"),
         (true, "abort") => format!("Orrery sẽ chạy:\n\n{list}\n\nPhần giải xung đột chưa commit sẽ mất."),
+        (true, "stashdrop") => format!("Orrery sẽ chạy:\n\n{list}\n\nStash bị xoá và không lấy lại được thay đổi trong đó."),
         (true, "take") => format!("Orrery sẽ chạy:\n\n{list}\n\nFile ở checkout này bị thay (nó không có thay đổi chưa commit)."),
         (true, "wtsetup") => format!(".orrery/worktree.json của repo muốn chạy các lệnh này trong mỗi worktree mới. Các lệnh chạy trong terminal, bạn thấy và dừng được. Chỉ hỏi lại khi nội dung đổi:\n\n{list}"),
         (true, "wtcleanup") => format!(".orrery/worktree.json của repo muốn chạy các lệnh này trong worktree trước khi xoá (max 2 phút). Chỉ hỏi lại khi nội dung đổi:\n\n{list}"),
@@ -288,6 +292,8 @@ mod tests {
         assert_eq!(r.message, "Fast-forward dev to main?");
         assert_eq!(r.ok, "Continue");
         assert_eq!(confirm_spec("en", "run", &json!({"kind": "amend", "lines": ["git commit --amend"]})).unwrap().message, "Amend the last commit?");
+        let d = confirm_spec("vi", "run", &json!({"kind": "stashdrop", "a": "stash@{0}: x", "lines": ["git stash drop"]})).unwrap();
+        assert_eq!(d.message, "Xoá stash@{0}: x?");
     }
 
     #[test]

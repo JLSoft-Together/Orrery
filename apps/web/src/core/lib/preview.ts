@@ -232,6 +232,20 @@ export type DryMerge = { ok: true; clean: boolean; conflicts: string[] } | { ok:
 export type MergeKind = 'merge' | 'squash' | 'rebase' | 'cherry-pick' | 'revert'
 export type MergeStateResult = { ok: true; kind: MergeKind | null } | { ok: false; error: 'failed' | 'unavailable' }
 export type MergeAbortResult = { ok: true } | { ok: false; error: 'none' | 'cancelled' | 'failed' | 'unavailable'; detail?: string }
+export interface StashEntry {
+  hash: string
+  index: number
+  time: number
+  untracked: boolean
+  branch: string
+  message: string
+}
+export type StashError = 'denied' | 'nothing' | 'no-commit' | 'conflict' | 'dirty' | 'gone' | 'cancelled' | 'timeout' | 'failed' | 'unavailable'
+export type StashList = { ok: true; stashes: StashEntry[] } | { ok: false; error: StashError; detail?: string }
+export type StashOpResult = { ok: true; hash?: string } | { ok: false; error: StashError; detail?: string }
+export type StashRequest = { op: 'list' } | { op: 'push'; name?: string; untracked?: boolean } | { op: 'apply' | 'pop' | 'drop'; hash: string }
+export type UndoCommitError = 'denied' | 'missing' | 'no-commit' | 'stale' | 'root-commit' | 'merge' | 'pushed' | 'timeout' | 'failed' | 'unavailable'
+export type UndoCommitResult = { ok: true; hash: string; message: string; subject: string } | { ok: false; error: UndoCommitError; detail?: string }
 export interface BlameCommit {
   author: string
   time: number
@@ -364,6 +378,8 @@ interface PreviewBridge {
   checklist?: (dir: string, req: ChecklistReq & { wt: string }) => Promise<ChecklistReply>
   mergeState?: (root: string) => Promise<MergeStateResult>
   mergeAbort?: (root: string) => Promise<MergeAbortResult>
+  gitStash?: (root: string, req: StashRequest) => Promise<StashList | StashOpResult>
+  gitUndoCommit?: (root: string, hash: string) => Promise<UndoCommitResult>
   gitBlame?: (file: string) => Promise<BlameResult>
   commandsList?: (dir: string) => Promise<CommandsListResult>
   notesRead?: (root: string) => Promise<NoteRead>
@@ -484,6 +500,11 @@ export const hasChecklist = typeof bridge?.checklist === 'function'
 export const checklist = (dir: string, wt: string, req: ChecklistReq): Promise<ChecklistReply> => bridge?.checklist?.(dir, { ...req, wt }) ?? Promise.resolve(unavailable)
 export const mergeState = (root: string): Promise<MergeStateResult> => bridge?.mergeState?.(root) ?? Promise.resolve(unavailable)
 export const mergeAbort = (root: string): Promise<MergeAbortResult> => bridge?.mergeAbort?.(root) ?? Promise.resolve(unavailable)
+export const hasStash = typeof bridge?.gitStash === 'function'
+export const stashList = (root: string): Promise<StashList> => (bridge?.gitStash?.(root, { op: 'list' }) as Promise<StashList> | undefined) ?? Promise.resolve(unavailable)
+export const stashRun = (root: string, req: Exclude<StashRequest, { op: 'list' }>): Promise<StashOpResult> => (bridge?.gitStash?.(root, req) as Promise<StashOpResult> | undefined) ?? Promise.resolve(unavailable)
+export const hasUndoCommit = typeof bridge?.gitUndoCommit === 'function'
+export const gitUndoCommit = (root: string, hash: string): Promise<UndoCommitResult> => bridge?.gitUndoCommit?.(root, hash) ?? Promise.resolve(unavailable)
 export const hasCheckpoints = typeof bridge?.cpState === 'function'
 export const hasBlame = typeof bridge?.gitBlame === 'function'
 export const gitBlame = (file: string): Promise<BlameResult> => bridge?.gitBlame?.(file) ?? Promise.resolve(unavailable)

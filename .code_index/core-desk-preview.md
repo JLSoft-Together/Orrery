@@ -9,6 +9,7 @@
 | `apps/core/crates/core-desk/src/preview/gate.rs` | quyền đường dẫn: root đã grant, realpath, chặn `..` / symlink ra ngoài |
 | `apps/core/crates/core-desk/src/preview/changes.rs` | trạng thái Changes (stage / discard) |
 | `apps/core/crates/core-desk/src/preview/commit.rs` | commit, amend, hook |
+| `apps/core/crates/core-desk/src/preview/stash.rs` | `ccm:git-stash` (list/push/apply/pop/drop, tìm theo hash, `GIT_LITERAL_PATHSPECS=0` vì stash -u hỏng khi bật) + `ccm:git-undo-commit` (`reset --soft HEAD~1`, chặn root / merge / đã push / HEAD lệch) |
 | `apps/core/crates/core-desk/src/preview/log.rs` | Git Log (đồ thị, refs, filter) |
 | `apps/core/crates/core-desk/src/preview/branches.rs` | tạo / fast-forward / fetch / xoá nhánh, push range |
 | `apps/core/crates/core-desk/src/preview/worktrees.rs` | worktree |
@@ -33,6 +34,9 @@ Phía vỏ: `apps/shell/src/preview_host.rs` (callback `preview.*`), `preview_gr
 - Watcher bỏ `node_modules`, `.git`, `build`, `.gradle`, `.dart_tool`, `dist`; debounce 150 ms.
 - Worktree config (v111 G2): `preview/wtconfig.rs` đọc `.orrery/worktree.json` (`{copy?, setup?, cleanup?}`, field sai kiểu bị bỏ và báo trong `errors`), hash duyệt lưu `<data>/worktree-approved.json` theo repo + loại, `cleanup_target` chặn dirty / main / unknown, `run_cleanup` timeout 120 s kill tree. Kênh `ccm:wt-config` / `wt-approve` / `wt-suggest` / `wt-cleanup` ở `ipc_wt.rs`; native confirm là `run` kind `wtsetup` / `wtcleanup` / `wtconfig` (`apps/shell/src/preview_text.rs`).
 - Shell `worktree.rs`: `wt.add` ưu tiên `copy` của file và trả `setup: true`; `wt.remove` có `deleteBranch` chạy `git branch -d` (không `-D`), trả `branch: deleted | kept`.
+
+- Checklist trước merge (v111 G3): `preview/checklist.rs` lưu `<data>/checklists/<sha256 16 hex của đường dẫn worktree đã chuẩn hoá>.json` `{items:[{id,text,done,by,at}], check:{script,state,at,head}, seq}`; ghi nguyên tử (tmp + rename), file hỏng / quá 256 KB đọc như rỗng, tối đa 50 việc, text 1 dòng ≤ 200. Kênh `ccm:checklist` (`ipc_wt.rs`): `dir` là pane đã duyệt, `wt` phải nằm trong `git worktree list` của repo đó (`worktree_of`), op list / add / toggle / remove / setScript / setCheck; UI luôn là `owner`. `head` trả về là HEAD hiện tại, UI so với `check.head` để báo "cũ". Data dir cho MCP lấy qua `checklist::set_data_dir` (gọi ở `preview::register`).
+- Shell `worktree.rs`: `wt.remove` nhận thêm `squashed`: `git branch -d` từ chối thì chỉ khi `git diff --quiet <main> <branch>` rỗng mới `-D`; còn khác thì giữ nhánh như cũ.
 
 ## Liên kết
 

@@ -1,7 +1,7 @@
 use super::branches::{self, Auth};
 use super::gate::{self, denied, Latest};
 use super::paths::{dirname, root_key};
-use super::{changes, commit, gitmisc, log, secrets};
+use super::{changes, commit, gitmisc, log, secrets, stash};
 use crate::{arg, Ctx, Desk};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -248,6 +248,39 @@ pub fn register(desk: &mut Desk) {
     });
     desk.on(MODULE, "ccm:git-commit-cancel", move |ctx, args| {
         Ok(json!(gate::repo_of(ctx, arg(args, 0)).map(|repo| c2.cancel(&root_key(&repo))).unwrap_or(false)))
+    });
+    let stashes = Arc::new(Latest::default());
+    desk.on(MODULE, "ccm:git-stash", move |ctx, args| {
+        let req = arg(args, 0);
+        let Some(repo) = gate::repo_of(ctx, field(req, "root")) else { return Ok(denied()) };
+        let op = field(req, "op").as_str().unwrap_or("");
+        if op == "list" {
+            return Ok(stash::list(&repo));
+        }
+        let key = root_key(&repo);
+        let Some(flag) = stashes.try_start(&key) else { return Ok(json!({"ok": false, "error": "failed", "detail": "busy"})) };
+        let res = match op {
+            "push" => stash::push(&repo, opt_field(req, "name"), field(req, "untracked") == &json!(true)),
+            "apply" => stash::apply(&repo, field(req, "hash")),
+            "pop" => stash::pop(&repo, field(req, "hash")),
+            "drop" => match stash::drop_label(&repo, field(req, "hash")) {
+                None => json!({"ok": false, "error": "gone"}),
+                Some(label) => {
+                    if gate::confirm(ctx, "run", json!({"kind": "stashdrop", "a": label, "b": "", "lines": [format!("cd {repo}"), "git stash drop".to_string()]})) {
+                        stash::drop_entry(&repo, field(req, "hash"))
+                    } else {
+                        json!({"ok": false, "error": "cancelled"})
+                    }
+                }
+            },
+            _ => denied(),
+        };
+        stashes.finish(&key, &flag);
+        Ok(res)
+    });
+    desk.on(MODULE, "ccm:git-undo-commit", |ctx, args| {
+        let req = arg(args, 0);
+        Ok(with_repo(ctx, req, |repo| stash::undo_commit(repo, field(req, "hash"))))
     });
     let blames = Arc::new(Latest::default());
     desk.on(MODULE, "ccm:git-blame", move |ctx, args| {

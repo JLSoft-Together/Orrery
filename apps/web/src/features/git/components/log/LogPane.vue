@@ -9,7 +9,8 @@ import type { BranchOpResult, CommitFile, CommitSessionChip, LogCommit } from '@
 import { absoluteIn, fileStepKey, scrollSideways } from '../../lib/changesView'
 import { expandableIds, type RefRow } from '../../lib/gitRefs'
 import { hasFilters } from '../../lib/logQuery'
-import { gitBranchCreate, gitBranchDelete, gitBranchUpdate, gitFetch, hasBranchOps, hasPush } from '../../../../core/lib/preview'
+import { gitBranchCreate, gitBranchDelete, gitBranchUpdate, gitCommit, gitFetch, gitUndoCommit, hasBranchOps, hasPush, hasUndoCommit } from '../../../../core/lib/preview'
+import { canOfferUndo, undoErrorKey } from '../../lib/stash'
 import { readFavorites, readRefsView, writeFavorites, writeRefsView } from '../../lib/refPrefs'
 import { useGitLog } from '../../composables/useGitLog'
 import LogCommitDetails from './LogCommitDetails.vue'
@@ -21,6 +22,7 @@ import LogRefsTree from './LogRefsTree.vue'
 import LogTable from './LogTable.vue'
 import NewBranchDialog from './NewBranchDialog.vue'
 import PushDialog from './PushDialog.vue'
+import StashMenu from './StashMenu.vue'
 import PrPanel from '../PrPanel.vue'
 import { useCiEvents } from '../../composables/useCiEvents'
 import { AccessPrompt } from '@features/files'
@@ -135,6 +137,33 @@ const commitFiles = computed(() => (log.detail.value?.ok ? log.detail.value.file
 const diffOpen = computed(() => !!shown.value && !!log.root.value && (cols.value.preview || diffFull.value))
 const shownIndex = computed(() => commitFiles.value.findIndex((f) => f.path === shown.value?.file.path))
 const commitIndex = computed(() => log.commits.value.findIndex((c) => c.hash === log.selected.value))
+const undoNote = ref<{ text: string; failed: boolean; redo: { root: string; message: string } | null } | null>(null)
+const undoBusy = ref(false)
+
+async function undoLast(hash: string): Promise<void> {
+  const root = log.root.value
+  if (!root || undoBusy.value) return
+  undoBusy.value = true
+  const res = await gitUndoCommit(root, hash)
+  undoBusy.value = false
+  if (res.ok) {
+    undoNote.value = { text: t('v112stash.undone', { hash: res.hash.slice(0, 7), subject: res.subject }), failed: false, redo: { root, message: res.message } }
+    log.reload()
+  } else undoNote.value = { text: t(undoErrorKey(res.error), { detail: res.detail ?? '' }), failed: true, redo: null }
+}
+
+async function redoCommit(): Promise<void> {
+  const redo = undoNote.value?.redo
+  if (!redo || undoBusy.value) return
+  undoBusy.value = true
+  const res = await gitCommit(redo.root, redo.message, false)
+  undoBusy.value = false
+  if ('ok' in res && res.ok) {
+    undoNote.value = { text: t('v112stash.redone'), failed: false, redo: null }
+    log.reload()
+  } else undoNote.value = { text: t(`workspace.commit.error.${'error' in res ? res.error : 'failed'}`, { detail: 'detail' in res ? (res.detail ?? '') : '' }), failed: true, redo: null }
+}
+
 const rootCommit = computed(() => !!log.detail.value?.ok && !log.detail.value.parents.length)
 
 function syncDetail(): void {
@@ -394,6 +423,7 @@ function commitMenu(hash: string, x: number, y: number): void {
     { id: 'hash', label: t('workspace.log.menu.copyHash'), run: () => copy(hash) },
     { id: 'msg', label: t('workspace.log.menu.copyMessage'), run: () => copy(log.detail.value?.ok && log.detail.value.hash === hash ? log.detail.value.message : (c?.subject ?? '')) },
     { id: 'diff', label: t('workspace.log.menu.showDiff'), run: () => openCommit(hash) },
+    ...(hasUndoCommit && canOfferUndo(c, log.refs.value?.head.hash ?? null, headLocal.value?.ahead ?? 0, !!headLocal.value?.upstream) ? [{ id: 'undo', label: t('v112stash.undoMenu'), run: () => void undoLast(hash) }] : []),
   ])
 }
 
@@ -425,6 +455,7 @@ onBeforeUnmount(() => {
       <button type="button" class="ccm-btn-plain size-6 shrink-0 p-0" :aria-pressed="cols.preview" :title="cols.preview ? t('workspace.log.diff.hidePreview') : t('workspace.log.diff.showPreview')" :aria-label="t('workspace.log.diff.preview')" data-log-preview-toggle @click="togglePreview">
         <component :is="cols.preview ? PanelBottomClose : PanelBottom" :size="14" aria-hidden="true" />
       </button>
+      <StashMenu :root="log.root.value" :active="active" />
       <PaneLayoutMore :pane-key="paneKey" />
       <slot name="end" />
     </component>
@@ -441,6 +472,13 @@ onBeforeUnmount(() => {
       @push="askPushHead"
       @changed="log.reload()"
     />
+
+    <p v-if="undoNote" class="flex shrink-0 items-center gap-2 border-b border-line px-3 py-1 text-xs text-ink" :class="undoNote.failed ? 'bg-st-error-soft' : 'bg-fill'" role="status" data-log-undo-notice>
+      <component :is="undoNote.failed ? CircleAlert : CircleCheck" :size="13" class="shrink-0" :class="undoNote.failed ? 'text-st-error' : 'text-success'" aria-hidden="true" />
+      <span class="min-w-0 flex-1 truncate" :title="undoNote.text">{{ undoNote.text }}</span>
+      <button v-if="undoNote.redo" type="button" class="ccm-btn h-6 shrink-0 px-2 text-xs" :disabled="undoBusy" data-log-redo @click="redoCommit">{{ t('v112stash.redo') }}</button>
+      <button type="button" class="shrink-0 cursor-pointer rounded-inner text-ink-faint hover:text-ink" :title="t('workspace.log.branches.dismiss')" :aria-label="t('workspace.log.branches.dismiss')" @click="undoNote = null"><X :size="12" aria-hidden="true" /></button>
+    </p>
 
     <div v-if="log.error.value && !log.commits.value.length" class="grid flex-1 place-items-center p-6 text-center" data-log-fatal>
       <AccessPrompt v-if="log.error.value === 'denied'" :path="log.root.value ?? cwd" @granted="log.reload()" />

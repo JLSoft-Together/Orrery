@@ -31,6 +31,7 @@ pub mod scripts;
 pub mod search;
 pub mod secrets;
 pub mod spawn;
+pub mod stash;
 pub mod worktrees;
 pub mod wtconfig;
 

@@ -1,8 +1,11 @@
 use std::sync::{LazyLock, Mutex};
 
+use core_transcript::chat::export::{self, Form, Meta};
 use core_transcript::chat::page::{Live, Poll};
 use core_transcript::chat::{Agent, PAGE, PAGE_MAX};
 use serde_json::{json, Value};
+use tauri::{AppHandle, Manager};
+use tauri_plugin_dialog::DialogExt;
 
 use crate::remote::chat_src::{page_of, Ask, Hub, Roots, ShellClean, Source, Target};
 use crate::state::lock;
@@ -13,6 +16,7 @@ const KEY_MAX: usize = 200;
 const GEN_MAX: usize = 64;
 const ID_MAX: usize = 100;
 const CWD_MAX: usize = 1024;
+const LABEL_MAX: usize = 200;
 
 pub fn handles(channel: &str) -> bool {
     channel == CHANNEL
@@ -33,8 +37,42 @@ pub struct DeskChat {
 
 static CHAT: LazyLock<DeskChat> = LazyLock::new(DeskChat::default);
 
-pub fn dispatch(args: &[Value]) -> Result<Value, String> {
-    Ok(CHAT.op(&Roots::from_env(), args.first().unwrap_or(&Value::Null)))
+pub fn dispatch(app: &AppHandle, args: &[Value]) -> Result<Value, String> {
+    let v = args.first().unwrap_or(&Value::Null);
+    let reply = CHAT.op(&Roots::from_env(), v);
+    if v["op"] != "export" || reply["ok"] != true {
+        return Ok(reply);
+    }
+    Ok(match v["dest"].as_str().unwrap_or("text") {
+        "save" => save(app, &reply),
+        "telegram" => send(app, v, &reply),
+        _ => reply,
+    })
+}
+
+fn save(app: &AppHandle, reply: &Value) -> Value {
+    let mut d = app.dialog().file().set_file_name(reply["name"].as_str().unwrap_or("session.md")).add_filter("Markdown", &["md"]);
+    if let Some(w) = app.get_webview_window(crate::state::MAIN) {
+        d = d.set_parent(&w);
+    }
+    if let Ok(dir) = app.path().download_dir() {
+        d = d.set_directory(dir);
+    }
+    let Some(file) = d.blocking_save_file().and_then(|p| p.into_path().ok()) else { return json!({ "ok": true, "saved": false }) };
+    if std::fs::write(&file, reply["text"].as_str().unwrap_or("")).is_err() {
+        return fail("write");
+    }
+    json!({ "ok": true, "saved": true, "path": file.to_string_lossy(), "cut": reply["cut"] })
+}
+
+fn send(app: &AppHandle, v: &Value, reply: &Value) -> Value {
+    let caption = format!("{} session: {}", reply["label"].as_str().unwrap_or(""), reply["project"].as_str().unwrap_or(""));
+    let args = json!({ "cwd": v["cwd"], "from": v["key"], "name": reply["name"], "text": reply["text"], "caption": caption });
+    match crate::desk::call_inside(app, "desk:tg-doc", args) {
+        Ok(res) if res["ok"] == true => json!({ "ok": true, "sent": true, "cut": reply["cut"] }),
+        Ok(res) => fail(res["error"].as_str().unwrap_or("failed")),
+        Err(_) => fail("failed"),
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -46,6 +84,9 @@ pub struct Req {
     pub gen: Option<String>,
     pub before: Option<u64>,
     pub limit: usize,
+    pub form: Form,
+    pub branch: String,
+    pub project: String,
 }
 
 fn fail(code: &str) -> Value {
@@ -53,7 +94,7 @@ fn fail(code: &str) -> Value {
 }
 
 pub fn parse(v: &Value) -> Result<Req, &'static str> {
-    let op = v["op"].as_str().filter(|o| matches!(*o, "page" | "poll" | "unwatch")).ok_or("invalid")?;
+    let op = v["op"].as_str().filter(|o| matches!(*o, "page" | "poll" | "unwatch" | "export")).ok_or("invalid")?;
     let key = v["key"].as_str().filter(|k| !k.is_empty() && k.len() <= KEY_MAX).ok_or("invalid")?;
     let agent = if op == "unwatch" { Some(Agent::Claude) } else { v["agent"].as_str().and_then(Agent::parse) }.ok_or("invalid")?;
     let session = v["session"].as_str().unwrap_or("");
@@ -76,7 +117,31 @@ pub fn parse(v: &Value) -> Result<Req, &'static str> {
         Value::Null => None,
         g => Some(g.as_str().filter(|g| g.len() <= GEN_MAX).ok_or("invalid")?.to_owned()),
     };
-    Ok(Req { op: op.to_owned(), key: key.to_owned(), target: Target { agent, terminal: None, cwd: cwd.to_owned() }, session: session.to_owned(), gen, before, limit })
+    let form = match &v["form"] {
+        Value::Null => Form::Full,
+        f => f.as_str().and_then(Form::parse).ok_or("invalid")?,
+    };
+    let label = |k: &str| match &v[k] {
+        Value::Null => Ok(String::new()),
+        Value::String(s) if s.len() <= LABEL_MAX => Ok(s.trim().to_owned()),
+        _ => Err("invalid"),
+    };
+    let (branch, project) = (label("branch")?, label("project")?);
+    Ok(Req { op: op.to_owned(), key: key.to_owned(), target: Target { agent, terminal: None, cwd: cwd.to_owned() }, session: session.to_owned(), gen, before, limit, form, branch, project })
+}
+
+fn project_of(root: &str) -> String {
+    root.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or("").to_owned()
+}
+
+fn branch_of(root: &str) -> String {
+    let git = std::path::Path::new(root).join(".git");
+    let dir = match std::fs::read_to_string(&git) {
+        Ok(link) => link.trim().strip_prefix("gitdir:").map(|d| std::path::PathBuf::from(d.trim())).unwrap_or(git),
+        Err(_) => git,
+    };
+    let head = std::fs::read_to_string(dir.join("HEAD")).unwrap_or_default();
+    head.trim().strip_prefix("ref: refs/heads/").unwrap_or("").to_owned()
 }
 
 fn terminal_of(r: &Req) -> Value {
@@ -106,7 +171,20 @@ impl DeskChat {
                 json!({ "ok": true })
             }
             "poll" => self.poll(&r, roots),
+            "export" => self.export(&r, roots),
             _ => self.page(&r, roots),
+        }
+    }
+
+    fn export(&self, r: &Req, roots: &Roots) -> Value {
+        let Some(src) = self.source(r, roots) else { return fail("empty") };
+        let home = std::env::var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).unwrap_or_default();
+        let project = if r.project.is_empty() { project_of(&src.root) } else { r.project.clone() };
+        let branch = if r.branch.is_empty() { branch_of(&src.root) } else { r.branch.clone() };
+        let meta = Meta { agent: r.target.agent, project: &project, branch: &branch, home: &home, platform: crate::files_ipc::platform() };
+        match export::export(&src.path, &src.root, &meta, r.form, &ShellClean) {
+            Ok(out) => json!({ "ok": true, "text": out.text, "cut": out.cut, "name": export::file_name(&meta, core_transcript::time::now_ms()), "label": export::label(r.target.agent), "project": project }),
+            Err(_) => fail("internal"),
         }
     }
 
@@ -258,6 +336,35 @@ mod tests {
         none["session"] = Value::from("");
         let empty = chat.op(&roots, &none);
         assert_eq!((empty["ok"].clone(), empty["items"].as_array().map(Vec::len)), (Value::Bool(true), Some(0)));
+    }
+
+    #[test]
+    fn export_returns_markdown_without_watching_and_checks_its_fields() {
+        let (roots, file, cwd) = roots("export");
+        std::fs::write(&file, prompt("u1", "Fix login with token sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") + &say("a1", "Done, retry is 500ms.")).unwrap();
+        let chat = DeskChat::default();
+        let mut q = ask("export", &cwd);
+        q["branch"] = Value::from("feat/x");
+        let full = chat.op(&roots, &q);
+        assert_eq!(full["ok"], true);
+        let text = full["text"].as_str().unwrap();
+        assert!(text.contains("### Bạn") && text.contains("### Claude") && text.contains("- Nhánh: feat/x"), "{text}");
+        assert!(!text.contains("AAAAAAAAAAAA") && !text.contains("sk-ant-"), "{text}");
+        assert_eq!((full["label"].as_str(), full["cut"].clone()), (Some("Claude"), Value::Bool(false)));
+        assert!(full["name"].as_str().unwrap().ends_with(".md"));
+        std::fs::create_dir_all(std::path::Path::new(&cwd).join(".git")).unwrap();
+        std::fs::write(std::path::Path::new(&cwd).join(".git").join("HEAD"), "ref: refs/heads/main\n").unwrap();
+        q["branch"] = Value::Null;
+        assert!(chat.op(&roots, &q)["text"].as_str().unwrap().contains("- Nhánh: main"));
+        q["form"] = Value::from("short");
+        let short = chat.op(&roots, &q);
+        assert!(short["text"].as_str().unwrap().starts_with("## Yêu cầu"));
+        assert_eq!(chat.watching(), 0);
+        q["form"] = Value::from("tiny");
+        assert_eq!(chat.op(&roots, &q), fail("invalid"));
+        q["form"] = Value::Null;
+        q["session"] = Value::from("");
+        assert_eq!(chat.op(&roots, &q), fail("empty"));
     }
 
     #[test]

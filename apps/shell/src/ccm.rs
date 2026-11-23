@@ -300,7 +300,10 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             let (handle, channel) = (app.clone(), c.to_owned());
             blocking(move || crate::disk_ram::dispatch(&handle, &channel, &args)).await?
         }
-        c if crate::chat_ipc::handles(c) => blocking(move || crate::chat_ipc::dispatch(&args)).await?,
+        c if crate::chat_ipc::handles(c) => {
+            let handle = app.clone();
+            blocking(move || crate::chat_ipc::dispatch(&handle, &args)).await?
+        }
         c if crate::sys_sample::handles(c) => {
             let channel = c.to_owned();
             blocking(move || crate::sys_sample::dispatch(&channel)).await?

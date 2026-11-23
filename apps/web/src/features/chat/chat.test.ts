@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
+import { createPinia } from 'pinia'
 import en from '../../i18n/en'
 import viMessages from '../../i18n/vi'
 import { parseMarkdown, safeHref } from './markdown'
@@ -138,7 +139,7 @@ describe('ChatView', () => {
       if (req.op === 'page') return { ok: true, gen: 'g', agent: 'claude', items: [me('old', 1, 'oldest question')], older: null }
       return { ok: true, gen: 'g', items: [] }
     })
-    const w = mount(ChatView, { props: { target, active: true, agentLabel: 'Claude', call }, global: { plugins: [i18n] }, attachTo: document.body })
+    const w = mount(ChatView, { props: { target, active: true, agentLabel: 'Claude', call }, global: { plugins: [i18n, createPinia()] }, attachTo: document.body })
     await flushPromises()
     expect(w.findAll('[data-chat-item]')).toHaveLength(60)
     const el = w.get('[data-chat-scroll]').element as HTMLElement
@@ -176,7 +177,7 @@ describe('ChatView', () => {
         }
       return { ok: true }
     })
-    const w = mount(ChatView, { props: { target, active: true, agentLabel: 'Claude', call }, global: { plugins: [i18n] } })
+    const w = mount(ChatView, { props: { target, active: true, agentLabel: 'Claude', call }, global: { plugins: [i18n, createPinia()] } })
     await flushPromises()
     expect(w.get('[data-chat-me]').text()).toContain('Fix retry')
     expect(w.get('[data-chat-ai] strong').text()).toBe('500ms')
@@ -194,7 +195,7 @@ describe('ChatView', () => {
 
   it('waits for a session before reading', () => {
     const call = vi.fn()
-    const w = mount(ChatView, { props: { target: { ...target, session: '' }, active: true, agentLabel: 'Claude', call }, global: { plugins: [i18n] } })
+    const w = mount(ChatView, { props: { target: { ...target, session: '' }, active: true, agentLabel: 'Claude', call }, global: { plugins: [i18n, createPinia()] } })
     expect(w.find('[data-chat-nosession]').exists()).toBe(true)
     expect(call).not.toHaveBeenCalled()
   })

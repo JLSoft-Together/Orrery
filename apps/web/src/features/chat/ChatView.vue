@@ -3,6 +3,7 @@ import { ArrowDown, ChevronRight, LoaderCircle, MessageSquareText, Pencil, Trian
 import { computed, nextTick, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RemoteChatTools } from '@ccm/shared'
+import ChatExportMenu from './ChatExportMenu.vue'
 import ChatMarkdown from './ChatMarkdown.vue'
 import { bridgeCall, ChatFeed, hasChatView, type ChatCall, type ChatTarget, type FeedState } from './feed'
 import { anchorTop, CHAT_NEAR_TOP, CHAT_STEP, CHAT_WINDOW, chatView, fileTotals, nearBottom, splitPath, joinRoot, toolParts, topAction, windowOf, emptyLog } from './model'
@@ -135,6 +136,9 @@ defineExpose({ scroller })
       <p class="max-w-72 text-xs text-ink-muted">{{ t('chatView.noSession') }}</p>
     </div>
     <template v-else>
+      <div class="relative z-20 flex h-8 shrink-0 items-center justify-end border-b border-line px-2" data-chat-header>
+        <ChatExportMenu v-if="props.target" :target="props.target" :call="props.call" />
+      </div>
       <div
         ref="scroller"
         class="ccm-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-2 text-[13px] leading-relaxed text-ink"

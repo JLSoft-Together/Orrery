@@ -37,6 +37,27 @@ const en = {
     sys: { stop: 'Stopped', error: 'API error', limit: 'Hit the limit', compact: 'Compacted' },
     latest: 'Jump to latest',
   },
+  chatExport: {
+    button: 'Export',
+    menu: 'Export session',
+    copy: 'Copy Markdown',
+    save: 'Save as .md file',
+    telegram: 'Send to Telegram',
+    working: 'Exporting',
+    result: {
+      copied: 'Copied',
+      saved: 'Saved',
+      sent: 'Sent to Telegram',
+      cancelled: 'Cancelled',
+      failed: 'Could not export',
+    },
+    palette: {
+      copy: 'Export session: copy Markdown',
+      save: 'Export session: save as .md file',
+      telegram: 'Export session: send to Telegram',
+      sub: 'Active Claude / Codex pane',
+    },
+  },
 }
 
 const vi: typeof en = {
@@ -77,6 +98,27 @@ const vi: typeof en = {
     openFile: 'Mở {path}',
     sys: { stop: 'Đã dừng', error: 'Lỗi API', limit: 'Chạm limit', compact: 'Đã compact' },
     latest: 'Xuống tin mới nhất',
+  },
+  chatExport: {
+    button: 'Xuất',
+    menu: 'Xuất session',
+    copy: 'Chép Markdown',
+    save: 'Lưu file .md',
+    telegram: 'Gửi Telegram',
+    working: 'Đang xuất',
+    result: {
+      copied: 'Đã chép',
+      saved: 'Đã lưu',
+      sent: 'Đã gửi Telegram',
+      cancelled: 'Đã hủy',
+      failed: 'Không xuất được',
+    },
+    palette: {
+      copy: 'Xuất session: chép Markdown',
+      save: 'Xuất session: lưu file .md',
+      telegram: 'Xuất session: gửi Telegram',
+      sub: 'Pane Claude / Codex đang chọn',
+    },
   },
 }
 

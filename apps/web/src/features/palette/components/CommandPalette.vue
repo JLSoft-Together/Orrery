@@ -55,6 +55,7 @@ import {
   QrCode,
   SmartphoneNfc,
   EyeOff,
+  Share,
 } from 'lucide-vue-next'
 import { DEV_TOOLS } from '@features/resources'
 import { retireOverlay, withViewTransition } from '../../../core/lib/motion'
@@ -123,7 +124,10 @@ import { useSettingsStore } from '../../../core/stores/settings'
 import { useUiGenStore } from '../../next/stores/uiGen'
 import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useUiStore } from '../../../core/stores/ui'
-import { useWorkspaceStore, workCwd } from '../../workspace/stores/workspace'
+import { presetOf, useWorkspaceStore, workCwd } from '../../workspace/stores/workspace'
+import { hasChatView, paneChatTarget, runExport, type ExportHow } from '../../chat'
+import { useTelegramStore } from '@features/telegram'
+import { useToastsStore } from '../../../core/stores/toasts'
 import ArtImage from '../../../core/components/ArtImage.vue'
 import StatusIcon from '../../../core/components/StatusIcon.vue'
 
@@ -172,6 +176,9 @@ const turnPaneId = computed(() => {
 })
 const tips = useTipsStore()
 const terminals = useTerminalsStore()
+const telegram = useTelegramStore()
+telegram.start()
+const toasts = useToastsStore()
 const favorites = useFavoritesStore()
 const settings = useSettingsStore()
 const uiGen = useUiGenStore()
@@ -326,7 +333,17 @@ const items = computed<Item[]>(() => {
         altHint: t('palette.continue'),
       }))
   const ended = terminals.list.filter((x) => x.status === 'stale').length
+  const exportTarget = hasChatView && workspace.active ? paneChatTarget({ key: workspace.active.key, preset: presetOf(workspace.active), terminalId: workspace.active.terminalId, agentSessionId: workspace.active.agentSessionId, cwd: workCwd(workspace.active) }, workspace.active.terminalId ? terminals.byId[workspace.active.terminalId] : undefined) : null
+  const exportRun = async (how: ExportHow): Promise<void> => {
+    if (!exportTarget) return
+    const outcome = await runExport(exportTarget, how)
+    if (outcome === 'cancelled') return
+    toasts.push({ id: 'chat-export', kind: 'info', text: t(`chatExport.result.${outcome}`), timeoutMs: 4000 })
+  }
   const commands: Omit<Item, 'exact' | 'hay'>[] = [
+    ...(exportTarget
+      ? (['copy', 'save', ...(telegram.ready && telegram.enabled ? ['telegram'] : [])] as ExportHow[]).map((how) => ({ id: `c:chat-export-${how}`, group: 'actions' as const, label: t(`chatExport.palette.${how}`), sub: t('chatExport.palette.sub'), icon: Share, run: () => void exportRun(how) }))
+      : []),
     { id: 'c:monitor', group: 'nav', label: t('palette.goMonitor'), icon: Activity, run: () => ui.setView('monitor') },
     { id: 'c:usage', group: 'nav', label: t('palette.goUsage'), icon: ChartColumnBig, run: () => ui.setView('usage') },
     { id: 'c:history', group: 'nav', label: t('palette.goHistory'), icon: History, run: () => ui.setView('history') },

@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../core/lib/shareMode'
-import { Blocks, Columns2, FileText, FolderOpen, GitBranch, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -12,6 +12,7 @@ import '@xterm/xterm/css/xterm.css'
 import type { IBufferCell, IDisposable } from '@xterm/xterm'
 import type { PtyServerMessage } from '@ccm/shared'
 import { DevServerDetector, devUrlLabel, rememberDevUrl } from '@features/resources'
+import { devScanSlice } from '../lib/devServerUrl'
 import { createFileLinkProvider, inLinks, joinWrappedLinks, oscLinkUri, selectionText, type LinkOpenOptions, type LinkTarget } from '../../files/lib/fileLinks'
 import { fontEntry, termFontStack } from '../../../core/lib/fonts'
 import { duration, now, shortPath } from '../../../core/lib/format'
@@ -131,8 +132,6 @@ const oscLinks: string[] = []
 let hoveredLink: string | null = null
 const dev = new DevServerDetector()
 const decoder = new TextDecoder('utf-8')
-// Bulk output (cat of a big file, replay) is never a dev server banner.
-const DEV_CHUNK_MAX = 64 * 1024
 const output = new HiddenOutput({ write: (bytes, done) => (term ? term.write(bytes, done) : done?.()) })
 let backlog: (() => void) | null = null
 
@@ -190,11 +189,14 @@ function touch(): void {
 }
 
 function feedDev(bytes: Uint8Array): void {
-  if (preset.value !== 'shell' || bytes.length > DEV_CHUNK_MAX) return
-  const found = dev.feed(decoder.decode(bytes, { stream: true }))
+  if (preset.value !== 'shell') return
+  const found = dev.feed(decoder.decode(devScanSlice(bytes), { stream: true }))
   if (!found.length) return
   devUrls.value = [...devUrls.value, ...found]
   for (const url of found) rememberDevUrl(cwd.value ?? '', url)
+  if (settings.devPreviewAutoOpen && props.pane.state === 'running') {
+    for (const url of found) workspace.autoOpenDevPreview(props.pane.key, url, cwd.value ?? undefined)
+  }
 }
 
 function rememberLink(uri: string | null): void {
@@ -409,6 +411,7 @@ function onHeadDblClick(e: MouseEvent): void {
 const more = ref<InstanceType<typeof PaneMore> | null>(null)
 const layoutMenu = inject(PANE_LAYOUT_MENU, null)
 const reconnectable = computed(() => props.pane.state === 'error' && !!props.pane.sessionId)
+const devChipUrl = computed(() => (ended.value || parked.value ? undefined : devUrls.value[devUrls.value.length - 1]))
 const moreEntries = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = []
   const url = devUrls.value[devUrls.value.length - 1]
@@ -1586,6 +1589,25 @@ onBeforeUnmount(() => {
             >
               <Network :size="12" aria-hidden="true" />
             </span>
+          </Transition>
+        </span>
+        <span class="grid min-w-0 shrink justify-items-end empty:hidden *:[grid-area:1/1]" data-pane-chip data-dev-chip-cell>
+          <Transition name="ccm-fade">
+            <button
+              v-if="devChipUrl"
+              :key="devChipUrl"
+              type="button"
+              class="inline-flex h-5 max-w-full min-w-5 cursor-pointer items-center gap-1 rounded-inner bg-accent-soft px-1.5 text-2xs font-medium whitespace-nowrap text-accent-ink transition-colors duration-(--ccm-dur-fast) ease-out-quint hover:text-ink"
+              :title="t('workspace.devServer.chip', { host: devUrlLabel(devChipUrl) })"
+              :aria-label="t('workspace.devServer.chip', { host: devUrlLabel(devChipUrl) })"
+              data-dev-chip
+              data-no-drag
+              @click="emit('openLink', { kind: 'url', url: devChipUrl }, {})"
+            >
+              <Globe :size="12" class="shrink-0" aria-hidden="true" />
+              <span class="min-w-0 truncate tabular-nums @max-[520px]:sr-only">{{ devUrlLabel(devChipUrl) }}</span>
+              <ArrowUpRight :size="12" class="shrink-0" aria-hidden="true" />
+            </button>
           </Transition>
         </span>
         <OverlapChip v-if="cwd && preset !== 'shell'" :cwd="cwd" :branch="branch" :compact="isNext" data-pane-chip />

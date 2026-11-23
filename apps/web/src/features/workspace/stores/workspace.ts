@@ -55,6 +55,7 @@ import {
   type SplitDir,
 } from '../lib/splitLayout'
 import type { SavedLayout } from '../lib/projects'
+import { DevOpenGuard } from '../lib/devServerUrl'
 import { hasDeepSeek, presetEnabled } from '../../../core/lib/desktop'
 import { gateDeepSeek } from '../../deepseek'
 import { dirKey } from '../../../core/stores/favorites'
@@ -736,6 +737,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     const pane = addView({ kind: 'browser', url }, opts.cwd)
     placeNew(pane, opts.split)
+    return pane
+  }
+
+  const devOpenGuard = new DevOpenGuard()
+
+  function autoOpenDevPreview(fromKey: string, url: string, cwd?: string): Pane | null {
+    const tab = tabOf(fromKey)
+    if (!tab || !devOpenGuard.take(tab.key, url)) return null
+    const prevActive = activeKey.value
+    const prevFocus = tab.focus
+    const pane = openBrowser(url, { cwd, split: { key: fromKey, dir: 'row' } })
+    if (prevActive && panes.value.some((p) => p.key === prevActive)) {
+      tab.focus = prevFocus
+      activate(prevActive)
+    }
     return pane
   }
 
@@ -1940,6 +1956,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     telegramKeys,
     telegramTyped,
     openBrowser,
+    autoOpenDevPreview,
     openFile,
     openChanges,
     openLog,

@@ -134,6 +134,9 @@ const en = {
   devServer: {
     open: 'Open {host} in a browser tab',
     more: '{n} more dev servers',
+    chip: 'Open {host} in the preview',
+    autoOpen: 'Open preview when a dev server starts',
+    autoOpenHint: 'The first time a terminal prints a dev server address, a Browser pane opens on the right. Later only the address chip on the pane header shows.',
   },
   handoff: {
     menu: 'Send to agent',
@@ -330,6 +333,9 @@ const vi: typeof en = {
   devServer: {
     open: 'Mở {host} trong tab trình duyệt',
     more: 'Còn {n} dev server khác',
+    chip: 'Mở {host} trong preview',
+    autoOpen: 'Tự mở preview khi thấy dev server',
+    autoOpenHint: 'Lần đầu terminal in địa chỉ dev server, Browser pane tự mở bên phải. Các lần sau chỉ hiện chip địa chỉ trên header pane.',
   },
   handoff: {
     menu: 'Gửi cho agent',

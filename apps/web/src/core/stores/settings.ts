@@ -105,6 +105,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const taskbarBadge = ref(read('ccm.taskbarBadge') !== '0')
   const footerSys = ref(read('ccm.footerSys') !== '0')
   const dimInactive = ref(read('ccm.workspace.dim') === '1')
+  const devPreviewAutoOpen = ref(read('ccm.devPreview.autoOpen') !== '0')
   /** Shell panes started with command marks (OSC 633); read at spawn, so it applies to new shells. */
   const shellIntegration = ref(read('ccm.shellIntegration') !== '0')
   const shellDoneNotify = ref(read('ccm.shellDone') !== '0')
@@ -154,6 +155,7 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(taskbarBadge, (value) => persist('ccm.taskbarBadge', value ? '1' : '0'))
   watch(footerSys, (value) => persist('ccm.footerSys', value ? '1' : '0'))
   watch(dimInactive, (value) => persist('ccm.workspace.dim', value ? '1' : '0'))
+  watch(devPreviewAutoOpen, (value) => persist('ccm.devPreview.autoOpen', value ? '1' : '0'))
   watch(shellIntegration, (value) => persist('ccm.shellIntegration', value ? '1' : '0'))
   watch(shellDoneNotify, (value) => persist('ccm.shellDone', value ? '1' : '0'))
   watch(shellDoneSeconds, (value) => persist('ccm.shellDoneSeconds', String(clampShellDoneSeconds(value))))
@@ -320,6 +322,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSave,
     autoSaveDelay,
     dimInactive,
+    devPreviewAutoOpen,
     shellIntegration,
     shellDoneNotify,
     shellDoneSeconds,

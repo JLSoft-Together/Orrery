@@ -1,0 +1,21 @@
+## WP-111c - DONE
+- Đã đổi:
+  - `apps/web/src/features/resources/lib/devServer.ts` - `DevServerDetector`: thêm host LAN (10.x, 192.168.x, 172.16-31.x), bỏ dòng request log (`GET|POST... /` hoặc `http:`), marker mới (`served at`, `waiting on`, `loopback`, `network`, `serving`), Local thắng Network cùng port (Network chỉ nhận khi chưa có URL loopback cùng port).
+  - `apps/web/src/features/workspace/lib/devServerUrl.ts` (mới) - `devScanSlice` (4 KB đầu mỗi chunk), `DevOpenGuard` (mỗi tab tự mở 1 lần / URL) + `devServerUrl.test.ts` (bảng Vite, vite preview, Next, Nuxt, Angular x2, webpack-dev-server, Expo web, Flutter web, python http.server, IPv6, Local>Network, Network-only, request log, host public).
+  - `workspace.ts` - `autoOpenDevPreview(fromKey, url, cwd)`: `openBrowser(split row)` rồi trả focus lại terminal; export.
+  - `TermPane.vue` - `feedDev` dùng slice 4 KB, tự mở khi `settings.devPreviewAutoOpen`; chip `[data-dev-chip]` (`localhost:5173 ↗`) trên header, mất khi pane exited / error / gone / parked (resetDev khi exit sẵn có).
+  - `core/stores/settings.ts` - `devPreviewAutoOpen` (key `ccm.devPreview.autoOpen`, mặc định bật).
+  - `SettingsWorkspace.vue` - công tắc; i18n `workspace.devServer.{chip,autoOpen,autoOpenHint}` en + vi (`features/files/i18n/workspace-viewer.ts`) + 3 key vào snapshot `keys.en/vi.txt` (chèn tay).
+  - `apps/shell/e2e/v111-preview.cjs` (mới). `.code_index/web-workspace.md`, `_meta.md`.
+- Tiêu chí: 5/5 đạt.
+- Audit: detector đã có sẵn (v23) ở `features/resources`, chỉ thiếu LAN, lọc request log, Local>Network, auto-open, chip, công tắc. Không tạo detector thứ hai.
+- Review: chip chỉ cho pane shell (preset shell); server dừng bằng Ctrl+C trong shell còn sống thì chip vẫn còn đến khi pane thoát / restart (chưa gắn OSC 633 cmd-done). Network-only banner đi trước Local cùng port sẽ mở URL LAN (hiếm). Guard `DevOpenGuard` nằm trong memory, mất khi reload app (mở lại 1 lần sau reload, chấp nhận). Slice 4 KB có thể cắt dòng giữa chừng ở chunk lớn (banner luôn ở đầu, ok).
+- Test: `npm test -w @ccm/web -- src/features/workspace/lib/devServerUrl.test.ts src/features/agent-tools/lib/reviewTools.test.ts` → 34 passed. `src/features/workspace src/features/resources src/features/settings src/core` → 72 files / 652 passed. `npm run typecheck` → sạch. `npm test -w @ccm/web -- src/i18n` → còn 2 fail do snapshot thiếu key `v106rail.filter.*` của việc khác (không phải key WP này; 3 key devServer đã có trong snapshot). `node scripts/index-check.mjs` → ok 39 file. E2E `node apps/shell/e2e/v111-preview.cjs` (web build ra thư mục tạm + CCM_WEB_DIST, cổng 4521 / 9521) → 12/12 PASS (mặc định bật, không chip ban đầu, banner mở Browser pane cùng tab, terminal giữ focus, chip localhost:5173, cùng URL không mở thêm, đóng preview vẫn chỉ chip, công tắc tắt chỉ chip + lưu localStorage, bấm chip mở preview, exit thì chip mất).
+- Nhìn: `docs/qa/v111/WP-111c/header-chip.png` (header Shell có chip `localhost:5173 ↗`), `docs/qa/v111/WP-111c/workspace.png` (cả workspace); chụp sau lần sửa code cuối.
+- docs/qa cũ bị đổi: không có (chỉ thêm 2 ảnh mới trong `docs/qa/v111/WP-111c/`).
+- Hot file cần thêm: không (đã sửa đúng `TermPane.vue`, `workspace.ts`, `settings.ts` được giao).
+- Ngoài phạm vi cần main xử lý: snapshot i18n `v106rail.filter.*` đang lệch (không thuộc WP này). Chưa đưa chip vào menu / README feature workspace.
+- Commit message đề xuất: feat(workspace): auto-open a Browser pane and show an address chip when a terminal prints a dev server URL
+- Dòng changelog (en / vi, ≤ 100 ký tự): Dev server URLs in a terminal open a preview and show a header chip / Terminal in địa chỉ dev server thì tự mở preview và hiện chip trên header
+## Nhật ký
+- Audit: detector có sẵn; sửa detector, thêm lib guard, store action, chip, setting, i18n, E2E, code_index.

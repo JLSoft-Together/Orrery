@@ -3,8 +3,11 @@ const ANSI = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z
 
 export const stripAnsi = (s: string): string => s.replace(ANSI, '')
 
-const URL_RE = /\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]):\d{2,5}(?:\/[^\s'"<>)\]}]*)?/gi
-const MARKER = /(?:\b(?:local|ready|listening|server running|running (?:at|on)|started|serving|available (?:at|on)|dev server|preview|on your network)\b|➜)/i
+const LAN_HOST = String.raw`(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2})`
+const URL_RE = new RegExp(String.raw`\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]|${LAN_HOST}):\d{2,5}(?:\/[^\s'"<>)\]}]*)?`, 'gi')
+const REQUEST_LOG = /(?:^|[\s"'\]])(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(?:\/|https?:)/
+const MARKER = /(?:\b(?:local|ready|listening|server running|running (?:at|on)|started|serving|served at|waiting on|loopback|network|available (?:at|on)|dev server|preview|on your network)\b|➜)/i
+const LOOPBACK = /^(?:localhost|127\.0\.0\.1|\[::1\])$/
 // A URL may sit on the line after its marker ("Server running" / blank / "  http://…").
 const MARKER_REACH = 2
 const MAX_PARTIAL = 4096
@@ -43,6 +46,7 @@ export class DevServerDetector {
   private partial = ''
   private sinceMarker = Infinity
   private seen = new Set<string>()
+  private ports = new Set<string>()
   readonly urls: string[] = []
 
   feed(chunk: string): string[] {
@@ -52,13 +56,16 @@ export class DevServerDetector {
     this.partial = (lines.pop() ?? '').slice(-MAX_PARTIAL)
     for (const raw of lines) {
       const line = stripAnsi(raw)
+      if (REQUEST_LOG.test(line)) continue
       if (MARKER.test(line)) this.sinceMarker = 0
       else if (line.trim()) this.sinceMarker++
       if (this.sinceMarker > MARKER_REACH) continue
       for (const url of urlsIn(line)) {
-        const origin = new URL(url).host
-        if (this.seen.has(origin)) continue
-        this.seen.add(origin)
+        const parsed = new URL(url)
+        if (this.seen.has(parsed.host)) continue
+        if (!LOOPBACK.test(parsed.hostname) && this.ports.has(parsed.port)) continue
+        this.seen.add(parsed.host)
+        this.ports.add(parsed.port)
         this.urls.push(url)
         found.push(url)
       }
@@ -69,7 +76,9 @@ export class DevServerDetector {
   /** Forget a URL (server stopped / user dismissed), so the next start shows it again. */
   forget(url: string): void {
     try {
-      this.seen.delete(new URL(url).host)
+      const parsed = new URL(url)
+      this.seen.delete(parsed.host)
+      this.ports.delete(parsed.port)
     } catch {
       return
     }
@@ -81,6 +90,7 @@ export class DevServerDetector {
     this.partial = ''
     this.sinceMarker = Infinity
     this.seen.clear()
+    this.ports.clear()
     this.urls.length = 0
   }
 }

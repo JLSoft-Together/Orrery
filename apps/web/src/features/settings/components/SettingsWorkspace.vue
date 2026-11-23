@@ -57,6 +57,14 @@ const fileIconStyles = computed(() => [
         data-setting="agent-shim"
         data-setting-row="agentShim"
       />
+      <ToggleSwitch
+        v-model="settings.devPreviewAutoOpen"
+        :label="t('workspace.devServer.autoOpen')"
+        :info="t('workspace.devServer.autoOpenHint')"
+        class="px-3"
+        data-setting="dev-preview-auto-open"
+        data-setting-row="devPreviewAutoOpen"
+      />
       <ToggleSwitch v-model="settings.dustEffect" :label="t('settings.dust')" :info="t('settings.dustHint')" class="px-3" data-setting-row="dust" />
       <ToggleSwitch
         v-model="settings.secretGuard"

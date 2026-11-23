@@ -60,6 +60,39 @@ pub struct AgentOpts {
     pub shim: bool,
     pub zsh_init: Option<String>,
     pub nonce: Option<String>,
+    pub model: Option<String>,
+    pub permission: Option<String>,
+    pub effort: Option<String>,
+}
+
+pub fn is_model_id(v: &str) -> bool {
+    let mut chars = v.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphanumeric()) && v.len() <= 64 && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | ':'))
+}
+
+pub const CLAUDE_PERMISSIONS: [&str; 5] = ["plan", "acceptEdits", "auto", "manual", "dontAsk"];
+pub const CODEX_SANDBOXES: [&str; 3] = ["read-only", "workspace-write", "danger-full-access"];
+pub const CLAUDE_EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
+
+fn launch_flags(preset: &str, opts: &AgentOpts) -> String {
+    let model = opts.model.as_deref().filter(|m| is_model_id(m));
+    let mut out = String::new();
+    if let Some(m) = model {
+        out.push_str(&format!(" {} {m}", if preset == "codex" { "-m" } else { "--model" }));
+    }
+    if preset == "codex" {
+        if let Some(p) = opts.permission.as_deref().filter(|p| CODEX_SANDBOXES.contains(p)) {
+            out.push_str(&format!(" -s {p}"));
+        }
+    } else {
+        if let Some(p) = opts.permission.as_deref().filter(|p| CLAUDE_PERMISSIONS.contains(p)) {
+            out.push_str(&format!(" --permission-mode {p}"));
+        }
+        if let Some(e) = opts.effort.as_deref().filter(|e| CLAUDE_EFFORTS.contains(e)) {
+            out.push_str(&format!(" --effort {e}"));
+        }
+    }
+    out
 }
 
 pub fn is_pane_name(v: &str) -> bool {
@@ -80,7 +113,7 @@ fn agent_command(preset: &str, windows: bool, resume: Option<&str>, session: Opt
         };
         return match resume {
             Some(r) => format!("codex{mcp} resume {r}"),
-            None => format!("codex{mcp}"),
+            None => format!("codex{mcp}{}", launch_flags(preset, opts)),
         };
     }
     let base = match resume {
@@ -88,7 +121,7 @@ fn agent_command(preset: &str, windows: bool, resume: Option<&str>, session: Opt
         None => {
             let id = session.filter(|s| is_session_id(s)).map(|s| format!(" --session-id {s}")).unwrap_or_default();
             let name = opts.name.as_deref().filter(|n| is_pane_name(n)).map(|n| format!(" -n '{n}'")).unwrap_or_default();
-            format!("claude{id}{name}")
+            format!("claude{id}{name}{}", launch_flags(preset, opts))
         }
     };
     if !opts.mcp {
@@ -241,6 +274,26 @@ mod tests {
         let win = preset_command_with("claude", true, &|_| None, None, None, &AgentOpts { mcp: true, name: Some("x'; calc".into()), ..Default::default() });
         assert_eq!(win.args[3], encode_powershell(&format!("{PS_CWD_HOOK}; claude --mcp-config $env:ORRERY_MCP_CONFIG")));
         assert!(!is_pane_name(" a") && !is_pane_name("-a") && is_pane_name("Đức 1"));
+    }
+
+    #[test]
+    fn launch_options_are_whitelisted_flags_only() {
+        let env = |k: &str| (k == "SHELL").then(|| "/bin/zsh".to_owned());
+        let plan = AgentOpts { model: Some("opus".into()), permission: Some("plan".into()), effort: Some("high".into()), ..Default::default() };
+        let c = preset_command_with("claude", false, &env, None, None, &plan);
+        assert_eq!(c.args[3], "claude --model opus --permission-mode plan --effort high; exec /bin/zsh -l");
+        let x = preset_command_with("codex", false, &env, None, None, &AgentOpts { model: Some("gpt-5.1".into()), permission: Some("read-only".into()), effort: Some("high".into()), ..Default::default() });
+        assert_eq!(x.args[3], "codex -m gpt-5.1 -s read-only; exec /bin/zsh -l");
+        let bad = AgentOpts { model: Some("opus; rm -rf /".into()), permission: Some("bypassPermissions".into()), effort: Some("$(calc)".into()), ..Default::default() };
+        assert_eq!(preset_command_with("claude", false, &env, None, None, &bad).args[3], "claude; exec /bin/zsh -l");
+        let sh = AgentOpts { model: Some("a b".into()), permission: Some("plan
+".into()), ..Default::default() };
+        assert_eq!(preset_command_with("claude", false, &env, None, None, &sh).args[3], "claude; exec /bin/zsh -l");
+        assert!(!is_model_id("") && !is_model_id("-x") && !is_model_id("a`b") && !is_model_id("a$b") && !is_model_id(&"a".repeat(65)) && is_model_id("claude-opus-4.1"));
+        let win = preset_command_with("claude", true, &|_| None, None, None, &plan);
+        assert_eq!(win.args[3], encode_powershell(&format!("{PS_CWD_HOOK}; claude --model opus --permission-mode plan --effort high")));
+        let resumed = preset_command_with("claude", true, &|_| None, Some("0f8fad5b-d9cb-469f-a165-70867728950e"), None, &plan);
+        assert_eq!(resumed.args[3], encode_powershell(&format!("{PS_CWD_HOOK}; claude --resume 0f8fad5b-d9cb-469f-a165-70867728950e")));
     }
 
     #[cfg(unix)]

@@ -57,6 +57,7 @@ import {
 import type { SavedLayout } from '../lib/projects'
 import { DevOpenGuard } from '../lib/devServerUrl'
 import { hasDeepSeek, presetEnabled } from '../../../core/lib/desktop'
+import type { LaunchOptions } from '../lib/launchTemplates'
 import { gateDeepSeek } from '../../deepseek'
 import { dirKey } from '../../../core/stores/favorites'
 import { openedLinkId, usePeersStore } from '../../../core/stores/peers'
@@ -131,6 +132,7 @@ export interface Pane {
   command?: string
   pendingCommand?: string
   openTicket?: string
+  launch?: LaunchOptions
   prefill?: string
   prefillSubmit?: boolean
   prefillNow?: boolean
@@ -874,9 +876,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   /** `open` for a pane the owner picked: null when the agent is not set up (Settings › DeepSeek opens instead). */
+  const pendingLaunch = ref<{ agent: PtyPreset; options?: LaunchOptions; prompt?: string } | null>(null)
+
   function launch(preset: PtyPreset, cwd?: string, resume?: string, opts: { tab?: boolean } = {}): Pane | null {
+    const plan = pendingLaunch.value
+    pendingLaunch.value = null
     const res = openSession({ preset, cwd, resume, tab: opts.tab }, { source: 'menu' })
-    return res.ok ? paneOf(res.paneKey)! : null
+    if (!res.ok) return null
+    const pane = paneOf(res.paneKey)!
+    if (plan && plan.agent === preset && !resume && preset !== 'shell') {
+      if (plan.options) pane.launch = plan.options
+      if (plan.prompt && !pane.prefill) pane.prefill = cleanPanePrompt(plan.prompt)
+    }
+    return pane
   }
 
   /**
@@ -1942,6 +1954,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     tabOf,
     open,
     launch,
+    pendingLaunch,
     openFromAgent,
     openSession,
     sessionLive,

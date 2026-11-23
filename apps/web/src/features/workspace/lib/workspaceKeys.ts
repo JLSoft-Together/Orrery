@@ -49,6 +49,11 @@ export type WorkspaceAction =
 /** Chords that still work while focus is in the drop-down terminal: they open global UI, never touch the pane behind it. */
 export const DROP_TERM_KEYS: ReadonlySet<WorkspaceAction['t']> = new Set(['dropTerm', 'quickOpen', 'explorer', 'search', 'termSearch', 'prompts', 'recent', 'bookmarks', 'notes', 'projects'])
 
+export function pickElementKey(e: Pick<KeyboardEvent, 'type' | 'isComposing' | 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey' | 'code'>, mac: boolean): boolean {
+  if (e.type !== 'keydown' || e.isComposing || recording.value || e.code !== 'KeyC' || !e.shiftKey || e.altKey) return false
+  return mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+}
+
 const ARROWS: Record<string, FocusDir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
 const PAGES: Record<string, 1 | -1> = { PageUp: -1, PageDown: 1 }
 

@@ -1,0 +1,24 @@
+## WP-111h — DONE
+- Đã đổi:
+  - `apps/web/src/features/agent-tools/lib/agentHandoff.ts`: `ElementPick` thêm `rect`, `source`, `css`; `asElementPick` validate (rect số hữu hạn > 0, source regex path + max 300, css chỉ 11 key cho phép, giá trị max 80 ký tự và ký tự an toàn, sai thì bỏ field); `formatElementBlock` thêm dòng `source:` / `css:`; `relativeSource`; `pickerScript` trả rect / source (Vue `__vueParentComponent.type.__file` đi lên 6 phần tử, React `__reactFiber$*._debugSource` đi lên 6 fiber) / css (bỏ giá trị mặc định của thẻ qua iframe ẩn, width / height từ rect).
+  - `apps/web/src/features/agent-tools/lib/elementCrop.ts` (mới): `cropBox` (lề 8, kẹp mép, max 4096), `thumbSize`, `cropToAttachment` (canvas).
+  - `apps/web/src/features/workspace/components/BrowserPane.vue`: pick -> `capturePage` -> crop -> `useAttachmentsStore().add` của pane agent (`resolveAgentPane`), prefill như cũ + source + css; phím Ctrl+Shift+C (Cmd+Shift+C mac) khi pane active.
+  - `apps/web/src/features/workspace/components/BrowserToolbar.vue`: nút "Chọn phần tử" (icon con trỏ) trên thanh địa chỉ.
+  - `apps/web/src/features/workspace/lib/workspaceKeys.ts`: `pickElementKey` (không thêm vào `workspaceAction`, để không chặn Ctrl+Shift+C copy trong terminal).
+  - `apps/shell/src/guest.js`: forward Ctrl+Shift+C (Cmd+Shift+C mac) từ trang guest về host (guest là WebView2 riêng nên không nhận phím host).
+  - i18n `apps/web/src/features/files/i18n/workspace-viewer.ts` (`pickTip`, `pickImage`, sửa `pickHint`, en + vi) + thêm tay 2 key vào `keys.en.txt` / `keys.vi.txt`.
+  - Test: `agent-tools/lib/elementPick.test.ts` (mới), E2E `apps/shell/e2e/v111-pick.cjs` + fixture `apps/shell/e2e/fixtures/vue-pick/` (Vite + Vue dev).
+  - `.code_index/web-workspace.md`, `.code_index/_meta.md`.
+- Tiêu chí: 4/4 đạt. (1) vitest field mới + giá trị độc (script, quá dài, rect âm / Infinity, css không phải object); (2) `cropBox` / `thumbSize` test thuần; (3) E2E pick trên fixture Vite Vue dev: prefill có `source: src/components/LoginForm.vue`, css, ảnh attachment; (4) typecheck pass.
+- Audit: picker cũ chỉ có selector / tag / class / text / html; nút chọn phần tử chỉ nằm trong menu Send; `captureGuest` chỉ đưa ảnh lên clipboard nên dùng `capturePage` (data URL) để crop.
+- Review: (a) khi có > 1 pane agent và chưa pane nào focus thì WorkspaceView hiện hộp chọn, ảnh cắt KHÔNG được gắn (chỉ text prefill) vì `AgentChoiceDialog` / `deliver` nằm trong hot file `WorkspaceView.vue`; (b) chọn `<html>` (selector rỗng) vẫn bị bỏ im lặng như cũ; (c) React 19 không còn `_debugSource` nên chỉ Vue / React <= 18 có source; (d) mac chưa chạy E2E; (e) Ctrl+Shift+C ở trang guest dùng chuỗi forward (đã test bằng KeyboardEvent trong guest, không phải phím thật vào guest).
+- Test:
+  - `npm test -w @ccm/web -- src/features/agent-tools src/features/workspace/lib src/importRules` -> 62 files, 540 tests pass.
+  - `npm run typecheck -w @ccm/web` -> pass.
+  - `npm test -w @ccm/web -- src/i18n`: 2 fail (`keys.*` snapshot) chỉ vì key `v111pr.*` của WP khác chưa vào snapshot; key `workspace.handoff.pickImage` / `pickTip` của WP này đã khớp.
+  - `cargo build -j 4` (apps/shell, guest.js đổi) -> OK; `node apps/shell/e2e/v111-pick.cjs` (web build vào thư mục tạm + CCM_WEB_DIST, cổng 4361 / 9361) -> 12/12 PASS: nút có mặt, Ctrl+Shift+C phím thật (CDP `Input.dispatchKeyEvent`) bật chế độ chọn, Esc huỷ, Ctrl+Shift+C từ guest được forward, nút bật chế độ chọn, prefill đủ selector / text / URL / source / css, không submit, ảnh cắt 124x58 cho phần tử 108x41 (+ lề 8), attachments store có đúng 1 ảnh.
+- Nhìn: `docs/qa/v111/WP-111h/pick-01-toolbar.png`, `pick-02-picking.png`, `pick-03-after.png`, `pick-crop.png` (ảnh cắt đã xem: nút Sign in đủ khung + lề). Ảnh chụp trang host không chứa vùng guest native (nền trắng).
+- Hot file cần thêm: không bắt buộc. Để sửa review (a): `WorkspaceView.vue` thêm vào `insertFromBrowser` / `deliver` một tham số ảnh (emit `insertText(text, image?)` từ BrowserPane rồi `attachments.add(paneKey, ...)` trong `deliver`).
+- Ngoài phạm vi cần main xử lý: 3 lần chạy đầu E2E tôi quên đặt biến môi trường nên app E2E chạy ở cổng mặc định 4399 / debug 9333 (không đụng app chủ nhân, đã dừng đúng pid). `keys.*.txt` snapshot cần `-u` một lần khi main gộp key `v111pr.*`. Không có ảnh docs/qa cũ bị ghi đè (E2E ghi vào thư mục tạm, chỉ copy 4 ảnh mới).
+- Commit message đề xuất: feat(preview): pick element sends source file, computed css and a cropped image, with Ctrl+Shift+C and a toolbar button
+- Dòng changelog (en / vi, ≤ 100 ký tự): Pick element now sends source file, styles and a cropped image / Chọn phần tử gửi kèm file nguồn, style và ảnh cắt

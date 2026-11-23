@@ -91,14 +91,14 @@
       if (ctrl && alt && !meta && !shift && code === 'KeyN') return hit()
       if (!meta || ctrl || alt) return null
       if (['KeyT', 'KeyW', 'KeyK', 'KeyP'].includes(code)) return shift ? null : hit()
-      if (['KeyA', 'KeyE', 'KeyO', 'KeyF'].includes(code)) return shift ? hit() : null
+      if (['KeyA', 'KeyE', 'KeyO', 'KeyF', 'KeyC'].includes(code)) return shift ? hit() : null
       if (code === 'KeyD') return hit()
       if (code === 'BracketLeft' || code === 'BracketRight') return shift ? hit() : null
       if (DIGIT.test(code)) return shift ? null : hit()
       return null
     }
     if (meta) return null
-    if (ctrl && shift && !alt && ['KeyT', 'KeyW', 'KeyA', 'KeyP', 'KeyE', 'KeyO'].includes(code)) return hit()
+    if (ctrl && shift && !alt && ['KeyT', 'KeyW', 'KeyA', 'KeyP', 'KeyE', 'KeyO', 'KeyC'].includes(code)) return hit()
     if (alt && shift && !ctrl && ['KeyD', 'KeyF', 'Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract'].includes(code)) return hit()
     if (ctrl && !alt && code === 'Tab') return hit()
     if (ctrl && !alt && !shift && code === 'KeyK') return hit()

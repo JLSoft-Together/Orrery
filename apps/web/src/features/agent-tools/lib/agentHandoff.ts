@@ -17,7 +17,25 @@ export interface ElementPick {
   text: string
   outerHTML: string
   url: string
+  rect?: PickRect
+  source?: string
+  css?: Record<string, string>
 }
+
+export interface PickRect {
+  x: number
+  y: number
+  width: number
+  height: number
+  viewportWidth: number
+  viewportHeight: number
+}
+
+export const CSS_KEYS = ['color', 'background-color', 'font-size', 'font-weight', 'line-height', 'padding', 'margin', 'border-radius', 'display', 'width', 'height'] as const
+const CSS_VALUE_MAX = 80
+const SOURCE_MAX = 300
+const CSS_VALUE = /^[A-Za-z0-9\s.,()%#/+-]+$/
+const SOURCE_PATH = /^[A-Za-z0-9_@~ .,()[\]+\-/\\:]+$/
 
 export const CONSOLE_KEEP = 50
 const MESSAGE_MAX = 300
@@ -96,8 +114,48 @@ export function formatElementBlock(pick: ElementPick): string {
   const out = [`Element on ${pageLabel(pick.url)}:`, `selector: ${sanitize(pick.selector, 300)}`, `tag: ${sanitize(tag, 200)}`]
   const text = sanitize(pick.text, TEXT_MAX)
   if (text) out.push(`text: "${text}"`)
+  if (pick.source) out.push(`source: ${sanitize(pick.source, SOURCE_MAX)}`)
+  const css = pick.css ? CSS_KEYS.filter((k) => pick.css![k]).map((k) => `${k}: ${pick.css![k]}`) : []
+  if (css.length) out.push(`css: ${css.join('; ')}`)
   out.push(`html: ${sanitize(pick.outerHTML, HTML_MAX)}`)
   return out.join('\n')
+}
+
+function asRect(value: unknown): PickRect | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const v = value as Record<string, unknown>
+  const num = (x: unknown): number | null => (typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 1e6 ? x : null)
+  const [x, y, width, height, viewportWidth, viewportHeight] = [v.x, v.y, v.width, v.height, v.viewportWidth, v.viewportHeight].map(num)
+  if (x === null || y === null || width === null || height === null || viewportWidth === null || viewportHeight === null) return undefined
+  if (width! <= 0 || height! <= 0 || viewportWidth! <= 0 || viewportHeight! <= 0) return undefined
+  return { x: x!, y: y!, width: width!, height: height!, viewportWidth: viewportWidth!, viewportHeight: viewportHeight! }
+}
+
+function asSource(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value || value.length > SOURCE_MAX || !SOURCE_PATH.test(value)) return undefined
+  return value.trim() || undefined
+}
+
+function asCss(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const v = value as Record<string, unknown>
+  const out: Record<string, string> = {}
+  for (const key of CSS_KEYS) {
+    const raw = v[key]
+    if (typeof raw !== 'string') continue
+    const text = raw.replace(/\s+/g, ' ').trim()
+    if (text && text.length <= CSS_VALUE_MAX && CSS_VALUE.test(text)) out[key] = text
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+export function relativeSource(source: string, root: string | undefined): string {
+  const norm = (p: string): string => p.replace(/\\/g, '/')
+  const file = norm(source).replace(/^\/@fs\//, '')
+  if (!root) return file
+  const base = norm(root).replace(/\/+$/, '')
+  if (base && file.toLowerCase().startsWith(`${base.toLowerCase()}/`)) return file.slice(base.length + 1)
+  return file
 }
 
 /** Validates what the guest page returned: it is untrusted input. */
@@ -109,7 +167,14 @@ export function asElementPick(value: unknown, pageUrl: string): ElementPick | nu
   const tag = str(v.tag, 64).toLowerCase()
   if (!selector || !/^[a-z][a-z0-9-]*$/.test(tag)) return null
   const classes = Array.isArray(v.classes) ? v.classes.filter((c): c is string => typeof c === 'string').map((c) => c.slice(0, 80)).slice(0, 12) : []
-  return { selector, tag, classes, text: str(v.text, 2000), outerHTML: str(v.outerHTML, 4000), url: pageUrl }
+  const pick: ElementPick = { selector, tag, classes, text: str(v.text, 2000), outerHTML: str(v.outerHTML, 4000), url: pageUrl }
+  const rect = asRect(v.rect)
+  const source = asSource(v.source)
+  const css = asCss(v.css)
+  if (rect) pick.rect = rect
+  if (source) pick.source = source
+  if (css) pick.css = css
+  return pick
 }
 
 const SAFE_COLOR = /^(?:#[0-9a-f]{3,8}|rgba?\([\d\s.,/%]+\))$/i
@@ -153,6 +218,48 @@ export function pickerScript(color: string): string {
     }
     return parts.join(' > ');
   };
+  const sourceOf = (el) => {
+    try {
+      let n = el;
+      for (let i = 0; n && i < 6; i++, n = n.parentElement) {
+        const vc = n.__vueParentComponent;
+        const file = vc && vc.type && vc.type.__file;
+        if (typeof file === 'string' && file) return file;
+        const fk = Object.keys(n).find((k) => k.startsWith('__reactFiber$'));
+        let fiber = fk ? n[fk] : null;
+        for (let j = 0; fiber && j < 6; j++, fiber = fiber.return) {
+          const d = fiber._debugSource;
+          if (d && typeof d.fileName === 'string' && d.fileName) return d.fileName + (d.lineNumber ? ':' + d.lineNumber : '');
+        }
+      }
+    } catch (e) {}
+    return '';
+  };
+  const cssOf = (el, r) => {
+    const keys = ${JSON.stringify(CSS_KEYS)};
+    const out = {};
+    let base = null;
+    let frame = null;
+    try {
+      frame = document.createElement('iframe');
+      frame.style.cssText = 'position:fixed;left:-9999px;width:0;height:0;border:0;visibility:hidden';
+      document.documentElement.append(frame);
+      const d = frame.contentDocument;
+      const probe = d.createElement(el.tagName.toLowerCase());
+      d.body.append(probe);
+      base = frame.contentWindow.getComputedStyle(probe);
+    } catch (e) { base = null; }
+    const cs = getComputedStyle(el);
+    for (const k of keys) {
+      if (k === 'width' || k === 'height') { out[k] = Math.round(k === 'width' ? r.width : r.height) + 'px'; continue; }
+      const v = cs.getPropertyValue(k).trim();
+      if (!v || v === 'normal' || v === 'none' || v === '0px' || v === 'rgba(0, 0, 0, 0)') continue;
+      if (base && base.getPropertyValue(k).trim() === v) continue;
+      out[k] = v.slice(0, 80);
+    }
+    if (frame) frame.remove();
+    return out;
+  };
   const show = (el) => {
     const r = el.getBoundingClientRect();
     box.style.display = tip.style.display = 'block';
@@ -182,12 +289,16 @@ export function pickerScript(color: string): string {
     block(e);
     const el = current || document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return done(null);
+    const r = el.getBoundingClientRect();
     done({
       selector: selectorOf(el),
       tag: el.tagName.toLowerCase(),
       classes: [...el.classList].slice(0, 12),
       text: (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 400),
       outerHTML: el.outerHTML.slice(0, 1200),
+      rect: { x: r.left, y: r.top, width: r.width, height: r.height, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight },
+      source: sourceOf(el),
+      css: cssOf(el, r),
     });
   };
   const key = (e) => { if (e.key === 'Escape') { block(e); done(null); } };

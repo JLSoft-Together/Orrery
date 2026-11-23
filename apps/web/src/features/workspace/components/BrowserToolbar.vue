@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PaneHeader from '../../next/components/ui/PaneHeader.vue'
 import { useUiGenStore } from '../../next/stores/uiGen'
-import { ArrowLeft, ArrowRight, Bug, Check, ExternalLink, FolderOpen, Globe, MonitorSmartphone, RotateCw, Send, X, Zap } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Bug, Check, ExternalLink, FolderOpen, Globe, MonitorSmartphone, MousePointerClick, RotateCw, Send, X, Zap } from 'lucide-vue-next'
 import type { HandoffAction } from '../../agent-tools/lib/agentHandoff'
 import type { DeviceId } from '@features/devices'
 import type { MenuEntry } from '../../../core/lib/menu'
@@ -120,6 +120,12 @@ function pickHandoff(action: HandoffAction): void {
   if (rect) emit('handoff', action, rect)
 }
 
+const pickButton = ref<HTMLButtonElement | null>(null)
+function emitPick(): void {
+  const rect = pickButton.value?.getBoundingClientRect()
+  if (rect) emit('handoff', 'pick', rect)
+}
+
 const headMore = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = [
     { id: 'back', label: t('workspace.browser.back'), icon: ArrowLeft, disabled: !props.canBack },
@@ -231,6 +237,21 @@ defineExpose({ handoffButton: handoffFocus })
       </span>
     </form>
 
+    <button
+      v-if="canHandoff"
+      ref="pickButton"
+      type="button"
+      class="ccm-btn-plain shrink-0 @max-[340px]:hidden"
+      :class="picking ? 'text-accent-ink' : ''"
+      :title="t('workspace.handoff.pickTip')"
+      :aria-label="t('workspace.handoff.pick')"
+      :aria-pressed="!!picking"
+      data-more="pick"
+      data-pick-element
+      @click="emitPick"
+    >
+      <MousePointerClick :size="14" aria-hidden="true" />
+    </button>
     <DeviceMenu
       v-if="deviceAnchor"
       :anchor="deviceAnchor"

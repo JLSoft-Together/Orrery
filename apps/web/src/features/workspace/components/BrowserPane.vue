@@ -11,9 +11,15 @@ import {
   formatElementBlock,
   pickerScript,
   pushConsole,
+  relativeSource,
+  type PickRect,
   type ConsoleEntry,
   type HandoffAction,
 } from '../../agent-tools/lib/agentHandoff'
+import { cropToAttachment } from '../../agent-tools/lib/elementCrop'
+import { useAttachmentsStore } from '../../agent-tools/stores/attachments'
+import { useWorkspaceStore } from '../stores/workspace'
+import { pickElementKey } from '../lib/workspaceKeys'
 import { DEVICES, frameFit, type DeviceId } from '@features/devices'
 import {
   captureGuest,
@@ -69,6 +75,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const workspace = useWorkspaceStore()
+const attachments = useAttachmentsStore()
+const isMac = /Mac/i.test(navigator.platform || navigator.userAgent)
 
 const initialSrc = ref<string | null>(null)
 const webview = ref<WebviewEl | null>(null)
@@ -319,7 +328,10 @@ async function pickElement(): Promise<void> {
     const url = pageUrl()
     const pick = asElementPick(await wv.executeJavaScript(pickerScript(color), true), url)
     if (pick) {
+      if (pick.source) pick.source = relativeSource(pick.source, props.cwd)
+      const image = pick.rect ? await captureCrop(wv, pick.rect) : null
       emit('insertText', formatElementBlock(pick))
+      if (image) attachImage(image)
       note(t('workspace.handoff.inserted'))
     }
   } catch {
@@ -327,6 +339,22 @@ async function pickElement(): Promise<void> {
   } finally {
     picking.value = false
   }
+}
+
+async function captureCrop(wv: WebviewEl, rect: PickRect): Promise<{ data: string; thumb: string } | null> {
+  try {
+    const shot = await wv.capturePage()
+    return shot.isEmpty() ? null : await cropToAttachment(shot.toDataURL(), rect)
+  } catch {
+    return null
+  }
+}
+
+function attachImage(image: { data: string; thumb: string }): void {
+  const res = workspace.resolveAgentPane(props.paneKey ?? '')
+  const pane = 'pane' in res ? res.pane : res.choices.length === 1 ? res.choices[0] : null
+  if (!pane) return
+  attachments.add(pane.key, [{ kind: 'image', name: t('workspace.handoff.pickImage'), source: 'paste', data: image.data, thumb: image.thumb }])
 }
 
 function cancelPick(): void {
@@ -344,6 +372,11 @@ function onHostKey(e: KeyboardEvent): void {
   if (picking.value && e.key === 'Escape') {
     e.preventDefault()
     cancelPick()
+    return
+  }
+  if (props.paneKey && workspace.activeKey === props.paneKey && props.active && pickElementKey(e, isMac)) {
+    e.preventDefault()
+    void pickElement()
   }
 }
 

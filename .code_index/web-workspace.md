@@ -10,7 +10,8 @@
 | `apps/web/src/features/workspace/components/WorkspaceView.vue` | khung Workspace (104 KB, nên tách) |
 | `apps/web/src/features/workspace/components/TermPane.vue` | pane terminal xterm (76 KB); `refit` bỏ qua khi `viewportFits` (`lib/splitLayout.ts`) sai: minimize trên Windows thu webview còn 144x19, refit lúc đó resize PTY còn 1 cột làm mất màn |
 | `apps/web/src/features/workspace/lib/devServerUrl.ts` | v111 W1: `devScanSlice` (4 KB đầu chunk), `DevOpenGuard` (tab tự mở 1 lần / URL); bắt URL ở `features/resources/lib/devServer.ts::DevServerDetector`; `workspace.autoOpenDevPreview`; chip `[data-dev-chip]` trên header `TermPane`; công tắc `settings.devPreviewAutoOpen` |
-| `apps/web/src/features/workspace/components/BrowserPane.vue` | pane trình duyệt (child webview) |
+| `apps/web/src/features/workspace/components/BrowserPane.vue` | pane trình duyệt (child webview); v111 W2 `pickElement`: picker trả rect + source (Vue `__file` / React `_debugSource`) + css, chụp `capturePage` rồi `cropToAttachment` vào `useAttachmentsStore().add` của pane agent (chỉ khi resolve ra đúng 1 pane); phím `pickElementKey` (`lib/workspaceKeys.ts`, Ctrl+Shift+C / Cmd+Shift+C, chỉ khi pane đang active), guest forward qua `apps/shell/src/guest.js` |
+| `apps/web/src/features/agent-tools/lib/elementCrop.ts` | v111 W2: `cropBox` (rect CSS px -> box ảnh + lề 8, kẹp mép), `thumbSize`, `cropToAttachment` (canvas) |
 | `apps/web/src/features/workspace/components/LaunchPicker.vue` | chọn preset / project khi mở pane |
 | `apps/web/src/features/workspace/components/ProjectSwitcher.vue` | đổi project |
 | `apps/web/src/features/workspace/lib/splitLayout.ts` | cây split, kéo thả |

@@ -79,6 +79,7 @@ mod stdio;
 mod strings;
 mod toast;
 mod tray;
+mod tray_waiting;
 mod update_host;
 mod vault;
 mod webstorage;

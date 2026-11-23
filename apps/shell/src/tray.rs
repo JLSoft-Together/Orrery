@@ -1,12 +1,13 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::state::Shell;
+use crate::tray_waiting;
 use crate::window::{open_compact, show_main};
 
 pub const TRAY: &str = "main";
@@ -37,13 +38,31 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let quit = MenuItem::with_id(app, "quit", t.tray_quit, true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
-    Menu::with_items(app, &[&open, &compact, &sep1, &login, &logs, &sep2, &quit])
+    let waiting = tray_waiting::entries(&tray_waiting::current(), t.tray_waiting);
+    let lead = waiting
+        .iter()
+        .map(|e| MenuItem::with_id(app, e.id.as_str(), e.label.as_str(), e.enabled, None::<&str>))
+        .collect::<tauri::Result<Vec<_>>>()?;
+    let sep0 = PredefinedMenuItem::separator(app)?;
+    let rest: [&dyn IsMenuItem<Wry>; 7] = [&open, &compact, &sep1, &login, &logs, &sep2, &quit];
+    let mut all: Vec<&dyn IsMenuItem<Wry>> = lead.iter().map(|i| i as &dyn IsMenuItem<Wry>).collect();
+    if !all.is_empty() {
+        all.push(&sep0);
+    }
+    all.extend(rest);
+    Menu::with_items(app, &all)
 }
 
 pub fn refresh(app: &AppHandle) {
-    if let (Some(tray), Ok(m)) = (app.tray_by_id(TRAY), menu(app)) {
+    let Some(tray) = app.tray_by_id(TRAY) else { return };
+    if let Ok(m) = menu(app) {
         let _ = tray.set_menu(Some(m));
     }
+    let total = tray_waiting::current().total;
+    let t = app.state::<Shell>().t();
+    let _ = tray.set_tooltip(Some(tray_waiting::tooltip(t.tray_tooltip, total)));
+    #[cfg(target_os = "macos")]
+    let _ = tray.set_title((total > 0).then(|| total.to_string()));
 }
 
 static CONFIRMING: AtomicBool = AtomicBool::new(false);
@@ -106,7 +125,11 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             let _ = app.opener().open_path(dir.to_string_lossy(), None::<&str>);
         }
         "quit" => quit(app),
-        _ => {}
+        other => {
+            if let Some(terminal) = tray_waiting::terminal_of(other) {
+                tray_waiting::open(app, terminal.to_owned());
+            }
+        }
     })
     .on_tray_icon_event(|tray, event| {
         if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {

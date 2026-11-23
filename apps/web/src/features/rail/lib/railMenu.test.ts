@@ -21,6 +21,14 @@ describe('projectMenu', () => {
       'new', 'run', 'tools', 'layouts', '-', 'explorer', 'copy-path', 'reveal', '-', 'move-up', 'move-down', 'toggle', '-', 'close-project',
     ])
   })
+  it('notify submenu lists the 3 levels, marks the current one, and hides without a level or folder', () => {
+    const m = projectMenu(project({ notify: 'waiting' }), t)
+    expect(kids(m, 'notify')).toEqual(['notify:all', 'notify:waiting', 'notify:off'])
+    expect(findAction(m, 'notify:waiting')?.hint).toBe('✓')
+    expect(findAction(m, 'notify:all')?.hint).toBeUndefined()
+    expect(ids(projectMenu(project(), t))).not.toContain('notify')
+    expect(ids(projectMenu(project({ notify: 'off', dir: null }), t))).not.toContain('notify')
+  })
   it('new tab offers agents, browser and the viewers that exist', () => {
     const m = projectMenu(project(), t)
     expect(kids(m, 'new')).toEqual(['new:claude', 'new:codex', 'new:deepseek', 'new:shell', 'new:browser', 'new:file', 'new:changes', 'new:log'])

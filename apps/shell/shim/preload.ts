@@ -277,6 +277,7 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   runReload: (sessionId: string, full: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:run-reload', sessionId, full),
   runPubGet: (dir: string): Promise<unknown> => ipcRenderer.invoke('ccm:run-pub-get', dir),
   runSessions: (): Promise<unknown> => ipcRenderer.invoke('ccm:run-sessions'),
+  trayWaiting: (payload: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:tray-waiting', payload),
   runHistoryList: (root: string): Promise<unknown> => ipcRenderer.invoke('ccm:run-history-list', root),
   runHistoryRead: (root: string, id: string, offset: number, limit: number): Promise<unknown> => ipcRenderer.invoke('ccm:run-history-read', root, id, offset, limit),
   runHistoryPin: (root: string, id: string, pinned: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:run-history-pin', root, id, pinned),

@@ -13,7 +13,7 @@
 | diffComments | `apps/web/src/features/diffComments/diffComments.ts` | `store.ts`, `DiffCommentBar.vue` | bình luận trên diff |
 | shareMode | `apps/web/src/features/shareMode/useShareModeKey.ts` | `ShareBar.vue`, `ShareModeChip.vue` | che nội dung khi chia sẻ màn hình |
 | footerSys | `apps/web/src/features/footerSys/store.ts` | `FooterSysChip.vue`, `format.ts` | chip CPU / RAM ở footer |
-| notify | `apps/web/src/features/notify/badge.ts` | `grouping.ts`, `useTaskbarBadge.ts` | badge taskbar, gộp thông báo |
+| notify | `apps/web/src/features/notify/badge.ts` | `grouping.ts`, `useTaskbarBadge.ts`, `projectLevel.ts`, `stores/projectNotify.ts`, `trayWaiting.ts`, `useTrayWaiting.ts` | badge taskbar, gộp thông báo, mức thông báo theo project (all / waiting / off), list tray chờ bạn |
 | deepseek | `apps/web/src/features/deepseek/index.ts` | `store.ts`, `gate.ts`, `SettingsDeepSeek.vue` | tạm dừng, bật bằng `CCM_DEEPSEEK_FEATURE=1` |
 
 ## Bất biến

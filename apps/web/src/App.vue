@@ -12,6 +12,7 @@ import { useSettingsStore } from './core/stores/settings'
 import { useUiStore } from './core/stores/ui'
 import { useWorkspaceStore } from './features/workspace/stores/workspace'
 import { useTaskbarBadge } from './features/notify/useTaskbarBadge'
+import { useTrayWaiting } from './features/notify/useTrayWaiting'
 import { gateDeepSeekAgent, warmDeepSeek } from './features/deepseek'
 import AppHeader from './app/components/AppHeader.vue'
 import NextShell from './features/next/components/NextShell.vue'
@@ -66,6 +67,7 @@ const uiGen = useUiGenStore()
 useTurnCheckpoints()
 useNotifications()
 useTaskbarBadge()
+useTrayWaiting()
 useBreakReminder()
 useAppToasts()
 useBugReportPrompts()

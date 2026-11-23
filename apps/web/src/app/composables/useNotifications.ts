@@ -13,6 +13,7 @@ import { shareOn } from '../../core/lib/shareMode'
 import { waitDisplay } from '../../core/lib/wait'
 import { useAgentsStore } from '../../core/stores/agents'
 import { useAgentTouchesStore } from '../../features/agent-tools/stores/agentTouches'
+import { useProjectNotifyStore } from '../../features/notify/stores/projectNotify'
 import { useAttentionStore } from '../../features/workspace/stores/attention'
 import { useConnectionStore } from '../stores/connection'
 import { useExtrasStore } from '../../core/stores/extras'
@@ -67,6 +68,7 @@ export function useNotifications(): void {
   const clashActions = useClashActions()
   const turnEdits = useTurnEditsStore()
   const turnChanges = useTurnChanges()
+  const projectNotify = useProjectNotifyStore()
   const baseTitle = document.title
 
   const waiting = computed(
@@ -122,6 +124,7 @@ export function useNotifications(): void {
     const at = Date.now()
     if (at - (lastSent.get(tag) ?? 0) < THROTTLE_MS) return
     if (terminal && snooze.isSnoozed(terminal, at)) return
+    if (terminal && !projectNotify.allows(terminal.cwd, kind)) return
     if (inQuietHours(extras.notify?.quiet, new Date(at))) return
     lastSent.set(tag, at)
     if (lastSent.size > 200) for (const [k, v] of lastSent) if (at - v >= THROTTLE_MS) lastSent.delete(k)
@@ -203,7 +206,7 @@ export function useNotifications(): void {
 
   function doneToast(x: TerminalSession): void {
     const at = new Date()
-    if (!settings.notifyEnabled || !settings.notifyDone || snooze.isSnoozed(x, at.getTime()) || inQuietHours(extras.notify?.quiet, at)) return
+    if (!projectNotify.allows(x.cwd, 'done') || !settings.notifyEnabled || !settings.notifyDone || snooze.isSnoozed(x, at.getTime()) || inQuietHours(extras.notify?.quiet, at)) return
     const id = turnToastId(x.id)
     toasts.push({
       id,
@@ -335,7 +338,7 @@ export function useNotifications(): void {
       for (const id of fire) {
         const x = terminals.byId[id]
         const tokens = samples.find((s) => s.id === id)?.tokens
-        if (!x || tokens === undefined) continue
+        if (!x || tokens === undefined || !projectNotify.allows(x.cwd, 'context')) continue
         const pane = workspace.panes.find((p) => p.terminalId === id)
         const toastId = `context-warn-${id}`
         toasts.push({
@@ -372,7 +375,7 @@ export function useNotifications(): void {
       if (!fresh.length || inQuietHours(extras.notify?.quiet, new Date())) return
       for (const c of fresh) {
         const [first, ...rest] = c.peers
-        if (!first || !rest.length) continue
+        if (!first || !rest.length || !projectNotify.allows(terminals.byId[first.terminalId]?.cwd, 'clash')) continue
         const file = clashActions.fileName(c, first.terminalId)
         const title = t('v104.clash.toastTitle', { a: first.name, b: rest.map((p) => p.name).join(', '), file })
         toasts.push({

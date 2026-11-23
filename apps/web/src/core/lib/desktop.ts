@@ -236,6 +236,7 @@ interface DesktopBridge {
   runReload?: (sessionId: string, full: boolean) => Promise<RunResult>
   runPubGet?: (dir: string) => Promise<RunResult>
   runSessions?: () => Promise<RunSession[]>
+  trayWaiting?: (payload: unknown) => Promise<unknown>
   runHistoryList?: (root: string) => Promise<RunHistoryEntry[]>
   runHistoryRead?: (root: string, id: string, offset: number, limit: number) => Promise<RunHistoryPage | null>
   runHistoryPin?: (root: string, id: string, pinned: boolean) => Promise<boolean>

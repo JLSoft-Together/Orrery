@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CirclePlay, FolderX, LayoutTemplate, Play, Save, Settings2, Star } from 'lucide-vue-next'
+import { Bell, BellOff, BellRing, Check, CirclePlay, FolderX, LayoutTemplate, Play, Save, Settings2, Star } from 'lucide-vue-next'
 import { hasRun } from '../../../core/lib/desktop'
 import { hasLayouts, hasScripts, listLayouts, type SavedLayout } from '../lib/projects'
 import { useRunStore } from '../../run/stores/run'
+import { useProjectNotifyStore } from '../../notify/stores/projectNotify'
+import { NOTIFY_LEVELS } from '../../notify/projectLevel'
 
 /** `closable`: adds "Close project" (the rail's project header). */
 const props = defineProps<{ anchor: DOMRect; root: string; name: string; trigger?: HTMLElement | null; closable?: boolean }>()
@@ -15,6 +17,8 @@ const WIDTH = 248
 const menu = ref<HTMLElement | null>(null)
 const layouts = ref<SavedLayout[]>([])
 const run = useRunStore()
+const projectNotify = useProjectNotifyStore()
+const notifyIcon = { all: BellRing, waiting: Bell, off: BellOff }
 const canRun = computed(() => hasRun && run.runnable(props.root))
 
 const style = computed(() => {
@@ -103,6 +107,22 @@ const ICON = 'shrink-0 text-ink-muted group-focus-visible:text-on-accent'
         <Settings2 :size="14" :class="ICON" aria-hidden="true" /><span class="truncate">{{ t('workspace.layouts.manage') }}</span>
       </button>
     </template>
+    <div class="mx-2 my-1 border-t border-line" role="separator" />
+    <p class="px-2 pt-0.5 pb-1 text-2xs font-semibold text-ink-faint" aria-hidden="true">{{ t('projectNotify.menu') }}</p>
+    <button
+      v-for="l in NOTIFY_LEVELS"
+      :key="l"
+      type="button"
+      role="menuitemradio"
+      :aria-checked="projectNotify.levelOf(root) === l"
+      :class="ITEM"
+      :data-menu="`notify-${l}`"
+      @click="act(() => projectNotify.set(root, l))"
+    >
+      <component :is="notifyIcon[l]" :size="14" :class="ICON" aria-hidden="true" />
+      <span class="min-w-0 flex-1 truncate">{{ t(`projectNotify.${l}`) }}</span>
+      <Check v-if="projectNotify.levelOf(root) === l" :size="12" class="shrink-0 text-ink-muted group-focus-visible:text-on-accent" aria-hidden="true" />
+    </button>
     <template v-if="closable">
       <div class="mx-2 my-1 border-t border-line" role="separator" />
       <button type="button" role="menuitem" :class="ITEM" data-menu="close-project" @click="act(() => emit('closeProject'))">

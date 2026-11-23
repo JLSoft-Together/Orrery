@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../core/lib/shareMode'
-import { BellRing, ChevronRight, Ellipsis, Folder, GitBranch, Hand, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
+import { BellOff, BellRing, ChevronRight, Ellipsis, Folder, GitBranch, Hand, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
 import { usePaneInfo } from '../../workspace/composables/usePaneInfo'
 import { useProjectDisk } from '@features/disk'
 import { useRailTabStop } from '../composables/useRail'
@@ -28,6 +28,7 @@ import { folderName } from '../lib/sidebarRows'
 import { isMac } from '../../../core/lib/platform'
 import { keyCombo } from '../../shortcuts/lib/shortcuts'
 import { useWorkspaceStore } from '../../workspace/stores/workspace'
+import { useProjectNotifyStore } from '../../notify/stores/projectNotify'
 import StatusIcon from '../../../core/components/StatusIcon.vue'
 import RunBadge from '../../run/components/RunBadge.vue'
 import RailGroupHead from './RailGroupHead.vue'
@@ -76,6 +77,8 @@ const ago = computed(() => {
 })
 const hasSecond = computed(() => !!headBranch.value || counts.value.running > 0 || counts.value.waiting > 0)
 const headDir = computed(() => (props.cluster.checkouts.find((k) => k.active) ?? props.cluster.checkouts[0])?.path ?? props.cluster.root)
+const projectNotify = useProjectNotifyStore()
+const notifyLevel = computed(() => projectNotify.levelOf(headDir.value))
 const projectDisk = useProjectDisk(() => (props.cluster.key === 'home' ? null : (props.cluster.root ?? headDir.value)))
 // A lone checkout has no line: its branch sits on the header, and a remembered project opens from the header.
 const showCheckouts = computed(() => showsCheckouts(props.cluster))
@@ -214,6 +217,14 @@ const HEAD_BTN =
           data-rail-needs
         >
           <BellRing :size="10" aria-hidden="true" />{{ cluster.needs }}<span class="sr-only"> {{ t('workspace.rail.needs', { n: cluster.needs }, cluster.needs) }}</span>
+        </span>
+        <span
+          v-if="notifyLevel !== 'all'"
+          class="inline-flex size-4 shrink-0 items-center justify-center text-ink-faint"
+          :title="t(notifyLevel === 'off' ? 'projectNotify.offHint' : 'projectNotify.waitingHint')"
+          :data-rail-notify="notifyLevel"
+        >
+          <BellOff :size="11" aria-hidden="true" /><span class="sr-only">{{ t(notifyLevel === 'off' ? 'projectNotify.offHint' : 'projectNotify.waitingHint') }}</span>
         </span>
         <RunBadge v-if="headDir" :dir="headDir" :compact="narrow" :tabindex="headStop" />
         <button

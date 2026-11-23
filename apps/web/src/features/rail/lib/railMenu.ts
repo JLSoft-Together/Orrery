@@ -1,5 +1,6 @@
 import { compactEntry, type CompactState } from '../../agent-tools/lib/compactHandoff'
 import type { MenuEntry } from '../../../core/lib/menu'
+import { NOTIFY_LEVELS, type NotifyLevel } from '../../notify/projectLevel'
 
 const M = 'workspace.rail.menu.'
 
@@ -40,6 +41,8 @@ export interface ProjectMenuCtx {
   /** Offer DeepSeek panes (desktop bridge present). */
   deepseek?: boolean
   kind?: ProjectKind
+  /** Notification level of this project; undefined hides the entry. */
+  notify?: NotifyLevel
 }
 
 export type ProjectKind = 'android' | 'flutter' | 'other' | null
@@ -79,6 +82,10 @@ export function projectMenu(ctx: ProjectMenuCtx, t: T): MenuEntry[] {
     if (ctx.layouts.length) kids.push({ id: 'layout-manage', label: t('workspace.layouts.manage') }, { separator: true })
     for (const l of ctx.layouts) kids.push({ id: `layout:${l.id}`, label: l.name, hint: l.openOnStart ? t('workspace.layouts.onStart') : undefined })
     entries.push({ id: 'layouts', label: t(`${M}layouts`), children: kids })
+  }
+  if (ctx.notify && ctx.dir) {
+    const kids: MenuEntry[] = NOTIFY_LEVELS.map((l) => ({ id: `notify:${l}`, label: t(`projectNotify.${l}`), hint: l === ctx.notify ? '✓' : undefined }))
+    entries.push({ id: 'notify', label: t('projectNotify.menu'), children: kids })
   }
   if (entries.length) entries.push({ separator: true })
   const unanchored = ctx.anchored ? undefined : t(`${M}noPane`)

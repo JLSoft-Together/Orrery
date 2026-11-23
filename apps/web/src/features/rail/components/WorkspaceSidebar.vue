@@ -27,6 +27,8 @@ import { emptyMenu, groupMenu, isMenuKey, projectKindOf, projectMenu as buildPro
 import { clickSelect, extendSelect, NO_SELECTION, pruneSelection, selectionFacts, selectionMenu, selectionPanes, type RailSelection } from '../lib/railSelect'
 import { leaves, type SplitDir } from '../../workspace/lib/splitLayout'
 import { useRunStore } from '../../run/stores/run'
+import { useProjectNotifyStore } from '../../notify/stores/projectNotify'
+import { isNotifyLevel } from '../../notify/projectLevel'
 import { useUiStore } from '../../../core/stores/ui'
 import { isTerm, presetOf, useWorkspaceStore, workCwd, type SplitChoice } from '../../workspace/stores/workspace'
 import ContextMenu from '../../../core/components/ui/ContextMenu.vue'
@@ -438,6 +440,7 @@ async function moveCluster(key: string, step: number): Promise<void> {
 
 const ui = useUiStore()
 const run = useRunStore()
+const projectNotify = useProjectNotifyStore()
 const status = ref('')
 let statusTimer: ReturnType<typeof setTimeout> | undefined
 function flash(text: string): void {
@@ -502,6 +505,7 @@ async function showProjectMenu(shownCluster: RailCluster, k: RailCheckout | unde
       canDown: at_ >= 0 && at_ < all.length - 1,
       collapsed: isShut(c),
       kind: dir ? projectKindOf(run.projectsFor(dir), run.detected(dir)) : null,
+      notify: dir ? projectNotify.levelOf(dir) : undefined,
     },
     t,
   )
@@ -521,6 +525,14 @@ async function pickProject(id: string, c: RailCluster, dir: string | null, ancho
       if (path && /\.html?$/i.test(path)) workspace.openBrowser(path, { cwd })
       else if (path) workspace.openFile(path, undefined, { cwd })
     } else workspace.launch(choice as PtyPreset, cwd)
+    return
+  }
+  if (id.startsWith('notify:')) {
+    const level = id.slice(7)
+    if (isNotifyLevel(level)) {
+      const roots = new Set([dir, c.root, ...c.checkouts.map((k) => k.path)].filter((p): p is string => !!p))
+      for (const root of roots) projectNotify.set(root, level)
+    }
     return
   }
   if (id.startsWith('layout:')) {

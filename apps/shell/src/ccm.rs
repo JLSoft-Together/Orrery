@@ -12,7 +12,7 @@ use crate::tray;
 use crate::window::{open_external, set_background_all, set_zoom_all, window_action};
 
 #[cfg(test)]
-const LOCAL: [&str; 45] = [
+const LOCAL: [&str; 46] = [
     "ccm:window",
     "ccm:pty-endpoint",
     "ccm:editor-dirty",
@@ -58,6 +58,7 @@ const LOCAL: [&str; 45] = [
     "ccm:drop-paths",
     "ccm:menu-toast-sync",
     "ccm:badge",
+    "ccm:tray-waiting",
 ];
 
 fn arg(args: &[Value], i: usize) -> &Value {
@@ -208,6 +209,12 @@ pub async fn dispatch(app: AppHandle, webview: Webview, channel: &str, args: Vec
             if answers_asks(webview.label()) {
                 let count = arg(&args, 0).as_u64().unwrap_or(0).min(999) as u32;
                 crate::badge::apply(&app, count, arg(&args, 1) == &Value::Bool(true));
+            }
+            Ok(Value::Null)
+        }
+        "ccm:tray-waiting" => {
+            if answers_asks(webview.label()) && crate::tray_waiting::set(arg(&args, 0)) {
+                tray::refresh(&app);
             }
             Ok(Value::Null)
         }

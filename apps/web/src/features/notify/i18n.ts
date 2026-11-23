@@ -1,4 +1,12 @@
 const en = {
+  projectNotify: {
+    menu: 'Notifications for this project',
+    all: 'All',
+    waiting: 'Only when waiting for me',
+    off: 'Off',
+    waitingHint: 'Notifications only when a session waits for you',
+    offHint: 'Notifications off (the taskbar badge still counts)',
+  },
   notifyGroup: {
     done: '{n} session finished | {n} sessions finished',
     waiting: '{n} needs you | {n} need you',
@@ -11,6 +19,14 @@ const en = {
 }
 
 const vi = {
+  projectNotify: {
+    menu: 'Thông báo của project này',
+    all: 'Tất cả',
+    waiting: 'Chỉ khi chờ chủ nhân',
+    off: 'Tắt',
+    waitingHint: 'Chỉ thông báo khi có session chờ chủ nhân',
+    offHint: 'Đã tắt thông báo (số trên taskbar vẫn đếm)',
+  },
   notifyGroup: {
     done: '{n} session xong',
     waiting: '{n} đang chờ chủ nhân',

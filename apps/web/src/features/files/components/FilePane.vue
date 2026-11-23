@@ -11,7 +11,7 @@ import { Check, ChevronDown, ChevronUp, CircleAlert, Code, Columns2, Copy, Eye, 
 import { diskChangeAction, editBlock, inEditor, isEditKey, isSaveKey, isSelectAllKey, type EditBlock } from '../lib/fileEditor'
 import { isTyping } from '../../shortcuts/lib/shortcuts'
 import { firesOn, type AutoSaveTrigger } from '../../../core/lib/autoSave'
-import { useWorkspaceStore, type SaveOutcome } from '../../workspace/stores/workspace'
+import { presetOf, useWorkspaceStore, type Pane, type SaveOutcome } from '../../workspace/stores/workspace'
 import { changedLines, escapeHtml, findMatches, grammarFor, isHtml, isMarkdown, renderLine, splitLines, type CodeToken, type Match } from '../../../core/lib/codeView'
 import { blockPatch } from '@features/git'
 import { joinPath } from '../lib/fileLinks'
@@ -37,7 +37,11 @@ import FlutterPreviewPanel from '../../run/components/FlutterPreviewPanel.vue'
 import { hasFlutterPreview, inFlutterProject, isDartFile } from '../../run/lib/flutterPreview'
 import { nextStacked } from '../../rail/lib/sideWidth'
 import { desktop } from '../../../core/lib/desktop'
-import type { MenuEntry } from '../../../core/lib/menu'
+import type { MenuEntry, Rect } from '../../../core/lib/menu'
+import ContextMenu from '../../../core/components/ui/ContextMenu.vue'
+import { useToastsStore } from '../../../core/stores/toasts'
+import { useTerminalsStore } from '../../../core/stores/terminals'
+import { formatSelection, sendTargets } from '../lib/sendSelection'
 import PaneMore from '../../workspace/components/PaneMore.vue'
 import { PANE_LAYOUT_MENU } from '../../workspace/lib/layoutPaneMenu'
 import ProblemBar from './ProblemBar.vue'
@@ -72,6 +76,7 @@ interface EditorApi {
   lineText: (line: number) => string
   topLine: () => number
   lineCount: () => number
+  selection: () => { from: number; to: number; text: string } | null
 }
 
 const props = withDefaults(defineProps<{ path: string; line?: number; active?: boolean; paneKey?: string }>(), { active: true, paneKey: undefined })
@@ -620,6 +625,56 @@ function onCursorLine(line: number): void {
   editorLine = line
   if (isHttp.value) httpCursor.value = line
   if (showDesign.value) layoutLine.value = line
+}
+
+const toasts = useToastsStore()
+interface SendPick {
+  at: Rect
+  entries: MenuEntry[]
+  sel: { from: number; to: number; text: string }
+  panes: Pane[]
+}
+const sendPick = shallowRef<SendPick | null>(null)
+const sendMenu = shallowRef<{ at: Rect; entries: MenuEntry[] } | null>(null)
+const terminals = useTerminalsStore()
+const termTitle = (p: Pane): string => {
+  const x = terminals.list.find((r) => r.id === p.terminalId)
+  return x && x.title !== x.id ? x.title : ''
+}
+const agentName = (p: Pane): string => termTitle(p) || p.title || baseName(p.cwd ?? '') || presetOf(p)
+
+function deliverSelection(pane: Pane, sel: { from: number; to: number; text: string }): void {
+  const out = formatSelection({ path: filePath(), cwd: pane.cwd, win: desktop?.platform === 'win32', from: sel.from, to: sel.to, code: sel.text, lang: grammar.value })
+  workspace.insertInto(pane.key, out.text)
+  toasts.push({ id: 'file-send-selection', kind: 'info', text: t(out.full ? 'editor.send.sent' : 'editor.send.sentRef', { name: agentName(pane) }), timeoutMs: 5000, attrs: { 'data-send-selection-sent': '' } })
+}
+
+function sendEditorSelection(at: Rect): void {
+  const sel = editor.value?.selection()
+  if (!sel) return
+  const own = workspace.panes.find((p) => p.key === props.paneKey)
+  const targets = sendTargets(workspace.panes, filePath(), own?.project ?? own?.cwd)
+  if (!targets.length) {
+    toasts.push({ id: 'file-send-selection', kind: 'info', text: t('editor.send.none'), timeoutMs: 5000, attrs: { 'data-send-selection-none': '' } })
+    return
+  }
+  if (targets.length === 1) return deliverSelection(targets[0]!, sel)
+  sendPick.value = {
+    at,
+    sel,
+    panes: targets,
+    entries: targets.map((p) => ({ id: p.key, label: agentName(p), hint: presetOf(p) })),
+  }
+}
+
+function openSendMenu(at: Rect): void {
+  sendMenu.value = { at, entries: [{ id: 'send', label: t('editor.send.button'), icon: Send, shortcut: isMac ? '⇧⌘L' : 'Ctrl+Shift+L' }] }
+}
+
+function pickSendAgent(id: string): void {
+  const pick = sendPick.value
+  const pane = pick?.panes.find((p) => p.key === id)
+  if (pick && pane) deliverSelection(pane, pick.sel)
 }
 
 const nav = useNavigationStore()
@@ -1508,6 +1563,8 @@ function pickHead(id: string): void {
       <button type="button" class="ccm-btn-plain shrink-0 text-2xs" @click="compareText = null">{{ t('editor.disk.closeCompare') }}</button>
     </div>
     <OutlinePicker v-if="outlineOpen" :items="outlineItems" @pick="pickOutline" @close="closeOutline" />
+    <ContextMenu v-if="sendMenu" :at="sendMenu.at" :entries="sendMenu.entries" :label="t('editor.send.button')" @pick="sendEditorSelection(sendMenu.at)" @close="sendMenu = null" />
+    <ContextMenu v-if="sendPick" :at="sendPick.at" :entries="sendPick.entries" :label="t('editor.send.pick')" @pick="pickSendAgent" @close="sendPick = null" />
     <ProblemBar v-if="problems && showSource" :problems="problems" :index="problemIndex" :stale="problemsStale" @step="stepProblems" />
     <p v-if="liveText !== null && showDesign" class="flex shrink-0 items-center gap-1.5 border-b border-line px-3 py-1 text-2xs text-ink-muted" data-file-live>
       <Eye :size="12" aria-hidden="true" />{{ t('editor.live') }}
@@ -1532,6 +1589,8 @@ function pickHead(id: string): void {
         @save="save()"
         @cursor-line="onCursorLine"
         @top-line="onEditorTopLine"
+        @send="sendEditorSelection"
+        @menu="openSendMenu"
       />
       <div v-else ref="scroller" class="ccm-scroll relative min-h-0 min-w-0 flex-1 overflow-auto" @scroll.passive="onCodeScroll">
         <div v-if="loading" class="grid size-full place-items-center text-xs text-well-ink">{{ t('workspace.viewer.loading') }}</div>

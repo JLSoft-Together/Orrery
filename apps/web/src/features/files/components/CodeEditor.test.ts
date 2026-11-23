@@ -54,4 +54,37 @@ describe('CodeEditor', () => {
     expect(w.emitted('dirty')?.at(-1)).toEqual([true])
     w.unmount()
   })
+
+  it('exposes the selected lines (a selection ending at column 0 stops on the line before) and sends on Ctrl+Shift+L', async () => {
+    const w = editorOf({ doc: 'one\ntwo\nthree\nfour' })
+    const api = w.vm as unknown as { selection: () => { from: number; to: number; text: string } | null }
+    const view = EditorView.findFromDOM(w.element.querySelector('.cm-editor') as HTMLElement)!
+    expect(api.selection()).toBeNull()
+    const press = () => view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'L', code: 'KeyL', keyCode: 76, ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))
+    press()
+    expect(w.emitted('send')).toBeUndefined()
+    view.dispatch({ selection: { anchor: 0, head: 9 } })
+    expect(api.selection()).toEqual({ from: 1, to: 3, text: 'one\ntwo\nt' })
+    view.dispatch({ selection: { anchor: 4, head: 8 } })
+    expect(api.selection()).toEqual({ from: 2, to: 2, text: 'two\n' })
+    press()
+    expect(w.emitted('send')).toHaveLength(1)
+    w.unmount()
+  })
+
+  it('opens the send menu on right click only when something is selected', async () => {
+    const w = editorOf({ doc: 'one\ntwo' })
+    const view = EditorView.findFromDOM(w.element.querySelector('.cm-editor') as HTMLElement)!
+    const host = w.element.querySelector('[data-file-editor]') as HTMLElement
+    const none = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 5, clientY: 6 })
+    host.dispatchEvent(none)
+    expect(none.defaultPrevented).toBe(false)
+    expect(w.emitted('menu')).toBeUndefined()
+    view.dispatch({ selection: { anchor: 0, head: 3 } })
+    const some = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 5, clientY: 6 })
+    host.dispatchEvent(some)
+    expect(some.defaultPrevented).toBe(true)
+    expect(w.emitted('menu')?.[0]).toEqual([{ left: 5, right: 5, top: 6, bottom: 6 }])
+    w.unmount()
+  })
 })

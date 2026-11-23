@@ -22,7 +22,9 @@ import {
   lineNumbers,
   rectangularSelection,
 } from '@codemirror/view'
+import { Send } from 'lucide-vue-next'
 import type { BuildError } from '@ccm/shared'
+import type { Rect } from '../../../core/lib/menu'
 import { editorHighlight, editorTheme } from '../lib/editor/cmTheme'
 import { languageFor } from '../lib/editor/cmLanguage'
 import { colorSwatches } from '../lib/editor/colorSwatches'
@@ -47,11 +49,64 @@ const emit = defineEmits<{
   cursorLine: [line: number]
   /** Fractional 1-based line at the top of the viewport, on scroll. */
   topLine: [line: number]
+  send: [at: Rect]
+  menu: [at: Rect]
 }>()
 
 const { t } = useI18n()
 const settings = useSettingsStore()
 const host = ref<HTMLElement | null>(null)
+const frame = ref<HTMLElement | null>(null)
+const chip = ref<{ left: number; top: number } | null>(null)
+const CHIP_W = 124
+const CHIP_H = 24
+
+function selectedLines(): { from: number; to: number; text: string } | null {
+  if (!view) return null
+  const sel = view.state.selection.main
+  if (sel.empty) return null
+  const doc = view.state.doc
+  const from = doc.lineAt(sel.from).number
+  let to = doc.lineAt(sel.to).number
+  if (to > from && doc.line(to).from === sel.to) to -= 1
+  return { from, to, text: view.state.sliceDoc(sel.from, sel.to) }
+}
+
+function selectionRect(): Rect {
+  const sel = view?.state.selection.main
+  const c = view && sel ? view.coordsAtPos(sel.to) : null
+  const r = c ?? host.value?.getBoundingClientRect() ?? { left: 0, right: 0, top: 0, bottom: 0 }
+  return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+}
+
+function placeChip(): void {
+  const box = frame.value?.getBoundingClientRect()
+  const sel = view?.state.selection.main
+  if (!view || !box || !sel || sel.empty) {
+    chip.value = null
+    return
+  }
+  const c = view.coordsAtPos(sel.to)
+  if (!c || c.bottom < box.top || c.top > box.bottom) {
+    chip.value = null
+    return
+  }
+  const below = c.bottom + 4 + CHIP_H <= box.bottom
+  const top = below ? c.bottom + 4 : c.top - 4 - CHIP_H
+  chip.value = { left: Math.max(4, Math.min(c.right - box.left + 6, box.width - CHIP_W - 12)), top: Math.max(4, top - box.top) }
+}
+
+function sendSelection(target: EditorView): boolean {
+  if (target.state.selection.main.empty) return false
+  emit('send', selectionRect())
+  return true
+}
+
+function onContextMenu(e: MouseEvent): void {
+  if (!selectedLines()) return
+  e.preventDefault()
+  emit('menu', { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY })
+}
 let view: EditorView | null = null
 let baseline: Text | null = null
 let dirty = false
@@ -83,6 +138,7 @@ function openReplace(target: EditorView): boolean {
 function emitTopLine(): void {
   scrollFrame = 0
   if (!view) return
+  placeChip()
   const top = view.scrollDOM.scrollTop
   const block = view.lineBlockAtHeight(top)
   const line = view.state.doc.lineAt(block.from).number
@@ -143,6 +199,7 @@ function extensions(): Extension[] {
     keymap.of([
       { key: 'Mod-s', preventDefault: true, run: () => (emit('save'), true) },
       { key: isMac ? 'Mod-Alt-f' : 'Ctrl-h', preventDefault: true, run: openReplace },
+      { key: 'Mod-Shift-l', preventDefault: true, run: sendSelection },
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...searchKeymap,
@@ -164,6 +221,7 @@ function extensions(): Extension[] {
         emit('change')
       }
       if (u.selectionSet || u.docChanged) emit('cursorLine', u.state.doc.lineAt(u.state.selection.main.head).number)
+      if (u.selectionSet || u.docChanged || u.geometryChanged) placeChip()
     }),
   ]
 }
@@ -240,6 +298,7 @@ defineExpose({
     return view.state.doc.lineAt(block.from).number
   },
   lineCount: (): number => view?.state.doc.lines ?? 1,
+  selection: selectedLines,
   openFind: (): void => void (view && openSearchPanel(view)),
   /** Selected text, else the word at the cursor. */
   lineText: (line: number): string => (view && line >= 1 && line <= view.state.doc.lines ? view.state.doc.line(line).text : ''),
@@ -300,7 +359,21 @@ watch(
 </script>
 
 <template>
-  <div ref="host" class="ccm-editor ccm-no-liga min-h-0 min-w-0 flex-1 overflow-hidden" data-code-zoom data-file-editor />
+  <div ref="frame" class="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div ref="host" class="ccm-editor ccm-no-liga min-h-0 min-w-0 flex-1 overflow-hidden" data-code-zoom data-file-editor @contextmenu="onContextMenu" />
+    <button
+      v-if="chip"
+      type="button"
+      class="ccm-btn absolute z-10 gap-1 px-2 text-2xs"
+      :style="{ left: `${chip.left}px`, top: `${chip.top}px`, height: `${CHIP_H}px`, boxShadow: 'var(--ccm-shadow-pop)' }"
+      :title="t('editor.send.hint', { key: isMac ? '⇧⌘L' : 'Ctrl+Shift+L' })"
+      data-send-selection
+      @mousedown.prevent
+      @click="emit('send', selectionRect())"
+    >
+      <Send :size="12" aria-hidden="true" />{{ t('editor.send.button') }}
+    </button>
+  </div>
 </template>
 
 <style>

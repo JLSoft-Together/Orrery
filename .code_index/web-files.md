@@ -8,6 +8,7 @@
 |---|---|
 | `apps/web/src/features/files/components/FilePane.vue` | pane xem / sửa file (CodeMirror 6, minimap, outline, JSON tree, HTTP panel, markdown) |
 | `apps/web/src/features/files/components/ExplorerTree.vue` | cây Explorer, search, TODO, checks |
+| `apps/web/src/features/files/lib/sendSelection.ts` | WP-112j: `formatSelection` (`@path:từ-đến` + code block, > 200 dòng chỉ gửi tham chiếu, che secret bằng `maskSecrets`), `sendTargets` (pane agent của project, focus gần nhất trước); `CodeEditor` phát `send` / `menu` (nút nổi, `Ctrl+Shift+L` thay `selectSelectionMatches`, chuột phải), `FilePane.sendEditorSelection` chọn pane rồi `workspace.insertInto` (không Enter) |
 | `apps/web/src/features/files/stores/explorer.ts` | state Explorer (root, mở / đóng, chọn) |
 | `apps/web/src/features/files/lib/fileEditor.ts` | đọc / ghi file, conflict đĩa, auto save |
 | `apps/web/src/features/files/lib/highlight.worker.ts` | tô cú pháp trong worker (import trực tiếp `features/git/lib/diffBlocks`) |
@@ -21,4 +22,4 @@
 
 ## Liên kết
 
-- i18n: `apps/web/src/features/files/i18n/`. Plan: `.planning/PLAN-v59-file-icons.md`, `PLAN-v62-auto-save.md`. E2E: `explorer`, `file-editor`, `minimap`, `v103-explorer`.
+- i18n: `apps/web/src/features/files/i18n/`. Plan: `.planning/PLAN-v59-file-icons.md`, `PLAN-v62-auto-save.md`. E2E: `explorer`, `file-editor`, `minimap`, `v103-explorer`, `v111-send-selection`.

@@ -328,6 +328,8 @@ pub fn register(desk: &mut Desk, env: &DeskEnv) {
     let notify: ci_watch::Notify = Arc::new(move |ev: &Value| fan_out(&caller, &io, ev));
     let watch = CiWatch::new(probe, notify, Arc::new(util::now_ms), Timing::default());
     let gi = Arc::new(ipc::GhIpc { gh: gh.clone(), watch });
+    let closing = gi.watch.clone();
+    desk.on_close(Arc::new(move || closing.stop()));
     let g = gi.clone();
     desk.on(MODULE, "ccm:gh-pr", move |ctx, args| Ok(g.pr(ctx, arg(args, 0))));
     let g = gi.clone();

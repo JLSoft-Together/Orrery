@@ -45,6 +45,7 @@ import peerV54 from '../features/map/i18n/peer-v54'
 import peerMapV54 from '../features/map/i18n/peer-map-v54'
 import peerWsV54 from '../features/map/i18n/peer-ws-v54'
 import githubV58 from '../features/settings/i18n/github-v58'
+import prV111 from '../features/git/i18n/pr-v111'
 import devicesV61 from '../features/devices/i18n/devices-v61'
 import whatsNewV71 from '../features/update/i18n/whats-new-v71'
 import devicesV72 from '../features/devices/i18n/devices-v72'
@@ -169,6 +170,7 @@ const vi: typeof en = {
   ...peerMapV54.vi,
   ...peerWsV54.vi,
   ...githubV58.vi,
+  ...prV111.vi,
   ...devicesV61.vi,
   ...whatsNewV71.vi,
   ...devicesV72.vi,

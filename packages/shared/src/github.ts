@@ -55,6 +55,8 @@ export type GhError =
   | 'gh.conflict'
   | 'gh.invalid'
   | 'gh.watchMax'
+  | 'gh.logGone'
+  | 'gh.forkHead'
   | 'gh.http'
 
 export interface GhFail {

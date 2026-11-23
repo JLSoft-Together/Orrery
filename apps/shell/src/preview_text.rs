@@ -183,7 +183,13 @@ pub fn confirm_spec(locale: &str, kind: &str, req: &Value) -> Option<Confirm> {
                     spec(format!("Delete branch {branch} on GitHub?"), format!("{repo}: the remote branch {branch} is deleted."), "Delete")
                 };
             }
-            let line = format!("#{} -> {} ({})", text(req, "number"), text(req, "base"), text(req, "method"));
+            let (head, head_repo) = (text(req, "head"), text(req, "headRepo"));
+            let from = match (head.is_empty(), head_repo.is_empty() || head_repo == repo) {
+                (true, _) => String::new(),
+                (false, true) => format!("{head} "),
+                (false, false) => format!("{head_repo}:{head} "),
+            };
+            let line = format!("#{} {}-> {} ({})", text(req, "number"), from, text(req, "base"), text(req, "method"));
             let tail = match (branch.is_empty(), vi) {
                 (true, _) => String::new(),
                 (false, true) => format!(", xoá nhánh {branch}"),
@@ -307,6 +313,14 @@ mod tests {
         assert_eq!(m.detail, "o/r
 
 #42 -> master (squash), xoá nhánh feat/x");
+        let h = confirm_spec("en", "ghMerge", &json!({"number": 7, "base": "master", "head": "feat/x", "headRepo": "o/r", "method": "merge", "repo": "o/r"})).unwrap();
+        assert_eq!(h.detail, "o/r
+
+#7 feat/x -> master (merge)");
+        let f = confirm_spec("en", "ghMerge", &json!({"number": 7, "base": "master", "head": "feat/x", "headRepo": "fork/r", "method": "merge", "repo": "o/r"})).unwrap();
+        assert_eq!(f.detail, "o/r
+
+#7 fork/r:feat/x -> master (merge)");
         let d = confirm_spec("en", "ghMerge", &json!({"deleteBranch": "feat/x", "repo": "o/r"})).unwrap();
         assert_eq!((d.message.as_str(), d.ok), ("Delete branch feat/x on GitHub?", "Delete"));
         assert!(confirm_spec("en", "ghMerge", &json!({})).is_none());

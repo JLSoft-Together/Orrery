@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>PrPanel v111</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--ink2:#6e6e73;--line:#d2d2d7;--wf:#fafafa;--bar:#d9d9de;--acc:#e8702a;--acc-s:#fde9dc;--ok:#1f9d55;--ok-s:#dcf3e5;--warn:#b7791f;--warn-s:#fbefd5;--err:#d64545;--err-s:#fbe1e1;--sel:#e7f0ff}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--ink:#f5f5f7;--ink2:#a1a1a6;--line:#38383a;--wf:#141416;--bar:#3a3a3e;--acc:#f08a4b;--acc-s:#3a2516;--ok:#4cc77f;--ok-s:#143222;--warn:#e0a84a;--warn-s:#3a2c12;--err:#ff6b6b;--err-s:#3d1717;--sel:#1b2a44}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 120px}
+h1{font-size:24px;margin:8px 0 4px}
+.sub{color:var(--ink2);margin:0 0 12px;font-size:14px}
+.tabs{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:6px;padding:8px 0;overflow-x:auto}
+.tabs a{flex:none;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px}
+h2{font-size:18px;margin:24px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
+.head{display:flex;gap:8px;align-items:flex-start}
+.id{flex:none;font-weight:700;color:var(--acc);font-size:13px;padding-top:2px}
+.t{font-weight:600;font-size:16px;flex:1}
+.prob{color:var(--ink2);font-size:14px;margin:4px 0 10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tag{font-size:12px;border-radius:999px;padding:2px 9px;background:var(--bg);border:1px solid var(--line)}
+.tag b{font-weight:700}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ba>div>p{margin:0 0 4px;font-size:12px;font-weight:600;color:var(--ink2)}
+.ba>div:last-child>p{color:var(--acc)}
+.wf{background:var(--wf);border:1px dashed var(--line);border-radius:10px;padding:8px;font-size:10px;line-height:1.35;min-height:118px;overflow:hidden}
+.ln{height:6px;border-radius:3px;background:var(--bar);margin:5px 0}
+.row{display:flex;align-items:center;gap:4px;margin:3px 0;min-width:0}
+.row>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;border-radius:999px;padding:1px 6px;background:var(--bar);font-size:9px;white-space:nowrap}
+.acc{background:var(--acc-s);color:var(--acc)}
+.ok{background:var(--ok-s);color:var(--ok)}
+.warn{background:var(--warn-s);color:var(--warn)}
+.err{background:var(--err-s);color:var(--err)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--bar);flex:none;display:inline-block}
+.dot.g{background:var(--ok)}.dot.r{background:var(--err)}.dot.a{background:var(--acc)}
+.mi{padding:3px 5px;border-radius:4px}
+.mi.h{background:var(--acc-s);color:var(--acc);font-weight:600}
+.sep{border-top:1px solid var(--line);margin:3px 0}
+.toast{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:4px 6px;margin:3px 0}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.sel{background:var(--sel)}
+.box{border:1px solid var(--line);border-radius:6px;padding:4px 5px;background:var(--card);margin:3px 0}
+.btn{display:inline-block;border-radius:5px;padding:1px 6px;border:1px solid var(--line);background:var(--card);font-size:9px}
+.btn.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+.fade{opacity:.45}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.pick button{font:inherit;font-size:14px;padding:9px 4px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;min-height:44px}
+.pick button[aria-pressed=true][data-v=lam]{background:var(--ok);border-color:var(--ok);color:#fff}
+.pick button[aria-pressed=true][data-v=sau]{background:var(--warn);border-color:var(--warn);color:#fff}
+.pick button[aria-pressed=true][data-v=bo]{background:var(--err);border-color:var(--err);color:#fff}
+.foot{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;justify-content:center;z-index:9}
+.foot span{font-size:13px;color:var(--ink2)}
+.foot button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:10px 18px;background:var(--acc);color:#fff;cursor:pointer;min-height:44px}
+.foot button.g{background:var(--bg);color:var(--ink);border:1px solid var(--line);font-weight:500}
+.legend{font-size:13px;color:var(--ink2)}
+.tb{display:flex;gap:6px;align-items:flex-end;background:var(--bar);border-radius:6px;padding:6px;margin-top:20px}
+.ico{position:relative;width:22px;height:22px;border-radius:5px;background:var(--card);border:1px solid var(--line)}
+.ico.o{background:var(--acc)}
+.badge{position:absolute;right:-5px;bottom:-5px;background:var(--err);color:#fff;border-radius:999px;font-size:9px;padding:0 4px;font-weight:700}
+.tabsw{display:flex;gap:2px}
+.tabsw span{flex:1;text-align:center;border:1px solid var(--line);border-radius:4px;padding:2px 0;background:var(--card)}
+.tabsw span.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+.bub{background:var(--acc-s);border-radius:8px 8px 2px 8px;padding:3px 6px;margin:3px 0 3px 20%}
+.q{height:6px;border-radius:3px;background:var(--bar);overflow:hidden;margin:3px 0}
+.q i{display:block;height:100%;background:var(--acc)}
+.q i.w{background:var(--warn)}
+
+.p{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;margin:8px 0}
+.p .r{display:flex;align-items:center;gap:8px;margin:4px 0;min-width:0}
+.p .r>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp{flex:1}
+.log{background:var(--wf);border:1px solid var(--line);border-radius:6px;padding:6px;font:11px/1.4 ui-monospace,Consolas,monospace;max-height:90px;overflow:auto}
+.b{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:2px 8px;font-size:12px}
+.b.p2{background:var(--acc);color:#fff;border-color:var(--acc)}
+</style>
+</head>
+<body><div class="wrap">
+<h1>PrPanel</h1><p class="sub">Dải mỏng dưới header của Git Log. Mỗi trạng thái một thẻ.</p>
+<h2>1. Chưa có PR</h2>
+<div class="p"><div class="r"><b>feat/login</b><span class="chip">chưa có PR</span><span class="sp"></span><span class="b p2">Tạo PR</span></div></div>
+<div class="p"><div class="r"><b>feat/login</b><span class="chip warn">chưa push</span><span class="sp"></span><span class="b">Push</span></div></div>
+<h2>2. PR đang chạy CI</h2>
+<div class="p"><div class="r"><span class="chip ok">Đang mở</span><b>#42 Add login</b><span class="sp"></span><span class="chip warn">CI đang chạy</span><span class="b">Mở trên GitHub</span></div>
+<div class="r"><span class="dot a"></span><span>build</span><span class="sp"></span><span>1 phút 20 giây</span></div>
+<div class="r"><span class="dot g"></span><span>lint</span><span class="sp"></span><span>32 giây</span></div></div>
+<h2>3. CI lỗi, mở log</h2>
+<div class="p"><div class="r"><b>#42 Add login</b><span class="sp"></span><span class="chip err">CI lỗi</span></div>
+<div class="r"><span class="dot r"></span><span>test</span><span class="sp"></span><span>2 phút</span><span class="b">Ẩn log</span></div>
+<div class="log mono">FAIL src/login.test.ts<br>expected 200, got 500<br>...</div>
+<div class="r"><span class="b p2">Gửi lỗi cho agent</span><span class="b">Mở trên GitHub</span></div></div>
+<h2>4. Dialog Tạo PR</h2>
+<div class="p"><div class="r"><b>Tạo pull request</b></div><div class="r"><span>Nhánh đích</span><span class="b">master</span></div><div class="box">Tiêu đề: subject commit cuối</div><div class="box" style="min-height:50px">Mô tả: prompt + file đã sửa (sửa được)</div><div class="r"><span class="sp"></span><span class="b">Huỷ</span><span class="b p2">Tạo PR</span></div></div>
+<h2>5. Dialog Merge</h2>
+<div class="p"><div class="r"><b>Merge pull request #42</b></div><div class="r"><span class="b">Merge commit</span><span class="b p2">Squash và merge</span><span class="b">Rebase và merge</span></div><div class="r"><span>[x] Xoá nhánh remote</span></div><div class="r"><span class="sp"></span><span class="b">Huỷ</span><span class="b p2">Merge</span></div></div>
+</div></body></html>

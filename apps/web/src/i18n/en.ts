@@ -44,6 +44,7 @@ import peerV54 from '../features/map/i18n/peer-v54'
 import peerMapV54 from '../features/map/i18n/peer-map-v54'
 import peerWsV54 from '../features/map/i18n/peer-ws-v54'
 import githubV58 from '../features/settings/i18n/github-v58'
+import prV111 from '../features/git/i18n/pr-v111'
 import devicesV61 from '../features/devices/i18n/devices-v61'
 import whatsNewV71 from '../features/update/i18n/whats-new-v71'
 import devicesV72 from '../features/devices/i18n/devices-v72'
@@ -168,6 +169,7 @@ export default {
   ...peerMapV54.en,
   ...peerWsV54.en,
   ...githubV58.en,
+  ...prV111.en,
   ...devicesV61.en,
   ...whatsNewV71.en,
   ...devicesV72.en,

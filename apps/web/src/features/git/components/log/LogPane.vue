@@ -21,6 +21,8 @@ import LogRefsTree from './LogRefsTree.vue'
 import LogTable from './LogTable.vue'
 import NewBranchDialog from './NewBranchDialog.vue'
 import PushDialog from './PushDialog.vue'
+import PrPanel from '../PrPanel.vue'
+import { useCiEvents } from '../../composables/useCiEvents'
 import { AccessPrompt } from '@features/files'
 
 const props = withDefaults(defineProps<{ cwd: string; paneKey?: string; active?: boolean; select?: string }>(), { active: true })
@@ -28,6 +30,7 @@ const emit = defineEmits<{ root: [root: string]; selected: []; open: [path: stri
 const uiGen = useUiGenStore()
 const isNext = computed(() => uiGen.isNext)
 const { t } = useI18n()
+useCiEvents()
 const log = useGitLog(
   () => props.cwd,
   () => props.active,
@@ -110,6 +113,9 @@ const empty = computed<'none' | 'filtered' | 'repo'>(() => {
   return hasFilters(log.filters.value) ? 'filtered' : 'repo'
 })
 const remotes = computed(() => log.refs.value?.remotes.map((g) => g.name) ?? [])
+const headBranch = computed(() => log.refs.value?.head.branch ?? null)
+const headLocal = computed(() => log.refs.value?.local.find((l) => l.name === headBranch.value) ?? null)
+const headSubject = computed(() => log.commits.value.find((c) => c.hash === log.refs.value?.head.hash)?.subject ?? '')
 
 const panel = ref<InstanceType<typeof LogDiffPanel> | null>(null)
 const shown = ref<{ hash: string; file: CommitFile } | null>(null)
@@ -276,6 +282,9 @@ async function createBranch(name: string, checkout: boolean): Promise<void> {
 function askPush(): void {
   if (log.root.value && pushRef.value && !branchBusy.value) push.value = { root: log.root.value, ref: pushRef.value }
 }
+function askPushHead(): void {
+  if (log.root.value && headBranch.value && !branchBusy.value) push.value = { root: log.root.value, ref: `refs/heads/${headBranch.value}` }
+}
 function pushed(res: BranchOpResult, name: string): void {
   push.value = null
   report(res, 'pushed', name)
@@ -409,6 +418,19 @@ onBeforeUnmount(() => {
       <PaneLayoutMore :pane-key="paneKey" />
       <slot name="end" />
     </component>
+
+    <PrPanel
+      v-if="log.root.value && !(log.error.value && !log.commits.value.length)"
+      :root="log.root.value"
+      :branch="headBranch"
+      :head-hash="log.refs.value?.head.hash ?? null"
+      :subject="headSubject"
+      :upstream="headLocal?.upstream ?? null"
+      :ahead="headLocal?.ahead ?? 0"
+      :active="active"
+      @push="askPushHead"
+      @changed="log.reload()"
+    />
 
     <div v-if="log.error.value && !log.commits.value.length" class="grid flex-1 place-items-center p-6 text-center" data-log-fatal>
       <AccessPrompt v-if="log.error.value === 'denied'" :path="log.root.value ?? cwd" @granted="log.reload()" />

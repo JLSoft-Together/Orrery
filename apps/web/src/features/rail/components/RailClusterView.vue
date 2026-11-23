@@ -5,6 +5,7 @@ import { shown } from '../../../core/lib/shareMode'
 import { BellOff, BellRing, ChevronRight, Ellipsis, Folder, GitBranch, Hand, LoaderCircle, Mail, Plus, X } from 'lucide-vue-next'
 import { usePaneInfo } from '../../workspace/composables/usePaneInfo'
 import { useProjectDisk } from '@features/disk'
+import { CiChip } from '@features/git'
 import { useRailTabStop } from '../composables/useRail'
 import { onDustLeave } from '../../workspace/lib/dust'
 import { duration, now as clock } from '../../../core/lib/format'
@@ -226,6 +227,7 @@ const HEAD_BTN =
         >
           <BellOff :size="11" aria-hidden="true" /><span class="sr-only">{{ t(notifyLevel === 'off' ? 'projectNotify.offHint' : 'projectNotify.waitingHint') }}</span>
         </span>
+        <CiChip v-if="headDir" :root="headDir" />
         <RunBadge v-if="headDir" :dir="headDir" :compact="narrow" :tabindex="headStop" />
         <button
           v-if="solo"

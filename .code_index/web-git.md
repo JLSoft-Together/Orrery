@@ -12,6 +12,11 @@ Phía desktop: kênh `ccm:git-*`, `ccm:changes-*` -> `apps/core/crates/core-desk
 | `apps/web/src/features/git/components/log/LogPane.vue` | Git Log: đồ thị commit, refs, filter, Push dialog |
 | `apps/web/src/features/git/composables/useGitLog.ts` | nạp log theo trang, cache theo root |
 | `apps/web/src/features/git/lib/diff.ts` | `parseUnifiedDiff` |
+| `apps/web/src/features/git/components/PrPanel.vue` | dải PR + CI trong Git Log: tạo PR (`PrCreateDialog`), checks, log job lỗi, Gửi lỗi cho agent, Merge (`PrMergeDialog`) |
+| `apps/web/src/features/git/lib/prView.ts` | thuần: `ciLook`, `panelState`, `chipState`, `toastParts`, `readMethod` / `writeMethod`, `errorKey` |
+| `apps/web/src/features/git/lib/prAgent.ts` | pane agent của project, body PR từ `exportChat(short)`, `errorPrompt` |
+| `apps/web/src/features/git/stores/ci.ts` + `components/CiChip.vue` | trạng thái CI theo project cho chấm trên rail (pending / đỏ / xanh 10 phút) |
+| `apps/web/src/features/git/composables/useCiEvents.ts` | nghe `onGhEvent`: toast + OS notification khi CI xong, nuôi store CI (một listener dùng chung) |
 | `apps/web/src/features/git/lib/diffBlocks.ts` | tách hunk cho DiffView / SplitDiff |
 | `apps/web/src/features/git/lib/changesView.ts` | gom file thay đổi |
 

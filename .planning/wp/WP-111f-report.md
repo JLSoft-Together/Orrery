@@ -1,0 +1,27 @@
+## WP-111f — PARTIAL
+- Đã đổi:
+  - Web mới (`apps/web/src/features/git/`): `components/PrPanel.vue` (dải PR + CI: Tạo PR, list check chấm + tên + thời gian, mở 60 dòng cuối log job lỗi, Gửi lỗi cho agent, Mở trên GitHub, Merge, dòng "Token thiếu quyền <x>" + link Settings), `PrCreateDialog.vue` (base chọn được, title = subject commit cuối, body = `exportChat(short)` sửa được), `PrMergeDialog.vue` (merge / squash / rebase nhớ theo repo, checkbox xoá nhánh remote bật sẵn, hỏi `askCleanupWorktree` sau merge nếu nhánh là worktree), `CiChip.vue`, `stores/ci.ts`, `composables/useCiEvents.ts` (toast + OS notification, một listener dùng chung), `lib/prView.ts`, `lib/prAgent.ts`, `i18n/pr-v111.ts` (khoá `v111pr.*` en + vi).
+  - `components/log/LogPane.vue`: gắn `PrPanel` dưới header, `useCiEvents()`, Push dùng `PushDialog` có sẵn khi nhánh chưa push.
+  - `apps/web/src/i18n/en.ts` + `vi.ts` (đăng ký module), snapshot `keys.*.txt` (thêm tay 100 key `v111pr.*`).
+  - `packages/shared/src/github.ts`: thêm mã `gh.logGone`, `gh.forkHead`.
+  - `apps/shell/src/preview_text.rs`: confirm `ghMerge` hiện `head` / `headRepo` (`#7 fork/r:feat/x -> master (merge)`) + test.
+  - `apps/core/crates/core-desk/src/github/mod.rs`: `desk.on_close` gọi `CiWatch::stop()` khi desk đóng (quit).
+  - `apps/shell/e2e/v111-pr.cjs` (GitHub giả qua `CCM_GH_API`), `.planning/wireframes/v111-pr-panel.html`, `.code_index/{web-git,lookup,_meta}.md`.
+  - KHÔNG đổi: `core/lib/preview.ts` (đã đủ `ghPr` / `ghCi` / `onGhEvent`), `preload.ts` / `shim.js` (không thêm channel; `gen-desk-shim` chạy, không đổi).
+- Tiêu chí: 3/4 đạt, 1 chưa đủ.
+  (1) vitest map CI -> icon / chữ / màu, state PrPanel: đạt (`prView.test.ts`, `PrPanel.test.ts`).
+  (2) E2E `v111-pr.cjs`: đạt 27/27: tạo PR (base / head / title), CI pending, failure, xem log (cap 60 dòng), Gửi lỗi prefill vào pane agent (không submit), merge squash + xoá nhánh remote qua native confirm (`feat/login -> main (squash)`), panel Merged, gh.scope, repo không phải GitHub không hiện gì.
+  (3) toast khi CI xong: đạt (E2E: background watch thật ra toast "CI failed"; vitest `useCiEvents.test.ts`).
+  (4) typecheck + vitest pass; ảnh: đạt. CHƯA đủ: chấm CI trên rail và PrPanel trong Changes, vì file thuộc WP khác (xem "Hot file cần thêm").
+- Việc thêm từ 111a2: `gh.logGone` / `gh.forkHead` + i18n: xong. Confirm `ghMerge` head / headRepo: xong. `CiWatch::stop()` khi quit: xong (qua `on_close`). Push FCM Orrery Remote cho CI: KHÔNG làm. Push FCM hiện theo pane key (`remote/push.rs::push_pane`, kind cố định done / question / ...), thêm kind `ci` cần đổi cả app điện thoại (`apps/mobile`, `apps/pwa`) nên để WP riêng; điện thoại vẫn nhận CI qua `desk:phone-episode` (ntfy / Discord) do 111a gửi.
+- Audit: không comment trong code; không em dash / chấm giữa trong chuỗi UI; glossary check sạch; token không ra frontend (chỉ gọi `ghPr` / `ghCi`); toast chỉ mở url bắt đầu `https://github.com/`; không polling mới (chỉ event + nút làm mới; tick 5s chỉ khi mở danh sách check và CI đang pending).
+- Review: (a) `find` của backend chỉ tìm PR đang open, nên sau merge panel giữ PR vừa merge trong RAM (mất khi tải lại, lúc đó hiện lại "Tạo PR" cho nhánh đã merge; nên cho `find` nhận cả PR merged). (b) CI chỉ hiện khi có PR; nhánh đã push mà chưa có PR chỉ có chấm / toast qua event. (c) Chip rail chỉ nhận event khi `useCiEvents()` đang chạy (hiện có trong LogPane; App.vue gọi thêm để chạy toàn cục, listener dùng chung nên gọi nhiều lần vô hại). (d) Cleanup worktree sau merge chỉ có vitest (mock), E2E dùng nhánh thường. (e) Chỉ chụp theme galaxy classic.
+- Test: `npm test -w @ccm/web -- src/features/git src/i18n src/importRules` -> 157 + 10 pass; `npm run typecheck` sạch; `cargo test --locked -j 4 preview_text` (shell) -> 4 pass; `cargo test --locked -j 4 -p core-desk github` -> 28 pass; `node apps/shell/e2e/v111-pr.cjs` (web build tạm qua `CCM_WEB_DIST`, exe `target/debug/deps/orrery_shell.exe` vì `target/debug/orrery-shell.exe` đang bị E2E khác giữ, cổng 4393 / 9393 / 4394) -> 27 PASS, 0 FAIL; `node scripts/index-check.mjs` -> ok 39 file.
+- Nhìn: `docs/qa/v111/WP-111f/1-none.png`, `2-create-dialog.png`, `3-running.png`, `4-failed-log.png`, `5-ci-toast.png`, `6-merge-dialog.png`, `7-merged.png`, `8-scope.png` (chụp sau lần sửa code cuối). E2E không ghi đè ảnh docs/qa cũ.
+- Hot file cần thêm:
+  1. `apps/web/src/App.vue` (112e): gọi `useCiEvents()` (import từ `features/git/composables/useCiEvents`) để toast + chip CI chạy toàn cục.
+  2. Rail (112e: `RailClusterView.vue` / `WorkspaceSidebar.vue`, hoặc `features/rail/lib/projectRow.ts` + `features/next/components/rail/*`): đặt `<CiChip :root="<root của project>" />` (`features/git/components/CiChip.vue`) cạnh tên project; component tự ẩn khi không có CI, tooltip icon + chữ.
+  3. `ChangesPane.vue`: đặt `<PrPanel :root :branch :head-hash :subject :upstream :ahead @push @changed />` như trong LogPane nếu muốn PrPanel cả ở Changes.
+- Ngoài phạm vi cần main xử lý: `apps/shell/target/debug/orrery-shell.exe` đang bị tiến trình khác giữ nên `cargo build` báo Access is denied ở bước chép exe (binary mới nằm ở `target/debug/deps/orrery_shell.exe`). Snapshot i18n chỉ thêm key `v111pr.*`. Push FCM cho CI: WP riêng.
+- Commit message đề xuất: feat(git): pull request panel with CI checks, failed-log to agent, merge PR and CI done toast
+- Dòng changelog (en / vi, ≤ 100 ký tự): en: Create, watch and merge GitHub pull requests from Git Log, CI result toast / vi: Tạo, theo dõi và merge PR GitHub ngay trong Git Log, toast khi CI xong

@@ -7,7 +7,7 @@ import { PtyConnection } from '../../workspace/lib/ptyClient'
 import { useWorkspaceStore } from '../../workspace/stores/workspace'
 import { cleanupWorktree, panesInside, type CleanupDeps, type CleanupError, type CleanupOutcome } from '../lib/worktreeFlow'
 
-const props = defineProps<{ root: string; branch: string }>()
+const props = defineProps<{ root: string; branch: string; squashed?: boolean }>()
 const emit = defineEmits<{ done: [result: 'removed' | 'kept' | 'failed'] }>()
 
 const { t } = useI18n()
@@ -31,7 +31,7 @@ const deps: CleanupDeps = {
   panes: () => workspace.panes,
   closePanes: (keys) => workspace.requestClose(keys, () => false, { record: false }),
   remove: async (root, target) => {
-    const reply = await PtyConnection.request({ t: 'wt.remove', cwd: root, path: target, deleteBranch: true }, 130_000)
+    const reply = await PtyConnection.request({ t: 'wt.remove', cwd: root, path: target, deleteBranch: true, ...(props.squashed ? { squashed: true } : {}) }, 130_000)
     return reply as never
   },
   wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),

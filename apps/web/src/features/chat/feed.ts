@@ -14,6 +14,7 @@ export interface FeedState {
   status: FeedStatus
   log: ChatLog
   loadingOlder: boolean
+  pinned?: boolean
 }
 
 export type ChatCall = (req: Record<string, unknown>) => Promise<unknown>
@@ -42,6 +43,7 @@ export class ChatFeed {
   private running = false
   private epoch = 0
   private busy = false
+  private pinned = false
 
   constructor(target: ChatTarget, call: ChatCall, onChange: (s: FeedState) => void, pollMs = CHAT_POLL_MS) {
     this.target = target
@@ -64,10 +66,18 @@ export class ChatFeed {
     return { op, key: t.key, agent: t.agent, session: t.session, cwd: t.cwd }
   }
 
-  start(): void {
+  get currentTarget(): ChatTarget {
+    return this.target
+  }
+
+  get isRunning(): boolean {
+    return this.running
+  }
+
+  start(turn: number | null = null): void {
     if (this.running) return
     this.running = true
-    void this.reload()
+    void (turn !== null ? this.seek(turn) : this.reload())
   }
 
   stop(): void {
@@ -78,12 +88,13 @@ export class ChatFeed {
     this.call({ op: 'unwatch', key: this.target.key }).catch(() => undefined)
   }
 
-  retarget(next: ChatTarget): void {
+  retarget(next: ChatTarget, turn: number | null = null): void {
     if (sameTarget(this.target, next)) return
     this.target = next
+    this.pinned = false
     this.state = { status: 'loading', log: emptyLog(), loadingOlder: false }
     this.onChange(this.state)
-    if (this.running) void this.reload()
+    if (this.running) void (turn !== null ? this.seek(turn) : this.reload())
   }
 
   private clear(): void {
@@ -93,19 +104,43 @@ export class ChatFeed {
 
   private schedule(): void {
     this.clear()
-    if (this.running) this.timer = setTimeout(() => void this.poll(), this.pollMs)
+    if (this.running && !this.pinned) this.timer = setTimeout(() => void this.poll(), this.pollMs)
+  }
+
+  async seek(turn: number): Promise<boolean> {
+    const epoch = ++this.epoch
+    this.clear()
+    try {
+      const raw = await this.call({ ...this.base('seek'), turn })
+      if (epoch !== this.epoch) return false
+      const page = parseChatPage(raw)
+      if (!page) {
+        this.set({ status: 'error' })
+        return false
+      }
+      const newer = (raw as { newer?: unknown }).newer
+      this.pinned = typeof newer === 'number'
+      this.set({ status: 'ready', log: applyPage(emptyLog(), page, false), pinned: this.pinned })
+      this.schedule()
+      return true
+    } catch {
+      if (epoch === this.epoch) this.set({ status: 'error' })
+      return false
+    }
   }
 
   async reload(): Promise<void> {
     const epoch = ++this.epoch
     this.clear()
+    const fresh = this.pinned
+    this.pinned = false
     try {
       const page = parseChatPage(await this.call(this.base('page')))
       if (epoch !== this.epoch) return
       if (!page) {
-        this.set({ status: 'error' })
+        this.set({ status: 'error', pinned: false })
       } else {
-        this.set({ status: 'ready', log: applyPage(this.state.log, page, false) })
+        this.set({ status: 'ready', log: applyPage(fresh ? emptyLog() : this.state.log, page, false), pinned: false })
       }
     } catch {
       if (epoch !== this.epoch) return

@@ -1,8 +1,11 @@
 pub mod claude;
 pub mod codex;
+pub mod edits;
 pub mod export;
 pub mod page;
 
+#[cfg(test)]
+mod edits_tests;
 #[cfg(test)]
 mod tests;
 
@@ -336,6 +339,13 @@ impl Item {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Touch {
+    pub turn: Option<u64>,
+    pub at: Option<i64>,
+    pub path: String,
+}
+
 pub struct Builder {
     pub agent: Agent,
     pub root: String,
@@ -348,11 +358,12 @@ pub struct Builder {
     tool_ix: HashMap<String, (usize, usize)>,
     files_ix: Option<usize>,
     out: Vec<Item>,
+    pub touched: Option<Vec<Touch>>,
 }
 
 impl Builder {
     pub fn new(agent: Agent, root: &str, keep_all: bool) -> Builder {
-        Builder { agent, root: root.to_owned(), keep_all, items: Vec::new(), turns: Vec::new(), turn: None, open_tools: None, open_ai: None, tool_ix: HashMap::new(), files_ix: None, out: Vec::new() }
+        Builder { agent, root: root.to_owned(), keep_all, items: Vec::new(), turns: Vec::new(), turn: None, open_tools: None, open_ai: None, tool_ix: HashMap::new(), files_ix: None, out: Vec::new(), touched: None }
     }
 
     pub fn feed(&mut self, line: &[u8], off: u64) {
@@ -482,6 +493,9 @@ impl Builder {
     fn file(&mut self, at: Option<i64>, path: &str, add: u64, del: u64) {
         if path.is_empty() {
             return;
+        }
+        if let Some(t) = self.touched.as_mut() {
+            t.push(Touch { turn: self.turn, at, path: norm(path) });
         }
         let (rel, out) = match rel_path(path, &self.root) {
             Some(r) => (r, false),

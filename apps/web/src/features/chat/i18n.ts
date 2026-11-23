@@ -58,6 +58,19 @@ const en = {
       sub: 'Active Claude / Codex pane',
     },
   },
+  chatCommit: {
+    agent: { claude: 'Claude', codex: 'Codex' },
+    pinned: 'Viewing an earlier turn',
+    live: 'Latest',
+    strong: '{agent} {label}: made in this session, {pct}% of the files',
+    weak: '{agent} {label}: maybe made in this session, {pct}% of the files',
+    prompt: 'Prompt: {text}',
+    open: 'Click to open the chat at this turn',
+    more: '{n} more sessions edited these files',
+    title: 'Chat {agent} {label}',
+    sub: 'Turn that edited the files of commit {hash}',
+    close: 'Close',
+  },
 }
 
 const vi: typeof en = {
@@ -119,6 +132,19 @@ const vi: typeof en = {
       telegram: 'Xuất session: gửi Telegram',
       sub: 'Pane Claude / Codex đang chọn',
     },
+  },
+  chatCommit: {
+    agent: { claude: 'Claude', codex: 'Codex' },
+    pinned: 'Đang xem lượt cũ',
+    live: 'Mới nhất',
+    strong: '{agent} {label}: làm trong session này, {pct}% số file',
+    weak: '{agent} {label}: có thể làm trong session này, {pct}% số file',
+    prompt: 'Yêu cầu: {text}',
+    open: 'Bấm để mở chat tại lượt này',
+    more: '{n} session khác cũng sửa các file này',
+    title: 'Chat {agent} {label}',
+    sub: 'Lượt đã sửa file của commit {hash}',
+    close: 'Đóng',
   },
 }
 

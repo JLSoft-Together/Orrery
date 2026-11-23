@@ -5,7 +5,7 @@ import PaneHeader from '../../../next/components/ui/PaneHeader.vue'
 import PaneLayoutMore from '../../../next/components/ui/PaneLayoutMore.vue'
 import { useUiGenStore } from '../../../next/stores/uiGen'
 import { CircleAlert, CircleCheck, PanelBottom, PanelBottomClose, X } from 'lucide-vue-next'
-import type { BranchOpResult, CommitFile } from '@ccm/shared'
+import type { BranchOpResult, CommitFile, CommitSessionChip, LogCommit } from '@ccm/shared'
 import { absoluteIn, fileStepKey, scrollSideways } from '../../lib/changesView'
 import { expandableIds, type RefRow } from '../../lib/gitRefs'
 import { hasFilters } from '../../lib/logQuery'
@@ -24,6 +24,7 @@ import PushDialog from './PushDialog.vue'
 import PrPanel from '../PrPanel.vue'
 import { useCiEvents } from '../../composables/useCiEvents'
 import { AccessPrompt } from '@features/files'
+import { ChatDialog, useCommitSessions, type ChatDialogRequest } from '@features/chat'
 
 const props = withDefaults(defineProps<{ cwd: string; paneKey?: string; active?: boolean; select?: string }>(), { active: true })
 const emit = defineEmits<{ root: [root: string]; selected: []; open: [path: string, line?: number] }>()
@@ -99,6 +100,15 @@ const sideW = computed(() => (paneW.value ? Math.min(cols.value.side, Math.max(1
 const refsW = computed(() => (paneW.value ? Math.min(cols.value.refs, Math.max(100, paneW.value - MIN_MIDDLE - 8 - sideW.value)) : cols.value.refs))
 
 watch(log.root, (r) => r && emit('root', r))
+const commitSessions = useCommitSessions(log.root)
+watch(log.root, () => commitSessions.reset())
+const chatOpen = ref<ChatDialogRequest | null>(null)
+function wantSessions(commits: LogCommit[]): void {
+  commitSessions.want(commits)
+}
+function openSession(hash: string, chip: CommitSessionChip): void {
+  chatOpen.value = { hash, chip }
+}
 watch(
   () => [props.select, log.commits.value.length] as const,
   ([want]) => {
@@ -514,6 +524,9 @@ onBeforeUnmount(() => {
           @menu="commitMenu"
           @clear="log.setFilters({ text: '', branch: null, notRef: null, author: null, date: 'any', from: '', to: '', paths: [] })"
           @retry="log.reload()"
+          :sessions="commitSessions.sessions.value"
+          @visible="wantSessions"
+          @session="openSession"
         />
         <div v-if="diffOpen && !diffFull" class="h-1 shrink-0 cursor-row-resize border-t border-line hover:bg-fill" role="separator" aria-orientation="horizontal" data-log-preview-split @pointerdown.prevent="drag($event, 'preview')" />
         <Transition name="ccm-fade">
@@ -554,5 +567,6 @@ onBeforeUnmount(() => {
     </div>
     <NewBranchDialog :request="newBranch" @create="createBranch" @close="newBranch = null" />
     <PushDialog :request="push" @done="pushed" @close="push = null" />
+    <ChatDialog :request="chatOpen" @close="chatOpen = null" @open-file="(p) => emit('open', p)" />
   </section>
 </template>

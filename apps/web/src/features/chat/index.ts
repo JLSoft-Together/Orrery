@@ -1,3 +1,7 @@
 export { hasChatView } from './feed'
 export { exportChat, paneChatTarget, runExport } from './export'
 export type { ExportForm, ExportHow, ExportOutcome, ExportedChat } from './export'
+export { useCommitSessions, chipTarget, parseCommitSessions } from './commitSessions'
+export type { ChatDialogRequest, CommitRef, CommitSessionsApi } from './commitSessions'
+export { default as CommitChips } from './CommitChips.vue'
+export { default as ChatDialog } from './ChatDialog.vue'

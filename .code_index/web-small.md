@@ -5,7 +5,7 @@
 | click-menu | `apps/web/src/features/click-menu/index.ts` | `lib/termMenu.ts::parseTermMenu`, `composables/useTermMenu.ts`, `stores/menuQueue.ts`, `stores/inbox.ts` (đều dưới `apps/web/src/features/click-menu/`) | trả lời menu Claude / Codex bằng chuột + Inbox "Chờ trả lời" (v100) |
 | palette | `apps/web/src/features/palette/index.ts` | `components/CommandPalette.vue`, `lib/paletteSearch.ts`, `lib/paletteKey.ts` | Ctrl+K, tiền tố `>` `@` `#` `:` |
 | resources | `apps/web/src/features/resources/index.ts` | `stores/resources.ts`, `lib/resources.ts`, `lib/devTools.ts` | CPU / RAM / port theo session, DevTools (JWT, base64...), Diagnostics |
-| chat | `apps/web/src/features/chat/ChatView.vue` | `feed.ts`, `model.ts`, `markdown.ts` | chat view của session (v109) |
+| chat | `apps/web/src/features/chat/ChatView.vue` | `feed.ts` (`seek`), `model.ts`, `markdown.ts`, `commitSessions.ts::useCommitSessions`, `CommitChips.vue`, `ChatDialog.vue` | chat view của session (v109); chip commit -> session + mở chat đúng lượt (v111 G4) |
 | shortcuts | `apps/web/src/features/shortcuts/useShortcuts.ts` | `bindings.ts`, `defaults.ts`, `MruSwitcher.vue` | phím tắt tuỳ biến, MRU |
 | secretGuard | `apps/web/src/features/secretGuard/secretGuard.ts` | `SecretGuardDialog.vue` | chặn commit / push có token (v109 C1) |
 | shellDone | `apps/web/src/features/shellDone/shellDone.ts` | `useShellDone.ts` | toast lệnh shell xong (OSC 633) |
@@ -20,6 +20,7 @@
 
 - click-menu: app không tự trả lời menu; mọi phím gõ vào pane đi sau một thao tác của chủ nhân (docs §11as). Fixture `apps/web/src/features/click-menu/lib/__fixtures__/term-menu` do E2E `v100-menu-*.cjs` đọc.
 - secretGuard / shareMode: che trước khi hiển thị, không lưu giá trị gốc.
+- chat `focusTurn`: op `seek` trả trang kết thúc ở lượt đó, `pinned` thì không poll; "Mới nhất" bỏ log cũ rồi tải trang live. Lượt = offset dòng prompt, trùng `seq` của item `me` (`u:<offset>`).
 - Feature nhỏ không import feature khác trừ qua `index.ts`.
 
 ## Liên kết

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ArrowDown, ChevronRight, LoaderCircle, MessageSquareText, Pencil, TriangleAlert, Wrench } from 'lucide-vue-next'
+import { ArrowDown, ChevronRight, History, LoaderCircle, MessageSquareText, Pencil, TriangleAlert, Wrench } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RemoteChatTools } from '@ccm/shared'
 import ChatExportMenu from './ChatExportMenu.vue'
 import ChatMarkdown from './ChatMarkdown.vue'
-import { bridgeCall, ChatFeed, hasChatView, type ChatCall, type ChatTarget, type FeedState } from './feed'
+import { bridgeCall, ChatFeed, hasChatView, sameTarget, type ChatCall, type ChatTarget, type FeedState } from './feed'
 import { anchorTop, CHAT_NEAR_TOP, CHAT_STEP, CHAT_WINDOW, chatView, fileTotals, nearBottom, splitPath, joinRoot, toolParts, topAction, windowOf, emptyLog } from './model'
 
-const props = withDefaults(defineProps<{ target: ChatTarget | null; active: boolean; agentLabel: string; call?: ChatCall }>(), { call: undefined })
+const props = withDefaults(defineProps<{ target: ChatTarget | null; active: boolean; agentLabel: string; call?: ChatCall; focusTurn?: number | null }>(), { call: undefined, focusTurn: null })
 const emit = defineEmits<{ openFile: [path: string] }>()
 const { t } = useI18n()
 
@@ -17,8 +17,12 @@ const scroller = ref<HTMLElement | null>(null)
 const shown = ref(CHAT_WINDOW)
 const stuck = ref(true)
 const open = reactive(new Set<string>())
+const flash = ref<string | null>(null)
 let feed: ChatFeed | null = null
 let anchor: { top: number; height: number } | null = null
+let pendingFocus: number | null = null
+let lastTurn: number | null = null
+let flashTimer: ReturnType<typeof setTimeout> | undefined
 
 const supported = computed(() => !!props.call || hasChatView)
 const ready = computed(() => !!props.target?.session && supported.value)
@@ -37,10 +41,33 @@ function onFeed(next: FeedState): void {
   void settle()
 }
 
+async function focusOn(turn: number): Promise<void> {
+  const id = `u:${turn}`
+  const at = items.value.findIndex((i) => i.id === id)
+  if (at < 0) {
+    if (state.value.status !== 'loading') pendingFocus = null
+    return
+  }
+  pendingFocus = null
+  shown.value = Math.max(shown.value, items.value.length - at)
+  await nextTick()
+  const el = scroller.value
+  const row = el?.querySelector<HTMLElement>(`[data-id="${id}"]`)
+  if (!el || !row) return
+  el.scrollTop += row.getBoundingClientRect().top - el.getBoundingClientRect().top - 8
+  flash.value = id
+  clearTimeout(flashTimer)
+  flashTimer = setTimeout(() => (flash.value = null), 2400)
+}
+
 async function settle(): Promise<void> {
   await nextTick()
   const el = scroller.value
   if (!el) return
+  if (pendingFocus !== null && state.value.status !== 'loading') {
+    await focusOn(pendingFocus)
+    return
+  }
   if (stuck.value) {
     if (shown.value > CHAT_WINDOW) shown.value = CHAT_WINDOW
     await nextTick()
@@ -61,18 +88,24 @@ function sync(): void {
     feed?.stop()
     return
   }
+  const turn = props.focusTurn ?? null
+  const changedTurn = turn !== lastTurn
+  lastTurn = turn
+  if (turn !== null) pendingFocus = turn
+  stuck.value = turn === null
   if (!feed) {
     feed = new ChatFeed(props.target!, props.call ?? bridgeCall, onFeed)
     state.value = feed.current
-  } else {
-    feed.retarget(props.target!)
+  } else if (!sameTarget(feed.currentTarget, props.target!)) {
+    feed.retarget(props.target!, turn)
+  } else if (changedTurn && feed.isRunning) {
+    void (turn !== null ? feed.seek(turn) : feed.reload())
   }
-  stuck.value = true
-  feed.start()
+  feed.start(turn)
 }
 
 watch(
-  () => [props.active, ready.value, props.target?.key, props.target?.session, props.target?.agent, props.target?.cwd] as const,
+  () => [props.active, ready.value, props.target?.key, props.target?.session, props.target?.agent, props.target?.cwd, props.focusTurn] as const,
   () => sync(),
   { immediate: true },
 )
@@ -80,7 +113,14 @@ watch(
 onBeforeUnmount(() => {
   feed?.stop()
   feed = null
+  clearTimeout(flashTimer)
 })
+
+function toLive(): void {
+  pendingFocus = null
+  stuck.value = true
+  void feed?.reload()
+}
 
 async function growTop(): Promise<void> {
   const el = scroller.value
@@ -136,7 +176,12 @@ defineExpose({ scroller })
       <p class="max-w-72 text-xs text-ink-muted">{{ t('chatView.noSession') }}</p>
     </div>
     <template v-else>
-      <div class="relative z-20 flex h-8 shrink-0 items-center justify-end border-b border-line px-2" data-chat-header>
+      <div class="relative z-20 flex h-8 shrink-0 items-center justify-end gap-2 border-b border-line px-2" data-chat-header>
+        <p v-if="state.pinned" class="mr-auto flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted" role="status" data-chat-pinned>
+          <History :size="12" class="shrink-0" aria-hidden="true" />
+          <span class="min-w-0 truncate">{{ t('chatCommit.pinned') }}</span>
+          <button type="button" class="ccm-btn h-6 shrink-0 px-2 text-2xs" data-chat-live @click="toLive">{{ t('chatCommit.live') }}</button>
+        </p>
         <ChatExportMenu v-if="props.target" :target="props.target" :call="props.call" />
       </div>
       <div
@@ -164,7 +209,15 @@ defineExpose({ scroller })
           <p v-else-if="atStart" class="py-2 text-center text-2xs text-ink-faint" data-chat-top>{{ t('chatView.top') }}</p>
           <p v-else class="py-2 text-center text-2xs text-ink-faint">{{ t('chatView.olderMore') }}</p>
           <ul class="flex flex-col gap-2.5">
-            <li v-for="item in rendered" :key="item.id" class="ccm-chat-row min-w-0" :data-chat-item="item.k" :data-id="item.id">
+            <li
+              v-for="item in rendered"
+              :key="item.id"
+              class="ccm-chat-row min-w-0 rounded-card transition-shadow duration-(--ccm-dur-fast)"
+              :class="flash === item.id ? 'ring-2 ring-focus ring-offset-2 ring-offset-surface' : ''"
+              :data-chat-item="item.k"
+              :data-id="item.id"
+              :data-chat-focus="flash === item.id ? '' : undefined"
+            >
               <div v-if="item.k === 'me'" class="flex justify-end">
                 <div class="max-w-[85%] min-w-0 rounded-card bg-[var(--ccm-control)] px-3 py-1.5 whitespace-pre-wrap text-ink [overflow-wrap:anywhere]" data-chat-me>
                   <span class="sr-only">{{ t('chatView.me') }}: </span>{{ item.text }}
@@ -238,7 +291,7 @@ defineExpose({ scroller })
         {{ t('chatView.readOnly') }}
         <Transition name="ccm-fade">
           <button
-            v-if="!stuck && items.length > 0"
+            v-if="!stuck && items.length > 0 && !state.pinned"
             type="button"
             class="ccm-btn absolute right-2 bottom-8 h-6 gap-1 px-2 text-2xs shadow-card"
             :aria-label="t('chatView.latest')"

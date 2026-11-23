@@ -2,7 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { GitMerge, Tag } from 'lucide-vue-next'
-import type { LogCommit } from '@ccm/shared'
+import type { CommitSessionChip, CommitSessions, LogCommit } from '@ccm/shared'
+import { CommitChips } from '@features/chat'
 import { graphWidth, type GraphRow } from '../../lib/commitGraph'
 import { labelText, parseDecorations } from '../../lib/gitRefs'
 import { isMac } from '../../../../core/lib/platform'
@@ -23,8 +24,9 @@ const props = defineProps<{
   error?: string | null
   /** Any filter is set (the error then offers to clear them). */
   filtered?: boolean
+  sessions?: ReadonlyMap<string, CommitSessions>
 }>()
-const emit = defineEmits<{ select: [hash: string]; open: [hash: string]; loadMore: []; menu: [hash: string, x: number, y: number]; clear: []; retry: [] }>()
+const emit = defineEmits<{ select: [hash: string]; open: [hash: string]; loadMore: []; menu: [hash: string, x: number, y: number]; clear: []; retry: []; visible: [commits: LogCommit[]]; session: [hash: string, chip: CommitSessionChip] }>()
 const { t, locale } = useI18n()
 
 const ROW_H = 24
@@ -41,6 +43,11 @@ const last = computed(() => Math.min(props.commits.length, Math.ceil((top.value 
 const visible = computed(() => props.commits.slice(first.value, last.value).map((c, i) => ({ c, row: props.rows[first.value + i], index: first.value + i })))
 const activeId = computed(() => (props.selected && visible.value.some((v) => v.c.hash === props.selected) ? `log-${props.selected}` : undefined))
 const selectedIndex = computed(() => props.commits.findIndex((c) => c.hash === props.selected))
+watch(
+  () => [first.value, last.value, props.commits] as const,
+  () => emit('visible', props.commits.slice(first.value, last.value)),
+  { immediate: true },
+)
 
 const dateFmt = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }))
 const fullFmt = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'full', timeStyle: 'medium' }))
@@ -202,6 +209,7 @@ defineExpose({ focus: () => scroller.value?.focus(), scrollToHash })
               <span class="truncate">{{ l.kind === 'head' ? t('workspace.log.table.head') : labelText(l) }}</span>
             </span>
             <span class="min-w-0 truncate" :title="v.c.subject" data-log-subject>{{ v.c.subject }}</span>
+            <CommitChips v-if="sessions?.get(v.c.hash)" :sessions="sessions.get(v.c.hash)!" @open="(chip) => emit('session', v.c.hash, chip)" />
           </span>
           <span class="hidden w-32 min-w-0 shrink truncate text-ink-muted @[24rem]:block" :title="`${v.c.author} <${v.c.email}>`">{{ v.c.author }}</span>
           <span class="hidden w-32 min-w-0 shrink truncate text-right text-ink-muted tabular @[34rem]:block" :title="fullFmt.format(v.c.time * 1000)">{{ dateFmt.format(v.c.time * 1000) }}</span>

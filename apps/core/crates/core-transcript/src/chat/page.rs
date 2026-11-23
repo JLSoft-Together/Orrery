@@ -182,6 +182,28 @@ impl Live {
     }
 }
 
+pub fn turn_bounds(path: &Path, agent: Agent, turn: u64) -> std::io::Result<Option<Option<u64>>> {
+    let size = std::fs::metadata(path)?.len();
+    if turn >= size || (turn > 0 && read_range(path, turn - 1, turn)? != b"\n") {
+        return Ok(None);
+    }
+    let end = size.min(turn + SCAN_BYTES);
+    let bytes = read_range(path, turn, end)?;
+    let cut = if end == size { bytes.len() } else { memchr::memrchr(b'\n', &bytes).map_or(0, |i| i + 1) };
+    let w = Window { start: turn, end: turn + cut as u64, bytes: bytes[..cut].to_vec(), from_top: turn == 0 };
+    let all = lines(&w);
+    let mut b = Builder::new(agent, "", true);
+    feed_all(&mut b, &all);
+    if b.turns.first() != Some(&turn) {
+        return Ok(None);
+    }
+    Ok(Some(match b.turns.get(1) {
+        Some(next) => Some(*next),
+        None if end == size => None,
+        None => Some(w.end.max(turn + 1)),
+    }))
+}
+
 pub fn last_reply(path: &Path, agent: Agent) -> std::io::Result<Option<(String, Option<i64>)>> {
     let w = window(path, None, LAST_TAIL)?;
     let all = lines(&w);

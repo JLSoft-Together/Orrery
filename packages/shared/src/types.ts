@@ -489,6 +489,23 @@ export interface ToolSpansData {
   spans: ToolSpan[]
 }
 
+export interface CommitSessionChip {
+  agent: 'claude' | 'codex'
+  session: string
+  label: string
+  cwd: string
+  turn: number
+  score: number
+  strong: boolean
+  prompt: string
+  at: number
+}
+
+export interface CommitSessions {
+  chips: CommitSessionChip[]
+  more: number
+}
+
 export type MonitorEvent =
   | { type: 'snapshot'; payload: MonitorSnapshot }
   | { type: 'sessions.loading'; payload: { loading: boolean } }

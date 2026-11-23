@@ -7,7 +7,7 @@ export type CleanupAnswer = 'removed' | 'kept' | 'failed'
 
 let open: Promise<CleanupAnswer> | null = null
 
-export function askCleanupWorktree(root: string, branch: string): Promise<CleanupAnswer> {
+export function askCleanupWorktree(root: string, branch: string, opts: { squashed?: boolean } = {}): Promise<CleanupAnswer> {
   if (open) return open
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -16,6 +16,7 @@ export function askCleanupWorktree(root: string, branch: string): Promise<Cleanu
     const app = createApp(WorktreeCleanup, {
       root,
       branch,
+      squashed: opts.squashed === true,
       onDone: (result: CleanupAnswer) => {
         app.unmount()
         host.remove()

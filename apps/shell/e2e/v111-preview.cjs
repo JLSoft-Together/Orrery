@@ -1,6 +1,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { launch, OUT, REPO } = require('./cdp.cjs')
+const CTRL = 2
 const S = `document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s`
 const W = `${S}.get('workspace')`
 const SET = `${S}.get('settings')`
@@ -8,7 +9,7 @@ const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' - ' + extra : ''}`); console.log(results.at(-1)) }
 const SHOTS = path.join(REPO, 'docs', 'qa', 'v111', 'WP-111c')
 
-const banner = (port) => `node -e "console.log('  \\u279c  Local:   http://localhost:'+(${port - 3}+3)+'/')"`
+const banner = (port) => `node -e "console.log('  \\u279c  Local:   http://localhost:'+(${port - 3}+3)+'/');setTimeout(()=>{},120000)"`
 
 ;(async () => {
   const app = await launch(process.argv[2] ? { exe: process.argv[2] } : {})
@@ -52,6 +53,9 @@ const banner = (port) => `node -e "console.log('  \\u279c  Local:   http://local
     if (clip.result?.data) fs.writeFileSync(path.join(SHOTS, 'header-chip.png'), Buffer.from(clip.result.data, 'base64'))
     fs.copyFileSync(path.join(OUT, 'v111-preview-chip.png'), path.join(SHOTS, 'workspace.png'))
 
+    await evaluate(`document.querySelector('[data-pane="' + ${W}.activeKey + '"] .xterm-helper-textarea')?.focus()`)
+    await key('c', 'KeyC', 67, CTRL)
+    await sleep(1500)
     await run(banner(5173))
     await sleep(1500)
     check('same URL again does not open another pane', (await browsers()).length === 1, JSON.stringify(await browsers()))
@@ -59,11 +63,17 @@ const banner = (port) => `node -e "console.log('  \\u279c  Local:   http://local
     const bk = await evaluate(`${W}.panes.find((p) => p.kind === 'browser').key`)
     await evaluate(`${W}.remove(${JSON.stringify(bk)})`)
     await sleep(500)
+    await evaluate(`document.querySelector('[data-pane="${shellKey}"] .xterm-helper-textarea')?.focus()`)
+    await key('c', 'KeyC', 67, CTRL)
+    await sleep(1500)
     await run(banner(5173))
     await sleep(1500)
     check('after closing the preview the same URL stays a chip only', (await browsers()).length === 0 && (await chip()) === 'localhost:5173', JSON.stringify(await browsers()))
 
     await evaluate(`${SET}.devPreviewAutoOpen = false`)
+    await evaluate(`document.querySelector('[data-pane="${shellKey}"] .xterm-helper-textarea')?.focus()`)
+    await key('c', 'KeyC', 67, CTRL)
+    await sleep(1500)
     await run(banner(5174))
     await waitFor(`document.querySelector('[data-dev-chip]')?.textContent.includes('5174')`, 8000, 'chip 5174')
     await sleep(1000)
@@ -76,6 +86,9 @@ const banner = (port) => `node -e "console.log('  \\u279c  Local:   http://local
     await evaluate(`${SET}.devPreviewAutoOpen = true`)
 
     await evaluate(`${W}.activate(${JSON.stringify(shellKey)})`)
+    await evaluate(`document.querySelector('[data-pane="${shellKey}"] .xterm-helper-textarea')?.focus()`)
+    await key('c', 'KeyC', 67, CTRL)
+    await sleep(1500)
     await run('exit')
     await waitFor(`!document.querySelector('[data-dev-chip]')`, 10000, 'chip gone')
     check('chip disappears when the process exits', true)

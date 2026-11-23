@@ -27,6 +27,7 @@ async function run(ui) {
     ok('chip sits inside the footer', await evaluate(`!!${CHIP}?.closest('${footerSel}')`))
     ok('chip is on the right half of the footer', await evaluate(`(() => { const c = ${CHIP}?.getBoundingClientRect(); const f = document.querySelector('${footerSel}')?.getBoundingClientRect(); return !!c && !!f && c.left > f.left + f.width / 2 })()`))
 
+    await waitFor(`!!${CHIP}?.querySelector("[data-sys-cpu]")`, 15000, "cpu sample").catch(() => undefined)
     const vals = await evaluate(`({ cpu: ${CHIP}?.querySelector('[data-sys-cpu]')?.textContent.trim(), ram: ${CHIP}?.querySelector('[data-sys-ram]')?.textContent.trim() })`)
     const inRange = (s) => { const m = /^(\d{1,3})%$/.exec(s ?? ''); return !!m && Number(m[1]) >= 0 && Number(m[1]) <= 100 }
     ok('cpu is a number 0 to 100', inRange(vals.cpu), JSON.stringify(vals))

@@ -22,6 +22,7 @@ const expandedOf = (v) => `${header(v)}?.getAttribute('aria-expanded')`
     await waitFor(`!!window.ccmDesktop && !!${UI} && ${S}.get('connection').state === 'connected'`, 30000, 'app ready')
 
     // (d) Fresh profile: quick setup and the guide come first, never two dialogs at once, then What's new.
+    await evaluate(`${S}.get('workspace').open('shell', ${JSON.stringify(require('./cdp.cjs').REPO)})`)
     let maxVisible = 0
     const order = []
     const end = Date.now() + 45000

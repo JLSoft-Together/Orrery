@@ -18,6 +18,7 @@
 - Daemon layout chỉ warmup khi có tín hiệu XML Android, không bật sẵn.
 - Config lạ (`trust-config`) và cài lại (`reinstall`) cần xác nhận native; từ điện thoại xác nhận trên điện thoại.
 - `apps/web/src/core/lib/desktop.ts` import type từ `lib/layoutPreview`, `lib/drawablePreview` (client IPC).
+- Lịch sử chạy (v112 X6): `components/RunHistoryDialog.vue` (list, ghim mốc, so sánh), `RunHistoryLog.vue` (log ảo hoá, đọc theo trang 1000 dòng), `lib/runHistory.ts` (`normalizeLine`, `compareRuns`, max 500 dòng khác), nút `data-run-history-open` ở `RunPane.vue`, i18n `i18n/run-v112.ts`.
 
 ## Liên kết
 

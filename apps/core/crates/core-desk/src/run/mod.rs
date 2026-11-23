@@ -7,6 +7,7 @@ pub mod config_store;
 pub mod configs;
 pub mod custom;
 pub mod flutter;
+pub mod history;
 pub mod importers;
 pub mod ipc;
 pub mod manager;

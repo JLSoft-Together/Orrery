@@ -268,3 +268,26 @@ export interface ToolchainReport {
   error: EnvIssue | null
   at: number
 }
+
+export interface RunHistoryEntry {
+  id: string
+  project: string
+  target: string
+  config: string
+  device: string | null
+  start: number
+  end: number | null
+  exitCode: number | null
+  lines: number
+  bytes: number
+  pinned: boolean
+  truncated: boolean
+  interrupted?: boolean
+}
+
+export interface RunHistoryPage {
+  id: string
+  offset: number
+  total: number
+  lines: RunLogLine[]
+}

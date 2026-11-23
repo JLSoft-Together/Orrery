@@ -13,6 +13,7 @@
 | `apps/core/crates/core-desk/src/run/settings.rs` | SDK path, toolchain |
 | `apps/core/crates/core-desk/src/run/parse.rs` | phân tích log: crash, ANR, lỗi build |
 | `apps/core/crates/core-desk/src/run/sessions.rs` | session chạy, phát `ccm:run-event` |
+| `apps/core/crates/core-desk/src/run/history.rs` | lịch sử log mỗi lần chạy `CCM_DATA_DIR/runs/<hash root>/<id>.log` + `index.json` (JSON mỗi dòng, che secret, 20 lần / project, tổng max 50 MB, max 25 MB / lần, lần ghim không bị xoá); kênh `ccm:run-history-list/read/pin/delete` ở `ipc.rs::on_history` |
 | `apps/core/crates/core-desk/src/layout/daemon.rs` | daemon layoutlib (JSON-RPC stdio) |
 | `apps/core/crates/core-desk/src/layout/install.rs` | cài kit pin ở `apps/layout-daemon/kit.json` |
 | `apps/core/crates/core-desk/src/layout/model.rs` | model dự án Gradle cho preview |

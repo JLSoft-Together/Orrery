@@ -29,6 +29,8 @@ import type {
   RunEvent,
   RunKind,
   RunResult,
+  RunHistoryEntry,
+  RunHistoryPage,
   RunSession,
   RunStartRequest,
   RunTemplates,
@@ -234,6 +236,10 @@ interface DesktopBridge {
   runReload?: (sessionId: string, full: boolean) => Promise<RunResult>
   runPubGet?: (dir: string) => Promise<RunResult>
   runSessions?: () => Promise<RunSession[]>
+  runHistoryList?: (root: string) => Promise<RunHistoryEntry[]>
+  runHistoryRead?: (root: string, id: string, offset: number, limit: number) => Promise<RunHistoryPage | null>
+  runHistoryPin?: (root: string, id: string, pinned: boolean) => Promise<boolean>
+  runHistoryDelete?: (root: string, id: string) => Promise<boolean>
   onRunEvent?: (handler: (event: RunEvent) => void) => () => void
   runSettings?: () => Promise<RunSettings | null>
   runSettingsSet?: (patch: Partial<RunSettings>) => Promise<RunSettings | null>

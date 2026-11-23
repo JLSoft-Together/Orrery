@@ -51,6 +51,7 @@ pub fn register(desk: &mut Desk, env: &DeskEnv) -> Arc<SettingsStore> {
     on_config(desk, &m);
     on_env(desk, &m);
     on_process(desk, &m);
+    on_history(desk, &m);
     settings
 }
 
@@ -171,5 +172,27 @@ fn on_process(desk: &mut Desk, m: &RunManager) {
     desk.on(MODULE, "desk:run-kill-all", move |_, _| {
         mm.kill_all();
         Ok(json!(true))
+    });
+}
+
+fn on_history(desk: &mut Desk, m: &RunManager) {
+    let mm = m.clone();
+    desk.on(MODULE, "ccm:run-history-list", move |ctx, args| Ok(json!(root(ctx, arg(args, 0)).map(|r| mm.history.list(&r)).unwrap_or_default())));
+    let mm = m.clone();
+    desk.on(MODULE, "ccm:run-history-read", move |ctx, args| {
+        let (Some(r), Some(id)) = (root(ctx, arg(args, 0)), arg(args, 1).as_str()) else { return Ok(Value::Null) };
+        let offset = arg(args, 2).as_u64().unwrap_or(0) as usize;
+        let limit = arg(args, 3).as_u64().unwrap_or(500) as usize;
+        Ok(mm.history.read(&r, id, offset, limit).unwrap_or(Value::Null))
+    });
+    let mm = m.clone();
+    desk.on(MODULE, "ccm:run-history-pin", move |ctx, args| {
+        let (Some(r), Some(id)) = (root(ctx, arg(args, 0)), arg(args, 1).as_str()) else { return Ok(json!(false)) };
+        Ok(json!(mm.history.pin(&r, id, arg(args, 2) == &json!(true))))
+    });
+    let mm = m.clone();
+    desk.on(MODULE, "ccm:run-history-delete", move |ctx, args| {
+        let (Some(r), Some(id)) = (root(ctx, arg(args, 0)), arg(args, 1).as_str()) else { return Ok(json!(false)) };
+        Ok(json!(mm.history.delete(&r, id)))
     });
 }

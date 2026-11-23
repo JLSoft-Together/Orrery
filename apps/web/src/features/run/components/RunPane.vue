@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import PaneHeader from '../../next/components/ui/PaneHeader.vue'
 import PaneLayoutMore from '../../next/components/ui/PaneLayoutMore.vue'
 import { useUiGenStore } from '../../next/stores/uiGen'
-import { Bot, Camera, CircleAlert, CirclePlay, CircleSlash, CircleStop, CircleX, LoaderCircle, Package, PlayCircle, TriangleAlert, X } from 'lucide-vue-next'
+import { Bot, Camera, CircleAlert, CirclePlay, CircleSlash, CircleStop, CircleX, History, LoaderCircle, Package, PlayCircle, TriangleAlert, X } from 'lucide-vue-next'
 import { isRunLive, type EnvIssue, type RunSession, type RunState } from '@ccm/shared'
 import { desktop, type RunSdkKey } from '../../../core/lib/desktop'
 import { hasDeviceCapture } from '@features/devices'
@@ -17,6 +17,7 @@ import { DeviceCaptureDialog } from '@features/devices'
 import AppSelect from '../../../core/components/AppSelect.vue'
 import RunBar from './RunBar.vue'
 import RunConfigsDialog from './RunConfigsDialog.vue'
+import RunHistoryDialog from './RunHistoryDialog.vue'
 import RunLog from './RunLog.vue'
 import RunProjectMark from './RunProjectMark.vue'
 import RunToolchainDialog from './RunToolchainDialog.vue'
@@ -73,6 +74,7 @@ const reasonOf = (p: (typeof detectedProjects.value)[number]): string | null => 
 }
 const step = computed(() => runStep(session.value))
 const toolchainOpen = ref(false)
+const historyOpen = ref(false)
 
 const config = computed(() => run.selectedConfig(props.root))
 const project = computed(() => {
@@ -219,6 +221,10 @@ function sessionLabel(s: RunSession): string {
         <span v-if="env.fvm" class="rounded-full bg-fill px-1.5 text-ink-muted">{{ t('run.fvm') }}</span>
       </span>
       <span v-if="runnable" class="hidden min-w-0 flex-1 @max-[480px]:block" aria-hidden="true" />
+      <button v-if="runnable" type="button" class="ccm-btn-plain shrink-0" :title="t('runHistory.title')" :aria-label="t('runHistory.title')" data-run-history-open @click="historyOpen = true">
+        <History :size="14" aria-hidden="true" />
+        <span class="hidden text-xs @2xl:inline">{{ t('runHistory.button') }}</span>
+      </button>
       <PaneLayoutMore :pane-key="paneKey" />
       <slot name="end" />
     </component>
@@ -335,6 +341,7 @@ function sessionLabel(s: RunSession): string {
       <RunLog :session="session" :kind="session?.type ?? config?.type ?? 'custom'" :root="root" @open="(path, line) => emit('open', path, line)" @no-agent="noAgent = true" />
     </template>
     <RunConfigsDialog :open="configsOpen" :root="root" @close="configsOpen = false" />
+    <RunHistoryDialog :open="historyOpen" :root="root" @close="historyOpen = false" />
     <RunToolchainDialog :open="toolchainOpen" :root="root" :config="config" @close="toolchainOpen = false" />
     <DeviceCaptureDialog :open="captureOpen" :device-id="androidDevice?.id ?? null" :device-name="androidDevice?.name ?? ''" :root="root" @close="captureOpen = false" />
   </section>

@@ -68,15 +68,18 @@ impl Hooks for SessionHooks {
 
     fn log(&self, stream: &str, text: &str, level: Option<&str>, tag: Option<&str>) {
         let mut line = Map::new();
+        let masked = (self.m.mask)(text);
+        let at = crate::util::now_ms() as i64;
+        self.m.history.append(&self.id, stream, &masked, level, tag, at);
         line.insert("stream".into(), json!(stream));
-        line.insert("text".into(), json!((self.m.mask)(text)));
+        line.insert("text".into(), json!(masked));
         if let Some(l) = level {
             line.insert("level".into(), json!(l));
         }
         if let Some(t) = tag {
             line.insert("tag".into(), json!(t));
         }
-        line.insert("at".into(), now());
+        line.insert("at".into(), json!(at));
         self.m.queue_log(&self.id, Value::Object(line));
     }
 
@@ -233,6 +236,7 @@ impl Inner {
             "state": "starting", "startedAt": now(), "endedAt": null, "appId": null, "vmServiceUri": null, "devtoolsUri": null, "failure": null, "progress": null,
         });
         let device_value = device.as_ref().map(RunDevice::to_value).unwrap_or(Value::Null);
+        let device_name = device.as_ref().map(|d| d.name.clone());
         let hooks = Arc::new(SessionHooks { m: self.clone(), id: id.clone(), origin: self.origin() });
         let host = self.host.clone();
         let ctx = RunContext {
@@ -248,6 +252,7 @@ impl Inner {
                 let _ = host.call("run.adbUse", json!({"serial": serial}));
             })),
         };
+        self.history.begin(root, &id, cfg["id"].as_str().unwrap_or(""), cfg["name"].as_str().unwrap_or(""), device_name.as_deref(), session["startedAt"].as_i64().unwrap_or(0));
         let runner = factory(&kind)(ctx);
         {
             let mut g = self.state.lock().unwrap();
@@ -306,6 +311,7 @@ impl Inner {
         }
         drop(g);
         if ended {
+            self.history.finish(id, session["endedAt"].as_i64().unwrap_or(0), super::history::exit_code_of(&session));
             self.release_devices_if_idle();
         }
     }

@@ -1,4 +1,5 @@
 use super::command::{preview_command, PreviewCtx};
+use super::history::RunHistory;
 use super::config_store::{RunConfigStore, TrustStore};
 use super::configs::{clean_run_config, clean_templates, default_configs};
 use super::settings::{read_json, write_json, SettingsStore, TEMPLATES_FILE};
@@ -51,6 +52,7 @@ pub struct Inner {
     pub home: String,
     pub settings: Arc<SettingsStore>,
     pub store: RunConfigStore,
+    pub history: RunHistory,
     pub trust: TrustStore,
     pub templates: Mutex<Value>,
     pub emitter: Emitter,
@@ -68,9 +70,11 @@ pub fn new_manager(data_dir: PathBuf, env: Env, win: bool, home: String, setting
     let platform = if win { "win32" } else { "darwin" };
     let mask_home = home.clone();
     let templates = clean_templates(read_json(&data_dir.join(TEMPLATES_FILE)).as_ref());
+    let mask: Arc<dyn Fn(&str) -> String + Send + Sync> = Arc::new(move |t| core_sources::mask::mask_secrets(t, &mask_home, platform));
     Arc::new_cyclic(|weak: &std::sync::Weak<Inner>| {
         let w = weak.clone();
         Inner {
+            history: RunHistory::new(&data_dir, mask.clone()),
             store: RunConfigStore::new(&data_dir),
             trust: TrustStore::new(&data_dir),
             data_dir,
@@ -87,7 +91,7 @@ pub fn new_manager(data_dir: PathBuf, env: Env, win: bool, home: String, setting
                     m.project_changed(&root);
                 }
             })),
-            mask: Arc::new(move |t| core_sources::mask::mask_secrets(t, &mask_home, platform)),
+            mask,
             restart_stop_ms: 8_000,
             pub_get_timeout_ms: 5 * 60_000,
         }

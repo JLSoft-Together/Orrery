@@ -306,6 +306,33 @@ async function run(app) {
   await app.key('Escape', 'Escape', 27)
   await sleep(200)
 
+  const HIST = '[data-run-history]'
+  await evaluate(`document.querySelector('[data-run-history-open]').click()`)
+  await waitFor(`document.querySelectorAll('${HIST} [data-history-row]').length >= 3`, 10000, 'history rows').catch(() => {})
+  const hrows = await evaluate(`[...document.querySelectorAll('${HIST} [data-history-row]')].map((r) => r.querySelector('[data-history-exit]').dataset.historyExit)`)
+  check('History lists the 3 runs, newest (failed) first', hrows.length === 3 && hrows[0] === 'error' && hrows.slice(1).every((x) => x === 'ok'), JSON.stringify(hrows))
+  const hid = await evaluate(`document.querySelectorAll('${HIST} [data-history-row]')[2].dataset.historyRow`)
+  await evaluate(`document.querySelector('${HIST} [data-history-row="${hid}"] [data-history-pin]').click()`)
+  await waitFor(`!!document.querySelector('${HIST} [data-history-pinned]')`, 5000, 'pinned').catch(() => {})
+  check('oldest run pinned as baseline', await evaluate(`!!document.querySelector('${HIST} [data-history-row="${hid}"] [data-history-pinned]')`))
+  await shot('run-06-history-list')
+  await evaluate(`document.querySelector('${HIST} [data-history-compare]').click()`)
+  await waitFor(`!!document.querySelector('${HIST} [data-compare-exit]')`, 15000, 'compare result').catch(() => {})
+  const cexit = await evaluate(`document.querySelector('${HIST} [data-compare-exit]')?.textContent.replace(/\s+/g, ' ').trim() ?? ''`)
+  check('compare shows exit 0 to 1 against the pinned baseline', cexit.includes('0 to 1'), cexit)
+  check('compare lists lines only in the new failed run', await evaluate(`!!document.querySelector('${HIST} [data-compare-side="new"]')`))
+  await shot('run-07-history-compare')
+  await evaluate(`document.querySelector('${HIST} [data-compare-side="new"] [data-compare-open-raw]').click()`)
+  await waitFor(`document.querySelector('${HIST} [data-run-history-log]')?.textContent.includes("Expected")`, 8000, 'raw log').catch(() => {})
+  check('open original shows the stored log lines', await evaluate(`document.querySelectorAll('${HIST} [data-run-history-log] [data-line]').length > 0 && document.querySelector('${HIST} [data-run-history-log]').textContent.includes(\"Expected\")`))
+  check('history dialog has no horizontal overflow', await evaluate(`(() => { const el = document.querySelector('${HIST}'); return el.scrollWidth <= el.clientWidth })()`))
+  await shot('run-08-history-raw')
+  for (let i = 0; i < 4 && (await evaluate(`!!document.querySelector('${HIST}')`)); i++) {
+    await app.key('Escape', 'Escape', 27)
+    await sleep(400)
+  }
+  check('Escape closes the history dialog', await evaluate(`!document.querySelector('${HIST}')`))
+
   check('no horizontal overflow', await evaluate(`document.documentElement.scrollWidth <= document.documentElement.clientWidth`))
   await evaluate(`window.__runOff?.()`)
 }

@@ -3,7 +3,7 @@ import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../../core/lib/shareMode'
 import { waitReason, type PtyPreset } from '@ccm/shared'
-import { ChevronDown, ChevronRight, Ellipsis, LoaderCircle, Plus, Wrench } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Ellipsis, LoaderCircle, Plus, Search, Wrench, X } from 'lucide-vue-next'
 import { useClusterDrag } from '../../../rail/composables/useClusterDrag'
 import { useOpenProject } from '../../../workspace/composables/useOpenProject'
 import { useCompact } from '../../../agent-tools/composables/useCompact'
@@ -18,7 +18,7 @@ import { hasCtxSources } from '../../../agent-tools/lib/ctxSources'
 import { hasDeepSeek } from '../../../../core/lib/desktop'
 import type { MenuEntry } from '../../../../core/lib/menu'
 import { othersOf, relPath, summarize } from '../../../agent-tools/lib/clash'
-import { buildLiveRows, collapsedProjects, freezeLayout, layoutOf, type LayoutSection, type LiveExtras, type LiveRow, type RowClash } from '../../lib/railLive'
+import { RAIL_FILTER_MS, buildLiveRows, collapsedProjects, filterRows, freezeLayout, layoutOf, type LayoutSection, type LiveExtras, type LiveRow, type RowClash } from '../../lib/railLive'
 import { forgetSnoozed, isSnoozed } from '../../lib/railSnooze'
 import { isToolRow, readToolsOpen, splitTools, toggleOpen, writeToolsOpen } from '../../lib/railTools'
 import { NEXT_SHELL_KEY } from '../../lib/shellContext'
@@ -45,8 +45,9 @@ import { useUiStore } from '../../../../core/stores/ui'
 import { useUiGenStore } from '../../stores/uiGen'
 import { isTerm, presetOf, useWorkspaceStore, workCwd, type SplitChoice } from '../../../workspace/stores/workspace'
 import ContextMenu from '../../../../core/components/ui/ContextMenu.vue'
-import SegmentedControl from '../ui/SegmentedControl.vue'
+import GlassMenu, { type GlassMenuItem } from '../ui/GlassMenu.vue'
 import RailCollapsed from './RailCollapsed.vue'
+import RailSearchPop from './RailSearchPop.vue'
 import RailRowItem from './RailRowItem.vue'
 
 const props = defineProps<{ collapsed?: boolean }>()
@@ -107,34 +108,49 @@ const rowByKey = computed(() => new Map(rows.value.map((r) => [r.key, r] as cons
 const clusterOrder = computed(() => rail.clusters.value.map((c) => c.key))
 const clusterByKey = computed(() => new Map(rail.clusters.value.map((c) => [c.key, c] as const)))
 const mode = computed(() => uigen.railGroup)
-const agentRows = computed(() => rows.value.filter((r) => !isToolRow(r)))
-const toolRows = computed(() => rows.value.filter(isToolRow))
-const freshBody = computed(() => layoutOf(mode.value === 'project' ? rows.value : agentRows.value, mode.value, clusterOrder.value))
+const query = ref('')
+const applied = ref('')
+let filterTimer: ReturnType<typeof setTimeout> | undefined
+watch(query, (q) => {
+  clearTimeout(filterTimer)
+  if (!q.trim()) applied.value = ''
+  else filterTimer = setTimeout(() => (applied.value = q), RAIL_FILTER_MS)
+})
+onBeforeUnmount(() => clearTimeout(filterTimer))
+const filtering = computed(() => applied.value.trim() !== '')
+const shownRows = computed(() => (filtering.value ? filterRows(rows.value, applied.value) : rows.value))
+const agentRows = computed(() => shownRows.value.filter((r) => !isToolRow(r)))
+const toolRows = computed(() => shownRows.value.filter(isToolRow))
+const freshBody = computed(() => layoutOf(mode.value === 'project' ? shownRows.value : agentRows.value, mode.value, clusterOrder.value))
 
 const hold = ref(false)
 const body = ref<LayoutSection[]>([])
 let lastMode = mode.value
+let lastApplied = applied.value
 
 function sync(force = false): void {
-  const reset = force || lastMode !== mode.value
+  const reset = force || lastMode !== mode.value || lastApplied !== applied.value
   lastMode = mode.value
+  lastApplied = applied.value
   body.value = freezeLayout(reset ? null : body.value, freshBody.value, hold.value)
 }
-watch([freshBody, hold, mode], () => sync(), { immediate: true })
+watch([freshBody, hold, mode, applied], () => sync(), { immediate: true })
 
 const sectionRows = (s: LayoutSection): LiveRow[] => s.keys.map((k) => rowByKey.value.get(k)).filter((r): r is LiveRow => !!r)
 const rowOf = (k: string): LiveRow | undefined => rowByKey.value.get(k)
-const toolsOpen = ref<Set<string>>(readToolsOpen())
+const toolsStored = ref<Set<string>>(readToolsOpen())
+const toolsOpen = computed<{ has: (key: string) => boolean }>(() => (filtering.value ? { has: () => true } : toolsStored.value))
 const STATUS_TOOLS = 'status'
 function toggleTools(key: string): void {
-  toolsOpen.value = toggleOpen(toolsOpen.value, key)
-  writeToolsOpen(toolsOpen.value)
+  toolsStored.value = toggleOpen(toolsStored.value, key)
+  writeToolsOpen(toolsStored.value)
 }
 const splitOf = (s: LayoutSection) => splitTools(s.keys, rowOf)
 const keysToRows = (keys: string[]): LiveRow[] => keys.map(rowOf).filter((r): r is LiveRow => !!r)
 const statusToolSplit = computed(() => splitTools(toolRows.value.map((r) => r.key), rowOf))
 const dirtyLabel = (n: number): string => (n > 0 ? t('v106rail.dirtyN', { n }) : '')
 const collapsedList = computed(() => collapsedProjects(rows.value, clusterOrder.value, isSnoozed))
+const collapsedAll = computed(() => rows.value)
 
 watch(rows, (list) => forgetSnoozed((k) => list.some((r) => r.key === k)))
 
@@ -616,7 +632,50 @@ function onHeadButton(key: string, e: MouseEvent): void {
   showProjectMenu(c, new DOMRect(r.left, r.bottom, 0, 0), e.currentTarget as HTMLElement)
 }
 
+const filterEl = ref<HTMLInputElement | null>(null)
+const groupBtn = ref<HTMLElement | null>(null)
+const groupOpen = ref(false)
+const groupAt = ref<{ x: number; y: number }>({ x: 0, y: 0 })
+
+function toggleGroup(): void {
+  if (groupOpen.value) {
+    groupOpen.value = false
+    return
+  }
+  const r = groupBtn.value?.getBoundingClientRect()
+  if (r) groupAt.value = { x: r.right - 200, y: r.bottom + 4 }
+  groupOpen.value = true
+}
+
+function pickGroup(id: string): void {
+  uigen.railGroup = id === 'status' ? 'status' : 'project'
+}
+
+function clearFilter(): void {
+  query.value = ''
+  applied.value = ''
+  filterEl.value?.focus()
+}
+
+function onFilterKey(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && query.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    clearFilter()
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    listEl.value?.querySelector<HTMLElement>('[data-rail-open]')?.focus()
+  }
+}
+
 function onNavKey(e: KeyboardEvent): void {
+  if (!props.collapsed && e.key.toLowerCase() === 'f' && !e.shiftKey && !e.altKey && (isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey)) {
+    e.preventDefault()
+    e.stopPropagation()
+    filterEl.value?.focus()
+    filterEl.value?.select()
+    return
+  }
   if (e.key === 'Escape' && selection.value.keys.length && !ctxMenu.value && !e.defaultPrevented) {
     e.preventDefault()
     e.stopPropagation()
@@ -624,12 +683,14 @@ function onNavKey(e: KeyboardEvent): void {
   }
 }
 
-const groupOptions = computed(() => [
-  { value: 'project' as const, label: t('mist.rail.group.project') },
-  { value: 'status' as const, label: t('mist.rail.group.status') },
+const groupItems = computed<GlassMenuItem[]>(() => [
+  { id: 'project', label: t('mist.rail.group.project'), checked: uigen.railGroup === 'project' },
+  { id: 'status', label: t('mist.rail.group.status'), checked: uigen.railGroup === 'status' },
 ])
+const groupLabel = computed(() => t(`mist.rail.group.${uigen.railGroup}`))
 
 const empty = computed(() => rows.value.length === 0)
+const noMatch = computed(() => filtering.value && !shownRows.value.length)
 const branchOf = (key: string): string => clusterByKey.value.get(key)?.checkouts.find((k) => k.branch)?.branch ?? ''
 const statusLabel = (id: string): string => t(`mist.rail.status.${id.slice(2)}`)
 const clusterKeyOf = (id: string): string => id.slice(2)
@@ -647,8 +708,44 @@ const clusterKeyOf = (id: string): string => id.slice(2)
     @click.capture="onClickCapture"
     @keydown="onNavKey"
   >
-    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-2 px-2.5 pt-0.5 pb-1.5">
-      <slot name="search" />
+    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-1.5 px-2.5 pt-0.5 pb-1.5" data-rail-head>
+      <div class="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] border border-line bg-(--ccm-control) px-2 focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-focus" data-no-drag>
+        <Search :size="14" class="shrink-0 text-ink-faint" aria-hidden="true" />
+        <input
+          ref="filterEl"
+          v-model="query"
+          type="text"
+          class="min-w-0 flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-ink-faint"
+          :placeholder="t('v106rail.filter.placeholder')"
+          :aria-label="t('v106rail.filter.label')"
+          :aria-keyshortcuts="isMac ? 'Meta+F' : 'Control+F'"
+          autocomplete="off"
+          spellcheck="false"
+          data-tour="palette"
+          data-next-search
+          data-live-filter
+          @keydown="onFilterKey"
+        />
+        <button v-if="query" type="button" class="inline-grid size-5 shrink-0 cursor-pointer place-items-center rounded-control text-ink-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus" :aria-label="t('v106rail.filter.clear')" data-live-filter-clear @click="clearFilter">
+          <X :size="12" aria-hidden="true" />
+        </button>
+      </div>
+      <button
+        ref="groupBtn"
+        type="button"
+        class="ccm-btn-plain inline-flex h-7 shrink-0 cursor-pointer items-center gap-0.5 px-1.5 text-2xs font-medium"
+        :aria-label="`${t('v106rail.filter.groupLabel')}: ${groupLabel}`"
+        :title="`${t('v106rail.filter.groupLabel')}: ${groupLabel}`"
+        aria-haspopup="menu"
+        :aria-expanded="groupOpen"
+        data-no-drag
+        data-live-group
+        @click="toggleGroup"
+      >
+        <span>{{ t('v106rail.filter.group') }}</span>
+        <ChevronDown :size="12" aria-hidden="true" />
+      </button>
+      <GlassMenu :open="groupOpen" :items="groupItems" :label="t('v106rail.filter.groupLabel')" :width="200" :x="groupAt.x" :y="groupAt.y" @select="pickGroup" @close="groupOpen = false" />
       <button
         v-if="openable"
         type="button"
@@ -664,13 +761,16 @@ const clusterKeyOf = (id: string): string => id.slice(2)
         <Plus v-else :size="15" aria-hidden="true" />
       </button>
     </div>
-    <div v-if="!props.collapsed" class="@container flex shrink-0 items-center gap-2 px-2 pb-1">
-      <span class="hidden shrink-0 text-2xs font-medium text-ink-faint @[280px]:inline" aria-hidden="true">{{ t('mist.rail.group.name') }}</span>
-      <SegmentedControl v-model="uigen.railGroup" :options="groupOptions" :label="t('mist.rail.group.label')" size="sm" fill class="min-w-0 flex-1" data-rail-group />
-    </div>
     <div ref="listEl" class="ccm-scroll min-h-0 flex-1 overflow-y-auto px-1.5 py-1" data-rail-list>
       <p v-if="empty && !props.collapsed" class="px-2 py-3 text-2xs text-ink-faint">{{ t('mist.rail.empty') }}</p>
-      <RailCollapsed v-else-if="props.collapsed" :projects="collapsedList" @open="activateRow" @menu="onRowMenu" />
+      <template v-else-if="props.collapsed">
+        <RailSearchPop :rows="collapsedAll" @open="activateRow" @menu="onRowMenu" @palette="ui.paletteOpen = true" />
+        <RailCollapsed :projects="collapsedList" @open="activateRow" @menu="onRowMenu" />
+      </template>
+      <div v-else-if="noMatch" class="px-2 py-3 text-2xs text-ink-faint" role="status" data-rail-no-match>
+        <p>{{ t('v106rail.filter.empty') }}</p>
+        <button type="button" class="mt-1 cursor-pointer text-accent-ink underline outline-none focus-visible:outline-2 focus-visible:outline-focus" data-rail-no-match-all @click="ui.paletteOpen = true">{{ t('v106rail.filter.all') }}</button>
+      </div>
       <template v-else>
         <template v-for="s in body" :key="s.id">
           <section v-if="s.id.startsWith('p:')" class="mb-1.5" :data-group="clusterKeyOf(s.id)">

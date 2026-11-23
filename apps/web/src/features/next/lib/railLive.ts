@@ -48,6 +48,7 @@ export interface LiveRow {
   focused: boolean
   src: RailRow
   clash?: RowClash
+  branch?: string
 }
 
 export interface LayoutSection {
@@ -156,6 +157,7 @@ export function buildLiveRows(clusters: readonly RailCluster[], extrasOf: (row: 
           shell,
           focused: r.focused,
           src: r,
+          ...(k.branch ? { branch: k.branch } : {}),
           ...(x.clash ? { clash: x.clash } : {}),
         })
       }
@@ -252,4 +254,22 @@ export function collapsedProjects(rows: readonly LiveRow[], clusterOrder: readon
 
 export function isSignalEdge(prev: RailState | undefined, next: RailState): boolean {
   return prev !== undefined && prev !== next && (next === 'asked' || next === 'failed')
+}
+
+export const foldText = (s: string): string =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/đ/g, 'd')
+
+export const RAIL_FILTER_MS = 80
+
+export function filterRows<T extends Pick<LiveRow, 'title' | 'clusterName' | 'branch'>>(rows: readonly T[], query: string): T[] {
+  const words = foldText(query).split(/\s+/).filter(Boolean)
+  if (!words.length) return [...rows]
+  return rows.filter((r) => {
+    const hay = foldText(`${r.title} ${r.clusterName} ${r.branch ?? ''}`)
+    return words.every((w) => hay.includes(w))
+  })
 }

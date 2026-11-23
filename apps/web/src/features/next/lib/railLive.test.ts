@@ -7,6 +7,8 @@ import {
   collapsedProjects,
   compactElapsed,
   detailOf,
+  filterRows,
+  foldText,
   freezeLayout,
   isSignalEdge,
   isSnoozedAt,
@@ -147,5 +149,26 @@ describe('rows and labels', () => {
     expect(isSignalEdge('asked', 'asked')).toBe(false)
     expect(isSignalEdge('working', 'failed')).toBe(true)
     expect(isSignalEdge('working', 'done')).toBe(false)
+  })
+})
+
+describe('filterRows', () => {
+  const rows = [
+    live('a', 'working', 1, { title: 'Sửa lỗi đăng nhập', clusterName: 'Orrery', branch: 'feat/login' }),
+    live('b', 'idle', 2, { title: 'Claude', clusterName: 'Đồ Án', branch: 'main' }),
+    live('c', 'done', 3, { title: 'Shell', clusterName: 'Orrery' }),
+  ]
+  it('folds accents and case', () => {
+    expect(foldText('ĐĂNG Nhập')).toBe('dang nhap')
+    expect(filterRows(rows, 'DANG NHAP').map((r) => r.key)).toEqual(['a'])
+  })
+  it('matches project and branch', () => {
+    expect(filterRows(rows, 'do an').map((r) => r.key)).toEqual(['b'])
+    expect(filterRows(rows, 'feat/log').map((r) => r.key)).toEqual(['a'])
+    expect(filterRows(rows, 'orrery').map((r) => r.key)).toEqual(['a', 'c'])
+  })
+  it('needs every word and keeps all on blank', () => {
+    expect(filterRows(rows, 'orrery main')).toEqual([])
+    expect(filterRows(rows, '  ')).toHaveLength(3)
   })
 })

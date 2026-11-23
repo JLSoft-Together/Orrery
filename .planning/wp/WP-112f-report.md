@@ -1,0 +1,28 @@
+## WP-112f — DONE
+- Đã đổi:
+  - `apps/web/src/features/next/lib/railLive.ts` — thêm `foldText`, `filterRows` (không dấu, không phân biệt hoa thường, nhiều từ = AND, khớp tên session / project / nhánh), `RAIL_FILTER_MS = 80`, `LiveRow.branch?`.
+  - `apps/web/src/features/next/lib/railLive.test.ts` — 3 test mới cho `filterRows`.
+  - `apps/web/src/features/next/components/rail/LiveRail.vue` — hàng đầu: ô lọc thật (`data-live-filter`, nút xoá, Esc xoá, ArrowDown vào list, Ctrl+F / Cmd+F trong rail focus ô lọc) + nút "Nhóm" (GlassMenu, nhớ qua `uigen.railGroup`) + nút `+`; bỏ hàng SegmentedControl; không kết quả hiện "Không có session khớp" + nút "Tìm mọi thứ (Ctrl+K)"; khi đang lọc, mục Công cụ tự mở để thấy row khớp; lọc chỉ trong RAM, debounce 80 ms, reset layout khi đổi query.
+  - `apps/web/src/features/next/components/rail/RailSearchPop.vue` (mới) — rail thu gọn: kính lúp ở đầu, popover ô lọc + list kết quả, chọn là mở session, Esc xoá rồi đóng, không mở rộng rail.
+  - `apps/web/src/features/next/components/NextShell.vue` — bỏ slot `#search` (nút mở palette) và nút kính lúp icon mode cũ, bỏ import `Search`, `formatKeys`, `searchKeys`. Ctrl+K vẫn mở palette như cũ.
+  - `apps/web/src/features/next/i18n/v106-rail.ts` + `apps/web/src/i18n/__snapshots__/keys.{en,vi}.txt` — 9 key `v106rail.filter.*` (en + vi).
+  - `apps/shell/e2e/v111-rail-filter.cjs` (mới) — E2E 19 check + chụp ảnh.
+  - `.code_index/web-next.md`, `.code_index/_meta.md`.
+- Tiêu chí: 6/6 đạt. (1) lọc đúng: test không dấu / project / nhánh; (2) group mode giữ + lọc giữ nhóm Trạng thái; (3) rail thu gọn tìm được; (4) a11y: aria-label ô lọc, nút xoá, nút Nhóm, focus ring, Esc, aria-keyshortcuts; (5) E2E cũ pass; (6) ảnh đủ.
+- Audit: không đụng workspace store / TermPane / file hot. Không comment trong code. Không em dash / chấm giữa trong chuỗi UI. `data-rail-filter` / `data-rail-group` đã bị classic sidebar dùng, nên rail next dùng `data-live-filter` / `data-live-group`; giữ `data-next-search` và `data-tour="palette"` trên ô lọc (v103-polish và tour cần).
+- Review: lọc theo `title` đã có tên hiển thị của row, `clusterName`, nhánh của checkout. Chưa lọc theo agent / model. Popover thu gọn cho phép chuột phải mở menu row (qua `@menu`). Ô focus của input trong popover còn viền focus mặc định của trình duyệt (chỉ thẩm mỹ). Không có phím tắt riêng mở popover thu gọn.
+- Test:
+  - `npm run typecheck -w @ccm/web` → pass.
+  - `npm test -w @ccm/web -- src/features/next` → 22 file, 158 test pass.
+  - `npm test -w @ccm/web -- src/i18n -u` → 6 pass, snapshot chỉ thêm 9 key v106rail.filter.* (en) và 9 (vi).
+  - E2E (shell debug có sẵn, web build ra thư mục tạm, cổng 4466 / 9444): `v111-rail-filter` 19 PASS 0 FAIL; `v102-next` 25 PASS; `v103-polish` 18 PASS; `v103-rail` 41 PASS. `ui-gen.cjs` là lib dùng chung, không phải E2E riêng.
+  - `node scripts/index-check.mjs` → ok 39 file, 0 lỗi.
+- Nhìn: `docs/qa/v111/WP-112f/01-rail-open.png`, `02-rail-no-match.png`, `03-group-menu.png`, `04-rail-collapsed-popover.png`, `05-rail-collapsed.png` (chụp sau lần sửa code cuối; đã xem 01 và 04).
+- Hot file cần thêm: không.
+- Ngoài phạm vi cần main xử lý:
+  - Chạy E2E cũ `v103-rail` và `v103-polish` ghi đè 8 ảnh đã track trong `docs/qa/v103/WP-70a/` và `docs/qa/v103/WP-70b/` (đang hiện `M`). Nếu không muốn đưa vào commit thì main `git restore` các file đó.
+  - `apps/web/dist` không bị đụng (build ra thư mục tạm và dùng `CCM_WEB_DIST`); chưa build lại shell Rust (không cần, web được serve từ đĩa).
+- Commit message đề xuất: feat(next): real session filter on the rail, Group menu, search popover when collapsed
+- Dòng changelog (en / vi, ≤ 100 ký tự): Rail now filters sessions as you type, with a compact Group menu / Rail lọc session ngay khi gõ, nút Nhóm gọn một hàng
+## Nhật ký
+- Đọc brief, luật, LiveRail / NextShell / RailCollapsed. Viết lib + test, i18n, LiveRail, RailSearchPop, NextShell, E2E mới. Build web ra thư mục tạm, chạy E2E, chụp ảnh, cập nhật code_index.

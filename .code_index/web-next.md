@@ -7,9 +7,10 @@
 | File | Vai trò |
 |---|---|
 | `apps/web/src/features/next/components/NextShell.vue` | khung: rail, canvas, header |
-| `apps/web/src/features/next/components/rail/LiveRail.vue` | rail sống (264 / 248 / 56 px hoặc overlay), danh sách "cần chủ nhân" |
+| `apps/web/src/features/next/components/rail/LiveRail.vue` | rail sống (264 / 248 / 56 px hoặc overlay); hàng đầu = ô lọc session (debounce 80 ms, Esc xoá, Ctrl+F, ArrowDown vào list) + nút "Nhóm" (GlassMenu, `uigen.railGroup`) + nút `+` |
+| `apps/web/src/features/next/components/rail/RailSearchPop.vue` | rail thu gọn: kính lúp + popover lọc, chọn là mở session |
 | `apps/web/src/features/next/components/canvas/useNextLayout.ts` | layout menu, drop compass, split hint |
-| `apps/web/src/features/next/lib/railLive.ts` | model rail theo trạng thái session |
+| `apps/web/src/features/next/lib/railLive.ts` | model rail theo trạng thái session; `filterRows` / `foldText` (lọc không dấu theo tên, project, nhánh) |
 | `apps/web/src/features/next/lib/customTheme.ts` | bảng màu Tự chọn (8 card) |
 | `apps/web/src/features/next/tokens.css` | token glass (import ở `main.ts`) |
 | `apps/web/src/features/next/stores/uiGen.ts` | store thế hệ UI, đổi live không remount pane |

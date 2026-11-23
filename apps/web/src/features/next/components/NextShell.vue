@@ -16,7 +16,6 @@ import {
   Minimize2,
   PanelLeft,
   Puzzle,
-  Search,
   Settings2,
   Smartphone,
   SquareTerminal,
@@ -28,7 +27,6 @@ import { hasExtensions, hasTerminals, titleBar } from '../../../core/lib/desktop
 import { hasDevices } from '@features/devices'
 import { hasDiskMap } from '@features/disk'
 import { hasTelegram } from '@features/telegram'
-import { formatKeys } from '../../shortcuts/lib/shortcuts'
 import { isMac } from '../../../core/lib/platform'
 import { leaves } from '../../workspace/lib/splitLayout'
 import { canCollapseRail, effectiveRailMode, isRailToggleKey, readRailCollapsed, writeRailCollapsed } from '../lib/railCollapse'
@@ -197,7 +195,6 @@ watch(
   (o) => (inboxAt.value = o ? inboxAnchor() : null),
 )
 
-const searchKeys = computed(() => formatKeys(['Mod', 'K'], isMac).join(isMac ? '' : '+'))
 const updateVersion = computed(() => update.state?.release?.version ?? '')
 const splitTab = computed(() => ui.view === 'workspace' && !!workspace.activeTab && leaves(workspace.activeTab.root).length > 1)
 
@@ -305,29 +302,7 @@ const iconBtn =
           <RailCollapseButton v-if="iconMode && collapsible" :collapsed="true" @toggle="toggleCollapse" />
         </div>
 
-        <GlassTooltip v-if="iconMode" :text="t('palette.open')" side="bottom">
-          <button type="button" :class="[iconBtn, 'mx-auto mb-1']" :aria-label="t('palette.open')" data-tour="palette" data-next-search @click="ui.paletteOpen = true">
-            <Search :size="16" aria-hidden="true" />
-          </button>
-        </GlassTooltip>
-
-        <LiveRail :collapsed="iconMode">
-          <template #search>
-            <button
-              type="button"
-              class="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-[10px] border border-line bg-(--ccm-control) px-2.5 text-left text-xs text-ink-faint outline-none transition-colors duration-(--ccm-dur-fast) hover:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
-              :aria-label="t('palette.open')"
-              :aria-keyshortcuts="isMac ? 'Meta+K' : 'Control+K'"
-              data-tour="palette"
-              data-next-search
-              @click="ui.paletteOpen = true"
-            >
-              <Search :size="14" class="shrink-0" aria-hidden="true" />
-              <span class="min-w-0 flex-1 truncate">{{ t('mist.shell.search') }}</span>
-              <kbd class="shrink-0 rounded-[5px] border border-line-strong px-1 font-mono text-[11px] font-semibold text-ink-muted">{{ searchKeys }}</kbd>
-            </button>
-          </template>
-        </LiveRail>
+        <LiveRail :collapsed="iconMode" />
 
         <div ref="footEl" class="ccm-next-foot flex shrink-0 flex-col gap-1.5 border-t border-line px-2 py-2" :class="iconMode ? 'items-center' : ''" :data-foot-mode="footMode" data-next-rail-foot>
           <div v-if="(update.available || hasTelegram || phoneShown) && !iconMode" class="flex flex-wrap items-center gap-1" data-next-rail-channels>

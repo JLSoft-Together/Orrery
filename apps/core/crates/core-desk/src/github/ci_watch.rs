@@ -1,7 +1,8 @@
 use super::err::GhErr;
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 
 pub const MAX_WATCHES: usize = 8;
 pub const DONE_TYPE: &str = "ci.done";
@@ -66,6 +67,8 @@ pub struct CiWatch {
     now: Clock,
     timing: Timing,
     running: AtomicBool,
+    stop: AtomicBool,
+    wake: Condvar,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,7 +117,7 @@ pub fn done_event(t: &Target, state: &str, status: Option<&Value>, timed_out: bo
 
 impl CiWatch {
     pub fn new(probe: Arc<dyn Probe>, notify: Notify, now: Clock, timing: Timing) -> Arc<Self> {
-        Arc::new(CiWatch { entries: Mutex::new(Vec::new()), probe, notify, now, timing, running: AtomicBool::new(false) })
+        Arc::new(CiWatch { entries: Mutex::new(Vec::new()), probe, notify, now, timing, running: AtomicBool::new(false), stop: AtomicBool::new(false), wake: Condvar::new() })
     }
 
     pub fn add(self: &Arc<Self>, t: Target) -> Result<Added, GhErr> {
@@ -140,7 +143,8 @@ impl CiWatch {
                     Added::New
                 }
             };
-            if self.timing.background && !self.running.swap(true, Ordering::SeqCst) {
+            self.wake.notify_all();
+            if self.timing.background && !self.stop.load(Ordering::SeqCst) && !self.running.swap(true, Ordering::SeqCst) {
                 let me = self.clone();
                 if std::thread::Builder::new().name("gh-ci-watch".into()).spawn(move || me.run()).is_err() {
                     self.running.store(false, Ordering::SeqCst);
@@ -156,7 +160,20 @@ impl CiWatch {
         let mut list = self.entries.lock().unwrap();
         let before = list.len();
         list.retain(|e| e.t.key() != key);
-        list.len() != before
+        let removed = list.len() != before;
+        drop(list);
+        self.wake.notify_all();
+        removed
+    }
+
+    pub fn stop(&self) {
+        self.stop.store(true, Ordering::SeqCst);
+        self.entries.lock().unwrap().clear();
+        self.wake.notify_all();
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
     }
 
     pub fn list(&self) -> Value {
@@ -230,20 +247,30 @@ impl CiWatch {
         out
     }
 
-    fn wait_ms(&self) -> Option<f64> {
-        let list = self.entries.lock().unwrap();
-        if list.is_empty() {
-            self.running.store(false, Ordering::SeqCst);
-            return None;
-        }
+    fn wait_ms(&self, list: &[Entry]) -> f64 {
         let now = (self.now)();
         let next = list.iter().map(|e| e.next).fold(f64::INFINITY, f64::min);
-        Some((next - now).clamp(1_000.0, self.timing.interval_ms))
+        (next - now).clamp(1_000.0, self.timing.interval_ms)
     }
 
     fn run(self: Arc<Self>) {
-        while let Some(ms) = self.wait_ms() {
-            std::thread::sleep(std::time::Duration::from_millis(ms as u64));
+        loop {
+            {
+                let list = self.entries.lock().unwrap();
+                if self.stop.load(Ordering::SeqCst) || list.is_empty() {
+                    self.running.store(false, Ordering::SeqCst);
+                    return;
+                }
+                let ms = self.wait_ms(&list);
+                let (list, res) = self.wake.wait_timeout(list, Duration::from_millis(ms as u64)).unwrap();
+                if self.stop.load(Ordering::SeqCst) || list.is_empty() {
+                    self.running.store(false, Ordering::SeqCst);
+                    return;
+                }
+                if !res.timed_out() {
+                    continue;
+                }
+            }
             let me = self.clone();
             if std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                 me.tick();
@@ -374,6 +401,39 @@ mod tests {
         assert!(w.w.remove("/r", "b3"));
         assert!(!w.w.remove("/r", "b3"));
         assert_eq!(w.w.add(target("b9", "abc1234")).unwrap(), Added::New);
+    }
+
+    #[test]
+    fn remove_and_stop_wake_the_thread_at_once() {
+        fn bg() -> World {
+            let w = world(vec![Ok(json!({"state": "pending"}))]);
+            let timing = Timing { background: true, ..Timing::default() };
+            let c = w.clock.clone();
+            let probe = w.probe.clone();
+            let w2 = CiWatch::new(probe.clone(), Arc::new(|_: &Value| {}), Arc::new(move || *c.lock().unwrap()), timing);
+            World { w: w2, probe, clock: w.clock, seen: w.seen }
+        }
+        fn settle(w: &World, want: bool) -> bool {
+            for _ in 0..100 {
+                if w.w.is_running() == want {
+                    return true;
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            false
+        }
+        let w = bg();
+        w.w.add(target("x", "abc1234")).unwrap();
+        assert!(settle(&w, true));
+        assert!(w.w.remove("/r", "x"));
+        assert!(settle(&w, false), "thread must exit after the last remove");
+        w.w.add(target("y", "abc1234")).unwrap();
+        assert!(settle(&w, true));
+        w.w.stop();
+        assert!(settle(&w, false), "thread must exit after stop");
+        assert!(w.w.is_empty());
+        w.w.add(target("z", "abc1234")).unwrap();
+        assert!(!w.w.is_running());
     }
 
     #[test]

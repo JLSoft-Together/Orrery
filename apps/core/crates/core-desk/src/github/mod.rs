@@ -191,7 +191,14 @@ impl GitHub {
     }
 
     pub fn resolve(&self, ctx: &Ctx, root: &str, remote: &str) -> Value {
-        let Some((owner, repo, true)) = api::github_repo_of(remote) else { return json!({"github": false}) };
+        self.resolve_with(ctx, root, remote, true)
+    }
+
+    fn resolve_with(&self, ctx: &Ctx, root: &str, remote: &str, https_only: bool) -> Value {
+        let Some((owner, repo, https)) = api::github_repo_of(remote) else { return json!({"github": false}) };
+        if https_only && !https {
+            return json!({"github": false});
+        }
         let st = self.store();
         let choice = st.choice_of(root);
         let view = |id: Option<&str>, access: &str| {
@@ -223,7 +230,7 @@ impl GitHub {
     }
 
     pub fn creds(&self, ctx: &Ctx, root: &str, remote: &str) -> Result<String, GhErr> {
-        let r = self.resolve(ctx, root, remote);
+        let r = self.resolve_with(ctx, root, remote, false);
         if r.get("github") != Some(&Value::Bool(true)) {
             return Err(GhErr::new("gh.notGithub"));
         }

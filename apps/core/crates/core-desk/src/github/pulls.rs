@@ -16,16 +16,26 @@ pub struct RepoRef<'a> {
 }
 
 impl RepoRef<'_> {
+    pub fn valid(&self) -> bool {
+        api::name_ok(self.owner) && api::name_ok(self.repo)
+    }
+
     pub fn route(&self, rest: &str) -> String {
         format!("/repos/{}/{}{rest}", encode_component(self.owner), encode_component(self.repo))
     }
 
     fn get(&self, rest: &str, need: &str) -> Result<Value, GhErr> {
+        if !self.valid() {
+            return Err(GhErr::new("invalid"));
+        }
         let res = api::fetch(self.base, self.token, &self.route(rest), TIMEOUT)?;
         Ok(err::ok_or(res, self.token, need)?.body)
     }
 
     fn send(&self, method: Method, rest: &str, body: Option<&Value>, need: &str) -> Result<Value, GhErr> {
+        if !self.valid() {
+            return Err(GhErr::new("invalid"));
+        }
         let res = api::send(method, self.base, self.token, &self.route(rest), body, TIMEOUT)?;
         Ok(err::ok_or(res, self.token, need)?.body)
     }
@@ -57,8 +67,22 @@ impl MergeMethod {
     }
 }
 
+fn bad_char(c: char) -> bool {
+    c.is_control() || c.is_whitespace() || matches!(c, '~' | '^' | ':' | '?' | '*' | '[' | '\\') || is_format_char(c)
+}
+
+fn is_format_char(c: char) -> bool {
+    matches!(c as u32,
+        0x00AD | 0x0600..=0x0605 | 0x061C | 0x06DD | 0x070F | 0x0890..=0x0891 | 0x08E2 | 0x180E
+        | 0x200B..=0x200F | 0x202A..=0x202E | 0x2060..=0x2064 | 0x2066..=0x206F | 0xFEFF | 0xFFF9..=0xFFFB
+        | 0x110BD | 0x110CD | 0x13430..=0x1343F | 0x1BCA0..=0x1BCA3 | 0x1D173..=0x1D17A | 0xE0001 | 0xE0020..=0xE007F)
+}
+
 pub fn branch_ok(b: &str) -> bool {
-    !b.is_empty() && b.len() <= 255 && !b.starts_with('-') && !b.contains("..") && b.chars().all(|c| !c.is_control() && !matches!(c, ' ' | '~' | '^' | ':' | '?' | '*' | '[' | '\\'))
+    if b.is_empty() || b.len() > 255 || b == "@" || b.starts_with('/') || b.ends_with('/') || b.ends_with('.') || b.contains("..") || b.contains("@{") || b.chars().any(bad_char) {
+        return false;
+    }
+    b.split('/').all(|seg| !seg.is_empty() && !seg.starts_with('.') && !seg.starts_with('-') && !seg.ends_with(".lock"))
 }
 
 pub fn sha_ok(s: &str) -> bool {
@@ -114,6 +138,47 @@ pub fn create_pr(r: &RepoRef, base: &str, head: &str, title: &str, body: &str) -
     });
     let out = r.send(Method::Post, "/pulls", Some(&payload), "Pull requests (write)")?;
     Ok(pr_view(&out))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrFacts {
+    pub head: String,
+    pub base: String,
+    pub head_repo: String,
+    pub base_repo: String,
+    pub open: bool,
+    pub head_sha: String,
+}
+
+impl PrFacts {
+    pub fn from_value(p: &Value) -> Option<Self> {
+        let t = |ptr: &str| p.pointer(ptr).and_then(Value::as_str).unwrap_or("").to_string();
+        let f = PrFacts {
+            head: t("/head/ref"),
+            base: t("/base/ref"),
+            head_repo: t("/head/repo/full_name"),
+            base_repo: t("/base/repo/full_name"),
+            open: t("/state") == "open",
+            head_sha: t("/head/sha"),
+        };
+        (branch_ok(&f.head) && branch_ok(&f.base)).then_some(f)
+    }
+
+    pub fn same_repo(&self) -> bool {
+        !self.head_repo.is_empty() && self.head_repo.eq_ignore_ascii_case(&self.base_repo)
+    }
+
+    pub fn may_delete_head(&self, merged: bool) -> bool {
+        merged && self.same_repo() && branch_ok(&self.head)
+    }
+}
+
+pub fn pr_facts(r: &RepoRef, number: u64) -> Result<PrFacts, GhErr> {
+    if number == 0 {
+        return Err(GhErr::new("invalid"));
+    }
+    let v = r.get(&format!("/pulls/{number}"), "Pull requests (read)")?;
+    PrFacts::from_value(&v).ok_or_else(|| GhErr::new("gh.http"))
 }
 
 pub fn merge_pr(r: &RepoRef, number: u64, method: MergeMethod, sha: &str) -> Result<Value, GhErr> {

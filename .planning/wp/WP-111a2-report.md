@@ -1,0 +1,18 @@
+## WP-111a2 — DONE
+- Đã đổi (apps/core/crates/core-desk/src/github/):
+  - pulls.rs: `branch_ok` theo check-ref-format + chặn Unicode Cf / whitespace; `RepoRef::valid()` chặn owner/repo xấu trong get/send; `PrFacts` + `pr_facts()` (GET pulls/{n}: head.ref, base.ref, head/base repo full_name, state).
+  - api.rs: `name_ok` (owner/repo `[A-Za-z0-9._-]`, không `.` `..`), `github_repo_of` dùng nó; `fetch_tail` dùng VecDeque, hết timeout mà tail không rỗng thì trả tail `cut=true`; `TextRes.redirected`; `io_timeout` nhận cả lỗi ureq Timeout bọc trong io::Error.
+  - ci.rs: `overall` tính trước khi cắt RUNS_MAX; `fetch_check_runs` phân trang max 5 trang theo total_count; check-runs 403 hoặc status 403/404 thì dùng nguồn còn lại, cả hai lỗi mới trả lỗi; log 410 hoặc 403 sau redirect = `gh.logGone`.
+  - ci_watch.rs: Condvar + cờ `stop`; `remove()` / `stop()` / `add()` đánh thức thread, thread thoát ngay khi rỗng; thêm `stop()`, `is_running()`.
+  - ipc.rs: merge lấy base/head/headRepo từ PR thật cho native confirm (field `head`, `headRepo` mới trong ask `ghMerge`); chỉ xoá nhánh khi merged và head cùng repo base, fork thì `deleteError = gh.forkHead`; PR không open trả `gh.notMergeable`; remote SSH dùng được PR/CI qua REST.
+  - mod.rs: `resolve_with(https_only)`; `resolve` / `env_for` (git) vẫn https-only, `creds` (REST) nhận cả SSH.
+  - tests_net.rs, ci_watch.rs, api.rs: test mới cho cả 10 mục (trừ mục 10 chỉ test mức `github_repo_of`, phần ipc cần Ctx).
+- Tiêu chí: 10/10 đạt.
+- Audit: không có comment mới; token không vào log / event.
+- Review: mục 10 chưa có test end-to-end qua ipc (cần Ctx + keychain). `delete_branch` độc lập (không qua merge) vẫn dùng branch do client gửi, đã qua `branch_ok` mới và confirm. `CiWatch::stop()` chưa ai gọi khi quit (ngoài phạm vi).
+- Test: `cargo test --locked -j 4 -p core-desk` (PowerShell) → 388 + 4 passed, 0 failed; `cargo clippy -p core-desk --all-targets` không cảnh báo ở github/.
+- Nhìn: CHƯA NHÌN: không có UI.
+- Hot file cần thêm: không.
+- Ngoài phạm vi cần main xử lý: `packages/shared/src/github.ts` thêm mã lỗi `gh.logGone`, `gh.forkHead`; i18n en/vi cho 2 mã này; web hiển thị `head`, `headRepo` trong confirm `ghMerge` (native confirm hiện dùng field mới); web đừng chặn PR/CI khi remote là SSH; nên gọi `CiWatch::stop()` ở quit.
+- Commit message đề xuất: fix(github): harden branch/repo validation, trust PR facts on merge, full CI state, SSH remotes use REST
+- Dòng changelog (en / vi, ≤ 100 ký tự): Safer GitHub PR merge and fuller CI status / Merge PR an toàn hơn, trạng thái CI đầy đủ hơn

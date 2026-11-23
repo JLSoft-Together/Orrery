@@ -10,6 +10,7 @@ const LOG_TIMEOUT: Duration = Duration::from_secs(30);
 const LOG_LINES_MAX: usize = 500;
 const LINE_MAX: usize = 2000;
 const RUNS_MAX: usize = 100;
+const CHECK_PAGES_MAX: usize = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum State {
@@ -86,23 +87,47 @@ pub fn merge_runs(check_runs: &Value, combined: &Value) -> Value {
         let done = if st == State::Pending { Value::Null } else { text(s, "updated_at") };
         runs.push((st, json!({"name": text(s, "context"), "state": st.as_str(), "url": text(s, "target_url"), "jobId": Value::Null, "startedAt": text(s, "created_at"), "completedAt": done})));
     }
-    runs.truncate(RUNS_MAX);
     let states: Vec<State> = runs.iter().map(|r| r.0).collect();
+    runs.truncate(RUNS_MAX);
     json!({"state": overall(&states).as_str(), "runs": runs.into_iter().map(|r| r.1).collect::<Vec<_>>()})
 }
 
+fn fetch_check_runs(r: &RepoRef, s: &str) -> Result<Value, GhErr> {
+    let mut all: Vec<Value> = Vec::new();
+    let mut total = 0usize;
+    for page in 1..=CHECK_PAGES_MAX {
+        let res = api::fetch(r.base, r.token, &r.route(&format!("/commits/{s}/check-runs?per_page=100&page={page}")), TIMEOUT)?;
+        let body = err::ok_or(res, r.token, "Checks (read)")?.body;
+        total = body.get("total_count").and_then(Value::as_u64).map(|n| n as usize).unwrap_or(0);
+        let items = body.get("check_runs").and_then(Value::as_array).cloned().unwrap_or_default();
+        let n = items.len();
+        all.extend(items);
+        if n == 0 || all.len() >= total {
+            break;
+        }
+    }
+    Ok(json!({"total_count": total, "check_runs": all}))
+}
+
 pub fn ci_status(r: &RepoRef, sha: &str) -> Result<Value, GhErr> {
-    if !sha_ok(sha) {
+    if !sha_ok(sha) || !r.valid() {
         return Err(GhErr::new("invalid"));
     }
     let s = encode_component(sha);
-    let checks = api::fetch(r.base, r.token, &r.route(&format!("/commits/{s}/check-runs?per_page=100")), TIMEOUT)?;
-    let checks = err::ok_or(checks, r.token, "Checks (read)")?.body;
-    let status = api::fetch(r.base, r.token, &r.route(&format!("/commits/{s}/status?per_page=100")), TIMEOUT)?;
-    let status = match err::ok_or(status, r.token, "Commit statuses (read)") {
-        Ok(v) => v.body,
-        Err(e) if e.code == "gh.notFound" => Value::Null,
+    let checks = match fetch_check_runs(r, &s) {
+        Ok(v) => Ok(v),
+        Err(e) if e.code == "gh.scope" => Err(e),
         Err(e) => return Err(e),
+    };
+    let status = api::fetch(r.base, r.token, &r.route(&format!("/commits/{s}/status?per_page=100")), TIMEOUT)
+        .map_err(GhErr::from)
+        .and_then(|res| err::ok_or(res, r.token, "Commit statuses (read)"));
+    let (checks, status) = match (checks, status) {
+        (Ok(c), Ok(st)) => (c, st.body),
+        (Ok(c), Err(e)) if matches!(e.code, "gh.notFound" | "gh.scope") => (c, Value::Null),
+        (Ok(_), Err(e)) => return Err(e),
+        (Err(_), Ok(st)) => (Value::Null, st.body),
+        (Err(e), Err(_)) => return Err(e),
     };
     let mut out = merge_runs(&checks, &status);
     out["sha"] = json!(sha);
@@ -121,11 +146,14 @@ pub fn tail_lines(bytes: &[u8], lines: usize, token: &str) -> Vec<String> {
 }
 
 pub fn job_log_tail(r: &RepoRef, job_id: u64, lines: usize) -> Result<Value, GhErr> {
-    if job_id == 0 {
+    if job_id == 0 || !r.valid() {
         return Err(GhErr::new("invalid"));
     }
     let lines = lines.clamp(1, LOG_LINES_MAX);
     let res = api::fetch_tail(r.base, r.token, &r.route(&format!("/actions/jobs/{job_id}/logs")), LOG_TIMEOUT, LOG_KEEP, LOG_READ_MAX)?;
+    if res.status == 410 || (res.redirected && res.status == 403) {
+        return Err(GhErr::new("gh.logGone"));
+    }
     if !(200..300).contains(&res.status) {
         let fake = api::ApiRes { status: res.status, body: Value::Null, scopes: None, accepted: None };
         return Err(err::from_status(&fake, r.token, "Actions (read)"));

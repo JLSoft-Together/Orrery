@@ -56,7 +56,7 @@ impl GhIpc {
             return Err(GhErr::new("denied"));
         }
         let url = branches::remote_url(&repo, &json!(remote_name(req))).ok_or_else(|| GhErr::new("no-remote"))?;
-        let Some((owner, name, true)) = api::github_repo_of(&url) else { return Err(GhErr::new("gh.notGithub")) };
+        let Some((owner, name, _)) = api::github_repo_of(&url) else { return Err(GhErr::new("gh.notGithub")) };
         Ok(Scope { repo, url, owner, name })
     }
 
@@ -98,29 +98,39 @@ impl GhIpc {
     fn merge(&self, ctx: &Ctx, req: &Value) -> Result<Value, GhErr> {
         let number = req.get("number").and_then(Value::as_u64).filter(|n| *n > 0).ok_or_else(|| GhErr::new("invalid"))?;
         let method = MergeMethod::parse(s(req, "method")).ok_or_else(|| GhErr::new("invalid"))?;
-        let (sha, base, head) = (s(req, "sha"), s(req, "base"), s(req, "head"));
+        let sha = s(req, "sha");
         let remove = req.get("deleteBranch") == Some(&json!(true));
-        if !sha_ok(sha) || !pulls::branch_ok(base) || (remove && !pulls::branch_ok(head)) {
+        if !sha_ok(sha) {
             return Err(GhErr::new("invalid"));
         }
         self.with_repo(ctx, req, |sc, r| {
-            let mut ask = json!({"number": number, "base": base, "method": method.as_str(), "repo": format!("{}/{}", sc.owner, sc.name)});
-            if remove {
-                ask["deleteBranch"] = json!(head);
+            let facts = pulls::pr_facts(r, number)?;
+            if !facts.open {
+                return Err(GhErr::new("gh.notMergeable"));
+            }
+            let mut ask = json!({"number": number, "base": facts.base, "head": facts.head, "headRepo": facts.head_repo, "method": method.as_str(), "repo": format!("{}/{}", sc.owner, sc.name)});
+            let will_delete = remove && facts.same_repo();
+            if will_delete {
+                ask["deleteBranch"] = json!(facts.head);
             }
             if !gate::confirm(ctx, "ghMerge", ask) {
                 return Err(GhErr::new("cancelled"));
             }
             let merged = pulls::merge_pr(r, number, method, sha)?;
-            let mut out = json!({"merged": merged["merged"], "sha": merged["sha"], "branchDeleted": false});
+            let did_merge = merged["merged"].as_bool().unwrap_or(false);
+            let mut out = json!({"merged": did_merge, "sha": merged["sha"], "branchDeleted": false});
             if remove {
-                match pulls::delete_branch(r, head) {
-                    Ok(()) => out["branchDeleted"] = json!(true),
-                    Err(e) => out["deleteError"] = e.value(),
+                if facts.may_delete_head(did_merge) {
+                    match pulls::delete_branch(r, &facts.head) {
+                        Ok(()) => out["branchDeleted"] = json!(true),
+                        Err(e) => out["deleteError"] = e.value(),
+                    }
+                } else if did_merge {
+                    out["deleteError"] = GhErr::new("gh.forkHead").value();
                 }
             }
             if let Some(m) = merged["sha"].as_str() {
-                out["watch"] = json!(self.watch_target(sc, base, m, Some(number)));
+                out["watch"] = json!(self.watch_target(sc, &facts.base, m, Some(number)));
             }
             Ok(out)
         })
@@ -178,7 +188,7 @@ impl GhIpc {
             return json!(false);
         }
         let Some(url) = branches::remote_url(repo, &json!(remote_name(req))) else { return json!(false) };
-        let Some((owner, name, true)) = api::github_repo_of(&url) else { return json!(false) };
+        let Some((owner, name, _)) = api::github_repo_of(&url) else { return json!(false) };
         if self.gh.store().accounts.is_empty() {
             return json!(false);
         }

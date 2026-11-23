@@ -223,3 +223,163 @@ fn channels_refuse_without_a_granted_repo() {
     assert_eq!(desk.dispatch("desk:gh-ci-push", json!([{"root": "/x", "branch": "a", "ref": "refs/heads/a"}])).unwrap(), json!(false));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn branch_names_follow_check_ref_format_and_reject_invisible_chars() {
+    for good in ["main", "feat/x", "feat/a-b_c.d", "release/1.2.3", "é/ü", "a@b"] {
+        assert!(pulls::branch_ok(good), "{good}");
+    }
+    let long = "a".repeat(256);
+    for bad in [
+        "", "@", "/a", "a/", "a//b", ".a", "a/.b", "a/b.", "a..b", "a.lock", "x/a.lock/y", "a@{b", "a b", "a~b", "a^b", "a:b", "a?b", "a*b", "a[b", "a\\b", "a\tb", "a\u{7f}b", "-a", "a/-b",
+        "a\u{200b}b", "a\u{202e}b", "a\u{feff}b", "a\u{2066}b", "a\u{00ad}b", "a\u{2028}b", "a\u{a0}b", "a\u{e0041}b", long.as_str(),
+    ] {
+        assert!(!pulls::branch_ok(bad), "{bad:?}");
+    }
+}
+
+#[test]
+fn owner_or_repo_dot_segments_never_reach_the_network() {
+    let f = fake(Box::new(|_, _| (200, vec![], j(json!({"default_branch": "main"})))));
+    for (o, n) in [("..", "r"), ("o", ".."), (".", "r"), ("o", "a/b"), ("o", "r%2F..")] {
+        let r = RepoRef { base: &f.base, token: TOKEN, owner: o, repo: n };
+        assert_eq!(pulls::default_branch(&r).unwrap_err().code, "invalid", "{o}/{n}");
+        assert_eq!(ci::ci_status(&r, "abc1234").unwrap_err().code, "invalid");
+        assert_eq!(ci::job_log_tail(&r, 1, 10).unwrap_err().code, "invalid");
+    }
+    assert!(f.seen.lock().unwrap().is_empty());
+}
+
+#[test]
+fn pr_facts_come_from_the_real_pull_and_gate_branch_deletion() {
+    let pr = |head_repo: &str, state: &str| {
+        json!({"number": 5, "state": state, "head": {"ref": "feat/x", "sha": "abc1234", "repo": {"full_name": head_repo}}, "base": {"ref": "main", "repo": {"full_name": "O/r"}}})
+    };
+    let f = fake(Box::new(move |_, p| match p {
+        "/repos/o/r/pulls/5" => (200, vec![], j(pr("o/R", "open"))),
+        "/repos/o/r/pulls/6" => (200, vec![], j(json!({"number": 6, "state": "open", "head": {"ref": "x", "repo": {"full_name": "evil/r"}}, "base": {"ref": "main", "repo": {"full_name": "o/r"}}}))),
+        "/repos/o/r/pulls/7" => (200, vec![], j(json!({"number": 7, "state": "open", "head": {"ref": "bad..ref", "repo": null}, "base": {"ref": "main", "repo": {"full_name": "o/r"}}}))),
+        _ => (404, vec![], j(json!({"message": "Not Found"}))),
+    }));
+    let r = repo(&f);
+    let facts = pulls::pr_facts(&r, 5).unwrap();
+    assert_eq!((facts.head.as_str(), facts.base.as_str(), facts.open), ("feat/x", "main", true));
+    assert!(facts.same_repo());
+    assert!(facts.may_delete_head(true));
+    assert!(!facts.may_delete_head(false));
+    let fork = pulls::pr_facts(&r, 6).unwrap();
+    assert!(!fork.same_repo());
+    assert!(!fork.may_delete_head(true));
+    assert_eq!(pulls::pr_facts(&r, 7).unwrap_err().code, "gh.http");
+    assert_eq!(pulls::pr_facts(&r, 8).unwrap_err().code, "gh.notFound");
+    assert_eq!(pulls::pr_facts(&r, 0).unwrap_err().code, "invalid");
+}
+
+fn run_item(i: usize, state: (&str, Option<&str>)) -> Value {
+    json!({"id": i, "name": format!("job{i}"), "status": state.0, "conclusion": state.1, "app": {"slug": "github-actions"}})
+}
+
+#[test]
+fn overall_ci_state_covers_every_page_not_just_the_displayed_runs() {
+    let f = fake(Box::new(|_, p| {
+        if p.contains("/check-runs") {
+            let items: Vec<Value> = if p.contains("page=2") {
+                (100..150).map(|i| run_item(i, if i == 149 { ("in_progress", None) } else { ("completed", Some("success")) })).collect()
+            } else {
+                (0..100).map(|i| run_item(i, ("completed", Some("success")))).collect()
+            };
+            (200, vec![], j(json!({"total_count": 150, "check_runs": items})))
+        } else {
+            (200, vec![], j(json!({"state": "success", "statuses": []})))
+        }
+    }));
+    let out = ci::ci_status(&repo(&f), "abc1234").unwrap();
+    assert_eq!(out["state"], "pending");
+    assert_eq!(out["runs"].as_array().unwrap().len(), 100);
+    let pages = f.seen.lock().unwrap().iter().filter(|s| s.path.contains("/check-runs")).count();
+    assert_eq!(pages, 2);
+
+    let many = fake(Box::new(|_, p| {
+        if p.contains("/check-runs") {
+            let items: Vec<Value> = (0..100).map(|i| run_item(i, ("completed", Some("success")))).collect();
+            (200, vec![], j(json!({"total_count": 9999, "check_runs": items})))
+        } else {
+            (200, vec![], j(json!({"statuses": []})))
+        }
+    }));
+    ci::ci_status(&repo(&many), "abc1234").unwrap();
+    let pages = many.seen.lock().unwrap().iter().filter(|s| s.path.contains("/check-runs")).count();
+    assert_eq!(pages, 5);
+}
+
+#[test]
+fn check_runs_403_still_uses_the_combined_status() {
+    let f = fake(Box::new(|_, p| {
+        if p.contains("/check-runs") {
+            (403, vec![], j(json!({"message": "Resource not accessible by personal access token"})))
+        } else {
+            (200, vec![], j(json!({"state": "pending", "statuses": [{"context": "ci/x", "state": "pending"}]})))
+        }
+    }));
+    let out = ci::ci_status(&repo(&f), "abc1234").unwrap();
+    assert_eq!(out["state"], "pending");
+    assert_eq!(out["runs"][0]["name"], "ci/x");
+
+    let both = fake(Box::new(|_, _| (403, vec![], j(json!({"message": "nope"})))));
+    assert_eq!(ci::ci_status(&repo(&both), "abc1234").unwrap_err().code, "gh.scope");
+
+    let status_denied = fake(Box::new(|_, p| {
+        if p.contains("/check-runs") {
+            (200, vec![], j(json!({"total_count": 1, "check_runs": [run_item(1, ("completed", Some("success")))]})))
+        } else {
+            (403, vec![], j(json!({"message": "nope"})))
+        }
+    }));
+    assert_eq!(ci::ci_status(&repo(&status_denied), "abc1234").unwrap()["state"], "success");
+}
+
+#[test]
+fn expired_log_blob_is_log_gone_but_api_403_stays_scope() {
+    let f = fake(Box::new(|_, p| match p {
+        "/repos/o/r/actions/jobs/1/logs" => (302, vec![("Location".into(), "/blob/old.txt".into())], vec![]),
+        "/blob/old.txt" => (403, vec![], b"expired".to_vec()),
+        "/repos/o/r/actions/jobs/2/logs" => (410, vec![], j(json!({"message": "Gone"}))),
+        "/repos/o/r/actions/jobs/3/logs" => (403, vec![], j(json!({"message": "Resource not accessible"}))),
+        "/repos/o/r/actions/jobs/4/logs" => (302, vec![("Location".into(), "/blob/gone.txt".into())], vec![]),
+        "/blob/gone.txt" => (410, vec![], vec![]),
+        _ => (404, vec![], vec![]),
+    }));
+    let r = repo(&f);
+    assert_eq!(ci::job_log_tail(&r, 1, 10).unwrap_err().code, "gh.logGone");
+    assert_eq!(ci::job_log_tail(&r, 2, 10).unwrap_err().code, "gh.logGone");
+    assert_eq!(ci::job_log_tail(&r, 3, 10).unwrap_err().code, "gh.scope");
+    assert_eq!(ci::job_log_tail(&r, 4, 10).unwrap_err().code, "gh.logGone");
+}
+
+fn stalling_server(sent: usize, stall_ms: u64) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    std::thread::spawn(move || {
+        if let Some(Ok(mut s)) = listener.incoming().next() {
+            let _ = read_request(&mut s);
+            let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 10000000\r\nConnection: close\r\n\r\n");
+            let body: Vec<u8> = b"some log line\n".iter().copied().cycle().take(sent).collect();
+            let _ = s.write_all(&body);
+            let _ = s.flush();
+            std::thread::sleep(std::time::Duration::from_millis(stall_ms));
+        }
+    });
+    base
+}
+
+#[test]
+fn stalled_log_returns_the_tail_read_so_far_as_cut() {
+    let base = stalling_server(5000, 4000);
+    let res = super::api::fetch_tail(&base, TOKEN, "/x", std::time::Duration::from_millis(800), 1024, 1 << 20).unwrap();
+    assert_eq!(res.tail.len(), 1024);
+    assert!(res.cut);
+
+    let silent = stalling_server(0, 4000);
+    let err = super::api::fetch_tail(&silent, TOKEN, "/x", std::time::Duration::from_millis(800), 1024, 1 << 20).err();
+    assert_eq!(err, Some(super::api::NetErr::Timeout));
+}

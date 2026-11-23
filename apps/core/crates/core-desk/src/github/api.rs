@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::io::Read;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -60,6 +61,10 @@ fn net_err(e: &ureq::Error) -> NetErr {
     }
 }
 
+fn io_timeout(e: &std::io::Error) -> bool {
+    e.kind() == std::io::ErrorKind::TimedOut || e.get_ref().and_then(|i| i.downcast_ref::<ureq::Error>()).is_some_and(|u| matches!(u, ureq::Error::Timeout(_)))
+}
+
 fn headers<B>(req: ureq::RequestBuilder<B>, token: &str, accept: &str) -> ureq::RequestBuilder<B> {
     req.header("Accept", accept)
         .header("Authorization", &format!("Bearer {token}"))
@@ -76,7 +81,7 @@ fn read_json(res: &mut ureq::http::Response<ureq::Body>) -> Result<serde_json::V
     match res.body_mut().with_config().limit(JSON_MAX).reader().read_to_end(&mut bytes) {
         Ok(_) if bytes.is_empty() => Ok(serde_json::Value::Null),
         Ok(_) => Ok(serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null)),
-        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => Err(NetErr::Timeout),
+        Err(e) if io_timeout(&e) => Err(NetErr::Timeout),
         Err(_) => Err(NetErr::Network),
     }
 }
@@ -129,39 +134,43 @@ pub struct TextRes {
     pub status: u16,
     pub tail: Vec<u8>,
     pub cut: bool,
+    pub redirected: bool,
 }
 
 pub fn fetch_tail(base: &str, token: &str, route: &str, timeout: Duration, keep: usize, read_max: u64) -> Result<TextRes, NetErr> {
-    let req = agent().get(&format!("{base}{route}")).config().timeout_global(Some(timeout)).build();
+    use ureq::ResponseExt;
+    let url = format!("{base}{route}");
+    let req = agent().get(&url).config().timeout_global(Some(timeout)).build();
     let mut res = headers(req, token, "application/vnd.github+json").call().map_err(|e| net_err(&e))?;
     let status = res.status().as_u16();
+    let redirected = res.get_uri().to_string() != url;
     if !(200..300).contains(&status) {
-        return Ok(TextRes { status, tail: Vec::new(), cut: false });
+        return Ok(TextRes { status, tail: Vec::new(), cut: false, redirected });
     }
     let mut reader = res.body_mut().with_config().limit(read_max).reader();
-    let mut tail: Vec<u8> = Vec::new();
+    let mut tail: VecDeque<u8> = VecDeque::with_capacity(keep.min(1 << 20) + 64 * 1024);
     let mut cut = false;
     let mut buf = vec![0u8; 64 * 1024];
     loop {
         match reader.read(&mut buf) {
             Ok(0) => break,
             Ok(n) => {
-                tail.extend_from_slice(&buf[..n]);
+                tail.extend(&buf[..n]);
                 if tail.len() > keep {
                     let drop = tail.len() - keep;
                     tail.drain(..drop);
                     cut = true;
                 }
             }
-            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => return Err(NetErr::Timeout),
             Err(_) if !tail.is_empty() => {
                 cut = true;
                 break;
             }
+            Err(e) if io_timeout(&e) => return Err(NetErr::Timeout),
             Err(_) => return Err(NetErr::Network),
         }
     }
-    Ok(TextRes { status, tail, cut })
+    Ok(TextRes { status, tail: Vec::from(tail), cut, redirected })
 }
 
 pub fn scrub_token(text: &str, token: &str) -> String {
@@ -187,6 +196,10 @@ pub fn encode_path(s: &str) -> String {
     s.split('/').map(encode_component).collect::<Vec<_>>().join("/")
 }
 
+pub fn name_ok(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 100 && s != "." && s != ".." && s.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+}
+
 pub fn github_repo_of(url: &str) -> Option<(String, String, bool)> {
     static RE: OnceLock<(regex::Regex, regex::Regex)> = OnceLock::new();
     let (https, ssh) = RE.get_or_init(|| {
@@ -198,7 +211,8 @@ pub fn github_repo_of(url: &str) -> Option<(String, String, bool)> {
     let s = crate::claude::js_trim(url);
     let caps = https.captures(s).or_else(|| ssh.captures(s))?;
     let is_https = s.get(..6).is_some_and(|h| h.eq_ignore_ascii_case("https:"));
-    Some((caps[1].to_string(), caps[2].to_string(), is_https))
+    let (owner, repo) = (&caps[1], &caps[2]);
+    (name_ok(owner) && name_ok(repo)).then(|| (owner.to_string(), repo.to_string(), is_https))
 }
 
 #[cfg(test)]
@@ -213,6 +227,10 @@ mod tests {
         assert_eq!(github_repo_of("ssh://git@ssh.github.com:443/o/r"), Some(("o".into(), "r".into(), false)));
         assert_eq!(github_repo_of("ssh://git@ssh.github.com/443/o/r"), Some(("o".into(), "r".into(), false)));
         assert_eq!(github_repo_of("https://gitlab.com/o/r"), None);
+        assert_eq!(github_repo_of("https://github.com/../r"), None);
+        assert_eq!(github_repo_of("https://github.com/o/.."), None);
+        assert_eq!(github_repo_of("git@github.com:./r.git"), None);
+        assert!(name_ok("a.b_c-1") && !name_ok("") && !name_ok(".") && !name_ok("..") && !name_ok("a/b") && !name_ok("a b") && !name_ok("é"));
         assert_eq!(encode_component("a b/é"), "a%20b%2F%C3%A9");
         assert_eq!(encode_path("feat/a b"), "feat/a%20b");
         assert_eq!(scrub_token("bad ghp_abcdefghij here", "ghp_abcdefghij"), "bad [token] here");

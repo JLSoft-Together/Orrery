@@ -25,6 +25,8 @@
 - `open_session` chỉ prefill prompt, không submit trừ khi agent truyền `submit: true` (ngoại lệ chủ nhân duyệt, docs §11w); link `agent-monitor://` không bao giờ submit.
 - `disk_propose_delete` chỉ đề xuất; xoá luôn qua dialog native.
 
+- Checklist (v111 G3): `todo_add {text}`, `todo_done {id}`, `todo_list` (`mcp/t_todo.rs`) theo worktree = `git rev-parse --show-toplevel` của cwd pane gọi; việc thêm bằng `by: agent`. Không có tool xoá nên agent không xoá được việc `owner` (`checklist::remove(.., "agent")` cũng từ chối `owner`). Rate `todo` 20 / phút / pane. `ToolHost::checklist_dir` (mặc định `preview::checklist::data_dir()`, test ghi đè bằng `Fake.data`).
+
 ## Liên kết
 
 - Thêm tool: sửa `tools.json`, thêm handler `mcp/t_*.rs`, test `mcp/tests_tools.rs`; tên tool phía web `packages/shared/src/mcpCall.ts`, `mcpDesk.ts`, `mcpRun.ts`.

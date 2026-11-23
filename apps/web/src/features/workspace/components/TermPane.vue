@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../core/lib/shareMode'
-import { Blocks, Columns2, GitCompareArrows, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, GitCompareArrows, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, History as HistoryIcon, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -13,6 +13,11 @@ import type { IBufferCell, IDisposable } from '@xterm/xterm'
 import type { PtyServerMessage } from '@ccm/shared'
 import { DevServerDetector, devUrlLabel, rememberDevUrl } from '@features/resources'
 import { devScanSlice } from '../lib/devServerUrl'
+import { DevChipGate } from '../lib/devChipGate'
+import { addCmdHistory, hasCmdHistory, loadCmdHistory, pickMode, removeCmdHistory, type CmdEntry } from '../lib/cmdHistory'
+import { historyKey, markKeyAction } from '../lib/workspaceKeys'
+import { useTermBookmarks } from '../composables/useTermBookmarks'
+import CmdHistoryPicker from './CmdHistoryPicker.vue'
 import { createFileLinkProvider, inLinks, joinWrappedLinks, oscLinkUri, selectionText, type LinkOpenOptions, type LinkTarget } from '../../files/lib/fileLinks'
 import { fontEntry, termFontStack } from '../../../core/lib/fonts'
 import { duration, now, shortPath } from '../../../core/lib/format'
@@ -91,7 +96,7 @@ import LimitResumeChip from '../../agent-tools/components/LimitResumeChip.vue'
 import { shouldAutoFill } from '../../agent-tools/lib/promptQueue'
 import { usePromptQueueStore } from '../../agent-tools/stores/promptQueue'
 import { useResumeScheduleStore } from '../../agent-tools/stores/resumeSchedule'
-import { useShellMarks } from '../composables/useShellMarks'
+import { useShellMarks, type FinishedCommand } from '../composables/useShellMarks'
 import { useShellDone } from '../../shellDone/useShellDone'
 import ContextMenu from '../../../core/components/ui/ContextMenu.vue'
 
@@ -127,6 +132,9 @@ const find = ref<InstanceType<typeof TermFind> | null>(null)
 const findSeed = ref<FindSeed | null>(null)
 const searchAddon = ref<SearchAddon | null>(null)
 const devUrls = ref<string[]>([])
+const devGate = new DevChipGate()
+let devBindTimer: ReturnType<typeof setTimeout> | null = null
+onBeforeUnmount(() => devBindTimer && clearTimeout(devBindTimer))
 const linkHint = ref<string | undefined>(undefined)
 // OSC 8 links the program printed (newest last): a selection across a wrapped one copies as one line.
 const OSC_LINKS_MAX = 50
@@ -196,6 +204,8 @@ function feedDev(bytes: Uint8Array): void {
   const found = dev.feed(decoder.decode(devScanSlice(bytes), { stream: true }))
   if (!found.length) return
   devUrls.value = [...devUrls.value, ...found]
+  bindDevGate(8)
+  if (marksOn.value) bookmarks.addServer(devUrlLabel(found[0]!))
   for (const url of found) rememberDevUrl(cwd.value ?? '', url)
   if (settings.devPreviewAutoOpen && props.pane.state === 'running') {
     for (const url of found) workspace.autoOpenDevPreview(props.pane.key, url, cwd.value ?? undefined)
@@ -258,8 +268,19 @@ function onContextMenu(e: MouseEvent): void {
   copyText(hoveredLink)
 }
 
+function bindDevGate(left: number): void {
+  if (devBindTimer) clearTimeout(devBindTimer)
+  devBindTimer = null
+  const id = marks.runningId()
+  if (id !== null) return devGate.bind(id)
+  if (left > 0) devBindTimer = setTimeout(() => bindDevGate(left - 1), 200)
+}
+
 function resetDev(): void {
   dev.reset()
+  devGate.reset()
+  if (devBindTimer) clearTimeout(devBindTimer)
+  devBindTimer = null
   devUrls.value = []
 }
 
@@ -443,8 +464,13 @@ const moreEntries = computed<MenuEntry[]>(() => {
   }
   out.push({ separator: true })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
-  if (isShell.value) out.push({ id: 'scan', label: t('workspace.termScan.button'), icon: ScanSearch, hint: t('workspace.termScan.hint') })
-  else {
+  if (isShell.value) {
+    out.push({ id: 'scan', label: t('workspace.termScan.button'), icon: ScanSearch, hint: t('workspace.termScan.hint') })
+    if (marksOn.value) {
+      if (canHistory.value) out.push({ id: 'history', label: t('termMarks.history'), icon: HistoryIcon, hint: t('termMarks.historyHint', { key: isMac ? '⌃R' : 'Ctrl+R' }) })
+      out.push({ separator: true }, ...bookmarks.entries.value)
+    }
+  } else {
     const n = queueCount.value
     out.push({ id: 'queue', label: n ? t('workspace.promptQueue.count', { n }, n) : t('workspace.promptQueue.title'), icon: ListOrdered })
   }
@@ -479,6 +505,8 @@ function openTools(): void {
 
 function pickMore(id: string, anchor?: HTMLElement): void {
   if (layoutMenu?.pick(props.pane.key, id)) return
+  if (bookmarks.pick(id)) return
+  if (id === 'history') return void openHistory()
   if (id === 'attach') attachments.toggle(props.pane.key)
   else if (id === 'chat') toggleChat()
   else if (id === 'turn') openTurn()
@@ -585,8 +613,54 @@ const marks = useShellMarks({
   focused: () => props.focused,
   write: (data) => conn?.write(data),
   notice: showNotice,
+  finished: onCommandFinished,
 })
+const bookmarks = useTermBookmarks({ notice: showNotice, mac: isMac })
 const { active: marksOn, menu: markMenu, entries: markEntries } = marks
+const histProject = computed(() => props.pane.project || cwd.value || '')
+const historyOpen = ref(false)
+const historyItems = ref<CmdEntry[]>([])
+const historyLoading = ref(false)
+const canHistory = computed(() => hasCmdHistory() && isShell.value && marksOn.value && props.pane.state === 'running' && !!histProject.value)
+
+function onCommandFinished(done: FinishedCommand): void {
+  if (devBindTimer !== null || devGate.endedBy(done.id)) resetDev()
+  if (done.exitCode !== 0 && marksOn.value && done.line >= 0) bookmarks.addError(done.line, done.exitCode)
+  if (!done.trusted || !hasCmdHistory() || !histProject.value) return
+  void addCmdHistory(histProject.value, { cmd: done.command, code: done.exitCode, ms: done.elapsedMs, at: done.endedAt })
+}
+
+async function openHistory(): Promise<void> {
+  if (!canHistory.value) return
+  const project = histProject.value
+  historyOpen.value = true
+  historyLoading.value = true
+  const items = await loadCmdHistory(project)
+  if (historyOpen.value && project === histProject.value) historyItems.value = items
+  historyLoading.value = false
+}
+
+function closeHistory(): void {
+  if (!historyOpen.value) return
+  historyOpen.value = false
+  term?.focus()
+}
+
+function pickHistory(entry: CmdEntry, shift: boolean): void {
+  const mode = pickMode(shift, entry, marks.atPrompt() && props.pane.state === 'running')
+  historyOpen.value = false
+  claimInput()
+  if (mode === 'run') {
+    conn?.write(entry.cmd + String.fromCharCode(13))
+    term?.scrollToBottom()
+  } else term?.paste(term.modes.bracketedPasteMode ? entry.cmd : entry.cmd.split(/\s*[\r\n]+\s*/).join(" "))
+  term?.focus()
+}
+
+function dropHistory(entry: CmdEntry): void {
+  historyItems.value = historyItems.value.filter((e) => e !== entry)
+  void removeCmdHistory(histProject.value, entry)
+}
 const shellDone = useShellDone({ paneKey: () => props.pane.key, paneTitle: () => props.pane.title || shortPath(cwd.value ?? '') || t('workspace.preset.shell'), visible: () => props.visible })
 
 const queues = usePromptQueueStore()
@@ -995,6 +1069,20 @@ function onKey(e: KeyboardEvent): boolean {
     return false
   }
   if (!MODIFIER_KEYS.has(e.key)) claimInput()
+  if (isShell.value && marksOn.value) {
+    const markKey = markKeyAction(e, isMac)
+    if (markKey) {
+      e.preventDefault()
+      if (markKey.t === 'toggle') bookmarks.toggle()
+      else bookmarks.jump(markKey.dir)
+      return false
+    }
+    if (canHistory.value && historyKey(e, isMac)) {
+      e.preventDefault()
+      void openHistory()
+      return false
+    }
+  }
   const newline = newlineFor(e, preset.value)
   if (newline) {
     e.preventDefault()
@@ -1126,6 +1214,8 @@ function restart(keepSession = false): void {
   killSession()
   restoredOnMount = false
   marks.reset()
+  bookmarks.clear()
+  historyOpen.value = false
   output.clear()
   term?.reset()
   resetDev()
@@ -1159,7 +1249,7 @@ async function spawn(): Promise<void> {
 
 function spawnStart(): PtyStart {
   const shell = props.pane.preset === 'shell'
-  return { spawn: { preset: props.pane.preset, cwd: props.pane.cwd, resume: props.pane.resume, open: props.pane.openTicket, session: props.pane.mintedSession, integrate: shell && settings.shellIntegration, shim: shell && settings.agentShim } }
+  return { spawn: { preset: props.pane.preset, cwd: props.pane.cwd, resume: props.pane.resume, open: props.pane.openTicket, session: props.pane.mintedSession, integrate: shell && settings.shellIntegration, shim: shell && settings.agentShim, launch: props.pane.launch } }
 }
 
 function wake(): void {
@@ -1171,6 +1261,8 @@ function reconnect(): void {
   if (!props.pane.sessionId) return restart()
   restoredOnMount = false
   marks.reset()
+  bookmarks.clear()
+  historyOpen.value = false
   output.clear()
   term?.reset()
   workspace.update(props.pane.key, { state: 'starting', error: undefined })
@@ -1229,6 +1321,7 @@ onMounted(() => {
     return !!dir
   })
   marks.install(term)
+  bookmarks.install(term)
   linkProvider = term.registerLinkProvider(
     createFileLinkProvider(term, {
       cwd: () => cwd.value,
@@ -1396,6 +1489,7 @@ onBeforeUnmount(() => {
   headObserver?.disconnect()
   conn?.close()
   marks.dispose()
+  bookmarks.dispose()
   output.dispose()
   backlog?.()
   dropRenderer()
@@ -1812,6 +1906,7 @@ onBeforeUnmount(() => {
         </p>
       </Transition>
       <ContextMenu v-if="markMenu" :at="markMenu.at" :entries="markEntries" :label="t('shellMarks.menuLabel')" :trigger="markMenu.trigger" @pick="marks.pick" @close="marks.closeMenu" />
+      <CmdHistoryPicker v-if="historyOpen" :items="historyItems" :loading="historyLoading" @pick="pickHistory" @remove="dropHistory" @close="closeHistory" />
       <TermFind v-if="findOpen" ref="find" :addon="searchAddon" :seed="findSeed" class="absolute top-1 right-2 z-10" @close="closeFind" />
       <span
         v-if="pane.attention"

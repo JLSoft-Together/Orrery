@@ -17,6 +17,17 @@ export interface ShellMarksHost {
   focused: () => boolean
   write: (text: string) => void
   notice: (text: string) => void
+  finished?: (done: FinishedCommand) => void
+}
+
+export interface FinishedCommand {
+  id: number
+  trusted: boolean
+  command: string
+  exitCode: number
+  elapsedMs: number
+  endedAt: number
+  line: number
 }
 
 type Cmd = ShellCommand<IMarker> & { deco?: IDecoration }
@@ -91,9 +102,14 @@ export function useShellMarks(host: ShellMarksHost) {
       atPrompt = false
       tracker.executed(m, Date.now(), () => typedText(m))
     } else {
-      const cmd = tracker.finished(mark.exitCode, m, Date.now(), Date.now() < replayUntil) as Cmd | null
+      const replaying = Date.now() < replayUntil
+      const cmd = tracker.finished(mark.exitCode, m, Date.now(), replaying) as Cmd | null
       if (!cmd) return
       decorate(cmd)
+      if (!replaying && cmd.exitCode !== undefined) {
+        const anchor = cmd.prompt ?? cmd.start ?? cmd.output
+        host.finished?.({ id: cmd.id, trusted: cmd.trusted, command: cmd.command, exitCode: cmd.exitCode, elapsedMs: cmd.elapsedMs ?? 0, endedAt: cmd.endedAt ?? Date.now(), line: anchor && !anchor.isDisposed ? anchor.line : -1 })
+      }
       cmd.output?.onDispose(() => tracker.drop(cmd))
     }
   }
@@ -220,5 +236,5 @@ export function useShellMarks(host: ShellMarksHost) {
     return true
   }
 
-  return { active, menu, entries, install, attach, reset, dispose, pick, closeMenu, jump }
+  return { active, menu, entries, install, attach, reset, dispose, pick, closeMenu, jump, atPrompt: () => atPrompt, runningId: () => (tracker.current?.executedAt !== undefined ? tracker.current.id : null) }
 }

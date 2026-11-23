@@ -96,7 +96,18 @@ pub fn resolve(rid: &str, msg: &Value, live: usize, home: &Path, mcp: Option<&Mc
     let shim_dir = config.filter(|_| want_shim).and_then(shim_dir_for).filter(|d| write_shims(d, cfg!(windows)));
     let nonce = (preset == "shell" && msg.get("integrate").and_then(Value::as_bool) == Some(true)).then(|| random_hex(16));
     let zsh_init = config.filter(|_| (shim_dir.is_some() || nonce.is_some()) && !cfg!(windows)).and_then(init_dir_for).filter(|d| write_zsh_init(d) && (nonce.is_none() || write_bash_init(d)));
-    let opts = AgentOpts { mcp: config.is_some(), name: ticket_name, shim: shim_dir.is_some(), zsh_init: zsh_init.map(|d| d.to_string_lossy().into_owned()), nonce: nonce.clone() };
+    let launch = msg.get("launch");
+    let launch_str = |k: &str| launch.and_then(|l| l.get(k)).and_then(Value::as_str).map(str::to_owned);
+    let opts = AgentOpts {
+        mcp: config.is_some(),
+        name: ticket_name,
+        shim: shim_dir.is_some(),
+        zsh_init: zsh_init.map(|d| d.to_string_lossy().into_owned()),
+        nonce: nonce.clone(),
+        model: launch_str("model"),
+        permission: launch_str("permission"),
+        effort: launch_str("effort"),
+    };
     let get = |k: &str| std::env::var(k).ok();
     let spec = preset_command_with(preset, cfg!(windows), &get, resume, session, &opts);
     let mut env: serde_json::Map<String, Value> = serde_json::Map::new();

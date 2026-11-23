@@ -1586,3 +1586,34 @@ describe('rail entry for a multi-project tab', () => {
     expect(k.rows.every((r) => r.project === undefined)).toBe(true)
   })
 })
+
+describe('workspace launch template', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('gives the next menu launch the template options and a prefilled prompt, once', () => {
+    const ws = useWorkspaceStore()
+    ws.pendingLaunch = { agent: 'claude', options: { model: 'opus', permission: 'plan' }, prompt: 'read the code' }
+    const a = ws.launch('claude', 'C:/work/app')!
+    expect(a.launch).toEqual({ model: 'opus', permission: 'plan' })
+    expect(a.prefill).toBe('read the code')
+    expect(a.prefillSubmit).toBeUndefined()
+    expect(ws.pendingLaunch).toBeNull()
+    const b = ws.launch('claude', 'C:/work/app')!
+    expect(b.launch).toBeUndefined()
+    expect(b.prefill).toBeUndefined()
+  })
+
+  it('ignores a template made for another agent, for shell and for resume', () => {
+    const ws = useWorkspaceStore()
+    ws.pendingLaunch = { agent: 'claude', options: { model: 'opus' }, prompt: 'x' }
+    expect(ws.launch('codex', 'C:/work/app')!.launch).toBeUndefined()
+    ws.pendingLaunch = { agent: 'claude', options: { model: 'opus' } }
+    expect(ws.launch('shell', 'C:/work/app')!.launch).toBeUndefined()
+    ws.pendingLaunch = { agent: 'claude', options: { model: 'opus' } }
+    expect(ws.launch('claude', 'C:/work/app', '0f8fad5b-d9cb-469f-a165-70867728950e')!.launch).toBeUndefined()
+  })
+})

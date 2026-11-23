@@ -135,3 +135,28 @@ function defaultAction(e: KeyboardEvent, mac: boolean, multiPane: boolean, group
   if (alt && !ctrl && ARROWS[code] && multiPane) return { t: shift ? 'swap' : 'focus', dir: ARROWS[code]! }
   return null
 }
+
+export interface TermKeyEvent {
+  type: string
+  isComposing?: boolean
+  ctrlKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+  metaKey: boolean
+  code: string
+  getModifierState?: (key: string) => boolean
+}
+
+export type MarkKeyAction = { t: 'toggle' } | { t: 'jump'; dir: -1 | 1 }
+export function markKeyAction(e: TermKeyEvent, mac: boolean): MarkKeyAction | null {
+  if (e.type !== 'keydown' || e.isComposing || e.shiftKey || e.metaKey || !e.ctrlKey || !e.altKey) return null
+  if (!mac && e.getModifierState?.('AltGraph')) return null
+  if (e.code === 'KeyM') return { t: 'toggle' }
+  if (e.code === 'ArrowUp') return { t: 'jump', dir: -1 }
+  if (e.code === 'ArrowDown') return { t: 'jump', dir: 1 }
+  return null
+}
+export function historyKey(e: TermKeyEvent, mac: boolean): boolean {
+  if (e.type !== 'keydown' || e.isComposing || e.code !== 'KeyR' || e.shiftKey || e.altKey || !e.ctrlKey) return false
+  return mac || !e.metaKey
+}

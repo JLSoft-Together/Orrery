@@ -1,0 +1,32 @@
+## WP-112h — DONE
+- Đã đổi:
+  - Rust: `apps/core/crates/core-desk/src/cmdhist.rs` (mới: `History` max 200, bỏ trùng liên tiếp, che secret bằng `claude/mask.rs::mask_hook_text`, file `CCM_DATA_DIR/cmdhist/<sha256(project_key)[..16]>.json` ghi atomic; kênh `ccm:cmdhist-list|add|remove`), đăng ký trong `core-desk/src/lib.rs`.
+  - Cầu: `apps/shell/shim/preload.ts` (+3 hàm `cmdHistList/Add/Remove`), `apps/shell/src/shim.js` sinh lại bằng `scripts/gen-desk-shim.mjs`.
+  - Web lib: `workspace/lib/cmdHistory.ts` (lọc, chọn, pickMode, clockText, bridge), `lib/termBookmarks.ts` (`BookmarkList`, nhãn), `lib/devChipGate.ts` (ẩn chip dev server), `lib/workspaceKeys.ts` (+`markKeyAction`, `historyKey`, `TermKeyEvent`; không đổi `workspaceAction`).
+  - Web UI: `components/CmdHistoryPicker.vue` (mới), `composables/useTermBookmarks.ts` (mới, registerMarker + registerDecoration viền trái + tint, menu `...`), `composables/useShellMarks.ts` (+host `finished`, `atPrompt()`, `runningId()`), `components/TermPane.vue` (Ctrl+R / Ctrl+Alt+M / Ctrl+Alt+Up,Down trong `onKey` chỉ khi pane shell có marks; lưu lịch sử khi lệnh trusted kết thúc; mốc lỗi tự động; mốc server ready; mục "Lịch sử lệnh" + danh sách mốc trong menu `...`; chip dev server ẩn khi lệnh in URL kết thúc).
+  - i18n: `workspace/i18n/term-history.ts` (`cmdHist.*`, `termMarks.*`, en + vi), 2 dòng vào `i18n/en.ts` / `vi.ts`, 22 key thêm tay vào `keys.en.txt` / `keys.vi.txt` (không `-u`).
+  - Test: `lib/cmdHistory.test.ts`, `lib/termBookmarks.test.ts`, `lib/devChipGate.test.ts`, 7 test trong `cmdhist.rs`; E2E `apps/shell/e2e/v112-cmdhist.cjs`.
+  - `.code_index/`: `web-workspace.md`, `core-desk.md`, `lookup.md` (1 dòng ngắn, file sát 8 KB), `_meta.md`.
+- Tiêu chí: 5/5 đạt. (1) Rust test lưu / max 200 / che secret / bỏ trùng liên tiếp / xoá / kênh; (2) vitest list + mốc + phím; (3) phím không đụng phím cũ (test `workspaceAction` trả null cho Ctrl+Alt+M, Ctrl+Alt+Up/Down, Ctrl+R; E2E Ctrl+R ở shell không có marks không mở list, nên đi thẳng tới shell); (4) E2E 2 lệnh (1 lỗi): lịch sử có 2, chip exit 3 / exit 0, mốc lỗi tự có, nhãn "Error, exit 3"; (5) cargo test + typecheck pass, có ảnh.
+- Việc thêm từ WP-111c (chip dev server sau Ctrl+C): đạt. `DevChipGate` gắn chip với lệnh đang chạy lúc in URL; lệnh đó kết thúc (OSC 633 `Finished`, kể cả -1073741510 của Ctrl+C trên Windows) thì `resetDev()`. Có test `devChipGate.test.ts` + 2 E2E (Ctrl+C sau vài giây, Ctrl+C ngay sau banner).
+- Audit: marks, `CommandTracker` và Ctrl+Up/Down đã có sẵn (`useShellMarks`, v73) nên lịch sử lấy từ chính tracker (không thêm đường ghi thứ hai ở Rust PTY host), mốc X7 là lớp riêng cạnh lớp marks lệnh cũ (viền trái + tint dòng, không đụng icon gutter cũ). Lưu ở desk channel thay vì core-pty vì host PTY không có project root.
+- Review:
+  - Ctrl+R chỉ cướp khi pane `shell` có marks (`marksOn`, ready.si) và đang running; pane agent / shell không tích hợp: phím tới shell nguyên vẹn.
+  - Windows: Ctrl+Alt+M / Ctrl+Alt+Up / Ctrl+Alt+Down chạy được trong WebView2 qua CDP (modifiers 3). AltGr bị loại. Máy có hotkey toàn cục (Intel graphics xoay màn Ctrl+Alt+Up/Down) có thể nuốt phím trước khi tới WebView2: chưa gặp trên máy này, mac chưa chạy.
+  - Fill dùng `term.paste` (bracketed paste), không tự Enter; lệnh nhiều dòng luôn chỉ fill. Shift+Enter chạy chỉ khi `atPrompt` và 1 dòng. Không xoá chữ đang gõ dở ở dòng lệnh (fill nối tiếp).
+  - Mốc tự động server ready đặt ở dòng cursor lúc phát hiện (banner có thể nằm vài dòng phía trên). Mốc chỉ ở buffer normal, mất khi buffer bị xoá (marker dispose) hoặc restart pane; tối đa 50.
+  - Binding chip dùng `runningId()` đọc sau ≤ 1.6 s vì xterm parse mark C sau khi `feedDev` thấy URL; nếu lệnh kết thúc trong lúc đang chờ bind thì cũng ẩn chip. URL từ lệnh nền in lúc prompt rảnh vẫn giữ chip tới khi pane exit (như cũ).
+  - Mã thoát 130 / Ctrl+C cũng tạo mốc lỗi (đúng chốt "mã thoát khác 0").
+  - Lịch sử chỉ ghi lệnh `trusted` (E mark có nonce của phiên), không ghi lệnh replay sau reconnect.
+- Test:
+  - `cargo test --locked -j 4 -p core-desk` (PowerShell) → 419 passed + 4 passed, 0 failed (gồm 7 test `cmdhist`).
+  - `npm test -w @ccm/web -- src/features/workspace src/features/shellDone src/i18n src/features/shortcuts` → 57 files / 557 passed.
+  - `npm run typecheck` → sạch.
+  - `node scripts/index-check.mjs` → ok 39 file, 0 lỗi.
+  - E2E `node apps/shell/e2e/v112-cmdhist.cjs` (web build ra thư mục tạm + `CCM_WEB_DIST`, exe `apps/shell/target/debug/deps/orrery_shell.exe` vì `orrery-shell.exe` bị E2E khác giữ, cổng 4712 / 9712) → toàn PASS (31 check): probe prompt, empty list, Esc, file 2 lệnh newest first, exit code 3 / 0, mốc lỗi + nhãn, Ctrl+R mở list, 2 hàng, chip exit, lọc còn 1 hàng, Enter điền không chạy, Enter lần 2 chạy, Shift+Enter chạy luôn, xoá 1 lệnh (UI + file), Ctrl+Alt+M đặt mốc, mốc ra khỏi viewport, Ctrl+Alt+Up nhảy lại mốc, Ctrl+Alt+M bỏ mốc, menu `...` có Lịch sử lệnh + Bookmark + mốc lỗi, chip dev server + mốc server ready, Ctrl+C ẩn chip (2 cách), pane vẫn running, Ctrl+R ở shell không marks không mở list, không cuộn ngang.
+- Nhìn: `docs/qa/v111/WP-112h/history-list.png` (list 2 lệnh, chip exit, mốc lỗi viền đỏ), `bookmarks.png`, `menu.png`, `chip-after-ctrlc.png`; chụp sau lần sửa code web cuối (build 1 lần sau sửa `onCommandFinished`, rồi chạy E2E, không sửa web sau đó).
+- docs/qa cũ bị đổi: không có (chỉ thêm thư mục mới `docs/qa/v111/WP-112h/`).
+- Hot file cần thêm: không. File ngoài danh sách chủ lượt này mà con đã sửa nhỏ: `composables/useShellMarks.ts` (thêm hook `finished` / `atPrompt` / `runningId`), `apps/shell/shim/preload.ts` + `apps/shell/src/shim.js` (3 kênh), `i18n/en.ts` / `vi.ts` (mỗi file +2 dòng), `keys.en.txt` / `keys.vi.txt` (+22 dòng).
+- Ngoài phạm vi cần main xử lý: (a) `apps/shell/target/debug/orrery-shell.exe` đang bị khoá nên chưa relink, build mới nằm ở `target/debug/deps/orrery_shell.exe`; (b) chưa đưa Ctrl+R / Ctrl+Alt+M vào hệ rebind `shortcuts/bindings.ts` và dialog phím tắt (cần sửa `WorkspaceView.vue` là hot file không thuộc lượt này); (c) chưa thêm công tắc tắt lịch sử trong Settings; (d) chưa chạy macOS.
+- Commit message đề xuất: feat(workspace): shell command history on Ctrl+R per project, terminal bookmarks with automatic error and server-ready marks, hide the dev server chip when its command ends
+- Dòng changelog (en / vi, ≤ 100 ký tự): Shell command history (Ctrl+R) and terminal bookmarks / Lịch sử lệnh shell (Ctrl+R) và mốc terminal (Ctrl+Alt+M)

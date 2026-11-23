@@ -17,7 +17,7 @@ export type PtyClientMessage =
   /** `integrate`: shell panes only, start the shell with command marks (OSC 633). */
   /** `session`: new claude panes only, a page-minted UUID for `--session-id`; ignored with `resume` or `open`. */
   /** `shim`: shell panes only, `claude` / `codex` typed there run through the host's shims (orrery MCP, `--session-id`). */
-  | { t: 'spawn'; preset: PtyPreset; cols: number; rows: number; cwd?: string; resume?: string; open?: string; session?: string; integrate?: boolean; shim?: boolean }
+  | { t: 'spawn'; preset: PtyPreset; cols: number; rows: number; cwd?: string; resume?: string; open?: string; session?: string; integrate?: boolean; shim?: boolean; launch?: { model?: string; permission?: string; effort?: string } }
   | { t: 'attach'; id: string; mode?: 'own' | 'view'; cols?: number; rows?: number }
   | { t: 'claim' }
   | { t: 'resize'; cols: number; rows: number }

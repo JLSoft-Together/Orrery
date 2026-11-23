@@ -25,6 +25,7 @@
 | `apps/web/src/core/lib/fonts.ts` | font code / giao diện (bundled, không tải mạng) |
 | `apps/web/src/core/lib/shareMode.ts`, `mask.ts` | chế độ chia sẻ màn hình + che nội dung |
 | `apps/web/src/core/components/ui/` | `ContextMenu`, `SegmentedControl`, `ThemePicker`, `FontPicker` |
+| `apps/web/src/core/components/EmptyState.vue` | empty state chung: `title`, `hint?`, `icon?`, `compact?`, slot `actions` (dùng ở InboxPanel, SessionBoard) |
 | `apps/web/src/app/components/AppHeader.vue` | header, tab chính |
 | `apps/web/src/app/composables/useNotifications.ts`, `useAppToasts.ts`, `useMcpCalls.ts` | thông báo, toast, lệnh MCP đa feature |
 | `apps/web/src/i18n/index.ts` | vue-i18n; `en.ts` / `vi.ts` gộp i18n các feature, `keys.snapshot.test.ts` khoá danh sách key |

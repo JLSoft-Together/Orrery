@@ -7,7 +7,7 @@ export interface PtyHandlers {
   onClose: (code: number) => void
 }
 
-export type PtyStart = { spawn: { preset: PtyPreset; cwd?: string; resume?: string; open?: string; session?: string; integrate?: boolean; shim?: boolean } } | { attach: string }
+export type PtyStart = { spawn: { preset: PtyPreset; cwd?: string; resume?: string; open?: string; session?: string; integrate?: boolean; shim?: boolean; launch?: { model?: string; permission?: string; effort?: string } } } | { attach: string }
 
 const encoder = new TextEncoder()
 // Host caps frames at 1 MB; a big paste goes out in slices instead of killing the socket.
@@ -97,7 +97,7 @@ export class PtyConnection {
     ws.binaryType = 'arraybuffer'
     this.ws = ws
     ws.onopen = () => {
-      if ('spawn' in start) this.control({ t: 'spawn', preset: start.spawn.preset, cwd: start.spawn.cwd, resume: start.spawn.resume, open: start.spawn.open, session: start.spawn.session, integrate: start.spawn.integrate, shim: start.spawn.shim, cols, rows })
+      if ('spawn' in start) this.control({ t: 'spawn', preset: start.spawn.preset, cwd: start.spawn.cwd, resume: start.spawn.resume, open: start.spawn.open, session: start.spawn.session, integrate: start.spawn.integrate, shim: start.spawn.shim, launch: start.spawn.launch, cols, rows })
       else this.control({ t: 'attach', id: start.attach })
     }
     ws.onmessage = (ev: MessageEvent<string | ArrayBuffer>) => {

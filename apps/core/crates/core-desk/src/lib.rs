@@ -8,6 +8,7 @@ pub mod build_clean;
 pub mod capture;
 pub mod claude;
 pub mod claude_hooks;
+pub mod cmdhist;
 pub mod deepseek;
 pub mod devices;
 pub mod disk;
@@ -202,6 +203,7 @@ impl Desk {
         build_clean::register(&mut desk, env);
         libs::register(&mut desk, env);
         claude_hooks::register(&mut desk, env);
+        cmdhist::register(&mut desk, env);
         extensions::register(&mut desk, env);
         bridge::register(&mut desk, env);
         layouts::register(&mut desk, env);

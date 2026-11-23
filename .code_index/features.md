@@ -10,15 +10,23 @@ Rà trước khi đề xuất ý tưởng mới; cập nhật khi thêm / bỏ t
 - Sensitive (deny / settings), Resources (CPU / RAM / port), DevTools, Diagnostics (v76) -> `web-small.md`
 - Toast / alert OS, Telegram report, push điện thoại (v13, v82, v98) -> `core-toast-bridge.md`
 - Office pixel-art Habblaud (v60, tạm dừng) -> `office.md`
+- Tray liệt kê session chờ bạn, mức thông báo theo project (v111 A5 / A6) -> `core-toast-bridge.md`, `shell.md`
 
 ## Workspace
 - Terminal / Browser pane, tab, split, layout, undo đóng pane, zoom pane, dust (v50, v52) -> `web-workspace.md`, `core-pty.md`
 - Rail classic + UI next "Sương kính", palette, glass, drop compass (v92, v102, v108) -> `web-rail.md`, `web-next.md`
 - Ctrl+K palette (v80), phím tắt tuỳ biến, MRU, tìm trong terminal (v109) -> `web-small.md`
 - Trả lời menu Claude / Codex bằng chuột, Inbox "Chờ trả lời" (v100) -> `web-small.md`
-- Chat view session, shell done toast (OSC 633), share mode (v109) -> `web-small.md`
+- Chat view session, shell done toast (OSC 633), share mode (v109), xuất session ra Markdown (v111 S1) -> `web-small.md`
 - Compact handoff, prompt library, turn review, clash, permission advisor, context meter (v51, v72, v89, v104) -> `web-agent-tools.md`
 - MCP `orrery` (`open_session`, `list_sessions`, `run_app`...), deep link `agent-monitor://` (v49) -> `core-desk-mcp.md`
+- Footer chỉ chip cần chú ý, header pane 4 nút, tab 1 tín hiệu, Launcher mẫu khởi chạy (v111 A1 / A2 / A4) -> `web-workspace.md`
+- Dev server URL trong terminal mở preview + chip header (v111 W1) -> `web-workspace.md`
+- Lịch sử lệnh shell Ctrl+R, mốc terminal (v111 C1 / X7) -> `web-workspace.md`, `core-desk.md`
+- Chọn phần tử preview gửi file nguồn, style, ảnh cắt (v111 W2) -> `web-core.md`
+- Gửi đoạn code đang chọn trong editor cho agent (v111 C2) -> `web-files.md`
+- Rail lọc session khi gõ, menu Nhóm (v111 X1) -> `web-next.md`, `web-rail.md`
+- Inbox / Board / Changes trống có nút việc tiếp theo (v111 A3) -> `web-core.md`
 
 ## Code
 - Explorer + editor CodeMirror 6, icon Atom Material, auto save (v59, v62) -> `web-files.md`
@@ -27,6 +35,11 @@ Rà trước khi đề xuất ý tưởng mới; cập nhật khi thêm / bỏ t
 - Devices (adb USB / Wi-Fi / QR), emulator, capture, APK size (v61, v73) -> `web-devices.md`
 - Extensions (MCP / plugin cho Claude Code), Hooks panel (v28, v74) -> `web-settings.md`
 - DeepSeek CLI Codewhale, `hand_back` (v81, tạm dừng) -> `web-small.md`
+- PR / CI / merge PR trong Git Log, theo dõi CI nền (v111 G1) -> `web-git.md`, `core-desk.md`
+- Worktree tự setup / dọn theo `.orrery/worktree.json`, checklist trước merge + MCP `todo_*` (v111 G2 / G3) -> `web-git.md`, `core-desk-preview.md`
+- Commit trong Git Log -> session đã làm, mở chat đúng lượt (v111 G4) -> `web-git.md`, `web-small.md`
+- Git Stash (list / apply / pop / drop), hoàn tác commit cuối chưa push (v112 B1) -> `web-git.md`, `core-desk-preview.md`
+- Run: lịch sử log, ghim mốc, so sánh 2 lần chạy (v112 X6) -> `web-run.md`
 
 ## Hệ thống
 - Disk: scan / MFT, treemap, Clean up, dupes, Organize Downloads, Apps, RAM, Move, snapshots, MCP `disk_*` (v101) -> `web-disk.md`, `core-disk.md`

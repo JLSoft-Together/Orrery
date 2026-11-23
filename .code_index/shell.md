@@ -9,6 +9,7 @@ Cargo workspace riêng (`apps/shell/Cargo.toml`, target `apps/shell/target`), li
 3. `apps/shell/src/desk.rs` dựng `Desk::standard`, `lifecycle.rs::boot`, `episodes.rs`, `mcp.rs::start`.
 4. `apps/shell/src/window.rs::create_main` mở `http://127.0.0.1:<port>/?k=<key>` (core-http đổi sang cookie), `init_script` nạp shim + `header.js` + `webview.js`.
 5. Close cửa sổ chính = ẩn vào tray (`tray.rs`); thoát thật qua `tray::quit` -> `lifecycle::clean`.
+6. Tray chờ bạn: web gửi `ccm:tray-waiting` -> `tray_waiting.rs::set` (max 8 dòng, 60 ký tự) -> `tray::refresh` dựng lại menu + tooltip; bấm dòng `wait:<terminal>` -> `tray_waiting::open` (ask `ccm:focus`).
 
 ## File chính
 
@@ -42,8 +43,10 @@ Host chi tiết: `shell-hosts.md`; disk: `shell-disk.md`; remote điện thoại
 - Trang app mới có `window.ccmDesktop`; child webview chỉ có command `guest`, không gọi được `ccm`.
 - `on_navigation` của child chỉ http(s) và không phải origin app; app tự không cho mở `file:`.
 - Devtools chỉ khi bản debug hoặc `CCM_E2E_DEVTOOLS=1`.
+- Windows: `window.rs::keep_size_when_minimized` giữ webview chính size thường lúc minimize (`Fit::Keep`, `set_size` làm lệch tỉ lệ autoresize của tauri-runtime-wry), nên `Resized` đầu tiên sau restore phải `set_bounds` lại đúng client (`Fit::Fill`); thiếu bước này webview phình ~9x / 45x, UI bị che, không click được. E2E `window-restore`.
 - Dev không bao giờ đụng cổng 4317 / `%LOCALAPPDATA%\ccm` của bản cài.
 
 ## Liên kết
 
 - Plan: `.planning/PLAN-v87-step6-*.md`, `PLAN-v110-modules.md`. Env: `docs/env.md`.
+- v112d `presets.rs::launch_flags` + `AgentOpts.{model,permission,effort}`: spawn msg `launch` chỉ thành cờ `--model/--permission-mode/--effort` (claude) hoặc `-m/-s` (codex) khi qua whitelist; resume không nhận cờ.

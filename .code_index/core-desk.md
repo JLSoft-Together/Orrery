@@ -20,6 +20,7 @@ Trang `window.ccmDesktop.invoke(channel, ...)` (shim `apps/shell/shim/preload.ts
 | `build_clean/`, `release_check/`, `libs/` | dọn build, kiểm phát hành, kiểm phiên bản lib | tại thư mục |
 | `claude_hooks/`, `extensions/`, `bridge/`, `agent_status/`, `agent_data/`, `deepseek/` | cài hook / MCP / plugin, statusline, dữ liệu agent | `web-settings.md` (phía trang) |
 | `github/` | tài khoản GitHub (token niêm phong qua `keychain.rs`); PR / CI `ccm:gh-pr`, `ccm:gh-ci` (`github/ipc.rs`), API ghi `github/api.rs::send`, theo dõi CI nền `github/ci_watch.rs::CiWatch` (30s, max 60 phút, max 8) -> `ccm:gh-event` + `desk:tg-ci` + `desk:phone-episode` | `web-settings.md`, `web-git.md` |
+| `cmdhist.rs` | lịch sử lệnh shell theo project, max 200, che secret; kênh `ccm:cmdhist-*` | tại file |
 | `update/`, `power/`, `resources.rs`, `pages.rs`, `editors.rs`, `layouts.rs` | cập nhật, keep awake, Resources, trang phụ | tại file |
 
 ## Bất biến

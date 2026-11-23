@@ -1,7 +1,20 @@
 # _meta: thay đổi gần đây
 
+- 2026-11-23 WP-111z: `lookup.md` gọn còn ~7.3 KB, thêm việc Git / PR / worktree / chat, tray, dev server, lịch sử lệnh; `features.md` thêm các tính năng v111-v112.
+- 2026-11-23 v112c: `EmptyState.vue` (core/components) + nút việc tiếp theo ở Inbox trống, Board trống; i18n `v111empty`.
 Mỗi dòng 1-2 câu: gì, rồi file / symbol chính. Lịch sử trước v110: `archive/_meta-pre-v110.md` (đường dẫn trong đó có thể đã chết: collector, desktop, web components / lib / stores cũ).
 
+- 2026-11-23 WP-112a: header pane agent còn 4 nút thường trực, tab 1 tín hiệu (`workspace/lib/paneHeadActions.ts`, `lib/tabSignals.ts`, `lib/browserHandoff.ts`, `components/TermPane.vue`, `WorkspaceView.vue`).
+- 2026-11-23 WP-111h: chọn phần tử nâng cấp: rect / source / css + ảnh cắt vào attachments (`agent-tools/lib/agentHandoff.ts`, `elementCrop.ts`, `workspace/components/BrowserPane.vue`, nút ở `BrowserToolbar.vue`, phím `pickElementKey`, `apps/shell/src/guest.js`).
+- 2026-11-23 WP-111f: PR, CI, Merge PR trong Git Log (`apps/web/src/features/git/components/PrPanel.vue`, `lib/prView.ts`, `composables/useCiEvents.ts`, `stores/ci.ts`); `CiWatch::stop` gọi khi desk đóng (`core-desk/src/github/mod.rs`).
+- 2026-11-23 WP-112e: tray danh sách chờ bạn (`apps/shell/src/tray_waiting.rs`, `apps/web/src/features/notify/trayWaiting.ts`) + thông báo theo project (`features/notify/projectLevel.ts`, `railMenu.ts`)
+- 2026-11-23 WP-111e: checklist trước merge + MCP `todo_*` (`apps/core/crates/core-desk/src/preview/checklist.rs`, `mcp/t_todo.rs`, `apps/web/src/features/git/components/WorktreeChecklist.vue`), xoá nhánh sau squash (`apps/shell/src/worktree.rs`).
+- 2026-11-23 WP-111d: worktree tự setup và tự dọn (`apps/core/crates/core-desk/src/preview/wtconfig.rs`, `apps/web/src/features/git/lib/worktreeFlow.ts`, `components/WorktreeCleanup.vue`, `lib/askCleanup.ts`).
+- 2026-11-23 WP-112i: lịch sử log Run + so sánh (`apps/core/crates/core-desk/src/run/history.rs`, `apps/web/src/features/run/components/RunHistoryDialog.vue`, `lib/runHistory.ts`)
+- 2026-11-23 WP-112b: footer chỉ chip cần chú ý + popover `...` (`apps/web/src/features/workspace/lib/footerChips.ts::planFooterChips`, `components/WorkspaceFooter.vue`); Quick Setup bỏ modal, thành checklist trong Settings General + chip footer (`apps/web/src/features/settings/lib/setupChecklist.ts`, `components/SetupChecklist.vue`); tour workspace chờ pane đầu.
+- 2026-11-23 WP-112j: gửi đoạn code đang chọn cho agent (`apps/web/src/features/files/lib/sendSelection.ts`, `CodeEditor.vue`, `FilePane.vue`).
+- 2026-11-23 v111 G1 Rust: PR + CI + theo dõi CI (`apps/core/crates/core-desk/src/github/ipc.rs`, `pulls.rs`, `ci.rs`, `ci_watch.rs`), kênh `ccm:gh-pr` / `ccm:gh-ci`, event `ccm:gh-event` `ci.done`, push xong tự watch (`apps/core/crates/core-desk/src/preview/ipc_git.rs`), Telegram `desk:tg-ci` (`apps/core/crates/core-desk/src/telegram/ci.rs`).
+- 2026-11-23 v111 W1: shell in dev server URL thì tự mở Browser pane split phải 1 lần / tab + chip trên header (`apps/web/src/features/workspace/lib/devServerUrl.ts`).
 - 2026-11-22 v110 rà index: sửa cột Vai trò `core-desk-mcp.md` (`t_files.rs`, `device_screenshot` ở `t_run.rs`), `core-disk.md`, `core-serve.md`, `core-desk-telegram.md`; path web cũ trong `docs/*.md` + `bug_pool/` đổi theo `git mv`.
 - 2026-11-22 v110 P4: index mới (`.code_index/lookup.md` + 1 file mỗi module, tối đa 8 KB), `CLAUDE.md` gọn, tài liệu dài sang `docs/features-history.md`, `docs/core-principle.md`, `docs/env.md`, `docs/visual-style.md`; kiểm bằng `scripts/index-check.mjs`; log E2E `shell.log` trong `apps/shell/e2e/cdp.cjs`.
 - 2026-11-22 v110 P3: `apps/web/src` chia `core/` + `app/` + `features/<feature>/` (alias `@core`, `@features`), luật `apps/web/src/importRules.test.ts`, codemod `scripts/web-move.mjs`; còn feature -> app 44 cạnh (chủ yếu `app/stores/connection.ts`).
@@ -12,10 +25,17 @@ Mỗi dòng 1-2 câu: gì, rồi file / symbol chính. Lịch sử trước v110
 - 2026-11-20 v108: bảng màu UI next (Ngẫu nhiên, Tự chọn, Đen trắng) (`apps/web/src/features/next/lib/mau.ts`), bỏ Tinh vân / Cực quang / Bình minh sương / Console.
 - 2026-11-20 v107: chat điện thoại (`apps/shell/src/remote/chat.rs`), menu bubble trên điện thoại.
 - 2026-11-17 v104: E2E mặc định Tauri, turn changes, clash chip, inbox, deepseek lazy.
+- 2026-11-23 v111 WP-112f: rail có ô lọc session thật + menu Nhóm + popover lọc khi thu gọn (`apps/web/src/features/next/components/rail/LiveRail.vue`).
 - 2026-11-15 v102: UI next gen "Sương kính" (`apps/web/src/features/next/components/NextShell.vue`), mặc định từ v103.
 - 2026-11-15 v101: Disk manager (`apps/core/crates/core-disk/src/lib.rs`, `apps/shell/src/disk_map.rs`), MCP `disk_*`.
+- 2026-11-23: restore sau minimize trả webview chính về đúng client (`apps/shell/src/window.rs::minimized_size` → `Fit::Fill`), E2E `apps/shell/e2e/window-restore.cjs`.
+- 2026-11-23 v111 G4: chip commit -> session trong Git Log, lượt sửa file lấy từ transcript lưu `CCM_DATA_DIR/edits/<hash>.jsonl` (30 ngày, max 5 MB), op `commits` / `seek` trên `ccm:chat` (`apps/core/crates/core-transcript/src/chat/edits.rs`, `apps/web/src/features/chat/ChatDialog.vue`).
+- 2026-11-23 v111 S1: xuất session ra Markdown, op `export` trên `ccm:chat` (`apps/core/crates/core-transcript/src/chat/export.rs`, `apps/web/src/features/chat/ChatExportMenu.vue`).
 - 2026-11-23: terminal không refit khi cửa sổ minimize (`apps/web/src/features/workspace/lib/splitLayout.ts::viewportFits`).
 - 2026-11-23: Sương kính bỏ blur, luôn panel đặc (`apps/web/src/features/next/stores/uiGen.ts`).
 - 2026-11-15 v100: click menu Claude / Codex bằng chuột (`apps/web/src/features/click-menu/lib/termMenu.ts`).
 - 2026-11-12 v97 / v98: Orrery Remote (app Flutter `apps/mobile`, PWA `apps/pwa`, relay `apps/relay`, gateway `apps/shell/src/remote/mod.rs`), push FCM / Web Push.
 - 2026-11-10 v87: Rust thay Node collector + PTY + procs + usage (`apps/core/crates/core-serve/src/lib.rs`).
+- 2026-11-23 v112d: Launcher Enter mở dòng gần nhất, mẫu khởi chạy (model, permission, effort, prompt đầu), agent mặc định theo project; presets.rs whitelist cờ.
+- 2026-11-23 v112g: Git Stash (list/Stash/Apply/Pop/Drop) + Hoàn tác commit cuối kèm Commit lại; `preview/stash.rs`, `StashMenu.vue`, `StashDialog.vue`.
+- 2026-11-23 v112h: lịch sử lệnh shell theo project (`cmdhist.rs`, Ctrl+R) + mốc terminal (Ctrl+Alt+M / Up / Down, tự động lệnh lỗi và server ready); chip dev server ẩn khi lệnh in URL kết thúc.

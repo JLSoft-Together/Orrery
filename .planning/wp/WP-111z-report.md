@@ -1,0 +1,29 @@
+## WP-111z — DONE
+
+- Đã đổi:
+  - `.code_index/lookup.md`: viết lại gọn, 10053 → 7348 byte (hết lỗi > 8 KB). Thêm việc: dev server, lịch sử lệnh / mốc terminal, tray, thông báo theo project, footer / setup checklist, header / tab, launcher, pick phần tử, gửi đoạn code, rail lọc, empty state, PR / CI, stash, worktree, checklist + todo MCP, commit → session, xuất Markdown, lịch sử Run.
+  - `.code_index/features.md`: thêm 13 dòng tính năng v111 / v112 (Quan sát 1, Workspace 7, Code 5) và ghi thêm export Markdown vào dòng Chat.
+  - `.code_index/_meta.md`: 1 dòng WP-111z.
+  - `docs/claude-code-integration.md`: §11w thêm đoạn "Checklist tools (v111 G3)" (todo_add / todo_done / todo_list, giới hạn 50 item và 20 thay đổi / phút, kênh `ccm:checklist`, store, cần OSC 633 để check chạy); thêm §11av "GitHub PR, merge and CI" (REST, token ở Rust, PAT scopes, kênh `ccm:gh-*`, merge gửi head sha, CI watch 30 s / max 60 phút / none 10 phút).
+  - `.planning/RELEASE-next.md`: dòng changelog chờ, nhóm Mới (17 mục) và Sửa lỗi (4 mục), mỗi mục en + vi, ≤ 100 ký tự. Đã kiểm độ dài và glossary.
+  - Không sửa `docs/env.md`: `CCM_GH_API` đã có (dòng 47); không tìm thấy env var mới nào trong khoảng `7dfbca9f^..HEAD`.
+  - Không sửa module file: các WP đã tự cập nhật (`web-git.md`, `core-desk-preview.md`, `core-desk-mcp.md`, `web-workspace.md`, `web-run.md`, `shell.md`, `web-settings.md`, ...).
+- Tiêu chí: 4/4 đạt (lookup ≤ 8 KB có entry cho đủ 16 tính năng yêu cầu; features.md; §11w todo + ccm:checklist; §11av GitHub; RELEASE-next en/vi ≤ 100 ký tự; env.md đã đủ).
+- Audit: đối chiếu từng symbol trong lookup bằng `scripts/index-check.mjs` (path + symbol phải có trong file); đối chiếu số liệu CI watch với `ci_watch.rs::Timing::default`; số liệu checklist với `mcp/t_todo.rs` và `tools.json`.
+- Review: rủi ro còn lại:
+  - Changelog 111a ghi "CI result ... goes to Telegram and phone", nhưng PROGRESS ghi FCM CI cho app điện thoại chưa làm. Dòng RELEASE-next không nhắc phone; docs §11av ghi rõ chưa có push phone.
+  - Bug hide / restore: PROGRESS ghi chờ chủ nhân xác nhận trước khi ghi bug_pool. Dòng "Sửa lỗi" đầu tiên phụ thuộc việc đó.
+  - WP-111f PARTIAL (FCM CI chưa làm), WP-112c / 112d PARTIAL trong report, nhưng PROGRESS ghi ĐẠT: dòng changelog tương ứng chỉ nêu phần đã có.
+  - Dòng "Terminal no longer refits" lấy từ `_meta` (không có report riêng); cần QA xác nhận.
+- Test:
+  - `node scripts/index-check.mjs` → `ok 39 file, 0 lỗi`.
+  - `node C:/Users/dauph/.claude/jin/scripts/glossary.mjs check .planning/RELEASE-next.md --all` → rc 0 (sau khi đổi "Giao diện" thành "Theme").
+  - Không chạy typecheck / test: chỉ sửa tài liệu và index.
+- Nhìn: không áp dụng (không có UI).
+- Hot file cần thêm: không.
+- Ngoài phạm vi cần main xử lý:
+  - `apps/web/src/features/update/lib/changelog.ts` chưa đụng (đúng luật, chỉ khi release); khi release copy các dòng từ RELEASE-next.
+  - Main chốt lại dòng "Sửa lỗi" hide / restore sau khi chủ nhân xác nhận.
+  - Chưa commit. `docs/claude-code-integration.md`, `.code_index/*.md`, `.planning/RELEASE-next.md` chưa staged.
+- Commit message đề xuất: docs(index): v111 lookup and features catalog, GitHub PR and checklist docs, changelog draft
+- Dòng changelog (en / vi, ≤ 100 ký tự): đã gom vào `.planning/RELEASE-next.md` (17 Mới, 4 Sửa lỗi, mỗi dòng en + vi).

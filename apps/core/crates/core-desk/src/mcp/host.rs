@@ -11,6 +11,9 @@ pub trait ToolHost: Send + Sync {
     fn checkout_roots(&self) -> Vec<String>;
     fn page(&self, call: Value) -> Value;
     fn desk(&self, call: Value) -> Option<Value>;
+    fn checklist_dir(&self) -> Option<std::path::PathBuf> {
+        crate::preview::checklist::data_dir()
+    }
     fn now_ms(&self) -> f64 {
         crate::util::now_ms()
     }

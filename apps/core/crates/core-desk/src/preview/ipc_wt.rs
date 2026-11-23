@@ -1,7 +1,7 @@
 use super::checkpoints::CheckpointStore;
 use super::gate::{self, denied, Busy, Latest};
 use super::ipc_git::MODULE;
-use super::{worktrees, wtconfig};
+use super::{checklist, worktrees, wtconfig};
 use crate::{arg, Ctx, Desk, DeskEnv};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -165,6 +165,17 @@ pub fn register(desk: &mut Desk, env: &DeskEnv) {
         let mut res = wtconfig::run_cleanup(std::path::Path::new(&target.path), &target.cleanup, wtconfig::CLEANUP_TIMEOUT_MS);
         res["path"] = json!(target.path);
         Ok(res)
+    });
+
+    let data = env.data_dir.clone();
+    desk.on(MODULE, "ccm:checklist", move |ctx, args| {
+        let req = arg(args, 0);
+        let Ok(repo) = gate::register_repo(ctx, field(req, "dir")) else { return Ok(denied()) };
+        let target = match field(req, "wt").as_str() {
+            Some(wt) => checklist::worktree_of(&repo, wt),
+            None => Some(repo),
+        };
+        Ok(target.map(|d| checklist::reply(&data, &d, req)).unwrap_or_else(denied))
     });
 
     let cps = Arc::new(CheckpointStore::new(env.data_dir.clone()));

@@ -745,6 +745,74 @@
         "openWorldHint": false,
         "idempotentHint": false
       }
+    },
+    {
+      "name": "todo_add",
+      "description": "Add one item to the pre-merge checklist of the worktree this session runs in. The user sees it in Orrery's worktree menu above the Merge button, with a count of what is still open. Use it for follow-ups you notice but will not do now (a missing test, a doc to update). The checklist belongs to the worktree, not to the session. At most 20 items a minute.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "One short line, at most 200 characters. No secrets."
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Add a checklist item",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": false
+      }
+    },
+    {
+      "name": "todo_done",
+      "description": "Mark one item of this worktree's pre-merge checklist as done. Call todo_list first for the ids. Items the user wrote can be marked done but never removed by an agent.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "description": "Item id from todo_list or todo_add, for example t3."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Mark a checklist item done",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
+    },
+    {
+      "name": "todo_list",
+      "description": "List the pre-merge checklist of the worktree this session runs in: id, text, who wrote it (owner or agent), done or open, and the state of the check script the user chose (idle, running, pass, fail).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "List the checklist",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "idempotentHint": true
+      }
     }
   ],
   "openSessionNoDeepseek": {

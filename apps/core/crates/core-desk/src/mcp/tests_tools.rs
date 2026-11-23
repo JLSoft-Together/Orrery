@@ -14,11 +14,12 @@ pub struct Fake {
     pub clock: Mutex<f64>,
     pub calls: Mutex<Vec<Value>>,
     pub takes: Mutex<Vec<(String, usize, u64)>>,
+    pub data: Option<std::path::PathBuf>,
 }
 
 impl Fake {
     pub fn new(page: Responder) -> Fake {
-        Fake { root: std::env::temp_dir().to_string_lossy().to_string(), allow: true, page, desk: None, clock: Mutex::new(1_000.0), calls: Mutex::new(Vec::new()), takes: Mutex::new(Vec::new()) }
+        Fake { root: std::env::temp_dir().to_string_lossy().to_string(), allow: true, page, desk: None, clock: Mutex::new(1_000.0), calls: Mutex::new(Vec::new()), takes: Mutex::new(Vec::new()), data: None }
     }
     pub fn with_desk(desk: Responder) -> Fake {
         let mut f = Fake::new(Box::new(|_| json!({ "ok": false, "error": "failed" })));
@@ -57,6 +58,9 @@ impl ToolHost for Fake {
         let out = d(&call);
         self.calls.lock().unwrap().push(call);
         Some(out)
+    }
+    fn checklist_dir(&self) -> Option<std::path::PathBuf> {
+        self.data.clone()
     }
     fn now_ms(&self) -> f64 {
         *self.clock.lock().unwrap()

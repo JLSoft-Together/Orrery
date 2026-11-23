@@ -156,6 +156,7 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   wtApprove: (dir: string, kind: 'setup' | 'cleanup'): Promise<unknown> => ipcRenderer.invoke('ccm:wt-approve', { dir, kind }),
   wtSuggest: (dir: string): Promise<unknown> => ipcRenderer.invoke('ccm:wt-suggest', { dir }),
   wtCleanup: (dir: string, branch: string, phase: 'check' | 'run'): Promise<unknown> => ipcRenderer.invoke('ccm:wt-cleanup', { dir, branch, phase }),
+  checklist: (dir: string, req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:checklist', { ...(req as object), dir }),
   mergeState: (root: string): Promise<unknown> => ipcRenderer.invoke('ccm:git-merge-state', root),
   wtDiff: (dir: string, a: string, b: string): Promise<unknown> => ipcRenderer.invoke('ccm:wt-diff', { dir, a, b }),
   wtFileDiff: (dir: string, a: string, b: string, path: string): Promise<unknown> => ipcRenderer.invoke('ccm:wt-file-diff', { dir, a, b, path }),

@@ -33,7 +33,7 @@ export type PtyClientMessage =
   // `copy`: patterns of untracked setup files (.env files, google-services.json) copied from the main checkout.
   | { t: 'wt.add'; cwd: string; branch: string; copy?: string[] }
   /** Never forced: refused while dirty, for the main checkout, or while a terminal runs inside it. */
-  | { t: 'wt.remove'; cwd: string; path: string; deleteBranch?: boolean }
+  | { t: 'wt.remove'; cwd: string; path: string; deleteBranch?: boolean; squashed?: boolean }
 
 /** Text frames host → client. Terminal output goes as binary frames. */
 export type PtyServerMessage =

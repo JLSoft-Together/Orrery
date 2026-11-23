@@ -153,6 +153,12 @@ fn add(cwd: &Path, list: &[Entry], msg: &Value) -> Value {
     reply
 }
 
+fn content_in_base(cwd: &Path, base: Option<&str>, branch: &str) -> bool {
+    let Some(base) = base.filter(|b| *b != branch) else { return false };
+    let res = git(cwd, &["diff", "--quiet", base, branch, "--"], MUTATE_TIMEOUT);
+    res.ok
+}
+
 fn remove(cwd: &Path, list: &[Entry], msg: &Value, panes: &[PaneDir]) -> Value {
     let asked = msg.get("path").and_then(Value::as_str).map(clean);
     let Some(target) = list.iter().find(|w| asked.as_ref().is_some_and(|a| *a == clean(&w.path))) else { return error("unknown", "") };
@@ -182,7 +188,11 @@ fn remove(cwd: &Path, list: &[Entry], msg: &Value, panes: &[PaneDir]) -> Value {
     let mut reply = json!({ "t": "wt.removed", "path": target.path });
     let drop_branch = msg.get("deleteBranch").and_then(Value::as_bool) == Some(true);
     if let (true, Some(name)) = (drop_branch, target.branch.as_deref()) {
-        let res = git(cwd, &["branch", "-d", "--", name], MUTATE_TIMEOUT);
+        let mut res = git(cwd, &["branch", "-d", "--", name], MUTATE_TIMEOUT);
+        let squashed = msg.get("squashed").and_then(Value::as_bool) == Some(true);
+        if !res.ok && squashed && content_in_base(cwd, list.first().and_then(|m| m.branch.as_deref()), name) {
+            res = git(cwd, &["branch", "-D", "--", name], MUTATE_TIMEOUT);
+        }
         reply["branch"] = json!(if res.ok { "deleted" } else { "kept" });
         if !res.ok {
             let first: String = res.stderr.trim().lines().next().unwrap_or("").chars().take(200).collect();

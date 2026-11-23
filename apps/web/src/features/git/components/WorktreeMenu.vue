@@ -5,9 +5,11 @@ import { Asterisk, Check, Fish, GitBranch, GitCompareArrows, GitMerge, Hexagon, 
 import { hasDeepSeek } from '../../../core/lib/desktop'
 import type { PtyPreset, PtyServerMessage, PtyWorktree, WorktreeError } from '@ccm/shared'
 import { shortPath } from '../../../core/lib/format'
-import { hasWtCompare, hasWtFlow, hasWtMerge, wtApprove, wtCompare, wtConfig, wtMerge, wtSuggest, type WtCompare, type WtConfig } from '../../../core/lib/preview'
+import { hasChecklist, hasWtCompare, hasWtFlow, hasWtMerge, wtApprove, wtCompare, wtConfig, wtMerge, wtSuggest, type WtCompare, type WtConfig } from '../../../core/lib/preview'
 import { askCleanupWorktree } from '../lib/askCleanup'
+import type { MergeWarning } from '../lib/checklist'
 import { joinSetup } from '../lib/worktreeFlow'
+import WorktreeChecklist from './WorktreeChecklist.vue'
 import { PtyConnection } from '../../workspace/lib/ptyClient'
 import { dirKey } from '../../../core/stores/favorites'
 import { useSettingsStore } from '../../../core/stores/settings'
@@ -48,6 +50,32 @@ async function loadCompares(): Promise<void> {
   compares.value = Object.fromEntries(results)
 }
 
+const warning = ref<MergeWarning | null>(null)
+const mergeConfirm = ref<{ path: string; mode: 'ff' | 'squash' } | null>(null)
+
+function toggleMerge(path: string): void {
+  merging.value = merging.value === path ? null : path
+  warning.value = null
+  mergeConfirm.value = null
+}
+
+function requestMerge(wt: PtyWorktree, mode: 'ff' | 'squash'): void {
+  if (warning.value && mergeConfirm.value?.path !== wt.path) {
+    mergeConfirm.value = { path: wt.path, mode }
+    void nextTick(() => root.value?.querySelector('[data-wt-merge-confirm]')?.scrollIntoView({ block: 'nearest' }))
+    return
+  }
+  mergeConfirm.value = null
+  void merge(wt, mode)
+}
+
+const warningList = computed(() => {
+  const w = warning.value
+  if (!w?.open) return ''
+  const more = w.open - w.texts.length
+  return w.texts.join('; ') + (more > 0 ? `; ${t('workspace.wt.checklist.confirm.more', { n: more })}` : '')
+})
+
 async function merge(wt: PtyWorktree, mode: 'ff' | 'squash'): Promise<void> {
   if (!wt.branch || busy.value) return
   busy.value = true
@@ -60,7 +88,7 @@ async function merge(wt: PtyWorktree, mode: 'ff' | 'squash'): Promise<void> {
     merging.value = null
     mergeNote.value = { path: wt.path, ok: true, text: t('workspace.wt.merge.done', { branch: wt.branch, hash: res.hash.slice(0, 7) }) }
     await loadCompares()
-    void offerCleanup(wt)
+    void offerCleanup(wt, mode === 'squash')
   } else if (res.error !== 'cancelled') {
     mergeNote.value = { path: wt.path, ok: false, text: t(`workspace.wt.merge.error.${res.error}`, { detail: res.detail ?? '' }) }
   }
@@ -78,15 +106,15 @@ async function keepConflicts(wt: PtyWorktree): Promise<void> {
   } else if (res.ok) {
     mergeNote.value = { path: wt.path, ok: true, text: t('workspace.wt.merge.done', { branch: wt.branch, hash: res.hash.slice(0, 7) }) }
     await loadCompares()
-    void offerCleanup(wt)
+    void offerCleanup(wt, true)
   } else if (res.error !== 'cancelled') {
     mergeNote.value = { path: wt.path, ok: false, text: t(`workspace.wt.merge.error.${res.error}`, { detail: res.detail ?? '' }) }
   }
 }
 
-async function offerCleanup(wt: PtyWorktree): Promise<void> {
+async function offerCleanup(wt: PtyWorktree, squashed: boolean): Promise<void> {
   if (!wt.branch || !hasWtFlow) return
-  const answer = await askCleanupWorktree(props.cwd, wt.branch)
+  const answer = await askCleanupWorktree(props.cwd, wt.branch, { squashed })
   if (answer === 'removed') {
     mergeNote.value = null
     await load()
@@ -261,7 +289,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, tru
 
     <template v-else-if="!loading">
       <SegmentedControl v-model="workspace.preset" :options="presetOptions" :label="t('workspace.launch.agent')" fill />
-      <ul class="ccm-scroll -mx-1 flex max-h-[min(40vh,320px)] flex-col overflow-y-auto px-1">
+      <ul class="ccm-scroll -mx-1 flex max-h-[min(55vh,460px)] flex-col overflow-y-auto px-1">
         <li v-for="wt in worktrees" :key="wt.path" class="flex flex-col">
           <div class="group flex min-w-0 items-center gap-1">
             <button
@@ -293,7 +321,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, tru
               :title="t('workspace.wt.merge.open', { base: okCmp(wt.path)!.base })"
               :aria-label="t('workspace.wt.merge.open', { base: okCmp(wt.path)!.base })"
               :aria-expanded="merging === wt.path"
-              @click="merging = merging === wt.path ? null : wt.path"
+              @click="toggleMerge(wt.path)"
             >
               <GitMerge :size="14" aria-hidden="true" />
             </button>
@@ -331,16 +359,27 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, tru
             </div>
           </div>
           <div v-if="merging === wt.path && okCmp(wt.path)" class="mx-1 mb-1 flex flex-col gap-2 rounded-inner bg-fill p-2 text-xs text-ink">
+            <WorktreeChecklist v-if="hasChecklist" :dir="wt.path" :cwd="cwd" @warning="warning = $event" />
             <p>{{ t('workspace.wt.merge.explain', { branch: wt.branch, base: okCmp(wt.path)!.base }) }}</p>
             <p class="text-2xs text-ink-faint">
               {{ t('workspace.wt.merge.stats', { files: okCmp(wt.path)!.files, added: okCmp(wt.path)!.added, removed: okCmp(wt.path)!.removed, behind: okCmp(wt.path)!.behind }) }}
             </p>
-            <div class="flex justify-end gap-1.5">
-              <button type="button" class="ccm-btn h-7" @click="merging = null">{{ t('workspace.wt.cancel') }}</button>
-              <button type="button" class="ccm-btn h-7" :disabled="busy || okCmp(wt.path)!.behind > 0" :title="okCmp(wt.path)!.behind > 0 ? t('workspace.wt.merge.error.not-ff', { detail: '' }) : undefined" @click="merge(wt, 'ff')">
+            <div v-if="mergeConfirm?.path === wt.path && warning" class="flex flex-col gap-1.5 rounded-inner bg-well p-2" role="alertdialog" :aria-label="t('workspace.wt.checklist.title')" data-wt-merge-confirm>
+              <p v-if="warning.open" class="text-ink">{{ t('workspace.wt.checklist.confirm.body', { list: warningList }) }}</p>
+              <p v-if="warning.failed" class="text-st-error">{{ t('workspace.wt.checklist.confirm.failed') }}</p>
+              <div class="flex justify-end gap-1.5">
+                <button type="button" class="ccm-btn h-7" data-wt-merge-confirm-back @click="mergeConfirm = null">{{ t('workspace.wt.checklist.confirm.back') }}</button>
+                <button type="button" class="ccm-btn ccm-btn-primary h-7" :disabled="busy" data-wt-merge-confirm-go @click="requestMerge(wt, mergeConfirm.mode)">
+                  <LoaderCircle v-if="busy" :size="13" class="ccm-spin" aria-hidden="true" />{{ t('workspace.wt.checklist.confirm.go') }}
+                </button>
+              </div>
+            </div>
+            <div v-else class="flex justify-end gap-1.5">
+              <button type="button" class="ccm-btn h-7" @click="toggleMerge(wt.path)">{{ t('workspace.wt.cancel') }}</button>
+              <button type="button" class="ccm-btn h-7" :disabled="busy || okCmp(wt.path)!.behind > 0" :title="okCmp(wt.path)!.behind > 0 ? t('workspace.wt.merge.error.not-ff', { detail: '' }) : undefined" @click="requestMerge(wt, 'ff')">
                 {{ t('workspace.wt.merge.ff') }}
               </button>
-              <button type="button" class="ccm-btn ccm-btn-primary h-7" :disabled="busy" @click="merge(wt, 'squash')">
+              <button type="button" class="ccm-btn ccm-btn-primary h-7" :disabled="busy" @click="requestMerge(wt, 'squash')">
                 <LoaderCircle v-if="busy" :size="13" class="ccm-spin" aria-hidden="true" />{{ t('workspace.wt.merge.squash') }}
               </button>
             </div>

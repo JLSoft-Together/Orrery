@@ -1,5 +1,6 @@
 pub mod branches;
 pub mod changes;
+pub mod checklist;
 pub mod checkpoints;
 pub mod checks;
 pub mod commit;
@@ -37,6 +38,7 @@ use crate::{Desk, DeskEnv};
 
 pub fn register(desk: &mut Desk, env: &DeskEnv) {
     ipc_git::register(desk);
+    checklist::set_data_dir(&env.data_dir);
     ipc_wt::register(desk, env);
     let history = std::sync::Arc::new(history::LocalHistory::new(env.data_dir.clone()));
     ipc_files::register(desk, env, history.clone());

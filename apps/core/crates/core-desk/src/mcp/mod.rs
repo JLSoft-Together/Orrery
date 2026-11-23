@@ -20,10 +20,13 @@ pub mod t_open;
 pub mod t_run;
 pub mod t_sessions;
 pub mod t_telegram;
+pub mod t_todo;
 #[cfg(test)]
 mod tests_desk;
 #[cfg(test)]
 mod tests_disk;
+#[cfg(test)]
+mod tests_todo;
 #[cfg(test)]
 mod tests_tools;
 pub mod text;

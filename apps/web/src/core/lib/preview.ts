@@ -186,6 +186,29 @@ export type WtConfig =
 export type WtApprove = { ok: true; commands: string[] } | { ok: false; error: WtFlowError; detail?: string }
 export type WtSuggest = { ok: true; path: string; existed: boolean } | { ok: false; error: WtFlowError; detail?: string }
 export type WtCleanup = { ok: true; path: string; cleanup?: string[]; ran?: number } | { ok: false; error: WtFlowError; detail?: string; ran?: number }
+export type CheckState = 'idle' | 'running' | 'pass' | 'fail'
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+  by: 'owner' | 'agent'
+  at: number
+}
+export interface ChecklistCheck {
+  script: string
+  state: CheckState
+  at: number
+  head: string
+}
+export type ChecklistError = 'denied' | 'unavailable' | 'text' | 'full' | 'unknown' | 'owner' | 'script' | 'state' | 'head' | 'failed'
+export type ChecklistReply = { ok: true; items: ChecklistItem[]; check: ChecklistCheck; head: string } | { ok: false; error: ChecklistError }
+export type ChecklistReq =
+  | { op: 'list' }
+  | { op: 'add'; text: string }
+  | { op: 'toggle'; id: string; done?: boolean }
+  | { op: 'remove'; id: string }
+  | { op: 'setScript'; script: string }
+  | { op: 'setCheck'; state: CheckState; head: string }
 export interface SlashCommand {
   name: string
   description: string
@@ -338,6 +361,7 @@ interface PreviewBridge {
   wtApprove?: (dir: string, kind: 'setup' | 'cleanup') => Promise<WtApprove>
   wtSuggest?: (dir: string) => Promise<WtSuggest>
   wtCleanup?: (dir: string, branch: string, phase: 'check' | 'run') => Promise<WtCleanup>
+  checklist?: (dir: string, req: ChecklistReq & { wt: string }) => Promise<ChecklistReply>
   mergeState?: (root: string) => Promise<MergeStateResult>
   mergeAbort?: (root: string) => Promise<MergeAbortResult>
   gitBlame?: (file: string) => Promise<BlameResult>
@@ -456,6 +480,8 @@ export const wtConfig = (dir: string): Promise<WtConfig> => bridge?.wtConfig?.(d
 export const wtApprove = (dir: string, kind: 'setup' | 'cleanup'): Promise<WtApprove> => bridge?.wtApprove?.(dir, kind) ?? Promise.resolve(unavailable)
 export const wtSuggest = (dir: string): Promise<WtSuggest> => bridge?.wtSuggest?.(dir) ?? Promise.resolve(unavailable)
 export const wtCleanup = (dir: string, branch: string, phase: 'check' | 'run'): Promise<WtCleanup> => bridge?.wtCleanup?.(dir, branch, phase) ?? Promise.resolve(unavailable)
+export const hasChecklist = typeof bridge?.checklist === 'function'
+export const checklist = (dir: string, wt: string, req: ChecklistReq): Promise<ChecklistReply> => bridge?.checklist?.(dir, { ...req, wt }) ?? Promise.resolve(unavailable)
 export const mergeState = (root: string): Promise<MergeStateResult> => bridge?.mergeState?.(root) ?? Promise.resolve(unavailable)
 export const mergeAbort = (root: string): Promise<MergeAbortResult> => bridge?.mergeAbort?.(root) ?? Promise.resolve(unavailable)
 export const hasCheckpoints = typeof bridge?.cpState === 'function'

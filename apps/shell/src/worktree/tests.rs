@@ -159,3 +159,29 @@ fn removing_can_drop_the_branch_only_when_git_says_it_is_merged() {
     assert!(c.get("branch").is_none());
     let _ = std::fs::remove_dir_all(&base);
 }
+
+#[test]
+fn a_squashed_branch_is_dropped_with_force_only_when_its_content_is_in_base() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = repo("squash");
+    let base = dir.parent().unwrap().to_path_buf();
+    let gone = |p: &str| [PaneDir { cwd: p.to_owned(), live_cwd: None, exited: true }];
+    let a = ask(&dir, json!({ "t": "wt.add", "branch": "sq" }), &[]);
+    let b = ask(&dir, json!({ "t": "wt.add", "branch": "sqmoved" }), &[]);
+    let c = ask(&dir, json!({ "t": "wt.add", "branch": "sqplain" }), &[]);
+    let (pa, pb, pc) = (a["path"].as_str().unwrap().to_owned(), b["path"].as_str().unwrap().to_owned(), c["path"].as_str().unwrap().to_owned());
+    for (p, name) in [(&pa, "n.txt"), (&pb, "m.txt"), (&pc, "o.txt")] {
+        std::fs::write(Path::new(p).join(name), name).unwrap();
+        sh(Path::new(p), &["add", name]);
+        sh(Path::new(p), &["commit", "-q", "-m", "work"]);
+    }
+    sh(&dir, &["merge", "--squash", "sq"]);
+    sh(&dir, &["commit", "-q", "-m", "squash sq"]);
+    let plain = ask(&dir, json!({ "t": "wt.remove", "path": pc.clone(), "deleteBranch": true }), &gone(&pc));
+    assert_eq!(plain["branch"], "kept", "{plain}");
+    let done = ask(&dir, json!({ "t": "wt.remove", "path": pa.clone(), "deleteBranch": true, "squashed": true }), &gone(&pa));
+    assert_eq!(done["branch"], "deleted", "{done}");
+    let moved = ask(&dir, json!({ "t": "wt.remove", "path": pb.clone(), "deleteBranch": true, "squashed": true }), &gone(&pb));
+    assert_eq!(moved["branch"], "kept", "{moved}");
+    let _ = std::fs::remove_dir_all(&base);
+}

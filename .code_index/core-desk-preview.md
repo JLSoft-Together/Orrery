@@ -31,6 +31,8 @@ Phía vỏ: `apps/shell/src/preview_host.rs` (callback `preview.*`), `preview_gr
 - Xoá nhánh, push, ghi file ngoài root đều cần xác nhận / grant; push dùng tài khoản GitHub của repo, token không về trang.
 - File thực thi bị chặn mở (`EXECUTABLE_EXT` trong `files_ipc.rs`).
 - Watcher bỏ `node_modules`, `.git`, `build`, `.gradle`, `.dart_tool`, `dist`; debounce 150 ms.
+- Worktree config (v111 G2): `preview/wtconfig.rs` đọc `.orrery/worktree.json` (`{copy?, setup?, cleanup?}`, field sai kiểu bị bỏ và báo trong `errors`), hash duyệt lưu `<data>/worktree-approved.json` theo repo + loại, `cleanup_target` chặn dirty / main / unknown, `run_cleanup` timeout 120 s kill tree. Kênh `ccm:wt-config` / `wt-approve` / `wt-suggest` / `wt-cleanup` ở `ipc_wt.rs`; native confirm là `run` kind `wtsetup` / `wtcleanup` / `wtconfig` (`apps/shell/src/preview_text.rs`).
+- Shell `worktree.rs`: `wt.add` ưu tiên `copy` của file và trả `setup: true`; `wt.remove` có `deleteBranch` chạy `git branch -d` (không `-D`), trả `branch: deleted | kept`.
 
 ## Liên kết
 

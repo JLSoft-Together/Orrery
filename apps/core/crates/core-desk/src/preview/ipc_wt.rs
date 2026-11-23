@@ -1,7 +1,7 @@
 use super::checkpoints::CheckpointStore;
 use super::gate::{self, denied, Busy, Latest};
 use super::ipc_git::MODULE;
-use super::worktrees;
+use super::{worktrees, wtconfig};
 use crate::{arg, Ctx, Desk, DeskEnv};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -96,6 +96,74 @@ pub fn register(desk: &mut Desk, env: &DeskEnv) {
                 let _ = gate::register_repo(ctx, kept);
             }
         }
+        Ok(res)
+    });
+
+    let data = env.data_dir.clone();
+    desk.on(MODULE, "ccm:wt-config", move |ctx, args| {
+        let req = arg(args, 0);
+        Ok(gate::check_dir(ctx, field(req, "dir")).map(|d| wtconfig::config_reply(&data, &d)).unwrap_or_else(denied))
+    });
+    let data = env.data_dir.clone();
+    desk.on(MODULE, "ccm:wt-approve", move |ctx, args| {
+        let req = arg(args, 0);
+        let Some(dir) = gate::check_dir(ctx, field(req, "dir")) else { return Ok(denied()) };
+        let kind = js_string(field(req, "kind"));
+        let (repo, commands, approved) = match wtconfig::pending_commands(&data, &dir, &kind) {
+            Ok(v) => v,
+            Err(e) => return Ok(json!({"ok": false, "error": e})),
+        };
+        if commands.is_empty() || approved {
+            return Ok(json!({"ok": true, "commands": commands}));
+        }
+        if !gate::has_cap(&gate::caps(ctx), "confirmRun") {
+            return Ok(denied());
+        }
+        if !confirm_run(ctx, &format!("wt{kind}"), &repo, "", commands.clone()) {
+            return Ok(json!({"ok": false, "error": "cancelled"}));
+        }
+        if !wtconfig::approve(&data, &repo, &kind, &commands) {
+            return Ok(json!({"ok": false, "error": "failed"}));
+        }
+        Ok(json!({"ok": true, "commands": commands}))
+    });
+    desk.on(MODULE, "ccm:wt-suggest", |ctx, args| {
+        let req = arg(args, 0);
+        let Some(dir) = gate::check_dir(ctx, field(req, "dir")) else { return Ok(denied()) };
+        if !gate::has_cap(&gate::caps(ctx), "confirmRun") {
+            return Ok(denied());
+        }
+        Ok(wtconfig::write_suggestion(&dir, &|path, text| {
+            let mut lines = vec![path.to_string()];
+            lines.extend(text.lines().map(String::from));
+            confirm_run(ctx, "wtconfig", path, "", lines)
+        }))
+    });
+    let data = env.data_dir.clone();
+    let cleaning = Arc::new(Busy::default());
+    desk.on(MODULE, "ccm:wt-cleanup", move |ctx, args| {
+        let req = arg(args, 0);
+        let Some(dir) = gate::check_dir(ctx, field(req, "dir")) else { return Ok(denied()) };
+        let run = field(req, "phase") == &json!("run");
+        let Some(_g) = cleaning.enter() else { return Ok(json!({"ok": false, "error": "busy"})) };
+        let target = match wtconfig::cleanup_target(&dir, field(req, "branch")) {
+            Ok(t) => t,
+            Err((code, detail)) => return Ok(json!({"ok": false, "error": code, "detail": detail})),
+        };
+        if !run {
+            return Ok(json!({"ok": true, "path": target.path, "cleanup": target.cleanup}));
+        }
+        if !target.cleanup.is_empty() && !wtconfig::is_approved(&data, &target.main, "cleanup", &target.cleanup) {
+            if !gate::has_cap(&gate::caps(ctx), "confirmRun") {
+                return Ok(denied());
+            }
+            if !confirm_run(ctx, "wtcleanup", &target.main, "", target.cleanup.clone()) {
+                return Ok(json!({"ok": false, "error": "cancelled"}));
+            }
+            wtconfig::approve(&data, &target.main, "cleanup", &target.cleanup);
+        }
+        let mut res = wtconfig::run_cleanup(std::path::Path::new(&target.path), &target.cleanup, wtconfig::CLEANUP_TIMEOUT_MS);
+        res["path"] = json!(target.path);
         Ok(res)
     });
 

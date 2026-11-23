@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use core_desk::git::{git_path, run_git, GitResult};
 use core_desk::preview::worktrees::is_branch_name;
+use core_desk::preview::wtconfig;
 use serde_json::{json, Map, Value};
 
 use crate::presets::resolve_cwd;
@@ -139,10 +140,15 @@ fn add(cwd: &Path, list: &[Entry], msg: &Value) -> Value {
     if !res.ok {
         return error("git", &res.stderr);
     }
-    let copied = copy_setup_files(Path::new(&main.path), &dest, msg.get("copy").unwrap_or(&Value::Null));
+    let (_, cfg) = wtconfig::read(Path::new(&main.path));
+    let patterns = cfg.copy.as_ref().map_or_else(|| msg.get("copy").cloned().unwrap_or(Value::Null), |c| json!(c));
+    let copied = copy_setup_files(Path::new(&main.path), &dest, &patterns);
     let mut reply = json!({ "t": "wt.added", "path": dest_text, "branch": branch });
     if !copied.is_empty() {
         reply["copied"] = json!(copied);
+    }
+    if !cfg.setup.is_empty() {
+        reply["setup"] = json!(true);
     }
     reply
 }
@@ -173,7 +179,17 @@ fn remove(cwd: &Path, list: &[Entry], msg: &Value, panes: &[PaneDir]) -> Value {
         let dirty = ["modified", "untracked", "dirty"].iter().any(|w| lower.contains(w));
         return error(if dirty { "dirty" } else { "git" }, &res.stderr);
     }
-    json!({ "t": "wt.removed", "path": target.path })
+    let mut reply = json!({ "t": "wt.removed", "path": target.path });
+    let drop_branch = msg.get("deleteBranch").and_then(Value::as_bool) == Some(true);
+    if let (true, Some(name)) = (drop_branch, target.branch.as_deref()) {
+        let res = git(cwd, &["branch", "-d", "--", name], MUTATE_TIMEOUT);
+        reply["branch"] = json!(if res.ok { "deleted" } else { "kept" });
+        if !res.ok {
+            let first: String = res.stderr.trim().lines().next().unwrap_or("").chars().take(200).collect();
+            reply["branchDetail"] = json!(first);
+        }
+    }
+    reply
 }
 
 pub fn answer(msg: &Value, panes: &[PaneDir], home: &Path) -> Value {

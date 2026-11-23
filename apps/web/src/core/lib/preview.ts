@@ -179,6 +179,13 @@ export type WtCompare =
   | { ok: true; base: string; branch: string; ahead: number; behind: number; files: number; added: number; removed: number; merged: boolean }
   | { ok: false; error: WtError; detail?: string }
 export type WtMerge = { ok: true; mode: 'ff' | 'squash'; hash: string } | { ok: false; error: WtError; detail?: string; kept?: string }
+export type WtFlowError = 'denied' | 'not-repo' | 'unknown' | 'main' | 'dirty' | 'busy' | 'git' | 'timeout' | 'cleanup-failed' | 'cancelled' | 'failed' | 'unavailable'
+export type WtConfig =
+  | { ok: true; exists: boolean; path: string; copy: string[] | null; setup: string[]; cleanup: string[]; errors: string[]; setupApproved: boolean; cleanupApproved: boolean; suggest: string[] }
+  | { ok: false; error: WtFlowError; detail?: string }
+export type WtApprove = { ok: true; commands: string[] } | { ok: false; error: WtFlowError; detail?: string }
+export type WtSuggest = { ok: true; path: string; existed: boolean } | { ok: false; error: WtFlowError; detail?: string }
+export type WtCleanup = { ok: true; path: string; cleanup?: string[]; ran?: number } | { ok: false; error: WtFlowError; detail?: string; ran?: number }
 export interface SlashCommand {
   name: string
   description: string
@@ -327,6 +334,10 @@ interface PreviewBridge {
   checkCancel?: (dir: string) => Promise<boolean>
   wtCompare?: (dir: string, branch: string) => Promise<WtCompare>
   wtMerge?: (dir: string, branch: string, mode: 'ff' | 'squash', keep?: boolean) => Promise<WtMerge>
+  wtConfig?: (dir: string) => Promise<WtConfig>
+  wtApprove?: (dir: string, kind: 'setup' | 'cleanup') => Promise<WtApprove>
+  wtSuggest?: (dir: string) => Promise<WtSuggest>
+  wtCleanup?: (dir: string, branch: string, phase: 'check' | 'run') => Promise<WtCleanup>
   mergeState?: (root: string) => Promise<MergeStateResult>
   mergeAbort?: (root: string) => Promise<MergeAbortResult>
   gitBlame?: (file: string) => Promise<BlameResult>
@@ -440,6 +451,11 @@ export const checkCancel = (dir: string): Promise<boolean> => bridge?.checkCance
 export const hasWtMerge = typeof bridge?.wtMerge === 'function'
 export const wtCompare = (dir: string, branch: string): Promise<WtCompare> => bridge?.wtCompare?.(dir, branch) ?? Promise.resolve(unavailable)
 export const wtMerge = (dir: string, branch: string, mode: 'ff' | 'squash', keep = false): Promise<WtMerge> => bridge?.wtMerge?.(dir, branch, mode, keep) ?? Promise.resolve(unavailable)
+export const hasWtFlow = typeof bridge?.wtCleanup === 'function'
+export const wtConfig = (dir: string): Promise<WtConfig> => bridge?.wtConfig?.(dir) ?? Promise.resolve(unavailable)
+export const wtApprove = (dir: string, kind: 'setup' | 'cleanup'): Promise<WtApprove> => bridge?.wtApprove?.(dir, kind) ?? Promise.resolve(unavailable)
+export const wtSuggest = (dir: string): Promise<WtSuggest> => bridge?.wtSuggest?.(dir) ?? Promise.resolve(unavailable)
+export const wtCleanup = (dir: string, branch: string, phase: 'check' | 'run'): Promise<WtCleanup> => bridge?.wtCleanup?.(dir, branch, phase) ?? Promise.resolve(unavailable)
 export const mergeState = (root: string): Promise<MergeStateResult> => bridge?.mergeState?.(root) ?? Promise.resolve(unavailable)
 export const mergeAbort = (root: string): Promise<MergeAbortResult> => bridge?.mergeAbort?.(root) ?? Promise.resolve(unavailable)
 export const hasCheckpoints = typeof bridge?.cpState === 'function'

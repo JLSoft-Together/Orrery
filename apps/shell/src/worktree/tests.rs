@@ -2,6 +2,8 @@ use std::process::Command;
 
 use super::*;
 
+static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn sh(dir: &Path, args: &[&str]) {
     let out = Command::new("git")
         .arg("-C")
@@ -76,6 +78,7 @@ fn a_folder_outside_git_lists_nothing_and_refuses_changes() {
 
 #[test]
 fn a_worktree_is_added_listed_guarded_and_removed() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let dir = repo("flow");
     let base = dir.parent().unwrap().to_path_buf();
     let listed = ask(&dir, json!({ "t": "wt.list" }), &[]);
@@ -105,5 +108,54 @@ fn a_worktree_is_added_listed_guarded_and_removed() {
     assert_eq!(removed["t"], "wt.removed", "{removed}");
     assert!(!Path::new(&wt).exists());
     assert_eq!(ask(&dir, json!({ "t": "wt.list" }), &[])["worktrees"].as_array().unwrap().len(), 1);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+#[test]
+fn the_repo_config_overrides_the_copy_patterns_and_flags_setup() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = repo("cfg");
+    let base = dir.parent().unwrap().to_path_buf();
+    std::fs::write(dir.join("keep.cfg"), "k").unwrap();
+    std::fs::create_dir_all(dir.join(".orrery")).unwrap();
+    std::fs::write(dir.join(".orrery/worktree.json"), r#"{"copy": ["keep.cfg"], "setup": ["npm install"]}"#).unwrap();
+    let added = ask(&dir, json!({ "t": "wt.add", "branch": "feat/cfg", "copy": [".env*"] }), &[]);
+    assert_eq!(added["t"], "wt.added", "{added}");
+    assert_eq!(added["copied"], json!(["keep.cfg"]));
+    assert_eq!(added["setup"], true);
+    let wt = added["path"].as_str().unwrap();
+    assert!(!Path::new(wt).join(".env").exists());
+    std::fs::write(dir.join(".orrery/worktree.json"), r#"{"copy": 5}"#).unwrap();
+    let again = ask(&dir, json!({ "t": "wt.add", "branch": "feat/cfg2", "copy": [".env*"] }), &[]);
+    assert_eq!(again["copied"], json!([".env"]));
+    assert!(again.get("setup").is_none());
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+#[test]
+fn removing_can_drop_the_branch_only_when_git_says_it_is_merged() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = repo("drop");
+    let base = dir.parent().unwrap().to_path_buf();
+    let merged = ask(&dir, json!({ "t": "wt.add", "branch": "merged" }), &[]);
+    let kept = ask(&dir, json!({ "t": "wt.add", "branch": "unmerged" }), &[]);
+    let (m, u) = (merged["path"].as_str().unwrap().to_owned(), kept["path"].as_str().unwrap().to_owned());
+    std::fs::write(Path::new(&u).join("n.txt"), "n").unwrap();
+    sh(Path::new(&u), &["add", "n.txt"]);
+    sh(Path::new(&u), &["commit", "-q", "-m", "work"]);
+    let gone = |p: &str| [PaneDir { cwd: p.to_owned(), live_cwd: None, exited: true }];
+    let a = ask(&dir, json!({ "t": "wt.remove", "path": m, "deleteBranch": true }), &gone(&m));
+    assert_eq!(a["t"], "wt.removed", "{a}");
+    assert_eq!(a["branch"], "deleted");
+    let b = ask(&dir, json!({ "t": "wt.remove", "path": u, "deleteBranch": true }), &gone(&u));
+    assert_eq!(b["t"], "wt.removed", "{b}");
+    assert_eq!(b["branch"], "kept");
+    assert!(!b["branchDetail"].as_str().unwrap_or("").is_empty());
+    let list = ask(&dir, json!({ "t": "wt.list" }), &[]);
+    assert_eq!(list["worktrees"].as_array().unwrap().len(), 1);
+    let plain = ask(&dir, json!({ "t": "wt.add", "branch": "plain" }), &[]);
+    let p = plain["path"].as_str().unwrap().to_owned();
+    let c = ask(&dir, json!({ "t": "wt.remove", "path": p }), &gone(&p));
+    assert!(c.get("branch").is_none());
     let _ = std::fs::remove_dir_all(&base);
 }

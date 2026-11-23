@@ -31,6 +31,7 @@ pub mod search;
 pub mod secrets;
 pub mod spawn;
 pub mod worktrees;
+pub mod wtconfig;
 
 use crate::{Desk, DeskEnv};
 

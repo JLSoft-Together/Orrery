@@ -49,6 +49,7 @@ import devicesV61 from '../features/devices/i18n/devices-v61'
 import whatsNewV71 from '../features/update/i18n/whats-new-v71'
 import devicesV72 from '../features/devices/i18n/devices-v72'
 import runV72 from '../features/run/i18n/run-v72'
+import runV112 from '../features/run/i18n/run-v112'
 import permV72 from '../features/agent-tools/i18n/perm-v72'
 import contextV72 from '../features/agent-tools/i18n/context-v72'
 import toolStatsV73 from '../features/history/i18n/toolstats-v73'
@@ -172,6 +173,7 @@ const vi: typeof en = {
   ...whatsNewV71.vi,
   ...devicesV72.vi,
   ...runV72.vi,
+  ...runV112.vi,
   ...permV72.vi,
   ...contextV72.vi,
   ...toolStatsV73.vi,
@@ -323,7 +325,7 @@ const vi: typeof en = {
         stats: '{files} file, +{added} −{removed}; {base} có {behind} commit mới hơn.',
         ff: 'Fast-forward',
         squash: 'Gộp thành một commit',
-        done: '{branch} đã vào {hash}. Xoá worktree luôn không? (nhánh vẫn giữ)',
+        done: '{branch} đã vào {hash}.',
         error: {
           denied: 'Thư mục này chưa mở trong pane nào.',
           'not-repo': 'Không phải git repository.',
@@ -337,7 +339,52 @@ const vi: typeof en = {
           unavailable: 'Gộp nhánh cần ứng dụng desktop.',
         },
       },
+      cleanup: {
+        title: 'Xoá worktree và nhánh {branch}?',
+        checking: 'Đang kiểm worktree…',
+        body: 'Thư mục worktree bị xoá và git bỏ nó khỏi danh sách. Nhánh cũng bị xoá, trừ khi git thấy trên nhánh còn commit chưa merge: khi đó nhánh được giữ lại.',
+        panes: '{n} ô đang mở trong đó sẽ bị đóng.',
+        commands: 'Chạy trước trong worktree (max 2 phút):',
+        working: 'Đang xoá…',
+        remove: 'Xoá',
+        keep: 'Giữ',
+        close: 'Đóng',
+        done: 'Đã xoá worktree và nhánh {branch}.',
+        doneKept: 'Đã xoá worktree. Nhánh {branch} được giữ vì git không thấy nó đã merge. {detail}',
+        error: {
+          denied: 'Thư mục này chưa mở trong ô nào.',
+          'not-repo': 'Không phải repo git.',
+          unknown: 'Worktree này đã mất. Mở lại danh sách.',
+          main: 'Không xoá được checkout chính.',
+          dirty: 'Worktree còn thay đổi chưa commit. Commit hoặc bỏ chúng trước; chưa xoá gì cả.',
+          busy: 'Còn terminal đang chạy trong đó, hoặc một lần dọn khác đang chạy. Đóng rồi thử lại.',
+          git: 'Git báo: {detail}',
+          timeout: 'Một lệnh cleanup chạy quá 2 phút và đã bị dừng: {detail}. Chưa xoá worktree.',
+          'cleanup-failed': 'Một lệnh cleanup lỗi: {detail}. Chưa xoá worktree.',
+          cancelled: 'Đã huỷ. Chưa xoá worktree.',
+          failed: 'Không xoá được worktree. {detail}',
+          unavailable: 'Xoá worktree cần app desktop.',
+        },
+      },
+      config: {
+        suggest: 'Tạo .orrery/worktree.json từ gợi ý',
+        recreate: 'Thay .orrery/worktree.json bằng gợi ý',
+        setupLine: 'Sau khi tạo, một terminal chạy: {list}',
+        cleanupLine: 'Trước khi xoá, chạy: {list}',
+        skipped: 'Bỏ qua field sai kiểu trong .orrery/worktree.json: {list}',
+        broken: '.orrery/worktree.json không phải JSON hợp lệ; dùng mặc định.',
+        created: 'Đã tạo {path}. Sửa rồi commit nếu muốn cả nhóm dùng chung.',
+        nothing: 'Không thấy lockfile để đoán; file chỉ có danh sách copy mặc định.',
+        error: {
+          denied: 'Thư mục này chưa mở trong ô nào.',
+          'not-repo': 'Không phải repo git.',
+          cancelled: 'Đã huỷ.',
+          failed: 'Không ghi được file.',
+          unavailable: 'Cần app desktop.',
+        },
+      },
       copy: {
+        fromFile: 'từ .orrery/worktree.json',
         label: 'File copy sang worktree mới (cách nhau dấu phẩy; **/ cho mọi thư mục)',
         summary: 'Copy {list} từ checkout chính',
         nothing: 'không có',

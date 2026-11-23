@@ -5,7 +5,9 @@ import { Asterisk, Check, Fish, GitBranch, GitCompareArrows, GitMerge, Hexagon, 
 import { hasDeepSeek } from '../../../core/lib/desktop'
 import type { PtyPreset, PtyServerMessage, PtyWorktree, WorktreeError } from '@ccm/shared'
 import { shortPath } from '../../../core/lib/format'
-import { hasWtCompare, hasWtMerge, wtCompare, wtMerge, type WtCompare } from '../../../core/lib/preview'
+import { hasWtCompare, hasWtFlow, hasWtMerge, wtApprove, wtCompare, wtConfig, wtMerge, wtSuggest, type WtCompare, type WtConfig } from '../../../core/lib/preview'
+import { askCleanupWorktree } from '../lib/askCleanup'
+import { joinSetup } from '../lib/worktreeFlow'
 import { PtyConnection } from '../../workspace/lib/ptyClient'
 import { dirKey } from '../../../core/stores/favorites'
 import { useSettingsStore } from '../../../core/stores/settings'
@@ -58,7 +60,7 @@ async function merge(wt: PtyWorktree, mode: 'ff' | 'squash'): Promise<void> {
     merging.value = null
     mergeNote.value = { path: wt.path, ok: true, text: t('workspace.wt.merge.done', { branch: wt.branch, hash: res.hash.slice(0, 7) }) }
     await loadCompares()
-    confirming.value = wt.path
+    void offerCleanup(wt)
   } else if (res.error !== 'cancelled') {
     mergeNote.value = { path: wt.path, ok: false, text: t(`workspace.wt.merge.error.${res.error}`, { detail: res.detail ?? '' }) }
   }
@@ -76,9 +78,44 @@ async function keepConflicts(wt: PtyWorktree): Promise<void> {
   } else if (res.ok) {
     mergeNote.value = { path: wt.path, ok: true, text: t('workspace.wt.merge.done', { branch: wt.branch, hash: res.hash.slice(0, 7) }) }
     await loadCompares()
+    void offerCleanup(wt)
   } else if (res.error !== 'cancelled') {
     mergeNote.value = { path: wt.path, ok: false, text: t(`workspace.wt.merge.error.${res.error}`, { detail: res.detail ?? '' }) }
   }
+}
+
+async function offerCleanup(wt: PtyWorktree): Promise<void> {
+  if (!wt.branch || !hasWtFlow) return
+  const answer = await askCleanupWorktree(props.cwd, wt.branch)
+  if (answer === 'removed') {
+    mergeNote.value = null
+    await load()
+  }
+}
+
+const config = ref<WtConfig | null>(null)
+const configNote = ref<{ ok: boolean; text: string } | null>(null)
+const okConfig = computed(() => (config.value?.ok ? config.value : null))
+const copyList = computed(() => okConfig.value?.copy ?? settings.worktreeCopy)
+const copyFromFile = computed(() => !!okConfig.value?.copy)
+
+async function loadConfig(): Promise<void> {
+  if (!hasWtFlow) return
+  config.value = await wtConfig(props.cwd)
+}
+
+async function suggest(): Promise<void> {
+  if (busy.value) return
+  busy.value = true
+  configNote.value = null
+  const res = await wtSuggest(props.cwd)
+  busy.value = false
+  if (res.ok) {
+    workspace.openFile(res.path, undefined, { cwd: props.cwd })
+    emit('close')
+    return
+  }
+  if (res.error !== 'cancelled') configNote.value = { ok: false, text: t(`workspace.wt.config.error.${res.error === 'denied' || res.error === 'not-repo' || res.error === 'unavailable' ? res.error : 'failed'}`) }
 }
 
 const okCmp = (p: string) => {
@@ -144,7 +181,10 @@ async function load(): Promise<void> {
     repo.value = reply.repo
     worktrees.value = reply.worktrees
     listError.value = reply.repo ? null : 'notRepo'
-    if (reply.repo) void loadCompares()
+    if (reply.repo) {
+      void loadCompares()
+      void loadConfig()
+    }
   } else listError.value = reply?.t === 'wt.error' ? reply.code : 'unknown'
 }
 
@@ -160,7 +200,16 @@ async function create(): Promise<void> {
   formError.value = null
   const reply: PtyServerMessage | null = await PtyConnection.request({ t: 'wt.add', cwd: props.cwd, branch: name, copy: [...settings.worktreeCopy] }, 130_000)
   busy.value = false
-  if (reply?.t === 'wt.added') return openIn(reply.path)
+  if (reply?.t === 'wt.added') {
+    let line = ''
+    if (reply.setup) {
+      const approved = await wtApprove(props.cwd, 'setup')
+      if (approved.ok) line = joinSetup(approved.commands)
+    }
+    openIn(reply.path)
+    if (line) workspace.runScript(reply.path, line)
+    return
+  }
   formError.value = reply?.t === 'wt.error' ? errorText(reply.code, reply.detail) : errorText('unknown')
 }
 
@@ -177,7 +226,7 @@ async function remove(wt: PtyWorktree): Promise<void> {
 
 function onOutside(e: PointerEvent): void {
   const target = e.target as Node
-  if (comparing.value || (target as Element).closest?.('[data-wt-compare-layer]')) return
+  if (comparing.value || (target as Element).closest?.('[data-wt-compare-layer], [data-wt-cleanup]')) return
   if (!root.value?.contains(target) && !props.trigger?.contains(target)) emit('close')
 }
 
@@ -332,9 +381,21 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, tru
           <button type="button" class="ccm-btn h-7 text-2xs" @click="saveCopy">{{ t('workspace.wt.copy.save') }}</button>
         </div>
         <p v-else class="flex min-w-0 items-center gap-1 px-1 text-2xs text-ink-faint">
-          <span class="min-w-0 flex-1 truncate" :title="settings.worktreeCopy.join(', ')">{{ t('workspace.wt.copy.summary', { list: settings.worktreeCopy.join(', ') || t('workspace.wt.copy.nothing') }) }}</span>
-          <button type="button" class="shrink-0 cursor-pointer text-accent-ink hover:underline" @click="editCopy = true">{{ t('workspace.wt.copy.edit') }}</button>
+          <span class="min-w-0 flex-1 truncate" :title="copyList.join(', ')">{{ t('workspace.wt.copy.summary', { list: copyList.join(', ') || t('workspace.wt.copy.nothing') }) }}<template v-if="copyFromFile"> ({{ t('workspace.wt.copy.fromFile') }})</template></span>
+          <button v-if="!copyFromFile" type="button" class="shrink-0 cursor-pointer text-accent-ink hover:underline" @click="editCopy = true">{{ t('workspace.wt.copy.edit') }}</button>
         </p>
+        <template v-if="okConfig">
+          <p v-if="okConfig.setup.length" class="px-1 text-2xs text-ink-faint break-words" data-wt-config-setup>{{ t('workspace.wt.config.setupLine', { list: okConfig.setup.join(', ') }) }}</p>
+          <p v-if="okConfig.cleanup.length" class="px-1 text-2xs text-ink-faint break-words">{{ t('workspace.wt.config.cleanupLine', { list: okConfig.cleanup.join(', ') }) }}</p>
+          <p v-if="okConfig.errors.includes('json')" class="px-1 text-2xs text-st-error" role="status">{{ t('workspace.wt.config.broken') }}</p>
+          <p v-else-if="okConfig.errors.length" class="px-1 text-2xs text-ink-muted" role="status">{{ t('workspace.wt.config.skipped', { list: okConfig.errors.join(', ') }) }}</p>
+          <p class="px-1 text-2xs">
+            <button type="button" class="cursor-pointer text-accent-ink hover:underline disabled:cursor-default disabled:opacity-50" :disabled="busy" data-wt-config-suggest @click="suggest">
+              {{ okConfig.exists ? t('workspace.wt.config.recreate') : t('workspace.wt.config.suggest') }}
+            </button>
+          </p>
+          <p v-if="configNote" class="px-1 text-2xs" :class="configNote.ok ? 'text-ink-muted' : 'text-st-error'" role="status">{{ configNote.text }}</p>
+        </template>
       </form>
     </template>
     <WorktreeCompare

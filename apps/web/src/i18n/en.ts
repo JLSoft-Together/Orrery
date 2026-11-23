@@ -48,6 +48,7 @@ import devicesV61 from '../features/devices/i18n/devices-v61'
 import whatsNewV71 from '../features/update/i18n/whats-new-v71'
 import devicesV72 from '../features/devices/i18n/devices-v72'
 import runV72 from '../features/run/i18n/run-v72'
+import runV112 from '../features/run/i18n/run-v112'
 import permV72 from '../features/agent-tools/i18n/perm-v72'
 import contextV72 from '../features/agent-tools/i18n/context-v72'
 import toolStatsV73 from '../features/history/i18n/toolstats-v73'
@@ -171,6 +172,7 @@ export default {
   ...whatsNewV71.en,
   ...devicesV72.en,
   ...runV72.en,
+  ...runV112.en,
   ...permV72.en,
   ...contextV72.en,
   ...toolStatsV73.en,
@@ -322,7 +324,7 @@ export default {
         stats: '{files} files, +{added} −{removed}; {base} has {behind} newer commits.',
         ff: 'Fast-forward',
         squash: 'Squash into one commit',
-        done: '{branch} is in {hash}. Remove the worktree now? (the branch is kept)',
+        done: '{branch} is in {hash}.',
         error: {
           denied: 'This folder is not open in a pane.',
           'not-repo': 'Not a git repository.',
@@ -336,7 +338,52 @@ export default {
           unavailable: 'Merging needs the desktop app.',
         },
       },
+      cleanup: {
+        title: 'Remove worktree and branch {branch}?',
+        checking: 'Checking the worktree…',
+        body: 'The worktree folder is deleted and git forgets it. The branch is deleted too, unless git finds commits on it that are not merged: then it stays.',
+        panes: '{n} pane open in it will be closed. | {n} panes open in it will be closed.',
+        commands: 'Runs first in the worktree (max 2 minutes):',
+        working: 'Removing…',
+        remove: 'Remove',
+        keep: 'Keep',
+        close: 'Close',
+        done: 'Removed the worktree and branch {branch}.',
+        doneKept: 'Removed the worktree. Branch {branch} stays because git does not see it as merged. {detail}',
+        error: {
+          denied: 'This folder is not open in a pane.',
+          'not-repo': 'Not a git repository.',
+          unknown: 'That worktree is gone. Reopen the list.',
+          main: 'The main checkout cannot be removed.',
+          dirty: 'The worktree has uncommitted changes. Commit or discard them first; nothing was removed.',
+          busy: 'A terminal is still running inside it, or another cleanup is running. Close it and try again.',
+          git: 'Git said: {detail}',
+          timeout: 'A cleanup command ran longer than 2 minutes and was stopped: {detail}. The worktree was not removed.',
+          'cleanup-failed': 'A cleanup command failed: {detail}. The worktree was not removed.',
+          cancelled: 'Cancelled. The worktree was not removed.',
+          failed: 'Could not remove the worktree. {detail}',
+          unavailable: 'Removing needs the desktop app.',
+        },
+      },
+      config: {
+        suggest: 'Create .orrery/worktree.json from suggestions',
+        recreate: 'Replace .orrery/worktree.json from suggestions',
+        setupLine: 'After creating, a terminal runs: {list}',
+        cleanupLine: 'Before removing, it runs: {list}',
+        skipped: 'Ignored fields with a wrong type in .orrery/worktree.json: {list}',
+        broken: '.orrery/worktree.json is not valid JSON; defaults are used.',
+        created: 'Created {path}. Edit it, then commit it if the team should share it.',
+        nothing: 'No lockfile found to guess from; the file has the default copy list only.',
+        error: {
+          denied: 'This folder is not open in a pane.',
+          'not-repo': 'Not a git repository.',
+          cancelled: 'Cancelled.',
+          failed: 'Could not write the file.',
+          unavailable: 'Needs the desktop app.',
+        },
+      },
       copy: {
+        fromFile: 'from .orrery/worktree.json',
         label: 'Files copied into a new worktree (comma separated; **/ for any folder)',
         summary: 'Copies {list} from the main checkout',
         nothing: 'nothing',

@@ -164,8 +164,15 @@ pub fn exec_git(cwd: &Path, args: &[&str], opts: &ExecOpts) -> ExecResult {
 }
 
 pub fn exec_file(file: &Path, args: &[&str], opts: &ExecOpts, git_env: bool) -> ExecResult {
+    exec_file_at(None, file, args, opts, git_env)
+}
+
+pub fn exec_file_at(dir: Option<&Path>, file: &Path, args: &[&str], opts: &ExecOpts, git_env: bool) -> ExecResult {
     let mut cmd = Command::new(file);
     cmd.args(args);
+    if let Some(d) = dir {
+        cmd.current_dir(d);
+    }
     if git_env {
         for (k, v) in GIT_ENV {
             cmd.env(k, v);

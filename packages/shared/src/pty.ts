@@ -33,7 +33,7 @@ export type PtyClientMessage =
   // `copy`: patterns of untracked setup files (.env files, google-services.json) copied from the main checkout.
   | { t: 'wt.add'; cwd: string; branch: string; copy?: string[] }
   /** Never forced: refused while dirty, for the main checkout, or while a terminal runs inside it. */
-  | { t: 'wt.remove'; cwd: string; path: string }
+  | { t: 'wt.remove'; cwd: string; path: string; deleteBranch?: boolean }
 
 /** Text frames host → client. Terminal output goes as binary frames. */
 export type PtyServerMessage =
@@ -53,8 +53,8 @@ export type PtyServerMessage =
   | { t: 'cmd'; phase: 'start'; command: string }
   | { t: 'cmd'; phase: 'end'; command: string; code: number; ms: number; cwd?: string }
   | { t: 'wt.list'; repo: string | null; worktrees: PtyWorktree[] }
-  | { t: 'wt.added'; path: string; branch: string; copied?: string[] }
-  | { t: 'wt.removed'; path: string }
+  | { t: 'wt.added'; path: string; branch: string; copied?: string[]; setup?: boolean }
+  | { t: 'wt.removed'; path: string; branch?: 'deleted' | 'kept'; branchDetail?: string }
   | { t: 'wt.error'; code: WorktreeError; detail?: string }
 
 export type WorktreeError = 'noGit' | 'notRepo' | 'branch' | 'exists' | 'dirty' | 'main' | 'busy' | 'unknown' | 'git'

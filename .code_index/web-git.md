@@ -20,6 +20,7 @@ Phía desktop: kênh `ccm:git-*`, `ccm:changes-*` -> `apps/core/crates/core-desk
 - Xoá nhánh chỉ sau confirm native (docs §11s). Push dùng tài khoản GitHub của repo (v58), token không bao giờ về trang.
 - Commit / push bị chặn khi quét ra token (secret guard, `web-small.md`).
 - `highlight.worker.ts` của files import thẳng `diffBlocks`: không đưa lib này phụ thuộc index git.
+- Worktree setup / dọn (v111 G2): `lib/worktreeFlow.ts` (`joinSetup`, `cleanupWorktree`), `components/WorktreeCleanup.vue`, `lib/askCleanup.ts::askCleanupWorktree(root, branch)` mount hộp độc lập (WP-111f gọi sau merge PR); `WorktreeMenu.vue` có dòng config + nút gợi ý. Setup chạy bằng `workspace.runScript` sau native confirm `wtApprove`.
 
 ## Liên kết
 

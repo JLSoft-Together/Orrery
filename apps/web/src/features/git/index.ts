@@ -15,3 +15,4 @@ export { blockPatch, wordDiff, viewBlocks, type Block, type WordMark } from './l
 export { readDiffOpts } from './lib/diffOpts'
 export { isLogFile } from './lib/logView'
 export { useCheckpointsStore } from './stores/checkpoints'
+export { askCleanupWorktree } from './lib/askCleanup'

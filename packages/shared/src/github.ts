@@ -35,3 +35,108 @@ export function githubRepoOf(url: string): { owner: string; repo: string; https:
   if (!m) return null
   return { owner: m[1]!, repo: m[2]!, https: /^https:/i.test(s) }
 }
+
+export type GhError =
+  | 'denied'
+  | 'invalid'
+  | 'cancelled'
+  | 'network'
+  | 'timeout'
+  | 'no-remote'
+  | 'no-keychain'
+  | 'gh.notGithub'
+  | 'gh.noAccount'
+  | 'gh.noAccess'
+  | 'gh.auth'
+  | 'gh.scope'
+  | 'gh.rateLimit'
+  | 'gh.notFound'
+  | 'gh.notMergeable'
+  | 'gh.conflict'
+  | 'gh.invalid'
+  | 'gh.watchMax'
+  | 'gh.http'
+
+export interface GhFail {
+  ok: false
+  error: GhError
+  detail?: string
+  permission?: string
+}
+
+export type GhResult<T> = ({ ok: true } & T) | GhFail
+
+export type GhPrState = 'open' | 'closed' | 'merged'
+
+export interface GhPr {
+  number: number
+  title: string
+  url: string
+  state: GhPrState
+  draft: boolean
+  head: string
+  headSha: string
+  base: string
+  mergeable: boolean | null
+  mergeableState: string | null
+}
+
+export type GhMergeMethod = 'merge' | 'squash' | 'rebase'
+
+export type GhWatchAdded = 'added' | 'updated' | 'exists'
+
+export type GhPrRequest =
+  | { op: 'find'; root: string; remote?: string; head: string }
+  | { op: 'base'; root: string; remote?: string }
+  | { op: 'create'; root: string; remote?: string; base: string; head: string; title: string; body: string }
+  | { op: 'merge'; root: string; remote?: string; number: number; method: GhMergeMethod; sha: string; base: string; head?: string; deleteBranch?: boolean }
+  | { op: 'deleteBranch'; root: string; remote?: string; branch: string }
+
+export type GhCiState = 'pending' | 'success' | 'failure' | 'neutral' | 'none'
+
+export interface GhCiRun {
+  name: string | null
+  state: Exclude<GhCiState, 'none'>
+  url: string | null
+  jobId: number | null
+  startedAt: string | null
+  completedAt: string | null
+}
+
+export interface GhCiStatus {
+  state: GhCiState
+  runs: GhCiRun[]
+  sha: string
+}
+
+export interface GhCiWatch {
+  root: string
+  branch: string
+  sha: string
+  pr: number | null
+  since: number
+}
+
+export type GhCiRequest =
+  | { op: 'status'; root: string; remote?: string; sha: string }
+  | { op: 'log'; root: string; remote?: string; jobId: number; lines?: number }
+  | { op: 'watch'; root: string; remote?: string; branch: string; sha: string; pr?: number }
+  | { op: 'unwatch'; root: string; branch: string }
+  | { op: 'list' }
+
+export interface GhCiLog {
+  lines: string[]
+  cut: boolean
+}
+
+export interface GhCiDoneEvent {
+  type: 'ci.done'
+  root: string
+  branch: string
+  sha: string
+  pr: number | null
+  state: GhCiState
+  failed: string[]
+  url: string
+  timedOut?: true
+}

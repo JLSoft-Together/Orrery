@@ -1,4 +1,23 @@
-import type { BranchOpResult, BuildError, CommitDetail, ContainsResult, EntryNameProblem, LogPageResult, LogQuery, PushPreview, RefsResult } from '@ccm/shared'
+import type {
+  BranchOpResult,
+  BuildError,
+  CommitDetail,
+  ContainsResult,
+  EntryNameProblem,
+  GhCiDoneEvent,
+  GhCiLog,
+  GhCiRequest,
+  GhCiStatus,
+  GhCiWatch,
+  GhPr,
+  GhPrRequest,
+  GhResult,
+  GhWatchAdded,
+  LogPageResult,
+  LogQuery,
+  PushPreview,
+  RefsResult,
+} from '@ccm/shared'
 import { desktop } from './desktop'
 import type { DirEntry } from './previewTypes'
 
@@ -344,6 +363,9 @@ interface PreviewBridge {
   gitBranchUpdate?: (root: string, ref: string) => Promise<BranchOpResult>
   gitPushPreview?: (root: string, ref: string, remote?: string, branch?: string) => Promise<PushPreview>
   gitPush?: (root: string, ref: string, remote: string, branch: string, setUpstream: boolean, opts?: SecretScanOpts) => Promise<PushResult>
+  ghPr?: (req: GhPrRequest) => Promise<unknown>
+  ghCi?: (req: GhCiRequest) => Promise<unknown>
+  onGhEvent?: (handler: (event: GhCiDoneEvent) => void) => () => void
   changesDiscard?: (root: string, path: string, hunk?: string) => Promise<ChangesResult>
   changesWatch?: (root: string) => Promise<boolean>
   changesUnwatch?: (root: string) => Promise<boolean>
@@ -501,6 +523,30 @@ export const gitPushPreview = (root: string, ref: string, remote?: string, branc
   bridge?.gitPushPreview?.(root, ref, remote, branch) ?? Promise.resolve(noPush)
 export const gitPush = (root: string, ref: string, remote: string, branch: string, setUpstream: boolean, opts?: SecretScanOpts): Promise<PushResult> =>
   bridge?.gitPush?.(root, ref, remote, branch, setUpstream, opts) ?? Promise.resolve(noBranchOps)
+export type GhPrResult<R extends GhPrRequest> = R['op'] extends 'find'
+  ? GhResult<{ pr: GhPr | null }>
+  : R['op'] extends 'base'
+    ? GhResult<{ default: string; branches: string[] }>
+    : R['op'] extends 'create'
+      ? GhResult<{ pr: GhPr; watch: GhWatchAdded | null }>
+      : R['op'] extends 'merge'
+        ? GhResult<{ merged: boolean; sha: string | null; branchDeleted: boolean; deleteError?: GhResult<never>; watch?: GhWatchAdded | null }>
+        : GhResult<{ branchDeleted: true }>
+export type GhCiResult<R extends GhCiRequest> = R['op'] extends 'status'
+  ? GhResult<GhCiStatus>
+  : R['op'] extends 'log'
+    ? GhResult<GhCiLog>
+    : R['op'] extends 'watch'
+      ? GhResult<{ watch: GhWatchAdded }>
+      : R['op'] extends 'unwatch'
+        ? GhResult<{ removed: boolean }>
+        : GhResult<{ watches: GhCiWatch[] }>
+export const hasGhPr = typeof bridge?.ghPr === 'function'
+export const ghPr = <R extends GhPrRequest>(req: R): Promise<GhPrResult<R>> =>
+  (bridge?.ghPr?.(req) as Promise<GhPrResult<R>> | undefined) ?? Promise.resolve({ ok: false, error: 'denied' } as GhPrResult<R>)
+export const ghCi = <R extends GhCiRequest>(req: R): Promise<GhCiResult<R>> =>
+  (bridge?.ghCi?.(req) as Promise<GhCiResult<R>> | undefined) ?? Promise.resolve({ ok: false, error: 'denied' } as GhCiResult<R>)
+export const onGhEvent = (handler: (event: GhCiDoneEvent) => void): (() => void) => bridge?.onGhEvent?.(handler) ?? (() => undefined)
 export const changesDiscard = (root: string, path: string, hunk?: string): Promise<ChangesResult> =>
   bridge?.changesDiscard?.(root, path, hunk) ?? Promise.resolve(unavailable)
 export const changesWatch = (root: string): Promise<boolean> => bridge?.changesWatch?.(root) ?? Promise.resolve(false)

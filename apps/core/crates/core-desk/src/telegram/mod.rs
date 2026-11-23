@@ -1,12 +1,14 @@
 pub mod api;
 pub mod buttons;
 pub mod callback;
+pub mod ci;
 pub mod clock;
 pub mod commands;
 pub mod base;
 pub mod base_io;
 pub mod base_more;
 pub mod discover;
+pub mod doc;
 pub mod episodes;
 pub mod files;
 pub mod html;
@@ -143,11 +145,16 @@ pub fn handle(tg: &Arc<Tg>, channel: &str, args: &[Value]) -> Value {
             let session = a0["from"].as_str().filter(|s| !s.is_empty() && jsx::len(s) < 200);
             tg.report(a0["cwd"].as_str().unwrap_or(""), a0["text"].as_str().unwrap_or(""), a0["file"].as_str().filter(|f| !f.is_empty()), session, buttons)
         }
+        "desk:tg-doc" => {
+            let session = a0["from"].as_str().filter(|s| !s.is_empty() && jsx::len(s) < 200);
+            tg.send_doc(a0["cwd"].as_str().unwrap_or(""), session, a0["name"].as_str().unwrap_or(""), a0["text"].as_str().unwrap_or(""), a0["caption"].as_str().unwrap_or(""))
+        }
         "desk:tg-handle" => match sanitize::parse_episode(&a0["episode"]) {
             Some(e) => json!(tg.handle(&e)),
             None => json!(false),
         },
         "desk:tg-alert" => json!(tg.alert(a0["kind"].as_str().unwrap_or(""), &a0["detail"])),
+        "desk:tg-ci" => json!(tg.ci_done(a0)),
         "desk:tg-run-state" => {
             tg.run_state(&a0["session"]);
             Value::Null
@@ -168,7 +175,7 @@ pub fn handle(tg: &Arc<Tg>, channel: &str, args: &[Value]) -> Value {
     }
 }
 
-pub const CHANNELS: [&str; 26] = [
+pub const CHANNELS: [&str; 28] = [
     "ccm:telegram-state",
     "ccm:telegram-set",
     "ccm:telegram-route-set",
@@ -188,8 +195,10 @@ pub const CHANNELS: [&str; 26] = [
     "desk:tg-set",
     "desk:tg-route-for",
     "desk:tg-report",
+    "desk:tg-doc",
     "desk:tg-handle",
     "desk:tg-alert",
+    "desk:tg-ci",
     "desk:tg-run-state",
     "desk:tg-run-failed",
     "desk:tg-tick",

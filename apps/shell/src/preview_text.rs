@@ -159,6 +159,28 @@ pub fn confirm_spec(locale: &str, kind: &str, req: &Value) -> Option<Confirm> {
             let (message, detail) = deny_texts(vi, req);
             spec(message, detail, if vi { "Chặn" } else { "Block" })
         }
+        "ghMerge" => {
+            let (repo, branch) = (text(req, "repo"), text(req, "deleteBranch"));
+            if req.get("number").and_then(Value::as_u64).is_none() {
+                if branch.is_empty() {
+                    return None;
+                }
+                return if vi {
+                    spec(format!("Xoá nhánh {branch} trên GitHub?"), format!("{repo}: nhánh remote {branch} sẽ bị xoá."), "Xoá")
+                } else {
+                    spec(format!("Delete branch {branch} on GitHub?"), format!("{repo}: the remote branch {branch} is deleted."), "Delete")
+                };
+            }
+            let line = format!("#{} -> {} ({})", text(req, "number"), text(req, "base"), text(req, "method"));
+            let tail = match (branch.is_empty(), vi) {
+                (true, _) => String::new(),
+                (false, true) => format!(", xoá nhánh {branch}"),
+                (false, false) => format!(", delete branch {branch}"),
+            };
+            spec(format!("Merge PR #{}?", text(req, "number")), format!("{repo}
+
+{line}{tail}"), "Merge")
+        }
         "http" => {
             let (host, method) = (text(req, "host"), text(req, "method"));
             if vi {
@@ -264,5 +286,17 @@ mod tests {
         assert!(du.detail.contains("thành settings.json.orrery-bak"));
         assert_eq!(confirm_spec("en", "http", &json!({"host": "api.x", "method": "POST"})).unwrap().message, "Send a request to api.x?");
         assert!(confirm_spec("en", "rm", &json!({})).is_none());
+    }
+
+    #[test]
+    fn gh_merge_lists_the_pr_base_method_and_branch() {
+        let m = confirm_spec("vi", "ghMerge", &json!({"number": 42, "base": "master", "method": "squash", "repo": "o/r", "deleteBranch": "feat/x"})).unwrap();
+        assert_eq!(m.message, "Merge PR #42?");
+        assert_eq!(m.detail, "o/r
+
+#42 -> master (squash), xoá nhánh feat/x");
+        let d = confirm_spec("en", "ghMerge", &json!({"deleteBranch": "feat/x", "repo": "o/r"})).unwrap();
+        assert_eq!((d.message.as_str(), d.ok), ("Delete branch feat/x on GitHub?", "Delete"));
+        assert!(confirm_spec("en", "ghMerge", &json!({})).is_none());
     }
 }

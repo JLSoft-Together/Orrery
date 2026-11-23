@@ -84,6 +84,7 @@
 | Việc | Bắt đầu ở |
 |---|---|
 | Gate nhanh theo diff | `scripts/qa-fast.mjs` (`npm run qa`), map E2E ở `E2E_MAP` trong file đó |
+| Xuất session ra Markdown (Chép / Lưu / Telegram) | `apps/core/crates/core-transcript/src/chat/export.rs::export`, `apps/shell/src/chat_ipc.rs` op `export`, `apps/web/src/features/chat/export.ts::runExport`, `ChatExportMenu.vue` |
 | Thêm / chạy E2E | `apps/shell/e2e/cdp.cjs` (hạ tầng), `apps/shell/e2e/run.cjs` (chạy hết) |
 | Gate điện thoại | `scripts/qa-remote.mjs` |
 | Kiểm index này | `scripts/index-check.mjs` |

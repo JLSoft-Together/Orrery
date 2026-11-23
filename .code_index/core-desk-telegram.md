@@ -24,6 +24,7 @@ Phía vỏ: `apps/shell/src/episodes.rs` (episode Telegram / phone), `host_teleg
 
 - Chỉ tin nhắn từ tài khoản đã pair mới được submit vào pane; nút `telegram_send` do agent gắn thì chạm vào là gõ giá trị (ngoại lệ chủ nhân duyệt, docs §11an, `docs/core-principle.md`).
 - Nội dung gửi ra qua mask secret; token không về trang.
+- `telegram/doc.rs::Tg::send_doc` (kênh `desk:tg-doc`): gửi 1 file `.md` bằng `sendDocument` vào topic của project / pane, max 50 MB; dùng cho xuất session (v111).
 
 ## Liên kết
 

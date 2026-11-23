@@ -259,6 +259,22 @@ fn reply_buttons_answer_once_and_only_for_the_owner() {
 }
 
 #[test]
+fn an_exported_markdown_goes_out_as_one_document() {
+    let w = world();
+    setup(&w, false);
+    let res = w.tg.send_doc(&proj("/p/app"), Some("pane-1"), "claude-app-2026-11-20.md", "# Session Claude: app\n", "Claude session: app");
+    assert_eq!(res["ok"], true);
+    let calls = w.http.calls.lock().unwrap().clone();
+    let doc = calls.iter().find(|(m, _)| m == "sendDocument").unwrap();
+    assert_eq!(doc.1["document"], json!({"file": "claude-app-2026-11-20.md", "size": 22}));
+    assert_eq!(doc.1["chat_id"], CHAT);
+    let none = w.tg.send_doc(&proj("/p/other"), None, "a.md", "x", "c");
+    assert_eq!(none, json!({"ok": false, "error": "no-topic"}));
+    assert_eq!(w.tg.send_doc(&proj("/p/app"), None, "a.md", "", "c"), json!({"ok": false, "error": "size"}));
+    w.tg.stop();
+}
+
+#[test]
 fn a_429_holds_the_chat_and_queues_the_message() {
     let w = world();
     setup(&w, false);
@@ -332,5 +348,24 @@ fn remote_alerts_post_escaped_text_to_every_routed_chat() {
     assert_eq!(sent_texts(&w).last().map(String::as_str), Some("🛡 Orrery Remote: IP blocked\n&lt;b&gt;203.0.113.9&lt;/b&gt;"));
     w.tg.lock().data.alerts = false;
     assert!(!w.tg.alert("remote", &json!({ "text": "x" })));
+    w.tg.stop();
+}
+
+#[test]
+fn ci_done_goes_to_the_project_topic_with_an_open_pr_button() {
+    let w = world();
+    setup(&w, false);
+    let ev = json!({"type": "ci.done", "root": proj("/p/app"), "branch": "feat/<x>", "sha": "abc1234", "pr": 42, "state": "failure", "failed": ["build"], "url": "https://github.com/o/r/pull/42"});
+    assert!(w.tg.ci_done(&ev));
+    let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
+    assert_eq!(last["message_thread_id"], 5);
+    assert_eq!(last["text"], "❌ CI failed: <b>feat/&lt;x&gt;</b> #42 (app)\nbuild");
+    assert_eq!(last["reply_markup"]["inline_keyboard"], json!([[{"text": "Open PR", "url": "https://github.com/o/r/pull/42"}]]));
+    let other = json!({"root": proj("/q/other"), "branch": "b", "state": "success", "url": "https://github.com/o/r/pull/1"});
+    assert!(!w.tg.ci_done(&other));
+    let evil = json!({"root": proj("/p/app"), "branch": "b", "state": "success", "url": "javascript:alert(1)"});
+    assert!(w.tg.ci_done(&evil));
+    let last = w.http.calls.lock().unwrap().last().unwrap().1.clone();
+    assert!(last.get("reply_markup").is_none());
     w.tg.stop();
 }

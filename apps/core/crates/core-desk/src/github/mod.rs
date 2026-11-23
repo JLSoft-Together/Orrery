@@ -1,7 +1,16 @@
 pub mod api;
+pub mod ci;
+pub mod ci_watch;
+pub mod err;
+pub mod ipc;
+pub mod pulls;
 pub mod store;
+#[cfg(test)]
+mod tests_net;
 
-use crate::{arg, keychain, util, Ctx, Desk, DeskEnv};
+use crate::{arg, keychain, util, Ctx, Desk, DeskEnv, DeskError, DeskIo, Emitter, HostLink};
+use ci_watch::{CiWatch, Probe, Target, Timing};
+use err::GhErr;
 use base64::Engine;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
@@ -14,9 +23,12 @@ pub const MODULE: &str = "github";
 const ACCESS_TTL_MS: f64 = 10.0 * 60_000.0;
 const TIMEOUT: Duration = Duration::from_secs(10);
 
+pub const EVENT: &str = "ccm:gh-event";
+const PHONE_TEXT_MAX: usize = 120;
+
 pub struct GitHub {
     file: PathBuf,
-    base: String,
+    pub base: String,
     access: Mutex<HashMap<String, (f64, &'static str)>>,
     lock: Mutex<()>,
 }
@@ -210,6 +222,18 @@ impl GitHub {
         }
     }
 
+    pub fn creds(&self, ctx: &Ctx, root: &str, remote: &str) -> Result<String, GhErr> {
+        let r = self.resolve(ctx, root, remote);
+        if r.get("github") != Some(&Value::Bool(true)) {
+            return Err(GhErr::new("gh.notGithub"));
+        }
+        if r.get("access").and_then(Value::as_str) == Some("none") {
+            return Err(GhErr::new("gh.noAccess"));
+        }
+        let Some(id) = r.get("account").and_then(|a| a.get("id")).and_then(Value::as_str) else { return Err(GhErr::new("gh.noAccount")) };
+        Self::token(ctx, &self.store(), id).ok_or_else(|| GhErr::new("no-keychain"))
+    }
+
     pub fn env_for(&self, ctx: &Ctx, root: &str, remote: &str) -> Value {
         let r = self.resolve(ctx, root, remote);
         let Some(id) = r.get("account").and_then(|a| a.get("id")).and_then(Value::as_str) else { return Value::Null };
@@ -224,8 +248,84 @@ fn field<'a>(v: &'a Value, k: &str) -> &'a str {
     v.get(k).and_then(Value::as_str).unwrap_or("")
 }
 
+pub struct HostIo {
+    pub host: HostLink,
+    pub emitter: Emitter,
+}
+
+impl DeskIo for HostIo {
+    fn emit(&self, event: &str, payload: Value) {
+        self.emitter.emit(event, payload)
+    }
+
+    fn host(&self, _req: u64, method: &str, params: Value) -> Result<Value, DeskError> {
+        self.host.call(method, params)
+    }
+}
+
+struct LiveProbe {
+    gh: Arc<GitHub>,
+    io: HostIo,
+}
+
+impl Probe for LiveProbe {
+    fn status(&self, t: &Target) -> Result<Value, GhErr> {
+        let ctx = Ctx::new(&self.io, 0);
+        let token = self.gh.creds(&ctx, &t.root, &t.remote_url)?;
+        ci::ci_status(&pulls::RepoRef { base: &self.gh.base, token: &token, owner: &t.owner, repo: &t.repo }, &t.sha)
+    }
+}
+
+pub fn ci_summary(ev: &Value, en: bool) -> String {
+    let branch = field(ev, "branch");
+    let failed: Vec<&str> = ev.get("failed").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
+    let text = match (field(ev, "state"), en) {
+        ("success", true) => format!("CI passed on {branch}"),
+        ("success", false) => format!("CI đã qua trên {branch}"),
+        ("failure", true) if failed.is_empty() => format!("CI failed on {branch}"),
+        ("failure", false) if failed.is_empty() => format!("CI lỗi trên {branch}"),
+        ("failure", true) => format!("CI failed on {branch}: {}", failed.join(", ")),
+        ("failure", false) => format!("CI lỗi trên {branch}: {}", failed.join(", ")),
+        (_, true) => format!("CI finished on {branch}"),
+        (_, false) => format!("CI đã xong trên {branch}"),
+    };
+    crate::js::slice(&text, PHONE_TEXT_MAX)
+}
+
+pub fn phone_message(ev: &Value, en: bool) -> Value {
+    let root = field(ev, "root");
+    json!({
+        "type": "phone",
+        "episode": format!("ci:{root}|{}|{}", field(ev, "branch"), field(ev, "sha")),
+        "reason": "ci",
+        "name": util::basename(root),
+        "text": ci_summary(ev, en),
+    })
+}
+
+fn fan_out(caller: &crate::Caller, io: &HostIo, ev: &Value) {
+    io.emitter.emit(EVENT, ev.clone());
+    if ev.get("timedOut") == Some(&Value::Bool(true)) {
+        return;
+    }
+    let ctx = Ctx::new(io, 0);
+    let _ = caller.call(&ctx, "desk:tg-ci", json!([ev]));
+    let en = matches!(ctx.host("phone.locale", Value::Null), Ok(Value::String(l)) if l == "en");
+    let _ = caller.call(&ctx, "desk:phone-episode", json!([phone_message(ev, en)]));
+}
+
 pub fn register(desk: &mut Desk, env: &DeskEnv) {
     let gh = Arc::new(GitHub::new(&env.data_dir));
+    let probe = Arc::new(LiveProbe { gh: gh.clone(), io: HostIo { host: desk.host_link(), emitter: desk.emitter() } });
+    let (caller, io) = (desk.caller(), HostIo { host: desk.host_link(), emitter: desk.emitter() });
+    let notify: ci_watch::Notify = Arc::new(move |ev: &Value| fan_out(&caller, &io, ev));
+    let watch = CiWatch::new(probe, notify, Arc::new(util::now_ms), Timing::default());
+    let gi = Arc::new(ipc::GhIpc { gh: gh.clone(), watch });
+    let g = gi.clone();
+    desk.on(MODULE, "ccm:gh-pr", move |ctx, args| Ok(g.pr(ctx, arg(args, 0))));
+    let g = gi.clone();
+    desk.on(MODULE, "ccm:gh-ci", move |ctx, args| Ok(g.ci(ctx, arg(args, 0))));
+    desk.on(MODULE, "desk:gh-ci-push", move |ctx, args| Ok(gi.after_push(ctx, arg(args, 0))));
     let g = gh.clone();
     desk.on(MODULE, "ccm:gh-accounts", move |_, _| Ok(GitHub::listed(&g.store())));
     let g = gh.clone();

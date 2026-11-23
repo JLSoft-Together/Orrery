@@ -19,7 +19,7 @@ Trang `window.ccmDesktop.invoke(channel, ...)` (shim `apps/shell/shim/preload.ts
 | `backup/`, `restore.rs`, `appearance.rs` | backup / khôi phục prompt, giao diện | tại file |
 | `build_clean/`, `release_check/`, `libs/` | dọn build, kiểm phát hành, kiểm phiên bản lib | tại thư mục |
 | `claude_hooks/`, `extensions/`, `bridge/`, `agent_status/`, `agent_data/`, `deepseek/` | cài hook / MCP / plugin, statusline, dữ liệu agent | `web-settings.md` (phía trang) |
-| `github/` | tài khoản GitHub (token niêm phong qua `keychain.rs`) | `web-settings.md` |
+| `github/` | tài khoản GitHub (token niêm phong qua `keychain.rs`); PR / CI `ccm:gh-pr`, `ccm:gh-ci` (`github/ipc.rs`), API ghi `github/api.rs::send`, theo dõi CI nền `github/ci_watch.rs::CiWatch` (30s, max 60 phút, max 8) -> `ccm:gh-event` + `desk:tg-ci` + `desk:phone-episode` | `web-settings.md`, `web-git.md` |
 | `update/`, `power/`, `resources.rs`, `pages.rs`, `editors.rs`, `layouts.rs` | cập nhật, keep awake, Resources, trang phụ | tại file |
 
 ## Bất biến
@@ -27,6 +27,7 @@ Trang `window.ccmDesktop.invoke(channel, ...)` (shim `apps/shell/shim/preload.ts
 - Mọi kênh cần quyền file đi qua gate `preview/gate.rs` (root đã grant, realpath, không UNC, không gốc ổ).
 - Xác nhận phá huỷ (xoá, cài MCP / plugin, gỡ) luôn qua dialog native của vỏ (`ctx.host("*.confirm")`), kể cả E2E (`CCM_E2E_CONFIRM`).
 - Token (GitHub, Telegram) không bao giờ về trang; `keychain.rs` chỉ seal / unseal ở vỏ.
+- GitHub PR / CI: lỗi đi qua `github/err.rs::clean` (che token + `mask_secrets`); event `ci.done` không mang remote URL; merge gửi `sha` head và qua confirm `ghMerge` (`apps/shell/src/preview_text.rs`); log job giữ max 2 MB cuối, redirect không mang Authorization.
 
 ## Liên kết
 

@@ -18,7 +18,7 @@ const MAX_EPISODES: usize = 500;
 const CHANNELS: [&str; 2] = ["ntfy", "discord"];
 const IDLE_CHOICES: [i64; 4] = [0, 5, 10, 15];
 const DEFAULT_IDLE: i64 = 5;
-const REASONS: [&str; 8] = ["waiting", "question", "permission", "done", "job", "limit", "disk", "note"];
+const REASONS: [&str; 9] = ["waiting", "question", "permission", "done", "job", "limit", "disk", "note", "ci"];
 
 #[derive(Clone)]
 struct Shape {

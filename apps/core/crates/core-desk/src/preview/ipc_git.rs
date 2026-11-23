@@ -47,6 +47,7 @@ fn run_auth(ctx: &Ctx, repo: &str, f: impl FnOnce(Auth) -> Value) -> Value {
 }
 
 pub fn register(desk: &mut Desk) {
+    let push_hook = desk.caller();
     desk.on(MODULE, "ccm:changes-status", |ctx, args| {
         Ok(match gate::register_repo(ctx, arg(args, 0)) {
             Ok(repo) => changes::status(&repo),
@@ -158,7 +159,7 @@ pub fn register(desk: &mut Desk) {
         let req = arg(args, 0);
         Ok(with_repo(ctx, req, |repo| branches::push_preview(repo, field(req, "ref"), field(req, "remote"), field(req, "branch"))))
     });
-    desk.on(MODULE, "ccm:git-push", |ctx, args| {
+    desk.on(MODULE, "ccm:git-push", move |ctx, args| {
         let req = arg(args, 0);
         let Some(repo) = gate::repo_of(ctx, field(req, "root")) else { return Ok(denied()) };
         if wants_scan(req) {
@@ -166,7 +167,12 @@ pub fn register(desk: &mut Desk) {
                 return Ok(stop);
             }
         }
-        Ok(run_auth(ctx, &repo, |a| branches::push_branch(&repo, field(req, "ref"), field(req, "remote"), field(req, "branch"), field(req, "setUpstream"), a)))
+        let out = run_auth(ctx, &repo, |a| branches::push_branch(&repo, field(req, "ref"), field(req, "remote"), field(req, "branch"), field(req, "setUpstream"), a));
+        if out.get("ok") == Some(&json!(true)) {
+            let hook = json!([{"root": repo, "remote": field(req, "remote"), "branch": field(req, "branch"), "ref": field(req, "ref")}]);
+            let _ = push_hook.call(ctx, "desk:gh-ci-push", hook);
+        }
+        Ok(out)
     });
     desk.on(MODULE, "ccm:gh-repo-account", |ctx, args| {
         let req = arg(args, 0);

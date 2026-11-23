@@ -1,13 +1,39 @@
 use std::io::Read;
+use std::sync::OnceLock;
 use std::time::Duration;
 use ureq::tls::{RootCerts, TlsConfig};
 
 pub const API: &str = "https://api.github.com";
+const JSON_MAX: u64 = 8 * 1024 * 1024;
 
 pub struct ApiRes {
     pub status: u16,
     pub body: serde_json::Value,
     pub scopes: Option<String>,
+    pub accepted: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Method {
+    Post,
+    Put,
+    Patch,
+    Delete,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NetErr {
+    Timeout,
+    Network,
+}
+
+impl NetErr {
+    pub fn code(self) -> &'static str {
+        match self {
+            NetErr::Timeout => "timeout",
+            NetErr::Network => "network",
+        }
+    }
 }
 
 pub fn api_base() -> String {
@@ -18,30 +44,131 @@ pub fn api_base() -> String {
         .unwrap_or_else(|| API.into())
 }
 
-pub fn get(base: &str, token: &str, route: &str, timeout: Duration) -> Option<ApiRes> {
-    let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier).build();
-    let config = ureq::Agent::config_builder().timeout_global(Some(timeout)).http_status_as_error(false).tls_config(tls).build();
-    let agent: ureq::Agent = config.into();
-    let mut res = agent
-        .get(&format!("{base}{route}"))
-        .header("Accept", "application/vnd.github+json")
+pub fn agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(|| {
+        let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier).build();
+        ureq::Agent::config_builder().http_status_as_error(false).tls_config(tls).max_redirects(5).build().into()
+    })
+}
+
+fn net_err(e: &ureq::Error) -> NetErr {
+    match e {
+        ureq::Error::Timeout(_) => NetErr::Timeout,
+        ureq::Error::Io(io) if io.kind() == std::io::ErrorKind::TimedOut => NetErr::Timeout,
+        _ => NetErr::Network,
+    }
+}
+
+fn headers<B>(req: ureq::RequestBuilder<B>, token: &str, accept: &str) -> ureq::RequestBuilder<B> {
+    req.header("Accept", accept)
         .header("Authorization", &format!("Bearer {token}"))
         .header("User-Agent", "Orrery")
         .header("X-GitHub-Api-Version", "2022-11-28")
-        .call()
-        .ok()?;
+}
+
+fn header(res: &ureq::http::Response<ureq::Body>, name: &str) -> Option<String> {
+    res.headers().get(name).and_then(|v| v.to_str().ok()).map(str::to_string)
+}
+
+fn read_json(res: &mut ureq::http::Response<ureq::Body>) -> Result<serde_json::Value, NetErr> {
+    let mut bytes = Vec::new();
+    match res.body_mut().with_config().limit(JSON_MAX).reader().read_to_end(&mut bytes) {
+        Ok(_) if bytes.is_empty() => Ok(serde_json::Value::Null),
+        Ok(_) => Ok(serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null)),
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => Err(NetErr::Timeout),
+        Err(_) => Err(NetErr::Network),
+    }
+}
+
+pub fn get(base: &str, token: &str, route: &str, timeout: Duration) -> Option<ApiRes> {
+    let req = agent().get(&format!("{base}{route}")).config().timeout_global(Some(timeout)).build();
+    let mut res = headers(req, token, "application/vnd.github+json").call().ok()?;
     let status = res.status().as_u16();
-    let scopes = res.headers().get("x-oauth-scopes").and_then(|v| v.to_str().ok()).map(str::to_string);
-    let body = if status == 200 {
-        let mut bytes = Vec::new();
-        match res.body_mut().with_config().limit(8 * 1024 * 1024).reader().read_to_end(&mut bytes) {
-            Ok(_) => serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null),
-            Err(_) => return None,
+    let scopes = header(&res, "x-oauth-scopes");
+    let accepted = header(&res, "x-accepted-github-permissions");
+    let body = if status == 200 { read_json(&mut res).ok()? } else { serde_json::Value::Null };
+    Some(ApiRes { status, body, scopes, accepted })
+}
+
+pub fn fetch(base: &str, token: &str, route: &str, timeout: Duration) -> Result<ApiRes, NetErr> {
+    let req = agent().get(&format!("{base}{route}")).config().timeout_global(Some(timeout)).build();
+    let mut res = headers(req, token, "application/vnd.github+json").call().map_err(|e| net_err(&e))?;
+    let status = res.status().as_u16();
+    let scopes = header(&res, "x-oauth-scopes");
+    let accepted = header(&res, "x-accepted-github-permissions");
+    let body = read_json(&mut res)?;
+    Ok(ApiRes { status, body, scopes, accepted })
+}
+
+pub fn send(method: Method, base: &str, token: &str, route: &str, body: Option<&serde_json::Value>, timeout: Duration) -> Result<ApiRes, NetErr> {
+    let url = format!("{base}{route}");
+    let a = agent();
+    let accept = "application/vnd.github+json";
+    let call = match method {
+        Method::Delete => headers(a.delete(&url).config().timeout_global(Some(timeout)).build(), token, accept).call(),
+        m => {
+            let req = match m {
+                Method::Post => a.post(&url),
+                Method::Put => a.put(&url),
+                _ => a.patch(&url),
+            };
+            let text = body.map(|b| b.to_string()).unwrap_or_else(|| "{}".into());
+            headers(req.config().timeout_global(Some(timeout)).build(), token, accept).header("Content-Type", "application/json").send(text.as_bytes())
         }
-    } else {
-        serde_json::Value::Null
     };
-    Some(ApiRes { status, body, scopes })
+    let mut res = call.map_err(|e| net_err(&e))?;
+    let status = res.status().as_u16();
+    let scopes = header(&res, "x-oauth-scopes");
+    let accepted = header(&res, "x-accepted-github-permissions");
+    let body = read_json(&mut res)?;
+    Ok(ApiRes { status, body, scopes, accepted })
+}
+
+pub struct TextRes {
+    pub status: u16,
+    pub tail: Vec<u8>,
+    pub cut: bool,
+}
+
+pub fn fetch_tail(base: &str, token: &str, route: &str, timeout: Duration, keep: usize, read_max: u64) -> Result<TextRes, NetErr> {
+    let req = agent().get(&format!("{base}{route}")).config().timeout_global(Some(timeout)).build();
+    let mut res = headers(req, token, "application/vnd.github+json").call().map_err(|e| net_err(&e))?;
+    let status = res.status().as_u16();
+    if !(200..300).contains(&status) {
+        return Ok(TextRes { status, tail: Vec::new(), cut: false });
+    }
+    let mut reader = res.body_mut().with_config().limit(read_max).reader();
+    let mut tail: Vec<u8> = Vec::new();
+    let mut cut = false;
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        match reader.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                tail.extend_from_slice(&buf[..n]);
+                if tail.len() > keep {
+                    let drop = tail.len() - keep;
+                    tail.drain(..drop);
+                    cut = true;
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => return Err(NetErr::Timeout),
+            Err(_) if !tail.is_empty() => {
+                cut = true;
+                break;
+            }
+            Err(_) => return Err(NetErr::Network),
+        }
+    }
+    Ok(TextRes { status, tail, cut })
+}
+
+pub fn scrub_token(text: &str, token: &str) -> String {
+    if token.len() < 8 {
+        return text.to_string();
+    }
+    text.replace(token, "[token]")
 }
 
 pub fn encode_component(s: &str) -> String {
@@ -56,8 +183,11 @@ pub fn encode_component(s: &str) -> String {
     out
 }
 
+pub fn encode_path(s: &str) -> String {
+    s.split('/').map(encode_component).collect::<Vec<_>>().join("/")
+}
+
 pub fn github_repo_of(url: &str) -> Option<(String, String, bool)> {
-    use std::sync::OnceLock;
     static RE: OnceLock<(regex::Regex, regex::Regex)> = OnceLock::new();
     let (https, ssh) = RE.get_or_init(|| {
         (
@@ -84,5 +214,7 @@ mod tests {
         assert_eq!(github_repo_of("ssh://git@ssh.github.com/443/o/r"), Some(("o".into(), "r".into(), false)));
         assert_eq!(github_repo_of("https://gitlab.com/o/r"), None);
         assert_eq!(encode_component("a b/é"), "a%20b%2F%C3%A9");
+        assert_eq!(encode_path("feat/a b"), "feat/a%20b");
+        assert_eq!(scrub_token("bad ghp_abcdefghij here", "ghp_abcdefghij"), "bad [token] here");
     }
 }

@@ -1,0 +1,43 @@
+## WP-111a — DONE
+- Đã đổi:
+  - `apps/core/crates/core-desk/src/github/api.rs`: 1 `ureq::Agent` chung (`agent()`, OnceLock, PlatformVerifier, max 5 redirect, không gửi Authorization khi redirect); `get` giữ hành vi cũ; mới `send(Method, base, token, route, body, timeout)` POST / PUT / PATCH / DELETE đọc body cả 4xx; `fetch` (GET đọc body mọi status); `fetch_tail` (giữ max N byte cuối, đọc max 64 MB); `scrub_token`, `encode_path`; `ApiRes.accepted` (header `X-Accepted-GitHub-Permissions`).
+  - `github/err.rs` (mới): `GhErr {code, detail, permission}`; 401 gh.auth, 403 gh.scope (kèm quyền từ header hoặc tên quyền cần) / gh.rateLimit, 404 gh.notFound, 405 gh.notMergeable, 409 gh.conflict, 422 gh.invalid, khác gh.http; `clean` che token + `core_transcript::mask::mask_secrets`.
+  - `github/pulls.rs` (mới): `find_pr`, `create_pr` (PR thường, draft false), `merge_pr` (gửi `sha`), `delete_branch` (DELETE `git/refs/heads/<b>`), `default_branch`, `remote_branches` (max 300).
+  - `github/ci.rs` (mới): `ci_status` gộp check-runs + combined status, 5 trạng thái; `job_log_tail` (redirect, giữ 2 MB cuối, 60 dòng, che secret + token).
+  - `github/ci_watch.rs` (mới): `CiWatch` mỗi 30s, max 60 phút (hết hạn gửi `ci.done` `timedOut: true` chỉ tới trang), không có check nào sau 10 phút thì dừng im, lỗi quyền dừng im, lỗi mạng thử lại; max 8; trùng root+branch thì cập nhật, không thêm; thread nền riêng (chạy cả khi app ở nền), tự tắt khi hết watch; clock + probe inject để test.
+  - `github/ipc.rs` (mới): `ccm:gh-pr` op find | base | create | merge | deleteBranch, `ccm:gh-ci` op status | log | watch | unwatch | list, `desk:gh-ci-push`. Mọi op: `gate::repo_of` + cap github + `GitHub::creds` (resolve; access none -> `gh.noAccess`). Merge / xoá nhánh qua `gate::confirm(ctx, "ghMerge", ...)`. Tạo PR -> watch head; merge -> watch base tại sha merge.
+  - `github/mod.rs`: `creds`, `HostIo` (DeskIo trên HostLink + Emitter cho việc nền), `LiveProbe`, `ci_summary` / `phone_message` (cắt 120 ký tự), `fan_out` -> event `ccm:gh-event` `{type:"ci.done", root, branch, sha, pr, state, failed, url}` + `desk:tg-ci` + `desk:phone-episode` (luật rời máy N phút của phone module).
+  - `preview/ipc_git.rs:50,170-174`: push thành công -> `desk:gh-ci-push` (tự watch nhánh vừa push).
+  - `telegram/ci.rs` (mới) + `telegram/mod.rs:157,201`: `desk:tg-ci` gửi vào topic của project (`route_for(root)`), nút "Mở PR" / "Open PR" (chỉ url `https://github.com/`).
+  - `phone/mod.rs:21`: reason `ci`.
+  - `apps/shell/src/preview_text.rs:162`: confirm kind `ghMerge` ("Merge PR #42?", chi tiết `#42 -> master (squash), xoá nhánh feat/x`; hoặc "Xoá nhánh x trên GitHub?") + test.
+  - `apps/shell/shim/preload.ts:201-203` `ghPr`, `ghCi`, `onGhEvent`; `apps/shell/src/shim.js` sinh lại.
+  - `apps/web/src/core/lib/preview.ts`: `ghPr`, `ghCi` (kiểu trả theo op), `onGhEvent`, `hasGhPr`.
+  - `packages/shared/src/github.ts`: `GhError`, `GhFail`, `GhResult`, `GhPr`, `GhPrRequest`, `GhMergeMethod`, `GhCiState`, `GhCiRun`, `GhCiStatus`, `GhCiRequest`, `GhCiLog`, `GhCiWatch`, `GhCiDoneEvent`.
+  - `.code_index/core-desk.md`, `.code_index/_meta.md`.
+- Tiêu chí: 6/6 đạt.
+  (1) `github/tests_net.rs` server HTTP giả: find / create / merge gửi `{merge_method, sha}` / DELETE ref / default branch / branches. (2) `ci.rs` test 5 trạng thái + test gộp qua server giả. (3) log 3 MB qua redirect 302 -> giữ 2 MB cuối, 60 dòng, che `sk-ant-...` + token, redirect không mang Authorization. (4) `ci_watch.rs` 6 test clock giả: dừng khi xong, 60 phút (119 lần hỏi), max 8, không trùng, lỗi quyền / mạng, không có check. (5) token không có trong lỗi (`err.rs`, `tests_net.rs`), event / list (`events_and_list_never_carry_the_remote_url`), phone text. (6) cargo test + typecheck pass.
+- Audit: không comment trong code; không `unwrap` mới ngoài Mutex lock (theo lối có sẵn) và test; HTTP có timeout (15s API, 30s log); không IO async; thread nền bọc `catch_unwind` mỗi vòng; token chỉ unseal lúc gọi, không lưu trong watch.
+- Review:
+  - `types.ts` KHÔNG sửa: `ci.done` đi qua kênh desk `ccm:gh-event` (Tauri không cho dấu chấm trong tên event), không phải protocol WebSocket; mọi kiểu đặt ở `packages/shared/src/github.ts`.
+  - Remote SSH -> resolve trả github false -> không có PR / CI / watch (đúng "chưa có account thì không hiện").
+  - Orrery Remote push FCM (shell `remote/push.rs`) chưa nối; chỉ nối push điện thoại qua `desk:phone-episode` (ntfy / Discord, luật rời máy N phút). Toast + OS notification: phía web (WP-111f) nghe `onGhEvent`.
+  - Telegram chỉ gửi khi project có route (topic); project không có route thì bỏ qua.
+  - `cancelled` của check-run tính là failure.
+  - Watch không lưu qua lần mở app sau (chỉ trong RAM).
+- Test:
+  - `cargo test --locked -j 4 -p core-desk` (apps/core) -> 361 + 4 pass, 0 fail.
+  - `cargo test --locked -j 4 preview_text` (apps/shell) -> 4 pass.
+  - `cargo clippy -p core-desk --all-targets` -> không cảnh báo ở file của WP.
+  - `npm run qa -- --no-e2e --no-cargo` -> typecheck @ccm/shared + @ccm/web PASS; vitest related: i18n keys snapshot fail (key của WP khác, WP này không thêm key), DevicesView + telegramAnswer fail khi chạy song song, chạy riêng 30/30 pass.
+  - `node scripts/index-check.mjs` -> ok 39 file, 0 lỗi.
+- Nhìn: CHƯA NHÌN: WP không có UI.
+- Hot file cần thêm: không (types.ts không cần).
+- Ngoài phạm vi cần main xử lý:
+  - Đã sửa ngoài brief (cần để chạy đúng): `apps/shell/src/preview_text.rs` (confirm `ghMerge`), `apps/shell/shim/preload.ts` + `apps/shell/src/shim.js` (bridge), `packages/shared/src/github.ts`.
+  - `telegram/mod.rs` cùng lúc có `desk:tg-doc` của WP-111b; CHANNELS = 28 đã gồm cả 2.
+  - Nếu muốn push FCM Orrery Remote cho CI: thêm kind `ci` ở `apps/shell/src/remote/push.rs` (gói shell).
+- Commit message đề xuất: feat(github): PR, CI status and background CI watch over the GitHub API
+- Dòng changelog (en / vi, ≤ 100 ký tự):
+  - en: GitHub PR, merge and CI status from Orrery; CI result after push goes to Telegram and phone
+  - vi: Tạo PR, merge và xem CI GitHub ngay trong Orrery; push xong báo kết quả CI qua Telegram, điện thoại

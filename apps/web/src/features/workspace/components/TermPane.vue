@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../core/lib/shareMode'
-import { Blocks, Columns2, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, GitCompareArrows, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -63,6 +63,9 @@ import AttachmentsPanel from '../../agent-tools/components/AttachmentsPanel.vue'
 import TermFind from './TermFind.vue'
 import ChatView from '../../chat/ChatView.vue'
 import { hasChatView, type ChatTarget } from '../../chat/feed'
+import { useTurnChanges } from '@features/git'
+import { useTurnEditsStore } from '../../agent-tools/stores/turnEdits'
+import { demotedKeys, menuKeys, pinnedShown, type HeadActionCtx } from '../lib/paneHeadActions'
 import StatusIcon from '../../../core/components/StatusIcon.vue'
 import { statusMeta } from '../../../core/lib/status'
 import { usePaneInfo, usePeerSweep } from '../composables/usePaneInfo'
@@ -300,14 +303,20 @@ const context = computed(() => {
 const branch = computed(() => session.value?.gitBranch || props.pane.branch)
 const wtAnchor = ref<DOMRect | null>(null)
 const wtButton = ref<HTMLButtonElement | null>(null)
+const wtFrom = ref<HTMLElement | null>(null)
 
-function toggleWorktrees(): void {
-  wtAnchor.value = wtAnchor.value ? null : (wtButton.value?.getBoundingClientRect() ?? null)
+function toggleWorktrees(from?: HTMLElement): void {
+  if (wtAnchor.value) {
+    wtAnchor.value = null
+    return
+  }
+  wtFrom.value = from ?? null
+  wtAnchor.value = (wtButton.value ?? from ?? more.value?.button)?.getBoundingClientRect() ?? null
 }
 
 function closeWorktrees(): void {
   wtAnchor.value = null
-  wtButton.value?.focus()
+  ;(wtButton.value ?? wtFrom.value)?.focus()
 }
 
 const splitAnchor = ref<DOMRect | null>(null)
@@ -319,8 +328,12 @@ function onPointerDown(): void {
   workspace.activate(props.pane.key)
 }
 
-function toggleSplit(): void {
-  splitAnchor.value = splitAnchor.value ? null : (splitButton.value?.getBoundingClientRect() ?? null)
+function toggleSplit(from?: HTMLElement): void {
+  if (splitAnchor.value) {
+    splitAnchor.value = null
+    return
+  }
+  splitAnchor.value = (splitButton.value ?? from ?? more.value?.button)?.getBoundingClientRect() ?? null
 }
 
 // Menus are placed from a rect taken at open time: a hidden pane or a resized window would leave them floating.
@@ -419,6 +432,16 @@ const moreEntries = computed<MenuEntry[]>(() => {
   if (compactSuggested.value) out.push({ id: 'compact', label: t('workspace.paneHead.compact.label', { pct: compactPct.value }), icon: TriangleAlert, hint: t('workspace.compact.hint') })
   if (isNext.value && peer.value?.other) out.push({ id: 'peer', label: peerAria.value, icon: Mail })
   out.push({ separator: true })
+  for (const key of menuKeys(headCtx.value, headWidth.value)) {
+    if (key === 'attach') out.push({ id: 'attach', label: attachLabel.value, icon: Paperclip })
+    else if (key === 'chat') out.push({ id: 'chat', label: chatLabel.value, icon: chatOn.value ? SquareTerminal : MessageSquareText })
+    else if (key === 'turn') out.push({ id: 'turn', label: turnLabel.value, icon: GitCompareArrows })
+    else if (key === 'tools') out.push({ id: 'tools', label: t('sessionTools.menu'), icon: Blocks })
+    else if (key === 'worktree' && cwd.value && props.pane.state === 'running')
+      out.push({ id: 'worktree', label: branch.value ? t('workspace.paneHead.branch', { branch: branch.value }) : t('workspace.wt.title'), icon: GitBranch })
+    else if (key === 'split') out.push({ id: 'split', label: t('workspace.splitPane'), icon: Columns2 })
+  }
+  out.push({ separator: true })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
   if (isShell.value) out.push({ id: 'scan', label: t('workspace.termScan.button'), icon: ScanSearch, hint: t('workspace.termScan.hint') })
   else {
@@ -432,6 +455,21 @@ const moreEntries = computed<MenuEntry[]>(() => {
 })
 
 const canTools = computed(() => preset.value === 'claude' && !!desktop?.extProject && !!cwd.value && !ended.value)
+const rootEl = ref<HTMLElement | null>(null)
+const headWidth = ref<number | null>(null)
+let headObserver: ResizeObserver | null = null
+const turnChanges = useTurnChanges()
+const turnEdits = useTurnEditsStore()
+const turnCount = computed(() => (props.pane.terminalId ? turnEdits.countOf(props.pane.terminalId) : 0))
+const canTurn = computed(() => !isShell.value && !!props.pane.terminalId && !!cwd.value && props.pane.state === 'running')
+const headCtx = computed<HeadActionCtx>(() => ({ agent: !isShell.value, attach: canAttach.value, chat: canChat.value, turn: canTurn.value, tools: canTools.value }))
+const pinned = computed(() => new Set(pinnedShown(headCtx.value, headWidth.value)))
+const demoted = computed(() => demotedKeys(headCtx.value))
+const turnLabel = computed(() => (turnCount.value ? `${t('v104.turnChanges.menu')} (${turnCount.value})` : t('v104.turnChanges.menu')))
+
+function openTurn(): void {
+  if (props.pane.terminalId) turnChanges.open(props.pane.terminalId, cwd.value ?? undefined)
+}
 const attachLabel = computed(() => (attachCount.value ? t('workspace.paneHead.attachCount', { label: t('attach.button'), n: attachCount.value }) : t('attach.button')))
 
 function openTools(): void {
@@ -439,9 +477,15 @@ function openTools(): void {
   if (dir) ui.sessionTools = { dir, paneKey: props.pane.key }
 }
 
-function pickMore(id: string): void {
+function pickMore(id: string, anchor?: HTMLElement): void {
   if (layoutMenu?.pick(props.pane.key, id)) return
-  if (id === 'dev') {
+  if (id === 'attach') attachments.toggle(props.pane.key)
+  else if (id === 'chat') toggleChat()
+  else if (id === 'turn') openTurn()
+  else if (id === 'tools') openTools()
+  else if (id === 'worktree') toggleWorktrees(anchor)
+  else if (id === 'split') toggleSplit(anchor)
+  else if (id === 'dev') {
     const url = devUrls.value[devUrls.value.length - 1]
     if (url) emit('openLink', { kind: 'url', url }, {})
   } else if (id === 'compact') compactFlow.start(props.pane.key)
@@ -1225,6 +1269,13 @@ onMounted(() => {
     }, 150)
   })
   resizeObserver.observe(host.value!)
+  if (rootEl.value) {
+    headObserver = new ResizeObserver((entries) => {
+      const w = Math.round(entries[0]?.contentRect.width ?? 0)
+      if (w > 0 && w !== headWidth.value) headWidth.value = w
+    })
+    headObserver.observe(rootEl.value)
+  }
   window.addEventListener('resize', dropMenus)
 
   output.setVisible(props.visible)
@@ -1342,6 +1393,7 @@ onBeforeUnmount(() => {
     killSession()
     attachments.drop(props.pane.key)
   }
+  headObserver?.disconnect()
   conn?.close()
   marks.dispose()
   output.dispose()
@@ -1353,6 +1405,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section
+    ref="rootEl"
     class="@container flex min-h-0 min-w-0 flex-col transition-opacity duration-(--ccm-dur-base) ease-out-quint"
     :class="[`ccm-agent-${preset}`, isNext ? 'ccm-next-pane gap-0' : 'gap-1.5', multi && !focused ? 'ccm-pane-idle' : '', isNext ? 'ccm-pane-ring' : '', isNext && multi && focused ? 'ccm-pane-active' : '']"
     :data-next-pane-card="isNext || undefined"
@@ -1411,7 +1464,7 @@ onBeforeUnmount(() => {
       </Transition>
       <Teleport to="body">
         <Transition name="ccm-menu" @before-leave="retireOverlay">
-          <WorktreeMenu v-if="wtAnchor && cwd" :cwd="cwd" :anchor="wtAnchor" :trigger="wtButton" @close="closeWorktrees" />
+          <WorktreeMenu v-if="wtAnchor && cwd" :cwd="cwd" :anchor="wtAnchor" :trigger="wtButton ?? more?.button" @close="closeWorktrees" />
         </Transition>
       </Teleport>
       <div class="ml-auto flex min-w-0 items-center gap-1">
@@ -1422,7 +1475,7 @@ onBeforeUnmount(() => {
         <ContextGauge v-if="context && gaugeShown" class="w-24 shrink-0 @max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="context.tokens" :window="context.window" :pct="context.pct" compact data-pane-chip />
         <ContextTokens v-if="!isNext" class="@max-[600px]:hidden" :class="inBar ? 'max-lg:hidden' : ''" :tokens="mainAgent?.contextTokens" data-pane-chip />
         <button
-          v-if="cwd && pane.state === 'running'"
+          v-if="cwd && pane.state === 'running' && !demoted.includes('worktree')"
           ref="wtButton"
           type="button"
           class="inline-flex h-5 shrink-[10] cursor-pointer items-center gap-1 rounded-inner bg-[var(--ccm-control)] px-1.5 font-mono text-2xs text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-expanded:bg-fill aria-expanded:text-ink"
@@ -1430,14 +1483,14 @@ onBeforeUnmount(() => {
           aria-haspopup="dialog"
           :aria-expanded="!!wtAnchor"
           data-pane-worktrees
-          @click="toggleWorktrees"
+          @click="toggleWorktrees()"
         >
           <GitBranch :size="12" class="shrink-0" aria-hidden="true" />
           <span v-if="branch" class="max-w-[16ch] min-w-[4ch] truncate @max-[440px]:sr-only @max-[440px]:min-w-0">{{ branch }}</span>
           <span v-else class="sr-only">{{ t('workspace.wt.title') }}</span>
         </button>
         <button
-          v-if="canAttach"
+          v-if="canAttach && pinned.has('attach')"
           type="button"
           class="relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-pressed:bg-fill aria-pressed:text-ink"
           :class="isNext ? `${REVEAL} aria-pressed:opacity-100` : ''"
@@ -1457,7 +1510,7 @@ onBeforeUnmount(() => {
           >
         </button>
         <button
-          v-if="canChat"
+          v-if="canChat && pinned.has('chat')"
           type="button"
           class="inline-flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-inner px-1 text-2xs font-medium text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink aria-pressed:bg-fill aria-pressed:text-ink"
           :class="isNext ? `${REVEAL} aria-pressed:opacity-100` : ''"
@@ -1473,7 +1526,27 @@ onBeforeUnmount(() => {
           <span class="@max-[560px]:hidden" aria-hidden="true">{{ chatOn ? t('chatView.terminal') : t('chatView.chat') }}</span>
         </button>
         <button
-          v-if="canTools"
+          v-if="canTurn && pinned.has('turn')"
+          type="button"
+          class="relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink"
+          :class="isNext ? REVEAL : ''"
+          :title="turnLabel"
+          :aria-label="turnLabel"
+          data-no-drag
+          data-pane-turn
+          @click="openTurn"
+        >
+          <GitCompareArrows :size="12" aria-hidden="true" />
+          <span
+            v-if="turnCount"
+            class="absolute -top-1 -right-1 grid h-3 min-w-3 place-items-center rounded-full bg-accent px-0.5 text-[9px] leading-none font-bold text-on-accent tabular-nums"
+            aria-hidden="true"
+            data-pane-turn-count
+            >{{ turnCount }}</span
+          >
+        </button>
+        <button
+          v-if="canTools && pinned.has('tools')"
           type="button"
           class="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-inner text-ink-muted transition-colors duration-(--ccm-dur-fast) hover:bg-fill hover:text-ink"
           :class="isNext ? REVEAL : ''"
@@ -1650,6 +1723,7 @@ onBeforeUnmount(() => {
           </span>
         </button>
         <button
+          v-if="!demoted.includes('split')"
           ref="splitButton"
           type="button"
           class="ccm-btn-plain shrink-0 aria-expanded:bg-fill @max-[300px]:min-w-6 @max-[300px]:px-1"
@@ -1660,13 +1734,13 @@ onBeforeUnmount(() => {
           data-pane-split
           :aria-expanded="!!splitAnchor"
           :data-tour="focused ? 'ws-split' : undefined"
-          @click="toggleSplit"
+          @click="toggleSplit()"
         >
           <Columns2 :size="14" aria-hidden="true" />
         </button>
         <Teleport to="body">
           <Transition name="ccm-menu" @before-leave="retireOverlay">
-            <SplitMenu v-if="splitAnchor" :anchor="splitAnchor" :current="pane.preset" :trigger="splitButton" @pick="(p) => emit('split', p)" @close="splitAnchor = null" />
+            <SplitMenu v-if="splitAnchor" :anchor="splitAnchor" :current="pane.preset" :trigger="splitButton ?? more?.button" @pick="(p) => emit('split', p)" @close="splitAnchor = null" />
           </Transition>
         </Teleport>
         <button

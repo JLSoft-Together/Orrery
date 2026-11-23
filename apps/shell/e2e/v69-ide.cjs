@@ -129,7 +129,9 @@ async function main() {
     await shot('v69-04-overlap')
     await key('Escape', 'Escape', 27)
 
-    await evaluate(`document.querySelector(':is([data-pane="${radarKey}"], [data-pane-of="${radarKey}"]) [data-pane-worktrees]').click()`)
+    await evaluate(`document.querySelector(':is([data-pane="${radarKey}"], [data-pane-of="${radarKey}"]) [data-pane-more]').click()`)
+    await waitFor(`!!document.querySelector('[role=menu]')`, 5000, 'pane menu')
+    await evaluate(`[...document.querySelectorAll('[role=menu] [role=menuitem]')].find((b) => /Worktrees/.test(b.textContent)).click()`)
     await waitFor(`!!document.querySelector('[data-wt-compare-pick="main"]') && !!document.querySelector('[data-wt-compare-pick="feat"]')`, 15000, 'worktree menu').catch(() => {})
     await evaluate(`document.querySelector('[data-wt-compare-pick="main"]').click()`)
     await sleep(150)

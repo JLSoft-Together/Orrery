@@ -68,7 +68,7 @@ async function main() {
     ok('duration measured by the host (at least 1.5 s, under 15 s)', parsed.ms >= 1500 && parsed.ms < 15000, String(parsed.ms))
     ok('command line comes from the shell (nonce trusted)', parsed.command === SLOW, parsed.command)
     ok('out of sight: attention dot latched on the pane', (await evaluate(`${W}.panes.find((p) => p.key === '${a}').attention`)) === 'done')
-    ok('tab shows the failed tone', await evaluate(`!!document.querySelector('[data-tab-attention="fail"]')`))
+    ok('tab shows the failed tone', await evaluate(`!!document.querySelector('[data-tab-signal="error"]')`))
     const focused = await evaluate(`document.visibilityState === 'visible' && document.hasFocus()`)
     if (focused) {
       await waitFor(`!!document.querySelector('[data-shell-done-toast="${a}"]')`, 5000, 'toast').catch(() => {})

@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../core/lib/shareMode'
-import { BellRing, FolderTree, LayoutTemplate, Mail, Maximize2, PanelLeft, PanelRight, Play, Plus, Send, X } from 'lucide-vue-next'
+import { BellRing, FolderTree, LayoutTemplate, PanelLeft, PanelRight, Play, Plus, X } from 'lucide-vue-next'
 import type { TerminalStatus } from '@ccm/shared'
 import { useCompact } from '../../agent-tools/composables/useCompact'
 import { usePaneActions } from '../composables/usePaneActions'
@@ -11,7 +11,7 @@ import { useWorkspaceLinks } from '../composables/useWorkspaceLinks'
 import { installMcpCalls } from '../../../app/composables/useMcpCalls'
 import { installTelegramInbound } from '@features/telegram'
 import { useAgentStatusStore } from '../../monitor/stores/agentStatus'
-import { openTelegramGlyph, useTelegramLinks, useTelegramTopicUrl } from '@features/telegram'
+import { useTelegramLinks } from '@features/telegram'
 import { useProjectRoots } from '../composables/useProjectRoots'
 import { captureLayout } from '../lib/layouts'
 import { renamedPanePatches, trashedPaneKeys } from '../../files/lib/explorer/tree'
@@ -35,6 +35,9 @@ import { fitTabs, groupKeys, groupStarts, withinGroup } from '../lib/tabGroups'
 import { monogram, projectTone } from '../../rail/lib/projectRow'
 import { useFocusMode } from '../composables/useFocusMode'
 import { stepSlot, tabMoveIndex } from '../lib/tabStrip'
+import { handoffSteps, type HandoffImage } from '../lib/browserHandoff'
+import { useAttachmentsStore } from '../../agent-tools/stores/attachments'
+import { tabExtras, tabSignal, tabSignalLines, type TabExtra, type TabSignalInput, type TabSignalKind } from '../lib/tabSignals'
 import { isMenuKey } from '../../rail/lib/railMenu'
 import type { TipAction } from '@features/update'
 import { useTipsStore } from '@features/update'
@@ -387,15 +390,20 @@ function onQuickPick(target: { path: string; line?: number; split: boolean }): v
 }
 
 /** Browser → agent target; several candidates in other tabs → a picker, none → a notice. */
-const agentChoices = ref<{ from: string; text: string | null; panes: Pane[] } | null>(null)
+const agentChoices = ref<{ from: string; text: string | null; panes: Pane[]; image?: HandoffImage } | null>(null)
+const attachStore = useAttachmentsStore()
 const toasts = useToastsStore()
 
-function insertFromBrowser(browserKey: string, text: string | null): void {
+function insertFromBrowser(browserKey: string, text: string | null, image?: HandoffImage): void {
   const res = workspace.resolveAgentPane(browserKey)
-  if ('pane' in res) return deliver(res.pane.key, text)
-  if (res.choices.length === 1) return deliver(res.choices[0]!.key, text)
+  if ('pane' in res) return deliver(res.pane.key, text, image)
+  if (res.choices.length === 1) return deliver(res.choices[0]!.key, text, image)
   if (!res.choices.length) return showNotice(t('workspace.handoff.noTarget'))
-  agentChoices.value = { from: browserKey, text, panes: res.choices }
+  agentChoices.value = { from: browserKey, text, panes: res.choices, image }
+}
+
+function pickAgent(paneKey: string, text: string | null): void {
+  deliver(paneKey, text, agentChoices.value?.image)
 }
 
 function showNotice(text: string): void {
@@ -557,10 +565,13 @@ async function checkStart(paneKey: string): Promise<void> {
   if (start && paneOf(paneKey)) openLayout(start)
 }
 
-function deliver(paneKey: string, text: string | null): void {
+function deliver(paneKey: string, text: string | null, image?: HandoffImage): void {
   agentChoices.value = null
-  if (text === null) workspace.insertImage(paneKey)
-  else workspace.insertInto(paneKey, text)
+  for (const step of handoffSteps(text, image)) {
+    if (step === 'insertImage') workspace.insertImage(paneKey)
+    else if (step === 'insertText') workspace.insertInto(paneKey, text!)
+    else if (image) attachStore.add(paneKey, [{ kind: 'image', name: t('workspace.handoff.pickImage'), source: 'paste', data: image.data, thumb: image.thumb }])
+  }
 }
 
 function closeTab(tab: Tab): void {
@@ -1341,6 +1352,52 @@ function tabStatusText(tab: Tab): string {
   return s.subagents ? `${status}, ${t('workspace.subagentState.count', { n: s.subagents }, s.subagents)}` : status
 }
 
+function tabSignalInput(tab: Tab): TabSignalInput {
+  const s = tabState(tab)
+  return {
+    status: s?.status,
+    attention: tabAttention(tab),
+    shellFailed: tabMark(tab) === 'fail',
+    peer: !!tabNewsOf(tab),
+    telegram: !!telegramWhere(tab),
+    dirty: tabDirty(tab),
+    zoom: !!tabZoom(tab),
+    ended: !s && tabEnded(tab),
+  }
+}
+const tabSigs = computed(() => new Map(visibleTabs.value.map((tab) => [tab.key, tabSig0(tab)] as const)))
+function tabSig0(tab: Tab): { signal: TabSignalKind | null; extras: TabExtra[] } {
+  const input = tabSignalInput(tab)
+  return { signal: tabSignal(input), extras: tabExtras(input) }
+}
+const tabSig = (tab: Tab): { signal: TabSignalKind | null; extras: TabExtra[] } => tabSigs.value.get(tab.key) ?? { signal: null, extras: [] }
+
+function tabSignalText(tab: Tab, kind: TabSignalKind | TabExtra): string {
+  if (kind === 'waiting') return t('status.waiting')
+  if (kind === 'error') return tabMark(tab) === 'fail' ? t('shellDone.tabFail', { code: tabShellCode(tab) }) : t('status.error')
+  if (kind === 'working') return t('status.working')
+  if (kind === 'done') return t('status.completed')
+  if (kind === 'peer') return tabNewsOf(tab)?.label ?? ''
+  if (kind === 'telegram') return t('telegram.connect.linkedTo', { where: telegramWhere(tab) })
+  if (kind === 'dirty') return t('editor.unsaved')
+  if (kind === 'zoom') {
+    const n = leaves(tab.root).length - 1
+    return t('workspace.zoom.tabGlyph', { n }, n)
+  }
+  return t('workspace.ended')
+}
+
+function tabSignalTexts(tab: Tab): string[] {
+  const sig = tabSig(tab)
+  return tabSignalLines(sig.signal, sig.extras, (k) => tabSignalText(tab, k))
+}
+
+function tabAria(tab: Tab): string {
+  const subs = tabState(tab)?.subagents ?? 0
+  const running = subs ? t('workspace.subagentState.count', { n: subs }, subs) : ''
+  return [tabName(tab), ...tabSignalTexts(tab), running].filter(Boolean).join(', ')
+}
+
 const tabRow = ref<HTMLElement | null>(null)
 watch(
   tabRow,
@@ -1415,8 +1472,6 @@ function telegramPaneOf(tab: Tab): Pane | undefined {
 
 const telegramLink = useTelegramLinks()
 const telegramWhere = (tab: Tab): string | null => telegramLink(telegramPaneOf(tab))
-const telegramTopicUrlOf = useTelegramTopicUrl()
-const telegramGlyphTip = (tab: Tab): string => t(telegramTopicUrlOf(telegramPaneOf(tab)) ? 'telegram.connect.openTopic' : 'telegram.connect.linkedTo', { where: telegramWhere(tab) })
 const paneActions = usePaneActions()
 
 function openTabMenu(tab: Tab, at: DOMRect): void {
@@ -1737,7 +1792,7 @@ function tabTip(tab: Tab): string | undefined {
   const subs = tabState(tab)?.subagents ?? 0
   const running = subs ? t('workspace.subagentState.count', { n: subs }, subs) : ''
   const where = telegramWhere(tab)
-  return shown([tabName(tab), running, ...tabPeerLines(tab), tabDetail(tab), where ? t('telegram.connect.linkedTo', { where }) : '', hints, dock].filter(Boolean).join('\n')) || undefined
+  return shown([tabName(tab), ...tabSignalTexts(tab), running, ...tabPeerLines(tab), tabDetail(tab), where ? t('telegram.connect.linkedTo', { where }) : '', hints, dock].filter(Boolean).join('\n')) || undefined
 }
 
 function tabDetail(tab: Tab): string | undefined {
@@ -1910,18 +1965,19 @@ onBeforeUnmount(() => {
             :tabindex="tab === workspace.activeTab ? 0 : -1"
             class="inline-flex h-full max-w-[260px] min-w-0 cursor-pointer items-center gap-1.5 pr-1 pl-2.5"
             :title="tabTip(tab)"
+            :aria-label="tabAria(tab)"
             @click="onTabClick(tab)"
             @dblclick.stop="startRename(tab)"
             @keydown="onTabKey($event, tab, i)"
           >
             <span v-if="isNext" class="ccm-next-mono relative" :data-tone="tabTone(tab)" aria-hidden="true" data-tab-mono>
               {{ tabMono(tab) }}
-              <span v-if="tabState(tab)" class="ccm-next-mono-dot" :class="statusMeta(tabState(tab)!.status).text" :data-tab-status="tabState(tab)?.status" />
+              <span v-if="tabSig(tab).signal" class="ccm-next-mono-dot" :class="statusMeta(tabSig(tab).signal!).text" :data-tab-signal="tabSig(tab).signal" :data-tab-status="tabSig(tab).signal" />
             </span>
             <span v-else class="grid size-[13px] shrink-0 place-items-center *:[grid-area:1/1]">
               <Transition name="ccm-fade">
-                <span :key="tabState(tab)?.status ?? 'pane'" class="inline-flex" :data-tab-status="tabState(tab)?.status">
-                  <span v-if="tabState(tab)" class="size-[7px] rounded-full bg-current" :class="statusMeta(tabState(tab)!.status).text" aria-hidden="true" />
+                <span :key="tabSig(tab).signal ?? 'pane'" class="inline-flex" :data-tab-signal="tabSig(tab).signal ?? undefined" :data-tab-status="tabSig(tab).signal ?? undefined" aria-hidden="true">
+                  <StatusIcon v-if="tabSig(tab).signal" :status="tabSig(tab).signal!" :size="13" :animate="false" />
                   <PaneIcon v-else-if="tabPrimary(tab)" :pane="tabPrimary(tab)!" :size="13" class="shrink-0" />
                 </span>
               </Transition>
@@ -1932,52 +1988,6 @@ onBeforeUnmount(() => {
               :class="labelFlash[tab.key] ? 'ccm-highlight' : ''"
               data-tab-label
             >{{ tabName(tab) }}</span>
-            <span :class="isNext ? 'ccm-next-extra' : 'contents'"><span :class="isNext ? 'ccm-next-extra-in' : 'contents'">
-            <Transition name="ccm-fade">
-              <span v-if="tabNewsOf(tab)" class="inline-flex shrink-0 text-peer" :data-tab-peer="tabNewsOf(tab)!.dir">
-                <Mail :size="10" aria-hidden="true" />
-                <span class="sr-only">{{ tabNewsOf(tab)!.label }}</span>
-              </span>
-            </Transition>
-            <span
-              v-if="telegramWhere(tab)"
-              role="button"
-              tabindex="0"
-              class="inline-flex shrink-0 cursor-pointer rounded-[3px] text-ink-faint hover:text-ink"
-              :title="telegramGlyphTip(tab)"
-              :aria-label="telegramGlyphTip(tab)"
-              data-tab-telegram
-              data-no-drag
-              @click.stop="openTelegramGlyph(telegramPaneOf(tab), tabName(tab))"
-              @keydown.enter.space.prevent.stop="openTelegramGlyph(telegramPaneOf(tab), tabName(tab))"
-            >
-              <Send :size="10" aria-hidden="true" />
-            </span>
-            <span v-if="leaves(tab.root).some((k) => paneOf(k)?.dirty)" class="shrink-0 text-warning" :title="t('editor.unsaved')" data-tab-dirty>
-              <span aria-hidden="true">●</span><span class="sr-only">{{ t('editor.unsaved') }}</span>
-            </span>
-            <Transition name="ccm-fade">
-              <span
-                v-if="tabZoom(tab)"
-                class="inline-flex shrink-0 text-accent-ink"
-                :title="t('workspace.zoom.tabGlyph', { n: leaves(tab.root).length - 1 }, leaves(tab.root).length - 1)"
-                data-tab-zoom
-              >
-                <Maximize2 :size="11" aria-hidden="true" />
-                <span class="sr-only">{{ t('workspace.zoom.tabGlyph', { n: leaves(tab.root).length - 1 }, leaves(tab.root).length - 1) }}</span>
-              </span>
-            </Transition>
-            </span></span>
-            <span v-if="isNext && tabDirty(tab)" class="shrink-0 text-warning" data-tab-dirty-next>
-              <span aria-hidden="true">●</span><span class="sr-only">{{ t('editor.unsaved') }}</span>
-            </span>
-            <span v-if="isNext && !tabAttention(tab) && tabState(tab)?.status === 'error'" class="sr-only" data-tab-attention="error">{{ t('v107gon.tabs.error') }}</span>
-            <span v-if="tabAttention(tab) === 'waiting'" class="sr-only" data-tab-attention="waiting">{{ t('paneV92.wait') }}</span>
-            <span v-else-if="tabAttention(tab)" class="inline-flex shrink-0" aria-hidden="true" :data-tab-attention="tabMark(tab)">
-              <StatusIcon :status="tabMark(tab) === 'fail' ? 'error' : 'completed'" :size="12" :animate="false" />
-            </span>
-            <span v-if="tabMark(tab) === 'fail'" class="sr-only">{{ t('shellDone.tabFail', { code: tabShellCode(tab) }) }}</span>
-            <span v-if="tabStatusText(tab)" class="sr-only">{{ tabStatusText(tab) }}</span>
           </button>
           <button
             type="button"
@@ -2149,7 +2159,7 @@ onBeforeUnmount(() => {
             @navigate="(url) => workspace.update(pane.key, { url })"
             @title="(title) => workspace.update(pane.key, { title })"
             @favicon="(favicon) => workspace.update(pane.key, { favicon })"
-            @insert-text="(text) => insertFromBrowser(pane.key, text)"
+            @insert-text="(text, image) => insertFromBrowser(pane.key, text, image)"
             @insert-image="insertFromBrowser(pane.key, null)"
           >
             <template #toolbar-end>
@@ -2415,7 +2425,7 @@ onBeforeUnmount(() => {
       @open="openLayout"
     />
 
-    <AgentChoiceDialog :choices="agentChoices" @cancel="agentChoices = null" @pick="deliver" />
+    <AgentChoiceDialog :choices="agentChoices" @cancel="agentChoices = null" @pick="pickAgent" />
     <ShortcutTip :visible="visible" />
   </main>
 </template>

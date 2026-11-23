@@ -28,6 +28,7 @@
 - Terminal chạy trong core-pty (Rust); trang chỉ giữ xterm + WebSocket. `claim` input khi chủ nhân gõ thật (xem `core-pty.md`).
 - Đóng pane có thể hoàn tác (agent quay lại bằng `--resume`).
 - Footer (WP-112b): `lib/footerChips.ts::planFooterChips` chia chip: luôn hiện running / waiting / setup, context vượt ngưỡng, branch >= 30 thay đổi, focus đang bật; còn lại vào popover `...` (`data-ws-footer-more`). CPU / RAM (`footerSys`) và Share luôn hiện.
+- Header pane agent (WP-112a): `lib/paneHeadActions.ts` chọn nút thường trực (Đính kèm, Chat, Changes lượt này `data-pane-turn`, MCP) theo bề rộng pane; Split và worktree của pane agent vào menu `...` (pane shell giữ nguyên). Tab chỉ 1 tín hiệu (`lib/tabSignals.ts`: chờ bạn > lỗi > đang chạy), phần phụ vào tooltip + aria-label (`data-tab-signal`). `lib/browserHandoff.ts`: ảnh cắt từ Browser đi theo `deliver` kể cả khi chọn agent.
 - Vòng phụ thuộc workspace <-> rail / next / files / git / run / agent-tools / monitor: các feature import sâu `stores/workspace`.
 
 ## Liên kết

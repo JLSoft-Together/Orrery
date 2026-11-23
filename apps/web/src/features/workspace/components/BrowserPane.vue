@@ -17,7 +17,6 @@ import {
   type HandoffAction,
 } from '../../agent-tools/lib/agentHandoff'
 import { cropToAttachment } from '../../agent-tools/lib/elementCrop'
-import { useAttachmentsStore } from '../../agent-tools/stores/attachments'
 import { useWorkspaceStore } from '../stores/workspace'
 import { pickElementKey } from '../lib/workspaceKeys'
 import { DEVICES, frameFit, type DeviceId } from '@features/devices'
@@ -69,14 +68,13 @@ const emit = defineEmits<{
   title: [title: string]
   favicon: [url: string | null]
   /** Text for the target agent's input line (bracketed paste, never submitted). */
-  insertText: [text: string]
+  insertText: [text: string, image?: { data: string; thumb: string }]
   /** A screenshot is on the clipboard; the target terminal pastes it (^V) into the agent input. */
   insertImage: []
 }>()
 
 const { t } = useI18n()
 const workspace = useWorkspaceStore()
-const attachments = useAttachmentsStore()
 const isMac = /Mac/i.test(navigator.platform || navigator.userAgent)
 
 const initialSrc = ref<string | null>(null)
@@ -330,8 +328,7 @@ async function pickElement(): Promise<void> {
     if (pick) {
       if (pick.source) pick.source = relativeSource(pick.source, props.cwd)
       const image = pick.rect ? await captureCrop(wv, pick.rect) : null
-      emit('insertText', formatElementBlock(pick))
-      if (image) attachImage(image)
+      emit('insertText', formatElementBlock(pick), image ?? undefined)
       note(t('workspace.handoff.inserted'))
     }
   } catch {
@@ -348,13 +345,6 @@ async function captureCrop(wv: WebviewEl, rect: PickRect): Promise<{ data: strin
   } catch {
     return null
   }
-}
-
-function attachImage(image: { data: string; thumb: string }): void {
-  const res = workspace.resolveAgentPane(props.paneKey ?? '')
-  const pane = 'pane' in res ? res.pane : res.choices.length === 1 ? res.choices[0] : null
-  if (!pane) return
-  attachments.add(pane.key, [{ kind: 'image', name: t('workspace.handoff.pickImage'), source: 'paste', data: image.data, thumb: image.thumb }])
 }
 
 function cancelPick(): void {

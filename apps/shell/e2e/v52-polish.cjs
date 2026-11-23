@@ -131,7 +131,7 @@ async function run(app) {
   await sleep(500)
   check('F1: Ctrl+Shift+Enter zooms the focused pane', (await evaluate(`${W}.tabOf('${first}').zoom`)) === first && (await visiblePanes()).length === 1)
   check('F1: zoomed header offers "+1" to show the rest', /\+?1/.test(await evaluate(`document.querySelector(':is([data-pane="${first}"], [data-pane-of="${first}"]) [data-pane-hidden]')?.textContent ?? ''`)))
-  check('F1: zoomed tab carries a glyph in the strip', await evaluate(`!!document.querySelector('[data-tab-item="${tab}"] [data-tab-zoom]')`))
+  check('F1: zoomed tab names the zoom in its label, with no glyph', await evaluate(`/Zoomed/.test(document.querySelector('[data-tab-item="${tab}"] [data-tab]')?.getAttribute('aria-label') ?? '') && !document.querySelector('[data-tab-item="${tab}"] [data-tab-zoom]')`))
   await shot('v52-04-zoomed')
   await click(`:is([data-pane="${first}"], [data-pane-of="${first}"]) [data-pane-hidden]`)
   await sleep(500)

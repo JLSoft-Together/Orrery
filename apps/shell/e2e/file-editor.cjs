@@ -68,7 +68,7 @@ async function run(app) {
   await focusEditor()
   await type('hello ')
   await waitFor(`!!document.querySelector('[data-file-dirty]')`, 3000, 'dirty mark').catch(() => {})
-  check('typing marks the pane dirty (●)', await evaluate(`!!document.querySelector('[data-file-dirty]') && !!document.querySelector('[data-tab-dirty]')`))
+  check('typing marks the pane dirty (●)', await evaluate(`!!document.querySelector('[data-file-dirty]') && /Unsaved changes/.test(document.querySelector('[data-tab][aria-selected="true"]')?.getAttribute('aria-label') ?? '')`))
   await shot('editor-1-dirty')
   await save()
   await waitFor(`!document.querySelector('[data-file-dirty]')`, 5000, 'saved').catch(() => {})

@@ -3,7 +3,8 @@ import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMo
 import { useI18n } from 'vue-i18n'
 import PaneHeader from '../../next/components/ui/PaneHeader.vue'
 import { useUiGenStore } from '../../next/stores/uiGen'
-import { Check, CheckCheck, ChevronRight, FileWarning, GitMerge, Folder, GitBranch, GitCompare, GitGraph, ListTree, RotateCw, SlidersHorizontal, SquareArrowOutUpRight, SquareCheck, SquareMinus, SquarePlus, Undo2 } from 'lucide-vue-next'
+import EmptyState from '../../../core/components/EmptyState.vue'
+import { Archive, Check, CheckCheck, ChevronRight, FileWarning, GitMerge, Folder, GitBranch, GitCompare, GitGraph, ListTree, RotateCw, SlidersHorizontal, SquareArrowOutUpRight, SquareCheck, SquareMinus, SquarePlus, Undo2 } from 'lucide-vue-next'
 import { absoluteIn, dirOfRel, fileStepKey, groupChanges, type ChangeGroupKey, KIND_CLASS, KIND_LETTER, samePath, scrollSideways, stageState } from '../lib/changesView'
 import { changesTree, type ChangesTreeRow } from '../lib/changesTree'
 import { markAllSeen, markSeen, readSeen, setUnseenCount, splitUnseen } from '@features/agent-tools'
@@ -28,8 +29,10 @@ import {
   hasCommit,
   hasGitShowImage,
   hasLog,
+  hasStash,
   mergeAbort,
   mergeState,
+  stashRun,
   onChangesUpdated,
   type ChangeEntry,
   type ChangesError,
@@ -40,6 +43,8 @@ import type { MenuEntry } from '../../../core/lib/menu'
 import DiffView from './DiffView.vue'
 import DiffCommentBar from '../../diffComments/DiffCommentBar.vue'
 import DiscardConfirm from './DiscardConfirm.vue'
+import StashDialog from './StashDialog.vue'
+import { defaultStashName, stashErrorKey } from '../lib/stash'
 import PaneMore from '../../workspace/components/PaneMore.vue'
 import { SessionFilterBar } from '@features/agent-tools'
 import { filterEntries, splitBySession, UNKNOWN_FILTER, validFilter } from '@features/agent-tools'
@@ -735,12 +740,31 @@ const headMore = computed<MenuEntry[]>(() => {
   ]
   if (unseenCount.value) out.push({ id: 'seen', label: t('linksV80.markSeen'), icon: CheckCheck })
   if (hasLog && repoRoot.value) out.push({ id: 'log', label: t('workspace.log.open'), icon: GitGraph })
+  if (canStash.value) out.push({ id: 'stash', label: t('v112stash.menu'), icon: Archive })
   out.push({ id: 'refresh', label: t('workspace.changes.refresh'), icon: RotateCw })
   const layout = (isNext.value && props.paneKey ? layoutMenu?.entries(props.paneKey) : null) ?? []
   if (layout.length) out.push({ separator: true }, ...layout)
   return out
 })
 
+
+const stashAsk = ref<{ name: string; branch: string | null; hasUntracked: boolean; busy: boolean } | null>(null)
+const canStash = computed(() => hasStash && !!repoRoot.value && entries.value.length > 0)
+
+function askStash(): void {
+  stashAsk.value = { name: defaultStashName(branch.value, new Date()), branch: branch.value, hasUntracked: entries.value.some((e) => e.kind === 'untracked'), busy: false }
+}
+
+async function doStash(name: string, untracked: boolean): Promise<void> {
+  const root = repoRoot.value
+  const ask = stashAsk.value
+  if (!root || !ask) return
+  stashAsk.value = { ...ask, busy: true }
+  const res = await stashRun(root, { op: 'push', name, untracked })
+  stashAsk.value = null
+  notice.value = res.ok ? t('v112stash.stashed') : t(stashErrorKey(res.error), { detail: res.ok ? '' : (res.detail ?? '') })
+  await loadStatus()
+}
 function pickHead(id: string): void {
   if (props.paneKey && layoutMenu?.pick(props.paneKey, id)) return
   if (id === 'tree') treeMode.value = !treeMode.value
@@ -748,6 +772,7 @@ function pickHead(id: string): void {
   else if (id === 'layout:split') setOpt('layout', 'split')
   else if (id === 'log' && repoRoot.value) emit('log', repoRoot.value)
   else if (id === 'seen') markAllReviewed()
+  else if (id === 'stash') askStash()
   else if (id === 'refresh') void loadStatus()
 }
 </script>
@@ -938,11 +963,11 @@ function pickHead(id: string): void {
     </div>
     <div v-else-if="loading" class="grid min-h-0 flex-1 place-items-center text-xs text-ink-muted" role="status">{{ t('workspace.changes.loading') }}</div>
     <div v-else-if="!entries.length" class="grid min-h-0 flex-1 place-items-center p-6">
-      <div class="flex max-w-sm flex-col items-center gap-1.5 text-center">
-        <GitCompare :size="26" class="text-ink-faint" aria-hidden="true" />
-        <p class="text-sm font-medium text-ink">{{ t('workspace.changes.empty') }}</p>
-        <p class="text-xs text-ink-muted">{{ t('workspace.changes.emptyHint') }}</p>
-      </div>
+      <EmptyState :title="t('workspace.changes.empty')" :hint="t('workspace.changes.emptyHint')" :icon="GitCompare">
+        <template v-if="hasLog && repoRoot" #actions>
+          <button type="button" class="ccm-btn" data-changes-empty-log @click="emit('log', repoRoot)"><GitGraph :size="14" aria-hidden="true" />{{ t('v111empty.openLog') }}</button>
+        </template>
+      </EmptyState>
     </div>
 
     <div v-else class="flex min-h-0 flex-1 flex-col @2xl:flex-row">
@@ -1154,6 +1179,7 @@ function pickHead(id: string): void {
       </div>
     </div>
 
+    <StashDialog :request="stashAsk" @submit="doStash" @close="stashAsk = null" />
     <DiscardConfirm
       v-if="pending && confirmText"
       :title="confirmText.title"

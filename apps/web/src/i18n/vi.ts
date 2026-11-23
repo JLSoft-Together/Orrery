@@ -46,6 +46,8 @@ import peerMapV54 from '../features/map/i18n/peer-map-v54'
 import peerWsV54 from '../features/map/i18n/peer-ws-v54'
 import githubV58 from '../features/settings/i18n/github-v58'
 import prV111 from '../features/git/i18n/pr-v111'
+import v111Empty from './v111-empty'
+import stashV112 from '../features/git/i18n/stash-v112'
 import devicesV61 from '../features/devices/i18n/devices-v61'
 import whatsNewV71 from '../features/update/i18n/whats-new-v71'
 import devicesV72 from '../features/devices/i18n/devices-v72'
@@ -118,6 +120,7 @@ import diffCommentsV109 from '../features/diffComments/i18n'
 import secretGuardV109 from '../features/secretGuard/i18n'
 import termSearchV109 from '../features/termSearch/i18n'
 import shareModeV109 from '../features/shareMode/i18n'
+import termHistoryV112 from '../features/workspace/i18n/term-history'
 import v105U3 from '../features/next/i18n/v105-u3'
 
 const vi: typeof en = {
@@ -138,6 +141,7 @@ const vi: typeof en = {
   ...secretGuardV109.vi,
   ...termSearchV109.vi,
   ...shareModeV109.vi,
+  ...termHistoryV112.vi,
   ...v105U3.vi,
   ...diskV101.vi,
   ...diskCleanV101.vi,
@@ -171,6 +175,8 @@ const vi: typeof en = {
   ...peerWsV54.vi,
   ...githubV58.vi,
   ...prV111.vi,
+  ...v111Empty.vi,
+  ...stashV112.vi,
   ...devicesV61.vi,
   ...whatsNewV71.vi,
   ...devicesV72.vi,

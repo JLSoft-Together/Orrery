@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronsLeft, Hand } from 'lucide-vue-next'
+import { ChevronsLeft, Hand, LayoutGrid } from 'lucide-vue-next'
 import { useSessionMenu } from '../../monitor/composables/useSessionMenu'
 import { columnTemplate, isStrip, laneSessions } from '../lib/boardV95'
 import { MONITOR_COLUMNS } from '../../monitor/lib/monitorRows'
@@ -11,6 +11,7 @@ import { useConnectionStore } from '../../../app/stores/connection'
 import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useUiStore } from '../../../core/stores/ui'
 import ContextMenu from '../../../core/components/ui/ContextMenu.vue'
+import EmptyState from '../../../core/components/EmptyState.vue'
 import BoardCard from './BoardCard.vue'
 import BoardDone from './BoardDone.vue'
 
@@ -52,7 +53,13 @@ const empty = computed(() => connection.hasData && terminals.list.length === 0)
     data-monitor-board
     v-bind="freezeBind"
   >
-    <p v-if="empty" class="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-muted">{{ t('sessions.empty') }}</p>
+    <div v-if="empty" class="grid min-h-full place-items-center rounded-card border border-dashed border-line-strong">
+      <EmptyState :title="t('sessions.empty')" :icon="LayoutGrid">
+        <template #actions>
+          <button type="button" class="ccm-btn ccm-btn-primary" data-board-empty-open @click="ui.setView('workspace')">{{ t('v111empty.openProject') }}</button>
+        </template>
+      </EmptyState>
+    </div>
     <div
       v-else-if="ui.monitorGroupBy !== 'status'"
       class="grid min-h-full content-start gap-3"

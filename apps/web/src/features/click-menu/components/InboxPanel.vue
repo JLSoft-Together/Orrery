@@ -14,6 +14,8 @@ import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useToastsStore } from '../../../core/stores/toasts'
 import { useWorkspaceStore, workCwd } from '../../workspace/stores/workspace'
 import StatusIcon from '../../../core/components/StatusIcon.vue'
+import EmptyState from '../../../core/components/EmptyState.vue'
+import { useUiStore } from '../../../core/stores/ui'
 
 const props = defineProps<{ anchor: DOMRect; trigger?: HTMLElement | null }>()
 const emit = defineEmits<{ close: [] }>()
@@ -22,6 +24,7 @@ const inbox = useInboxStore()
 const terminals = useTerminalsStore()
 const workspace = useWorkspaceStore()
 const toasts = useToastsStore()
+const ui = useUiStore()
 const info = usePaneInfo()
 const turnChanges = useTurnChanges()
 
@@ -39,6 +42,11 @@ interface Row {
   since: string | null
   project: string
   cwd?: string
+}
+
+function openSession(): void {
+  ui.setView('workspace')
+  emit('close')
 }
 
 function reasonOf(i: InboxItem): string {
@@ -214,7 +222,13 @@ onMounted(() => {
           </li>
         </ul>
       </section>
-      <p v-if="!rows.length" class="px-3 py-4 text-center text-xs text-ink-faint">{{ t('inbox.empty') }}</p>
+      <div v-if="!rows.length" class="flex justify-center">
+        <EmptyState :title="t('inbox.empty')" :icon="Inbox" compact>
+          <template #actions>
+            <button type="button" class="ccm-btn h-7 text-xs" data-inbox-empty-action @click="openSession()">{{ t('v111empty.openSession') }}</button>
+          </template>
+        </EmptyState>
+      </div>
     </div>
   </div>
 </template>

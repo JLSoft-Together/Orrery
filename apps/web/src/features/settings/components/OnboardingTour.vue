@@ -10,11 +10,13 @@ import { keyCombo, shortcutText } from '../../shortcuts/lib/shortcuts'
 import { TOURS, markTourDone, tourDone, tourFor, type TourId } from '../lib/tour'
 import { useUiStore } from '../../../core/stores/ui'
 import { useUiGenStore } from '../../next/stores/uiGen'
+import { useWorkspaceStore } from '../../workspace/stores/workspace'
 import ArtImage from '../../../core/components/ArtImage.vue'
 
 const { t } = useI18n()
 const ui = useUiStore()
 const uiGen = useUiGenStore()
+const workspace = useWorkspaceStore()
 const tips = ref<TourId | null>(null)
 const tipItems = computed(() => {
   const id = tips.value
@@ -195,6 +197,7 @@ function offerTour(view: string): void {
   const id = tourFor(view, hasTerminals)
   window.clearTimeout(offerTimer)
   if (!id || tourDone(id)) return
+  if (id === 'workspace' && !workspace.tabs.length) return
   offerTimer = window.setTimeout(() => {
     if (!ui.tourOpen && !tips.value && !ui.setupOpen && !ui.whatsNewOpen && !ui.compact && ui.view === view && !tourDone(id)) ui.tourOpen = id
   }, id === 'monitor' ? 800 : 600)
@@ -202,6 +205,10 @@ function offerTour(view: string): void {
 watch(
   () => ui.view,
   (view) => mounted && offerTour(view),
+)
+watch(
+  () => workspace.tabs.length,
+  (n) => mounted && n > 0 && offerTour(ui.view),
 )
 // Quick setup goes first on a fresh install; the guide follows once it is closed.
 watch(

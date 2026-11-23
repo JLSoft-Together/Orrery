@@ -18,11 +18,11 @@ async function main() {
 
     const state = await evaluate(`window.ccmDesktop.hooksState()`)
     check('hooks state reads settings.json', ['ours', 'partial', 'none', 'unreadable'].includes(state), String(state))
-    await evaluate(`${UI}.setupOpen = true`)
-    const rows = await waitFor(`document.querySelector('[data-quick-setup]') && [...document.querySelectorAll('[data-setup-row]')].map(r => r.dataset.setupRow).join(',')`, 15000, 'quick setup').catch(() => '')
+    await evaluate(`${UI}.settingsPage = 'general'; ${UI}.settingsOpen = true`)
+    const rows = await waitFor(`document.querySelector('[data-setup-row="hooks"]') && [...document.querySelectorAll('[data-setup-row]')].map(r => r.dataset.setupRow).join(',')`, 15000, 'setup checklist').catch(() => '')
     check('quick setup lists the hook bridge', rows.includes('hooks'), rows)
     await sleep(300); await shot('v67-01-setup-hooks')
-    await evaluate(`${UI}.setupOpen = false`)
+    await evaluate(`${UI}.settingsOpen = false`)
     await sleep(400)
 
     const now = new Date().toISOString()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, FileText, GraduationCap, ListChecks, Sparkles, Stethoscope } from 'lucide-vue-next'
+import { ChevronRight, FileText, GraduationCap, Sparkles, Stethoscope } from 'lucide-vue-next'
 import { APP_VERSION } from '@features/update'
 import { desktop, hasTerminals } from '../../../core/lib/desktop'
 import { hasUpdater } from '@features/update'
@@ -23,7 +23,6 @@ const helpItems = computed<{ key: string; icon: Component; label: string; hint: 
   { key: 'tour', icon: GraduationCap, label: t('tour.open'), hint: t('settings.tourHint'), run: () => (ui.tourOpen = 'monitor') },
   ...(hasTerminals ? [{ key: 'wsTour', icon: GraduationCap, label: t('wsHelp.tour'), hint: t('wsTour.welcome.title'), run: () => (ui.tourOpen = 'workspace' as const) }] : []),
   { key: 'diag', icon: Stethoscope, label: t('diag.open'), hint: t('settings.diagHint'), run: () => (ui.diagnosticsOpen = true) },
-  ...(desktop ? [{ key: 'setup', icon: ListChecks, label: t('setup.open'), hint: t('setup.openHint'), run: () => (ui.setupOpen = true) }] : []),
   { key: 'fonts', icon: FileText, label: t('fonts.licenses'), hint: t('fonts.licensesHint'), run: openFontLicenses },
   ...(hasTerminals ? [{ key: 'fileIcons', icon: FileText, label: t('settings.fileIconsLicense'), hint: t('settings.fileIconsLicenseHint'), run: openIconLicense }] : []),
   { key: 'habblaud', icon: FileText, label: t('settings.habblaudLicense'), hint: t('settings.habblaudLicenseHint'), run: openHabblaudLicense },

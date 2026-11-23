@@ -107,6 +107,7 @@ export const NOTIFY_ROWS: { kind: ToastKind; inApp?: 'notifyWaiting' | 'notifyDo
 type RawEntry = Omit<SettingsEntry, 'page'> & { page: SettingsPageInput }
 
 const rawEntries = (mac: boolean): RawEntry[] => [
+  { page: 'general', id: 'setup', labelKey: 'setup.checklist', hintKey: 'setup.openHint', needs: 'desktop' },
   { page: 'general', id: 'language', labelKey: 'settings.language' },
   { page: 'general', id: 'loginItem', labelKey: mac ? 'settings.loginItemMac' : 'settings.loginItem', hintKey: mac ? 'settings.loginItemHintMac' : 'settings.loginItemHint', needs: 'loginItem' },
   { page: 'general', id: 'restore', labelKey: 'wsRestore.mode', hintKey: 'wsRestore.modeHint', needs: 'terminals' },
@@ -205,7 +206,6 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'about', id: 'help-wsTour', labelKey: 'wsHelp.tour', needs: 'terminals' },
   { page: 'about', id: 'bugReport', labelKey: 'bugReport.section', hintKey: 'bugReport.hint', needs: 'bugReport' },
   { page: 'about', id: 'help-diag', labelKey: 'diag.open', hintKey: 'settings.diagHint' },
-  { page: 'about', id: 'help-setup', labelKey: 'setup.open', hintKey: 'setup.openHint', needs: 'desktop' },
   { page: 'about', id: 'help-fonts', labelKey: 'fonts.licenses', hintKey: 'fonts.licensesHint' },
   { page: 'about', id: 'help-fileIcons', labelKey: 'settings.fileIconsLicense', hintKey: 'settings.fileIconsLicenseHint', needs: 'terminals' },
   { page: 'about', id: 'help-habblaud', labelKey: 'settings.habblaudLicense', hintKey: 'settings.habblaudLicenseHint' },

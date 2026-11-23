@@ -13,6 +13,7 @@ import { useUiStore } from './core/stores/ui'
 import { useWorkspaceStore } from './features/workspace/stores/workspace'
 import { useTaskbarBadge } from './features/notify/useTaskbarBadge'
 import { useTrayWaiting } from './features/notify/useTrayWaiting'
+import { useCiEvents } from '@features/git'
 import { gateDeepSeekAgent, warmDeepSeek } from './features/deepseek'
 import AppHeader from './app/components/AppHeader.vue'
 import NextShell from './features/next/components/NextShell.vue'
@@ -22,7 +23,6 @@ import { CommandPalette } from '@features/palette'
 import OnboardingTour from './features/settings/components/OnboardingTour.vue'
 import ToastHost from './core/components/ToastHost.vue'
 import { hasBuildClean } from '@features/disk'
-import QuickSetup from './features/settings/components/QuickSetup.vue'
 import { WhatsNewDialog, useUpdateStore } from '@features/update'
 import NextInvite from './features/next/components/NextInvite.vue'
 import { lazyOverlay } from './core/lib/lazyOverlay'
@@ -68,6 +68,7 @@ useTurnCheckpoints()
 useNotifications()
 useTaskbarBadge()
 useTrayWaiting()
+useCiEvents()
 useBreakReminder()
 useAppToasts()
 useBugReportPrompts()
@@ -77,7 +78,7 @@ const update = useUpdateStore()
 update.start()
 const resources = useResourcesStore()
 
-// Opened only by a menu / shortcut / palette entry; QuickSetup, OnboardingTour and WhatsNewDialog stay eager because they open themselves at launch, CommandPalette because it owns Ctrl+K.
+// Opened only by a menu / shortcut / palette entry; OnboardingTour and WhatsNewDialog stay eager because they open themselves at launch, CommandPalette because it owns Ctrl+K.
 const recap = lazyOverlay(() => import('./features/history/components/RecapDialog.vue'), () => ui.recapOpen)
 const diagnostics = lazyOverlay(() => import('./features/resources/components/DiagnosticsDialog.vue'), () => ui.diagnosticsOpen)
 const resourcesDialog = lazyOverlay(() => import('./features/resources/components/ResourcesDialog.vue'), () => resources.open)
@@ -255,7 +256,6 @@ onBeforeUnmount(() => {
     <component :is="resourcesDialog.Comp" v-if="resourcesDialog.mounted.value" />
     <BuildCleanDialog v-if="ui.buildClean && hasBuildClean && !diskCleanOn":dir="ui.buildClean.dir" @close="ui.buildClean = null" />
     <SessionToolsSheet v-if="ui.sessionTools" :key="`${ui.sessionTools.dir}|${ui.sessionTools.paneKey ?? ''}`" :dir="ui.sessionTools.dir" :pane-key="ui.sessionTools.paneKey" :session-id="ui.sessionTools.sessionId" @close="ui.sessionTools = null" />
-    <QuickSetup />
     <OnboardingTour />
     <WhatsNewDialog />
     <NextInvite />

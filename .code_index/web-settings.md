@@ -25,3 +25,4 @@
 ## Liên kết
 
 - Phía desktop: `core-desk.md` (`extensions/`, `claude_hooks/`, `github/`, `update/`, `backup/`). Phát hành: `shell.md`. Plan: `.planning/PLAN-v28-*.md`, `PLAN-v58-github-accounts.md`. E2E: `extensions`, `github-accounts`, `whats-new`, `v27`.
+- 2026-11-23 WP-112b: Quick Setup không còn modal. `lib/setupChecklist.ts` (store `setupChecklist`: trạng thái notify / toast / sound / statusLine / hooks / folder, `pendingSetup`, chip ẩn qua `ccm.setupChip.hidden`, `ccm.setupDone` cũ coi như đã ẩn), `components/SetupChecklist.vue` (đầu trang General, `data-setup-row`), chip nhắc ở `WorkspaceFooter.vue`. `OnboardingTour.vue` tour workspace chờ `workspace.tabs.length > 0`. E2E: `v112b-first-run`.

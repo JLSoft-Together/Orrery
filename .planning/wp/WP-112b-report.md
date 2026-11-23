@@ -1,0 +1,26 @@
+## WP-112b — DONE
+- Đã đổi:
+  - `apps/web/src/features/workspace/lib/footerChips.ts` (+ `footerChips.test.ts`): `planFooterChips` chia chip hiện / popover.
+  - `apps/web/src/features/workspace/components/WorkspaceFooter.vue`: dùng plan; chip "Setup: N left" + nút ẩn; chip `...` mở popover (Teleport, Esc / click ngoài đóng). CPU/RAM (`FooterSysChip`) và Share giữ nguyên, luôn hiện.
+  - `apps/web/src/features/settings/lib/setupChecklist.ts` (+ test): store trạng thái 6 mục cũ của QuickSetup, `pendingSetup`, ẩn chip (`ccm.setupChip.hidden`; `ccm.setupDone` cũ coi như đã ẩn nên E2E cũ không đổi).
+  - `apps/web/src/features/settings/components/SetupChecklist.vue` (mới, đầu trang General), `SettingsGeneral.vue`, `components/index.ts` (entry tìm kiếm `setup` thay `help-setup`), `SettingsAbout.vue` (bỏ dòng mở modal).
+  - Xoá `QuickSetup.vue`; `App.vue` bỏ `<QuickSetup />`; `CommandPalette.vue` lệnh "Quick setup" mở Settings General + flash.
+  - `OnboardingTour.vue`: tour workspace chỉ chạy khi `workspace.tabs.length > 0`, tự mời lại khi có tab đầu.
+  - i18n: `features/workspace/i18n/footer-v92.ts` (`wsFooter.more`, `moreAria`), `workspace-v27.ts` (`setup.checklist/left/allDone/hideChip/showChip/chip/chipAria/chipHide`); snapshot `keys.en.txt` / `keys.vi.txt` thêm tay 10 key.
+  - E2E: mới `apps/shell/e2e/v112b-first-run.cjs`; sửa `v27.cjs`, `v67-ide.cjs` (hết dựa vào modal).
+  - `.code_index/_meta.md`, `web-settings.md`, `web-workspace.md`.
+- Tiêu chí: 3/3 đạt.
+  - Quy tắc footer: luôn hiện running / waiting / setup; context vượt `contextWarnTokens`; branch từ 30 thay đổi; focus khi đang bật; còn lại (ports, tokens, branch, context, focus) vào popover.
+  - Màn đầu: dùng empty state sẵn có của WorkspaceView (LaunchPicker, Claude là agent mặc định, chọn folder là mở pane), không cần component mới và không sửa hot file.
+- Audit: QuickSetup chỉ được mount ở App.vue, `ui.setupOpen` còn dùng ở gate của tour / WhatsNew / NextInvite (giờ luôn false, vô hại); 20+ E2E set `ccm.setupDone=1` nên không bị chip ảnh hưởng.
+- Review: ports không có tín hiệu "port bị chiếm" nên luôn ở popover; ngưỡng branch 30 là chọn của con (`CHANGED_ATTENTION`); mục folder / sound không tính vào số "còn lại" vì không có cách đọc trạng thái đã cấp; chip ẩn hẳn khi hết việc. Giao diện Mist (`NextQuotaBar`) không đổi.
+- Test:
+  - `npm run typecheck -w @ccm/web` → pass.
+  - `npm test -w @ccm/web` toàn bộ → 3075 pass, 1 fail (`fonts.test.ts` cấm dấu `|` trong workspace-v27, do bản plural đầu của con) → đã sửa, chạy lại `src/features/workspace/lib src/i18n src/features/settings` → 422/422 pass.
+  - E2E (web build ra thư mục tạm + `CCM_WEB_DIST`, cổng 4512/4513): `v112b-first-run.cjs` 18/18 PASS (chạy 2 lần); `v27.cjs` toàn PASS; `v67-ide.cjs` toàn PASS.
+  - Chưa chạy `v109-footer-sys.cjs` (chip CPU/RAM không đổi).
+- Nhìn: `docs/qa/v111/WP-112b/01-first-screen.png` (màn đầu, chip setup), `02-footer-normal.png`, `03-popover-open.png`, `04-footer-with-chip.png` (chip Focus nổi ra), `05-settings-checklist.png`. Ảnh chụp sau lần sửa code cuối.
+- Hot file cần thêm: không. Lưu ý `apps/web/src/core/stores/ui.ts:261` còn comment cũ nhắc QuickSetup (comment có sẵn, để nguyên).
+- Ngoài phạm vi cần main xử lý: ảnh docs/qa cũ không bị ghi đè (git status docs/qa chỉ có thư mục mới). `docs/features-history.md` chưa ghi dòng v112b.
+- Commit message đề xuất: feat(workspace): footer shows only chips that need attention, setup becomes a Settings checklist instead of a first-run modal
+- Dòng changelog (en / vi, ≤ 100 ký tự): Footer shows only what needs attention; first-run setup moved to Settings / Footer chỉ hiện chip cần chú ý; cài đặt lần đầu nằm trong Settings

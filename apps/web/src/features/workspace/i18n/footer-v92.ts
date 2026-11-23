@@ -21,6 +21,8 @@ const en = {
     contextOnly: 'Context {used}',
     contextAria: 'Context {used} tokens, warns at {limit}',
     contextAriaOnly: 'Context {used} tokens',
+    more: 'More status',
+    moreAria: 'More status, {n} items',
   },
 }
 
@@ -47,6 +49,8 @@ const vi: typeof en = {
     contextOnly: 'Context {used}',
     contextAria: 'Context {used} token, cảnh báo ở {limit}',
     contextAriaOnly: 'Context {used} token',
+    more: 'Trạng thái khác',
+    moreAria: 'Trạng thái khác, {n} mục',
   },
 }
 

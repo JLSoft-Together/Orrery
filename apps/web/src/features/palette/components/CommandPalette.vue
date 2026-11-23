@@ -626,7 +626,7 @@ const items = computed<Item[]>(() => {
         ]
       : []),
     { id: 'c:diag', group: 'help', label: t('diag.title'), icon: Stethoscope, run: () => (ui.diagnosticsOpen = true) },
-    ...(desktop ? [{ id: 'c:setup', group: 'help' as const, label: t('setup.open'), sub: t('setup.openHint'), icon: ListChecks, run: () => (ui.setupOpen = true) }] : []),
+    ...(desktop ? [{ id: 'c:setup', group: 'help' as const, label: t('setup.open'), sub: t('setup.openHint'), icon: ListChecks, run: () => openSetting('general', 'setup') }] : []),
   ]
   return [...sessions, ...favs, ...commands.map((c) => ({ ...c, ...searchable(c.label, c.sub) }))]
 })

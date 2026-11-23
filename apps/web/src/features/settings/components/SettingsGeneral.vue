@@ -12,6 +12,7 @@ import AwakeSettings from './AwakeSettings.vue'
 import ToggleSwitch from '../../../core/components/ToggleSwitch.vue'
 import SegmentedControl from '../../../core/components/ui/SegmentedControl.vue'
 import SettingEmbed from './SettingEmbed.vue'
+import SetupChecklist from './SetupChecklist.vue'
 import SettingRow from './SettingRow.vue'
 import SettingSection from './SettingSection.vue'
 
@@ -40,7 +41,8 @@ const terminalApps = computed(() => (['terminal', 'iterm'] as const).map((app) =
 
 <template>
   <div>
-    <SettingSection id="general">
+    <SetupChecklist />
+    <SettingSection id="general" class="mt-4">
       <SettingRow :label="t('settings.language')" data-setting-row="language">
         <SegmentedControl v-model="settings.locale" :options="locales" :label="t('settings.language')" />
       </SettingRow>

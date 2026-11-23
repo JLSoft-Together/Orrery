@@ -9,6 +9,7 @@
 | `apps/web/src/features/workspace/stores/workspace.ts::useWorkspaceStore` | state pane / tab / split / project root (83 KB, nên tách) |
 | `apps/web/src/features/workspace/components/WorkspaceView.vue` | khung Workspace (104 KB, nên tách) |
 | `apps/web/src/features/workspace/components/TermPane.vue` | pane terminal xterm (76 KB); `refit` bỏ qua khi `viewportFits` (`lib/splitLayout.ts`) sai: minimize trên Windows thu webview còn 144x19, refit lúc đó resize PTY còn 1 cột làm mất màn |
+| `apps/web/src/features/workspace/lib/devServerUrl.ts` | v111 W1: `devScanSlice` (4 KB đầu chunk), `DevOpenGuard` (tab tự mở 1 lần / URL); bắt URL ở `features/resources/lib/devServer.ts::DevServerDetector`; `workspace.autoOpenDevPreview`; chip `[data-dev-chip]` trên header `TermPane`; công tắc `settings.devPreviewAutoOpen` |
 | `apps/web/src/features/workspace/components/BrowserPane.vue` | pane trình duyệt (child webview) |
 | `apps/web/src/features/workspace/components/LaunchPicker.vue` | chọn preset / project khi mở pane |
 | `apps/web/src/features/workspace/components/ProjectSwitcher.vue` | đổi project |
@@ -25,6 +26,7 @@
 
 - Terminal chạy trong core-pty (Rust); trang chỉ giữ xterm + WebSocket. `claim` input khi chủ nhân gõ thật (xem `core-pty.md`).
 - Đóng pane có thể hoàn tác (agent quay lại bằng `--resume`).
+- Footer (WP-112b): `lib/footerChips.ts::planFooterChips` chia chip: luôn hiện running / waiting / setup, context vượt ngưỡng, branch >= 30 thay đổi, focus đang bật; còn lại vào popover `...` (`data-ws-footer-more`). CPU / RAM (`footerSys`) và Share luôn hiện.
 - Vòng phụ thuộc workspace <-> rail / next / files / git / run / agent-tools / monitor: các feature import sâu `stores/workspace`.
 
 ## Liên kết

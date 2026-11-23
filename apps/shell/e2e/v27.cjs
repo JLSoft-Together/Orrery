@@ -1,5 +1,5 @@
-// v27: first-run quick setup, code / interface fonts, Ctrl+wheel code size and app zoom.
-// Nothing is enabled for real: the setup sheet is only skipped, so Claude's settings.json is never touched.
+// v27: first-run setup checklist (Settings, no modal), code / interface fonts, Ctrl+wheel code size and app zoom.
+// Nothing is enabled for real: the checklist is only listed, so Claude's settings.json is never touched.
 const fs = require('node:fs')
 const path = require('node:path')
 const { launch, OUT, REPO } = require('./cdp.cjs')
@@ -26,14 +26,15 @@ async function main() {
     await cmd('Page.reload')
     await sleep(1500)
 
-    // Quick setup: opens by itself once, lists what is off, "Skip for now" marks it done.
-    const rows = await waitFor(`document.querySelector('[data-quick-setup]') && [...document.querySelectorAll('[data-setup-row]')].map(r => r.dataset.setupRow).join(',')`, 15000, 'quick setup').catch(() => null)
-    check('quick setup opens on first run', !!rows, rows)
+    // First run: no modal; the setup items live in Settings and the footer shows a reminder chip.
+    check('no setup modal on first run', await evaluate(`!document.querySelector('[data-quick-setup]') && !${S}.get('ui').setupOpen`))
+    await evaluate(`${S}.get('ui').setView('workspace'); ${S}.get('ui').settingsPage = 'general'; ${S}.get('ui').settingsOpen = true`)
+    const rows = await waitFor(`document.querySelector('[data-setup-row]') && [...document.querySelectorAll('[data-setup-row]')].map(r => r.dataset.setupRow).join(',')`, 15000, 'setup checklist').catch(() => null)
+    check('settings lists the setup checklist', !!rows, rows)
     check('it offers the projects folder', !!rows && rows.includes('folder'))
     await sleep(400); await shot('v27-01-quick-setup')
-    await evaluate(`[...document.querySelectorAll('[data-quick-setup] button')].find(b => /skip|để sau/i.test(b.textContent)).click()`)
-    await sleep(500)
-    check('skip marks it done and closes', await evaluate(`localStorage.getItem('ccm.setupDone') === '1' && !document.querySelector('[data-quick-setup]') && !${S}.get('ui').setupOpen`))
+    await evaluate(`${S}.get('ui').settingsOpen = false`)
+    await sleep(300)
 
     // Fonts: CSS variables follow the store; bundled faces load from the app.
     await evaluate(`${SET}.setCodeFont('jetbrains-mono'); ${SET}.setUiFont('inter')`)

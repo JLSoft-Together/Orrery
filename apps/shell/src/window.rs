@@ -225,28 +225,46 @@ fn report_maximized(window: &tauri::Window) {
     let _ = window.emit_to(label.as_str(), "ccm:window-maximized", now);
 }
 
-pub fn minimized_size(last: &mut Vec<(String, PhysicalSize<u32>)>, label: &str, size: PhysicalSize<u32>, minimized: bool) -> Option<PhysicalSize<u32>> {
-    let at = last.iter().position(|(l, _)| l == label);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Fit {
+    Keep(PhysicalSize<u32>),
+    Fill(PhysicalSize<u32>),
+}
+
+pub type SizeMemory = Vec<(String, PhysicalSize<u32>, bool)>;
+
+pub fn minimized_size(last: &mut SizeMemory, label: &str, size: PhysicalSize<u32>, minimized: bool) -> Option<Fit> {
+    let at = last.iter().position(|(l, _, _)| l == label);
     if minimized {
-        return at.map(|i| last[i].1);
+        let i = at?;
+        last[i].2 = true;
+        return Some(Fit::Keep(last[i].1));
     }
     if size.width == 0 || size.height == 0 {
         return None;
     }
     match at {
-        Some(i) => last[i].1 = size,
-        None => last.push((label.to_owned(), size)),
+        Some(i) => {
+            last[i].1 = size;
+            std::mem::take(&mut last[i].2).then_some(Fit::Fill(size))
+        }
+        None => {
+            last.push((label.to_owned(), size, false));
+            None
+        }
     }
-    None
 }
 
 fn keep_size_when_minimized(window: &tauri::Window, size: PhysicalSize<u32>) {
-    static LAST: std::sync::Mutex<Vec<(String, PhysicalSize<u32>)>> = std::sync::Mutex::new(Vec::new());
+    static LAST: std::sync::Mutex<SizeMemory> = std::sync::Mutex::new(Vec::new());
     let minimized = window.is_minimized().unwrap_or(false);
-    let keep = minimized_size(&mut LAST.lock().unwrap_or_else(std::sync::PoisonError::into_inner), window.label(), size, minimized);
-    let Some(keep) = keep else { return };
+    let fit = minimized_size(&mut LAST.lock().unwrap_or_else(std::sync::PoisonError::into_inner), window.label(), size, minimized);
+    let Some(fit) = fit else { return };
     for webview in window.webviews().into_iter().filter(|w| w.label() == window.label()) {
-        let _ = webview.set_size(keep);
+        let _ = match fit {
+            Fit::Keep(keep) => webview.set_size(keep),
+            Fit::Fill(full) => webview.set_bounds(tauri::Rect { position: PhysicalPosition::new(0, 0).into(), size: full.into() }),
+        };
     }
 }
 
@@ -338,11 +356,29 @@ mod tests {
         assert_eq!(minimized_size(&mut last, MAIN, big, true), None);
         assert_eq!(minimized_size(&mut last, MAIN, big, false), None);
         assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(0, 0), false), None);
-        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(160, 28), true), Some(big));
+        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(160, 28), true), Some(Fit::Keep(big)));
         assert_eq!(minimized_size(&mut last, COMPACT, PhysicalSize::new(160, 28), true), None);
         let wide = PhysicalSize::new(1920, 1000);
-        minimized_size(&mut last, MAIN, wide, false);
-        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(1, 1), true), Some(wide));
+        assert_eq!(minimized_size(&mut last, MAIN, wide, false), Some(Fit::Fill(wide)));
+        assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(1, 1), true), Some(Fit::Keep(wide)));
+    }
+
+    #[test]
+    fn the_webview_fills_the_window_again_once_after_every_restore() {
+        let mut last = Vec::new();
+        let big = PhysicalSize::new(1360, 860);
+        let tiny = PhysicalSize::new(144, 19);
+        assert_eq!(minimized_size(&mut last, MAIN, big, false), None);
+        for _ in 0..3 {
+            assert_eq!(minimized_size(&mut last, MAIN, tiny, true), Some(Fit::Keep(big)));
+            assert_eq!(minimized_size(&mut last, MAIN, tiny, true), Some(Fit::Keep(big)));
+            assert_eq!(minimized_size(&mut last, MAIN, PhysicalSize::new(0, 0), false), None);
+            assert_eq!(minimized_size(&mut last, MAIN, big, false), Some(Fit::Fill(big)));
+            assert_eq!(minimized_size(&mut last, MAIN, big, false), None);
+        }
+        let max = PhysicalSize::new(2560, 1392);
+        assert_eq!(minimized_size(&mut last, MAIN, tiny, true), Some(Fit::Keep(big)));
+        assert_eq!(minimized_size(&mut last, MAIN, max, false), Some(Fit::Fill(max)));
     }
 
     #[test]

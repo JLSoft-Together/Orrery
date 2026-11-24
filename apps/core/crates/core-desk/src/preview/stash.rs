@@ -155,13 +155,18 @@ fn reapply(root: &str, hash: &Value, verb: &str) -> Value {
         return json!({"ok": true});
     }
     let all = format!("{}\n{}", res.stdout, res.stderr);
-    if all.contains("CONFLICT") || all.contains("Merge conflict") {
+    if all.contains("CONFLICT") || all.contains("Merge conflict") || has_unmerged(root) {
         return err("conflict");
     }
     if all.contains("would be overwritten") || all.contains("Please commit your changes or stash them") || all.contains("already exists, no checkout") {
         return err("dirty");
     }
     failed(&res)
+}
+
+fn has_unmerged(root: &str) -> bool {
+    let res = exec_git(Path::new(root), &["ls-files", "-u"], &ExecOpts::max(4096));
+    res.ok() && !res.stdout.trim().is_empty()
 }
 
 pub fn apply(root: &str, hash: &Value) -> Value {

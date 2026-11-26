@@ -380,6 +380,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   remotePushRemove: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-push-remove'),
   remotePushDevice: (deviceId: string, on: boolean): Promise<unknown> =>
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-push-device', { deviceId, on: on === true }) : Promise.resolve({ ok: false, error: 'invalid' }),
+  remoteSendPane: (paneKey: string): Promise<unknown> =>
+    typeof paneKey === 'string' && paneKey.length > 0 && paneKey.length <= 128 ? ipcRenderer.invoke('ccm:remote-send-pane', paneKey) : Promise.resolve({ ok: false, error: 'invalid' }),
   remoteGuard: (op: unknown): Promise<unknown> =>
     typeof op === 'object' && op !== null && JSON.stringify(op).length <= 4096 ? ipcRenderer.invoke('ccm:remote-guard', op) : Promise.resolve({ ok: false, error: 'invalid' }),
   remoteInstall: (op: unknown): Promise<unknown> =>

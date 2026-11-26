@@ -188,6 +188,7 @@ interface DesktopBridge {
   onRemoteInstallFetched?: (handler: (event: { ip?: unknown }) => void) => () => void
   remoteDeviceRename?: (deviceId: string, name: string) => Promise<boolean>
   remotePushDevice?: (deviceId: string, on: boolean) => Promise<unknown>
+  remoteSendPane?: (paneKey: string) => Promise<unknown>
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   remoteGuard?: (op: RemoteGuardOp) => Promise<RemoteGuardReply | null>

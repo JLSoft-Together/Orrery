@@ -71,7 +71,7 @@ const E2E_MAP = [
   [/core-monitor[\\/]src[\\/]native[\\/]|apps[\\/]shell[\\/]src[\\/]folder_pick\.rs|core-serve[\\/]src[\\/](lib|host_ops)\.rs/, ['v110-external-open']],
   [/features[\\/]devices[\\/]/, ['devices', 'v97-device', 'v25']],
   [/features[\\/]disk[\\/]/, ['v101-diskmap-ui', 'v101-diskclean', 'v101-dupes', 'v101-organize']],
-  [/features[\\/]remote[\\/]/, ['v97-remote', 'v98-remote-next']],
+  [/features[\\/]remote[\\/]/, ['v97-remote', 'v98-remote-next', 'v113-connect']],
   [/features[\\/]files[\\/]/, ['explorer', 'file-editor']],
   [/features[\\/]git[\\/]/, ['log', 'diff']],
   [/features[\\/]agent-tools[\\/]/, ['v104-clash', 'v104-turn-changes', 'v89-pane']],

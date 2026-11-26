@@ -159,6 +159,7 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'notify', id: 'phone', labelKey: 'phone.section', needs: 'phone' },
   { page: 'telegram', id: 'telegram', labelKey: 'telegram.section', hintKey: 'telegram.enable', needs: 'telegram' },
 
+  { page: 'remote', id: 'remoteConnect', labelKey: 'v113Connect.hero.connect', hintKey: 'v113Connect.hero.none.hint', needs: 'remote' },
   { page: 'remote', id: 'remote', labelKey: 'remoteV97.enable', hintKey: 'remoteV97.enableHint', needs: 'remote' },
   { page: 'remote', id: 'remoteAdd', labelKey: 'remoteV97.add.title', hintKey: 'remoteV97.add.hint', needs: 'remote' },
   { page: 'remote', id: 'remoteInstall', labelKey: 'v106Install.title', hintKey: 'v106Install.hint', needs: 'remote' },

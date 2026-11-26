@@ -25,7 +25,7 @@ import { desktop, type RunSettings } from '../../../core/lib/desktop'
 import { devConnectMany, devSnapshot } from '../../devices/lib/devices'
 import { sweepVariants } from '../lib/multiRunDeps'
 import { AUTO_RELOAD_DEBOUNCE_MS, AUTO_RELOAD_MIN_GAP_MS, agentsFinished, autoReloadAction } from '../lib/runAutoReload'
-import { maybeAutoOffer } from '../lib/apkOffer'
+import { forgetOffered, maybeAutoOffer } from '../lib/apkOffer'
 import { agentPaneFor, errorPrompt, fitsPlatforms, inRoot } from '../lib/runUi'
 import { dirKey } from '../../../core/stores/favorites'
 import { useTerminalsStore } from '../../../core/stores/terminals'
@@ -157,6 +157,7 @@ export const useRunStore = defineStore('run', () => {
     for (const s of ended.slice(ENDED_KEEP)) {
       delete sessions.value[s.id]
       delete restored.value[s.id]
+      forgetOffered(s.id)
       dropOutput(s.id)
       for (const [root, id] of Object.entries(focus.value)) if (id === s.id) delete focus.value[root]
     }

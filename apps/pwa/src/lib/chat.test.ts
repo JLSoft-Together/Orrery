@@ -5,7 +5,7 @@ import { MachineData } from '../remote/machineData'
 import { ChatFeed, type FeedState } from './chatFeed'
 import { cachedLog, cacheLog, forgetLogs } from './chatCache'
 import { chatRows, filterRows, liveOf, preferChat, shortAgo, sortRows } from './chatInbox'
-import { clearPushOpen, pendingPushOpen, readPushOpen, takePushMenu } from './deepLink'
+import { clearPushOpen, pendingPushOpen, PUSH_MENU_TTL_MS, pushMenuStale, readPushOpen, setPushMenu, takePushMenu } from './deepLink'
 import { applyItems, applyPage, chatSupported, chatView, emptyLog, fileTotals, parseChatItem, parseChatLast, parseChatPage, parseMenu, toolCat, toolParts } from './chatModel'
 import { settleOutbox } from './chatOutbox'
 import { parseInline, parseMarkdown, safeHref } from './markdown'
@@ -298,6 +298,15 @@ describe('deep link to chat', () => {
     expect(pendingPushOpen('m', 'p1')).toBe(false)
     readPushOpen('', ws('p1'))
     expect(pendingPushOpen('m', 'p1')).toBe(false)
+  })
+
+  it('drops a menu choice that waited past the time limit instead of answering a later menu', () => {
+    setPushMenu({ machine: 'm', pane: 'p1', sig: 'ab12', index: 2 }, Date.now() - PUSH_MENU_TTL_MS - 1000)
+    expect(pushMenuStale()).toBe(true)
+    expect(takePushMenu('m', 'p1')).toBeNull()
+    setPushMenu({ machine: 'm', pane: 'p1', sig: 'ab12', index: 2 })
+    expect(pushMenuStale()).toBe(false)
+    expect(takePushMenu('m', 'p1')).not.toBeNull()
   })
 
   it('keeps a menu choice from the notification action until taken by its pane', () => {

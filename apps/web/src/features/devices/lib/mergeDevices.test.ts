@@ -31,6 +31,12 @@ describe('mergeDevices', () => {
     expect(out.rows.find((r) => r.remote)?.suggestion?.adbId).toBe('R58M')
   })
 
+  it('offers one adb phone to only one of two remotes with the same model', () => {
+    const out = mergeDevices(base({ remote: [remote(), remote({ deviceId: 'r2', name: 'Galaxy A33 spare' })], adb: [adb({ name: 'A33 work phone' })] }))
+    expect(out.suggestions).toHaveLength(1)
+    expect(out.rows.filter((r) => r.suggestion)).toHaveLength(1)
+  })
+
   it('never merges by name alone: different model, same name', () => {
     const out = mergeDevices(base({ remote: [remote({ name: 'Pixel 8', model: 'Pixel 8' })], adb: [adb({ name: 'Pixel 8', model: 'Redmi Note 12' })] }))
     expect(out.rows).toHaveLength(2)

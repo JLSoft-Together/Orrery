@@ -241,4 +241,27 @@ describe('SettingsDevices', () => {
     expect(w.find('[data-device-action]').exists()).toBe(false)
     w.unmount()
   })
+  it('a package lookup that rejects does not surface as an unhandled rejection', async () => {
+    setup([], [adbDev()])
+    m.devPkgVersion.mockRejectedValue(new Error('adb gone'))
+    const w = await mountPage()
+    expect(rows(w)).toHaveLength(1)
+    w.unmount()
+  })
+
+  it('a late package answer for a phone that went offline is dropped, so it is read again on return', async () => {
+    setup([], [adbDev()])
+    let late!: (v: unknown) => void
+    m.devPkgVersion.mockImplementationOnce(() => new Promise((r) => (late = r)))
+    m.devPkgVersion.mockResolvedValue({ ok: true, installed: false })
+    const w = await mountPage()
+    ;(m.adbStore.devices as AdbDevice[])[0]!.online = false
+    await flushPromises()
+    late({ ok: true, installed: true, version: '3.0.0' })
+    await flushPromises()
+    ;(m.adbStore.devices as AdbDevice[])[0]!.online = true
+    await flushPromises()
+    expect(m.devPkgVersion).toHaveBeenCalledTimes(2)
+    w.unmount()
+  })
 })

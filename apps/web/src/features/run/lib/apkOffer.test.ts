@@ -44,6 +44,24 @@ describe('maybeAutoOffer', () => {
     expect(offerApkToPhone).toHaveBeenCalledWith('s1')
   })
 
+  it('does not offer a session this window first sees already carrying an apk', async () => {
+    const { runApk, lib } = await load()
+    runApk.setAutoApk('C:/work/app', true)
+    lib.maybeAutoOffer(undefined, run({ ...apk, state: 'running' }))
+    await Promise.resolve()
+    expect(offerApkToPhone).not.toHaveBeenCalled()
+  })
+
+  it('forgets a pruned session id so the set does not grow', async () => {
+    const { runApk, lib } = await load()
+    runApk.setAutoApk('C:/work/app', true)
+    lib.maybeAutoOffer(run(), run(apk))
+    lib.forgetOffered('s1')
+    lib.maybeAutoOffer(run(), run(apk))
+    await Promise.resolve()
+    expect(offerApkToPhone).toHaveBeenCalledTimes(2)
+  })
+
   it('never sends with the switch off, without a push phone, or without an apk', async () => {
     const { runApk, lib } = await load()
     lib.maybeAutoOffer(run(), run(apk))

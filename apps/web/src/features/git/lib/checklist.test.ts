@@ -73,6 +73,15 @@ describe('runCheck', () => {
     expect(d.launched).toEqual(['npm run qa'])
     expect(d.reports).toEqual([['running', 'abc1234'], ['pass', 'abc1234']])
   })
+  it('stores idle, not a stuck running, when launching the script throws', async () => {
+    const d = deps({ code: 0 })
+    const boom = { ...d.deps, launch: () => { throw new Error('no pane') } }
+    const seen: [CheckState, string][] = []
+    const out = await runCheck('/wt/boom2', 'x', { ...boom, report: async (s, h) => void seen.push([s, h]) })
+    expect(out).toBe('idle')
+    expect(seen).toEqual([['running', 'abc1234'], ['idle', 'abc1234']])
+    expect(isCheckLive('/wt/boom2')).toBe(false)
+  })
   it('tells subscribers when the run ends, until they unsubscribe', async () => {
     let n = 0
     const off = onCheckDone('/wt/f', () => n++)

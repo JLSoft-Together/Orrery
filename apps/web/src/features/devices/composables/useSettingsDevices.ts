@@ -74,9 +74,10 @@ export function useSettingsDevices() {
   }
 
   async function loadPkg(ids: string[]): Promise<void> {
-    const out = await Promise.all(ids.map(async (id) => [id, await devPkgVersion(id, REMOTE_PACKAGE)] as const))
+    const out = await Promise.all(ids.map(async (id) => [id, await devPkgVersion(id, REMOTE_PACKAGE).catch(() => undefined)] as const))
     if (gone) return
-    pkg.value = { ...pkg.value, ...Object.fromEntries(out) }
+    const live = out.filter(([id, v]) => v && adb.devices.some((d) => d.id === id && d.online && d.state === 'ready'))
+    pkg.value = { ...pkg.value, ...Object.fromEntries(live) }
   }
 
   async function syncPkg(): Promise<void> {

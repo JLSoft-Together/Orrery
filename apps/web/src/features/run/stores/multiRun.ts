@@ -7,6 +7,7 @@ import { pickDevices, runMany, variantOf, type MultiOutcome, type MultiStage, ty
 import { useRunStore } from './run'
 
 export const SESSION_WAIT_MS = 5000
+export const SESSION_MAX_MS = 20 * 60_000
 const ENDED: readonly RunSession['state'][] = ['failed', 'stopped', 'cancelled']
 
 export interface MultiRunState {
@@ -34,23 +35,31 @@ export const useMultiRunStore = defineStore('multiRun', () => {
     return new Promise((resolve) => {
       let done = false
       let off: (() => void) | null = null
+      let seen = false
       let timer: ReturnType<typeof setTimeout> | null = null
+      let deadline: ReturnType<typeof setTimeout> | null = null
       const finish = (o: BuildOutcome): void => {
         if (done) return
         done = true
         off?.()
         if (timer) clearTimeout(timer)
+        if (deadline) clearTimeout(deadline)
         resolve(o)
       }
       const check = (): void => {
         const s = run.sessions[sessionId]
-        if (!s) return
+        if (!s) {
+          if (seen) finish({ ok: false, failure: { code: 'session-missing' } })
+          return
+        }
+        seen = true
         if (s.state === 'running') finish({ ok: true, failure: null })
         else if (ENDED.includes(s.state)) finish({ ok: false, failure: s.failure ?? { code: s.state } })
       }
       off = watch(() => run.sessions[sessionId]?.state, check, { immediate: true })
       if (done) off()
-      else if (!run.sessions[sessionId]) timer = setTimeout(() => finish({ ok: false, failure: { code: 'session-missing' } }), SESSION_WAIT_MS)
+      else deadline = setTimeout(() => finish({ ok: false, failure: { code: 'timeout' } }), SESSION_MAX_MS)
+      if (!done && !run.sessions[sessionId]) timer = setTimeout(() => finish({ ok: false, failure: { code: 'session-missing' } }), SESSION_WAIT_MS)
     })
   }
 

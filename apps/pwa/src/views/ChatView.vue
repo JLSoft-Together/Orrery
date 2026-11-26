@@ -17,7 +17,7 @@ import { ChatFeed, type FeedState } from '../lib/chatFeed'
 import { liveOf, projectOf } from '../lib/chatInbox'
 import { chatSupported, chatView, emptyLog } from '../lib/chatModel'
 import { settleOutbox, setState, type OutMsg } from '../lib/chatOutbox'
-import { pushMenu, takePushMenu } from '../lib/deepLink'
+import { pushMenu, pushMenuStale, setPushMenu, takePushMenu } from '../lib/deepLink'
 import { parseSessions } from '../lib/monitorModel'
 import { createAnswerFlow } from '../lib/paneAnswer'
 import { quotaOf } from '../lib/quotaModel'
@@ -280,6 +280,7 @@ watch(
   () => {
     const want = pushMenu.value
     const p = pane.value
+    if (want && pushMenuStale()) return setPushMenu(null)
     if (!want || want.machine !== props.machine || want.pane !== props.pane || !p || !online.value) return
     const menu = p.menu
     const item = menu && menu.sig === want.sig ? menu.items.find((i) => i.index === want.index && !i.other) : undefined

@@ -9,7 +9,20 @@ export interface PushMenuPick {
   index: number
 }
 
+export const PUSH_MENU_TTL_MS = 120_000
+
 export const pushMenu = ref<PushMenuPick | null>(null)
+
+let pushMenuAt = 0
+
+export function setPushMenu(pick: PushMenuPick | null, at: number = Date.now()): void {
+  pushMenu.value = pick
+  pushMenuAt = at
+}
+
+export function pushMenuStale(at: number = Date.now()): boolean {
+  return at - pushMenuAt > PUSH_MENU_TTL_MS
+}
 
 const SIG = /^[A-Za-z0-9_-]{1,64}$/
 
@@ -23,7 +36,7 @@ export function readPushOpen(search: string, route: { name: string; machine?: st
   const params = new URLSearchParams(search)
   const fromPush = params.get('from') === 'push'
   pending = fromPush && route.name === 'workspace' && route.machine && route.pane ? { machine: route.machine, pane: route.pane } : null
-  pushMenu.value = fromPush && route.machine && route.pane ? parsePushMenu(route.machine, route.pane, params.get('menu'), params.get('i')) : null
+  setPushMenu(fromPush && route.machine && route.pane ? parsePushMenu(route.machine, route.pane, params.get('menu'), params.get('i')) : null)
 }
 
 export function pendingPushOpen(machine: string, pane: string): boolean {
@@ -37,6 +50,7 @@ export function clearPushOpen(): void {
 export function takePushMenu(machine: string, pane: string): PushMenuPick | null {
   const pick = pushMenu.value
   if (!pick || pick.machine !== machine || pick.pane !== pane) return null
+  const stale = pushMenuStale()
   pushMenu.value = null
-  return pick
+  return stale ? null : pick
 }

@@ -125,6 +125,7 @@ export function mergeDevices(input: MergeInput): MergeResult {
   const usedAdb = new Set<string>()
   const rows: DeviceRow[] = []
   const suggestions: MergeSuggestion[] = []
+  const suggestedAdb = new Set<string>()
 
   const adbFor = (r: RemoteDevice): { adb: AdbDevice; link: 'hash' | 'chosen' } | null => {
     const hash = r.adbSerialHash?.toLowerCase()
@@ -146,11 +147,12 @@ export function mergeDevices(input: MergeInput): MergeResult {
     let suggestion: MergeSuggestion | null = null
     if (!match) {
       const candidate = input.adb.find(
-        (a) => a.transport !== 'emulator' && !usedAdb.has(a.id) && !input.choices.split.includes(pairKey(remote.deviceId, a.id)) && sameModel(remote.model, a.model) && closeNames(remote.name, a.name),
+        (a) => a.transport !== 'emulator' && !usedAdb.has(a.id) && !suggestedAdb.has(a.id) && !input.choices.split.includes(pairKey(remote.deviceId, a.id)) && sameModel(remote.model, a.model) && closeNames(remote.name, a.name),
       )
       if (candidate) {
         suggestion = { key: pairKey(remote.deviceId, candidate.id), remoteId: remote.deviceId, adbId: candidate.id, remoteName: remote.name, adbName: candidate.name }
         suggestions.push(suggestion)
+        suggestedAdb.add(candidate.id)
       }
     }
     const adb = match?.adb ?? null

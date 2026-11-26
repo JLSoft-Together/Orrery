@@ -11,6 +11,7 @@ import {
   findNewDevice,
   INITIAL_CONNECT,
   isQrInstall,
+  PAIR_CONFIRM_MS,
   PAIRED_HOLD_MS,
   pairBaseline,
   reduceConnect,
@@ -59,6 +60,7 @@ export function useConnectWizard(deps: ConnectDeps = realDeps()) {
   let checkAbort: AbortController | null = null
   let ownPair = false
   let sawPairing = false
+  let confirmSince = 0
   let holdTimer: ReturnType<typeof setTimeout> | null = null
   let offDevices: (() => void) | null = null
   let offFetched: (() => void) | null = null
@@ -110,6 +112,7 @@ export function useConnectWizard(deps: ConnectDeps = realDeps()) {
     if (next === 'usbInstalling') return doUsb()
     if (next === 'qrInstall') return doQr()
     if (next === 'pairWait') return doPair()
+    if (next === 'pairConfirm') confirmSince = now.value
     if (next === 'paired') return onPaired()
     if (next === 'testing') return doTest()
     if (next === 'done') onDone()
@@ -263,7 +266,8 @@ export function useConnectWizard(deps: ConnectDeps = realDeps()) {
 
   async function doTest(): Promise<void> {
     summary.value = null
-    const device = paired.value ?? remote.devices.find((d) => d.state === 'connected') ?? null
+    const known = paired.value ? remote.devices.find((d) => d.deviceId === paired.value?.deviceId && d.state !== 'revoked') : undefined
+    const device = (known?.state === 'connected' ? known : null) ?? remote.devices.find((d) => d.state === 'connected') ?? known ?? null
     paired.value = device
     const ac = new AbortController()
     checkAbort = ac
@@ -311,9 +315,11 @@ export function useConnectWizard(deps: ConnectDeps = realDeps()) {
     const n = state.value.name
     if ((n === 'qrInstall' || n === 'qrInstalled') && qr.value.exp && qrLeft.value <= 0) dispatch({ type: 'qrExpired' })
     if (n === 'pairWait' && pairQr.value.exp && pairLeft.value <= 0) dispatch({ type: 'pairExpired', relay: pairQr.value.relay })
+    if (n === 'pairConfirm' && !usbAbort && now.value - confirmSince >= PAIR_CONFIRM_MS) dispatch({ type: 'pairExpired', relay: remote.status?.relay === 'online' })
   })
 
   function start(): void {
+    paired.value = null
     dispatch({ type: 'start', remoteOn: !!remote.status?.enabled })
   }
 

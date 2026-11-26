@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { TELEGRAM_INBOUND_ACTION, type PtyPreset, type TelegramInbound, type TelegramInboundResult } from '@ccm/shared'
 
@@ -31,7 +31,12 @@ describe('Telegram reply button (session.answer)', () => {
 
   const req = (sessionId: string, text = 'yes, go on') => ({ id: '1', action: 'answer', project: 'C:\\work\\A', text, from: 'Owner', target: { kind: 'pane', sessionId } })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     localStorage.clear()
     sessionStorage.clear()
     ;({ handler, ws, terminals } = await boot())

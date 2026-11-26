@@ -243,3 +243,4 @@ export function findNewDevice(devices: readonly RemoteDevice[], base: PairBaseli
 
 export const ENABLE_TIMEOUT_MS = 10_000
 export const PAIRED_HOLD_MS = 1_500
+export const PAIR_CONFIRM_MS = 45_000

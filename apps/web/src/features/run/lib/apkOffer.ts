@@ -18,7 +18,10 @@ export async function offerSession(sessionId: string): Promise<OfferApkResult> {
   return res
 }
 
+export const forgetOffered = (sessionId: string): void => void offered.delete(sessionId)
+
 export function maybeAutoOffer(prev: RunSession | undefined, next: RunSession): void {
+  if (!prev) return
   if (!shouldAutoOffer(prev, next, Object.values(autoApk.value), offered)) return
   offered.add(next.id)
   if (!hasPushPhone(useRemoteStore().devices)) return

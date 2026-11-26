@@ -64,8 +64,12 @@ export async function runCheck(dir: string, script: string, deps: CheckRunDeps):
     const head = await deps.head()
     if (!head) return 'idle'
     await deps.report('running', head)
-    const key = deps.launch(script)
-    const res = await deps.wait(key)
+    let res: { code: number } | null = null
+    try {
+      res = await deps.wait(deps.launch(script))
+    } catch {
+      res = null
+    }
     const state: CheckState = res === null ? 'idle' : res.code === 0 ? 'pass' : 'fail'
     await deps.report(state, head)
     return state

@@ -201,7 +201,7 @@ pub fn notice(a: &Ask, mask: &dyn Fn(&str) -> String) -> (String, String) {
     let fixed = |(t, b): (&str, &str)| (t.to_owned(), b.to_owned());
     match a.kind {
         "test" => fixed(test_text(a.locale)),
-        "security" => fixed(title_body("security", a.locale)),
+        "security" | "apk" => fixed(title_body(a.kind, a.locale)),
         _ if !a.content => fixed(title_body(a.kind, a.locale)),
         kind => (title_of(a.scene, a.fact, mask), body_of(kind, a.locale == "vi", a.fact, a.worked, mask)),
     }

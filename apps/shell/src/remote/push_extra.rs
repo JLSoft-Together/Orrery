@@ -24,10 +24,11 @@ pub struct Extra {
     pub waiting: Option<usize>,
     pub labels: Vec<String>,
     pub menu: Option<Value>,
+    pub apk: Option<Value>,
 }
 
 pub fn is_info(kind: &str) -> bool {
-    matches!(kind, "done" | "running" | "open" | "clear")
+    matches!(kind, "done" | "running" | "open" | "clear" | "apk")
 }
 
 pub fn is_group(kind: &str) -> bool {
@@ -35,7 +36,7 @@ pub fn is_group(kind: &str) -> bool {
 }
 
 pub fn carries_count(kind: &str) -> bool {
-    is_group(kind) || matches!(kind, "open" | "clear")
+    is_group(kind) || matches!(kind, "open" | "clear" | "apk")
 }
 
 fn ends_run(kind: &str) -> bool {
@@ -45,7 +46,7 @@ fn ends_run(kind: &str) -> bool {
 pub fn wants_kind(d: &Device, kind: &str) -> bool {
     match kind {
         "running" => d.wants("done"),
-        "open" | "clear" => true,
+        "open" | "clear" | "apk" => true,
         other => d.wants(other),
     }
 }

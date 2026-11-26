@@ -120,8 +120,23 @@ impl BuildError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ApkMeta {
+    pub path: String,
+    pub size: u64,
+    pub application_id: String,
+    pub variant: String,
+}
+
+impl ApkMeta {
+    pub fn to_value(&self) -> Value {
+        json!({"path": self.path, "size": self.size, "applicationId": self.application_id, "variant": self.variant})
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SessionPatch {
+    pub apk: Option<ApkMeta>,
     pub app_id: Option<Option<String>>,
     pub vm_service_uri: Option<Option<String>>,
     pub devtools_uri: Option<Option<String>>,
@@ -185,4 +200,16 @@ pub trait DeviceService: Send + Sync {
     fn emulators(&self) -> Vec<RunEmulator>;
     fn launch_emulator(&self, id: &str) -> RunResult;
     fn stop(&self, sync: bool);
+}
+
+#[cfg(test)]
+mod apk_meta_tests {
+    use super::*;
+
+    #[test]
+    fn apk_meta_serialises_camel_case() {
+        let m = ApkMeta { path: "/p/app.apk".into(), size: 12, application_id: "com.ex".into(), variant: "debug".into() };
+        assert_eq!(m.to_value(), json!({"path": "/p/app.apk", "size": 12, "applicationId": "com.ex", "variant": "debug"}));
+        assert_eq!(SessionPatch::default().apk, None);
+    }
 }

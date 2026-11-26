@@ -61,6 +61,23 @@ const en = {
       'capture-failed': 'Screenshot failed.',
     },
   },
+  runApk: {
+    send: 'Send to phone',
+    auto: 'Auto-send when built',
+    autoHint: 'Send the APK to your phone as soon as a build of this project finishes',
+    sent: 'APK sent to {n} phone | APK sent to {n} phones',
+    none: 'No phone can get the APK. Turn on push with content and encryption on the phone',
+    limit: 'Sent too many times, try again later',
+    off: 'Orrery Remote is off',
+    lan: 'The computer has no home network address to download from',
+    noApk: 'This run has no APK',
+    gone: 'The APK file is gone, build again',
+    outside: 'The APK is outside the build folder',
+    notApk: 'The built file is not an APK',
+    notFound: 'This run is not available anymore',
+    offline: 'Could not read the run',
+    unavailable: 'Could not send to the phone',
+  },
 }
 
 const vi = {
@@ -125,6 +142,23 @@ const vi = {
       secure: 'App chặn chụp màn hình.',
       'capture-failed': 'Chụp màn hình lỗi.',
     },
+  },
+  runApk: {
+    send: 'Gửi lên điện thoại',
+    auto: 'Tự gửi khi build xong',
+    autoHint: 'Gửi APK lên điện thoại ngay khi build xong project này',
+    sent: 'Đã gửi APK tới {n} điện thoại | Đã gửi APK tới {n} điện thoại',
+    none: 'Chưa có điện thoại nào nhận được APK. Bật push có nội dung và mã hoá trên điện thoại',
+    limit: 'Đã gửi quá nhiều, thử lại sau',
+    off: 'Orrery Remote đang tắt',
+    lan: 'Máy tính không có địa chỉ mạng nhà để tải về',
+    noApk: 'Lượt chạy này không có APK',
+    gone: 'File APK không còn, hãy build lại',
+    outside: 'APK nằm ngoài thư mục build',
+    notApk: 'File vừa build không phải APK',
+    notFound: 'Lượt chạy này không còn',
+    offline: 'Không đọc được lượt chạy',
+    unavailable: 'Không gửi được tới điện thoại',
   },
 }
 

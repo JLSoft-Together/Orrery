@@ -1,11 +1,14 @@
 use serde_json::{json, Map, Value};
 
 use super::ctx::{Asked, Host};
+use super::viewer_events::run_log;
 
 pub const MAX_PATH: usize = 4096;
 pub const FAST: u64 = 15;
 pub const SLOW: u64 = 60;
 pub const CHECK_RUN: &str = "ccm:checklist-run";
+pub const RUN_LOG: &str = "ccm:remote-run-log";
+pub const RUN_WATCH: &str = "ccm:remote-run-watch";
 const MAX_ID: usize = 64;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -16,6 +19,7 @@ pub enum Arg {
     StrFlag(&'static str, &'static str),
     Write,
     Check(&'static str),
+    RunLog,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -33,6 +37,8 @@ pub enum Watch {
     FsDrop,
     GitAdd,
     GitDrop,
+    RunAdd,
+    RunDrop,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -69,7 +75,7 @@ impl Spec {
     }
 }
 
-pub const SPECS: [Spec; 34] = [
+pub const SPECS: [Spec; 37] = [
     s("fs.list", "ccm:list-dir", Arg::Obj),
     s("fs.files", "ccm:list-files", Arg::Str("root")),
     s("fs.read", "ccm:read-file", Arg::Str("path")),
@@ -101,6 +107,9 @@ pub const SPECS: [Spec; 34] = [
     s("run.reload", "ccm:run-reload", Arg::StrFlag("sessionId", "hot")),
     s("run.sessions", "ccm:run-sessions", Arg::None).run(),
     s("run.devices", "ccm:run-devices", Arg::None),
+    s("run.log", RUN_LOG, Arg::RunLog),
+    s("run.watch", RUN_WATCH, Arg::None).run().watch(Watch::RunAdd),
+    s("run.unwatch", RUN_WATCH, Arg::None).watch(Watch::RunDrop),
     s("checklist.get", "ccm:checklist", Arg::Check("list")),
     s("checklist.toggle", "ccm:checklist", Arg::Check("toggle")).write(),
     s("checklist.run", CHECK_RUN, Arg::Check("list")).pre(Pre::CheckRun),
@@ -159,6 +168,16 @@ fn check_args(op: &str, cmd: &Value) -> Option<Value> {
     Some(json!([req]))
 }
 
+fn run_log_args(cmd: &Value) -> Option<Value> {
+    let session = cmd.get("session").and_then(Value::as_str).filter(|s| run_log::valid_id(s))?;
+    let mut req = json!({ "session": session });
+    match cmd.get("since") {
+        None | Some(Value::Null) => {}
+        Some(v) => req["since"] = json!(v.as_u64()?),
+    }
+    Some(json!([req]))
+}
+
 pub fn check_run(host: &dyn Host, owner: &str, accept: &[String], args: Value) -> Value {
     let probe = host.viewer(owner, "ccm:checklist", args.clone(), accept);
     let allowed = probe.get("raw").is_some_and(|r| r.get("ok") == Some(&Value::Bool(true)));
@@ -180,6 +199,7 @@ pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
         Arg::Str(f) => json!([text(cmd, f)?]),
         Arg::StrFlag(f, g) => json!([text(cmd, f)?, cmd.get(g) == Some(&Value::Bool(true))]),
         Arg::Check(op) => check_args(op, cmd)?,
+        Arg::RunLog => run_log_args(cmd)?,
         Arg::Write => {
             let path = text(cmd, "path")?;
             let body = cmd.get("text").and_then(Value::as_str)?;
@@ -194,7 +214,7 @@ pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
 
 pub fn watch_key(spec: &Spec, cmd: &Value) -> Option<String> {
     let kind = match spec.watch {
-        Watch::No => return None,
+        Watch::No | Watch::RunAdd | Watch::RunDrop => return None,
         Watch::FsAdd | Watch::FsDrop => "fs",
         Watch::GitAdd | Watch::GitDrop => "git",
     };

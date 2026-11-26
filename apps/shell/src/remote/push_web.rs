@@ -60,6 +60,9 @@ pub fn web_payload(job: &Job, title: &str, body: &str) -> Value {
     if let Some(menu) = &job.extra.menu {
         out["menu"] = menu.clone();
     }
+    if let Some(apk) = &job.extra.apk {
+        out["apk"] = apk.clone();
+    }
     out
 }
 

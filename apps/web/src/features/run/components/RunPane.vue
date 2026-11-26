@@ -15,6 +15,7 @@ import { useRunStore } from '../stores/run'
 import { useUiStore } from '../../../core/stores/ui'
 import { DeviceCaptureDialog } from '@features/devices'
 import AppSelect from '../../../core/components/AppSelect.vue'
+import RunApkOffer from './RunApkOffer.vue'
 import RunBar from './RunBar.vue'
 import RunConfigsDialog from './RunConfigsDialog.vue'
 import RunHistoryDialog from './RunHistoryDialog.vue'
@@ -277,6 +278,7 @@ function sessionLabel(s: RunSession): string {
           @update:model-value="(v) => run.focusSession(root, v)"
         />
         <span v-else-if="session" class="hidden min-w-0 truncate text-2xs text-ink-faint @md:inline" :title="session.cwd">{{ sessionLabel(session) }}</span>
+        <RunApkOffer :session="session" :root="root" />
         <button
           v-if="androidDevice"
           type="button"

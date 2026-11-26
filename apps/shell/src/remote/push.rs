@@ -16,6 +16,8 @@ use crate::state::{lock, take_slot};
 
 #[path = "push_extra.rs"]
 mod extra;
+#[path = "offer_apk.rs"]
+mod offer;
 #[cfg(test)]
 #[path = "push_extra_tests.rs"]
 mod extra_tests;
@@ -44,6 +46,7 @@ pub fn kind_of(raw: &str) -> &'static str {
         "running" => "running",
         "open" => "open",
         "clear" => "clear",
+        "apk" => "apk",
         _ => "attention",
     }
 }
@@ -73,6 +76,8 @@ pub fn title_body(kind: &str, locale: &str) -> (&'static str, &'static str) {
         ("running", true) => ("Agent đang chạy", "Một phiên đã chạy khá lâu. Chạm để mở."),
         ("open", false) => ("Opened from your computer", "Tap to open this pane."),
         ("open", true) => ("Mở từ máy tính", "Chạm để mở pane này."),
+        ("apk", false) => ("APK ready to install", "Tap to download it on this Wi-Fi."),
+        ("apk", true) => ("APK sẵn sàng để cài", "Chạm để tải về, cần cùng Wi-Fi."),
         ("clear", _) => ("Orrery", ""),
         (_, false) => ("Session needs attention", "A session needs you. Tap to open it."),
         (_, true) => ("Phiên cần chú ý", "Một phiên cần bạn. Chạm để mở."),
@@ -112,6 +117,8 @@ pub fn message(job: &Job) -> Value {
     let mut note = json!({ "channel_id": if job.kind == "running" { "running" } else { "attention" } });
     if !job.pane.is_empty() {
         note["tag"] = Value::from(format!("{}:{}", job.machine, job.pane));
+    } else if job.kind == "apk" {
+        note["tag"] = Value::from(format!("{}:apk", job.machine));
     }
     json!({
         "message": {
@@ -298,7 +305,7 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
             }
         }
         for job in ctx.take_push_jobs() {
-            if (!matches!(job.kind, "security" | "open") && ctx.is_live(&job.device)) || *stop.borrow() {
+            if (!matches!(job.kind, "security" | "open" | "apk") && ctx.is_live(&job.device)) || *stop.borrow() {
                 continue;
             }
             let c = ctx.clone();

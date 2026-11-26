@@ -7,6 +7,9 @@ use tokio::sync::mpsc;
 
 use crate::state::{lock, take_slot};
 
+#[path = "run_log.rs"]
+pub mod run_log;
+
 pub const VIEWER_PER_MINUTE: usize = 120;
 pub const WRITE_PER_MINUTE: usize = 20;
 pub const COALESCE: Duration = Duration::from_millis(100);
@@ -64,7 +67,14 @@ impl Hub {
         lock(&self.subs).get(owner).is_some_and(|s| s.tx.try_send(event).is_ok())
     }
 
+    pub fn drop_run(&self, owner: &str) {
+        if let Some(s) = lock(&self.subs).get_mut(owner) {
+            s.run = false;
+        }
+    }
+
     pub fn push_run(&self, payload: &Value) {
+        run_log::record_event(payload);
         let subs = lock(&self.subs);
         if !subs.values().any(|s| s.run) || serde_json::to_vec(payload).map_or(true, |b| b.len() > MAX_RUN_EVENT) {
             return;

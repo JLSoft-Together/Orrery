@@ -47,6 +47,9 @@ impl Hooks for SessionHooks {
                 p.insert(k.into(), json!(v));
             }
         }
+        if let Some(a) = &patch.apk {
+            p.insert("apk".into(), a.to_value());
+        }
         if let Some(f) = patch.failure {
             p.insert("failure".into(), f.map(|e| e.to_value()).unwrap_or(Value::Null));
         }

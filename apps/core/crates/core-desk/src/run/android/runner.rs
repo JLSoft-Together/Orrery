@@ -7,7 +7,7 @@ use crate::run::before::{resolve_for, run_before_launch};
 use crate::run::collect::{collect, Collected, CollectOpts};
 use crate::run::parse::{install_failure, parse_build_error, InstallFailure};
 use crate::run::proc::{kill_pid, pump_lines, spawn, subst_vars, SpawnSpec};
-use crate::run::types::{Env, EnvIssue, RunContext, Runner, SessionPatch};
+use crate::run::types::{ApkMeta, Env, EnvIssue, RunContext, Runner, SessionPatch};
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::sync::mpsc;
@@ -335,7 +335,8 @@ impl Core {
         }
         let pkg = out.application_id.clone();
         self.lock().pkg = Some(pkg.clone());
-        self.state("installing", SessionPatch::default());
+        let apk = ApkMeta { size: std::fs::metadata(&out.apk).map_or(0, |m| m.len()), path: out.apk.clone(), application_id: pkg.clone(), variant: variant.clone() };
+        self.state("installing", SessionPatch { apk: Some(apk), ..Default::default() });
         let mut failure = self.install(&out.apk);
         if self.halted() {
             return;

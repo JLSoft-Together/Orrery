@@ -10,7 +10,8 @@ use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
 use super::phone_ws::{Done, MAX_IN_FLIGHT};
 use super::viewer_events::{merge, VEvent, COALESCE, QUEUE};
-use super::viewer_map::{build_args, check_run, lookup, CHECK_RUN, outcome, pre_needs, pre_of, watch_key, Spec, Watch, SLOW};
+use super::viewer_events::run_log;
+use super::viewer_map::{build_args, check_run, lookup, CHECK_RUN, outcome, pre_needs, pre_of, watch_key, Spec, Watch, RUN_LOG, RUN_WATCH, SLOW};
 
 pub const MAX_WATCHES: usize = 8;
 pub const MAX_REPLY: usize = 900_000;
@@ -114,7 +115,7 @@ impl Phone {
                 self.x.v.pending.insert(k.clone());
                 reserved = Some(k.clone());
             }
-            (Watch::No, _) => {}
+            (Watch::No | Watch::RunAdd | Watch::RunDrop, _) => {}
             (_, None) => return self.sec.json(&error(Value::from(id), "invalid")).await,
             _ => {}
         }
@@ -152,7 +153,12 @@ impl Phone {
         tokio::spawn(async move {
             let work = tokio::task::spawn_blocking(move || {
                 let _busy = busy;
-                let env = if channel == CHECK_RUN { check_run(ctx.host.as_ref(), &owner, &accept, args) } else { ctx.host.viewer(&owner, channel, args, &accept) };
+                let env = match channel {
+                    CHECK_RUN => check_run(ctx.host.as_ref(), &owner, &accept, args),
+                    RUN_LOG => run_log::reply(&args),
+                    RUN_WATCH => json!({ "raw": true }),
+                    _ => ctx.host.viewer(&owner, channel, args, &accept),
+                };
                 if adds && !ctx.viewer.is_open(&owner) {
                     ctx.host.viewer_release(&owner);
                 }
@@ -186,11 +192,15 @@ impl Phone {
         if v.get("ok") != Some(&Value::Bool(true)) || v.get("data") == Some(&Value::Bool(false)) {
             return;
         }
+        if spec.watch == Watch::RunDrop {
+            self.ctx.viewer.drop_run(&self.x.v.owner);
+            return;
+        }
         let Some(key) = watch_key(spec, cmd) else { return };
         match spec.watch {
             Watch::FsAdd | Watch::GitAdd => drop(self.x.v.watched.insert(key)),
             Watch::FsDrop | Watch::GitDrop => drop(self.x.v.watched.remove(&key)),
-            Watch::No => {}
+            Watch::No | Watch::RunAdd | Watch::RunDrop => {}
         }
     }
 

@@ -91,6 +91,9 @@ pub fn sealed_plain(job: &Job, title: &str, body: &str) -> Vec<u8> {
     if let Some(menu) = &job.extra.menu {
         out["menu"] = menu.clone();
     }
+    if let Some(apk) = &job.extra.apk {
+        out["apk"] = apk.clone();
+    }
     out.to_string().into_bytes()
 }
 

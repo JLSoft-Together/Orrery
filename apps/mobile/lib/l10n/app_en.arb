@@ -349,6 +349,31 @@
   "vErrHook": "A git hook rejected the commit.",
   "vErrFailed": "The command failed.",
   "vCancelled": "Cancelled.",
+  "vChecklist": "Pre-merge checklist",
+  "vClEmpty": "No items yet. Agents and the computer add them.",
+  "vClReady": "Ready to merge",
+  "vClOpen": "{count} open",
+  "@vClOpen": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vClByAgent": "Added by an agent",
+  "vClCheck": "Check",
+  "vClNone": "No check script set",
+  "vClIdle": "Not run yet",
+  "vClRunning": "Running",
+  "vClPass": "Passed",
+  "vClFail": "Failed",
+  "vClStale": "Out of date, new commits since the run",
+  "vClRun": "Run check",
+  "vClRunStarted": "Check started on the computer",
+  "vErrCheckRunning": "A check is already running on the computer.",
+  "vErrNoScript": "Pick a check script on the computer first.",
+  "vErrNoIntegration": "Turn on shell integration on the computer first.",
+  "vErrCheckOff": "The checklist is not available for this folder.",
   "vWaitConfirm": "Confirm on this phone to continue.",
   "vFindFile": "Find file",
   "vFindFileHint": "Type part of a file name or path.",

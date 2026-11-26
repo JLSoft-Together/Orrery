@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../remote/providers.dart';
+import '../checklist/checklist_page.dart';
 import '../model/workspace_model.dart' show baseName;
 import '../widgets/common.dart';
 import '../workspace/machine_scope.dart';
@@ -14,6 +17,9 @@ Future<void> showViewerMenu(
   String root,
 ) async {
   final l = context.l10n;
+  final hasChecklist = ProviderScope.containerOf(context)
+      .read(machineViewProvider(machineId))
+      .hasCap('checklist');
   final choice = await showModalBottomSheet<String>(
     context: context,
     builder: (sheet) => SafeArea(
@@ -47,6 +53,13 @@ Future<void> showViewerMenu(
             title: Text(l.vGitLog),
             onTap: () => Navigator.pop(sheet, 'log'),
           ),
+          if (hasChecklist)
+            ListTile(
+              key: const ValueKey('viewer-checklist'),
+              leading: const Icon(Icons.checklist_rounded),
+              title: Text(l.vChecklist),
+              onTap: () => Navigator.pop(sheet, 'checklist'),
+            ),
           ListTile(
             key: const ValueKey('viewer-run'),
             leading: const Icon(Icons.play_circle_outline_rounded),
@@ -62,6 +75,7 @@ Future<void> showViewerMenu(
     'explorer' => ExplorerPage(machineId: machineId, root: root),
     'changes' => ChangesPage(machineId: machineId, root: root),
     'log' => LogPage(machineId: machineId, root: root),
+    'checklist' => ChecklistPage(machineId: machineId, root: root),
     _ => RunPage(machineId: machineId, root: root),
   };
   await Navigator.of(context).push(machineRoute<void>(machineId, (_) => page));

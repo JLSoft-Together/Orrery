@@ -696,6 +696,63 @@ class AppLocalizationsVi extends AppLocalizations {
   String get vCancelled => 'Đã huỷ.';
 
   @override
+  String get vChecklist => 'Checklist trước khi merge';
+
+  @override
+  String get vClEmpty => 'Chưa có mục nào. Agent và máy tính sẽ thêm vào.';
+
+  @override
+  String get vClReady => 'Sẵn sàng merge';
+
+  @override
+  String vClOpen(int count) {
+    return '$count chưa xong';
+  }
+
+  @override
+  String get vClByAgent => 'Do agent thêm';
+
+  @override
+  String get vClCheck => 'Kiểm';
+
+  @override
+  String get vClNone => 'Chưa chọn script kiểm';
+
+  @override
+  String get vClIdle => 'Chưa chạy';
+
+  @override
+  String get vClRunning => 'Đang chạy';
+
+  @override
+  String get vClPass => 'Đạt';
+
+  @override
+  String get vClFail => 'Lỗi';
+
+  @override
+  String get vClStale => 'Đã cũ, có commit mới sau lần chạy';
+
+  @override
+  String get vClRun => 'Chạy kiểm';
+
+  @override
+  String get vClRunStarted => 'Đã bắt đầu chạy kiểm trên máy tính';
+
+  @override
+  String get vErrCheckRunning => 'Máy tính đang chạy kiểm rồi.';
+
+  @override
+  String get vErrNoScript => 'Hãy chọn script kiểm trên máy tính trước.';
+
+  @override
+  String get vErrNoIntegration =>
+      'Hãy bật shell integration trên máy tính trước.';
+
+  @override
+  String get vErrCheckOff => 'Thư mục này chưa dùng được checklist.';
+
+  @override
   String get vWaitConfirm => 'Xác nhận trên điện thoại để tiếp tục.';
 
   @override

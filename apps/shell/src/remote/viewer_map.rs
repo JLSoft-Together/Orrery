@@ -1,8 +1,12 @@
 use serde_json::{json, Map, Value};
 
+use super::ctx::{Asked, Host};
+
 pub const MAX_PATH: usize = 4096;
 pub const FAST: u64 = 15;
 pub const SLOW: u64 = 60;
+pub const CHECK_RUN: &str = "ccm:checklist-run";
+const MAX_ID: usize = 64;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Arg {
@@ -11,6 +15,7 @@ pub enum Arg {
     Str(&'static str),
     StrFlag(&'static str, &'static str),
     Write,
+    Check(&'static str),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -18,6 +23,7 @@ pub enum Pre {
     Discard,
     Push,
     Overwrite,
+    CheckRun,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -63,7 +69,7 @@ impl Spec {
     }
 }
 
-pub const SPECS: [Spec; 31] = [
+pub const SPECS: [Spec; 34] = [
     s("fs.list", "ccm:list-dir", Arg::Obj),
     s("fs.files", "ccm:list-files", Arg::Str("root")),
     s("fs.read", "ccm:read-file", Arg::Str("path")),
@@ -95,6 +101,9 @@ pub const SPECS: [Spec; 31] = [
     s("run.reload", "ccm:run-reload", Arg::StrFlag("sessionId", "hot")),
     s("run.sessions", "ccm:run-sessions", Arg::None).run(),
     s("run.devices", "ccm:run-devices", Arg::None),
+    s("checklist.get", "ccm:checklist", Arg::Check("list")),
+    s("checklist.toggle", "ccm:checklist", Arg::Check("toggle")).write(),
+    s("checklist.run", CHECK_RUN, Arg::Check("list")).pre(Pre::CheckRun),
 ];
 
 pub fn lookup(t: &str) -> Option<&'static Spec> {
@@ -135,12 +144,42 @@ pub fn clean(cmd: &Value) -> Map<String, Value> {
     obj
 }
 
+fn check_args(op: &str, cmd: &Value) -> Option<Value> {
+    let mut req = json!({ "op": op, "dir": text(cmd, "dir")? });
+    match cmd.get("wt") {
+        None | Some(Value::Null) => {}
+        Some(Value::String(w)) if !w.is_empty() && w.len() <= MAX_PATH && local_path_ok(w) => req["wt"] = json!(w),
+        Some(_) => return None,
+    }
+    if op == "toggle" {
+        let id = cmd.get("id").and_then(Value::as_str).filter(|i| !i.is_empty() && i.len() <= MAX_ID)?;
+        req["id"] = json!(id);
+        req["done"] = json!(cmd.get("done").and_then(Value::as_bool)?);
+    }
+    Some(json!([req]))
+}
+
+pub fn check_run(host: &dyn Host, owner: &str, accept: &[String], args: Value) -> Value {
+    let probe = host.viewer(owner, "ccm:checklist", args.clone(), accept);
+    let allowed = probe.get("raw").is_some_and(|r| r.get("ok") == Some(&Value::Bool(true)));
+    if !allowed {
+        return probe;
+    }
+    let req = args.get(0).cloned().unwrap_or(Value::Null);
+    let target = json!({ "dir": req["dir"], "wt": req.get("wt").cloned().unwrap_or(Value::Null) });
+    match host.ask("checklist.run", target) {
+        Asked::Reply(v) => json!({ "raw": v }),
+        Asked::Offline => json!({ "error": "offline" }),
+    }
+}
+
 pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
     Some(match spec.arg {
         Arg::None => json!([]),
         Arg::Obj => paths_ok(cmd).then(|| json!([Value::Object(clean(cmd))]))?,
         Arg::Str(f) => json!([text(cmd, f)?]),
         Arg::StrFlag(f, g) => json!([text(cmd, f)?, cmd.get(g) == Some(&Value::Bool(true))]),
+        Arg::Check(op) => check_args(op, cmd)?,
         Arg::Write => {
             let path = text(cmd, "path")?;
             let body = cmd.get("text").and_then(Value::as_str)?;
@@ -215,6 +254,11 @@ pub fn pre_needs(locale: &str, pre: Pre, cmd: &Value) -> Value {
             }
             let (title, ok) = if vi { ("Push nhánh lên remote?", "Push") } else { ("Push branch to remote?", "Push") };
             json!({ "title": title, "detail": lines.join("\n"), "ok": ok, "cancel": cancel })
+        }
+        Pre::CheckRun => {
+            let (title, ok) = if vi { ("Chạy kiểm trên máy?", "Chạy kiểm") } else { ("Run the check on the computer?", "Run check") };
+            let target = if cmd.get("wt").is_some_and(Value::is_string) { field("wt") } else { field("dir") };
+            json!({ "title": title, "detail": target, "ok": ok, "cancel": cancel })
         }
         Pre::Overwrite => {
             let (title, ok) = if vi { ("Ghi đè file?", "Ghi đè") } else { ("Overwrite file?", "Overwrite") };

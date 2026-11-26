@@ -30,6 +30,10 @@ String viewerErrorText(AppLocalizations l, Object error) {
       'hook' => l.vErrHook,
       'timeout' => l.errTimeout,
       'busy' => l.errBusy,
+      'running' => l.vErrCheckRunning,
+      'script' => l.vErrNoScript,
+      'integration' => l.vErrNoIntegration,
+      'unavailable' => l.vErrCheckOff,
       _ => l.vErrFailed,
     };
     final detail = error.detail;

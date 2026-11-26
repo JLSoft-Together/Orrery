@@ -75,6 +75,25 @@ export async function runCheck(dir: string, script: string, deps: CheckRunDeps):
   }
 }
 
+export type PhoneRunError = 'running' | 'script' | 'integration' | 'unavailable'
+export type PhoneRunResult = { ok: true; started: true } | { ok: false; error: PhoneRunError }
+
+export interface PhoneRunDeps extends CheckRunDeps {
+  script: () => Promise<string | null>
+  integration: () => boolean
+}
+
+export async function startCheckFromPhone(dir: string, deps: PhoneRunDeps): Promise<PhoneRunResult> {
+  if (isCheckLive(dir)) return { ok: false, error: 'running' }
+  if (!deps.integration()) return { ok: false, error: 'integration' }
+  const script = await deps.script()
+  if (script === null) return { ok: false, error: 'unavailable' }
+  if (!script.trim()) return { ok: false, error: 'script' }
+  if (isCheckLive(dir)) return { ok: false, error: 'running' }
+  runCheck(dir, script, deps).catch(() => undefined)
+  return { ok: true, started: true }
+}
+
 export function waitShellResult(panes: () => readonly Pane[], key: string): Promise<{ code: number } | null> {
   return new Promise((resolve) => {
     let done = false

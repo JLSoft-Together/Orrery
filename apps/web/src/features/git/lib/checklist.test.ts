@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { nextTick, reactive } from 'vue'
 import type { CheckState, ChecklistCheck, ChecklistItem } from '../../../core/lib/preview'
 import type { Pane } from '../../workspace/stores/workspace'
-import { checkView, defaultScript, isCheckLive, mergeWarning, onCheckDone, openItems, runCheck, scriptOptions, waitShellResult } from './checklist'
+import { checkView, defaultScript, isCheckLive, mergeWarning, onCheckDone, openItems, runCheck, scriptOptions, startCheckFromPhone, waitShellResult, type PhoneRunDeps } from './checklist'
 
 const item = (id: string, done: boolean, by: 'owner' | 'agent' = 'owner'): ChecklistItem => ({ id, text: `text ${id}`, done, by, at: 1 })
 const check = (state: CheckState, head = 'aaa1111', script = 'npm run qa'): ChecklistCheck => ({ script, state, at: 5, head })
@@ -135,5 +135,45 @@ describe('waitShellResult', () => {
   })
   it('resolves at once when a result is already there', async () => {
     expect(await waitShellResult(() => [pane({ shellLast: { code: 0, ms: 1, command: 'x' } })], 'p1')).toEqual({ code: 0 })
+  })
+})
+
+describe('startCheckFromPhone', () => {
+  function phone(over: Partial<PhoneRunDeps> = {}) {
+    const launched: string[] = []
+    let release: (v: { code: number }) => void = () => {}
+    const deps: PhoneRunDeps = {
+      integration: () => true,
+      script: async () => 'npm run qa',
+      head: async () => 'abc1234',
+      report: async () => undefined,
+      launch: (script) => (launched.push(script), 'pane-1'),
+      wait: () => new Promise((r) => (release = r)),
+      ...over,
+    }
+    return { deps, launched, finish: (code: number) => release({ code }) }
+  }
+
+  it('starts the check once and ignores a second request while it runs', async () => {
+    const a = phone()
+    expect(await startCheckFromPhone('/wt/p1', a.deps)).toEqual({ ok: true, started: true })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(isCheckLive('/wt/p1')).toBe(true)
+    const b = phone()
+    expect(await startCheckFromPhone('/wt/p1', b.deps)).toEqual({ ok: false, error: 'running' })
+    expect(a.launched).toEqual(['npm run qa'])
+    expect(b.launched).toEqual([])
+    a.finish(0)
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(isCheckLive('/wt/p1')).toBe(false)
+  })
+  it('refuses when shell integration is off, the checklist is unavailable or has no script', async () => {
+    expect(await startCheckFromPhone('/wt/p2', phone({ integration: () => false }).deps)).toEqual({ ok: false, error: 'integration' })
+    expect(await startCheckFromPhone('/wt/p3', phone({ script: async () => null }).deps)).toEqual({ ok: false, error: 'unavailable' })
+    expect(await startCheckFromPhone('/wt/p4', phone({ script: async () => '  ' }).deps)).toEqual({ ok: false, error: 'script' })
+    expect(isCheckLive('/wt/p4')).toBe(false)
   })
 })

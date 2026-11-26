@@ -10,7 +10,7 @@ use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
 use super::phone_ws::{Done, MAX_IN_FLIGHT};
 use super::viewer_events::{merge, VEvent, COALESCE, QUEUE};
-use super::viewer_map::{build_args, lookup, outcome, pre_needs, pre_of, watch_key, Spec, Watch, SLOW};
+use super::viewer_map::{build_args, check_run, lookup, CHECK_RUN, outcome, pre_needs, pre_of, watch_key, Spec, Watch, SLOW};
 
 pub const MAX_WATCHES: usize = 8;
 pub const MAX_REPLY: usize = 900_000;
@@ -152,7 +152,7 @@ impl Phone {
         tokio::spawn(async move {
             let work = tokio::task::spawn_blocking(move || {
                 let _busy = busy;
-                let env = ctx.host.viewer(&owner, channel, args, &accept);
+                let env = if channel == CHECK_RUN { check_run(ctx.host.as_ref(), &owner, &accept, args) } else { ctx.host.viewer(&owner, channel, args, &accept) };
                 if adds && !ctx.viewer.is_open(&owner) {
                     ctx.host.viewer_release(&owner);
                 }

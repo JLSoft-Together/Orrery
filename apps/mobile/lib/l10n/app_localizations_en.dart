@@ -722,6 +722,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vCancelled => 'Cancelled.';
 
   @override
+  String get vChecklist => 'Pre-merge checklist';
+
+  @override
+  String get vClEmpty => 'No items yet. Agents and the computer add them.';
+
+  @override
+  String get vClReady => 'Ready to merge';
+
+  @override
+  String vClOpen(int count) {
+    return '$count open';
+  }
+
+  @override
+  String get vClByAgent => 'Added by an agent';
+
+  @override
+  String get vClCheck => 'Check';
+
+  @override
+  String get vClNone => 'No check script set';
+
+  @override
+  String get vClIdle => 'Not run yet';
+
+  @override
+  String get vClRunning => 'Running';
+
+  @override
+  String get vClPass => 'Passed';
+
+  @override
+  String get vClFail => 'Failed';
+
+  @override
+  String get vClStale => 'Out of date, new commits since the run';
+
+  @override
+  String get vClRun => 'Run check';
+
+  @override
+  String get vClRunStarted => 'Check started on the computer';
+
+  @override
+  String get vErrCheckRunning => 'A check is already running on the computer.';
+
+  @override
+  String get vErrNoScript => 'Pick a check script on the computer first.';
+
+  @override
+  String get vErrNoIntegration =>
+      'Turn on shell integration on the computer first.';
+
+  @override
+  String get vErrCheckOff => 'The checklist is not available for this folder.';
+
+  @override
   String get vWaitConfirm => 'Confirm on this phone to continue.';
 
   @override

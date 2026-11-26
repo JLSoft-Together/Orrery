@@ -1358,6 +1358,114 @@ abstract class AppLocalizations {
   /// **'Cancelled.'**
   String get vCancelled;
 
+  /// No description provided for @vChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-merge checklist'**
+  String get vChecklist;
+
+  /// No description provided for @vClEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No items yet. Agents and the computer add them.'**
+  String get vClEmpty;
+
+  /// No description provided for @vClReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to merge'**
+  String get vClReady;
+
+  /// No description provided for @vClOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} open'**
+  String vClOpen(int count);
+
+  /// No description provided for @vClByAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by an agent'**
+  String get vClByAgent;
+
+  /// No description provided for @vClCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get vClCheck;
+
+  /// No description provided for @vClNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No check script set'**
+  String get vClNone;
+
+  /// No description provided for @vClIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not run yet'**
+  String get vClIdle;
+
+  /// No description provided for @vClRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get vClRunning;
+
+  /// No description provided for @vClPass.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed'**
+  String get vClPass;
+
+  /// No description provided for @vClFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get vClFail;
+
+  /// No description provided for @vClStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of date, new commits since the run'**
+  String get vClStale;
+
+  /// No description provided for @vClRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run check'**
+  String get vClRun;
+
+  /// No description provided for @vClRunStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Check started on the computer'**
+  String get vClRunStarted;
+
+  /// No description provided for @vErrCheckRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'A check is already running on the computer.'**
+  String get vErrCheckRunning;
+
+  /// No description provided for @vErrNoScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a check script on the computer first.'**
+  String get vErrNoScript;
+
+  /// No description provided for @vErrNoIntegration.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on shell integration on the computer first.'**
+  String get vErrNoIntegration;
+
+  /// No description provided for @vErrCheckOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The checklist is not available for this folder.'**
+  String get vErrCheckOff;
+
   /// No description provided for @vWaitConfirm.
   ///
   /// In en, this message translates to:

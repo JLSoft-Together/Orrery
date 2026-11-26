@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -96,6 +97,23 @@ void main() {
       expect(await go(), isNull);
       expect(dictation.listening, isTrue);
       await dictation.stop();
+      expect(dictation.listening, isFalse);
+    });
+
+    test('cancel while the online question is open never starts listening', () async {
+      final engine = FakeEngine();
+      final dictation = Dictation(engine, memPrefs());
+      final gate = Completer<bool>();
+      final pending = dictation.start(
+        localeId: 'vi_VN',
+        askOnline: () => gate.future,
+        onText: (_, _) {},
+      );
+      await Future<void>.delayed(Duration.zero);
+      await dictation.cancel();
+      gate.complete(true);
+      expect(await pending, isNull);
+      expect(engine.listens, 0);
       expect(dictation.listening, isFalse);
     });
 

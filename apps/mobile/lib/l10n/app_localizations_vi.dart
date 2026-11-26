@@ -1126,8 +1126,7 @@ class AppLocalizationsVi extends AppLocalizations {
       'App bị crash khi đang chạy. Hãy đọc log crash này và sửa nguyên nhân:';
 
   @override
-  String get runLogCrashCopied =>
-      'Đã chép crash, dán vào ô nhập. Chưa gửi gì cả.';
+  String get runLogCrashFilled => 'Đã điền crash vào ô nhập. Chưa gửi gì cả.';
 
   @override
   String get lockReason => 'Mở khoá Orrery Remote';

@@ -39,6 +39,11 @@ Future<ApkTap?> apkTapOf(
   }
 }
 
+Map<String, String> remoteTapData(Map<String, Object?> data) => {
+  for (final e in data.entries)
+    if (e.key != 'apk') e.key: '${e.value}',
+};
+
 Map<String, String> tapDataWithInstall(
   Map<String, String> data,
   String? actionId,

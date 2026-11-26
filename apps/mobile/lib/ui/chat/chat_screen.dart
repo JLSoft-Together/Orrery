@@ -11,6 +11,7 @@ import '../../remote/providers.dart';
 import '../commands.dart';
 import '../danger_guard.dart';
 import '../model/workspace_model.dart';
+import '../run/crash_draft.dart';
 import '../terminal/terminal_pane.dart';
 import '../theme/orrery_shape.dart';
 import '../ui_providers.dart';
@@ -80,12 +81,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       reauthorize: _reauthorize,
     )..addListener(_onChat);
     _chat.start();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeCrashDraft());
     _life = AppLifecycleListener(
       onPause: _chat.pause,
       onHide: _chat.pause,
       onShow: _chat.resume,
       onResume: _chat.resume,
     );
+  }
+
+  void _takeCrashDraft() {
+    if (!mounted) return;
+    final composer = _composer.currentState;
+    if (composer == null) return;
+    final text = ref.read(crashDraftProvider.notifier).take(widget.paneKey);
+    if (text != null) composer.fill(text);
   }
 
   void _onChat() {

@@ -60,6 +60,7 @@ class FakeInstaller implements ApkInstaller {
   InstallStart result = InstallStart.started;
   final List<String> installed = [];
   int settings = 0;
+  Completer<void>? hold;
 
   @override
   Future<bool> canInstall() async => allowed;
@@ -73,6 +74,7 @@ class FakeInstaller implements ApkInstaller {
   @override
   Future<InstallStart> install(String path) async {
     installed.add(path);
+    await hold?.future;
     return result;
   }
 }
@@ -223,6 +225,22 @@ void main() {
         expect(flow.state.phase, ApkPhase.needPermission);
       },
     );
+
+    test('cancel while the installer runs keeps the file and the state', () async {
+      final source = FakeSource((_) async => okBody(bytes));
+      final installer = FakeInstaller()..hold = Completer<void>();
+      final flow = flowOf(offerOf(), source, installer);
+      final running = flow.start();
+      while (installer.installed.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      await flow.cancel();
+      expect(File(installer.installed.single).existsSync(), isTrue);
+      expect(flow.state.phase, ApkPhase.installing);
+      installer.hold!.complete();
+      await running;
+      expect(flow.state.phase, ApkPhase.started);
+    });
 
     test('an expired ticket fails without touching the network', () async {
       final past = DateTime.now().add(const Duration(hours: 1));
@@ -464,6 +482,24 @@ void main() {
       );
       expect(tap, isNotNull);
       expect(tap!.auto, isFalse);
+    });
+
+    test('remote push data never carries an inline apk offer', () async {
+      final forged = remoteTapData({
+        'k': 'apk',
+        'm': 'M1',
+        'apk': offerJson(),
+        'x': 5,
+      });
+      expect(forged.containsKey('apk'), isFalse);
+      expect(forged['x'], '5');
+      final tap = await apkTapOf(
+        forged,
+        key: () async => null,
+        machineKey: (_) async => null,
+        strings: pushStrings('en'),
+      );
+      expect(tap, isNull);
     });
 
     test('an apk push without a usable offer yields no tap', () async {

@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orrery_remote/push/push_background.dart';
 import 'package:orrery_remote/push/push_notice.dart';
@@ -296,6 +297,27 @@ void main() {
         expect(s.service.pausedUntil, isNull);
         expect(s.kv.data[pushPausedKey], isNull);
       });
+    });
+  });
+
+  group('channel sink', () {
+    test('the pause stream can be listened to again after a cancel', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      const channel = MethodChannel('dev.ccm.orrery.remote/waiting');
+      final sink = ChannelWaitingSink(channel: channel);
+      final first = sink.pauseRequests.listen((_) {});
+      await first.cancel();
+      var got = 0;
+      final second = sink.pauseRequests.listen((_) => got++);
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            channel.name,
+            channel.codec.encodeMethodCall(const MethodCall('pause')),
+            (_) {},
+          );
+      await Future<void>.delayed(Duration.zero);
+      expect(got, 1);
+      await second.cancel();
     });
   });
 }

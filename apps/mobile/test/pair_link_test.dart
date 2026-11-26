@@ -269,18 +269,30 @@ void main() {
       expect(find.byKey(const ValueKey('pair-confirm')), findsNothing);
     });
 
-    testWidgets('shell request skips the subnet check', (tester) async {
-      final rig = await _pump(tester, local: _other);
-      rig.pairs.controller.add(const PairRequest('qr1', fromShell: true));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('pair-confirm-pair')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pair-confirm-blocked')), findsNothing);
-    });
-
-    testWidgets('extra without a shell referrer skips subnet and is labelled', (
+    testWidgets('shell request with a plain LAN code on another subnet is blocked', (
       tester,
     ) async {
       final rig = await _pump(tester, local: _other);
+      rig.pairs.controller.add(const PairRequest('qr1', fromShell: true));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('pair-confirm-blocked')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pair-confirm-pair')), findsNothing);
+    });
+
+    testWidgets('extra from an app with a plain LAN code is blocked off subnet', (
+      tester,
+    ) async {
+      final rig = await _pump(tester, local: _other);
+      rig.pairs.controller.add(const PairRequest('qr1', fromShell: false));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('pair-confirm-blocked')), findsOneWidget);
+      expect(rig.machines.codes, isEmpty);
+    });
+
+    testWidgets('extra without a shell referrer on the same subnet is labelled', (
+      tester,
+    ) async {
+      final rig = await _pump(tester);
       rig.pairs.controller.add(const PairRequest('qr1', fromShell: false));
       await tester.pumpAndSettle();
       expect(
@@ -291,6 +303,16 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('pair-confirm-pair')));
       await tester.pumpAndSettle();
       expect(rig.machines.codes, ['qr1']);
+    });
+
+    testWidgets('extra with a loopback entry skips the subnet check', (
+      tester,
+    ) async {
+      final rig = await _pump(tester, local: _other);
+      rig.pairs.controller.add(const PairRequest('mixed', fromShell: false));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('pair-confirm-blocked')), findsNothing);
+      expect(find.byKey(const ValueKey('pair-confirm-pair')), findsOneWidget);
     });
 
     testWidgets('extra with only loopback shows over USB cable', (

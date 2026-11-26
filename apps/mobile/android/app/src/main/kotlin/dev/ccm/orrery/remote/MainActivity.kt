@@ -139,8 +139,11 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun isFromShell(): Boolean =
-        referrer?.host == SHELL_PACKAGE || callingPackage == SHELL_PACKAGE
+    private fun isFromShell(): Boolean {
+        val forged = intent.hasExtra(Intent.EXTRA_REFERRER) || intent.hasExtra(Intent.EXTRA_REFERRER_NAME)
+        if (forged) return false
+        return referrer?.host == SHELL_PACKAGE || callingPackage == SHELL_PACKAGE
+    }
 
     private fun createAttentionChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

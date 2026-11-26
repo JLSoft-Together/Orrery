@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orrery_remote/ui/run/crash_draft.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orrery_remote/app/app_lock_scope.dart';
 import 'package:orrery_remote/remote/protocol.dart';
@@ -273,6 +277,69 @@ void main() {
         find.byKey(const ValueKey('chat-input')),
       );
       expect(field.controller!.text, 'rm -rf build');
+    });
+
+    testWidgets('a second tap while auth is open sends once and keeps later typing', (
+      tester,
+    ) async {
+      final api = FakeMachineApi();
+      final auth = await pumpChat(
+        tester,
+        dangerHarness(api),
+        AuthOutcome.success,
+      );
+      final gate = Completer<AuthOutcome>();
+      auth.hold = gate;
+      final input = find.byKey(const ValueKey('chat-input'));
+      await tester.enterText(input, 'rm -rf build');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('chat-send')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('chat-send')));
+      await tester.pump();
+      await tester.enterText(input, 'rm -rf build and more');
+      gate.complete(AuthOutcome.success);
+      await tester.pumpAndSettle();
+      expect(sends(api).length, 1);
+      final field = tester.widget<TextField>(input);
+      expect(field.controller!.text, 'rm -rf build and more');
+    });
+
+    testWidgets('a crash draft for the pane fills the composer once, unsent', (
+      tester,
+    ) async {
+      final api = FakeMachineApi();
+      final h = dangerHarness(api);
+      final lock = makeLock(FakeAuth());
+      await h.pump(
+        tester,
+        AppLockScope(
+          lock: lock,
+          child: Consumer(
+            builder: (context, ref, _) => TextButton(
+              key: const ValueKey('go'),
+              onPressed: () {
+                ref.read(crashDraftProvider.notifier).put('a', 'CRASH log');
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        const ChatScreen(machineId: 'm1', paneKey: 'a'),
+                  ),
+                );
+              },
+              child: const Text('go'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('go')));
+      await tester.pumpAndSettle();
+      final field = tester.widget<TextField>(
+        find.byKey(const ValueKey('chat-input')),
+      );
+      expect(field.controller!.text, 'CRASH log');
+      expect(h.container.read(crashDraftProvider), isEmpty);
+      expect(sends(api), isEmpty);
     });
 
     testWidgets('a safe line never asks and carries no authed', (tester) async {

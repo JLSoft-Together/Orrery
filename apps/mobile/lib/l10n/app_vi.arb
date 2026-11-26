@@ -342,7 +342,7 @@
   "runLogNoAgent": "Chưa mở pane agent nào cho project này",
   "runLogPickAgent": "Gửi crash cho agent nào?",
   "runLogCrashPrompt": "App bị crash khi đang chạy. Hãy đọc log crash này và sửa nguyên nhân:",
-  "runLogCrashCopied": "Đã chép crash, dán vào ô nhập. Chưa gửi gì cả.",
+  "runLogCrashFilled": "Đã điền crash vào ô nhập. Chưa gửi gì cả.",
   "lockReason": "Mở khoá Orrery Remote",
   "lockTitle": "Orrery Remote đang khoá",
   "lockBody": "Xác thực bằng vân tay, khuôn mặt hoặc khoá màn hình của máy để tiếp tục.",

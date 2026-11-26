@@ -169,6 +169,20 @@ void main() {
     },
   );
 
+  testWidgets('a check still running after ten minutes keeps being polled', (
+    tester,
+  ) async {
+    final h = build((type, f) => ok(list(state: 'running')));
+    await h.pump(tester, const ChecklistPage(machineId: 'm1', root: root));
+    await settle(tester);
+    await tester.pump(const Duration(minutes: 11));
+    int gets() => h.api.commands.where((c) => c.$1 == 'checklist.get').length;
+    final before = gets();
+    await tester.pump(const Duration(minutes: 2));
+    expect(gets(), greaterThan(before));
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('a desktop that is already running a check reports it', (
     tester,
   ) async {

@@ -24,7 +24,10 @@ class PreparedImage {
   final ImageKind kind;
 }
 
-typedef Shrink = Future<Uint8List> Function(Uint8List bytes, int w, int h);
+typedef Shrink =
+    Future<Uint8List> Function(Uint8List bytes, int w, int h, [int side]);
+
+const List<int> shrinkSides = [maxImageSide, 1536, 1024];
 
 ImageKind? imageKind(Uint8List b) {
   if (b.length >= 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF) {
@@ -91,12 +94,17 @@ int _u32(Uint8List b, int i) =>
 
 bool exceedsSide(int w, int h) => w > maxImageSide || h > maxImageSide;
 
-Future<Uint8List> shrinkToPng(Uint8List bytes, int w, int h) async {
+Future<Uint8List> shrinkToPng(
+  Uint8List bytes,
+  int w,
+  int h, [
+  int side = maxImageSide,
+]) async {
   final wide = w >= h;
   final codec = await ui.instantiateImageCodec(
     bytes,
-    targetWidth: wide ? maxImageSide : null,
-    targetHeight: wide ? null : maxImageSide,
+    targetWidth: wide ? side : null,
+    targetHeight: wide ? null : side,
   );
   try {
     final frame = await codec.getNextFrame();
@@ -122,7 +130,10 @@ Future<PreparedImage> prepareImage(
   var out = kind;
   if (exceedsSide(size.w, size.h)) {
     try {
-      bytes = await shrink(raw, size.w, size.h);
+      for (final side in shrinkSides) {
+        bytes = await shrink(raw, size.w, size.h, side);
+        if (bytes.length <= maxImageBytes) break;
+      }
     } on PrepFailure {
       rethrow;
     } on Object {

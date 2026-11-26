@@ -36,13 +36,30 @@ class ChannelWaitingSink implements WaitingSink {
   ChannelWaitingSink({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel(waitingChannelName) {
     _channel.setMethodCallHandler((call) async {
-      if (call.method == 'pause' && !_requests.isClosed) _requests.add(null);
+      if (call.method == 'pause') _emit();
       return null;
     });
   }
 
   final MethodChannel _channel;
-  final StreamController<void> _requests = StreamController<void>();
+  bool _held = false;
+  late final StreamController<void> _requests = StreamController<void>.broadcast(
+    onListen: () {
+      if (!_held) return;
+      _held = false;
+      scheduleMicrotask(() {
+        if (_requests.hasListener) _requests.add(null);
+      });
+    },
+  );
+
+  void _emit() {
+    if (_requests.hasListener) {
+      _requests.add(null);
+    } else {
+      _held = true;
+    }
+  }
 
   @override
   Stream<void> get pauseRequests => _requests.stream;
@@ -51,7 +68,7 @@ class ChannelWaitingSink implements WaitingSink {
   Future<void> start() async {
     try {
       final pending = await _channel.invokeMethod<bool>('ready');
-      if (pending == true && !_requests.isClosed) _requests.add(null);
+      if (pending == true) _emit();
     } on MissingPluginException {
       return;
     } on PlatformException {

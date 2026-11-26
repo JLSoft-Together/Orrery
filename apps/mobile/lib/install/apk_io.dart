@@ -31,7 +31,8 @@ class HttpApkSource implements ApkSource {
       ..connectionTimeout = apkConnectTimeout
       ..autoUncompress = false
       ..findProxy = ((_) => 'DIRECT');
-    final request = await client.getUrl(url).timeout(apkConnectTimeout);
+    final request = await client.getUrl(url).timeout(apkConnectTimeout)
+      ..followRedirects = false;
     final response = await request.close().timeout(apkConnectTimeout);
     final length = response.contentLength;
     return ApkResponse(

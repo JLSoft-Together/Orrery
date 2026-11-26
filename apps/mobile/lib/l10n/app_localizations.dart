@@ -2150,11 +2150,11 @@ abstract class AppLocalizations {
   /// **'The app crashed while running. Please read this crash log and fix the cause:'**
   String get runLogCrashPrompt;
 
-  /// No description provided for @runLogCrashCopied.
+  /// No description provided for @runLogCrashFilled.
   ///
   /// In en, this message translates to:
-  /// **'Crash copied, paste it into the input box. Nothing was sent.'**
-  String get runLogCrashCopied;
+  /// **'Crash filled into the input box. Nothing was sent.'**
+  String get runLogCrashFilled;
 
   /// No description provided for @lockReason.
   ///

@@ -38,6 +38,7 @@ class ChatComposer extends StatefulWidget {
 class ChatComposerState extends State<ChatComposer> {
   final TextEditingController _text = TextEditingController();
   final FocusNode _focus = FocusNode();
+  bool _sending = false;
 
   @override
   void initState() {
@@ -73,21 +74,34 @@ class ChatComposerState extends State<ChatComposer> {
   }
 
   Future<void> _send() async {
-    final value = _text.text.trim();
+    if (_sending) return;
+    final raw = _text.text;
+    final value = raw.trim();
     if (value.isEmpty) return;
-    final verdict = await _verdict(value);
-    if (verdict == DangerVerdict.cancelled || !mounted) return;
-    _text.clear();
-    await widget.onSend(value, verdict == DangerVerdict.authed);
+    _sending = true;
+    try {
+      final verdict = await _verdict(value);
+      if (verdict == DangerVerdict.cancelled || !mounted) return;
+      if (_text.text == raw) _text.clear();
+      await widget.onSend(value, verdict == DangerVerdict.authed);
+    } finally {
+      _sending = false;
+    }
   }
 
   Future<DangerVerdict> _verdict(String value) =>
       confirmDanger(context, widget.danger, value);
 
   Future<void> _sendChip(String chip) async {
-    final verdict = await _verdict(chip);
-    if (verdict == DangerVerdict.cancelled) return;
-    await widget.onSend(chip, verdict == DangerVerdict.authed);
+    if (_sending) return;
+    _sending = true;
+    try {
+      final verdict = await _verdict(chip);
+      if (verdict == DangerVerdict.cancelled || !mounted) return;
+      await widget.onSend(chip, verdict == DangerVerdict.authed);
+    } finally {
+      _sending = false;
+    }
   }
 
   @override

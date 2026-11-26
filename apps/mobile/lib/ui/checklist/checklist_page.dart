@@ -14,6 +14,7 @@ import 'checklist_model.dart';
 import 'checklist_parts.dart';
 
 const Duration checklistPoll = Duration(seconds: 3);
+const Duration checklistSlowPoll = Duration(seconds: 30);
 const int checklistPollMax = 200;
 
 class ChecklistPage extends ConsumerStatefulWidget {
@@ -54,14 +55,15 @@ class _ChecklistPageState extends ConsumerState<ChecklistPage> {
       _polls = 0;
       return;
     }
-    _timer ??= Timer.periodic(checklistPoll, (_) {
-      if (++_polls > checklistPollMax) {
-        _timer?.cancel();
-        _timer = null;
-        return;
-      }
-      _reload?.call();
-    });
+    _timer ??= Timer.periodic(checklistPoll, _tick);
+  }
+
+  void _tick(Timer timer) {
+    if (++_polls == checklistPollMax) {
+      timer.cancel();
+      _timer = Timer.periodic(checklistSlowPoll, _tick);
+    }
+    _reload?.call();
   }
 
   Future<void> _toggle(ChecklistItem item, bool done, Reload reload) =>

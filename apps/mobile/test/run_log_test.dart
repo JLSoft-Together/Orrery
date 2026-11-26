@@ -318,7 +318,7 @@ void main() {
       final draft = h.container.read(crashDraftProvider)['a']!;
       expect(draft, contains('E/flutter boom'));
       expect(draft, contains('```'));
-      expect(clip, draft);
+      expect(clip, isNull);
       expect(h.api.commands, isEmpty);
       expect(h.api.inputs, isEmpty);
       expect(find.textContaining('Nothing was sent'), findsOneWidget);
@@ -358,6 +358,25 @@ void main() {
       );
       expect(h.container.read(crashDraftProvider), isEmpty);
     });
+  });
+
+  test('a restarted run with lower numbering replaces the buffer', () {
+    RunLogChunk chunk(List<int> ns, int last) => RunLogChunk(
+      known: true,
+      lines: [
+        for (final n in ns) RunLogLine(n: n, stream: 'app', text: 'l$n'),
+      ],
+      last: last,
+      gap: false,
+      more: false,
+    );
+    final buffer = RunLogBuffer()
+      ..add(chunk([1, 2, 3, 4, 5], 5), first: true)
+      ..add(chunk([1, 2], 2), first: false);
+    expect(buffer.lines.map((l) => l.text), ['l1', 'l2']);
+    expect(buffer.last, 2);
+    buffer.add(chunk([3], 3), first: false);
+    expect(buffer.lines.map((l) => l.text), ['l1', 'l2', 'l3']);
   });
 
   test('viewer api keeps run watch shared between pages', () {

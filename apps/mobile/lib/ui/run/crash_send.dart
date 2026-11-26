@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../chat/chat_nav.dart';
@@ -8,24 +7,9 @@ import '../model/workspace_model.dart';
 import '../ui_providers.dart';
 import '../viewers/viewer_api.dart' show samePath;
 import '../widgets/common.dart';
+import 'crash_draft.dart';
 
-class CrashDraft extends Notifier<Map<String, String>> {
-  @override
-  Map<String, String> build() => const {};
-
-  void put(String paneKey, String text) => state = {...state, paneKey: text};
-
-  String? take(String paneKey) {
-    final text = state[paneKey];
-    if (text == null) return null;
-    state = {...state}..remove(paneKey);
-    return text;
-  }
-}
-
-final crashDraftProvider = NotifierProvider<CrashDraft, Map<String, String>>(
-  CrashDraft.new,
-);
+export 'crash_draft.dart';
 
 List<(TabInfo, PaneInfo)> agentPanesFor(WorkspaceModel model, String cwd) => [
   for (final tab in model.tabs)
@@ -90,13 +74,12 @@ Future<bool> sendCrashToAgent(
   if (target == null || !context.mounted) return false;
   final text = '${l.runLogCrashPrompt}\n\n```\n$crash\n```';
   ref.read(crashDraftProvider.notifier).put(target.$2.key, text);
-  await Clipboard.setData(ClipboardData(text: text));
   if (!context.mounted) return false;
   if (open != null) {
     open(target.$1, target.$2);
   } else {
     openSession(context, ref, machineId, target.$1, target.$2);
   }
-  toast(context, l.runLogCrashCopied);
+  toast(context, l.runLogCrashFilled);
   return true;
 }

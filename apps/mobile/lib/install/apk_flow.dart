@@ -132,7 +132,7 @@ class ApkInstallFlow extends ChangeNotifier {
   }
 
   Future<void> cancel() async {
-    if (!_busy) return;
+    if (!_busy || _state.phase == ApkPhase.installing) return;
     _cancelled = true;
     source.close();
     await _discard();

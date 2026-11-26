@@ -144,16 +144,22 @@ class RunLogBuffer {
   bool get hasCrash => lines.any((l) => l.crash);
 
   void add(RunLogChunk chunk, {required bool first}) {
+    final restarted = !first && chunk.last > 0 && chunk.last < last;
+    final replace = first || restarted;
     known = known || chunk.known;
     if (chunk.gap) gap = true;
+    if (restarted) last = chunk.last;
     if (chunk.last > last) last = chunk.last;
-    if (chunk.lines.isEmpty) return;
+    if (chunk.lines.isEmpty) {
+      if (restarted) lines = const [];
+      return;
+    }
     final seen = lines.isEmpty ? 0 : lines.last.n;
     final fresh = [
       for (final l in chunk.lines)
-        if (first || l.n > seen) l,
+        if (replace || l.n > seen) l,
     ];
-    var merged = first ? fresh : [...lines, ...fresh];
+    var merged = replace ? fresh : [...lines, ...fresh];
     if (merged.length > runLogMax) {
       merged = merged.sublist(merged.length - runLogMax);
     }

@@ -147,7 +147,7 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
       return;
     }
     var blocked = false;
-    if (request.fromLink) {
+    if (request.fromLink || !qrHasLoopback(info)) {
       final phone = await widget.localAddresses();
       blocked = !lanMatchesPhone(qrLanHosts(info), phone);
     }

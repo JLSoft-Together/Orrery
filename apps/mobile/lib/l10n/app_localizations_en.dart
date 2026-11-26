@@ -1167,8 +1167,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The app crashed while running. Please read this crash log and fix the cause:';
 
   @override
-  String get runLogCrashCopied =>
-      'Crash copied, paste it into the input box. Nothing was sent.';
+  String get runLogCrashFilled =>
+      'Crash filled into the input box. Nothing was sent.';
 
   @override
   String get lockReason => 'Unlock Orrery Remote';

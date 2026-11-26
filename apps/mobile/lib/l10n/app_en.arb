@@ -565,7 +565,7 @@
   "runLogNoAgent": "No agent pane is open for this project",
   "runLogPickAgent": "Send the crash to which agent?",
   "runLogCrashPrompt": "The app crashed while running. Please read this crash log and fix the cause:",
-  "runLogCrashCopied": "Crash copied, paste it into the input box. Nothing was sent.",
+  "runLogCrashFilled": "Crash filled into the input box. Nothing was sent.",
   "lockReason": "Unlock Orrery Remote",
   "lockTitle": "Orrery Remote is locked",
   "lockBody": "Verify with fingerprint, face or your phone's screen lock to continue.",

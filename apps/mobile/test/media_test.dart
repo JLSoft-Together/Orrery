@@ -33,7 +33,7 @@ void main() {
       var asked = false;
       final out = await prepareImage(
         jpeg(4032, 3024),
-        shrink: (b, w, h) async {
+        shrink: (b, w, h, [side = 2048]) async {
           asked = true;
           expect((w, h), (4032, 3024));
           return png(2048, 1536);
@@ -41,6 +41,30 @@ void main() {
       );
       expect(asked, isTrue);
       expect(out.kind, ImageKind.png);
+    });
+
+    test('a shrunk png still over the byte limit is retried on a smaller side', () async {
+      final sides = <int>[];
+      final out = await prepareImage(
+        jpeg(4032, 3024),
+        shrink: (b, w, h, [side = 2048]) async {
+          sides.add(side);
+          return side > 1536
+              ? Uint8List(maxImageBytes + 10)
+              : png(side, 1000);
+        },
+      );
+      expect(sides, [2048, 1536]);
+      expect(out.kind, ImageKind.png);
+      await expectLater(
+        prepareImage(
+          jpeg(4032, 3024),
+          shrink: (b, w, h, [side = 2048]) async => Uint8List(maxImageBytes + 10),
+        ),
+        throwsA(
+          isA<PrepFailure>().having((e) => e.error, 'error', PrepError.tooLarge),
+        ),
+      );
     });
 
     test('unknown bytes and oversized results are refused', () async {
@@ -57,7 +81,7 @@ void main() {
         ),
       );
       await expectLater(
-        prepareImage(png(5000, 5000), shrink: (b, w, h) async => throw StateError('x')),
+        prepareImage(png(5000, 5000), shrink: (b, w, h, [side = 2048]) async => throw StateError('x')),
         throwsA(
           isA<PrepFailure>().having((e) => e.error, 'error', PrepError.failed),
         ),

@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 
 import 'local_notifier.dart';
+import 'push_apk.dart';
 import 'push_background.dart';
 import 'push_config.dart';
 import 'push_notice.dart';
@@ -75,7 +76,7 @@ class FirebasePushGateway implements PushGateway {
   Future<void>? _opening;
 
   static Map<String, String> _data(RemoteMessage message) =>
-      message.data.map((key, value) => MapEntry(key, '$value'));
+      remoteTapData(message.data);
 
   static PushPermission _status(AuthorizationStatus status) =>
       status == AuthorizationStatus.authorized ||

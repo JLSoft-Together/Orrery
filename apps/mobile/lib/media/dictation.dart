@@ -43,6 +43,7 @@ class Dictation {
   final MediaPrefs prefs;
   bool _listening = false;
   bool _starting = false;
+  bool _cancelRequested = false;
   void Function()? _onEnd;
 
   bool get listening => _listening;
@@ -55,6 +56,7 @@ class Dictation {
   }) async {
     if (_listening || _starting) return null;
     _starting = true;
+    _cancelRequested = false;
     try {
       final ok = await engine.init(
         onError: (_) => _finish(),
@@ -62,16 +64,21 @@ class Dictation {
           if (s == 'done' || s == 'notListening') _finish();
         },
       );
+      if (_cancelRequested) return null;
       if (!ok) {
         return await engine.hasPermission()
             ? DictationFail.unavailable
             : DictationFail.denied;
       }
       final offline = await engine.offlineFor(localeId);
+      if (_cancelRequested) return null;
       if (!offline && !await prefs.onlineSpeechAllowed()) {
+        if (_cancelRequested) return null;
         if (!await askOnline()) return DictationFail.onlineRefused;
+        if (_cancelRequested) return null;
         await prefs.allowOnlineSpeech();
       }
+      if (_cancelRequested) return null;
       _onEnd = onEnd;
       _listening = true;
       await engine.listen(
@@ -101,6 +108,10 @@ class Dictation {
 
   Future<void> cancel() async {
     if (!_listening && !_starting) return;
+    if (_starting && !_listening) {
+      _cancelRequested = true;
+      return;
+    }
     await _cancelQuietly();
     _finish();
   }

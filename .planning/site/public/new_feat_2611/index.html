@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Orrery, đề xuất 26/11: kết nối điện thoại và 14 tính năng mới</title>
+<meta name="description" content="Wireframe tương tác: Settings điện thoại và thiết bị làm lại 3 bước, cài APK 1 chạm qua USB, 14 tính năng mới đã review.">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="nf.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="Mục lục">
+  <div class="wrap">
+    <a class="home" href="/" aria-label="Về trang tổng quan"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="4.2" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-24 12 12)"/><circle cx="20.2" cy="8.4" r="1.6" fill="currentColor"/></svg></span><b>Orrery</b></a>
+    <div class="seg" id="seg">
+      <a href="#tom-tat">Tóm tắt</a>
+      <a href="#ket-noi">Kết nối</a>
+      <a href="#thiet-bi">Thiết bị</a>
+      <a href="#tinh-nang">14 tính năng</a>
+      <a href="#demo">Demo</a>
+      <a href="#motion">Motion</a>
+      <a href="#review">Review</a>
+      <a href="#bo-sung">Bổ sung</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+<header class="hero">
+  <p class="eyebrow">Đề xuất 26/11/2026, nhánh feat/new_feat_2611</p>
+  <h1>Kết nối điện thoại trong 3 bước</h1>
+  <p class="lede">Settings điện thoại hiện có 11 mục xếp dọc, cài app phải tự tìm file APK. Bản mới gom thành 1 nút "Kết nối điện thoại", cài qua cáp USB 1 chạm, và một danh sách thiết bị chung. Kèm 19 tính năng khác đã review, wireframe bấm thử được trên cả điện thoại.</p>
+  <ul class="facts">
+    <li><span>Số bước cài + ghép đôi Android:</span> <b>11 → 3</b></li>
+    <li><span>Tính năng đề xuất:</span> <b>14 + 6</b></li>
+    <li><span>Ý tưởng bỏ vì app đã có:</span> <b>4</b></li>
+    <li><span>Câu hỏi chờ chủ nhân chốt:</span> <b>4</b></li>
+  </ul>
+</header>
+
+<section id="tom-tat">
+  <h2>Tóm tắt</h2>
+  <p class="sub">Đếm theo code hiện tại (<code>SettingsRemote.vue</code>, <code>RemoteInstallCard.vue</code>, <code>RemotePairPanel.vue</code>): đường Android qua Wi-Fi, từ lúc mở Settings tới lúc điện thoại dùng được.</p>
+  <div class="cmp">
+    <div class="col old">
+      <h4><span class="pill p-off">Hiện tại</span></h4>
+      <div class="n">11<small>thao tác, 2 lần quét QR</small></div>
+      <ol>
+        <li>Bật "Điều khiển từ xa"</li>
+        <li>Kéo xuống mục "Cài app lên điện thoại"</li>
+        <li>Chọn Android, chọn "Qua Wi-Fi"</li>
+        <li>Bấm "Chọn APK…", <span>tự tìm file trên máy</span></li>
+        <li>Bấm "Hiện mã QR"</li>
+        <li>Quét QR, tải, cài trên điện thoại</li>
+        <li>Mở app Orrery Remote</li>
+        <li>Kéo lên mục "Thêm điện thoại", bấm Thêm</li>
+        <li>Quét QR ghép đôi <span>(lần 2)</span></li>
+        <li>Duyệt trên máy tính</li>
+        <li>Tự kiểm push, relay <span>(nằm ở 2 mục khác)</span></li>
+      </ol>
+    </div>
+    <div class="col new">
+      <h4><span class="pill p-c2">Bản mới</span></h4>
+      <div class="n">3<small>thao tác khi có cáp USB</small></div>
+      <ol>
+        <li>Bấm "Kết nối điện thoại", đồng ý 1 lần</li>
+        <li>Bấm "Cài lên Galaxy A33": <span>APK có sẵn, cài qua adb, app tự mở và nhận mã ghép đôi qua cáp</span></li>
+        <li>Bấm "Cho phép" trên máy tính <span>(kiểm kết nối tự chạy)</span></li>
+      </ol>
+      <p class="sub" style="margin:14px 0 0">Không có cáp: vẫn 3 bước, chỉ 1 mã QR cho cả tải app lẫn ghép đôi. iPhone: 4 bước (thêm "Thêm vào MH chính").</p>
+    </div>
+  </div>
+  <div class="callout"><b>Giữ nguyên:</b> remote control tắt mặc định, vẫn hỏi đồng ý rõ ràng 1 lần; mọi lần ghép đôi vẫn phải bấm "Cho phép" trên máy tính; env, secret, app key không rời máy.</div>
+</section>
+
+<section id="ket-noi">
+  <h2>Kết nối điện thoại (bấm thử)</h2>
+  <p class="sub">Bấm thẳng vào nút trong khung máy tính và điện thoại, hoặc chọn kịch bản rồi "Chạy tự động". Dải trạng thái liệt kê mọi state, chấm đỏ là state lỗi.</p>
+  <div class="ctl" id="cn-ctl">
+    <span class="lbl">Kịch bản</span>
+    <button class="chipbtn on" data-sc="usb">Android có cáp USB</button>
+    <button class="chipbtn" data-sc="qr">Android quét QR</button>
+    <button class="chipbtn" data-sc="ios">iPhone</button>
+    <span class="sp"></span>
+    <button class="chipbtn ghost" id="cn-play" aria-pressed="false"></button>
+    <button class="chipbtn ghost" id="cn-reset"></button>
+    <button class="chipbtn ghost" id="cn-dark" aria-pressed="false"></button>
+  </div>
+  <div class="statebar" id="cn-states" aria-label="Trạng thái"></div>
+  <div class="viewsw" id="cn-view" role="tablist" aria-label="Xem màn">
+    <button role="tab" data-v="win" aria-selected="true" class="on">Máy tính</button>
+    <button role="tab" data-v="phone" aria-selected="false">Điện thoại<i class="ping" hidden></i></button>
+  </div>
+  <div class="stage app" id="cn-stage">
+    <svg class="orbit" id="cn-orbit" aria-hidden="true"><path id="cn-arc"/><circle class="planet" r="6"/></svg>
+    <div class="win" id="cn-win"></div>
+    <div class="phone" id="cn-phone"><i class="cam"></i><div class="scr" id="cn-scr"></div></div>
+  </div>
+  <p class="caption" id="cn-cap" aria-live="polite"></p>
+</section>
+
+<section id="thiet-bi">
+  <h2>Thiết bị trong Settings</h2>
+  <p class="sub">Một danh sách cho điện thoại đã ghép đôi, máy adb (USB, Wi-Fi) và emulator. Cùng một máy vừa cắm adb vừa có app Remote thì gộp thành 1 dòng. Bấm dòng để mở chi tiết; thử Cập nhật app, Thu hồi rồi Hoàn tác, Cắm thêm máy.</p>
+  <div class="ctl" id="dv-ctl">
+    <button class="chipbtn ghost" id="dv-plug"></button>
+    <button class="chipbtn ghost" id="dv-empty" aria-pressed="false"></button>
+    <button class="chipbtn ghost" id="dv-reset"></button>
+  </div>
+  <div class="app" id="dv-app"><div class="win" id="dv-win"></div></div>
+  <p class="caption" id="dv-cap"></p>
+</section>
+
+<section id="tinh-nang">
+  <h2>14 tính năng mới</h2>
+  <p class="sub">Đã rà <code>.code_index/features.md</code>, <code>.planning/IDEAS-*.md</code> và code để không trùng. Bấm thẻ để nhảy tới demo. Icon và minh hoạ gen bằng Codex.</p>
+  <div class="filters" id="ft-filter" role="group" aria-label="Lọc nhóm">
+    <button class="chipbtn on" data-g="all">Tất cả</button>
+    <button class="chipbtn" data-g="r">Kết nối và cài đặt</button>
+    <button class="chipbtn" data-g="p">Điện thoại</button>
+    <button class="chipbtn" data-g="d">Máy tính</button>
+  </div>
+  <div class="feats" id="ft-list"></div>
+  <div class="legend">
+    <span><span class="pill p-c2">Giá trị cao</span></span>
+    <span><span class="pill p-c6">Công sức S / M / L</span></span>
+    <span><span class="pill p-warn">Cần ghi ngoại lệ</span> phải thêm mục trong <code>docs/core-principle.md</code> trước khi làm</span>
+  </div>
+  <h3>Đã bỏ vì app đã có</h3>
+  <div class="card tw"><table>
+    <thead><tr><th>Ý tưởng</th><th>Đã có ở</th></tr></thead>
+    <tbody>
+      <tr><td>Cảnh báo chi tiêu theo ngày</td><td><code>core/stores/settings.ts::dailyBudget</code></td></tr>
+      <tr><td>Tóm tắt hằng ngày qua Telegram</td><td>i18n <code>telegram.digest</code></td></tr>
+      <tr><td>Kiểm sức khoẻ MCP server</td><td><code>features/extensions/stores/extensions.ts</code> (<code>claude mcp list</code>)</td></tr>
+      <tr><td>Chỉ push điện thoại khi rời máy</td><td><code>PhoneSettings.vue</code> (<code>idleMinutes</code>), <code>host_extra.rs::idle_seconds</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="demo">
+  <h2>Demo từng tính năng</h2>
+  <p class="sub">Mỗi khung bấm được. Nội dung session, tên file là ví dụ minh hoạ.</p>
+  <div class="demos app" id="demos"></div>
+</section>
+
+<section id="motion">
+  <h2>Motion và state</h2>
+  <p class="sub">Chỉ dùng <code>transform</code> và <code>opacity</code>. Rê chuột hoặc chạm dòng để xem chuyển động mẫu. Bật "Giảm chuyển động" của hệ điều hành thì mọi animation tắt, state đổi ngay.</p>
+  <div class="card tw motion"><table>
+    <thead><tr><th>Chuyển động</th><th>Khi nào</th><th>Thời gian</th><th>Easing</th><th class="hide-sm">Mẫu</th></tr></thead>
+    <tbody>
+      <tr tabindex="0"><td>Bước wizard đổi</td><td>Sang bước kế: trượt từ phải 14px + hiện dần; quay lại: từ trái</td><td>220ms</td><td>ease-out</td><td class="hide-sm"><span class="mdemo"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Vạch nối stepper</td><td>Bước xong: vạch xanh chạy từ trái (scaleX)</td><td>220ms</td><td>ease-out</td><td class="hide-sm"><span class="mdemo"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Hộp thoại đồng ý, duyệt</td><td>Nền tối hiện dần, hộp trồi lên 8px</td><td>220ms vào, 160ms ra</td><td>ease-out / ease-in</td><td class="hide-sm"><span class="mdemo"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Hành tinh chạy quỹ đạo</td><td>Đúng 1 lần khi ghép đôi xong: chấm đi từ máy tính sang điện thoại, đường nét đứt thành liền màu xanh</td><td>600ms</td><td>ease-out</td><td class="hide-sm"><span class="mdemo" style="--d:600ms"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Thanh tiến độ cài APK</td><td>Có % thật (adb) thì scaleX theo %, chưa có thì chạy vô định</td><td>300ms / lần cập nhật</td><td>linear</td><td class="hide-sm"><span class="mdemo" style="--d:300ms;--e:linear"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Vòng đếm ngược QR</td><td>Vòng tròn rút theo giây còn lại, chữ số tabular không nhảy</td><td>1s / tick</td><td>linear</td><td class="hide-sm"><span class="mdemo" style="--d:1s;--e:linear"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Dòng thiết bị thêm / bớt</td><td>Thêm: trượt xuống 6px + hiện; thu hồi: trượt trái 12px + mờ, các dòng dưới dồn lên</td><td>300ms / 160ms</td><td>ease-out / ease-in</td><td class="hide-sm"><span class="mdemo" style="--d:160ms;--e:cubic-bezier(.5,0,.75,.2)"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Toast có Hoàn tác</td><td>Trồi từ dưới 10px, vạch đếm 5s dưới đáy, hết giờ mới thu hồi thật</td><td>220ms, giữ 5s</td><td>ease-out</td><td class="hide-sm"><span class="mdemo"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Mục "Nâng cao" mở / gập</td><td>Mũi tên xoay 90 độ, nội dung mở theo chiều cao lưới (grid-rows)</td><td>220ms</td><td>ease-out</td><td class="hide-sm"><span class="mdemo"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Nút bấm</td><td>Nhấn co 0.97, nhả trả lại; nút đang chạy thì khoá + icon xoay</td><td>120ms</td><td>ease-out</td><td class="hide-sm"><span class="mdemo" style="--d:120ms"><i></i></span></td></tr>
+      <tr tabindex="0"><td>Thông báo điện thoại</td><td>Rơi từ trên 12px; bấm nút trả lời thì thu gọn thành dòng "Đã gõ"</td><td>220ms</td><td>ease-out</td><td class="hide-sm"><span class="mdemo"><i></i></span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Bảng state màn Kết nối</h3>
+  <div class="card tw"><table data-keep="10">
+    <thead><tr><th>State</th><th>Máy tính hiện</th><th>Điện thoại hiện</th><th>Đi tiếp khi</th></tr></thead>
+    <tbody id="st-table"></tbody>
+  </table></div>
+</section>
+
+<section id="review">
+  <h2>Review và thứ tự làm</h2>
+  <p class="sub">Mỗi tính năng soát 4 mặt: giá trị, công sức, rủi ro, nguyên tắc "không tốn token" của Orrery. Dữ kiện đã kiểm trong code ghi kèm.</p>
+  <div class="card tw"><table data-keep="14">
+    <thead><tr><th>Tính năng</th><th>Giá trị</th><th>Công sức</th><th>Rủi ro, cách chặn</th><th class="hide-sm">Đã kiểm trong code</th></tr></thead>
+    <tbody id="rv-table"></tbody>
+  </table></div>
+
+  <h3>Thứ tự đề xuất</h3>
+  <ol class="road">
+    <li><div class="st"><i style="background:var(--c1)"></i>Đợt 1: kết nối</div><ul><li>R1 Trợ lý 3 bước + gom Nâng cao</li><li>R3 APK có sẵn</li><li>R2 Cài qua USB</li><li>R5 Thiết bị chung</li><li>R6 Kiểm kết nối</li><li>R4 Một QR</li></ul></div></li>
+    <li><div class="st"><i style="background:var(--c3)"></i>Đợt 2: điện thoại</div><ul><li>P1 Trả lời trên thông báo</li><li>P3 Thông báo đang chạy</li><li>P6 Mở pane trên điện thoại</li><li>P2 Widget</li></ul></div></li>
+    <li><div class="st"><i style="background:var(--c5)"></i>Đợt 3: lớn</div><ul><li>P4 Nói / chụp ảnh</li><li>D3 Clipboard chung</li><li>D2 Mirror màn thiết bị</li><li>P5 Xem dev server (cần ghi ngoại lệ)</li></ul></div></li>
+  </ol>
+
+  <h3>Cần chủ nhân chốt</h3>
+  <div class="qs">
+    <div class="q"><strong>1. APK Orrery Remote lấy từ đâu?</strong><p>Release v4.0.10 hiện chỉ có <code>.exe</code> và <code>.dmg</code>, chưa có APK; hiện app bắt người dùng tự chọn file.</p><p class="rec"><b>Đề xuất:</b> đóng APK vào bản cài desktop (thêm khoảng 25 MB). Phương án khác: đính APK vào GitHub Release, app tải khi bấm (cần mạng, cần kiểm SHA-256).</p></div>
+    <div class="q"><strong>2. Gửi mã ghép đôi qua cáp USB?</strong><p>Cài qua adb xong, máy tính mở app bằng link <code>orrery-remote://pair?…</code> để khỏi quét QR. App hiện chỉ hiểu link <code>orrery-remote://m/…</code> (<code>pane_link.dart</code>).</p><p class="rec"><b>Đề xuất:</b> có, mã 1 lần, hết hạn 5 phút, vẫn bắt bấm "Cho phép" trên máy tính.</p></div>
+    <div class="q"><strong>3. P5 Xem dev server trên điện thoại có làm không?</strong><p>Mở rộng quyền remote (điện thoại đọc được cổng localhost), nên phải ghi ngoại lệ mới vào <code>docs/core-principle.md</code>.</p><p class="rec"><b>Đề xuất:</b> làm ở đợt 3; tắt mặc định, chỉ cổng chủ nhân chọn, tự đóng sau 30 phút.</p></div>
+    <div class="q"><strong>4. P4 nhận giọng nói ở đâu?</strong><p>Android <code>SpeechRecognizer</code> có thể gửi âm thanh lên Google; nhận trên máy (offline) thì cần tải gói ngôn ngữ.</p><p class="rec"><b>Đề xuất:</b> ưu tiên nhận trên máy; luôn hiện chữ cho sửa trước khi gửi, không tự submit.</p></div>
+  </div>
+</section>
+
+<section id="bo-sung">
+  <h2>Bổ sung: 6 tính năng (E1 đến E6)</h2>
+  <p class="sub">Thêm sau khi chủ nhân duyệt bản trên. Nhóm quanh vòng "sửa code, build, thử trên máy thật" và an toàn khi điều khiển từ điện thoại. Đã soát lại với 14 tính năng ở trên và code hiện tại.</p>
+  <div class="feats" id="ex-list"></div>
+
+  <h3>Demo</h3>
+  <div class="demos app" id="ex-demos"></div>
+
+  <h3>Review</h3>
+  <div class="card tw"><table>
+    <thead><tr><th>Tính năng</th><th>Xếp vào</th><th>Giá trị</th><th>Công sức</th><th>Rủi ro, cách chặn</th><th class="hide-sm">Đã kiểm trong code</th></tr></thead>
+    <tbody id="ex-rv"></tbody>
+  </table></div>
+  <div class="callout"><b>Nguyên tắc:</b> E2 "gửi crash cho agent" và E5 chỉ gõ khi chủ nhân bấm trên điện thoại, nằm trong ngoại lệ 7 (Orrery Remote). Không tính năng nào gọi LLM hay tự gửi prompt.</div>
+</section>
+</main>
+
+<footer>
+  <p>Nguồn: code Orrery nhánh feat/new_feat_2611 (commit 5594c509), <code>.code_index/features.md</code>, <code>docs/core-principle.md</code>, GitHub Release v4.0.10. Minh hoạ và icon gen bằng Codex. Số liệu ms, MB, tên máy trong wireframe là ví dụ minh hoạ.</p>
+  <p class="copy">© <span id="yr">2026</span> Jin Vũ. All rights reserved.</p>
+</footer>
+
+<script src="/site.js"></script>
+<script src="nf-data.js"></script>
+<script src="nf.js"></script>
+</body>
+</html>

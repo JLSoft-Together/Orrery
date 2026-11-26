@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -9,7 +10,9 @@ import '../remote/machines.dart';
 import '../remote/secure_kv.dart';
 import 'local_notifier.dart';
 import 'push_notice.dart';
+import 'push_pause.dart';
 import 'push_seal.dart';
+import 'waiting_update.dart';
 
 @pragma('vm:entry-point')
 Future<void> pushBackgroundMessage(RemoteMessage message) async {
@@ -42,7 +45,9 @@ Future<void> handleBackgroundPush(
   required Future<Uint8List?> Function(String machineId) machineKey,
   required PushNotifier notifier,
   required String languageCode,
+  DateTime? now,
 }) async {
+  if (isClearPush(arrival.data)) return;
   final strings = pushStrings(languageCode);
   PushNotice notice;
   try {
@@ -59,6 +64,7 @@ Future<void> handleBackgroundPush(
     if (notice.sealed && await _ready(notifier)) await _mark(kv, true);
     return;
   }
+  if (await readPausedUntil(kv, now ?? clock.now()) != null) return;
   for (final candidate in [
     notice,
     if (notice.sealed) fixedPushNotice(arrival.data, strings),

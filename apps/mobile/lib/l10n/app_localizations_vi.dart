@@ -1291,6 +1291,30 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pushGroupError => 'Lỗi hoặc thoát bất thường';
 
   @override
+  String get pushPauseTitle => 'Tạm dừng thông báo 1 giờ?';
+
+  @override
+  String get pushPauseBody =>
+      'Bạn sẽ không nhận thông báo từ máy tính trong 1 giờ tới.';
+
+  @override
+  String get pushPauseAction => 'Tạm dừng';
+
+  @override
+  String get pushPauseCancel => 'Hủy';
+
+  @override
+  String pushPausedTitle(String time) {
+    return 'Đang tạm dừng thông báo đến $time';
+  }
+
+  @override
+  String get pushResumeBody => 'Bật lại thông báo ngay bây giờ?';
+
+  @override
+  String get pushResumeAction => 'Bật lại';
+
+  @override
   String get settingsThemeSystem => 'Theo điện thoại';
 
   @override

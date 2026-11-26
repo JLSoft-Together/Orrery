@@ -7,6 +7,7 @@ import 'package:orrery_remote/app/bootstrap.dart';
 import 'package:orrery_remote/app/deep_link_host.dart';
 import 'package:orrery_remote/app/home_page.dart';
 import 'package:orrery_remote/app/link_source.dart';
+import 'package:orrery_remote/push/pause_prompt.dart';
 import 'package:orrery_remote/push/push_providers.dart';
 import 'package:orrery_remote/push/push_service.dart';
 import 'package:orrery_remote/security/app_lock.dart';
@@ -159,11 +160,15 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) {
-            final content = DeepLinkHost(
+            final content = PausePromptHost(
+              push: widget.push,
               navigatorKey: _navigator,
-              source: widget.linkSource,
-              lock: widget.lock,
-              child: child ?? const SizedBox.shrink(),
+              child: DeepLinkHost(
+                navigatorKey: _navigator,
+                source: widget.linkSource,
+                lock: widget.lock,
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
             final lock = widget.lock;
             return lock == null

@@ -697,6 +697,20 @@
   "pushGroupWaiting": "Session waiting for you",
   "pushGroupDone": "Session finished",
   "pushGroupError": "Error or unexpected exit",
+  "pushPauseTitle": "Pause notifications for 1 hour?",
+  "pushPauseBody": "You will not get alerts from your computers for the next hour.",
+  "pushPauseAction": "Pause",
+  "pushPauseCancel": "Cancel",
+  "pushPausedTitle": "Notifications paused until {time}",
+  "@pushPausedTitle": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pushResumeBody": "Turn them back on now?",
+  "pushResumeAction": "Turn on",
   "settingsThemeSystem": "Follows the phone",
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",

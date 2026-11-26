@@ -1349,6 +1349,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pushGroupError => 'Error or unexpected exit';
 
   @override
+  String get pushPauseTitle => 'Pause notifications for 1 hour?';
+
+  @override
+  String get pushPauseBody =>
+      'You will not get alerts from your computers for the next hour.';
+
+  @override
+  String get pushPauseAction => 'Pause';
+
+  @override
+  String get pushPauseCancel => 'Cancel';
+
+  @override
+  String pushPausedTitle(String time) {
+    return 'Notifications paused until $time';
+  }
+
+  @override
+  String get pushResumeBody => 'Turn them back on now?';
+
+  @override
+  String get pushResumeAction => 'Turn on';
+
+  @override
   String get settingsThemeSystem => 'Follows the phone';
 
   @override

@@ -2,4 +2,11 @@
 <resources>
     <string name="attention_channel_name">Needs attention</string>
     <string name="attention_channel_description">A pane needs you: the agent finished, asked a question or needs permission.</string>
+    <string name="tile_label">Orrery</string>
+    <string name="tile_waiting_count">%1$d waiting for you</string>
+    <string name="waiting_open_app">Open the app to update</string>
+    <string name="waiting_paused_until">Paused until %1$s</string>
+    <string name="widget_at">at %1$s</string>
+    <string name="widget_none">No session is waiting</string>
+    <string name="widget_description">Sessions waiting for you</string>
 </resources>

@@ -2438,6 +2438,48 @@ abstract class AppLocalizations {
   /// **'Error or unexpected exit'**
   String get pushGroupError;
 
+  /// No description provided for @pushPauseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause notifications for 1 hour?'**
+  String get pushPauseTitle;
+
+  /// No description provided for @pushPauseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You will not get alerts from your computers for the next hour.'**
+  String get pushPauseBody;
+
+  /// No description provided for @pushPauseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pushPauseAction;
+
+  /// No description provided for @pushPauseCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pushPauseCancel;
+
+  /// No description provided for @pushPausedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications paused until {time}'**
+  String pushPausedTitle(String time);
+
+  /// No description provided for @pushResumeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn them back on now?'**
+  String get pushResumeBody;
+
+  /// No description provided for @pushResumeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get pushResumeAction;
+
   /// No description provided for @settingsThemeSystem.
   ///
   /// In en, this message translates to:

@@ -1976,4 +1976,104 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get mediaIgnoreAlready => '.gitignore đã có sẵn dòng này';
+
+  @override
+  String get queueTitle => 'Trả lời từng cái';
+
+  @override
+  String queueOpen(int n) {
+    return 'Chờ bạn ($n)';
+  }
+
+  @override
+  String queueCounter(int i, int n) {
+    return '$i / $n';
+  }
+
+  @override
+  String queueWaited(String time) {
+    return 'Chờ $time';
+  }
+
+  @override
+  String get queueReplyHint => 'Nhập câu trả lời';
+
+  @override
+  String get queueSend => 'Gửi';
+
+  @override
+  String get queueSkip => 'Bỏ qua';
+
+  @override
+  String get queueSnooze => 'Hoãn';
+
+  @override
+  String queueSnoozeMinutes(int n) {
+    return '$n phút';
+  }
+
+  @override
+  String get queueSnoozeHour => '1 giờ';
+
+  @override
+  String queueSnoozed(int n) {
+    return 'Đã hoãn $n phút';
+  }
+
+  @override
+  String get queueOpenPane => 'Mở pane';
+
+  @override
+  String queuePending(String label) {
+    return 'Sắp gửi: $label';
+  }
+
+  @override
+  String get queueSent => 'Đã gửi';
+
+  @override
+  String get queueStale => 'Câu hỏi đã đổi';
+
+  @override
+  String get queueStaleReload => 'Xem câu hỏi mới';
+
+  @override
+  String get queueGone => 'Đã trả lời trên máy tính';
+
+  @override
+  String get queueDone => 'Xong hết, không còn gì chờ bạn';
+
+  @override
+  String queueSkippedCount(int n) {
+    return 'Đã bỏ qua $n';
+  }
+
+  @override
+  String get queueReview => 'Xem lại';
+
+  @override
+  String get queueBack => 'Quay lại';
+
+  @override
+  String get queueNoChoice => 'Chọn trong pane';
+
+  @override
+  String get queueHint => 'Vuốt trái để bỏ qua, vuốt phải để hoãn 15 phút';
+
+  @override
+  String get queueHintSkip => 'Vuốt trái để bỏ qua';
+
+  @override
+  String queueMore(int n) {
+    return 'Còn $n đang chờ';
+  }
+
+  @override
+  String get queueHide => 'Ẩn';
+
+  @override
+  String get queueErrNotWaiting => 'Pane này không còn chờ';
+
+  @override
+  String get queueErrUseMenu => 'Câu hỏi này đã có lựa chọn, mở pane để xem';
 }

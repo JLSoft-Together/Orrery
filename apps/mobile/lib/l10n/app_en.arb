@@ -1112,5 +1112,92 @@
   "mediaIgnoreAdd": "Add",
   "mediaIgnoreSkip": "Not now",
   "mediaIgnoreDone": ".gitignore updated",
-  "mediaIgnoreAlready": ".gitignore already covers it"
+  "mediaIgnoreAlready": ".gitignore already covers it",
+  "queueTitle": "Answer one by one",
+  "queueOpen": "Waiting for you ({n})",
+  "@queueOpen": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "queueCounter": "{i} / {n}",
+  "@queueCounter": {
+    "placeholders": {
+      "i": {
+        "type": "int"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "queueWaited": "Waiting {time}",
+  "@queueWaited": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "queueReplyHint": "Type your reply",
+  "queueSend": "Send",
+  "queueSkip": "Skip",
+  "queueSnooze": "Snooze",
+  "queueSnoozeMinutes": "{n} minutes",
+  "@queueSnoozeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "queueSnoozeHour": "1 hour",
+  "queueSnoozed": "Snoozed for {n} minutes",
+  "@queueSnoozed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "queueOpenPane": "Open pane",
+  "queuePending": "Sending: {label}",
+  "@queuePending": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "queueSent": "Sent",
+  "queueStale": "The question changed",
+  "queueStaleReload": "Show the new question",
+  "queueGone": "Answered on the computer",
+  "queueDone": "All done, nothing is waiting for you",
+  "queueSkippedCount": "Skipped {n}",
+  "@queueSkippedCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "queueReview": "Review skipped",
+  "queueBack": "Back",
+  "queueNoChoice": "Choose in the pane",
+  "queueHint": "Swipe left to skip, right to snooze 15 minutes",
+  "queueHintSkip": "Swipe left to skip",
+  "queueMore": "{n} more waiting",
+  "@queueMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "queueHide": "Hide",
+  "queueErrNotWaiting": "This pane is no longer waiting",
+  "queueErrUseMenu": "This question has choices now, open the pane"
 }

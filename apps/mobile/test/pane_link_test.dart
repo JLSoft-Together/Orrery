@@ -19,6 +19,21 @@ void main() {
     expect(parsePaneLink(Uri.parse('orrery-remote://m/bad%20id')), isNull);
   });
 
+  test('a queue link opens the queue of a machine', () {
+    final link = parsePaneLink(Uri.parse('orrery-remote://m/$machine/queue'))!;
+    expect(link, const PaneLink(machine, null, queue: true));
+    expect(link.queue, isTrue);
+    expect(link, isNot(const PaneLink(machine, null)));
+    expect(
+      parsePaneLink(Uri.parse('orrery-remote://m/bad%20id/queue')),
+      isNull,
+    );
+    expect(
+      parsePaneLink(Uri.parse('orrery-remote://m/$machine/other')),
+      isNull,
+    );
+  });
+
   test('relay https link carries machine and pane', () {
     final link = parsePaneLink(
       Uri.parse('https://orrery-relay.jinvu.workers.dev/o/$machine/p1.a:b'),

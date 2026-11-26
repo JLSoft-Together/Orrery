@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../remote/link_state.dart';
 import '../../remote/providers.dart';
 import '../theme/orrery_shape.dart';
+import '../queue/queue_model.dart';
+import '../queue/queue_page.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
 import '../workspace/pane_actions.dart';
@@ -170,11 +172,29 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
                     ),
                   if (groups.waiting.isNotEmpty) ...[
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 22, 12, 8),
-                      child: Text(
-                        l.chatWaitingGroup(groups.waiting.length),
-                        key: const ValueKey('home-group-waiting'),
-                        style: label.copyWith(color: c.waiting),
+                      padding: const EdgeInsets.fromLTRB(12, 22, 4, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.chatWaitingGroup(groups.waiting.length),
+                              key: const ValueKey('home-group-waiting'),
+                              style: label.copyWith(color: c.waiting),
+                            ),
+                          ),
+                          if (queueCount(model) > 0)
+                            Flexible(
+                              child: TextButton(
+                                key: const ValueKey('home-queue'),
+                                onPressed: () => openQueue(context, id),
+                                child: Text(
+                                  l.queueOpen(queueCount(model)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     RowCard(

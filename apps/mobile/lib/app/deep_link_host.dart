@@ -10,6 +10,8 @@ import '../remote/providers.dart';
 import '../ui/chat/chat_screen.dart';
 import '../ui/commands.dart';
 import '../ui/model/workspace_model.dart';
+import '../ui/queue/queue_nudge.dart';
+import '../ui/queue/queue_page.dart';
 import '../ui/ui_providers.dart';
 import '../ui/workspace/machine_scope.dart';
 import '../ui/workspace/tab_page.dart';
@@ -222,7 +224,17 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
       ),
     );
     final pane = link.paneKey;
-    if (pane == null) return;
+    if (pane == null) {
+      if (link.queue) {
+        nav.push(
+          machineRoute<void>(
+            link.machineId,
+            (_) => QueuePage(machineId: link.machineId),
+          ),
+        );
+      }
+      return;
+    }
     _watch = ref.listenManual(
       workspaceModelProvider(link.machineId),
       (_, model) => _check(link, pane, model),
@@ -247,13 +259,17 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
       nav.push(
         machineRoute<void>(
           machineId,
-          (_) => chat
-              ? ChatScreen(machineId: machineId, paneKey: paneKey)
-              : TabPage(
-                  machineId: machineId,
-                  tabKey: tab.key,
-                  paneKey: paneKey,
-                ),
+          (_) => QueueNudge(
+            machineId: machineId,
+            paneKey: paneKey,
+            child: chat
+                ? ChatScreen(machineId: machineId, paneKey: paneKey)
+                : TabPage(
+                    machineId: machineId,
+                    tabKey: tab.key,
+                    paneKey: paneKey,
+                  ),
+          ),
         ),
       );
       _runMenu(link, context, pane);

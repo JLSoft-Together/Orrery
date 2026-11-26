@@ -6,6 +6,8 @@ import '../model/inbox_model.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
 import '../chat/chat_nav.dart';
+import '../queue/queue_model.dart';
+import '../queue/queue_page.dart';
 
 String inboxGroupLabel(AppLocalizations l, String group) => switch (group) {
   'menu' => l.inboxGroupMenu,
@@ -49,7 +51,17 @@ class InboxPage extends ConsumerWidget {
       for (final (group, rows) in groups) ...[group, ...rows],
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(l.inbox)),
+      appBar: AppBar(
+        title: Text(l.inbox),
+        actions: [
+          if (queueCount(model) > 0)
+            TextButton(
+              key: const ValueKey('inbox-queue'),
+              onPressed: () => openQueue(context, machineId),
+              child: Text(l.queueTitle),
+            ),
+        ],
+      ),
       body: AnimatedSwitcher(
         duration: motion(context),
         child: items.isEmpty

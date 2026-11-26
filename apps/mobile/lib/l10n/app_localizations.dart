@@ -3655,6 +3655,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'.gitignore already covers it'**
   String get mediaIgnoreAlready;
+
+  /// No description provided for @queueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer one by one'**
+  String get queueTitle;
+
+  /// No description provided for @queueOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you ({n})'**
+  String queueOpen(int n);
+
+  /// No description provided for @queueCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'{i} / {n}'**
+  String queueCounter(int i, int n);
+
+  /// No description provided for @queueWaited.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting {time}'**
+  String queueWaited(String time);
+
+  /// No description provided for @queueReplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your reply'**
+  String get queueReplyHint;
+
+  /// No description provided for @queueSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get queueSend;
+
+  /// No description provided for @queueSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get queueSkip;
+
+  /// No description provided for @queueSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze'**
+  String get queueSnooze;
+
+  /// No description provided for @queueSnoozeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} minutes'**
+  String queueSnoozeMinutes(int n);
+
+  /// No description provided for @queueSnoozeHour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get queueSnoozeHour;
+
+  /// No description provided for @queueSnoozed.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed for {n} minutes'**
+  String queueSnoozed(int n);
+
+  /// No description provided for @queueOpenPane.
+  ///
+  /// In en, this message translates to:
+  /// **'Open pane'**
+  String get queueOpenPane;
+
+  /// No description provided for @queuePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending: {label}'**
+  String queuePending(String label);
+
+  /// No description provided for @queueSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get queueSent;
+
+  /// No description provided for @queueStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The question changed'**
+  String get queueStale;
+
+  /// No description provided for @queueStaleReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the new question'**
+  String get queueStaleReload;
+
+  /// No description provided for @queueGone.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered on the computer'**
+  String get queueGone;
+
+  /// No description provided for @queueDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All done, nothing is waiting for you'**
+  String get queueDone;
+
+  /// No description provided for @queueSkippedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped {n}'**
+  String queueSkippedCount(int n);
+
+  /// No description provided for @queueReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review skipped'**
+  String get queueReview;
+
+  /// No description provided for @queueBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get queueBack;
+
+  /// No description provided for @queueNoChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose in the pane'**
+  String get queueNoChoice;
+
+  /// No description provided for @queueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left to skip, right to snooze 15 minutes'**
+  String get queueHint;
+
+  /// No description provided for @queueHintSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left to skip'**
+  String get queueHintSkip;
+
+  /// No description provided for @queueMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} more waiting'**
+  String queueMore(int n);
+
+  /// No description provided for @queueHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get queueHide;
+
+  /// No description provided for @queueErrNotWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'This pane is no longer waiting'**
+  String get queueErrNotWaiting;
+
+  /// No description provided for @queueErrUseMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'This question has choices now, open the pane'**
+  String get queueErrUseMenu;
 }
 
 class _AppLocalizationsDelegate

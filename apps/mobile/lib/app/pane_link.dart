@@ -8,12 +8,19 @@ final RegExp _sigPattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 final RegExp _panePattern = RegExp(r'^[A-Za-z0-9_.:-]{1,128}$');
 
 class PaneLink {
-  const PaneLink(this.machineId, this.paneKey, {this.menuSig, this.menuIndex});
+  const PaneLink(
+    this.machineId,
+    this.paneKey, {
+    this.menuSig,
+    this.menuIndex,
+    this.queue = false,
+  });
 
   final String machineId;
   final String? paneKey;
   final String? menuSig;
   final int? menuIndex;
+  final bool queue;
 
   @override
   bool operator ==(Object other) =>
@@ -21,10 +28,12 @@ class PaneLink {
       other.machineId == machineId &&
       other.paneKey == paneKey &&
       other.menuSig == menuSig &&
-      other.menuIndex == menuIndex;
+      other.menuIndex == menuIndex &&
+      other.queue == queue;
 
   @override
-  int get hashCode => Object.hash(machineId, paneKey, menuSig, menuIndex);
+  int get hashCode =>
+      Object.hash(machineId, paneKey, menuSig, menuIndex, queue);
 
   @override
   String toString() => 'PaneLink($machineId, $paneKey)';
@@ -35,6 +44,10 @@ PaneLink? parsePaneLink(Uri uri) {
   if (uri.scheme == appLinkScheme && uri.host == 'm') {
     parts = uri.pathSegments;
     if (parts.length == 1) return _build(parts[0], null);
+    if (parts.length == 2 && parts[1] == 'queue') {
+      final base = _build(parts[0], null);
+      return base == null ? null : PaneLink(base.machineId, null, queue: true);
+    }
     if (parts.length != 3 || parts[1] != 'p') return null;
     final link = _build(parts[0], parts[2]);
     final sig = uri.queryParameters['menu'];

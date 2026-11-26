@@ -2092,4 +2092,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mediaIgnoreAlready => '.gitignore already covers it';
+
+  @override
+  String get queueTitle => 'Answer one by one';
+
+  @override
+  String queueOpen(int n) {
+    return 'Waiting for you ($n)';
+  }
+
+  @override
+  String queueCounter(int i, int n) {
+    return '$i / $n';
+  }
+
+  @override
+  String queueWaited(String time) {
+    return 'Waiting $time';
+  }
+
+  @override
+  String get queueReplyHint => 'Type your reply';
+
+  @override
+  String get queueSend => 'Send';
+
+  @override
+  String get queueSkip => 'Skip';
+
+  @override
+  String get queueSnooze => 'Snooze';
+
+  @override
+  String queueSnoozeMinutes(int n) {
+    return '$n minutes';
+  }
+
+  @override
+  String get queueSnoozeHour => '1 hour';
+
+  @override
+  String queueSnoozed(int n) {
+    return 'Snoozed for $n minutes';
+  }
+
+  @override
+  String get queueOpenPane => 'Open pane';
+
+  @override
+  String queuePending(String label) {
+    return 'Sending: $label';
+  }
+
+  @override
+  String get queueSent => 'Sent';
+
+  @override
+  String get queueStale => 'The question changed';
+
+  @override
+  String get queueStaleReload => 'Show the new question';
+
+  @override
+  String get queueGone => 'Answered on the computer';
+
+  @override
+  String get queueDone => 'All done, nothing is waiting for you';
+
+  @override
+  String queueSkippedCount(int n) {
+    return 'Skipped $n';
+  }
+
+  @override
+  String get queueReview => 'Review skipped';
+
+  @override
+  String get queueBack => 'Back';
+
+  @override
+  String get queueNoChoice => 'Choose in the pane';
+
+  @override
+  String get queueHint => 'Swipe left to skip, right to snooze 15 minutes';
+
+  @override
+  String get queueHintSkip => 'Swipe left to skip';
+
+  @override
+  String queueMore(int n) {
+    return '$n more waiting';
+  }
+
+  @override
+  String get queueHide => 'Hide';
+
+  @override
+  String get queueErrNotWaiting => 'This pane is no longer waiting';
+
+  @override
+  String get queueErrUseMenu => 'This question has choices now, open the pane';
 }

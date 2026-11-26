@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { shown } from '../../../core/lib/shareMode'
-import { Blocks, Columns2, GitCompareArrows, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, History as HistoryIcon, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
+import { Blocks, Columns2, GitCompareArrows, FileText, FolderOpen, GitBranch, ArrowUpRight, Globe, History as HistoryIcon, ListOrdered, LoaderCircle, Mail, Maximize2, MessageSquareText, Minimize2, Moon, Network, Paperclip, Play, RotateCw, Smartphone, ScanSearch, SquareTerminal, TriangleAlert, X } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -56,6 +56,7 @@ import { useTipsStore } from '@features/update'
 import { useUiStore } from '../../../core/stores/ui'
 import { useRemoteStore } from '@features/remote'
 import { RemotePhoneChip } from '@features/remote'
+import { usePanePhone } from '../composables/usePanePhone'
 import { parseOsc7, parseOsc9 } from '../lib/shellCwd'
 import { hasScripts } from '../lib/projects'
 import { bufferLines, parseTerminalProblems } from '../lib/terminalProblems'
@@ -461,6 +462,7 @@ const moreEntries = computed<MenuEntry[]>(() => {
     else if (key === 'worktree' && cwd.value && props.pane.state === 'running')
       out.push({ id: 'worktree', label: branch.value ? t('workspace.paneHead.branch', { branch: branch.value }) : t('workspace.wt.title'), icon: GitBranch })
     else if (key === 'split') out.push({ id: 'split', label: t('workspace.splitPane'), icon: Columns2 })
+    else if (key === 'phone') out.push({ id: 'phone', label: t('workspace.paneHead.phone.label'), icon: Smartphone })
   }
   out.push({ separator: true })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
@@ -488,7 +490,8 @@ const turnChanges = useTurnChanges()
 const turnEdits = useTurnEditsStore()
 const turnCount = computed(() => (props.pane.terminalId ? turnEdits.countOf(props.pane.terminalId) : 0))
 const canTurn = computed(() => !isShell.value && !!props.pane.terminalId && !!cwd.value && props.pane.state === 'running')
-const headCtx = computed<HeadActionCtx>(() => ({ agent: !isShell.value, attach: canAttach.value, chat: canChat.value, turn: canTurn.value, tools: canTools.value }))
+const panePhone = usePanePhone(() => props.pane.key)
+const headCtx = computed<HeadActionCtx>(() => ({ agent: !isShell.value, attach: canAttach.value, chat: canChat.value, turn: canTurn.value, tools: canTools.value, phone: panePhone.available.value }))
 const pinned = computed(() => new Set(pinnedShown(headCtx.value, headWidth.value)))
 const demoted = computed(() => demotedKeys(headCtx.value))
 const turnLabel = computed(() => (turnCount.value ? `${t('v104.turnChanges.menu')} (${turnCount.value})` : t('v104.turnChanges.menu')))
@@ -513,6 +516,7 @@ function pickMore(id: string, anchor?: HTMLElement): void {
   else if (id === 'tools') openTools()
   else if (id === 'worktree') toggleWorktrees(anchor)
   else if (id === 'split') toggleSplit(anchor)
+  else if (id === 'phone') void panePhone.send()
   else if (id === 'dev') {
     const url = devUrls.value[devUrls.value.length - 1]
     if (url) emit('openLink', { kind: 'url', url }, {})

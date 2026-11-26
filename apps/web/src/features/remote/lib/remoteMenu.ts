@@ -37,7 +37,7 @@ export function remoteMenuOf(entry: MenuLike | null | undefined): RemoteMenu | u
 
 export function pickForPhone(entry: MenuLike | null | undefined, sig: string, index: number): { item: TermMenuItem } | { error: RemoteErrorCode } {
   if (!entry) return { error: 'notFound' }
-  if (menuSig(entry.menu, entry.question) !== sig) return { error: 'busy' }
+  if (menuSig(entry.menu, entry.question) !== sig) return { error: 'stale' }
   const item = entry.menu.items.find((i) => i.index === index)
   if (!item) return { error: 'notFound' }
   if (item.isOther) return { error: 'invalid' }

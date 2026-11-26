@@ -250,7 +250,7 @@ describe('phone commands (ws.* with source phone)', () => {
     queue.register(a.key, picker)
     queue.report(a.key, { menu, question: 'Proceed?' } as never)
     const sig = menuSig(menu, 'Proceed?')
-    expect(await call('ws.menu', { paneKey: a.key, sig: 'ffffffff', index: 1 })).toEqual({ ok: false, error: 'busy' })
+    expect(await call('ws.menu', { paneKey: a.key, sig: 'ffffffff', index: 1 })).toEqual({ ok: false, error: 'stale' })
     expect(await call('ws.menu', { paneKey: a.key, sig, index: 2 })).toEqual({ ok: false, error: 'invalid' })
     expect(await call('ws.menu', { paneKey: a.key, sig, index: 7 })).toEqual({ ok: false, error: 'notFound' })
     expect(picker).not.toHaveBeenCalled()

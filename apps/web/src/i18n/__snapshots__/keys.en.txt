@@ -7479,6 +7479,13 @@ workspace.paneHead.compact.label
 workspace.paneHead.compact.title
 workspace.paneHead.hidden
 workspace.paneHead.more
+workspace.paneHead.phone.label
+workspace.paneHead.phone.limit
+workspace.paneHead.phone.none
+workspace.paneHead.phone.notFound
+workspace.paneHead.phone.off
+workspace.paneHead.phone.sent
+workspace.paneHead.phone.unavailable
 workspace.paneHead.unzoom
 workspace.paneHead.zoom
 workspace.panes

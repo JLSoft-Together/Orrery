@@ -17,6 +17,7 @@ export const REMOTE_SUMMARY_DEBOUNCE_MS = 200
 export type RemoteErrorCode =
   | 'denied'
   | 'busy'
+  | 'stale'
   | 'cancelled'
   | 'migration'
   | 'limit'

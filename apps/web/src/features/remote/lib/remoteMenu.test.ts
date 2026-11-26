@@ -62,7 +62,7 @@ describe('remoteMenuOf', () => {
 describe('pickForPhone', () => {
   const sig = menuSig(menu(), 'Do you want to proceed?')
   it('checks signature, index and Other', () => {
-    expect(pickForPhone(entry(), 'deadbeef', 1)).toEqual({ error: 'busy' })
+    expect(pickForPhone(entry(), 'deadbeef', 1)).toEqual({ error: 'stale' })
     expect(pickForPhone(entry(), sig, 9)).toEqual({ error: 'notFound' })
     expect(pickForPhone(entry(), sig, 3)).toEqual({ error: 'invalid' })
     expect(pickForPhone(null, sig, 1)).toEqual({ error: 'notFound' })

@@ -3823,6 +3823,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This question has choices now, open the pane'**
   String get queueErrUseMenu;
+
+  /// No description provided for @promptsStrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved prompts'**
+  String get promptsStrip;
+
+  /// No description provided for @promptsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'New prompt'**
+  String get promptsAdd;
+
+  /// No description provided for @promptsEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit prompt'**
+  String get promptsEditTitle;
+
+  /// No description provided for @promptsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get promptsEdit;
+
+  /// No description provided for @promptsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get promptsDelete;
+
+  /// No description provided for @promptsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get promptsSave;
+
+  /// No description provided for @promptsFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get promptsFieldTitle;
+
+  /// No description provided for @promptsFieldBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt text'**
+  String get promptsFieldBody;
+
+  /// No description provided for @promptsScopeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get promptsScopeAll;
+
+  /// No description provided for @promptsScopeHere.
+  ///
+  /// In en, this message translates to:
+  /// **'This project'**
+  String get promptsScopeHere;
+
+  /// No description provided for @promptsDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this prompt?'**
+  String get promptsDeleteTitle;
+
+  /// No description provided for @promptsDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It is removed on the computer too.'**
+  String get promptsDeleteBody;
+
+  /// No description provided for @promptsHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} on the computer only'**
+  String promptsHidden(int count);
+
+  /// No description provided for @promptsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more on the computer'**
+  String promptsMore(int count);
+
+  /// No description provided for @promptsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompts did not load, tap to retry'**
+  String get promptsRetry;
+
+  /// No description provided for @promptsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Left as written: {names}'**
+  String promptsMissing(String names);
+
+  /// No description provided for @promptsTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough room in the message box for this prompt'**
+  String get promptsTooLong;
+
+  /// No description provided for @promptsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt saved'**
+  String get promptsSaved;
+
+  /// No description provided for @promptsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt deleted'**
+  String get promptsDeleted;
+
+  /// No description provided for @promptsErrSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'This looks like it holds a secret. Keep it on the computer.'**
+  String get promptsErrSecret;
+
+  /// No description provided for @promptsErrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The title is empty or longer than 80 characters'**
+  String get promptsErrTitle;
+
+  /// No description provided for @promptsErrBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The text is empty or longer than 4000 characters'**
+  String get promptsErrBody;
+
+  /// No description provided for @promptsErrFull.
+  ///
+  /// In en, this message translates to:
+  /// **'The library is full (200 prompts)'**
+  String get promptsErrFull;
+
+  /// No description provided for @promptsErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This prompt is gone'**
+  String get promptsErrNotFound;
+
+  /// No description provided for @promptsErrIo.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer could not save it'**
+  String get promptsErrIo;
+
+  /// No description provided for @awayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Since {time} ({ago} ago)'**
+  String awayTitle(String time, String ago);
+
+  /// No description provided for @awayDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done {n}'**
+  String awayDone(int n);
+
+  /// No description provided for @awayWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you {n}'**
+  String awayWaiting(int n);
+
+  /// No description provided for @awayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed {n}'**
+  String awayFailed(int n);
+
+  /// No description provided for @awayAgentsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents done {n}'**
+  String awayAgentsDone(int n);
+
+  /// No description provided for @awayAgentsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents failed {n}'**
+  String awayAgentsFailed(int n);
+
+  /// No description provided for @awayCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact {n}'**
+  String awayCompact(int n);
+
+  /// No description provided for @awaySeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Seen'**
+  String get awaySeen;
+
+  /// No description provided for @awayPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers may be incomplete'**
+  String get awayPartial;
 }
 
 class _AppLocalizationsDelegate

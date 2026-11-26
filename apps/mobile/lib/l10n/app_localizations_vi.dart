@@ -2076,4 +2076,127 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get queueErrUseMenu => 'Câu hỏi này đã có lựa chọn, mở pane để xem';
+
+  @override
+  String get promptsStrip => 'Prompt đã lưu';
+
+  @override
+  String get promptsAdd => 'Prompt mới';
+
+  @override
+  String get promptsEditTitle => 'Sửa prompt';
+
+  @override
+  String get promptsEdit => 'Sửa';
+
+  @override
+  String get promptsDelete => 'Xoá';
+
+  @override
+  String get promptsSave => 'Lưu';
+
+  @override
+  String get promptsFieldTitle => 'Tiêu đề';
+
+  @override
+  String get promptsFieldBody => 'Nội dung prompt';
+
+  @override
+  String get promptsScopeAll => 'Mọi dự án';
+
+  @override
+  String get promptsScopeHere => 'Dự án này';
+
+  @override
+  String get promptsDeleteTitle => 'Xoá prompt này?';
+
+  @override
+  String get promptsDeleteBody => 'Prompt cũng bị xoá trên máy tính.';
+
+  @override
+  String promptsHidden(int count) {
+    return '$count chỉ có trên máy tính';
+  }
+
+  @override
+  String promptsMore(int count) {
+    return 'Còn $count trên máy tính';
+  }
+
+  @override
+  String get promptsRetry => 'Chưa tải được prompt, chạm để thử lại';
+
+  @override
+  String promptsMissing(String names) {
+    return 'Giữ nguyên chữ: $names';
+  }
+
+  @override
+  String get promptsTooLong => 'Ô nhập không đủ chỗ cho prompt này';
+
+  @override
+  String get promptsSaved => 'Đã lưu prompt';
+
+  @override
+  String get promptsDeleted => 'Đã xoá prompt';
+
+  @override
+  String get promptsErrSecret =>
+      'Nội dung có vẻ chứa secret. Hãy giữ nó trên máy tính.';
+
+  @override
+  String get promptsErrTitle => 'Tiêu đề trống hoặc dài hơn 80 ký tự';
+
+  @override
+  String get promptsErrBody => 'Nội dung trống hoặc dài hơn 4000 ký tự';
+
+  @override
+  String get promptsErrFull => 'Thư viện đã đầy (200 prompt)';
+
+  @override
+  String get promptsErrNotFound => 'Prompt này không còn';
+
+  @override
+  String get promptsErrIo => 'Máy tính không lưu được';
+
+  @override
+  String awayTitle(String time, String ago) {
+    return 'Từ $time ($ago trước)';
+  }
+
+  @override
+  String awayDone(int n) {
+    return 'Xong $n';
+  }
+
+  @override
+  String awayWaiting(int n) {
+    return 'Chờ bạn $n';
+  }
+
+  @override
+  String awayFailed(int n) {
+    return 'Lỗi $n';
+  }
+
+  @override
+  String awayAgentsDone(int n) {
+    return 'Agent con xong $n';
+  }
+
+  @override
+  String awayAgentsFailed(int n) {
+    return 'Agent con lỗi $n';
+  }
+
+  @override
+  String awayCompact(int n) {
+    return 'Compact $n';
+  }
+
+  @override
+  String get awaySeen => 'Đã xem';
+
+  @override
+  String get awayPartial => 'Số liệu có thể thiếu';
 }

@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../media/media_flow.dart';
 import '../../media/media_prefs.dart';
 import '../../media/media_providers.dart';
+import '../../prompts/prompt_model.dart';
+import '../../prompts/prompts_api.dart';
+import '../../prompts/prompts_controller.dart';
 import '../../remote/chat_protocol.dart';
 import '../../remote/desktop_caps.dart';
 import '../../remote/link_state.dart';
@@ -51,12 +54,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late final AppLifecycleListener _life;
   final ScrollController _scroll = ScrollController();
   MediaFlow? _flow;
+  PromptsController? _prompts;
 
   ComposerMedia _media(String? root) {
     final hasPut = ref.watch(
-      machineViewProvider(
-        widget.machineId,
-      ).select((v) => hasDesktopCap(v.hello, putCap)),
+      machineViewProvider(widget.machineId)
+          .select((v) => hasDesktopCap(v.hello, putCap)),
     );
     final dictation = ref.watch(dictationProvider);
     if (!hasPut || root == null || root.isEmpty) {
@@ -69,6 +72,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
     flow.root = root;
     return ComposerMedia(dictation: dictation, photo: flow);
+  }
+
+  PromptsController? _promptsFor(bool enabled) {
+    if (!enabled) return null;
+    return _prompts ??= PromptsController(
+      api: PromptsApi(ref.read(viewerApiProvider(widget.machineId))),
+      paneKey: widget.paneKey,
+    );
   }
 
   @override
@@ -108,6 +119,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _life.dispose();
     _scroll.dispose();
+    _prompts?.dispose();
     _chat
       ..removeListener(_onChat)
       ..dispose();
@@ -203,6 +215,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _chat.items.isEmpty &&
         _chat.outbox.isEmpty;
     final agentName = pane.agent == 'codex' ? 'Codex' : 'Claude';
+    final hasPrompts = ref.watch(
+      machineViewProvider(id).select((v) => hasDesktopCap(v.hello, promptsCap)),
+    );
     return Scaffold(
       backgroundColor: c.surface,
       body: SafeArea(
@@ -260,6 +275,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 onSend: _send,
                 danger: ref.watch(dangerRulesProvider(id)),
                 media: _media(tab.project ?? pane.cwd),
+                prompts: _promptsFor(hasPrompts),
+                projectPath: tab.project ?? pane.cwd,
                 onStop: () => _stop(pane),
                 onPlus: () => showChatPlusSheet(
                   context,

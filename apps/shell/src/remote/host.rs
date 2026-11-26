@@ -193,3 +193,12 @@ pub fn run_event(app: &AppHandle, payload: &Value) {
         r.run_event(payload);
     }
 }
+
+pub fn prompts_changed(app: &AppHandle, payload: &Value) {
+    let count = payload.get("count").and_then(Value::as_u64).unwrap_or(0);
+    if let Some(r) = app.try_state::<Remote>() {
+        if let Some(c) = lock(&r.ctx).clone().filter(|c| c.running.load(std::sync::atomic::Ordering::SeqCst)) {
+            c.viewer.push_prompts(count);
+        }
+    }
+}

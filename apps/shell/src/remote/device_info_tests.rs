@@ -94,7 +94,7 @@ fn a_hello_with_the_new_fields_fills_the_device_and_the_welcome_lists_desktop_ca
     rig.remote.enable(true);
     let welcome = runtime().block_on(say_hello(&rig, "p1", json!({ "id": "h1", "t": "hello", "proto": 1, "app": "orrery-remote", "platform": "android", "caps": ["chat"], "appVersion": "4.0.10", "appBuild": "3", "model": "Samsung SM-A336B", "os": "Android 14" })));
     assert_eq!(welcome["ok"], true);
-    assert_eq!(welcome["caps"], json!(["devinfo", "checklist", "clip", "fsput", "queue"]));
+    assert_eq!(welcome["caps"], json!(["devinfo", "checklist", "clip", "fsput", "queue", "prompts"]));
     let devices = rig.remote.status()["devices"].clone();
     let shown = devices.as_array().unwrap().iter().find(|d| d["deviceId"] == "p1").unwrap().clone();
     assert_eq!(shown["appVersion"], "4.0.10");
@@ -110,7 +110,7 @@ fn an_old_hello_without_the_new_fields_still_works() {
     rig.remote.enable(true);
     let welcome = runtime().block_on(say_hello(&rig, "p2", json!({ "id": "h1", "t": "hello", "proto": 1, "app": "old", "platform": "android" })));
     assert_eq!(welcome["ok"], true);
-    assert_eq!(welcome["caps"], json!(["devinfo", "checklist", "clip", "fsput", "queue"]));
+    assert_eq!(welcome["caps"], json!(["devinfo", "checklist", "clip", "fsput", "queue", "prompts"]));
     let devices = rig.remote.status()["devices"].clone();
     let shown = devices.as_array().unwrap().iter().find(|d| d["deviceId"] == "p2").unwrap().clone();
     assert!(shown.get("model").is_none());

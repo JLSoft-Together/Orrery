@@ -26,11 +26,13 @@ pub enum VEvent {
     Git { root: String },
     Run(Arc<Value>),
     Ask { aid: String, needs: Value },
+    Prompts { count: u64 },
 }
 
 struct Sub {
     tx: mpsc::Sender<VEvent>,
     run: bool,
+    prompts: bool,
 }
 
 #[derive(Default)]
@@ -50,7 +52,7 @@ fn take(map: &Mutex<HashMap<String, Vec<Instant>>>, device: &str, now: Instant, 
 
 impl Hub {
     pub fn register(&self, owner: &str, tx: mpsc::Sender<VEvent>) {
-        lock(&self.subs).insert(owner.to_owned(), Sub { tx, run: false });
+        lock(&self.subs).insert(owner.to_owned(), Sub { tx, run: false, prompts: false });
     }
 
     pub fn remove(&self, owner: &str) {
@@ -65,6 +67,18 @@ impl Hub {
 
     pub fn push(&self, owner: &str, event: VEvent) -> bool {
         lock(&self.subs).get(owner).is_some_and(|s| s.tx.try_send(event).is_ok())
+    }
+
+    pub fn want_prompts(&self, owner: &str) {
+        if let Some(s) = lock(&self.subs).get_mut(owner) {
+            s.prompts = true;
+        }
+    }
+
+    pub fn push_prompts(&self, count: u64) {
+        for s in lock(&self.subs).values().filter(|s| s.prompts) {
+            let _ = s.tx.try_send(VEvent::Prompts { count });
+        }
     }
 
     pub fn drop_run(&self, owner: &str) {
@@ -137,6 +151,7 @@ pub fn merge(batch: Vec<VEvent>) -> Vec<Value> {
     let mut fs: HashMap<String, usize> = HashMap::new();
     let mut git: HashMap<String, usize> = HashMap::new();
     let mut sizes: HashMap<usize, usize> = HashMap::new();
+    let mut prompts_at: Option<usize> = None;
     for ev in batch {
         match ev {
             VEvent::Fs { root, paths } => {
@@ -170,6 +185,16 @@ pub fn merge(batch: Vec<VEvent>) -> Vec<Value> {
                 });
             }
             VEvent::Run(payload) => out.push(json!({ "t": "run.event", "event": payload.as_ref() })),
+            VEvent::Prompts { count } => {
+                let msg = super::viewer_map::prompts::changed_event(count);
+                match prompts_at {
+                    Some(at) => out[at] = msg,
+                    None => {
+                        out.push(msg);
+                        prompts_at = Some(out.len() - 1);
+                    }
+                }
+            }
             VEvent::Ask { .. } => {}
         }
     }

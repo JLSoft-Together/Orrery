@@ -1199,5 +1199,112 @@
   },
   "queueHide": "Hide",
   "queueErrNotWaiting": "This pane is no longer waiting",
-  "queueErrUseMenu": "This question has choices now, open the pane"
+  "queueErrUseMenu": "This question has choices now, open the pane",
+  "promptsStrip": "Saved prompts",
+  "promptsAdd": "New prompt",
+  "promptsEditTitle": "Edit prompt",
+  "promptsEdit": "Edit",
+  "promptsDelete": "Delete",
+  "promptsSave": "Save",
+  "promptsFieldTitle": "Title",
+  "promptsFieldBody": "Prompt text",
+  "promptsScopeAll": "All projects",
+  "promptsScopeHere": "This project",
+  "promptsDeleteTitle": "Delete this prompt?",
+  "promptsDeleteBody": "It is removed on the computer too.",
+  "promptsHidden": "{count} on the computer only",
+  "@promptsHidden": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "promptsMore": "{count} more on the computer",
+  "@promptsMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "promptsRetry": "Prompts did not load, tap to retry",
+  "promptsMissing": "Left as written: {names}",
+  "@promptsMissing": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "promptsTooLong": "Not enough room in the message box for this prompt",
+  "promptsSaved": "Prompt saved",
+  "promptsDeleted": "Prompt deleted",
+  "promptsErrSecret": "This looks like it holds a secret. Keep it on the computer.",
+  "promptsErrTitle": "The title is empty or longer than 80 characters",
+  "promptsErrBody": "The text is empty or longer than 4000 characters",
+  "promptsErrFull": "The library is full (200 prompts)",
+  "promptsErrNotFound": "This prompt is gone",
+  "promptsErrIo": "The computer could not save it",
+  "awayTitle": "Since {time} ({ago} ago)",
+  "@awayTitle": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "awayDone": "Done {n}",
+  "@awayDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "awayWaiting": "Waiting for you {n}",
+  "@awayWaiting": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "awayFailed": "Failed {n}",
+  "@awayFailed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "awayAgentsDone": "Sub-agents done {n}",
+  "@awayAgentsDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "awayAgentsFailed": "Sub-agents failed {n}",
+  "@awayAgentsFailed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "awayCompact": "Compact {n}",
+  "@awayCompact": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "awaySeen": "Seen",
+  "awayPartial": "Numbers may be incomplete"
 }

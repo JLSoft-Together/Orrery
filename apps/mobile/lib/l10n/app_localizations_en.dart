@@ -2192,4 +2192,130 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get queueErrUseMenu => 'This question has choices now, open the pane';
+
+  @override
+  String get promptsStrip => 'Saved prompts';
+
+  @override
+  String get promptsAdd => 'New prompt';
+
+  @override
+  String get promptsEditTitle => 'Edit prompt';
+
+  @override
+  String get promptsEdit => 'Edit';
+
+  @override
+  String get promptsDelete => 'Delete';
+
+  @override
+  String get promptsSave => 'Save';
+
+  @override
+  String get promptsFieldTitle => 'Title';
+
+  @override
+  String get promptsFieldBody => 'Prompt text';
+
+  @override
+  String get promptsScopeAll => 'All projects';
+
+  @override
+  String get promptsScopeHere => 'This project';
+
+  @override
+  String get promptsDeleteTitle => 'Delete this prompt?';
+
+  @override
+  String get promptsDeleteBody => 'It is removed on the computer too.';
+
+  @override
+  String promptsHidden(int count) {
+    return '$count on the computer only';
+  }
+
+  @override
+  String promptsMore(int count) {
+    return '$count more on the computer';
+  }
+
+  @override
+  String get promptsRetry => 'Prompts did not load, tap to retry';
+
+  @override
+  String promptsMissing(String names) {
+    return 'Left as written: $names';
+  }
+
+  @override
+  String get promptsTooLong =>
+      'Not enough room in the message box for this prompt';
+
+  @override
+  String get promptsSaved => 'Prompt saved';
+
+  @override
+  String get promptsDeleted => 'Prompt deleted';
+
+  @override
+  String get promptsErrSecret =>
+      'This looks like it holds a secret. Keep it on the computer.';
+
+  @override
+  String get promptsErrTitle =>
+      'The title is empty or longer than 80 characters';
+
+  @override
+  String get promptsErrBody =>
+      'The text is empty or longer than 4000 characters';
+
+  @override
+  String get promptsErrFull => 'The library is full (200 prompts)';
+
+  @override
+  String get promptsErrNotFound => 'This prompt is gone';
+
+  @override
+  String get promptsErrIo => 'The computer could not save it';
+
+  @override
+  String awayTitle(String time, String ago) {
+    return 'Since $time ($ago ago)';
+  }
+
+  @override
+  String awayDone(int n) {
+    return 'Done $n';
+  }
+
+  @override
+  String awayWaiting(int n) {
+    return 'Waiting for you $n';
+  }
+
+  @override
+  String awayFailed(int n) {
+    return 'Failed $n';
+  }
+
+  @override
+  String awayAgentsDone(int n) {
+    return 'Sub-agents done $n';
+  }
+
+  @override
+  String awayAgentsFailed(int n) {
+    return 'Sub-agents failed $n';
+  }
+
+  @override
+  String awayCompact(int n) {
+    return 'Compact $n';
+  }
+
+  @override
+  String get awaySeen => 'Seen';
+
+  @override
+  String get awayPartial => 'Numbers may be incomplete';
 }

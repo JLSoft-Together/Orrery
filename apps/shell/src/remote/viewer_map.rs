@@ -6,6 +6,9 @@ use super::viewer_events::run_log;
 #[path = "fs_put.rs"]
 pub mod fs_put;
 
+#[path = "prompts.rs"]
+pub mod prompts;
+
 pub const MAX_PATH: usize = 4096;
 pub const FAST: u64 = 15;
 pub const SLOW: u64 = 60;
@@ -24,6 +27,7 @@ pub enum Arg {
     Check(&'static str),
     RunLog,
     Put,
+    Prompts,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -82,7 +86,7 @@ impl Spec {
     }
 }
 
-pub const SPECS: [Spec; 38] = [
+pub const SPECS: [Spec; 41] = [
     s("fs.list", "ccm:list-dir", Arg::Obj),
     s("fs.files", "ccm:list-files", Arg::Str("root")),
     s("fs.read", "ccm:read-file", Arg::Str("path")),
@@ -121,6 +125,9 @@ pub const SPECS: [Spec; 38] = [
     s("checklist.get", "ccm:checklist", Arg::Check("list")),
     s("checklist.toggle", "ccm:checklist", Arg::Check("toggle")).write(),
     s("checklist.run", CHECK_RUN, Arg::Check("list")).pre(Pre::CheckRun),
+    s("prompts.list", prompts::LIST, Arg::Prompts),
+    s("prompts.save", prompts::SAVE, Arg::Prompts).write(),
+    s("prompts.delete", prompts::DELETE, Arg::Prompts).write(),
 ];
 
 pub fn lookup(t: &str) -> Option<&'static Spec> {
@@ -218,6 +225,7 @@ pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
         Arg::Check(op) => check_args(op, cmd)?,
         Arg::RunLog => run_log_args(cmd)?,
         Arg::Put => put_args(cmd)?,
+        Arg::Prompts => prompts::args(spec.t, cmd)?,
         Arg::Write => {
             let path = text(cmd, "path")?;
             let body = cmd.get("text").and_then(Value::as_str)?;

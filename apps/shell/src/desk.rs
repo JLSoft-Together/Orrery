@@ -54,6 +54,9 @@ pub fn wire(app: &AppHandle) {
 }
 
 pub fn emit_app(app: &AppHandle, event: &str, payload: Value) {
+    if event == core_desk::prompts::CHANGED {
+        crate::remote::host::prompts_changed(app, &payload);
+    }
     if event == "ccm:run-event" {
         crate::remote::host::run_event(app, &payload);
     }

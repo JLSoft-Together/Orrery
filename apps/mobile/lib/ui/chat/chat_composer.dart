@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../media/media_flow.dart';
+import '../../prompts/prompt_model.dart';
+import '../../prompts/prompt_strip.dart';
+import '../../prompts/prompts_controller.dart';
 import '../../security/danger_rules.dart';
+import '../commands.dart';
 import '../danger_guard.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
@@ -19,6 +23,8 @@ class ChatComposer extends StatefulWidget {
     this.chips = const [],
     this.danger = const DangerRules.none(),
     this.media = const ComposerMedia(),
+    this.prompts,
+    this.projectPath,
   });
 
   final String hint;
@@ -30,6 +36,8 @@ class ChatComposer extends StatefulWidget {
   final VoidCallback? onPlus;
   final List<String> chips;
   final ComposerMedia media;
+  final PromptsController? prompts;
+  final String? projectPath;
 
   @override
   State<ChatComposer> createState() => ChatComposerState();
@@ -71,6 +79,20 @@ class ChatComposerState extends State<ChatComposer> {
   void addPath(String path) {
     setDraft(insertPath(_text.text, path));
     _focus.requestFocus();
+  }
+
+  void _insertPrompt(SavedPrompt prompt) {
+    final l = context.l10n;
+    final next = insertAtCursor(_text.value, prompt.insertText);
+    if (next == null) {
+      toast(context, l.promptsTooLong);
+      return;
+    }
+    _text.value = next;
+    _focus.requestFocus();
+    if (prompt.missing.isNotEmpty) {
+      toast(context, l.promptsMissing(prompt.missing.join(', ')));
+    }
   }
 
   Future<void> _send() async {
@@ -123,6 +145,13 @@ class ChatComposerState extends State<ChatComposer> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.prompts != null)
+            PromptStrip(
+              controller: widget.prompts!,
+              enabled: widget.enabled,
+              onInsert: _insertPrompt,
+              projectPath: widget.projectPath,
+            ),
           if (widget.chips.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 10, left: 2, right: 2),
@@ -134,9 +163,7 @@ class ChatComposerState extends State<ChatComposer> {
                     ActionChip(
                       key: ValueKey('chat-chip-$chip'),
                       label: Text(chip),
-                      onPressed: widget.enabled
-                          ? () => _sendChip(chip)
-                          : null,
+                      onPressed: widget.enabled ? () => _sendChip(chip) : null,
                       shape: const StadiumBorder(),
                       side: BorderSide(color: c.line),
                       backgroundColor: c.raised,

@@ -267,6 +267,10 @@ export interface RemoteDevice {
   push?: 'web' | 'fcm' | 'none'
   pushOn?: boolean
   pushContent?: boolean
+  appVersion?: string
+  appBuild?: string
+  model?: string
+  os?: string
 }
 
 export interface RemoteStatus {

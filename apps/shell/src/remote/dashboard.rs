@@ -10,6 +10,7 @@ use tokio::sync::{mpsc, watch};
 
 use super::config::now_secs;
 use super::ctx::{Control, Ctx};
+use super::device_info::parse_caps;
 use super::fit::{fit_snapshot, fits_message, limit_event, Fit, SNAPSHOT_BUDGET};
 use super::limits::{Rate, MAX_COMMANDS_PER_MINUTE};
 use super::liveness::{due, Liveness};
@@ -109,6 +110,7 @@ pub struct Phone {
     direct_tx: mpsc::Sender<(String, Arc<str>)>,
     direct_rx: mpsc::Receiver<(String, Arc<str>)>,
     push_rx: watch::Receiver<Value>,
+    pub(super) caps: Vec<String>,
     pub(super) x: Extra,
 }
 
@@ -124,7 +126,7 @@ impl Phone {
         let (direct_tx, direct_rx) = mpsc::channel(32);
         let x = Extra::new(ctx.board.subscribe(), &device);
         let push_rx = ctx.push_cfg.subscribe();
-        Phone { ctx, sec, device, reasm: Reassembler::new(), alive: None, hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x }
+        Phone { ctx, sec, device, reasm: Reassembler::new(), alive: None, hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x, caps: Vec::new() }
     }
 
     pub fn first_hello(&mut self, msg: &[u8]) -> Option<(String, Value)> {
@@ -295,8 +297,10 @@ impl Phone {
         if let Some(p) = v.get("platform").and_then(Value::as_str) {
             lock(&self.ctx.devices).set_platform(&self.device, p);
         }
+        lock(&self.ctx.devices).set_info(&self.device, v);
+        self.caps = parse_caps(v);
         self.hello = true;
-        self.set_chat_cap(v);
+        self.set_chat_cap();
         let welcome = self.ctx.welcome(id);
         if !self.sec.json(&welcome).await {
             return false;

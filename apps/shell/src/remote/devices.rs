@@ -47,6 +47,14 @@ pub struct Device {
     pub push_seal_ok: bool,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub push_seal_at: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_build: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub os: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -93,6 +101,10 @@ impl Device {
             push_seal: false,
             push_seal_ok: false,
             push_seal_at: 0,
+            app_version: None,
+            app_build: None,
+            model: None,
+            os: None,
         }
     }
 
@@ -245,6 +257,10 @@ impl Devices {
             d.platform = platform.to_owned();
             self.save();
         }
+    }
+
+    pub(super) fn update(&mut self, id: &str, change: impl FnOnce(&mut Device) -> bool) -> bool {
+        self.list.iter_mut().find(|d| d.device_id == id).is_some_and(change)
     }
 
     pub fn set_token_exp(&mut self, id: &str, exp: u64) {

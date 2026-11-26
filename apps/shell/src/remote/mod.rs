@@ -8,6 +8,7 @@ mod config;
 mod confirm;
 mod ctx;
 mod dashboard;
+mod device_info;
 mod devices;
 mod fcm;
 mod fit;
@@ -67,6 +68,8 @@ mod relay_tests;
 mod liveness_tests;
 #[cfg(test)]
 mod unit_tests;
+#[cfg(test)]
+mod device_info_tests;
 #[cfg(test)]
 mod ws_tests;
 #[cfg(test)]

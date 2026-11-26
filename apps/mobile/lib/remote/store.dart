@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'cache.dart';
 import 'chat_last.dart';
 import 'chat_protocol.dart';
+import 'desktop_caps.dart';
 import 'json_patch.dart';
 import 'link_state.dart';
 import 'monitor_reducer.dart';
@@ -67,6 +68,8 @@ class MachineView {
     final value = workspace?['tabs'];
     return value is List ? value : const [];
   }
+
+  bool hasCap(String name) => hasDesktopCap(hello, name);
 
   MachineView copyWith({
     Map<String, dynamic>? snapshot,

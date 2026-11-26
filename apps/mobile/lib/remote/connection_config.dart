@@ -1,6 +1,7 @@
 import 'keys.dart';
 import 'crypto.dart';
 import 'discovery.dart';
+import 'hello_info.dart';
 import 'machines.dart';
 import 'wire.dart';
 
@@ -36,6 +37,7 @@ class ConnectionConfig {
     this.proto = 1,
     this.appName = 'orrery-remote',
     this.platform = 'android',
+    this.info = loadHelloInfo,
   });
 
   final Duration lanBudget;
@@ -50,6 +52,7 @@ class ConnectionConfig {
   final int proto;
   final String appName;
   final String platform;
+  final HelloInfoLoader info;
 
   Duration delayFor(int failures) {
     final index = failures <= 0 ? 0 : failures - 1;

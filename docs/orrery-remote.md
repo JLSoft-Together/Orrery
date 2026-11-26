@@ -117,6 +117,13 @@ Thao tác nguy hiểm (xoá branch, bỏ thay đổi, push, commit amend, chạy
 
 **Android (APK, chưa lên store)**: `cd apps/mobile && flutter build apk` (hoặc `--profile` để đo hiệu năng), file ở `apps/mobile/build/app/outputs/flutter-apk/`; cài bằng `adb install -r <file>.apk`. Package `dev.ccm.orrery.remote`, minSdk 24. Cần Rust toolchain (cargokit build 3 ABI).
 
+**Build release và keystore cố định**: `cd apps/mobile && flutter build apk --release` (ký bằng key ở `apps/mobile/android/key.properties`). Thiếu `key.properties` hoặc thiếu 1 trong `storeFile`, `storePassword`, `keyAlias`, `keyPassword` thì Gradle dừng ở `validateSigningRelease` với thông báo rõ. Build debug / profile vẫn ký bằng debug key. Version app lấy từ `version:` trong `apps/mobile/pubspec.yaml`, đặt bằng version desktop (`apps/shell/package.json`) cộng `+<build>`.
+- Keystore: `D:\keys\orrery\orrery-remote.jks` (RSA 4096, alias `orrery-remote`, hạn 36500 ngày). `key.properties` đã gitignore, KHÔNG commit. Mật khẩu chỉ nằm trong `key.properties` và nơi chủ nhân cất.
+- Sao lưu: copy file `.jks` và `key.properties` sang 2 nơi riêng (ví dụ ổ ngoài và password manager). Mất keystore thì mọi máy phải gỡ app rồi cài lại và ghép đôi lại. Build trên Mac và Windows phải dùng cùng keystore.
+- Chữ ký đúng: SHA-256 của cert nằm ở `apps/mobile/android/cert.sha256` (1 dòng hex). Kiểm APK: `apksigner verify --print-certs <file>.apk` rồi so dòng `SHA-256 digest`.
+- Máy đang cài bản ký debug key phải gỡ app trước khi cài bản mới (lỗi chữ ký), rồi ghép đôi lại.
+- Hello của điện thoại gửi thêm `appVersion`, `appBuild`, `model`, `os`; welcome của desktop có `caps` (hiện `["devinfo"]`). Thiếu field thì coi như rỗng, bản cũ vẫn chạy.
+
 **iPhone / iPad (web app, đang làm ở v98)**: dùng web app tải từ relay của bạn, không có app iOS native, không cần Mac hay tài khoản Apple Developer. Các bước cài web app lên màn hình chính và cài CA cho LAN sẽ bổ sung ở v98.
 
 **Cài từ Settings (v106, card "Cài app lên điện thoại", trang Điều khiển từ xa, ngay dưới "Thêm điện thoại")**: 2 tab.

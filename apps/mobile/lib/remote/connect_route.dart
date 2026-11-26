@@ -32,12 +32,19 @@ Future<RelayOpen> openRoute(
   return relay;
 }
 
-Future<JsonMap> sendHello(RemoteSession session, ConnectionConfig config) {
+const List<String> helloCaps = ['chat'];
+
+Future<JsonMap> sendHello(
+  RemoteSession session,
+  ConnectionConfig config,
+) async {
+  final info = await config.info();
   return session.request('hello', {
     'proto': config.proto,
     'app': config.appName,
     'platform': config.platform,
-    'caps': const <String>['chat'],
+    'caps': helloCaps,
+    ...info.toJson(),
   });
 }
 

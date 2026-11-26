@@ -75,3 +75,6 @@ apps/shell/binaries/
 apps/shell/release/
 
 .jin/logs/
+
+apps/shell/resources/apk/*.apk
+apps/shell/resources/apk/version.txt

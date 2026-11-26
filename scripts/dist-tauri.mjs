@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,7 +10,9 @@ const SHELL = path.join(ROOT, 'apps', 'shell')
 const CORE = path.join(ROOT, 'apps', 'core')
 const OUT = path.join(SHELL, 'release')
 const TAURI_CLI = '@tauri-apps/cli@2.12.4'
-const SETUP_MAX_MB = 35
+const SETUP_MAX_MB = 70
+const MOBILE = path.join(ROOT, 'apps', 'mobile')
+const APK_DIR = path.join(SHELL, 'resources', 'apk')
 
 export const TARGETS = {
   win: [{ arch: 'x64', triple: 'x86_64-pc-windows-msvc', bundle: 'nsis' }],
@@ -56,6 +58,70 @@ export function daemonKit(pin = readKitPin()) {
     process.exit(1)
   }
   return kit
+}
+
+export function pubspecVersionName(text) {
+  const m = /^version:\s*([0-9]+(?:\.[0-9]+)*)/m.exec(text)
+  return m ? m[1] : null
+}
+
+export function normCert(text) {
+  return String(text).replace(/[^0-9a-fA-F]/g, '').toLowerCase()
+}
+
+export function parseSignerCerts(output) {
+  return [...String(output).matchAll(/certificate SHA-256 digest:\s*([0-9a-fA-F:]+)/g)].map((m) => normCert(m[1]))
+}
+
+export function certMatches(output, expected) {
+  const want = normCert(expected)
+  const got = parseSignerCerts(output)
+  return want.length === 64 && got.length > 0 && got.every((c) => c === want)
+}
+
+function findApksigner(env = process.env) {
+  const roots = [env.ANDROID_HOME, env.ANDROID_SDK_ROOT].filter(Boolean)
+  const name = process.platform === 'win32' ? 'apksigner.bat' : 'apksigner'
+  const hits = []
+  for (const root of roots) {
+    const tools = path.join(root, 'build-tools')
+    if (!existsSync(tools)) continue
+    for (const v of readdirSync(tools)) {
+      const exe = path.join(tools, v, name)
+      if (existsSync(exe)) hits.push({ v, exe })
+    }
+  }
+  hits.sort((a, b) => a.v.localeCompare(b.v, undefined, { numeric: true }))
+  return hits.length ? hits[hits.length - 1].exe : null
+}
+
+function fail(message) {
+  console.error(`dist-tauri: ${message}`)
+  process.exit(1)
+}
+
+export function stageApk(j) {
+  const fromEnv = process.env.ORRERY_APK
+  let source = fromEnv ? path.resolve(fromEnv) : null
+  if (!source) {
+    run('flutter', ['build', 'apk', '--release', '--target-platform', 'android-arm64'], { cwd: MOBILE, env: { ...process.env, GRADLE_OPTS: `${process.env.GRADLE_OPTS ?? ''} -Dorg.gradle.workers.max=${j}`.trim() } })
+    source = path.join(MOBILE, 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+  }
+  if (!existsSync(source) || statSync(source).size === 0) fail(`APK not found: ${source}`)
+  const signer = findApksigner()
+  if (!signer) fail('apksigner not found: set ANDROID_HOME or ANDROID_SDK_ROOT with build-tools installed')
+  const certFile = path.join(MOBILE, 'android', 'cert.sha256')
+  if (!existsSync(certFile)) fail(`missing ${path.relative(ROOT, certFile)}`)
+  const r = spawnSync(process.platform === 'win32' ? `"${signer}"` : signer, ['verify', '--print-certs', process.platform === 'win32' ? `"${source}"` : source], { encoding: 'utf8', shell: process.platform === 'win32' })
+  if (r.status !== 0) fail(`apksigner verify failed for ${source}`)
+  if (!certMatches(r.stdout, readFileSync(certFile, 'utf8'))) fail('APK signing certificate does not match apps/mobile/android/cert.sha256')
+  const version = pubspecVersionName(readFileSync(path.join(MOBILE, 'pubspec.yaml'), 'utf8'))
+  if (!version) fail('cannot read versionName from apps/mobile/pubspec.yaml')
+  mkdirSync(APK_DIR, { recursive: true })
+  copyFileSync(source, path.join(APK_DIR, 'orrery-remote.apk'))
+  writeFileSync(path.join(APK_DIR, 'version.txt'), `${version}
+`)
+  console.log(`dist-tauri: staged orrery-remote.apk ${version}`)
 }
 
 function stageSidecars(triple) {

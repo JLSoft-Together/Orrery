@@ -1,9 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{json, Value};
 
 use super::config::now_secs;
-use super::install::{is_apk, suggestion, url_path, valid_url, MAX_URL};
+use super::install::{is_apk, pick_source, save_name, suggestion, url_path, valid_url, ApkSource, TicketKind, MAX_URL};
 use super::Remote;
 use crate::state::lock;
 
@@ -26,14 +26,22 @@ impl Remote {
         true
     }
 
+    pub(crate) fn apk_source(&self, custom: &str) -> Option<ApkSource> {
+        pick_source(custom, self.host.bundled_apk(), suggestion())
+    }
+
     fn install_state(&self) -> Value {
         let cfg = self.read_config();
-        let apk = Some(PathBuf::from(&cfg.apk_path)).filter(|p| !cfg.apk_path.is_empty() && is_apk(p));
-        let suggested = suggestion().filter(|s| apk.as_deref() != Some(s.as_path()));
+        let found = self.apk_source(&cfg.apk_path);
+        let custom_ok = !cfg.apk_path.is_empty() && is_apk(Path::new(&cfg.apk_path));
+        let current = found.as_ref().map(|f| f.path.as_path());
+        let suggested = suggestion().filter(|s| current != Some(s.as_path()));
         json!({
             "ok": true,
-            "apk": apk.as_deref().map(file_json),
-            "missing": !cfg.apk_path.is_empty() && apk.is_none(),
+            "apk": current.map(file_json),
+            "source": found.as_ref().map(|f| f.source.name()),
+            "version": found.as_ref().map_or("", |f| f.version.as_str()),
+            "missing": !cfg.apk_path.is_empty() && !custom_ok,
             "suggested": suggested.as_deref().map(file_json),
             "url": cfg.apk_url,
             "running": lock(&self.running).is_some(),
@@ -45,15 +53,23 @@ impl Remote {
             Ok(c) => c,
             Err(e) => return json!({ "ok": false, "error": e }),
         };
-        let path = PathBuf::from(lock(&ctx.config).apk_path.clone());
-        if !is_apk(&path) {
-            return json!({ "ok": false, "error": "apk" });
-        }
-        let Some((token, exp)) = ctx.install.issue(path, now_secs()) else { return json!({ "ok": false, "error": "rng" }) };
+        let custom = lock(&ctx.config).apk_path.clone();
+        let Some(found) = self.apk_source(&custom) else { return json!({ "ok": false, "error": "apk" }) };
+        let Some((token, exp)) = ctx.install.issue(TicketKind::ApkPage, found.path, now_secs()) else { return json!({ "ok": false, "error": "rng" }) };
         let lan = ctx.lan();
         let port = lan.first().map_or(0, std::net::SocketAddr::port);
         let addresses: Vec<String> = lan.iter().map(|a| a.ip().to_string()).collect();
         json!({ "ok": true, "path": url_path(&token), "exp": exp, "port": port, "addresses": addresses })
+    }
+
+    fn install_save(&self) -> Value {
+        let custom = self.read_config().apk_path;
+        let Some(found) = self.apk_source(&custom) else { return json!({ "ok": false, "error": "apk" }) };
+        match self.host.save_apk(&found.path, &save_name(&found.version)) {
+            Ok(Some(path)) => json!({ "ok": true, "path": path.to_string_lossy() }),
+            Ok(None) => json!({ "ok": false, "error": "cancel" }),
+            Err(_) => json!({ "ok": false, "error": "save" }),
+        }
     }
 
     pub fn install_call(&self, arg: &Value) -> Value {
@@ -87,6 +103,7 @@ impl Remote {
                 self.install_state()
             }
             "start" => self.install_start(),
+            "save" => self.install_save(),
             "stop" => {
                 if let Some(c) = lock(&self.ctx).clone() {
                     c.install.revoke();

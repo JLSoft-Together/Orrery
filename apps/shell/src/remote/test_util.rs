@@ -44,6 +44,8 @@ pub struct TestHost {
     pub released: Mutex<Vec<String>>,
     pub on_release: Mutex<Option<ReleaseFn>>,
     pub views: Mutex<Vec<Viewed>>,
+    pub bundled: Mutex<Option<(PathBuf, String)>>,
+    pub save_to: Mutex<Option<PathBuf>>,
 }
 
 pub type Answer = Box<dyn Fn(&str, &Value) -> Option<Value> + Send + Sync>;
@@ -104,6 +106,14 @@ impl Host for TestHost {
         if let Some(f) = lock(&self.on_release).as_ref() {
             f(owner);
         }
+    }
+    fn bundled_apk(&self) -> Option<(PathBuf, String)> {
+        lock(&self.bundled).clone()
+    }
+    fn save_apk(&self, src: &Path, _suggested_name: &str) -> Result<Option<PathBuf>, String> {
+        let Some(dest) = lock(&self.save_to).clone() else { return Ok(None) };
+        std::fs::copy(src, &dest).map_err(|e| e.to_string())?;
+        Ok(Some(dest))
     }
 }
 

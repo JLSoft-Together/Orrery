@@ -22,13 +22,29 @@ pub const MAX_APK: u64 = 1 << 30;
 pub const MAX_URL: usize = 2048;
 pub const MIME: &str = "application/vnd.android.package-archive";
 const TOKEN_BYTES: usize = 16;
+pub const MAX_SLOTS: usize = 4;
 const MAX_TOKEN: usize = 64;
 const SEND_MAX: Duration = Duration::from_secs(900);
 const SNIFF_WAIT: Duration = Duration::from_millis(20);
 const NEEDLES: [&[u8]; 2] = [b"GET /install/", b"HEAD /install/"];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TicketKind {
+    ApkPage,
+    ApkOffer,
+}
+
+impl TicketKind {
+    pub const fn ttl(self) -> u64 {
+        match self {
+            Self::ApkPage | Self::ApkOffer => TTL_SECS,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct Ticket {
+    kind: TicketKind,
     token: String,
     path: PathBuf,
     exp: u64,
@@ -36,7 +52,7 @@ struct Ticket {
 
 #[derive(Default)]
 pub struct Tickets {
-    slot: Mutex<Option<Ticket>>,
+    slots: Mutex<Vec<Ticket>>,
 }
 
 fn same(a: &[u8], b: &[u8]) -> bool {
@@ -44,27 +60,43 @@ fn same(a: &[u8], b: &[u8]) -> bool {
 }
 
 impl Tickets {
-    pub fn issue(&self, path: PathBuf, now: u64) -> Option<(String, u64)> {
+    pub fn issue(&self, kind: TicketKind, path: PathBuf, now: u64) -> Option<(String, u64)> {
         let mut raw = [0u8; TOKEN_BYTES];
         getrandom::fill(&mut raw).ok()?;
         let token = URL_SAFE_NO_PAD.encode(raw);
-        let exp = now + TTL_SECS;
-        *lock(&self.slot) = Some(Ticket { token: token.clone(), path, exp });
+        let exp = now + kind.ttl();
+        let mut slots = lock(&self.slots);
+        slots.retain(|t| now < t.exp);
+        if slots.len() >= MAX_SLOTS {
+            let victim = slots.iter().position(|t| t.kind == kind).unwrap_or(0);
+            slots.remove(victim);
+        }
+        slots.push(Ticket { kind, token: token.clone(), path, exp });
         Some((token, exp))
     }
 
     pub fn revoke(&self) {
-        *lock(&self.slot) = None;
+        lock(&self.slots).clear();
     }
 
-    pub fn lookup(&self, token: &str, now: u64) -> Option<PathBuf> {
-        let mut slot = lock(&self.slot);
-        let live = slot.as_ref()?;
-        if now >= live.exp {
-            *slot = None;
-            return None;
+    pub fn len(&self) -> usize {
+        lock(&self.slots).len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn lookup(&self, token: &str, now: u64) -> Option<(TicketKind, PathBuf)> {
+        let mut slots = lock(&self.slots);
+        slots.retain(|t| now < t.exp);
+        let mut hit = None;
+        for t in slots.iter() {
+            if same(t.token.as_bytes(), token.as_bytes()) {
+                hit = Some((t.kind, t.path.clone()));
+            }
         }
-        same(live.token.as_bytes(), token.as_bytes()).then(|| live.path.clone())
+        hit
     }
 }
 
@@ -92,6 +124,50 @@ pub fn newest_apk(dir: &Path) -> Option<PathBuf> {
 pub fn suggestion() -> Option<PathBuf> {
     let dir = crate::config::repo_root().join("apps").join("mobile").join("build").join("app").join("outputs").join("flutter-apk");
     newest_apk(&lexical(&dir))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Source {
+    Custom,
+    Bundled,
+    Dev,
+}
+
+impl Source {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Custom => "custom",
+            Self::Bundled => "bundled",
+            Self::Dev => "dev",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApkSource {
+    pub path: PathBuf,
+    pub source: Source,
+    pub version: String,
+}
+
+pub fn pick_source(custom: &str, bundled: Option<(PathBuf, String)>, dev: Option<PathBuf>) -> Option<ApkSource> {
+    let custom_path = Some(PathBuf::from(custom)).filter(|p| !custom.is_empty() && is_apk(p));
+    if let Some(path) = custom_path {
+        return Some(ApkSource { path, source: Source::Custom, version: String::new() });
+    }
+    if let Some((path, version)) = bundled.filter(|(p, _)| is_apk(p)) {
+        return Some(ApkSource { path, source: Source::Bundled, version });
+    }
+    dev.filter(|p| is_apk(p)).map(|path| ApkSource { path, source: Source::Dev, version: String::new() })
+}
+
+pub fn save_name(version: &str) -> String {
+    let v: String = version.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+')).collect();
+    if v.is_empty() {
+        "orrery-remote.apk".to_owned()
+    } else {
+        format!("orrery-remote-{v}.apk")
+    }
 }
 
 pub fn lexical(path: &Path) -> PathBuf {
@@ -126,8 +202,22 @@ pub enum Reply {
     Method,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Route<'a> {
+    ApkFile(&'a str),
+}
+
 pub fn allowed_peer(ip: IpAddr) -> bool {
     matches!(norm(ip), IpAddr::V4(v4) if is_private_v4(v4))
+}
+
+fn valid_token(token: &str) -> bool {
+    !token.is_empty() && token.len() <= MAX_TOKEN && token.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+}
+
+pub fn route(target: &str) -> Option<Route<'_>> {
+    let token = target.strip_prefix(PREFIX).and_then(|r| r.strip_suffix(FILE)).and_then(|r| r.strip_suffix('/'))?;
+    valid_token(token).then_some(Route::ApkFile(token))
 }
 
 pub fn resolve(tickets: &Tickets, ip: IpAddr, head: &str, now: u64) -> Reply {
@@ -145,13 +235,12 @@ pub fn resolve(tickets: &Tickets, ip: IpAddr, head: &str, now: u64) -> Reply {
         "HEAD" => true,
         _ => return Reply::Method,
     };
-    let Some(token) = target.strip_prefix(PREFIX).and_then(|r| r.strip_suffix(FILE)).and_then(|r| r.strip_suffix('/')) else { return Reply::NotFound };
-    if token.is_empty() || token.len() > MAX_TOKEN || !token.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
-        return Reply::NotFound;
-    }
-    match tickets.lookup(token, now) {
-        Some(path) if is_apk(&path) => Reply::File { path, head: head_only },
-        _ => Reply::NotFound,
+    match route(target) {
+        Some(Route::ApkFile(token)) => match tickets.lookup(token, now) {
+            Some((_, path)) if is_apk(&path) => Reply::File { path, head: head_only },
+            _ => Reply::NotFound,
+        },
+        None => Reply::NotFound,
     }
 }
 

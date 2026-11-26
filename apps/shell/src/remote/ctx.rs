@@ -83,6 +83,12 @@ pub trait Host: Send + Sync + 'static {
     fn pick_apk(&self) -> Option<std::path::PathBuf> {
         None
     }
+    fn bundled_apk(&self) -> Option<(std::path::PathBuf, String)> {
+        None
+    }
+    fn save_apk(&self, _src: &std::path::Path, _suggested_name: &str) -> Result<Option<std::path::PathBuf>, String> {
+        Ok(None)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

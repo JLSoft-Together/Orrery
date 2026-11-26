@@ -45,6 +45,14 @@ jobs:
             apps/core
             apps/shell
       - run: npm ci
+      - name: Fetch the signed phone APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./apps/shell/package.json').version")
+          gh release download "remote-apk-v$version" --repo "$GITHUB_REPOSITORY" --pattern orrery-remote.apk --dir "$RUNNER_TEMP"
+          echo "ORRERY_APK=$RUNNER_TEMP/orrery-remote.apk" >> "$GITHUB_ENV"
       - run: npm run ${{ matrix.script }}
       - uses: actions/upload-artifact@v4
         with:
@@ -75,4 +83,6 @@ jobs:
             exit 1
           fi
           awk '/^## Tiếng Việt/{on=1; next} /^## /{on=0} on' "$notes" | sed '/./,$!d' > notes.md
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest --title "Orrery $GITHUB_REF_NAME" --notes-file notes.md dist/*.exe dist/*.dmg
+          gh release download "remote-apk-$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern orrery-remote.apk --dir dist
+          mv dist/orrery-remote.apk "dist/Orrery-Remote-$version.apk"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest --title "Orrery $GITHUB_REF_NAME" --notes-file notes.md dist/*.exe dist/*.dmg dist/*.apk

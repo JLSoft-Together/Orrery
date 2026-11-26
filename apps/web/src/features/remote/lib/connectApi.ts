@@ -1,8 +1,7 @@
 import type { AdbDevice, DevSnapshot, RemoteStatus } from '@ccm/shared'
-import { desktop } from '../../../core/lib/desktop'
 import { devInstall, devOpenPair, devReverse, devSnapshot, hasDeviceInstall, onDevEvent } from '../../devices/lib/devices'
-import { remoteEnable, remotePairCancel, remoteStatus } from './remote'
-import { installGet, installStart, installStop, installUseSuggested, type InstallReply, type InstallState, type InstallTicket } from './remoteInstall'
+import { onInstallFetched, remoteCheck, remoteEnable, remotePairCancel, remotePairStart, remoteStatus } from './remote'
+import { installArm, installGet, installStart, installStop, installUseSuggested, type InstallReply, type InstallState, type InstallTicket } from './remoteInstall'
 import type { UsbInstallReply, UsbPairOpts } from './connectUsb'
 
 export type ConnectApiError = 'unavailable'
@@ -20,7 +19,7 @@ export interface ConnectApi {
   installStart(): Promise<InstallReply<InstallTicket>>
   installStop(): Promise<void>
   installArm(on: boolean): Promise<boolean>
-  onInstallFetched(handler: (ip: string) => void): () => void
+  onInstallFetched(handler: (ip: string) => void, since?: number): () => void
   devices(): Promise<AdbDevice[]>
   onDevices(handler: (devices: AdbDevice[]) => void): () => void
   usbInstall(id: string, apk: string): Promise<UsbInstallReply>
@@ -30,16 +29,9 @@ export interface ConnectApi {
   qrSvg(text: string): Promise<string>
 }
 
-interface E1Bridge {
-  remotePairStart?: (opts?: unknown) => Promise<unknown>
-  remoteCheck?: (deviceId: string) => Promise<unknown>
-  remoteInstall?: (op: { op: string }) => Promise<unknown>
-  onRemoteInstallFetched?: (handler: (e: { ip?: unknown }) => void) => () => void
-}
-
-const bridge = desktop as unknown as E1Bridge | undefined
-
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+
+export const installPagePath = (t: Pick<InstallTicket, 'path' | 'page'>): string => (t.page && t.page.startsWith('/') ? t.page : t.path.replace(/[^/]*$/, ''))
 
 export function parsePairReply(v: unknown): ConnectPairReply {
   if (!isObj(v) || typeof v.qr !== 'string' || !v.qr || typeof v.exp !== 'number') return null
@@ -66,18 +58,15 @@ export const connectApi: ConnectApi = {
   },
   remoteStatus,
   remoteEnable,
-  pairStart: async (opts) => parsePairReply(await bridge?.remotePairStart?.(opts).catch(() => null)),
+  pairStart: async (opts) => parsePairReply(await remotePairStart(opts)),
   pairCancel: remotePairCancel,
-  check: async (id) => (await bridge?.remoteCheck?.(id).catch(() => null)) ?? null,
+  check: remoteCheck,
   installState: installGet,
   installUseSuggested,
   installStart,
   installStop,
-  installArm: async (on) => {
-    const r = await bridge?.remoteInstall?.({ op: on ? 'arm' : 'disarm' }).catch(() => null)
-    return isObj(r) && r.ok === true
-  },
-  onInstallFetched: (handler) => bridge?.onRemoteInstallFetched?.((e) => handler(typeof e?.ip === 'string' ? e.ip : '')) ?? (() => undefined),
+  installArm,
+  onInstallFetched: (handler, since) => onInstallFetched((f) => handler(f.ip), since),
   devices: snapshotDevices,
   onDevices: (handler) => onDevEvent((e) => e.type === 'devices' && handler(e.devices)),
   usbInstall: async (id, apk) => {

@@ -16,7 +16,7 @@ use super::devices::Device;
 use super::guard_hooks::link_ip;
 use super::guard_ip::key;
 use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_NORMAL, CLOSE_PROTO, CLOSE_RATE};
-pub use super::pair_meta::PairMeta;
+pub use super::pair_meta::{PairMeta, Via};
 use crate::state::lock;
 
 pub const PAIR_TTL: u64 = 120;
@@ -43,11 +43,12 @@ pub struct Pairing {
     ended: Mutex<Option<&'static str>>,
     serial: AtomicU64,
     armed: watch::Sender<Armed>,
+    usb: watch::Sender<Option<u64>>,
 }
 
 impl Default for Pairing {
     fn default() -> Self {
-        Pairing { slot: Mutex::new(None), ended: Mutex::new(None), serial: AtomicU64::new(0), armed: watch::channel(None).0 }
+        Pairing { slot: Mutex::new(None), ended: Mutex::new(None), serial: AtomicU64::new(0), armed: watch::channel(None).0, usb: watch::channel(None).0 }
     }
 }
 
@@ -66,15 +67,30 @@ impl Pairing {
         let code = PairCode::generate().ok()?;
         let exp = now + PAIR_TTL;
         let serial = self.serial.fetch_add(1, Ordering::SeqCst) + 1;
+        let usb = (meta.via == Via::Usb).then_some(exp);
         *lock(&self.slot) = Some(Slot { code: code.clone(), exp, serial, fails: HashMap::new(), total: 0, relay: ticket.is_some(), meta });
         *lock(&self.ended) = None;
         self.armed.send_replace(ticket.map(|t| (t.hash(), exp)));
+        self.usb.send_replace(usb);
         Some((code, exp))
     }
 
     fn clear(&self, slot: &mut Option<Slot>) {
         *slot = None;
         self.armed.send_replace(None);
+        self.usb.send_replace(None);
+    }
+
+    pub fn usb_until(&self, now: u64) -> Option<u64> {
+        let mut slot = lock(&self.slot);
+        if slot.as_ref().is_some_and(|s| now >= s.exp) {
+            self.clear(&mut slot);
+        }
+        slot.as_ref().filter(|s| s.meta.via == Via::Usb).map(|s| s.exp)
+    }
+
+    pub fn usb_watch(&self) -> watch::Receiver<Option<u64>> {
+        self.usb.subscribe()
     }
 
     pub fn cancel(&self) -> bool {
@@ -186,10 +202,18 @@ pub fn is_pair_msg1(msg: &[u8]) -> bool {
     msg.len() == PAIR_MSG1_LEN
 }
 
+pub fn qr_port(ctx: &Ctx) -> u16 {
+    ctx.lan().first().map_or_else(|| lock(&ctx.config).port, std::net::SocketAddr::port)
+}
+
+pub fn loopback_only(link: &Link) -> bool {
+    link.origin.pairing && matches!(link.peer, Peer::Lan(_))
+}
+
 pub fn qr(ctx: &Ctx, code: PairCode, exp: u64, ticket: Option<PairTicket>, extra: &[Ipv4Addr]) -> Option<String> {
     let cfg = lock(&ctx.config).clone();
     let bound = ctx.lan();
-    let port = bound.first().map_or(cfg.port, std::net::SocketAddr::port);
+    let port = qr_port(ctx);
     let first = extra.iter().map(|ip| LanAddr::new(ip.to_string(), port));
     let lan = first.chain(bound.iter().map(|a| LanAddr::new(a.ip().to_string(), a.port()))).take(MAX_LAN).collect();
     let payload = QrPayload {
@@ -237,6 +261,9 @@ pub async fn run(ctx: Arc<Ctx>, mut link: Link, msg1: Vec<u8>, deadline: Instant
     let Some(ticket) = ctx.pairing.ticket(now_secs()) else {
         return ctx.refuse(&link, CLOSE_DEVICE, "pairing", "pairing").await;
     };
+    if loopback_only(&link) && ticket.meta.via != Via::Usb {
+        return ctx.refuse(&link, CLOSE_DEVICE, "pairing", "loopback").await;
+    }
     if !ticket.meta.admits(link_ip(&link)) {
         return ctx.refuse(&link, CLOSE_DEVICE, "pairing", "pair_ip").await;
     }

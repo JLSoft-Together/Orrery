@@ -4150,8 +4150,17 @@ remoteV98.guard.why.confirm
 remoteV98.guard.why.device
 remoteV98.guard.why.frame
 remoteV98.guard.why.handshake
+remoteV98.guard.why.held
 remoteV98.guard.why.hello
+remoteV98.guard.why.install_fetch
+remoteV98.guard.why.install_ip
+remoteV98.guard.why.install_missing
+remoteV98.guard.why.install_pair
+remoteV98.guard.why.install_unarmed
+remoteV98.guard.why.install_used
+remoteV98.guard.why.loopback
 remoteV98.guard.why.manual
+remoteV98.guard.why.pair_ip
 remoteV98.guard.why.paired
 remoteV98.guard.why.pairing
 remoteV98.guard.why.rate

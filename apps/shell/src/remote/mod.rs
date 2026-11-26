@@ -32,6 +32,7 @@ mod install_pair;
 mod install_tickets;
 mod keys;
 mod lan;
+mod loopback;
 mod limits;
 mod liveness;
 mod link;

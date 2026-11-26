@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 
 use super::ctx::Ctx;
-use super::{lan, mdns};
+use super::{lan, loopback, mdns};
 
 pub const REBIND_EVERY: Duration = Duration::from_secs(30);
 
@@ -63,6 +63,7 @@ pub async fn supervise(ctx: Arc<Ctx>, initial: Vec<std::net::TcpListener>, plan:
     for l in initial {
         spawn_loop(&ctx, l, &mut loops);
     }
+    tokio::spawn(loopback::supervise(ctx.clone(), stop.clone()));
     let mut advert = advertise(&ctx, &loops, plan);
     loop {
         tokio::select! {

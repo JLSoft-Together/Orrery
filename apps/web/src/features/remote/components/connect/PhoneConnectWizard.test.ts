@@ -173,6 +173,24 @@ describe('PhoneConnectWizard', () => {
     expect(api.installArm).toHaveBeenLastCalledWith(false)
   })
 
+  it('qr path prefers the page path from the ticket and listens from the ticket start', async () => {
+    const onInstallFetched = vi.fn((h: (ip: string) => void, since?: number) => {
+      void h
+      void since
+      return () => undefined
+    })
+    const installStart = vi.fn(async () => ({ ok: true as const, value: { path: '/install/tok/orrery.apk', page: '/install/pg/', exp: Math.floor(Date.now() / 1000) + 600, port: 4330, addresses: ['192.168.1.2'] } }))
+    const before = Math.floor(Date.now() / 1000)
+    await open([], {}, { installStart, onInstallFetched })
+    await click('[data-connect-qr-show]')
+    await vi.waitFor(() => expect(q('[data-connect-qr-url]')).not.toBeNull())
+    expect(q('[data-connect-qr-url]')?.textContent).toBe('http://192.168.1.2:4330/install/pg/')
+    await vi.waitFor(() => expect(onInstallFetched).toHaveBeenCalled())
+    const since = onInstallFetched.mock.calls[0]?.[1] ?? 0
+    expect(since).toBeGreaterThanOrEqual(before - 1)
+    expect(since).toBeLessThanOrEqual(Math.floor(Date.now() / 1000))
+  })
+
   it('qr path without an APK reports it', async () => {
     await open([], {}, { installState: vi.fn(async () => ({ ok: true as const, value: { apk: null, missing: true, suggested: null, url: '', running: false, source: null, version: '' } })) })
     await click('[data-connect-qr-show]')

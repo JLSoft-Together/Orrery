@@ -4,7 +4,7 @@ import type { AdbDevice, RemoteDevice } from '@ccm/shared'
 import { now } from '../../../../core/lib/format'
 import { useToastsStore } from '../../../../core/stores/toasts'
 import { flashSettingRow } from '@features/settings'
-import { connectApi, type ConnectApi } from '../../lib/connectApi'
+import { connectApi, installPagePath, type ConnectApi } from '../../lib/connectApi'
 import { runCheck, unknownCheck, type CheckSummary } from '../../lib/connectCheck'
 import {
   ENABLE_TIMEOUT_MS,
@@ -226,18 +226,19 @@ export function useConnectWizard(deps: ConnectDeps = realDeps()) {
     let info = await api.installState()
     if (info.ok && !info.value.apk && info.value.suggested) info = await api.installUseSuggested()
     if (!info.ok || !info.value.apk) return void (qr.value.error = 'apk')
+    const since = Math.floor(Date.now() / 1000) - 1
     const out = await api.installStart()
     if (id !== run || state.value.name !== 'qrInstall') return
     if (!out.ok) return void (qr.value.error = out.error)
     const ip = out.value.addresses[0]
     if (!ip) return void (qr.value.error = 'address')
-    const url = installUrl(ip, out.value.port, out.value.path.replace(/[^/]*$/, ''))
+    const url = installUrl(ip, out.value.port, installPagePath(out.value))
     const svg = await api.qrSvg(url)
     if (id !== run || state.value.name !== 'qrInstall') return
     qr.value = { svg, exp: out.value.exp, url, ip, error: svg ? '' : 'qr' }
     await api.installArm(true)
     offFetched?.()
-    offFetched = api.onInstallFetched(() => dispatch({ type: 'qrFetched' }))
+    offFetched = api.onInstallFetched(() => dispatch({ type: 'qrFetched' }), since)
   }
 
   async function doPair(): Promise<void> {

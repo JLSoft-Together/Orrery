@@ -110,6 +110,7 @@ import v105U1 from '../features/next/i18n/v105-u1'
 import v105U2 from '../features/next/i18n/v105-u2'
 import v106Rail from '../features/next/i18n/v106-rail'
 import v106Install from '../features/remote/i18n/v106-install'
+import runV113 from '../features/run/i18n/run-v113'
 import v107Gon from './v107-gon'
 import notifyV109 from '../features/notify/i18n'
 import footerSysV109 from '../features/footerSys/i18n'
@@ -131,6 +132,7 @@ const vi: typeof en = {
   ...v105U2.vi,
   ...v106Rail.vi,
   ...v106Install.vi,
+  ...runV113.vi,
   ...v107Gon.vi,
   ...notifyV109.vi,
   ...footerSysV109.vi,

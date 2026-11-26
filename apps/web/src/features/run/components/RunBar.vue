@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
+  Camera,
   Check,
   ChevronDown,
   ClipboardCheck,
@@ -25,7 +26,7 @@ import { projectMark } from '../lib/runUi'
 import { RUN_BUSY_STATES, useRunStore } from '../stores/run'
 
 const props = defineProps<{ root: string; blocked: boolean }>()
-const emit = defineEmits<{ editConfigs: []; toolchain: []; releaseCheck: [] }>()
+const emit = defineEmits<{ editConfigs: []; toolchain: []; releaseCheck: []; multiRun: [] }>()
 
 const { t } = useI18n()
 const run = useRunStore()
@@ -281,6 +282,10 @@ const launchingName = computed(() => run.emulators.find((e) => e.id === launchin
           <p v-if="!devices.length" class="px-2 py-1.5 text-xs text-ink-muted">{{ t('run.device.noDevices') }}</p>
           <p v-if="hiddenDevices > 0" class="px-2 py-1 text-2xs text-ink-faint" data-run-devices-hidden>{{ t('run.device.hidden') }}</p>
           <div class="mx-2 my-1 h-px bg-line" role="separator" />
+          <button v-if="config?.type === 'android'" type="button" role="menuitem" :class="MENU_ROW" data-run-multi-open @click="(close(true), emit('multiRun'))">
+            <Camera :size="14" class="shrink-0 text-ink-muted group-focus-visible:text-on-accent" aria-hidden="true" />
+            <span class="truncate">{{ t('runMulti.menu') }}</span>
+          </button>
           <p class="px-2 pt-1 pb-1 text-2xs font-semibold text-ink-faint" aria-hidden="true">{{ t('run.device.launch') }}</p>
           <button v-for="e in run.emulators" :key="`${e.source}:${e.id}`" type="button" role="menuitem" :class="MENU_ROW" :title="e.id" data-run-emulator @click="launch(e)">
             <TabletSmartphone :size="14" class="shrink-0 text-ink-muted group-focus-visible:text-on-accent" aria-hidden="true" />

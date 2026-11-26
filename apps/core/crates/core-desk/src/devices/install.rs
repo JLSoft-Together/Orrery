@@ -166,4 +166,5 @@ pub fn register(desk: &mut Desk, m: &Arc<DeviceManager>) {
             None => denied(),
         })
     });
+    super::variants::register(desk, m);
 }

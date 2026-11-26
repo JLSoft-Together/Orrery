@@ -23,3 +23,6 @@ pub mod sqlwal;
 pub mod toggles;
 pub mod uidump;
 pub mod ui_tester;
+pub mod variants;
+#[cfg(test)]
+mod variants_tests;

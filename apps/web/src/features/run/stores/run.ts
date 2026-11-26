@@ -23,6 +23,7 @@ import {
 } from '@ccm/shared'
 import { desktop, type RunSettings } from '../../../core/lib/desktop'
 import { devConnectMany, devSnapshot } from '../../devices/lib/devices'
+import { sweepVariants } from '../lib/multiRunDeps'
 import { AUTO_RELOAD_DEBOUNCE_MS, AUTO_RELOAD_MIN_GAP_MS, agentsFinished, autoReloadAction } from '../lib/runAutoReload'
 import { agentPaneFor, errorPrompt, fitsPlatforms, inRoot } from '../lib/runUi'
 import { dirKey } from '../../../core/stores/favorites'
@@ -265,6 +266,7 @@ export const useRunStore = defineStore('run', () => {
     }
     if (withDevices && !devicesAsked) {
       devicesAsked = true
+      void sweepVariants()
       await refreshDevices()
     }
   }

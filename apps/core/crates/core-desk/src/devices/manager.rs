@@ -88,6 +88,7 @@ pub struct DeviceManager {
     state: Mutex<State>,
     avds: AvdManager,
     ui: UiTester,
+    pub variants: Arc<super::variants::Variants>,
     win: bool,
 }
 
@@ -112,6 +113,7 @@ impl DeviceManager {
             DeviceManager {
                 me: me.clone(),
                 ui: UiTester::new(adb.clone(), data_dir.join(UI_ORIGINALS_FILE)),
+                variants: super::variants::Variants::new(Arc::new(adb.clone()), data_dir.join("run").join("variants")),
                 adb,
                 emulator: Mutex::new(None),
                 settings,
@@ -188,6 +190,7 @@ impl DeviceManager {
         let rows = self.live_rows(&adb).unwrap_or_default();
         let mut h = self.history.lock().unwrap();
         h.seen(&rows, now_ms());
+        self.variants.restore_pending(&rows);
         json!({"adb": adb, "devices": merge_devices(&rows, &h), "autoConnect": h.auto_connect()})
     }
 
@@ -226,6 +229,7 @@ impl DeviceManager {
             let Some(m) = me.upgrade() else { return };
             m.state.lock().unwrap().rows = rows.clone();
             m.history.lock().unwrap().seen(&rows, now_ms());
+            m.variants.restore_pending(&rows);
             m.emit();
         }));
     }

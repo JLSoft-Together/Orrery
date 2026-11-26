@@ -326,6 +326,8 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   devOpenPair: (id: string, qr: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-open-pair', id, qr),
   devReverse: (id: string, port: number, on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:dev-reverse', id, port, on),
   devPkgVersion: (id: string, pkg: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-pkg-version', id, pkg),
+  devVariant: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:dev-variant', req),
+  devBuiltApk: (cwd: string, module: string, variant: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-built-apk', cwd, module, variant),
   avdList: (): Promise<unknown> => ipcRenderer.invoke('ccm:avd-list'),
   avdStart: (name: string, mode: string): Promise<unknown> => ipcRenderer.invoke('ccm:avd-start', name, mode),
   avdStop: (name: string): Promise<unknown> => ipcRenderer.invoke('ccm:avd-stop', name),

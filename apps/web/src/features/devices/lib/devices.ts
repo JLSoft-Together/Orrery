@@ -5,6 +5,10 @@ export type DevInstallError = 'restricted' | 'storage' | 'signature' | 'downgrad
 export type DevInstallResult = { ok: true } | { ok: false; error: DevInstallError | DevFailure['error']; detail?: string }
 export type DevPkgVersion = { ok: true; installed: false } | { ok: true; installed: true; versionName: string; versionCode: number | null } | DevFailure
 
+export type DevVariantRequest = { op: 'apply'; id: string; night?: boolean | null; fontScale?: number | null } | { op: 'restore'; id: string } | { op: 'sweep' }
+export type DevVariantResult = { ok: true; restored?: boolean } | { ok: false; error: string; detail?: string }
+export type DevBuiltApk = { ok: true; apk: string; appId: string } | { ok: false; error: string; detail?: string }
+
 /** v61 ADB devices bridge (main owns adb; the page only sends ids and validated inputs). */
 interface DevicesBridge {
   devSnapshot?: () => Promise<DevSnapshot | null>
@@ -36,6 +40,8 @@ interface DevicesBridge {
   devOpenPair?: (id: string, qr: string) => Promise<DevResult>
   devReverse?: (id: string, port: number, on: boolean) => Promise<DevResult>
   devPkgVersion?: (id: string, pkg: string) => Promise<DevPkgVersion>
+  devVariant?: (req: DevVariantRequest) => Promise<DevVariantResult>
+  devBuiltApk?: (cwd: string, module: string, variant: string) => Promise<DevBuiltApk>
   onDevEvent?: (handler: (e: DevEvent) => void) => () => void
   avdList?: () => Promise<AvdList>
   avdStart?: (name: string, mode: AvdStartMode) => Promise<AvdResult>
@@ -93,7 +99,10 @@ export const devInstall = (id: string, apk: string): Promise<DevInstallResult> =
 export const devOpenPair = (id: string, qr: string): Promise<DevResult> => bridge?.devOpenPair?.(id, qr) ?? Promise.resolve(unavailable)
 export const devReverse = (id: string, port: number, on: boolean): Promise<DevResult> => bridge?.devReverse?.(id, port, on) ?? Promise.resolve(unavailable)
 export const devPkgVersion = (id: string, pkg: string): Promise<DevPkgVersion> => bridge?.devPkgVersion?.(id, pkg) ?? Promise.resolve(unavailable)
-export const hasAppData = typeof bridge?.appDataList === 'function'
+export const hasDeviceVariant = typeof bridge?.devVariant === 'function'
+export const devVariant = (req: DevVariantRequest): Promise<DevVariantResult> => bridge?.devVariant?.({ ...req }) ?? Promise.resolve(unavailable)
+export const devBuiltApk = (cwd: string, module: string, variant: string): Promise<DevBuiltApk> => bridge?.devBuiltApk?.(cwd, module, variant) ?? Promise.resolve(unavailable)
+export const hasAppData =typeof bridge?.appDataList === 'function'
 export const appDataList = (id: string, pkg: string): Promise<AppDataList> => bridge?.appDataList?.(id, pkg) ?? Promise.resolve(unavailable)
 export const appDataDbOpen = (id: string, pkg: string, name: string): Promise<AppDbOpen> => bridge?.appDataDbOpen?.(id, pkg, name) ?? Promise.resolve(unavailable)
 export const appDataDbRows = (handle: string, table: string, page: number): Promise<AppDbRows> => bridge?.appDataDbRows?.(handle, table, page) ?? Promise.resolve(unavailable)

@@ -110,6 +110,7 @@ import v105U3 from '../features/next/i18n/v105-u3'
 import v105U2 from '../features/next/i18n/v105-u2'
 import v106Rail from '../features/next/i18n/v106-rail'
 import v106Install from '../features/remote/i18n/v106-install'
+import runV113 from '../features/run/i18n/run-v113'
 import v107Gon from './v107-gon'
 import notifyV109 from '../features/notify/i18n'
 import footerSysV109 from '../features/footerSys/i18n'
@@ -131,6 +132,7 @@ export default {
   ...v105U2.en,
   ...v106Rail.en,
   ...v106Install.en,
+  ...runV113.en,
   ...v107Gon.en,
   ...notifyV109.en,
   ...footerSysV109.en,

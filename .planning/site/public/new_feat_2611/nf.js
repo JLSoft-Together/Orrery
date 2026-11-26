@@ -912,30 +912,190 @@
   WHY.E5 = 'Lệnh khớp mẫu nguy hiểm phải chạm vân tay trước khi gửi; lệnh thường gửi luôn. Bấm "Thử lệnh an toàn" để so.'
   WHY.E6 = 'Tick todo agent đã thêm, xem typecheck / test, chạy lại kiểm từ xa (hỏi trước vì dùng CPU máy nhà).'
 
+  const GQ = [
+    ['api-server', 'Claude hỏi: sửa auth.ts?', 'Do you want to make this edit to auth.ts?', ['1 Yes', '2 Allow all', '3 No']],
+    ['web-app', 'Codex chờ chọn cách merge', 'Chọn cách gộp nhánh feat/login vào main', ['1 Squash', '2 Rebase', '3 Merge']],
+    ['docs', 'Claude hỏi: chạy npm test?', 'Run npm test in docs/ ?', ['1 Yes', '2 No']],
+  ]
+  D.G1 = {
+    i: 0, res: [], last: null,
+    render() {
+      const n = GQ.length
+      const dots = GQ.map((_, k) => `<i style="width:${k === this.i ? 18 : 6}px;height:6px;border-radius:3px;background:${k < this.i ? 'var(--m-done)' : k === this.i ? 'var(--m-accent)' : 'var(--m-line-2)'};transition:width var(--t-med) var(--ease-out)"></i>`).join('')
+      let body
+      if (this.i >= n) {
+        body = `<div class="empty-m swap"><span class="ic ok" style="width:44px;height:44px">${I('check', 22)}</span><p class="t" style="font-weight:700;margin:0">Hết việc chờ bạn</p><p class="d" style="margin:0;color:var(--m-muted);font-size:12px">${this.res.filter((r) => r[1] === 'snooze').length} session được hoãn, sẽ nhắc lại sau 15 phút.</p></div>`
+      } else {
+        const [name, ttl, q, ans] = GQ[this.i]
+        body = `<div class="ph-card swap"><div class="tags" style="margin:0 0 6px"><span class="tag wait">${I('clock', 11)} ${name}</span></div><p class="t">${esc(ttl)}</p><p class="d">${esc(q)}</p></div>${ans.map((a, k) => `<button class="ph-btn ${k ? 'sec' : ''}" data-g1="a${k}">${esc(a)}</button>`).join('')}<div style="display:flex;gap:8px"><button class="ph-btn sec" data-g1="snooze" style="min-width:0;font-size:12.5px;white-space:nowrap;padding:0 4px">Hoãn 15 phút</button><button class="ph-btn sec" data-g1="skip" style="min-width:0;font-size:12.5px;white-space:nowrap;padding:0 4px">Bỏ qua</button></div>`
+      }
+      const undo = this.last ? `<div class="tag ok" style="align-self:stretch;justify-content:space-between;gap:8px;border-radius:12px;white-space:normal">${esc(this.last)} <button class="b link" data-g1="undo" style="min-height:44px">${I('undo', 12)} Hoàn tác</button></div>` : ''
+      const ph = `${sb()}<div class="pb" style="gap:8px"><div style="display:flex;align-items:center;justify-content:space-between"><b style="font-size:14px">Chờ bạn ${Math.min(this.i + 1, n)}/${n}</b><span style="display:flex;gap:4px;align-items:center">${dots}</span></div>${body}${undo}</div>`
+      const rows = GQ.map(([name], k) => {
+        const r = this.res.find((x) => x[0] === k)
+        const st = r ? (r[1] === 'ans' ? ['ok', 'Đã trả lời'] : r[1] === 'snooze' ? ['', 'Hoãn 15 phút'] : ['', 'Bỏ qua']) : ['wait', 'Chờ bạn']
+        return `<div class="row"><span class="ic ${st[0] || ''}">${I(st[0] === 'ok' ? 'check' : st[0] === 'wait' ? 'bell' : 'clock', 14)}</span><div class="grow"><p class="t">${name}</p></div><span class="tag ${st[0]}">${st[1]}</span></div>`
+      }).join('')
+      return miniPhone(ph) + miniWin('Desktop, Inbox', `<div class="panel">${rows}</div><p class="m-sub" style="margin:0">Desktop cập nhật theo điện thoại ngay khi bạn bấm.</p>`)
+    },
+    acts: () => `<button class="chipbtn ghost" data-reset>${I('reset', 14)} Làm lại</button>`,
+    on(e) {
+      const a = e.target.closest('[data-g1]')?.dataset.g1
+      if (!a) return
+      if (a === 'undo') { this.res.pop(); this.i = Math.max(0, this.i - 1); this.last = null; return true }
+      const name = GQ[this.i][0]
+      if (a.startsWith('a')) { this.res.push([this.i, 'ans']); this.last = `Đã gõ "${GQ[this.i][3][+a.slice(1)].split(' ')[0]}" vào ${name}` }
+      if (a === 'snooze') { this.res.push([this.i, 'snooze']); this.last = `Đã hoãn ${name}` }
+      if (a === 'skip') { this.res.push([this.i, 'skip']); this.last = `Đã bỏ qua ${name}` }
+      this.i++
+      return true
+    },
+  }
+
+  const GP = ['Chạy test rồi báo lại kết quả', 'Review thay đổi trên {branch}', 'Giải thích file {file}']
+  const GFILL = (t) => t.replace('{branch}', 'feat/login').replace('{file}', 'auth.ts')
+  D.G2 = {
+    s: 'idle', txt: '',
+    render() {
+      const list = GP.map((p, k) => `<button class="b" data-g2="${k}" style="justify-content:flex-start;min-height:44px;width:100%;white-space:normal;text-align:left">${I('send', 13)} ${esc(p)}</button>`).join('')
+      const pal = `<div class="panel" style="padding:8px;display:grid;gap:6px"><div class="mono" style="background:var(--m-raised);padding:8px;border-radius:6px">; prompt đã lưu</div>${list}</div>`
+      const out = this.s === 'sent' ? `<br><span style="color:#4cc38a">Claude nhận prompt, đang chạy…</span>` : ''
+      const caret = this.s === 'ins' ? '<span style="opacity:.8;animation:wv 1s steps(2) infinite">▌</span>' : ''
+      const term = `<div class="term"><span class="p">❯</span> ${esc(this.txt)}${caret}${out}</div>`
+      const hint = this.s === 'ins' ? `<div class="tag wait" style="align-self:flex-start">${I('alert', 11)} Chưa gửi, bấm Enter trong pane để gửi</div><button class="b pri" data-g2="enter" style="min-height:44px">Mô phỏng: bạn bấm Enter</button>` : this.s === 'sent' ? `<div class="tag ok" style="align-self:flex-start">${I('check', 11)} Đã gửi do bạn bấm Enter</div>` : `<p class="m-sub" style="margin:0">Chọn một prompt để chèn vào ô nhập.</p>`
+      const chips = GP.map((p, k) => `<button class="b" data-g2="${k}" style="min-height:44px;white-space:normal;text-align:left;font-size:12px">${esc(p.split(' ').slice(0, 3).join(' '))}…</button>`).join('')
+      const ph = `${sb()}<div class="pb"><p class="ph-title" style="font-size:14px">api-server, Claude</p><div class="term" style="flex:1;font-size:10.5px">Claude: xong, chờ bạn.</div><div style="display:grid;gap:6px">${chips}</div><div class="ph-card mono" style="font-size:11.5px;min-height:40px">${esc(this.txt) || '<span style="opacity:.6">Nhập tin nhắn</span>'}</div></div>`
+      return miniWin('api-server, Claude, Ctrl+K', `${pal}${term}${hint}`) + miniPhone(ph)
+    },
+    acts: () => `<button class="chipbtn ghost" data-reset>${I('reset', 14)} Làm lại</button>`,
+    on(e) {
+      const a = e.target.closest('[data-g2]')?.dataset.g2
+      if (a === undefined) return
+      if (a === 'enter') { this.s = 'sent'; return true }
+      this.txt = GFILL(GP[+a]); this.s = 'ins'
+      return true
+    },
+  }
+
+  const G3N = [['api-server', 'Edit auth.ts', 'wait'], ['web-app', 'Chạy test', 'run'], ['docs', 'Xong', 'done'], ['mobile', 'Build APK', 'run'], ['infra', 'Chờ chọn 1/2/3', 'wait'], ['cli', 'Xong', 'done'], ['site', 'Deploy', 'run'], ['relay', 'Lỗi build', 'err'], ['tools', 'Xong', 'done'], ['lab', 'Đọc code', 'run']]
+  const G3H = { cozy: 28, normal: 38, roomy: 50 }
+  const G3C = { wait: 'var(--m-wait)', run: 'var(--m-accent)', done: 'var(--m-done)', err: 'var(--m-err)' }
+  D.G3 = {
+    d: 'normal',
+    render() {
+      const seg = `<div class="seg-m" role="group" aria-label="Mật độ">${[['cozy', 'Gọn'], ['normal', 'Vừa'], ['roomy', 'Thoáng']].map(([k, n]) => `<button class="${this.d === k ? 'on' : ''}" data-g3="${k}" aria-pressed="${this.d === k}" style="min-height:44px">${n}</button>`).join('')}</div>`
+      const rows = G3N.map(([n, l, s]) => `<div class="g3row" style="height:var(--rh);display:flex;align-items:center;gap:8px;padding:0 10px;border-top:1px solid var(--m-line);transition:height var(--t-med) var(--ease-out)"><i class="dot" style="background:${G3C[s]}"></i><b style="font-size:13px">${n}</b><span style="font-size:12px;color:var(--m-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${l}</span></div>`).join('')
+      return miniWin('Rail, 10 session', `${seg}<div class="panel" data-g3box style="--rh:${G3H[this.d]}px;height:228px;overflow:hidden">${rows}</div><p class="m-sub" style="margin:0" data-g3n>Khung 228 px nhìn thấy ${Math.floor(228 / G3H[this.d])} trên 10 dòng.</p>`)
+    },
+    acts: () => `<button class="chipbtn ghost" data-reset>${I('reset', 14)} Làm lại</button>`,
+    on(e, el) {
+      const b = e.target.closest('[data-g3]')
+      if (!b) return
+      this.d = b.dataset.g3
+      const box = $('[data-g3box]', el)
+      box.style.setProperty('--rh', `${G3H[this.d]}px`)
+      $$('[data-g3]', el).forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)) })
+      $('[data-g3n]', el).textContent = `Khung 228 px nhìn thấy ${Math.floor(228 / G3H[this.d])} trên 10 dòng.`
+      return false
+    },
+  }
+
+  const G4S = [
+    ['api-server', 'Claude', 'wait', ['Edit src/auth.ts', 'Do you want to make this edit?', '1. Yes  2. Allow all  3. No']],
+    ['web-app', 'Codex', 'run', ['> npm test -- auth', '12 passed, 2 failed', 'Đang sửa auth.test.ts']],
+    ['docs', 'Claude', 'done', ['Cập nhật README.md', '12 file đổi', 'Xong sau 6:40']],
+  ]
+  D.G4 = {
+    open: '',
+    render() {
+      const rows = G4S.map(([n, a, s, ln]) => {
+        const on = this.open === n
+        const pop = on ? `<div class="term swap" role="tooltip" style="margin:0 0 6px;font-size:11px;min-height:0"><span style="color:#8e8e9a">3 dòng cuối, tool: ${n === 'web-app' ? 'Bash' : 'Edit'}</span><br>${ln.map(esc).join('<br>')}</div>` : ''
+        return `<div class="row" style="padding:0"><button class="b" data-g4="${n}" aria-expanded="${on}" style="width:100%;justify-content:flex-start;gap:8px;min-height:44px;border-radius:0;background:${on ? 'var(--m-sel)' : 'transparent'}"><i class="dot" style="background:${G3C[s]}"></i><b>${n}</b><span style="color:var(--m-muted);font-weight:500">${a}</span></button></div>${pop ? `<div style="padding:6px 10px 0;border-top:1px solid var(--m-line)">${pop}</div>` : ''}`
+      }).join('')
+      return miniWin('Rail, xem nhanh', `<div class="panel">${rows}</div><p class="m-sub" style="margin:0">Trên desktop: rê chuột 0,4 giây. Trên phone: chạm giữ. Demo này: bấm một dòng, Esc để đóng. Tab đang xem không đổi.</p>`)
+    },
+    acts: () => `<button class="chipbtn ghost" data-reset>${I('reset', 14)} Làm lại</button>`,
+    on(e) {
+      const b = e.target.closest('[data-g4]')
+      if (!b) return
+      this.open = this.open === b.dataset.g4 ? '' : b.dataset.g4
+      return true
+    },
+  }
+
+  const G5L = [['api-server', 'wait', 12], ['web-app', 'done', 30], ['docs', 'done', 44], ['infra', 'err', 90], ['mobile', 'done', 120], ['site', 'wait', 150], ['cli', 'done', 300]]
+  const G5T = { wait: ['wait', 'Chờ bạn'], done: ['ok', 'Xong'], err: ['err', 'Lỗi'] }
+  D.G5 = {
+    away: 45, f: '', seen: false,
+    render() {
+      const seg = `<div class="seg-m" role="group" aria-label="Thời gian vắng">${[[5, '5 phút'], [45, '45 phút'], [180, '3 giờ']].map(([m, n]) => `<button class="${this.away === m ? 'on' : ''}" data-g5a="${m}" style="min-height:44px" aria-pressed="${this.away === m}">${n}</button>`).join('')}</div>`
+      const chg = G5L.filter((x) => x[2] <= this.away)
+      const cnt = (k) => chg.filter((x) => x[1] === k).length
+      let card = ''
+      if (this.away < 30) card = `<div class="tag" style="align-self:flex-start">Vắng dưới 30 phút: không hiện thẻ</div>`
+      else if (!this.seen) card = `<div class="ph-card swap"><p class="t">Từ lúc bạn đi vắng ${this.away === 45 ? '45 phút' : '3 giờ'}</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${[['done', 'xong'], ['wait', 'chờ bạn'], ['err', 'lỗi']].map(([k, n]) => `<button class="b ${this.f === k ? 'pri' : ''}" data-g5f="${k}" aria-pressed="${this.f === k}" style="min-height:44px" ${cnt(k) ? '' : 'disabled'}>${cnt(k)} ${n}</button>`).join('')}</div><button class="b link" data-g5f="seen" style="min-height:44px;margin-top:4px">Đã xem</button></div>`
+      const list = G5L.filter((x) => !this.f || (x[1] === this.f && x[2] <= this.away)).map(([n, s, m]) => `<div class="ph-card" style="display:flex;gap:8px;align-items:center;padding:8px 10px"><div class="grow" style="flex:1;min-width:0"><p class="t">${n}</p><p class="d">${m < 60 ? m + ' phút' : Math.round(m / 60) + ' giờ'}</p></div><span class="tag ${G5T[s][0]}">${G5T[s][1]}</span></div>`).join('')
+      return `<div style="display:grid;gap:8px;min-width:0;flex:1 1 200px"><p class="m-sub" style="margin:0">Mô phỏng: bạn rời điện thoại trong</p>${seg}</div>` + miniPhone(`${sb()}<div class="pb" style="gap:8px;overflow:auto"><p class="ph-title" style="font-size:15px;margin:0">Session</p>${card}${list}</div>`)
+    },
+    acts: () => `<button class="chipbtn ghost" data-reset>${I('reset', 14)} Làm lại</button>`,
+    on(e) {
+      const m = e.target.closest('[data-g5a]')
+      if (m) { this.away = +m.dataset.g5a; this.f = ''; this.seen = false; return true }
+      const f = e.target.closest('[data-g5f]')?.dataset.g5f
+      if (!f) return
+      if (f === 'seen') { this.seen = true; this.f = ''; return true }
+      this.f = this.f === f ? '' : f
+      return true
+    },
+  }
+  WHY.G1 = 'Mỗi lần một thẻ: trả lời bằng nút menu, Hoãn 15 phút hoặc Bỏ qua; xong tự sang thẻ kế. Bên phải là Inbox desktop cập nhật theo. Có Hoàn tác.'
+  WHY.G2 = 'Chọn prompt đã lưu (bên desktop qua Ctrl+K, bên phone qua chip): chữ được chèn vào ô nhập, chưa gửi. Chỉ khi bạn bấm Enter mới gửi.'
+  WHY.G3 = 'Bấm Gọn, Vừa, Thoáng: khoảng cách hàng đổi mượt, số session nhìn thấy trong cùng khung đổi theo. Mặc định Vừa như hiện tại.'
+  WHY.G4 = 'Xem 3 dòng cuối và tool đang chạy của session mà không rời tab hiện tại. Chỉ vẽ khi rê chuột, không chạy nền.'
+  WHY.G5 = 'Chọn thời gian vắng: dưới 30 phút không hiện gì; từ 30 phút trở lên có thẻ đếm xong, chờ bạn, lỗi. Chạm một số để lọc danh sách.'
+  const GX = window.NF.gfeat
+  ALL.push(...GX)
+  const gIcon = (f) => `<span class="fi" style="width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--c1-bg);color:var(--c1)">${I(f.ic, 18)}</span>`
+  $('#g-list').innerHTML = GX.map((f) => `<a class="feat" href="#${f.to}"><div class="fh"><span class="fi">${I(f.ic, 24)}</span><div><span class="fid">${f.id}</span><strong>${esc(f.t)}</strong></div></div><p>${esc(f.d)}</p><div class="pills">${valPill(f.v)}<span class="pill p-c6">Công sức ${f.e}</span><span class="pill p-c3">${f.wave}</span></div></a>`).join('')
+  $('#g-rv').innerHTML = window.NF.gReview.map(([id, v, e, r, k]) => {
+    const f = GX.find((x) => x.id === id)
+    return `<tr><td><b>${id}</b> ${esc(f.t)}</td><td>${f.wave}</td><td>${v}</td><td>${e}</td><td>${r}</td><td class="hide-sm">${k}</td></tr>`
+  }).join('')
+  const gcard = (id) => {
+    const f = GX.find((x) => x.id === id)
+    return `<article class="demo" id="demo-${id.toLowerCase()}" data-demo="${id}"><div class="demo-h"><strong>${gIcon(f)}${id} ${esc(f.t)}</strong><span class="pill p-c6">Công sức ${f.e}</span></div><p class="why">${WHY[id]}</p><div class="demo-stage" data-stage></div><div class="acts" data-acts></div></article>`
+  }
+
   const ORDER = ['P1', 'P3', 'P6', 'P2', 'P4', 'P5', 'D3', 'D2']
   const ORDER2 = ['E1', 'E2', 'E5', 'E4', 'E6', 'E3']
+  const ORDER3 = ['G1', 'G4', 'G3', 'G5', 'G2']
   const INIT = {}
-  ;[...ORDER, ...ORDER2].forEach((id) => { INIT[id] = { ...D[id] } })
+  ;[...ORDER, ...ORDER2, ...ORDER3].forEach((id) => { INIT[id] = { ...D[id] } })
   const host = $('#demos')
   const host2 = $('#ex-demos')
   host.innerHTML = ORDER.map((id) => card(id, WHY[id], '', '')).join('')
   host2.innerHTML = ORDER2.map((id) => card(id, WHY[id], '', '')).join('')
+  const host3 = $('#g-demos')
+  host3.innerHTML = ORDER3.map(gcard).join('')
   function paint(id) {
     const el = $(`[data-demo="${id}"]`)
     $('[data-stage]', el).innerHTML = D[id].render(D[id].s)
     $('[data-acts]', el).innerHTML = D[id].acts()
   }
-  ;[...ORDER, ...ORDER2].forEach(paint)
+  ;[...ORDER, ...ORDER2, ...ORDER3].forEach(paint)
   const demoClick = (e) => {
     const el = e.target.closest('[data-demo]')
     if (!el) return
     const id = el.dataset.demo
-    if (e.target.closest('[data-reset]')) { Object.assign(D[id], INIT[id], id === 'E6' ? { items: null } : {}); paint(id); return }
+    if (e.target.closest('[data-reset]')) { Object.assign(D[id], INIT[id], id === 'E6' ? { items: null } : id === 'G1' ? { res: [] } : {}); paint(id); return }
     if (commonClicks(e, $('.win-main', el) || $('[data-stage]', el))) return
     if (D[id].on?.(e, el)) paint(id)
   }
   host.addEventListener('click', demoClick)
   host2.addEventListener('click', demoClick)
+  host3.addEventListener('click', demoClick)
+  host3.addEventListener('keydown', (e) => { if (e.key === 'Escape' && D.G4.open) { D.G4.open = ''; paint('G4') } })
   let recT = 0, typeT = 0
   host.addEventListener('pointerdown', (e) => {
     const b = e.target.closest('[data-p4="mic"]')

@@ -24,6 +24,7 @@
       <a href="#motion">Motion</a>
       <a href="#review">Review</a>
       <a href="#bo-sung">Bổ sung</a>
+      <a href="#gop-y">Đợt G</a>
     </div>
   </div>
 </nav>
@@ -213,6 +214,22 @@
   </table></div>
   <div class="callout"><b>Nguyên tắc:</b> E2 "gửi crash cho agent" và E5 chỉ gõ khi chủ nhân bấm trên điện thoại, nằm trong ngoại lệ 7 (Orrery Remote). Không tính năng nào gọi LLM hay tự gửi prompt.</div>
 </section>
+
+<section id="gop-y">
+  <h2>Đợt G: 5 cải thiện UI/UX (G1 đến G5)</h2>
+  <p class="sub">Soát code desktop và app phone, chỉ giữ chỗ còn thiếu thật. Mỗi mục bấm thử được; không mục nào gọi LLM hay tự gửi prompt. Đã bỏ các ý trùng cái đã có (ghi chú pane, mở lại pane đã đóng, phóng to pane, tìm Settings).</p>
+  <div class="feats" id="g-list"></div>
+
+  <h3>Demo</h3>
+  <div class="demos app" id="g-demos"></div>
+
+  <h3>Review</h3>
+  <div class="card tw"><table>
+    <thead><tr><th>Tính năng</th><th>Xếp vào</th><th>Giá trị</th><th>Công sức</th><th>Rủi ro, cách chặn</th><th class="hide-sm">Đã kiểm trong code</th></tr></thead>
+    <tbody id="g-rv"></tbody>
+  </table></div>
+  <div class="callout"><b>Nguyên tắc:</b> G1 trả lời nằm trong ngoại lệ 6 và 7 (chỉ gõ khi chủ nhân bấm); G2 chỉ chèn chữ, không bao giờ tự gửi. G3, G4, G5 chỉ đọc state có sẵn. Không cần ngoại lệ mới.</div>
+</section>
 </main>
 
 <footer>
@@ -222,6 +239,7 @@
 
 <script src="/site.js"></script>
 <script src="nf-data.js"></script>
+<script src="nf-data-g.js"></script>
 <script src="nf.js"></script>
 </body>
 </html>

@@ -62,6 +62,7 @@ export interface SettingsEnv {
   phone: boolean
   telegram: boolean
   remote: boolean
+  devices: boolean
   disk: boolean
   updater: boolean
   backup: boolean
@@ -83,11 +84,11 @@ export interface SettingsEntry {
   needs?: keyof SettingsEnv
 }
 
-const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { remote: 'remote' }
+const PAGE_NEEDS: Partial<Record<SettingsPage, readonly (keyof SettingsEnv)[]>> = { remote: ['remote'], devices: ['devices', 'remote'] }
 
 export const pageVisible = (page: SettingsPage, env: SettingsEnv): boolean => {
   const need = PAGE_NEEDS[page]
-  return need ? env[need] : true
+  return need ? need.some((key) => env[key]) : true
 }
 
 /** In-app notification switches in `useSettingsStore`, matched to the system-alert kind they mirror. */
@@ -171,6 +172,9 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'remote', id: 'remoteBlocked', labelKey: 'remoteV98.guard.blockedTitle', hintKey: 'remoteV98.guard.selfHint', needs: 'remote' },
   { page: 'remote', id: 'remoteTrusted', labelKey: 'remoteV98.guard.trustedTitle', hintKey: 'remoteV98.guard.trusted.hint', needs: 'remote' },
   { page: 'remote', id: 'remoteAccess', labelKey: 'remoteV98.guard.logTitle', hintKey: 'remoteV98.guard.log.hint', needs: 'remote' },
+
+  { page: 'devices', id: 'devicesList', labelKey: 'v113Devices.title', hintKey: 'v113Devices.subtitle' },
+  { page: 'devices', id: 'devicesAdb', labelKey: 'v113Devices.adbRow', hintKey: 'v113Devices.adbRowHint', needs: 'devices' },
 
   { page: 'notify', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
   { page: 'notify', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },

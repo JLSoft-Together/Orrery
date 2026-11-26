@@ -76,6 +76,21 @@ async function run(app) {
   check('the USB row is untouched', (await rowText(USB)).includes('Ready'))
   await shot('devices-03-offline')
 
+  await evaluate(`${S}.get('ui').settingsPage = 'devices'; ${S}.get('ui').settingsOpen = true`)
+  await waitFor(`!!document.querySelector('[data-settings-devices]')`, 15000, 'settings devices page')
+  await waitFor(`document.querySelectorAll('[data-settings-devices] [data-device-row]').length >= 1`, 20000, 'settings devices rows').catch(() => {})
+  const listed = await evaluate(`document.querySelectorAll('[data-settings-devices] [data-device-row]').length`)
+  check('Settings > Devices lists the adb devices in one list', listed >= 1, String(listed))
+  await evaluate(`document.querySelector('[data-settings-devices] [data-devices-filter-value="adb"]')?.click()`)
+  await sleep(300)
+  check('adb filter keeps the USB device row', await evaluate(`!!document.querySelector('[data-settings-devices] [data-device-row]')`))
+  await evaluate(`document.querySelector('[data-settings-devices] [data-device-toggle]')?.click()`)
+  await waitFor(`!!document.querySelector('[data-settings-devices] [data-device-detail]')`, 5000, 'device detail').catch(() => {})
+  check('a row opens its detail with rename and screenshot actions', await evaluate(`!!document.querySelector('[data-settings-devices] [data-device-rename]') && !!document.querySelector('[data-settings-devices] [data-device-capture]')`))
+  await shot('devices-05-settings-page')
+  await evaluate(`${S}.get('ui').settingsOpen = false`)
+  await sleep(300)
+
   // Narrow: the 6 header tabs and the list must not scroll the page sideways. Prefer a real window resize, else a 420 px viewport.
   let real = false
   try {

@@ -1,5 +1,6 @@
 export { default as DeviceMenu } from './components/DeviceMenu.vue'
 export { default as DeviceCaptureDialog } from './components/DeviceCaptureDialog.vue'
+export { default as SettingsDevices } from './components/SettingsDevices.vue'
 export { hasDevices, hasDeviceCapture, devConnectMany, devSnapshot } from './lib/devices'
 export { hasApkSize } from './lib/apkSize'
 export { DEVICES, frameFit } from './lib/browserDevices'

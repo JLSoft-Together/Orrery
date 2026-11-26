@@ -6,6 +6,7 @@ import en from '../../../i18n/en'
 import vi from '../../../i18n/vi'
 import v79 from '../i18n/ui-v79-settings'
 import remoteV97 from '../../remote/i18n/remote-v97'
+import devicesV113 from '../../devices/i18n/devices-v113'
 import { useSettingsStore } from '../../../core/stores/settings'
 import { NEXT_ONLY_PAGES, NOTIFY_ROWS, SETTINGS_PAGES, entries, nextEntries, pageAvailable, isSettingsPage, resolvePage, loadPage, pageVisible, savePage, searchSettings, type SettingsEnv } from './index'
 
@@ -22,6 +23,7 @@ const all: SettingsEnv = {
   phone: true,
   telegram: true,
   remote: true,
+  devices: true,
   disk: true,
   updater: true,
   backup: true,
@@ -37,7 +39,7 @@ const all: SettingsEnv = {
 
 function translator(locale: 'en' | 'vi') {
   const base = locale === 'en' ? en : vi
-  const i18n = createI18n({ legacy: false, locale, messages: { [locale]: { ...base, ...v79[locale], ...remoteV97[locale] } }, missingWarn: false, fallbackWarn: false })
+  const i18n = createI18n({ legacy: false, locale, messages: { [locale]: { ...base, ...v79[locale], ...remoteV97[locale], ...devicesV113[locale] } }, missingWarn: false, fallbackWarn: false })
   return { t: (k: string) => i18n.global.t(k), te: (k: string) => i18n.global.te(k) }
 }
 
@@ -158,13 +160,31 @@ describe('remembered page', () => {
     expect(pageAvailable('general', all, false)).toBe(true)
   })
 
-  it('has 8 pages with Remote on its own and old page ids resolve to the merged page', () => {
-    expect([...SETTINGS_PAGES]).toEqual(['general', 'appearance', 'workspace', 'notify', 'remote', 'integrations', 'data', 'about'])
+  it('has 9 pages with Remote and Devices on their own and old page ids resolve to the merged page', () => {
+    expect([...SETTINGS_PAGES]).toEqual(['general', 'appearance', 'workspace', 'notify', 'remote', 'devices', 'integrations', 'data', 'about'])
     const old = { editor: 'workspace', telegram: 'notify', github: 'integrations', deepseek: 'integrations', access: 'data', disk: 'data' }
     for (const [from, to] of Object.entries(old)) expect(resolvePage(from)).toBe(to)
     expect(resolvePage('nope')).toBeNull()
     localStorage.setItem('ccm.settings.page', 'remote')
     expect(loadPage()).toBe('remote')
+  })
+
+  it('the devices page shows when either flag is on and hides when both are off', () => {
+    const none = { ...all, devices: false, remote: false }
+    expect(pageVisible('devices', none)).toBe(false)
+    expect(pageVisible('devices', { ...none, devices: true })).toBe(true)
+    expect(pageVisible('devices', { ...none, remote: true })).toBe(true)
+    expect(pageVisible('remote', { ...none, devices: true })).toBe(false)
+    expect(pageAvailable('devices', { ...none, remote: true }, false)).toBe(true)
+  })
+
+  it('the adb row needs the devices flag while the list row follows the page', () => {
+    const find = (id: string) => entries(false).find((e) => e.id === id)
+    expect(find('devicesList')?.page).toBe('devices')
+    expect(find('devicesAdb')?.needs).toBe('devices')
+    const { t } = translator('en')
+    expect(searchSettings('adb', entries(false), { ...all, devices: false }, t).some((h) => h.id === 'devicesAdb')).toBe(false)
+    expect(searchSettings('adb', entries(false), all, t).some((h) => h.id === 'devicesAdb')).toBe(true)
   })
 
   it('every entry sits on a current page and keeps its id', () => {

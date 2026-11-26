@@ -7,6 +7,7 @@ import { desktop, hasDeepSeek, hasRemote, hasRun, hasTerminals } from '../../../
 import { hasGitHub } from '../lib/github'
 import { hasXmlInstall } from '@features/run'
 import { hasPhone } from '@features/remote'
+import { hasDevices } from '@features/devices'
 import { hasTelegram } from '@features/telegram'
 import { isMac } from '../../../core/lib/platform'
 import { hasGrants } from '../../../core/lib/preview'
@@ -30,6 +31,7 @@ export function useSettingsEnv() {
     phone: hasPhone,
     telegram: hasTelegram,
     remote: hasRemote,
+    devices: hasDevices,
     disk: hasDisk,
     updater: hasUpdater,
     backup: hasBackup,

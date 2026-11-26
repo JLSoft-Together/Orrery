@@ -95,6 +95,7 @@ import libsV75 from '../features/run/i18n/libs-v75'
 import memdocV75 from '../features/run/i18n/memdoc-v75'
 import releaseV75 from '../features/run/i18n/release-v75'
 import devicesV75 from '../features/devices/i18n/devices-v75'
+import devicesV113 from '../features/devices/i18n/devices-v113'
 import devtoolsV75 from '../features/resources/i18n/devtools-v75'
 import promptSearchV75 from '../features/history/i18n/promptsearch-v75'
 import sessionToolsV89 from '../features/agent-tools/i18n/session-tools-v89'
@@ -202,6 +203,7 @@ export default {
   ...memdocV75.en,
   ...releaseV75.en,
   ...devicesV75.en,
+  ...devicesV113.en,
   ...devtoolsV75.en,
   ...promptSearchV75.en,
   ...sessionToolsV89.en,

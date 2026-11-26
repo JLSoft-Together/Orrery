@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, BellOff, ChevronRight, Database, Smartphone, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Settings2, SlidersHorizontal, X } from 'lucide-vue-next'
+import { Bell, BellOff, ChevronRight, Database, MonitorSmartphone, Smartphone, Info, LayoutPanelLeft, MoveDiagonal2, Palette, Plug, Search, Settings2, SlidersHorizontal, X } from 'lucide-vue-next'
 import { clampDialogSize, readDialogSize, saveDialogSize, type DialogSize } from '../../../core/lib/dialogSize'
 import { retireOverlay } from '../../../core/lib/motion'
 import { isMac } from '../../../core/lib/platform'
@@ -13,6 +13,7 @@ import { hasDisk } from '@features/disk'
 import { desktop, hasDeepSeek, hasRemote, hasRun, hasTerminals } from '../../../core/lib/desktop'
 import { hasGitHub } from '../lib/github'
 import { hasPhone } from '@features/remote'
+import { SettingsDevices, hasDevices } from '@features/devices'
 import { hasTelegram } from '@features/telegram'
 import { hasGrants } from '../../../core/lib/preview'
 import { hasUpdater } from '@features/update'
@@ -117,6 +118,7 @@ const pageIcons: Record<SettingsPage, Component> = {
   workspace: LayoutPanelLeft,
   notify: Bell,
   remote: Smartphone,
+  devices: MonitorSmartphone,
   integrations: Plug,
   data: Database,
   about: Info,
@@ -135,6 +137,7 @@ const env = computed<SettingsEnv>(() => ({
   phone: hasPhone,
   telegram: hasTelegram,
   remote: hasRemote,
+  devices: hasDevices,
   disk: hasDisk,
   updater: hasUpdater,
   backup: hasBackup,
@@ -391,6 +394,7 @@ onBeforeUnmount(() => window.clearTimeout(ringTimer))
                   <PageWorkspace v-else-if="page === 'workspace'" />
                   <PageNotify v-else-if="page === 'notify'" />
                   <SettingsRemote v-else-if="page === 'remote'" />
+                  <SettingsDevices v-else-if="page === 'devices'" />
                   <PageIntegrations v-else-if="page === 'integrations'" />
                   <PageData v-else-if="page === 'data'" />
                   <SettingsAbout v-else-if="page === 'about'" />

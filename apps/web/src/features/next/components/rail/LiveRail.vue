@@ -48,6 +48,7 @@ import ContextMenu from '../../../../core/components/ui/ContextMenu.vue'
 import GlassMenu, { type GlassMenuItem } from '../ui/GlassMenu.vue'
 import RailCollapsed from './RailCollapsed.vue'
 import RailSearchPop from './RailSearchPop.vue'
+import RailPeek from './RailPeek.vue'
 import RailRowItem from './RailRowItem.vue'
 
 const props = defineProps<{ collapsed?: boolean }>()
@@ -926,6 +927,7 @@ const clusterKeyOf = (id: string): string => id.slice(2)
       </template>
     </div>
     <p class="sr-only" role="status" aria-live="polite">{{ announce }}</p>
+    <RailPeek :row-of="rowOf" @open="activateRow" />
     <ContextMenu v-if="ctxMenu" :at="ctxMenu.at" :entries="ctxMenu.entries" :label="ctxMenu.label" :trigger="ctxMenu.trigger" @pick="(id) => ctxMenu?.pick(id)" @close="ctxMenu = null" />
   </nav>
 </template>

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/link_state.dart';
 import '../../remote/providers.dart';
+import '../away/away_controller.dart';
+import '../away/away_slot.dart';
 import '../theme/orrery_shape.dart';
 import '../queue/queue_model.dart';
 import '../queue/queue_page.dart';
@@ -53,8 +55,11 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
         .watch(machinesProvider)
         .where((m) => m.id == id)
         .firstOrNull;
+    final awayIds = ref.watch(awayIdsProvider(id));
     final groups = groupChatRows(
-      buildChatRows(model, snapshot, lasts),
+      buildChatRows(model, snapshot, lasts)
+          .where((r) => awayIds == null || awayIds.contains(r.pane.terminalId))
+          .toList(),
       _query.text,
     );
     Widget rowOf(ChatRow row) => MinuteTicker(
@@ -147,6 +152,7 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
                       ),
                     ),
                   ),
+                  AwaySlot(machineId: id),
                   if (_search)
                     Padding(
                       padding: const EdgeInsets.only(top: 8, bottom: 4),

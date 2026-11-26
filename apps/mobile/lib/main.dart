@@ -17,6 +17,7 @@ import 'package:orrery_remote/security/lock_gate.dart';
 import 'package:orrery_remote/security/privacy_screen.dart';
 import 'package:orrery_remote/remote/secure_kv.dart';
 import 'package:orrery_remote/l10n/app_localizations.dart';
+import 'package:orrery_remote/ui/away/away_controller.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
 import 'package:orrery_remote/ui/ui_providers.dart';
 import 'package:orrery_remote/remote/providers.dart';
@@ -91,6 +92,10 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.lock?.addListener(_onLockChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.host == null) return;
+      ProviderScope.containerOf(context, listen: false).read(awayProvider);
+    });
   }
 
   void _onLockChanged() {
@@ -109,14 +114,20 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final host = widget.host;
     if (host == null) return;
+    final away = ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(awayProvider.notifier);
     switch (state) {
       case AppLifecycleState.resumed:
+        away.back();
         widget.lock?.appResumed();
         host.setForeground(true);
         widget.push?.refreshPermission();
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
+        away.leave();
         widget.lock?.appPaused();
         host.setForeground(false);
       case AppLifecycleState.inactive:

@@ -43,9 +43,9 @@ Contracts: on connect one `snapshot`, then incremental events (`packages/shared/
 3. v82 `/bot-tele-receive`: a message from the paired Telegram account mentioning the bot is submitted into that project's pane, even while the agent works (§11an).
 4. Tap on a `telegram_send` button an agent attached types its value into that pane (§11an).
 5. MCP `open_session` with `submit: true` submits its prompt in the new pane; links never submit (§11w).
-6. v100 click menu: click, button bar, queue chip or toast button on a Claude / Codex choice menu types the chosen key; the app never answers a menu by itself (§11as).
+6. v100 click menu: click, button bar, queue chip or toast button on a Claude / Codex choice menu types the chosen key; the app never answers a menu by itself (§11as); since v113 a tap on a push choice button opens the app first, then sends the same key.
 7. v97 Orrery Remote: paired, end-to-end encrypted phone may open / close panes, type, edit files, run git / commands; prompts submit immediately; remote control off by default; secrets never leave the machine (§11au).
-8. v98 push: phone notifications carry agent, session, project and the pending question, secret-masked, cut to 120 characters; per-phone "Include content" switch (`docs/remote-integration.md` §7.6).
+8. v98 push: phone notifications carry agent, session, project and the pending question, secret-masked, cut to 120 characters; per-phone "Include content" switch; since v113 also up to 3 masked choice labels (24 characters), waiting count and 2 pane labels for widget / tile (`docs/remote-integration.md` §7.6).
 
 ## Hard rules
 

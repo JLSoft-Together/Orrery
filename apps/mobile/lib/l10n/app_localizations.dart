@@ -2971,6 +2971,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Context {n}%'**
   String chatContext(int n);
+
+  /// No description provided for @pairConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with {name}?'**
+  String pairConfirmTitle(String name);
+
+  /// No description provided for @pairConfirmSourceUsb.
+  ///
+  /// In en, this message translates to:
+  /// **'Via USB cable'**
+  String get pairConfirmSourceUsb;
+
+  /// No description provided for @pairConfirmSourceDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Via USB cable or an app on this phone'**
+  String get pairConfirmSourceDevice;
+
+  /// No description provided for @pairConfirmAddressUsb.
+  ///
+  /// In en, this message translates to:
+  /// **'Over USB cable'**
+  String get pairConfirmAddressUsb;
+
+  /// No description provided for @pairConfirmSourceWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened from a web page'**
+  String get pairConfirmSourceWeb;
+
+  /// No description provided for @pairConfirmAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address {ip}'**
+  String pairConfirmAddress(String ip);
+
+  /// No description provided for @pairConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get pairConfirmAction;
+
+  /// No description provided for @pairInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid pairing code'**
+  String get pairInvalidCode;
+
+  /// No description provided for @pairWrongNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'This code is not on the current Wi-Fi network'**
+  String get pairWrongNetwork;
 }
 
 class _AppLocalizationsDelegate

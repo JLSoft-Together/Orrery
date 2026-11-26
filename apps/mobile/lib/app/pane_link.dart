@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 const String relayLinkHost = 'orrery-relay.jinvu.workers.dev';
 const String appLinkScheme = 'orrery-remote';
 
@@ -37,6 +39,17 @@ PaneLink? parsePaneLink(Uri uri) {
     return _build(parts[1], parts[2]);
   }
   return null;
+}
+
+const int pairLinkMaxBytes = 640;
+
+String? parsePairLink(Uri uri) {
+  if (uri.scheme != appLinkScheme || uri.host != 'pair') return null;
+  final q = uri.queryParameters['q'];
+  if (q == null || q.isEmpty) return null;
+  if (utf8.encode(q).length > pairLinkMaxBytes) return null;
+  if (q.runes.any((r) => r < 0x20 || r == 0x7f)) return null;
+  return q;
 }
 
 PaneLink? _build(String machine, String? pane) {

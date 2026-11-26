@@ -1718,4 +1718,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String chatContext(int n) {
     return 'Context $n%';
   }
+
+  @override
+  String pairConfirmTitle(String name) {
+    return 'Pair with $name?';
+  }
+
+  @override
+  String get pairConfirmSourceUsb => 'Via USB cable';
+
+  @override
+  String get pairConfirmSourceDevice => 'Via USB cable or an app on this phone';
+
+  @override
+  String get pairConfirmAddressUsb => 'Over USB cable';
+
+  @override
+  String get pairConfirmSourceWeb => 'Opened from a web page';
+
+  @override
+  String pairConfirmAddress(String ip) {
+    return 'Address $ip';
+  }
+
+  @override
+  String get pairConfirmAction => 'Pair';
+
+  @override
+  String get pairInvalidCode => 'Invalid pairing code';
+
+  @override
+  String get pairWrongNetwork =>
+      'This code is not on the current Wi-Fi network';
 }

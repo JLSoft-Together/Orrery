@@ -962,5 +962,28 @@
         "type": "int"
       }
     }
-  }
+  },
+  "pairConfirmTitle": "Pair with {name}?",
+  "@pairConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pairConfirmSourceUsb": "Via USB cable",
+  "pairConfirmSourceDevice": "Via USB cable or an app on this phone",
+  "pairConfirmAddressUsb": "Over USB cable",
+  "pairConfirmSourceWeb": "Opened from a web page",
+  "pairConfirmAddress": "Address {ip}",
+  "@pairConfirmAddress": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "pairConfirmAction": "Pair",
+  "pairInvalidCode": "Invalid pairing code",
+  "pairWrongNetwork": "This code is not on the current Wi-Fi network"
 }

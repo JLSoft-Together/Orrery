@@ -1606,4 +1606,35 @@ class AppLocalizationsVi extends AppLocalizations {
   String chatContext(int n) {
     return 'Context $n%';
   }
+
+  @override
+  String pairConfirmTitle(String name) {
+    return 'Ghép đôi với $name?';
+  }
+
+  @override
+  String get pairConfirmSourceUsb => 'Qua cáp USB';
+
+  @override
+  String get pairConfirmSourceDevice => 'Qua cáp USB hoặc app trên máy';
+
+  @override
+  String get pairConfirmAddressUsb => 'Qua cáp USB';
+
+  @override
+  String get pairConfirmSourceWeb => 'Mở từ trang web';
+
+  @override
+  String pairConfirmAddress(String ip) {
+    return 'Địa chỉ $ip';
+  }
+
+  @override
+  String get pairConfirmAction => 'Ghép đôi';
+
+  @override
+  String get pairInvalidCode => 'Mã ghép đôi không hợp lệ';
+
+  @override
+  String get pairWrongNetwork => 'Mã này không thuộc mạng Wi-Fi hiện tại';
 }

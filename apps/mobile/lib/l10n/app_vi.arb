@@ -477,5 +477,14 @@
   "termSendUnsent": "Gửi",
   "termDropUnsent": "Bỏ",  "chatSlow": "Chậm {n} ms",
   "chatNoNet": "Mất mạng",
-  "chatContext": "Context {n}%"
+  "chatContext": "Context {n}%",
+  "pairConfirmTitle": "Ghép đôi với {name}?",
+  "pairConfirmSourceUsb": "Qua cáp USB",
+  "pairConfirmSourceDevice": "Qua cáp USB hoặc app trên máy",
+  "pairConfirmAddressUsb": "Qua cáp USB",
+  "pairConfirmSourceWeb": "Mở từ trang web",
+  "pairConfirmAddress": "Địa chỉ {ip}",
+  "pairConfirmAction": "Ghép đôi",
+  "pairInvalidCode": "Mã ghép đôi không hợp lệ",
+  "pairWrongNetwork": "Mã này không thuộc mạng Wi-Fi hiện tại"
 }

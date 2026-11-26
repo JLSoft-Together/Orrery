@@ -14,8 +14,26 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
+    private var pairChannel: MethodChannel? = null
+    private var pairPending: Map<String, Any>? = null
+    private var pairReady = false
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        pairReady = false
+        pairChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PAIR_CHANNEL).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "ready" -> {
+                        pairReady = true
+                        val pending = pairPending
+                        pairPending = null
+                        result.success(pending)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PRIVACY_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -49,7 +67,31 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createAttentionChannel()
+        if (savedInstanceState == null) takePairIntent(intent)
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        takePairIntent(intent)
+    }
+
+    private fun takePairIntent(intent: Intent?) {
+        if (intent == null) return
+        val qr = intent.getStringExtra(PAIR_EXTRA)
+        if (qr.isNullOrEmpty()) return
+        intent.removeExtra(PAIR_EXTRA)
+        val request = mapOf("qr" to qr, "fromShell" to isFromShell())
+        val channel = pairChannel
+        if (pairReady && channel != null) {
+            channel.invokeMethod("pair", request)
+        } else {
+            pairPending = request
+        }
+    }
+
+    private fun isFromShell(): Boolean =
+        referrer?.host == SHELL_PACKAGE || callingPackage == SHELL_PACKAGE
 
     private fun createAttentionChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -66,5 +108,8 @@ class MainActivity : FlutterFragmentActivity() {
     private companion object {
         const val ATTENTION_CHANNEL = "attention"
         const val PRIVACY_CHANNEL = "dev.ccm.orrery.remote/privacy"
+        const val PAIR_CHANNEL = "dev.ccm.orrery.remote/pair"
+        const val PAIR_EXTRA = "pairQr"
+        const val SHELL_PACKAGE = "com.android.shell"
     }
 }

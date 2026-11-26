@@ -32,7 +32,7 @@ pub const MAX_RELAY_PAIR_TRIES: usize = 20;
 pub const RENEW_BEFORE: u64 = 7 * 86_400;
 const PAIR_WINDOW: Duration = Duration::from_secs(60);
 pub const PUSH_SETTLE: Duration = Duration::from_millis(1200);
-pub const DESKTOP_CAPS: [&str; 2] = ["devinfo", "checklist"];
+pub const DESKTOP_CAPS: [&str; 3] = ["devinfo", "checklist", "clip"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Admit {

@@ -152,7 +152,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 26] = [
+pub const CHANNELS: [&str; 28] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -179,6 +179,8 @@ pub const CHANNELS: [&str; 26] = [
     "ccm:remote-check",
     "ccm:remote-revoke-undo",
     "ccm:remote-send-pane",
+    "ccm:remote-offer-apk",
+    "ccm:remote-clip-send",
 ];
 pub const RELAY_PROGRESS: &str = "ccm:remote-relay-progress";
 
@@ -452,6 +454,8 @@ impl Remote {
             "ccm:remote-guard" => Ok(self.guard_call(arg)),
             "ccm:remote-install" => Ok(self.install_call(arg)),
             "ccm:remote-send-pane" => Ok(self.send_pane(arg)),
+            "ccm:remote-offer-apk" => Ok(self.offer_apk(arg)),
+            "ccm:remote-clip-send" => Ok(self.clip_send()),
             _ => Err("unknown channel".into()),
         }
     }

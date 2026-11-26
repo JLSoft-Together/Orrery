@@ -189,6 +189,8 @@ interface DesktopBridge {
   remoteDeviceRename?: (deviceId: string, name: string) => Promise<boolean>
   remotePushDevice?: (deviceId: string, on: boolean) => Promise<unknown>
   remoteSendPane?: (paneKey: string) => Promise<unknown>
+  remoteOfferApk?: (sessionId: string) => Promise<unknown>
+  remoteClipSend?: () => Promise<unknown>
   remoteRevokeAll?: () => Promise<boolean>
   remotePublish?: (summary: RemoteWorkspaceSnapshot) => Promise<boolean>
   remoteGuard?: (op: RemoteGuardOp) => Promise<RemoteGuardReply | null>

@@ -382,6 +382,9 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-push-device', { deviceId, on: on === true }) : Promise.resolve({ ok: false, error: 'invalid' }),
   remoteSendPane: (paneKey: string): Promise<unknown> =>
     typeof paneKey === 'string' && paneKey.length > 0 && paneKey.length <= 128 ? ipcRenderer.invoke('ccm:remote-send-pane', paneKey) : Promise.resolve({ ok: false, error: 'invalid' }),
+  remoteOfferApk: (sessionId: string): Promise<unknown> =>
+    typeof sessionId === 'string' && sessionId.length > 0 && sessionId.length <= 64 ? ipcRenderer.invoke('ccm:remote-offer-apk', sessionId) : Promise.resolve({ ok: false, error: 'invalid' }),
+  remoteClipSend: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-clip-send'),
   remoteGuard: (op: unknown): Promise<unknown> =>
     typeof op === 'object' && op !== null && JSON.stringify(op).length <= 4096 ? ipcRenderer.invoke('ccm:remote-guard', op) : Promise.resolve({ ok: false, error: 'invalid' }),
   remoteInstall: (op: unknown): Promise<unknown> =>

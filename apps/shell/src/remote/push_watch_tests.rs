@@ -127,7 +127,7 @@ fn the_running_gateway_pushes_from_a_store_transition_without_any_phone_connecte
     let calls = http.fcm_calls();
     assert_eq!(calls.len(), 1);
     let sent: Value = serde_json::from_str(&calls[0].3).unwrap();
-    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "pane-1", "k": "done" }));
+    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "pane-1", "k": "done", "w": "0" }));
     assert_eq!(sent["message"]["notification"]["title"], super::push::title_body("done", "vi").0);
     rig.remote.enable(false);
 }

@@ -58,4 +58,12 @@ describe('pinnedHidden and menuKeys', () => {
     expect(demotedKeys(shell)).toEqual([])
     expect(menuKeys(shell, 300)).toEqual([])
   })
+  it('shows the phone entry in the agent menu only when a phone has push on', () => {
+    expect(demotedKeys({ ...agent, phone: false })).toEqual(['worktree', 'split'])
+    expect(demotedKeys({ ...agent, phone: true })).toEqual(['worktree', 'split', 'phone'])
+    expect(menuKeys({ ...agent, phone: true }, 700)).toEqual(['worktree', 'split', 'phone'])
+    expect(menuKeys({ ...agent, phone: true }, 300)).toEqual(['turn', 'tools', 'worktree', 'split', 'phone'])
+    expect(demotedKeys({ ...shell, phone: true })).toEqual([])
+    expect(menuKeys({ ...shell, phone: true }, 300)).toEqual([])
+  })
 })

@@ -8,7 +8,7 @@ use zeroize::Zeroizing;
 
 use super::ctx::Ctx;
 use super::devices::Device;
-use super::push::{message, Job};
+use super::push::{extra_data, message, Job};
 use super::webpush::{b64, unb64};
 
 pub const SEAL_VERSION: &str = "2";
@@ -85,6 +85,12 @@ pub fn sealed_plain(job: &Job, title: &str, body: &str) -> Vec<u8> {
     if !job.pane.is_empty() {
         out["p"] = Value::from(job.pane.clone());
     }
+    if !job.extra.labels.is_empty() {
+        out["wl"] = json!(job.extra.labels);
+    }
+    if let Some(menu) = &job.extra.menu {
+        out["menu"] = menu.clone();
+    }
     out.to_string().into_bytes()
 }
 
@@ -93,10 +99,14 @@ pub fn data_size(msg: &Value) -> usize {
 }
 
 pub fn sealed_message(job: &Job, sealed: &str) -> Value {
+    let mut data = json!({ "v": SEAL_VERSION, "m": job.machine, "k": job.kind, "e": sealed });
+    for (key, value) in extra_data(job) {
+        data[key] = value;
+    }
     json!({
         "message": {
             "token": job.token,
-            "data": { "v": SEAL_VERSION, "m": job.machine, "k": job.kind, "e": sealed },
+            "data": data,
             "android": { "priority": "high" },
         }
     })

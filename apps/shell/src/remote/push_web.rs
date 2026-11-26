@@ -8,6 +8,7 @@ use super::dashboard::{error, Phone};
 use super::devices::{clean_mute, WebSub};
 use super::fcm::Outcome;
 use super::push::{locale_of, Job};
+use super::push::now_ms;
 use super::push_content::{mask_text, notice, refine, scene_of, Ask, Scene};
 use super::webpush::{encrypt, unb64, valid_public, valid_subject, AUTH_LEN};
 use super::webpush_send::{topic, valid_endpoint, Delivery};
@@ -47,6 +48,18 @@ pub fn web_payload(job: &Job, title: &str, body: &str) -> Value {
     if !job.pane.is_empty() {
         out["p"] = Value::from(job.pane.clone());
     }
+    if let Some(w) = job.extra.waiting {
+        out["w"] = Value::from(w);
+    }
+    if let Some(t0) = job.started.filter(|_| job.kind == "running") {
+        out["t0"] = Value::from(t0);
+    }
+    if !job.extra.labels.is_empty() {
+        out["wl"] = json!(job.extra.labels);
+    }
+    if let Some(menu) = &job.extra.menu {
+        out["menu"] = menu.clone();
+    }
     out
 }
 
@@ -71,7 +84,8 @@ impl Ctx {
         let scene = if job.content && !job.pane.is_empty() { self.board.summary().map(|s| scene_of(&s, &job.pane)).unwrap_or_default() } else { Scene::default() };
         let facts = lock(&self.facts);
         let fact = if job.content && !job.terminal.is_empty() { facts.get(&job.terminal, Instant::now()) } else { None };
-        let worked = job.worked.or_else(|| fact.filter(|f| f.reason == "done").and_then(|f| f.worked));
+        let elapsed = job.started.filter(|_| job.kind == "running").map(|t0| now_ms().saturating_sub(t0));
+        let worked = job.worked.or(elapsed).or_else(|| fact.filter(|f| f.reason == "done").and_then(|f| f.worked));
         notice(&Ask { kind: job.kind, locale: job.locale, content: job.content, scene: &scene, fact, worked }, &mask_text)
     }
 
@@ -113,6 +127,7 @@ impl Phone {
         let content = v.get("content").and_then(Value::as_bool).unwrap_or(true);
         let stored = lock(&self.ctx.devices).set_web_push(&self.device, sub, locale, mute, content);
         if stored {
+            self.ctx.note_pause(&self.device, v.get("pauseUntil"));
             self.ctx.changed();
         }
         let reply = if stored { json!({ "re": id, "ok": true }) } else { error(Value::from(id), "denied") };

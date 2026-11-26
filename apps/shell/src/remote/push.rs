@@ -11,9 +11,16 @@ use super::ctx::Ctx;
 use super::dashboard::{error, Phone};
 use super::devices::{clean_mute, Device, WebSub};
 use super::fcm::Outcome;
-use super::pane_link::valid_pane_key;
 use super::push_seal::{device_key, seal_fresh, SEAL_LEVEL};
 use crate::state::{lock, take_slot};
+
+#[path = "push_extra.rs"]
+mod extra;
+#[cfg(test)]
+#[path = "push_extra_tests.rs"]
+mod extra_tests;
+
+pub use extra::{extra_data, now_ms, Extra, PER_HOUR_INFO, RUNNING_AFTER};
 
 pub const PANE_GAP: Duration = Duration::from_secs(30);
 pub const PER_HOUR: usize = 30;
@@ -34,6 +41,9 @@ pub fn kind_of(raw: &str) -> &'static str {
         "permission" => "permission",
         "error" => "error",
         "security" => "security",
+        "running" => "running",
+        "open" => "open",
+        "clear" => "clear",
         _ => "attention",
     }
 }
@@ -59,6 +69,11 @@ pub fn title_body(kind: &str, locale: &str) -> (&'static str, &'static str) {
         ("error", true) => ("Phiên bị lỗi", "Một phiên vừa dừng vì lỗi. Chạm để mở."),
         ("security", false) => ("Orrery security alert", "A new device, a blocked IP or a sign-in from a new place on your computer. Check Settings → Remote on the computer."),
         ("security", true) => ("Cảnh báo bảo mật Orrery", "Có thiết bị mới, IP bị chặn hoặc nơi nối lạ trên máy tính. Xem Cài đặt → Điều khiển từ xa trên máy tính."),
+        ("running", false) => ("Agent is working", "A session has been running for a while. Tap to open it."),
+        ("running", true) => ("Agent đang chạy", "Một phiên đã chạy khá lâu. Chạm để mở."),
+        ("open", false) => ("Opened from your computer", "Tap to open this pane."),
+        ("open", true) => ("Mở từ máy tính", "Chạm để mở pane này."),
+        ("clear", _) => ("Orrery", ""),
         (_, false) => ("Session needs attention", "A session needs you. Tap to open it."),
         (_, true) => ("Phiên cần chú ý", "Một phiên cần bạn. Chạm để mở."),
     }
@@ -78,6 +93,8 @@ pub struct Job {
     pub worked: Option<u64>,
     pub seal_key: Option<[u8; 32]>,
     pub seal_ok: bool,
+    pub started: Option<u64>,
+    pub extra: Extra,
 }
 
 pub fn message(job: &Job) -> Value {
@@ -86,12 +103,22 @@ pub fn message(job: &Job) -> Value {
     if !job.pane.is_empty() {
         data["p"] = Value::from(job.pane.clone());
     }
+    for (key, value) in extra_data(job) {
+        data[key] = value;
+    }
+    if job.kind == "clear" {
+        return json!({ "message": { "token": job.token, "data": data, "android": { "priority": "normal" } } });
+    }
+    let mut note = json!({ "channel_id": if job.kind == "running" { "running" } else { "attention" } });
+    if !job.pane.is_empty() {
+        note["tag"] = Value::from(format!("{}:{}", job.machine, job.pane));
+    }
     json!({
         "message": {
             "token": job.token,
             "notification": { "title": title, "body": body },
             "data": data,
-            "android": { "priority": "high", "notification": { "channel_id": "attention" } },
+            "android": { "priority": "high", "notification": note },
         }
     })
 }
@@ -109,6 +136,11 @@ pub struct PushState {
     panes: HashMap<(String, String), Instant>,
     hours: HashMap<String, Vec<Instant>>,
     queue: VecDeque<Job>,
+    hours_info: HashMap<String, Vec<Instant>>,
+    pauses: HashMap<String, u64>,
+    waiting: Vec<String>,
+    told: HashMap<String, usize>,
+    ongoing: HashMap<(String, String), Instant>,
 }
 
 impl PushState {
@@ -168,26 +200,7 @@ impl Ctx {
     }
 
     pub fn push_pane(&self, pane: &str, kind: &str, terminal: &str, worked: Option<u64>, now: Instant) -> usize {
-        if !self.running.load(Ordering::SeqCst) || !valid_pane_key(pane) {
-            return 0;
-        }
-        let kind = kind_of(kind);
-        let targets = self.push_targets(|d| d.wants(kind));
-        let mut queued = 0;
-        {
-            let mut st = lock(&self.push);
-            for job in targets {
-                if self.is_live(&job.device) || !st.admit(&job.device, pane, now) {
-                    continue;
-                }
-                st.push(Job { pane: pane.to_owned(), kind, terminal: terminal.to_owned(), worked, ..job });
-                queued += 1;
-            }
-        }
-        if queued > 0 {
-            self.push_wake.notify_one();
-        }
-        queued
+        self.queue_pane(pane, kind, terminal, worked, None, now)
     }
 
     pub fn push_security(&self, except: Option<&str>) -> usize {
@@ -223,7 +236,18 @@ impl Ctx {
     }
 
     pub fn deliver(&self, job: &Job) -> Outcome {
-        let job = &self.settled(job);
+        let job = &match self.enrich(&self.settled(job)) {
+            Ok(job) => job,
+            Err(why) => return Outcome::Fail(why),
+        };
+        let outcome = self.deliver_enriched(job);
+        if outcome == Outcome::Sent {
+            self.note_delivered(job);
+        }
+        outcome
+    }
+
+    fn deliver_enriched(&self, job: &Job) -> Outcome {
         if !self.still_wanted(job) {
             return Outcome::Fail("no_device");
         }
@@ -274,7 +298,7 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
             }
         }
         for job in ctx.take_push_jobs() {
-            if (job.kind != "security" && ctx.is_live(&job.device)) || *stop.borrow() {
+            if (!matches!(job.kind, "security" | "open") && ctx.is_live(&job.device)) || *stop.borrow() {
                 continue;
             }
             let c = ctx.clone();
@@ -307,6 +331,7 @@ impl Phone {
             ok
         };
         if stored {
+            self.ctx.note_pause(&self.device, v.get("pauseUntil"));
             self.ctx.changed();
         }
         let reply = if stored { json!({ "re": id, "ok": true }) } else { error(Value::from(id), "denied") };
@@ -315,6 +340,7 @@ impl Phone {
 
     pub(super) async fn push_unregister(&mut self, id: &str) -> bool {
         lock(&self.ctx.devices).clear_push(&self.device);
+        lock(&self.ctx.push).forget_device(&self.device);
         self.ctx.changed();
         self.sec.json(&json!({ "re": id, "ok": true })).await
     }

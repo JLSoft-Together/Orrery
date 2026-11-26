@@ -162,7 +162,7 @@ fn a_proven_phone_gets_a_data_only_sealed_message_with_the_content_inside() {
     let data = m["data"].as_object().unwrap();
     let mut keys: Vec<_> = data.keys().cloned().collect();
     keys.sort();
-    assert_eq!(keys, ["e", "k", "m", "v"]);
+    assert_eq!(keys, ["e", "k", "m", "v", "w"]);
     assert_eq!((data["v"].as_str(), data["k"].as_str()), (Some("2"), Some("done")));
     assert_eq!(data["m"], ctx.machine_id());
     let plain = open(&phone.key.export_private()[..], ctx.keys.noise.public(), &ctx.machine_id(), "done", data["e"].as_str().unwrap()).unwrap();
@@ -201,7 +201,7 @@ fn old_apps_content_off_bad_keys_and_security_alerts_keep_the_fixed_message() {
     for id in ["old", "off"] {
         let job = target(&ctx, id);
         assert_eq!(ctx.deliver(&job), Outcome::Sent);
-        assert_eq!(sent(&http), message(&job));
+        assert_eq!(sent(&http), message(&ctx.enrich(&job).unwrap()));
     }
     lock(&ctx.devices).set_push_content("off", true);
     let mut bad = target(&ctx, "off");

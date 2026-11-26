@@ -227,7 +227,7 @@ fn the_running_remote_sends_a_queued_push_to_fcm_in_the_background() {
     assert!(calls[0].0.ends_with("/projects/demo-proj/messages:send"));
     let sent: Value = serde_json::from_str(&calls[0].3).unwrap();
     assert_eq!(sent["message"]["token"], TOKEN_A);
-    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "p1", "k": "permission" }));
+    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "p1", "k": "permission", "w": "0" }));
     assert_eq!(sent["message"]["notification"]["title"], title_body("permission", "vi").0);
     rig.remote.enable(false);
 }

@@ -6,6 +6,9 @@ pub mod devfs;
 pub mod emulators;
 pub mod files;
 pub mod history;
+pub mod install;
+#[cfg(test)]
+mod install_tests;
 pub mod ipc;
 pub mod ipc_ext;
 pub mod manager;

@@ -10,7 +10,7 @@ function flip(): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-3 py-2" :class="disabled ? 'opacity-50' : ''">
+  <div class="flex items-center gap-3 py-(--ccm-density-set-py)" :class="disabled ? 'opacity-50' : ''">
     <div class="min-w-0 flex-1">
       <div v-if="info || truncate" class="flex min-w-0 items-center gap-1.5">
         <p class="text-sm text-ink" :class="truncate ? 'min-w-0 truncate' : ''" :title="truncate ? label : undefined" @click="flip">{{ label }}</p>

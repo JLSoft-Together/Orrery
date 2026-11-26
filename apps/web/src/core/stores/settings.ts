@@ -7,6 +7,7 @@ import { AUTO_SAVE_DELAY_DEFAULT, AUTO_SAVE_DELAYS, isAutoSaveMode, type AutoSav
 import { desktop } from '../lib/desktop'
 import { setDustEnabled } from '../lib/dustFlag'
 import { clampContextWarn, CONTEXT_WARN_DEFAULT, clampShellDoneSeconds, SHELL_DONE_SECONDS_DEFAULT } from '../lib/settingLimits'
+import { densityOf, DENSITY_KEY, type Density } from '../lib/density'
 import { clampCodeSize,CODE_SIZE_DEFAULT, fontEntry, fontStack, isFontId } from '../lib/fonts'
 import { applyTheme, isThemeId, startTheme, THEME_MIGRATION, themeMeta, toggleTarget, variantFor, type ThemeId } from '../lib/themes'
 
@@ -118,6 +119,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const starsPanels = ref(read('ccm.starsPanels') !== '0')
   const starsFx = ref<StarsFx>(isStarsFx(read('ccm.starsFx')) ? (read('ccm.starsFx') as StarsFx) : 'twinkle')
   const fileIcons = ref<FileIconStyle>(isFileIconStyle(read('ccm.fileIcons')) ? (read('ccm.fileIcons') as FileIconStyle) : 'atom')
+  const density = ref<Density>(densityOf(read(DENSITY_KEY)))
   const worktreeCopy = ref<string[]>(readWorktreeCopy())
   const pinned = ref<Set<string>>(readPinned())
   const budgetRaw = Number(read('ccm.budget'))
@@ -170,6 +172,8 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(starsFx, (value) => persist('ccm.starsFx', value))
   watch(starsFx, (value) => document.documentElement.setAttribute('data-stars-fx', value), { flush: 'sync', immediate: true })
   watch(fileIcons, (value) => persist('ccm.fileIcons', value))
+  watch(density, (value) => persist(DENSITY_KEY, value))
+  watch(density, (value) => document.documentElement.setAttribute('data-density', value), { flush: 'sync', immediate: true })
   watch(worktreeCopy, (value) => persist('ccm.worktreeCopy', JSON.stringify(value)))
   watch(pinned, (value) => persist('ccm.pinned', JSON.stringify([...value])))
   watch(activityPageSize, (value) => persist('ccm.activityPage', String(value)))
@@ -339,6 +343,7 @@ export const useSettingsStore = defineStore('settings', () => {
     starsPanels,
     starsFx,
     fileIcons,
+    density,
     pinned,
     activityPageSize,
     dailyBudget,

@@ -78,7 +78,7 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
 
 <template>
   <div
-    class="ccm-next-rail-row group relative grid min-h-[48px] min-w-0 grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-x-2 rounded-control px-2 py-1.5 transition-colors duration-(--ccm-dur-fast)"
+    class="ccm-next-rail-row group relative grid min-h-(--ccm-density-row-h) min-w-0 grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-x-(--ccm-density-gap) rounded-control px-2 py-(--ccm-density-row-py) transition-colors duration-(--ccm-dur-fast)"
     :class="[row.focused ? 'bg-accent-soft' : 'hover:bg-fill', selected ? 'outline-2 -outline-offset-2 outline-accent' : '']"
     :data-signal="signal ?? undefined"
     :data-state="row.state"

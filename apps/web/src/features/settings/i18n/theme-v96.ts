@@ -8,6 +8,14 @@ const en = {
     legacyThemes: 'Older themes',
     legacyPalettes: 'Older palettes',
     moreCount: '{n} more',
+    density: {
+      label: 'Density',
+      hint: 'Row and header height in the rail, panes, settings and command palette. Terminals and editors keep their size.',
+      compact: 'Compact',
+      regular: 'Regular',
+      comfy: 'Roomy',
+      cmd: 'Density: {name}',
+    },
     desc: {
       orreryLight: 'Soft orange accent on a calm light canvas. The default for light.',
       orreryDark: 'Flat dark islands with the same orange accent.',
@@ -28,6 +36,14 @@ const vi: typeof en = {
     legacyThemes: 'Theme cũ',
     legacyPalettes: 'Palette cũ',
     moreCount: 'thêm {n}',
+    density: {
+      label: 'Mật độ',
+      hint: 'Chiều cao hàng và thanh đầu trong rail, pane, cài đặt và command palette. Terminal và editor giữ nguyên cỡ.',
+      compact: 'Gọn',
+      regular: 'Vừa',
+      comfy: 'Thoáng',
+      cmd: 'Mật độ: {name}',
+    },
     desc: {
       orreryLight: 'Accent cam dịu trên nền sáng êm. Mặc định cho nền sáng.',
       orreryDark: 'Các đảo tối phẳng, cùng accent cam.',

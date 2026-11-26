@@ -235,6 +235,7 @@ export const nextEntries = (mac: boolean): SettingsEntry[] => [
   { page: 'appearance', id: 'clearTerm', labelKey: 'mist.settings.clearTerm', hintKey: 'mist.settings.clearTermHint' },
   { page: 'appearance', id: 'motion', labelKey: 'mist.settings.motion', hintKey: 'mist.settings.motionHint' },
   { page: 'appearance', id: 'stars', labelKey: 'mist.settings.stars', hintKey: 'mist.settings.starsOnly' },
+  { page: 'appearance', id: 'density', labelKey: 'themeV96.density.label', hintKey: 'themeV96.density.hint' },
 ]
 
 const fold = (s: string): string =>

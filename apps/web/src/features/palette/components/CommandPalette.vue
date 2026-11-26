@@ -87,7 +87,8 @@ import { useSettingsEnv } from '@features/settings'
 import { isMac } from '../../../core/lib/platform'
 import { isPaletteKey } from '../lib/paletteKey'
 import { keyCombo, shortcutText } from '../../shortcuts/lib/shortcuts'
-import { TextSearch } from 'lucide-vue-next'
+import { Rows3, TextSearch } from 'lucide-vue-next'
+import { DENSITIES } from '../../../core/lib/density'
 import { openTermSearch } from '../../termSearch/registry'
 import { statusMeta } from '../../../core/lib/status'
 import { APP_VERSION } from '@features/update'
@@ -615,6 +616,16 @@ const items = computed<Item[]>(() => {
     ),
     { id: 'c:codeLarger', group: 'prefs', label: t('fonts.paletteLarger'), sub: t('fonts.px', { n: settings.codeFontSize }), icon: AArrowUp, run: () => stepCodeSize(settings, 1) },
     { id: 'c:codeSmaller', group: 'prefs', label: t('fonts.paletteSmaller'), sub: t('fonts.px', { n: settings.codeFontSize }), icon: AArrowDown, run: () => stepCodeSize(settings, -1) },
+    ...(uiGen.isNext
+      ? DENSITIES.map((d) => ({
+          id: `c:density:${d}`,
+          group: 'prefs' as const,
+          label: t('themeV96.density.cmd', { name: t(`themeV96.density.${d}`) }),
+          icon: Rows3,
+          on: settings.density === d,
+          run: () => (settings.density = d),
+        }))
+      : []),
     { id: 'c:keyHints', group: 'prefs', label: t('keys.hints'), icon: Keyboard, on: settings.keyHints, run: () => (settings.keyHints = !settings.keyHints) },
     { id: 'c:tools', group: 'prefs', label: t('palette.toolsPref'), icon: ListFilter, on: !settings.hideTools, run: () => (settings.hideTools = !settings.hideTools) },
     { id: 'c:lang', group: 'prefs', label: t('palette.language'), sub: settings.locale === 'vi' ? 'Tiếng Việt → English' : 'English → Tiếng Việt', icon: Languages, run: () => settings.toggleLocale() },
@@ -1003,7 +1014,7 @@ const HINTS = [
                   :aria-selected="item.index === active"
                   class="relative flex cursor-pointer items-center gap-3 rounded-inner px-3 py-1.5 text-sm"
                   :data-palette-row="item.meta ? 'session' : undefined"
-                  :class="[item.index === active ? 'bg-accent text-on-accent' : 'text-ink', isNext ? 'min-h-[52px]' : 'min-h-11']"
+                  :class="[item.index === active ? 'bg-accent text-on-accent' : 'text-ink', isNext ? 'min-h-(--ccm-density-pal-h)' : 'min-h-11']"
                   @mousemove="active = item.index"
                   @click="choose(item, $event.shiftKey)"
                 >

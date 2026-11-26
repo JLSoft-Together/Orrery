@@ -1,3 +1,5 @@
+@import './density.css';
+
 :root[data-ui='next'] {
   background-image: var(--ccm-bg-image);
   background-attachment: fixed;

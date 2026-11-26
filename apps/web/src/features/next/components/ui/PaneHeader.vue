@@ -4,7 +4,7 @@ withDefaults(defineProps<{ active?: boolean; label?: string }>(), { active: fals
 
 <template>
   <header
-    class="flex h-[34px] min-w-0 shrink-0 items-center gap-2 pr-2 pl-2.5 text-xs"
+    class="flex h-(--ccm-density-head-h) min-w-0 shrink-0 items-center gap-2 pr-2 pl-2.5 text-xs"
     :class="active ? 'bg-(--ccm-pane-head-tint)' : ''"
     :role="label ? 'group' : undefined"
     :aria-label="label"

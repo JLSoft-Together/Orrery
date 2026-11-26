@@ -5746,6 +5746,12 @@ themeV95.starsPanels
 themeV95.starsPanelsHint
 themeV95.starsPanelsOff
 themeV96.agents
+themeV96.density.cmd
+themeV96.density.comfy
+themeV96.density.compact
+themeV96.density.hint
+themeV96.density.label
+themeV96.density.regular
 themeV96.desc.apple
 themeV96.desc.console
 themeV96.desc.galaxy

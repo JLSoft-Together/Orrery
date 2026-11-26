@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { modeOf } from '../../../core/lib/themes'
+import { DENSITIES } from '../../../core/lib/density'
 import { NEXT_PALETTE_CUSTOM, NEXT_PALETTE_RANDOM, nextLegacyCards, nextPaletteCards, type NextPreview, type NextScheme } from '@ccm/mist-tokens'
 import { MAU_MONO, mauPreview } from '../../next/lib/mau'
 import { useSettingsStore } from '../../../core/stores/settings'
@@ -67,6 +68,8 @@ const motions = computed(() => [
   { value: 'reduced' as const, label: t('mist.settings.motionReduced') },
   { value: 'off' as const, label: t('mist.settings.motionOff') },
 ])
+
+const densities = computed(() => DENSITIES.map((value) => ({ value, label: t(`themeV96.density.${value}`) })))
 
 const schemeFree = (id: string): boolean => id === NEXT_PALETTE_CUSTOM || id === NEXT_PALETTE_RANDOM
 const cardActive = (id: string, scheme: NextScheme): boolean => uiGen.nextTheme === id && (schemeFree(id) || id !== 'mist' || uiGen.scheme === scheme)
@@ -177,6 +180,14 @@ function onKey(e: KeyboardEvent, index: number): void {
           :label="t('mist.settings.motion')"
           data-setting="motion"
           @update:model-value="uiGen.setMotion"
+        />
+      </SettingRow>
+      <SettingRow :label="t('themeV96.density.label')" :info="t('themeV96.density.hint')" data-setting-row="density">
+        <NextSegmentedControl
+          v-model="settings.density"
+          :options="densities"
+          :label="t('themeV96.density.label')"
+          data-setting="density"
         />
       </SettingRow>
       <ToggleSwitch

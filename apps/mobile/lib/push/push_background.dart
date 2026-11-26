@@ -47,7 +47,17 @@ Future<void> handleBackgroundPush(
   required String languageCode,
   DateTime? now,
 }) async {
-  if (isClearPush(arrival.data)) return;
+  if (isClearPush(arrival.data)) {
+    final machine = arrival.data['m'];
+    if (machine == null || !pushMachinePattern.hasMatch(machine)) return;
+    try {
+      await notifier.init();
+      await notifier.clearMachine(machine);
+    } on Object {
+      return;
+    }
+    return;
+  }
   final strings = pushStrings(languageCode);
   PushNotice notice;
   try {
@@ -60,11 +70,14 @@ Future<void> handleBackgroundPush(
   } on Object {
     notice = fixedPushNotice(arrival.data, strings);
   }
-  if (arrival.shown) {
+  if (arrival.shown && notice.kind != 'running') {
     if (notice.sealed && await _ready(notifier)) await _mark(kv, true);
     return;
   }
-  if (await readPausedUntil(kv, now ?? clock.now()) != null) return;
+  if (notice.kind != 'open' &&
+      await readPausedUntil(kv, now ?? clock.now()) != null) {
+    return;
+  }
   for (final candidate in [
     notice,
     if (notice.sealed) fixedPushNotice(arrival.data, strings),

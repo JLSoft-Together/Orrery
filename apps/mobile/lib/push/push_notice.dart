@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import '../l10n/app_localizations.dart';
+import 'push_menu.dart';
 import 'push_seal.dart';
 
 const String pushSealOkKey = 'push.sealOk';
@@ -15,7 +16,10 @@ const Set<String> pushKinds = {
   'error',
   'security',
   'test',
+  'running',
+  'open',
 };
+const Set<String> menuKinds = {'question', 'permission', 'attention'};
 final RegExp pushMachinePattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 
 class PushArrival {
@@ -33,6 +37,9 @@ class PushNotice {
     required this.body,
     required this.sealed,
     this.pane,
+    this.menu,
+    this.startedAt,
+    this.labels = const [],
   });
 
   final String? machine;
@@ -41,11 +48,17 @@ class PushNotice {
   final String body;
   final bool sealed;
   final String? pane;
+  final PushMenu? menu;
+  final DateTime? startedAt;
+  final List<String> labels;
+
+  bool get ongoing => kind == 'running';
 
   String get tag => '${machine ?? 'orrery'}:${pane ?? kind}';
 
-  String? get payload =>
-      machine == null ? null : jsonEncode({'m': machine, 'p': ?pane});
+  String? get payload => machine == null
+      ? null
+      : jsonEncode({'m': machine, 'p': ?pane, 'sig': ?menu?.sig});
 }
 
 String pushKind(String? raw) => pushKinds.contains(raw) ? raw! : 'attention';
@@ -59,6 +72,8 @@ AppLocalizations pushStrings(String languageCode) =>
       'question' => (l.pushFixedQuestionTitle, l.pushFixedQuestionBody),
       'permission' => (l.pushFixedPermissionTitle, l.pushFixedPermissionBody),
       'error' => (l.pushFixedErrorTitle, l.pushFixedErrorBody),
+      'running' => (l.pushFixedRunningTitle, l.pushFixedRunningBody),
+      'open' => (l.pushFixedOpenTitle, l.pushFixedOpenBody),
       'security' => (l.pushFixedSecurityTitle, l.pushFixedSecurityBody),
       'test' => (l.pushFixedTestTitle, l.pushFixedTestBody),
       _ => (l.pushFixedAttentionTitle, l.pushFixedAttentionBody),
@@ -78,7 +93,14 @@ PushNotice fixedPushNotice(Map<String, String> data, AppLocalizations l) {
     body: body,
     sealed: false,
     pane: pane != null && pushPanePattern.hasMatch(pane) ? pane : null,
+    startedAt: _startedAt(data['t0']),
   );
+}
+
+DateTime? _startedAt(String? raw) {
+  final ms = raw == null ? null : int.tryParse(raw);
+  if (ms == null || ms <= 0) return null;
+  return DateTime.fromMillisecondsSinceEpoch(ms);
 }
 
 Future<PushNotice> pushNotice(
@@ -121,6 +143,9 @@ Future<PushNotice> pushNotice(
     body: open.body,
     sealed: true,
     pane: open.pane,
+    menu: menuKinds.contains(fixed.kind) ? open.menu : null,
+    startedAt: fixed.startedAt,
+    labels: open.labels,
   );
 }
 

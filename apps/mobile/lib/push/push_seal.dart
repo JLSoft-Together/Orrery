@@ -7,6 +7,8 @@ import 'package:cryptography/dart.dart';
 import '../remote/keys.dart';
 import '../remote/machines.dart';
 import '../remote/secure_kv.dart';
+import 'push_menu.dart';
+import 'waiting_update.dart';
 
 const String pushSealVersion = '2';
 const int pushSealLevel = 2;
@@ -18,11 +20,19 @@ const int _aeadKeyLen = 32;
 final RegExp pushPanePattern = RegExp(r'^[A-Za-z0-9_.:-]{1,128}$');
 
 class SealedNotice {
-  const SealedNotice({required this.title, required this.body, this.pane});
+  const SealedNotice({
+    required this.title,
+    required this.body,
+    this.pane,
+    this.menu,
+    this.labels = const [],
+  });
 
   final String title;
   final String body;
   final String? pane;
+  final PushMenu? menu;
+  final List<String> labels;
 }
 
 List<int> pushSealInfo(String machine) => [
@@ -128,7 +138,16 @@ Future<SealedNotice?> openSeal({
     if (pane != null && (pane is! String || !pushPanePattern.hasMatch(pane))) {
       return null;
     }
-    return SealedNotice(title: title, body: text, pane: pane as String?);
+    final wl = value['wl'];
+    return SealedNotice(
+      title: title,
+      body: text,
+      pane: pane as String?,
+      menu: parsePushMenu(value['menu']),
+      labels: wl is List
+          ? parseWaitingLabels(jsonEncode(wl.whereType<String>().toList()))
+          : const [],
+    );
   } on Object {
     return null;
   }

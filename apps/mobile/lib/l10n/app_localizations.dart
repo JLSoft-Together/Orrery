@@ -1154,6 +1154,48 @@ abstract class AppLocalizations {
   /// **'A session needs you. Tap to open it.'**
   String get pushFixedAttentionBody;
 
+  /// No description provided for @pushFixedRunningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent is working'**
+  String get pushFixedRunningTitle;
+
+  /// No description provided for @pushFixedRunningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session has been running for a while. Tap to open it.'**
+  String get pushFixedRunningBody;
+
+  /// No description provided for @pushFixedOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened from your computer'**
+  String get pushFixedOpenTitle;
+
+  /// No description provided for @pushFixedOpenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to open this pane.'**
+  String get pushFixedOpenBody;
+
+  /// No description provided for @pushRunningChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Running sessions'**
+  String get pushRunningChannel;
+
+  /// No description provided for @pushActionOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get pushActionOpen;
+
+  /// No description provided for @pushMenuStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The question changed, open the pane to see it'**
+  String get pushMenuStale;
+
   /// No description provided for @pushFixedTestTitle.
   ///
   /// In en, this message translates to:

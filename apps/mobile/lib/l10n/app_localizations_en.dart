@@ -613,6 +613,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pushFixedAttentionBody => 'A session needs you. Tap to open it.';
 
   @override
+  String get pushFixedRunningTitle => 'Agent is working';
+
+  @override
+  String get pushFixedRunningBody =>
+      'A session has been running for a while. Tap to open it.';
+
+  @override
+  String get pushFixedOpenTitle => 'Opened from your computer';
+
+  @override
+  String get pushFixedOpenBody => 'Tap to open this pane.';
+
+  @override
+  String get pushRunningChannel => 'Running sessions';
+
+  @override
+  String get pushActionOpen => 'Open';
+
+  @override
+  String get pushMenuStale => 'The question changed, open the pane to see it';
+
+  @override
   String get pushFixedTestTitle => 'Orrery';
 
   @override

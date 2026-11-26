@@ -1,5 +1,6 @@
 import '../app/pane_link.dart';
 import 'push_config.dart';
+import 'push_menu.dart';
 
 abstract class PushSession {
   String get machineId;
@@ -41,9 +42,19 @@ Uri? pushLink(Map<String, String> data) {
     return Uri(scheme: appLinkScheme, host: 'm', pathSegments: [machine]);
   }
   if (!RegExp(r'^[A-Za-z0-9_.:-]{1,128}$').hasMatch(pane)) return null;
+  final sig = data['sig'];
+  final index = int.tryParse(data['i'] ?? '');
+  final menu =
+      data['a'] == 'menu' &&
+      sig != null &&
+      pushSigPattern.hasMatch(sig) &&
+      index != null &&
+      index >= 1 &&
+      index <= 99;
   return Uri(
     scheme: appLinkScheme,
     host: 'm',
     pathSegments: [machine, 'p', pane],
+    queryParameters: menu ? {'menu': sig, 'i': '$index'} : null,
   );
 }

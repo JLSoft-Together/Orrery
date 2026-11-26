@@ -52,6 +52,8 @@ abstract class PushGateway {
 
   Future<void> show(PushNotice notice, {required String channelName});
 
+  Future<void> clearMachine(String machine);
+
   Future<void> dispose();
 }
 
@@ -218,6 +220,12 @@ class FirebasePushGateway implements PushGateway {
   @override
   Future<void> show(PushNotice notice, {required String channelName}) =>
       _notifier.show(notice, channelName: channelName);
+
+  @override
+  Future<void> clearMachine(String machine) async {
+    await _notifier.init();
+    await _notifier.clearMachine(machine);
+  }
 
   @override
   Future<void> dispose() async {

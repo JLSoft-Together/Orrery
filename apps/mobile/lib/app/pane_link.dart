@@ -4,22 +4,27 @@ const String relayLinkHost = 'orrery-relay.jinvu.workers.dev';
 const String appLinkScheme = 'orrery-remote';
 
 final RegExp _machinePattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
+final RegExp _sigPattern = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 final RegExp _panePattern = RegExp(r'^[A-Za-z0-9_.:-]{1,128}$');
 
 class PaneLink {
-  const PaneLink(this.machineId, this.paneKey);
+  const PaneLink(this.machineId, this.paneKey, {this.menuSig, this.menuIndex});
 
   final String machineId;
   final String? paneKey;
+  final String? menuSig;
+  final int? menuIndex;
 
   @override
   bool operator ==(Object other) =>
       other is PaneLink &&
       other.machineId == machineId &&
-      other.paneKey == paneKey;
+      other.paneKey == paneKey &&
+      other.menuSig == menuSig &&
+      other.menuIndex == menuIndex;
 
   @override
-  int get hashCode => Object.hash(machineId, paneKey);
+  int get hashCode => Object.hash(machineId, paneKey, menuSig, menuIndex);
 
   @override
   String toString() => 'PaneLink($machineId, $paneKey)';
@@ -31,7 +36,23 @@ PaneLink? parsePaneLink(Uri uri) {
     parts = uri.pathSegments;
     if (parts.length == 1) return _build(parts[0], null);
     if (parts.length != 3 || parts[1] != 'p') return null;
-    return _build(parts[0], parts[2]);
+    final link = _build(parts[0], parts[2]);
+    final sig = uri.queryParameters['menu'];
+    final index = int.tryParse(uri.queryParameters['i'] ?? '');
+    if (link == null ||
+        sig == null ||
+        !_sigPattern.hasMatch(sig) ||
+        index == null ||
+        index < 1 ||
+        index > 99) {
+      return link;
+    }
+    return PaneLink(
+      link.machineId,
+      link.paneKey,
+      menuSig: sig,
+      menuIndex: index,
+    );
   }
   if (uri.scheme == 'https' && uri.host == relayLinkHost) {
     parts = uri.pathSegments;

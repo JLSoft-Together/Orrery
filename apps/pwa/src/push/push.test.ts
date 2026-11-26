@@ -256,4 +256,42 @@ describe('push service worker', () => {
     await none.fire('notificationclick', { notification: { data: { url: 'https://evil.dev/' }, close: () => undefined } })
     expect(none.opened).toEqual(['/app/'])
   })
+
+  it('adds at most three actions only for a push with a menu, and never on WebKit', async () => {
+    const menu = { sig: 'ab12', items: [{ index: 1, label: 'Yes' }, { index: 2, label: 'Yes, and do not ask again for this project today' }, { index: 3, label: 'No' }, { index: 4, label: 'Extra' }] }
+    const sw = load()
+    await sw.fire('push', push({ title: 't', m: 'mach', p: 'p1', k: 'permission', tag: 'mach:p1', menu }))
+    const options = sw.shown[0]!.options as { actions: Array<{ action: string; title: string }>; data: Record<string, unknown> }
+    expect(options.actions.map((a) => a.action)).toEqual(['menu:1', 'menu:2', 'menu:3'])
+    expect(options.actions[1]!.title).toHaveLength(24)
+    expect(options.data.sig).toBe('ab12')
+    await sw.fire('push', push({ title: 't', m: 'mach', p: 'p1', k: 'done', tag: 'mach:p1', menu }))
+    expect(sw.shown[1]!.options.actions).toBeUndefined()
+    await sw.fire('push', push({ title: 't', m: 'mach', p: 'p1', k: 'question', tag: 'mach:p1', menu: { sig: 'bad sig', items: menu.items } }))
+    expect(sw.shown[2]!.options.actions).toBeUndefined()
+    const safari = load({ ua: 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1' })
+    await safari.fire('push', push({ title: 't', m: 'mach', p: 'p1', k: 'question', tag: 'mach:p1', menu }))
+    expect(safari.shown[0]!.options.actions).toBeUndefined()
+  })
+
+  it('shows running and open pushes as plain notifications', async () => {
+    const sw = load()
+    await sw.fire('push', push({ title: 'Agent is working', m: 'mach', p: 'p1', k: 'running', tag: 'mach:p1', t0: '1764150000000' }))
+    await sw.fire('push', push({ title: 'Opened', m: 'mach', p: 'p1', k: 'open', tag: 'mach:p1' }))
+    expect(sw.shown.map((n) => n.options.actions)).toEqual([undefined, undefined])
+    expect((sw.shown[1]!.options.data as { url: string }).url).toBe('/app/m/mach/p/p1')
+  })
+
+  it('a menu action opens the pane with the choice, in the open app or a new window', async () => {
+    const open = load({ windows: [{ url: 'https://r.dev/app/m/x' }] })
+    const note = { data: { url: '/app/m/mach/p/p1', sig: 'ab12' }, close: () => undefined }
+    await open.fire('notificationclick', { notification: note, action: 'menu:2' })
+    expect(open.posted).toEqual([{ type: 'orrery-open', url: '/app/m/mach/p/p1', menu: { sig: 'ab12', index: 2 } }])
+    const none = load()
+    await none.fire('notificationclick', { notification: note, action: 'menu:3' })
+    expect(none.opened).toEqual(['/app/m/mach/p/p1?from=push&menu=ab12&i=3'])
+    const plain = load()
+    await plain.fire('notificationclick', { notification: note, action: 'menu:zz' })
+    expect(plain.opened).toEqual(['/app/m/mach/p/p1?from=push'])
+  })
 })

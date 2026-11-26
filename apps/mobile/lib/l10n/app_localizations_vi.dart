@@ -587,6 +587,27 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pushFixedAttentionBody => 'Một phiên cần bạn. Chạm để mở.';
 
   @override
+  String get pushFixedRunningTitle => 'Agent đang chạy';
+
+  @override
+  String get pushFixedRunningBody => 'Một phiên đã chạy khá lâu. Chạm để mở.';
+
+  @override
+  String get pushFixedOpenTitle => 'Mở từ máy tính';
+
+  @override
+  String get pushFixedOpenBody => 'Chạm để mở pane này.';
+
+  @override
+  String get pushRunningChannel => 'Phiên đang chạy';
+
+  @override
+  String get pushActionOpen => 'Mở';
+
+  @override
+  String get pushMenuStale => 'Câu hỏi đã đổi, mở pane để xem';
+
+  @override
   String get pushFixedTestTitle => 'Orrery';
 
   @override

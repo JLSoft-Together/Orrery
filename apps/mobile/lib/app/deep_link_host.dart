@@ -18,6 +18,7 @@ import '../security/app_lock.dart';
 import 'app_lock_scope.dart';
 import '../remote/crypto.dart';
 import 'link_source.dart';
+import 'menu_action.dart';
 import 'pair_confirm_sheet.dart';
 import 'pair_request.dart';
 import 'pane_link.dart';
@@ -224,13 +225,14 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
     if (pane == null) return;
     _watch = ref.listenManual(
       workspaceModelProvider(link.machineId),
-      (_, model) => _check(link.machineId, pane, model),
+      (_, model) => _check(link, pane, model),
       fireImmediately: true,
     );
     _timeout = Timer(linkWait, _stopWaiting);
   }
 
-  void _check(String machineId, String paneKey, WorkspaceModel model) {
+  void _check(PaneLink link, String paneKey, WorkspaceModel model) {
+    final machineId = link.machineId;
     final nav = widget.navigatorKey.currentState;
     final context = widget.navigatorKey.currentContext;
     if (nav == null || context == null) return;
@@ -254,6 +256,7 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
                 ),
         ),
       );
+      _runMenu(link, context, pane);
       return;
     }
     final view = ref.read(machineViewProvider(machineId));
@@ -261,6 +264,29 @@ class _DeepLinkHostState extends ConsumerState<DeepLinkHost> {
       _stopWaiting();
       toast(context, AppLocalizations.of(context).linkPaneGone);
     }
+  }
+
+  void _runMenu(PaneLink link, BuildContext context, PaneInfo? pane) {
+    final sig = link.menuSig;
+    final index = link.menuIndex;
+    if (sig == null || index == null) return;
+    final api = ref.read(machineApiProvider(link.machineId));
+    final paneKey = link.paneKey;
+    unawaited(
+      runMenuAction(
+        context: context,
+        pane: pane,
+        sig: sig,
+        index: index,
+        send: (sig, index) async {
+          await api.command('ws.menu', {
+            'paneKey': paneKey,
+            'sig': sig,
+            'index': index,
+          });
+        },
+      ),
+    );
   }
 
   @override

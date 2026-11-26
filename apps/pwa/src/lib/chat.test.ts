@@ -5,7 +5,7 @@ import { MachineData } from '../remote/machineData'
 import { ChatFeed, type FeedState } from './chatFeed'
 import { cachedLog, cacheLog, forgetLogs } from './chatCache'
 import { chatRows, filterRows, liveOf, preferChat, shortAgo, sortRows } from './chatInbox'
-import { clearPushOpen, pendingPushOpen, readPushOpen } from './deepLink'
+import { clearPushOpen, pendingPushOpen, readPushOpen, takePushMenu } from './deepLink'
 import { applyItems, applyPage, chatSupported, chatView, emptyLog, fileTotals, parseChatItem, parseChatLast, parseChatPage, parseMenu, toolCat, toolParts } from './chatModel'
 import { settleOutbox } from './chatOutbox'
 import { parseInline, parseMarkdown, safeHref } from './markdown'
@@ -298,6 +298,17 @@ describe('deep link to chat', () => {
     expect(pendingPushOpen('m', 'p1')).toBe(false)
     readPushOpen('', ws('p1'))
     expect(pendingPushOpen('m', 'p1')).toBe(false)
+  })
+
+  it('keeps a menu choice from the notification action until taken by its pane', () => {
+    readPushOpen('?from=push&menu=ab12&i=2', ws('p1'))
+    expect(takePushMenu('m', 'p2')).toBeNull()
+    expect(takePushMenu('m', 'p1')).toEqual({ machine: 'm', pane: 'p1', sig: 'ab12', index: 2 })
+    expect(takePushMenu('m', 'p1')).toBeNull()
+    readPushOpen('?from=push&menu=bad sig&i=2', ws('p1'))
+    expect(takePushMenu('m', 'p1')).toBeNull()
+    readPushOpen('?menu=ab12&i=2', ws('p1'))
+    expect(takePushMenu('m', 'p1')).toBeNull()
   })
 })
 

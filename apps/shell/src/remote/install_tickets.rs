@@ -172,6 +172,12 @@ impl Tickets {
         Ok(())
     }
 
+    pub fn release_pair(&self, token: &str) {
+        if let Some(t) = find(&mut lock(&self.slots), token) {
+            t.used = false;
+        }
+    }
+
     pub fn fetched_json(&self) -> Value {
         lock(&self.last_fetch).map_or(Value::Null, |(ip, at)| json!({ "ip": ip.to_string(), "at": at }))
     }

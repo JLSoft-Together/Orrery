@@ -20,6 +20,7 @@ pub const MAX_OPEN: usize = 4;
 pub const MAX_SEQ: u64 = 64;
 pub const TTL: Duration = Duration::from_secs(60);
 const MAX_TOTAL_OPEN: usize = 32;
+pub const MAX_TOTAL_BYTES: usize = 32 * 1024 * 1024;
 const NAME_TRIES: u32 = 100;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,6 +102,11 @@ impl Puts {
                 return Err(Fail::Busy);
             }
             map.insert(k.clone(), Buf { root: c.root.clone(), next: 0, bytes: Vec::new(), touched: now });
+        }
+        let held: usize = map.values().map(|b| b.bytes.len()).sum();
+        if held + c.data.len() > MAX_TOTAL_BYTES {
+            map.remove(&k);
+            return Err(Fail::Busy);
         }
         let Some(buf) = map.get_mut(&k) else { return Err(Fail::Expired) };
         if buf.next != c.seq || buf.root != c.root {

@@ -209,6 +209,30 @@ fn the_pair_route_only_mints_a_code_for_the_ip_that_fetched_and_only_once() {
 }
 
 #[test]
+fn the_pair_route_never_replaces_a_running_usb_or_qr_pairing() {
+    let r = rig("inst-busy", "", false);
+    r.remote.enable(true);
+    assert!(r.remote.set_apk(&apk("inst-busy-apk")));
+    let started = r.remote.install_call(&json!({ "op": "start" }));
+    let token = started["path"].as_str().unwrap().trim_start_matches("/install/").trim_end_matches("/orrery.apk").to_owned();
+    let ctx = r.remote.ctx().unwrap();
+    let now = now_secs();
+    let go = |target: &str| ctx.install_reply(resolve(&ctx.install, ip(A), &get(target, None), now), ip(A));
+    assert!(matches!(go(&url_path(&token)), Reply::File { first: true, .. }));
+    assert_eq!(r.remote.install_call(&json!({ "op": "arm" }))["ok"], true);
+    r.remote.pair_start().unwrap();
+    let before = r.remote.status()["pairing"].clone();
+    assert!(!before.is_null());
+    assert_eq!(go(&pair_path(&token)), Reply::Forbidden);
+    assert!(log_whys(&r).contains(&json!("install_busy")));
+    assert_eq!(r.remote.status()["pairing"], before);
+    assert!(ctx.pairing.holds_non_lan(now_secs()));
+    assert!(r.remote.pair_cancel().as_bool().unwrap());
+    assert!(matches!(go(&pair_path(&token)), Reply::Redirect(_)));
+    r.remote.enable(false);
+}
+
+#[test]
 fn a_code_bound_to_the_phone_ip_pairs_from_that_ip() {
     let r = rig("inst-bound", "", false);
     r.host.answer.store(true, std::sync::atomic::Ordering::SeqCst);

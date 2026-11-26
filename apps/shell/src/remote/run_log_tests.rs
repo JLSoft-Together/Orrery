@@ -29,6 +29,23 @@ fn the_ring_buffer_keeps_only_the_newest_2000_lines_with_stable_numbers() {
 }
 
 #[test]
+fn multibyte_logs_are_cut_by_bytes_so_a_window_never_exceeds_the_reply_limit() {
+    let log = RunLog::default();
+    let lines: Vec<Value> = (0..READ_MAX).map(|i| json!({ "stream": "app", "text": format!("{i:04}{}", "漢".repeat(TEXT_MAX - 4)), "at": 1 })).collect();
+    log.record(&json!({ "type": "log", "sessionId": "s1", "lines": lines }), &plain);
+    let tail = log.read("s1", None);
+    assert!(tail.to_string().len() <= 900_000, "{}", tail.to_string().len());
+    assert_eq!(tail["lines"].as_array().unwrap().last().unwrap()["n"], json!(READ_MAX));
+    let head = log.read("s1", Some(0));
+    assert!(head.to_string().len() <= 900_000);
+    assert_eq!(head["more"], json!(true));
+    let last = head["last"].as_u64().unwrap();
+    assert!(last > 0 && last < READ_MAX as u64);
+    let rest = log.read("s1", Some(last));
+    assert_eq!(rest["lines"][0]["n"], json!(last + 1));
+}
+
+#[test]
 fn since_returns_only_newer_lines_and_pages_until_caught_up() {
     let log = RunLog::default();
     log.record(&event("s1", 0, 10), &plain);

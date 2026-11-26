@@ -10,6 +10,7 @@ pub const MAX_LINES: usize = 2000;
 pub const MAX_SESSIONS: usize = 24;
 pub const TEXT_MAX: usize = 1000;
 pub const READ_MAX: usize = 300;
+const BYTES_MAX: usize = 700_000;
 const ID_MAX: usize = 64;
 const TAG_MAX: usize = 64;
 const STREAMS: [&str; 3] = ["build", "app", "logcat"];
@@ -116,6 +117,8 @@ impl RunLog {
             None => (newer.iter().rev().take(READ_MAX).rev().copied().collect::<Vec<_>>(), false),
             Some(_) => (newer.iter().take(READ_MAX).copied().collect::<Vec<_>>(), newer.len() > READ_MAX),
         };
+        let (picked, cut) = within_bytes(picked, since.is_none());
+        let more = more || (since.is_some() && cut);
         let gap = match since {
             None => picked.first().is_some_and(|e| e.n > first),
             Some(s) => first > s.saturating_add(1) && first > 0,
@@ -124,6 +127,28 @@ impl RunLog {
         let lines: Vec<Value> = picked.iter().map(|e| line_json(e)).collect();
         json!({ "known": true, "lines": lines, "last": last, "gap": gap, "more": more })
     }
+}
+
+fn within_bytes(picked: Vec<&Entry>, newest_first: bool) -> (Vec<&Entry>, bool) {
+    let total = picked.len();
+    let mut order = picked;
+    if newest_first {
+        order.reverse();
+    }
+    let mut used = 0usize;
+    let mut take = 0usize;
+    for e in &order {
+        used += line_json(e).to_string().len() + 1;
+        if used > BYTES_MAX && take > 0 {
+            break;
+        }
+        take += 1;
+    }
+    order.truncate(take);
+    if newest_first {
+        order.reverse();
+    }
+    (order, take < total)
 }
 
 fn line_json(e: &Entry) -> Value {

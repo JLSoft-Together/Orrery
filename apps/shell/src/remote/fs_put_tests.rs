@@ -131,6 +131,19 @@ fn more_than_8_mb_is_refused_and_the_buffer_is_freed() {
 }
 
 #[test]
+fn open_uploads_together_never_hold_more_than_the_total_byte_max() {
+    let puts = Puts::default();
+    let now = Instant::now();
+    let part = vec![1u8; 7 * 1024 * 1024];
+    for i in 0..4 {
+        assert!(puts.take(&format!("o{i}"), chunk("/r", "u", 0, false, &part), now).is_ok());
+    }
+    assert_eq!(puts.take("o4", chunk("/r", "u", 0, false, &part), now), Err(Fail::Busy));
+    assert_eq!(puts.open_count(), 4);
+    assert!(puts.take("o4", chunk("/r", "u", 0, false, b"x"), now).is_ok());
+}
+
+#[test]
 fn a_buffer_expires_after_60_seconds_of_silence() {
     let puts = Puts::default();
     let now = Instant::now();
@@ -235,6 +248,16 @@ fn the_op_is_registered_and_arguments_are_checked_by_the_map() {
     ] {
         assert!(build_args(spec, &bad).is_none(), "{bad}");
     }
+}
+
+#[test]
+fn a_new_upload_counts_against_the_write_quota_but_its_later_chunks_do_not() {
+    let put = lookup("fs.put").unwrap();
+    assert!(put.charges_write(&json!({ "seq": 0 })));
+    assert!(!put.charges_write(&json!({ "seq": 1 })));
+    assert!(!put.charges_write(&json!({})));
+    assert!(lookup("fs.write").unwrap().charges_write(&json!({})));
+    assert!(!lookup("fs.read").unwrap().charges_write(&json!({ "seq": 0 })));
 }
 
 #[test]

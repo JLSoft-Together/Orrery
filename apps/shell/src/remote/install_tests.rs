@@ -26,6 +26,21 @@ fn get(target: &str) -> String {
 }
 
 #[test]
+fn a_symlink_in_place_of_the_apk_is_never_served() {
+    let file = apk("inst-link", b"PK-apk");
+    assert!(super::install_http::servable(&file));
+    assert!(!super::install_http::servable(&file.with_file_name("missing.apk")));
+    let link = file.with_file_name("link.apk");
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_file(&file, &link).is_ok();
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(&file, &link).is_ok();
+    if made {
+        assert!(!super::install_http::servable(&link));
+    }
+}
+
+#[test]
 fn a_ticket_serves_its_file_until_it_expires() {
     let file = apk("inst-exp", b"PK-apk");
     let t = Tickets::default();

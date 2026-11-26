@@ -38,8 +38,13 @@ pub fn valid_rules(rules: &[String]) -> Vec<String> {
     out
 }
 
+fn cleaned(text: &str) -> String {
+    text.replace("\r\n", "\n").replace('\r', "\n").chars().filter(|c| !c.is_control() || *c == '\n' || *c == '\t').collect()
+}
+
 pub fn matching(rules: &[String], text: &str) -> Option<String> {
-    let lines: Vec<&str> = std::iter::once(text.trim()).chain(text.lines().map(str::trim)).filter(|l| !l.is_empty()).collect();
+    let text = cleaned(text);
+    let lines: Vec<&str> = std::iter::once(text.trim()).chain(text.as_str().lines().map(str::trim)).filter(|l| !l.is_empty()).collect();
     valid_rules(rules).into_iter().find(|rule| compile(rule).is_some_and(|re| lines.iter().any(|l| re.is_match(l))))
 }
 

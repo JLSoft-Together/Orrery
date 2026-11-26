@@ -10,6 +10,14 @@ fn hit(text: &str) -> bool {
 }
 
 #[test]
+fn control_characters_cannot_hide_a_dangerous_command() {
+    for text in ["r\u{1}m -rf /", "git\u{7f} push -f", "git re\u{85}set --hard", "ok\rrm -rf x", "r\u{0}m -rf /tmp", "git push\u{9f} --force"] {
+        assert!(hit(text), "{text:?}");
+    }
+    assert!(!hit("git\u{1} push"));
+}
+
+#[test]
 fn every_default_rule_matches_its_command_and_ignores_safe_ones() {
     for text in [
         "git push -f",

@@ -197,10 +197,10 @@ impl Ctx {
         if !devices.authorize(device, key, now) {
             return Err(Admit::Revoked);
         }
+        let mut live = lock(&self.live);
         if self.hold.is_held(device) {
             return Err(Admit::Held);
         }
-        let mut live = lock(&self.live);
         if live.len() >= MAX_SESSIONS {
             return Err(Admit::Full);
         }
@@ -237,7 +237,7 @@ impl Ctx {
     }
 
     pub fn probe(&self, device: &str) -> Vec<&'static str> {
-        lock(&self.live).values().filter(|l| l.device == device && l.ctl.try_send(Control::Probe).is_ok()).map(|l| l.via).collect()
+        lock(&self.live).values().filter(|l| l.device == device && l.ctl.capacity() > 1 && l.ctl.try_send(Control::Probe).is_ok()).map(|l| l.via).collect()
     }
 
     pub fn kick_all(&self, ctl: Control) {

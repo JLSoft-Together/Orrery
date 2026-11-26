@@ -68,6 +68,23 @@ fn every_kind_has_fixed_text_in_both_locales_and_the_payload_carries_no_content(
 }
 
 #[test]
+fn a_device_waiting_for_its_revoke_gets_no_push_and_cannot_join_late() {
+    let rig = rig("push-held", "", false);
+    let ctx = ready(&rig, Fake::ok());
+    add_device(&rig, "a", TOKEN_A, "en");
+    let j = job(TOKEN_A, "done", "en");
+    assert!(ctx.still_wanted(&j));
+    ctx.hold.hold("a", Duration::from_secs(30), Instant::now());
+    assert!(!ctx.still_wanted(&j));
+    let key = [9u8; 32];
+    assert!(lock(&ctx.devices).add(Device::new("h", "h", &key, now_secs())));
+    ctx.hold.hold("h", Duration::from_secs(30), Instant::now());
+    let (tx, _rx) = tokio::sync::mpsc::channel(4);
+    assert_eq!(ctx.admit_live("h", &key, "lan", tx, now_secs()), Err(super::ctx::Admit::Held));
+    assert_eq!(ctx.live_count(), 0);
+}
+
+#[test]
 fn only_plain_fcm_tokens_are_accepted() {
     assert!(valid_token(TOKEN_A));
     assert!(!valid_token("short"));

@@ -68,6 +68,9 @@ impl Spec {
     const fn write(self) -> Spec {
         Spec { write: true, ..self }
     }
+    pub fn charges_write(&self, cmd: &Value) -> bool {
+        self.write || (matches!(self.arg, Arg::Put) && cmd.get("seq").and_then(Value::as_u64) == Some(0))
+    }
     const fn run(self) -> Spec {
         Spec { run: true, ..self }
     }

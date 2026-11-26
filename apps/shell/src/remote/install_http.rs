@@ -1,4 +1,5 @@
 use std::net::IpAddr;
+use std::path::Path;
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -77,6 +78,10 @@ pub fn redirect_head(location: &str) -> String {
     format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nCache-Control: no-store\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n")
 }
 
+pub fn servable(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
+}
+
 async fn respond(stream: &mut TcpStream, reply: Reply) -> std::io::Result<()> {
     let (path, head_only) = match reply {
         Reply::File { path, head, .. } => (path, head),
@@ -89,7 +94,8 @@ async fn respond(stream: &mut TcpStream, reply: Reply) -> std::io::Result<()> {
         Reply::Method => return stream.write_all(status_head(405, "Method Not Allowed").as_bytes()).await,
         Reply::NotFound => return stream.write_all(status_head(404, "Not Found").as_bytes()).await,
     };
-    let Ok(file) = tokio::fs::File::open(&path).await else { return stream.write_all(status_head(404, "Not Found").as_bytes()).await };
+    let opened = if servable(&path) { tokio::fs::File::open(&path).await.ok() } else { None };
+    let Some(file) = opened else { return stream.write_all(status_head(404, "Not Found").as_bytes()).await };
     let len = file.metadata().await?.len();
     stream.write_all(file_head(len).as_bytes()).await?;
     if !head_only {

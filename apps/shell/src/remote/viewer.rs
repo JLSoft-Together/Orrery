@@ -94,7 +94,7 @@ impl Phone {
             o.remove("_accept");
         }
         let now = Instant::now();
-        if !self.ctx.viewer.take_rate(&self.device, now) || (spec.write && !self.ctx.viewer.take_write(&self.device, now)) {
+        if !self.ctx.viewer.take_rate(&self.device, now) || (spec.charges_write(&cmd) && !self.ctx.viewer.take_write(&self.device, now)) {
             return self.sec.json(&error(Value::from(id), "rate")).await;
         }
         self.viewer_call(id, spec, cmd, false).await

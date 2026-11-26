@@ -235,6 +235,7 @@ impl Ctx {
     pub fn still_wanted(&self, job: &Job) -> bool {
         lock(&self.devices).find(&job.device).is_some_and(|d| {
             !d.push_off
+                && !self.hold.is_held(&job.device)
                 && match &job.web {
                     Some(sub) => d.web_push.as_ref() == Some(sub),
                     None => !job.token.is_empty() && d.push_token == job.token,

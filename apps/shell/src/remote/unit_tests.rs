@@ -198,6 +198,39 @@ fn a_revoke_racing_a_new_session_never_leaves_it_alive() {
 }
 
 #[test]
+fn probes_never_take_the_last_slot_so_a_revoke_or_hold_always_reaches_the_session() {
+    let rig = rig("probe-slot", "", false);
+    let ctx = rig.remote.ctx().unwrap();
+    let key = [6u8; 32];
+    let now = super::config::now_secs();
+    assert!(lock(&ctx.devices).add(Device::new("p", "P", &key, now)));
+    let (tx, mut rx) = tokio::sync::mpsc::channel(4);
+    ctx.admit_live("p", &key, "lan", tx, now).unwrap();
+    let accepted = (0..10).filter(|_| !ctx.probe("p").is_empty()).count();
+    assert_eq!(accepted, 3);
+    assert_eq!(ctx.revoke(&["p".to_owned()]), 1);
+    let mut got = Vec::new();
+    while let Ok(c) = rx.try_recv() {
+        got.push(c);
+    }
+    assert_eq!(got.last(), Some(&super::Control::Revoked), "{got:?}");
+}
+
+#[test]
+fn run_logs_are_recorded_only_while_remote_runs() {
+    let rig = rig("runlog-off", "", false);
+    let event = json!({ "type": "log", "sessionId": "t7-runlog-off", "lines": [{ "stream": "app", "text": "hello", "at": 1 }] });
+    rig.remote.run_event(&event);
+    let log = super::viewer_events::run_log::global();
+    assert_eq!(log.read("t7-runlog-off", None)["known"], json!(false));
+    rig.remote.enable(true);
+    rig.remote.run_event(&event);
+    assert_eq!(log.read("t7-runlog-off", None)["known"], json!(true));
+    log.forget("t7-runlog-off");
+    rig.remote.enable(false);
+}
+
+#[test]
 fn the_pre_auth_budget_allows_a_few_small_frames_then_opens_up() {
     use super::link::{Budget, PRE_AUTH_BYTES, PRE_AUTH_FRAMES};
     let b = Budget::default();

@@ -33,6 +33,11 @@ impl Ctx {
             self.record_lan(ip, "fail", why.code());
             return Reply::Forbidden;
         }
+        if self.pairing.holds_non_lan(now_secs()) {
+            self.install.release_pair(token);
+            self.record_lan(ip, "fail", "install_busy");
+            return Reply::Forbidden;
+        }
         let started = self.start_pair(PairMeta::lan(ip));
         let Some(qr) = started.as_ref().ok().and_then(|v| v.get("qr")).and_then(Value::as_str) else {
             self.record_lan(ip, "fail", "install_pair");

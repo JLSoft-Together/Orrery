@@ -394,7 +394,7 @@ impl Remote {
     }
 
     pub fn run_event(&self, payload: &Value) {
-        if let Some(c) = lock(&self.ctx).clone() {
+        if let Some(c) = lock(&self.ctx).clone().filter(|c| c.running.load(std::sync::atomic::Ordering::SeqCst)) {
             c.viewer.push_run(payload);
         }
     }

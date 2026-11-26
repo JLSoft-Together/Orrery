@@ -104,6 +104,10 @@ impl Pairing {
         lock(&self.slot).as_ref().filter(|s| now < s.exp).map(|s| (s.exp, s.relay))
     }
 
+    pub fn holds_non_lan(&self, now: u64) -> bool {
+        lock(&self.slot).as_ref().is_some_and(|s| now < s.exp && s.meta.via != Via::Lan)
+    }
+
     pub fn deny(&self) {
         *lock(&self.ended) = Some("denied");
     }
@@ -325,11 +329,11 @@ pub async fn run(ctx: Arc<Ctx>, mut link: Link, msg1: Vec<u8>, deadline: Instant
         }
         added
     };
-    ctx.hold.forget(&paired.device_id);
     if !added {
         sec.json(&json!({ "t": "pair.denied", "error": "internal" })).await;
         return sec.close(CLOSE_NORMAL, "denied").await;
     }
+    ctx.hold.forget(&paired.device_id);
     let mut reply = json!({ "t": "pair.ok", "machine": machine, "name": ctx.name });
     merge(&mut reply, ctx.relay_token(&paired.device_id, now));
     sec.json(&reply).await;

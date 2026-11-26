@@ -52,6 +52,21 @@ fn a_phone_pairs_over_localhost_after_the_e2e_confirm_and_then_opens_a_session()
 }
 
 #[test]
+fn a_failed_save_while_pairing_keeps_the_pending_revoke_of_that_device() {
+    let rig = rig("pair-holdkeep", "", false);
+    rig.host.answer.store(true, Ordering::SeqCst);
+    rig.remote.enable(true);
+    let ctx = rig.remote.ctx().unwrap();
+    ctx.hold.hold("phone-h", std::time::Duration::from_secs(30), std::time::Instant::now());
+    std::fs::create_dir_all(rig.dir.join("devices.json.tmp")).unwrap();
+    let qr = decode_qr(&rig.remote.pair_start().unwrap());
+    let reply = runtime().block_on(pair(rig.addr(), &qr, &Phone::new("phone-h"))).unwrap();
+    assert_eq!(reply["t"], "pair.denied");
+    assert!(ctx.hold.is_held("phone-h"));
+    rig.remote.enable(false);
+}
+
+#[test]
 fn a_used_code_is_refused_the_second_time() {
     let rig = rig("pair-once", "", false);
     rig.host.answer.store(true, Ordering::SeqCst);

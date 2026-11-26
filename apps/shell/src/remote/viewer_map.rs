@@ -3,6 +3,9 @@ use serde_json::{json, Map, Value};
 use super::ctx::{Asked, Host};
 use super::viewer_events::run_log;
 
+#[path = "fs_put.rs"]
+pub mod fs_put;
+
 pub const MAX_PATH: usize = 4096;
 pub const FAST: u64 = 15;
 pub const SLOW: u64 = 60;
@@ -20,6 +23,7 @@ pub enum Arg {
     Write,
     Check(&'static str),
     RunLog,
+    Put,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -75,11 +79,12 @@ impl Spec {
     }
 }
 
-pub const SPECS: [Spec; 37] = [
+pub const SPECS: [Spec; 38] = [
     s("fs.list", "ccm:list-dir", Arg::Obj),
     s("fs.files", "ccm:list-files", Arg::Str("root")),
     s("fs.read", "ccm:read-file", Arg::Str("path")),
     s("fs.write", "ccm:file-write", Arg::Write).write(),
+    s("fs.put", fs_put::FS_PUT, Arg::Put),
     s("fs.watch", "ccm:watch", Arg::Str("root")).watch(Watch::FsAdd),
     s("fs.unwatch", "ccm:unwatch", Arg::Str("root")).watch(Watch::FsDrop),
     s("git.status", "ccm:changes-status", Arg::Str("root")),
@@ -168,6 +173,15 @@ fn check_args(op: &str, cmd: &Value) -> Option<Value> {
     Some(json!([req]))
 }
 
+fn put_args(cmd: &Value) -> Option<Value> {
+    let root = text(cmd, "root")?;
+    let up = cmd.get("up").and_then(Value::as_str).filter(|u| run_log::valid_id(u))?;
+    let seq = cmd.get("seq").and_then(Value::as_u64).filter(|s| *s <= fs_put::MAX_SEQ)?;
+    let last = cmd.get("last").and_then(Value::as_bool)?;
+    let b64 = cmd.get("b64").and_then(Value::as_str).filter(|b| !b.is_empty() && b.len() <= fs_put::MAX_CHUNK_B64)?;
+    Some(json!([{ "root": root, "up": up, "seq": seq, "last": last, "b64": b64 }]))
+}
+
 fn run_log_args(cmd: &Value) -> Option<Value> {
     let session = cmd.get("session").and_then(Value::as_str).filter(|s| run_log::valid_id(s))?;
     let mut req = json!({ "session": session });
@@ -200,6 +214,7 @@ pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
         Arg::StrFlag(f, g) => json!([text(cmd, f)?, cmd.get(g) == Some(&Value::Bool(true))]),
         Arg::Check(op) => check_args(op, cmd)?,
         Arg::RunLog => run_log_args(cmd)?,
+        Arg::Put => put_args(cmd)?,
         Arg::Write => {
             let path = text(cmd, "path")?;
             let body = cmd.get("text").and_then(Value::as_str)?;

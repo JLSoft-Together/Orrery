@@ -120,7 +120,7 @@ mod ops {
         assert_eq!((watch.channel, watch.watch, watch.run), (RUN_WATCH, Watch::RunAdd, true));
         let unwatch = lookup("run.unwatch").unwrap();
         assert_eq!((unwatch.channel, unwatch.watch, unwatch.run), (RUN_WATCH, Watch::RunDrop, false));
-        assert_eq!(SPECS.len(), 37);
+        assert_eq!(SPECS.len(), 38);
         let mut names: Vec<&str> = SPECS.iter().map(|s| s.t).collect();
         names.sort_unstable();
         names.dedup();

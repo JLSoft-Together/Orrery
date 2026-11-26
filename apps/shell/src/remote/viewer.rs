@@ -11,6 +11,7 @@ use super::dashboard::{error, Phone};
 use super::phone_ws::{Done, MAX_IN_FLIGHT};
 use super::viewer_events::{merge, VEvent, COALESCE, QUEUE};
 use super::viewer_events::run_log;
+use super::viewer_map::fs_put::{self, FS_PUT};
 use super::viewer_map::{build_args, check_run, lookup, CHECK_RUN, outcome, pre_needs, pre_of, watch_key, Spec, Watch, RUN_LOG, RUN_WATCH, SLOW};
 
 pub const MAX_WATCHES: usize = 8;
@@ -156,6 +157,7 @@ impl Phone {
                 let env = match channel {
                     CHECK_RUN => check_run(ctx.host.as_ref(), &owner, &accept, args),
                     RUN_LOG => run_log::reply(&args),
+                    FS_PUT => fs_put::reply(ctx.host.as_ref(), &owner, &accept, &args),
                     RUN_WATCH => json!({ "raw": true }),
                     _ => ctx.host.viewer(&owner, channel, args, &accept),
                 };

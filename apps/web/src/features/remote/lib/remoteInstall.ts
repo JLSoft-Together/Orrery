@@ -22,6 +22,7 @@ export interface InstallState {
 
 export interface InstallTicket {
   path: string
+  page?: string
   exp: number
   port: number
   addresses: string[]
@@ -77,7 +78,8 @@ export function parseTicket(v: unknown): InstallReply<InstallTicket> {
   const exp = typeof v.exp === 'number' && v.exp > 0 ? v.exp : 0
   const addresses = Array.isArray(v.addresses) ? v.addresses.filter((a): a is string => typeof a === 'string' && IPV4.test(a)) : []
   if (!path || !port || !exp || !addresses.length) return { ok: false, error: 'invalid' }
-  return { ok: true, value: { path, port, exp, addresses } }
+  const page = path.slice(0, -'orrery.apk'.length)
+  return { ok: true, value: { path, page, port, exp, addresses } }
 }
 
 export const installUrl = (ip: string, port: number, path: string): string => `http://${ip}:${port}${path}`
@@ -120,4 +122,8 @@ export const installSave = async (): Promise<InstallReply<{ path: string }>> => 
 export const installStart = async (): Promise<InstallReply<InstallTicket>> => parseTicket(await call({ op: 'start' }))
 export const installStop = async (): Promise<void> => {
   await call({ op: 'stop' })
+}
+export const installArm = async (on: boolean): Promise<boolean> => {
+  const r = await call({ op: on ? 'arm' : 'disarm' })
+  return isObj(r) && r.ok === true
 }

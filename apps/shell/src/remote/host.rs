@@ -59,6 +59,10 @@ impl Host for AppHost {
         crate::desk::emit_app(&self.app, CHANGED, status);
     }
 
+    fn event(&self, name: &str, payload: Value) {
+        crate::desk::emit_app(&self.app, name, payload);
+    }
+
     fn awake(&self, on: bool) {
         if on {
             self.power.start();

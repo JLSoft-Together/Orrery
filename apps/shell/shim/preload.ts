@@ -340,10 +340,20 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   onRemoteChanged: (handler: (status: unknown) => void): (() => void) => subscribe('ccm:remote-changed', handler),
   remoteEnable: (on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:remote-enable', on === true),
   remoteKeepAwake: (on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:remote-keep-awake', on === true),
-  remotePairStart: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-pair-start'),
+  remotePairStart: (opts?: unknown): Promise<unknown> =>
+    typeof opts === 'object' && opts !== null && JSON.stringify(opts).length <= 512 ? ipcRenderer.invoke('ccm:remote-pair-start', opts) : ipcRenderer.invoke('ccm:remote-pair-start'),
   remotePairCancel: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-pair-cancel'),
-  remoteRevoke: (deviceId: string): Promise<unknown> =>
-    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-revoke', deviceId) : Promise.resolve(false),
+  remoteRevoke: (arg: unknown): Promise<unknown> => {
+    const id = typeof arg === 'string' ? arg : typeof arg === 'object' && arg !== null ? (arg as { id?: unknown }).id : undefined
+    const grace = typeof arg === 'object' && arg !== null ? (arg as { grace?: unknown }).grace : undefined
+    if (typeof id !== 'string' || !id || id.length > 128) return Promise.resolve(false)
+    return ipcRenderer.invoke('ccm:remote-revoke', typeof grace === 'number' && grace > 0 ? { id, grace: Math.min(30, Math.round(grace)) } : id)
+  },
+  remoteRevokeUndo: (deviceId: string): Promise<unknown> =>
+    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-revoke-undo', deviceId) : Promise.resolve(false),
+  remoteCheck: (deviceId: string): Promise<unknown> =>
+    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-check', deviceId) : Promise.resolve(null),
+  onRemoteInstallFetched: (handler: (event: unknown) => void): (() => void) => subscribe('ccm:remote-install-fetched', handler),
   remoteDeviceRename: (deviceId: string, name: string): Promise<unknown> =>
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 && typeof name === 'string' && name.length <= 200
       ? ipcRenderer.invoke('ccm:remote-device-rename', { deviceId, name })

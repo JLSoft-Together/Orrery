@@ -56,6 +56,17 @@ export type BugReportSaveResult =
   | { ok: true; path: string; bytes: number; files: number; cut: string[]; skipped: string[] }
   | { ok: false; code: 'cancel' | 'io' }
 
+export interface RemotePairOpts {
+  via?: 'usb' | 'qr'
+  extraLan?: string[]
+  adbSerialHash?: string
+}
+
+export interface RemoteRevokeArg {
+  id: string
+  grace?: number
+}
+
 export interface ForwardedKey {
   key: string
   code: string
@@ -169,9 +180,12 @@ interface DesktopBridge {
   onRemoteChanged?: (handler: (status: RemoteStatus) => void) => () => void
   remoteEnable?: (on: boolean) => Promise<RemoteStatus | null>
   remoteKeepAwake?: (on: boolean) => Promise<RemoteStatus | null>
-  remotePairStart?: () => Promise<RemotePairStart | null>
+  remotePairStart?: (opts?: RemotePairOpts) => Promise<RemotePairStart | null>
   remotePairCancel?: () => Promise<boolean>
-  remoteRevoke?: (deviceId: string) => Promise<boolean>
+  remoteRevoke?: (deviceId: string | RemoteRevokeArg) => Promise<boolean>
+  remoteRevokeUndo?: (deviceId: string) => Promise<boolean>
+  remoteCheck?: (deviceId: string) => Promise<unknown>
+  onRemoteInstallFetched?: (handler: (event: { ip?: unknown }) => void) => () => void
   remoteDeviceRename?: (deviceId: string, name: string) => Promise<boolean>
   remotePushDevice?: (deviceId: string, on: boolean) => Promise<unknown>
   remoteRevokeAll?: () => Promise<boolean>

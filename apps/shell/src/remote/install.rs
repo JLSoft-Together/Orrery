@@ -1,104 +1,23 @@
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-use std::time::Duration;
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
-use tokio::time::{timeout, timeout_at, Instant};
-
-use super::config::now_secs;
 use super::guard_ip::norm;
 use super::lan::is_private_v4;
-use crate::state::lock;
+
+pub use super::install_http::{classify, file_head, serve, sniff};
+pub use super::install_tickets::{TicketKind, Tickets};
 
 pub const PREFIX: &str = "/install/";
 pub const FILE: &str = "orrery.apk";
+pub const PAIR: &str = "pair";
 pub const TTL_SECS: u64 = 600;
 pub const MAX_HEAD: usize = 8192;
 pub const MAX_APK: u64 = 1 << 30;
 pub const MAX_URL: usize = 2048;
 pub const MIME: &str = "application/vnd.android.package-archive";
-const TOKEN_BYTES: usize = 16;
 pub const MAX_SLOTS: usize = 4;
 const MAX_TOKEN: usize = 64;
-const SEND_MAX: Duration = Duration::from_secs(900);
-const SNIFF_WAIT: Duration = Duration::from_millis(20);
-const NEEDLES: [&[u8]; 2] = [b"GET /install/", b"HEAD /install/"];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TicketKind {
-    ApkPage,
-    ApkOffer,
-}
-
-impl TicketKind {
-    pub const fn ttl(self) -> u64 {
-        match self {
-            Self::ApkPage | Self::ApkOffer => TTL_SECS,
-        }
-    }
-}
-
-#[derive(Clone)]
-struct Ticket {
-    kind: TicketKind,
-    token: String,
-    path: PathBuf,
-    exp: u64,
-}
-
-#[derive(Default)]
-pub struct Tickets {
-    slots: Mutex<Vec<Ticket>>,
-}
-
-fn same(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
-impl Tickets {
-    pub fn issue(&self, kind: TicketKind, path: PathBuf, now: u64) -> Option<(String, u64)> {
-        let mut raw = [0u8; TOKEN_BYTES];
-        getrandom::fill(&mut raw).ok()?;
-        let token = URL_SAFE_NO_PAD.encode(raw);
-        let exp = now + kind.ttl();
-        let mut slots = lock(&self.slots);
-        slots.retain(|t| now < t.exp);
-        if slots.len() >= MAX_SLOTS {
-            let victim = slots.iter().position(|t| t.kind == kind).unwrap_or(0);
-            slots.remove(victim);
-        }
-        slots.push(Ticket { kind, token: token.clone(), path, exp });
-        Some((token, exp))
-    }
-
-    pub fn revoke(&self) {
-        lock(&self.slots).clear();
-    }
-
-    pub fn len(&self) -> usize {
-        lock(&self.slots).len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    pub fn lookup(&self, token: &str, now: u64) -> Option<(TicketKind, PathBuf)> {
-        let mut slots = lock(&self.slots);
-        slots.retain(|t| now < t.exp);
-        let mut hit = None;
-        for t in slots.iter() {
-            if same(t.token.as_bytes(), token.as_bytes()) {
-                hit = Some((t.kind, t.path.clone()));
-            }
-        }
-        hit
-    }
-}
 
 pub fn url_path(token: &str) -> String {
     format!("{PREFIX}{token}/{FILE}")
@@ -194,9 +113,13 @@ pub fn valid_url(url: &str) -> bool {
         && url.chars().all(|c| c.is_ascii_graphic())
 }
 
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Reply {
-    File { path: PathBuf, head: bool },
+    File { path: PathBuf, head: bool, first: bool },
+    Html { body: String, head: bool },
+    Pair { token: String },
+    Redirect(String),
     NotFound,
     Forbidden,
     Method,
@@ -205,6 +128,8 @@ pub enum Reply {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Route<'a> {
     ApkFile(&'a str),
+    Page(&'a str),
+    Pair(&'a str),
 }
 
 pub fn allowed_peer(ip: IpAddr) -> bool {
@@ -215,9 +140,21 @@ fn valid_token(token: &str) -> bool {
     !token.is_empty() && token.len() <= MAX_TOKEN && token.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
+pub fn page_path(token: &str) -> String {
+    format!("{PREFIX}{token}/")
+}
+
 pub fn route(target: &str) -> Option<Route<'_>> {
-    let token = target.strip_prefix(PREFIX).and_then(|r| r.strip_suffix(FILE)).and_then(|r| r.strip_suffix('/'))?;
-    valid_token(token).then_some(Route::ApkFile(token))
+    let (token, leaf) = target.strip_prefix(PREFIX)?.split_once('/')?;
+    if !valid_token(token) {
+        return None;
+    }
+    match leaf {
+        FILE => Some(Route::ApkFile(token)),
+        "" => Some(Route::Page(token)),
+        PAIR => Some(Route::Pair(token)),
+        _ => None,
+    }
 }
 
 pub fn resolve(tickets: &Tickets, ip: IpAddr, head: &str, now: u64) -> Reply {
@@ -235,89 +172,21 @@ pub fn resolve(tickets: &Tickets, ip: IpAddr, head: &str, now: u64) -> Reply {
         "HEAD" => true,
         _ => return Reply::Method,
     };
-    match route(target) {
-        Some(Route::ApkFile(token)) => match tickets.lookup(token, now) {
-            Some((_, path)) if is_apk(&path) => Reply::File { path, head: head_only },
-            _ => Reply::NotFound,
-        },
-        None => Reply::NotFound,
-    }
-}
-
-pub fn classify(seen: &[u8]) -> Option<bool> {
-    if NEEDLES.iter().any(|n| seen.starts_with(n)) {
-        return Some(true);
-    }
-    if NEEDLES.iter().any(|n| n.starts_with(seen)) {
-        return None;
-    }
-    Some(false)
-}
-
-pub async fn sniff(stream: &TcpStream, deadline: Instant) -> bool {
-    let mut buf = [0u8; 16];
-    loop {
-        let Ok(Ok(n)) = timeout_at(deadline, stream.peek(&mut buf)).await else { return false };
-        if n == 0 {
-            return false;
+    let Some(route) = route(target) else { return Reply::NotFound };
+    let (Route::ApkFile(token) | Route::Page(token) | Route::Pair(token)) = route;
+    let Some(hit) = tickets.hit(token, now).filter(|h| is_apk(&h.path)) else { return Reply::NotFound };
+    match route {
+        Route::ApkFile(_) => {
+            let first = !head_only && tickets.note_fetch(token, ip, now);
+            Reply::File { path: hit.path, head: head_only, first }
         }
-        match classify(&buf[..n]) {
-            Some(hit) => return hit,
-            None if Instant::now() + SNIFF_WAIT < deadline => tokio::time::sleep(SNIFF_WAIT).await,
-            None => return false,
+        _ if hit.kind != TicketKind::ApkPage => Reply::NotFound,
+        Route::Page(_) => {
+            let size = std::fs::metadata(&hit.path).map_or(0, |m| m.len());
+            let body = super::install_page::render(super::install_page::is_vi(head), &hit.version, size);
+            Reply::Html { body, head: head_only }
         }
+        Route::Pair(_) if head_only => Reply::Method,
+        Route::Pair(token) => Reply::Pair { token: token.to_owned() },
     }
-}
-
-async fn read_head(stream: &mut TcpStream, deadline: Instant) -> Option<String> {
-    let mut buf = Vec::with_capacity(1024);
-    let mut chunk = [0u8; 1024];
-    loop {
-        let n = timeout_at(deadline, stream.read(&mut chunk)).await.ok()?.ok()?;
-        if n == 0 {
-            return None;
-        }
-        buf.extend_from_slice(&chunk[..n]);
-        if buf.windows(4).any(|w| w == b"\r\n\r\n") {
-            break;
-        }
-        if buf.len() > MAX_HEAD {
-            return None;
-        }
-    }
-    String::from_utf8(buf).ok()
-}
-
-fn status_head(code: u16, text: &str) -> String {
-    format!("HTTP/1.1 {code} {text}\r\nContent-Length: 0\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n")
-}
-
-pub fn file_head(len: u64) -> String {
-    format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: {MIME}\r\nContent-Length: {len}\r\nContent-Disposition: attachment; filename=\"{FILE}\"\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n"
-    )
-}
-
-async fn respond(stream: &mut TcpStream, reply: Reply) -> std::io::Result<()> {
-    let (path, head_only) = match reply {
-        Reply::File { path, head } => (path, head),
-        Reply::Forbidden => return stream.write_all(status_head(403, "Forbidden").as_bytes()).await,
-        Reply::Method => return stream.write_all(status_head(405, "Method Not Allowed").as_bytes()).await,
-        Reply::NotFound => return stream.write_all(status_head(404, "Not Found").as_bytes()).await,
-    };
-    let Ok(file) = tokio::fs::File::open(&path).await else { return stream.write_all(status_head(404, "Not Found").as_bytes()).await };
-    let len = file.metadata().await?.len();
-    stream.write_all(file_head(len).as_bytes()).await?;
-    if !head_only {
-        let mut body = file.take(len);
-        let _ = timeout(SEND_MAX, tokio::io::copy(&mut body, stream)).await;
-    }
-    Ok(())
-}
-
-pub async fn serve(tickets: &Tickets, mut stream: TcpStream, ip: IpAddr, deadline: Instant) {
-    let Some(head) = read_head(&mut stream, deadline).await else { return };
-    let reply = resolve(tickets, ip, &head, now_secs());
-    let _ = respond(&mut stream, reply).await;
-    let _ = stream.shutdown().await;
 }

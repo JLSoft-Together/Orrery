@@ -46,6 +46,7 @@ pub struct TestHost {
     pub views: Mutex<Vec<Viewed>>,
     pub bundled: Mutex<Option<(PathBuf, String)>>,
     pub save_to: Mutex<Option<PathBuf>>,
+    pub events: Mutex<Vec<(String, Value)>>,
 }
 
 pub type Answer = Box<dyn Fn(&str, &Value) -> Option<Value> + Send + Sync>;
@@ -79,6 +80,9 @@ impl Host for TestHost {
     }
     fn changed(&self, _status: Value) {
         self.changes.fetch_add(1, Ordering::SeqCst);
+    }
+    fn event(&self, name: &str, payload: Value) {
+        lock(&self.events).push((name.to_owned(), payload));
     }
     fn awake(&self, on: bool) {
         lock(&self.awake).push(on);

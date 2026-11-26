@@ -12,7 +12,7 @@ use super::dashboard::Phone;
 use super::guard_hooks::link_ip;
 use super::guard_ip::key;
 use super::limits::Pending;
-use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_PROTO, CLOSE_RATE};
+use super::link::{Link, Out, Peer, Secure, CLOSE_DEVICE, CLOSE_HANDSHAKE, CLOSE_OFF, CLOSE_PROTO, CLOSE_RATE};
 use super::pair;
 use super::text::remote_text;
 use crate::state::lock;
@@ -61,6 +61,10 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         return;
     }
     let device = session.device_id.clone();
+    if ctx.hold.is_held(&device) {
+        ctx.record(&link, "fail", "held", None);
+        return link.out.close(CLOSE_OFF, "held").await;
+    }
     let key = session.device_static;
     let sec = Secure { transport: session.transport, out: link.out.clone() };
     let mut phone = Phone::new(ctx.clone(), sec, device.clone());
@@ -83,7 +87,9 @@ pub async fn serve(ctx: Arc<Ctx>, mut link: Link, pending: Option<Pending>, dead
         Ok(id) => id,
         Err(Admit::Revoked) => return link.out.close(CLOSE_DEVICE, "device").await,
         Err(Admit::Full) => return link.out.close(CLOSE_RATE, "sessions").await,
+        Err(Admit::Held) => return link.out.close(CLOSE_OFF, "held").await,
     };
+    phone.via = via;
     link.budget.open();
     let _ = link.out.send(Out::Good).await;
     ctx.board.mark_connect();

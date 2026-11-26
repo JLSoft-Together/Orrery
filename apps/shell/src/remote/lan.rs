@@ -127,7 +127,7 @@ pub async fn accept_loop(ctx: Arc<Ctx>, listener: std::net::TcpListener, mut sto
 async fn handle(ctx: Arc<Ctx>, stream: TcpStream, ip: IpAddr, pending: Pending) {
     let deadline = Instant::now() + HANDSHAKE;
     if super::install::sniff(&stream, deadline).await {
-        super::install::serve(&ctx.install, stream, ip, deadline).await;
+        super::install_pair::serve(ctx, stream, ip, deadline).await;
         drop(pending);
         return;
     }

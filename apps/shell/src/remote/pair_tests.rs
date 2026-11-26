@@ -33,7 +33,7 @@ fn a_phone_pairs_over_localhost_after_the_e2e_confirm_and_then_opens_a_session()
     assert_eq!(reply["name"], "Test PC");
     assert_eq!(reply["machine"].as_str(), Some(qr.machine.as_str()));
     assert_eq!(lock(&rig.host.asked).as_slice(), ["Pixel Test"]);
-    let ask = PairAsk { name: "Pixel Test".into(), platform: "android".into(), ip: Some("127.0.0.1".into()), country: None, via: "lan" };
+    let ask = PairAsk { name: "Pixel Test".into(), platform: "android".into(), ip: Some("127.0.0.1".into()), country: None, via: "lan", source: "qr" };
     assert_eq!(lock(&rig.host.pair_asks).as_slice(), [ask]);
     assert_eq!(Devices::load(&rig.dir).list()[0].platform, "android");
     let saved = Devices::load(&rig.dir);
@@ -198,7 +198,7 @@ fn a_denied_confirm_over_lan_shows_the_ip_and_sends_pair_denied() {
 fn the_confirm_title_names_platform_ip_country_and_route() {
     let vi = super::text::remote_text("vi");
     let en = super::text::remote_text("en");
-    let mut ask = PairAsk { name: "Pixel 9".into(), platform: "android".into(), ip: Some("203.0.113.7".into()), country: Some("VN".into()), via: "relay" };
+    let mut ask = PairAsk { name: "Pixel 9".into(), platform: "android".into(), ip: Some("203.0.113.7".into()), country: Some("VN".into()), via: "relay", source: "" };
     assert_eq!(vi.pair_title(&ask), "Ghép qua relay từ IP 203.0.113.7 [VN]: điện thoại android «Pixel 9»?");
     assert_eq!(en.pair_title(&ask), "Pair via relay from IP 203.0.113.7 [VN]: android phone “Pixel 9”?");
     ask.via = "lan";
@@ -215,7 +215,7 @@ fn a_hostile_phone_name_cannot_fake_the_route_or_ip_in_the_confirm_title() {
     let en = super::text::remote_text("en");
     let evil = "A» từ IP 192.168.1.5 qua LAN? «B";
     assert!(evil.chars().count() <= MAX_NAME);
-    let ask = PairAsk { name: clean_name(evil), platform: "android".into(), ip: Some("203.0.113.7".into()), country: Some("RU".into()), via: "relay" };
+    let ask = PairAsk { name: clean_name(evil), platform: "android".into(), ip: Some("203.0.113.7".into()), country: Some("RU".into()), via: "relay", source: "" };
     let title = vi.pair_title(&ask);
     assert!(title.starts_with("Ghép qua relay từ IP 203.0.113.7 [RU]: điện thoại android «"), "{title}");
     assert_eq!(title.matches('«').count(), 1);

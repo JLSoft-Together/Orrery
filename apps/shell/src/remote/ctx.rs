@@ -32,12 +32,13 @@ pub const MAX_RELAY_PAIR_TRIES: usize = 20;
 pub const RENEW_BEFORE: u64 = 7 * 86_400;
 const PAIR_WINDOW: Duration = Duration::from_secs(60);
 pub const PUSH_SETTLE: Duration = Duration::from_millis(1200);
-pub const DESKTOP_CAPS: [&str; 1] = ["devinfo"];
+pub const DESKTOP_CAPS: [&str; 2] = ["devinfo", "checklist"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Admit {
     Revoked,
     Full,
+    Held,
 }
 
 pub struct Welcome {
@@ -63,6 +64,7 @@ pub struct PairAsk {
     pub ip: Option<String>,
     pub country: Option<String>,
     pub via: &'static str,
+    pub source: &'static str,
 }
 
 pub trait Host: Send + Sync + 'static {
@@ -75,6 +77,7 @@ pub trait Host: Send + Sync + 'static {
         true
     }
     fn changed(&self, status: Value);
+    fn event(&self, _name: &str, _payload: Value) {}
     fn awake(&self, on: bool);
     fn ask(&self, action: &str, args: Value) -> Asked;
     fn pty(&self) -> Option<PtyEndpoint>;
@@ -96,6 +99,8 @@ pub enum Control {
     Revoked,
     Off,
     Restarting,
+    Held,
+    Probe,
 }
 
 struct Live {
@@ -134,6 +139,8 @@ pub struct Ctx {
     pub keepalive: Mutex<(Duration, Duration)>,
     pub install: super::install::Tickets,
     pub chat: super::chat_src::Hub,
+    pub hold: super::revoke::Hold,
+    pub probes: super::check::Probes,
 }
 
 impl Ctx {
@@ -172,6 +179,8 @@ impl Ctx {
             keepalive: Mutex::new((super::liveness::PING_EVERY, super::liveness::DEAD_AFTER)),
             install: super::install::Tickets::default(),
             chat: super::chat_src::Hub::default(),
+            hold: super::revoke::Hold::default(),
+            probes: super::check::Probes::default(),
         }
     }
 
@@ -187,6 +196,9 @@ impl Ctx {
         let devices = lock(&self.devices);
         if !devices.authorize(device, key, now) {
             return Err(Admit::Revoked);
+        }
+        if self.hold.is_held(device) {
+            return Err(Admit::Held);
         }
         let mut live = lock(&self.live);
         if live.len() >= MAX_SESSIONS {
@@ -222,6 +234,10 @@ impl Ctx {
         for live in lock(&self.live).values().filter(|l| devices.contains(&l.device)) {
             let _ = live.ctl.try_send(ctl);
         }
+    }
+
+    pub fn probe(&self, device: &str) -> Vec<&'static str> {
+        lock(&self.live).values().filter(|l| l.device == device && l.ctl.try_send(Control::Probe).is_ok()).map(|l| l.via).collect()
     }
 
     pub fn kick_all(&self, ctl: Control) {
@@ -275,6 +291,8 @@ impl Ctx {
         let mut out = shape.json(&cfg, lock(&self.devices).list(), &online);
         out["error"] = if running && lan.is_empty() { Value::from("lan") } else { Value::Null };
         out["guardRev"] = Value::from(self.guard.rev());
+        out["installFetched"] = self.install.fetched_json();
+        super::check::mark_held(&mut out, &self.hold.ids());
         out
     }
 
@@ -347,6 +365,7 @@ impl Ctx {
     }
 
     pub fn revoke(&self, ids: &[String]) -> usize {
+        self.hold.clear(ids);
         let gone = {
             let mut devices = lock(&self.devices);
             let gone = devices.remove(ids);

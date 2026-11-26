@@ -41,6 +41,11 @@ pub fn device_json(d: &Device, via: Option<&str>) -> Value {
             v[key] = Value::from(value.as_str());
         }
     }
+    for (key, value) in [("pairedVia", &d.paired_via), ("adbSerialHash", &d.adb_serial_hash)] {
+        if !value.is_empty() {
+            v[key] = Value::from(value.as_str());
+        }
+    }
     if let Some(via) = via {
         v["via"] = Value::from(via);
     }

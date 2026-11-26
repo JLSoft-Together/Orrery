@@ -28,7 +28,7 @@ function fakeApi(devices: AdbDevice[], over: Partial<ConnectApi> = {}): ConnectA
     pairStart: vi.fn(async () => ({ qr: 'QR', exp: Math.floor(Date.now() / 1000) + 120 })),
     pairCancel: vi.fn(async () => true),
     check: vi.fn(async () => goodCheck),
-    installState: vi.fn(async () => ({ ok: true as const, value: { apk: { path: 'C:/o.apk', name: 'o.apk', size: 1 }, missing: false, suggested: null, url: '', running: false } })),
+    installState: vi.fn(async () => ({ ok: true as const, value: { apk: { path: 'C:/o.apk', name: 'o.apk', size: 1 }, missing: false, suggested: null, url: '', running: false, source: null, version: '' } })),
     installUseSuggested: vi.fn(async () => ({ ok: false as const, error: 'apk' as const })),
     installStart: vi.fn(async () => ({ ok: true as const, value: { path: '/install/tok/orrery.apk', exp: Math.floor(Date.now() / 1000) + 600, port: 4330, addresses: ['192.168.1.2'] } })),
     installStop: vi.fn(async () => undefined),
@@ -174,7 +174,7 @@ describe('PhoneConnectWizard', () => {
   })
 
   it('qr path without an APK reports it', async () => {
-    await open([], {}, { installState: vi.fn(async () => ({ ok: true as const, value: { apk: null, missing: true, suggested: null, url: '', running: false } })) })
+    await open([], {}, { installState: vi.fn(async () => ({ ok: true as const, value: { apk: null, missing: true, suggested: null, url: '', running: false, source: null, version: '' } })) })
     await click('[data-connect-qr-show]')
     await vi.waitFor(() => expect(q('[data-connect-qr-error]')).not.toBeNull())
     expect(q('[data-connect-qr-error]')?.getAttribute('data-error')).toBe('apk')

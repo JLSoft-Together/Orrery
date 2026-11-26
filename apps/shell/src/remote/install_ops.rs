@@ -3,7 +3,7 @@ use std::path::Path;
 use serde_json::{json, Value};
 
 use super::config::now_secs;
-use super::install::{is_apk, pick_source, save_name, suggestion, url_path, valid_url, ApkSource, TicketKind, MAX_URL};
+use super::install::{is_apk, page_path, pick_source, save_name, suggestion, url_path, valid_url, ApkSource, TicketKind, MAX_URL};
 use super::Remote;
 use crate::state::lock;
 
@@ -55,11 +55,22 @@ impl Remote {
         };
         let custom = lock(&ctx.config).apk_path.clone();
         let Some(found) = self.apk_source(&custom) else { return json!({ "ok": false, "error": "apk" }) };
-        let Some((token, exp)) = ctx.install.issue(TicketKind::ApkPage, found.path, now_secs()) else { return json!({ "ok": false, "error": "rng" }) };
+        let Some((token, exp)) = ctx.install.issue_with(TicketKind::ApkPage, found.path, found.version, now_secs()) else { return json!({ "ok": false, "error": "rng" }) };
         let lan = ctx.lan();
         let port = lan.first().map_or(0, std::net::SocketAddr::port);
         let addresses: Vec<String> = lan.iter().map(|a| a.ip().to_string()).collect();
-        json!({ "ok": true, "path": url_path(&token), "exp": exp, "port": port, "addresses": addresses })
+        json!({ "ok": true, "path": url_path(&token), "page": page_path(&token), "exp": exp, "port": port, "addresses": addresses })
+    }
+
+    fn install_arm(&self, on: bool) -> Value {
+        match self.running_ctx() {
+            Ok(ctx) => {
+                ctx.install.arm(on, now_secs());
+                json!({ "ok": true, "armed": on })
+            }
+            Err(e) if !on => json!({ "ok": true, "armed": false, "error": e }),
+            Err(e) => json!({ "ok": false, "error": e }),
+        }
     }
 
     fn install_save(&self) -> Value {
@@ -104,6 +115,8 @@ impl Remote {
             }
             "start" => self.install_start(),
             "save" => self.install_save(),
+            "arm" => self.install_arm(true),
+            "disarm" => self.install_arm(false),
             "stop" => {
                 if let Some(c) = lock(&self.ctx).clone() {
                     c.install.revoke();

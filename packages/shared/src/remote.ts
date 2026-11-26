@@ -167,6 +167,7 @@ export interface RemotePairStart {
   exp: number
   relay?: boolean
   lan?: number
+  via?: 'usb' | 'qr' | 'lan'
 }
 
 const DEVICE_MAX = 100
@@ -271,6 +272,9 @@ export interface RemoteDevice {
   appBuild?: string
   model?: string
   os?: string
+  pairedVia?: 'usb' | 'qr' | 'lan'
+  adbSerialHash?: string
+  revoking?: boolean
 }
 
 export interface RemoteStatus {
@@ -285,6 +289,7 @@ export interface RemoteStatus {
   pairEnded?: 'tries' | 'denied' | null
   guardRev?: number
   relayUrl?: string
+  installFetched?: { ip: string; at: number } | null
 }
 
 export type RelaySetupState = 'none' | 'ready' | 'deploying' | 'error'

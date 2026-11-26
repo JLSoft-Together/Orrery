@@ -43,7 +43,8 @@ describe('remoteInstall', () => {
 
   it('accepts only a well formed ticket', () => {
     const good = { ok: true, path: '/install/AbC-_12/orrery.apk', exp: 100, port: 4320, addresses: ['192.168.1.5', 'bad', '10.0.0.2'] }
-    expect(parseTicket(good)).toEqual({ ok: true, value: { path: '/install/AbC-_12/orrery.apk', exp: 100, port: 4320, addresses: ['192.168.1.5', '10.0.0.2'] } })
+    expect(parseTicket(good)).toEqual({ ok: true, value: { path: '/install/AbC-_12/orrery.apk', page: '/install/AbC-_12/', exp: 100, port: 4320, addresses: ['192.168.1.5', '10.0.0.2'] } })
+    expect(parseTicket({ ...good, page: '/evil/' }).ok && (parseTicket({ ...good, page: '/evil/' }) as { value: { page: string } }).value.page).toBe('/install/AbC-_12/')
     expect(parseTicket({ ...good, path: '/install/a/../x' }).ok).toBe(false)
     expect(parseTicket({ ...good, addresses: [] }).ok).toBe(false)
     expect(parseTicket({ ...good, port: 0 }).ok).toBe(false)

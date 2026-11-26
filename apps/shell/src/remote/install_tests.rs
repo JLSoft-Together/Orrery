@@ -32,7 +32,7 @@ fn a_ticket_serves_its_file_until_it_expires() {
     let (token, exp) = t.issue(TicketKind::ApkPage, file.clone(), 1000).unwrap();
     assert_eq!(exp, 1000 + TTL_SECS);
     assert_eq!(token.len(), 22);
-    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000 + TTL_SECS - 1), Reply::File { path: file.clone(), head: false });
+    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000 + TTL_SECS - 1), Reply::File { path: file.clone(), head: false, first: true });
     assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000 + TTL_SECS), Reply::NotFound);
     assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000), Reply::NotFound);
 }
@@ -77,13 +77,14 @@ fn a_full_set_of_slots_drops_the_oldest_of_the_same_kind() {
 fn only_the_one_path_is_served() {
     let file = apk("inst-path", b"PK");
     let t = Tickets::default();
-    let (token, _) = t.issue(TicketKind::ApkPage, file, 0).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkOffer, file, 0).unwrap();
     for target in [
         format!("/install/{token}/other.apk"),
         format!("/install/{token}/orrery.apk?x=1"),
         format!("/install/{token}/../config.json"),
         format!("/install/{token}"),
         format!("/install/{token}/"),
+        format!("/install/{token}/pair"),
         format!("/install/x/{token}/orrery.apk"),
         "/install//orrery.apk".to_owned(),
         "/remote".to_owned(),

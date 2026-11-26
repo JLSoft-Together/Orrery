@@ -4,13 +4,17 @@ mod cf_api;
 mod chat;
 pub mod chat_src;
 mod cf_http;
+mod check;
 mod config;
 mod confirm;
 mod ctx;
 mod danger;
 mod dashboard;
+mod dashboard_msg;
+mod dashboard_ping;
 mod device_info;
 mod devices;
+mod devices_push;
 mod fcm;
 mod fit;
 mod fcm_files;
@@ -21,7 +25,11 @@ mod guard_ip;
 mod guard_ops;
 pub mod host;
 mod install;
+mod install_http;
 mod install_ops;
+mod install_page;
+mod install_pair;
+mod install_tickets;
 mod keys;
 mod lan;
 mod limits;
@@ -29,6 +37,8 @@ mod liveness;
 mod link;
 mod mdns;
 mod pair;
+mod pair_meta;
+mod pair_ops;
 pub mod pane_link;
 mod patch;
 mod phone_pty;
@@ -45,6 +55,7 @@ mod rebind;
 pub mod scope;
 mod relay;
 mod relay_setup;
+mod revoke;
 mod session;
 mod status;
 mod text;
@@ -111,6 +122,12 @@ mod webpush_live_tests;
 mod fit_tests;
 #[cfg(test)]
 mod install_tests;
+#[cfg(test)]
+mod install_page_tests;
+#[cfg(test)]
+mod pair_via_tests;
+#[cfg(test)]
+mod revoke_tests;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -118,7 +135,6 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use core_remote_proto::pair::{PairTicket, MAX_LAN};
 use serde_json::{json, Value};
 use tokio::runtime::Runtime;
 use tokio::sync::watch;
@@ -135,7 +151,7 @@ use keys::KeyStore;
 
 pub const CHANGED: &str = "ccm:remote-changed";
 pub const MAX_SUMMARY: usize = 1 << 20;
-pub const CHANNELS: [&str; 23] = [
+pub const CHANNELS: [&str; 25] = [
     "ccm:remote-publish",
     "ccm:remote-status",
     "ccm:remote-enable",
@@ -159,8 +175,11 @@ pub const CHANNELS: [&str; 23] = [
     "ccm:remote-push-device",
     "ccm:remote-guard",
     "ccm:remote-install",
+    "ccm:remote-check",
+    "ccm:remote-revoke-undo",
 ];
 pub const RELAY_PROGRESS: &str = "ccm:remote-relay-progress";
+
 const SWEEP_EVERY: Duration = Duration::from_secs(3600);
 const DRAIN: Duration = Duration::from_millis(400);
 
@@ -335,6 +354,7 @@ impl Remote {
     }
 
     pub fn shutdown(&self) {
+        self.flush_revokes();
         self.stop(Control::Restarting);
     }
 
@@ -343,53 +363,6 @@ impl Remote {
             return Err("off".into());
         }
         self.ctx().map_err(str::to_owned)
-    }
-
-    pub fn pair_start(&self) -> Result<Value, String> {
-        let ctx = self.running_ctx()?;
-        let ticket = if ctx.relay_state() == "online" { Some(PairTicket::generate().map_err(|_| "rng")?) } else { None };
-        let relay = ticket.is_some();
-        let (code, exp) = ctx.pairing.start(now_secs(), ticket.as_ref()).ok_or("rng")?;
-        let Some(qr) = pair::qr(&ctx, code, exp, ticket) else {
-            ctx.pairing.cancel();
-            return Err("qr".into());
-        };
-        ctx.changed();
-        Ok(json!({ "qr": qr, "exp": exp, "relay": relay, "lan": ctx.lan().len().min(MAX_LAN) }))
-    }
-
-    pub fn pair_cancel(&self) -> Value {
-        if let Some(c) = lock(&self.ctx).clone() {
-            if c.pairing.cancel() {
-                c.changed();
-            }
-        }
-        json!(true)
-    }
-
-    pub fn revoke(&self, ids: &[String]) -> Result<Value, String> {
-        let ctx = self.ctx().map_err(str::to_owned)?;
-        ctx.revoke(ids);
-        Ok(json!(true))
-    }
-
-    pub fn rename_device(&self, arg: &Value) -> Result<Value, String> {
-        let id = arg.get("deviceId").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= 128).ok_or("device")?;
-        let name = arg.get("name").and_then(Value::as_str).ok_or("name")?;
-        let ctx = self.ctx().map_err(str::to_owned)?;
-        let shown = lock(&ctx.devices).rename(id, name);
-        if shown.is_none() {
-            return Ok(json!(false));
-        }
-        ctx.changed();
-        Ok(json!(true))
-    }
-
-    pub fn revoke_all(&self) -> Result<Value, String> {
-        let ctx = self.ctx().map_err(str::to_owned)?;
-        let ids = lock(&ctx.devices).ids();
-        ctx.revoke(&ids);
-        Ok(json!(true))
     }
 
     pub fn publish(&self, summary: &Value) -> bool {
@@ -453,12 +426,11 @@ impl Remote {
         match channel {
             "ccm:remote-status" => Ok(self.status()),
             "ccm:remote-enable" => Ok(self.enable(arg.as_bool().unwrap_or(false))),
-            "ccm:remote-pair-start" => Ok(self.pair_start().unwrap_or(Value::Null)),
+            "ccm:remote-pair-start" => Ok(self.pair_start_with(arg).unwrap_or(Value::Null)),
             "ccm:remote-pair-cancel" => Ok(self.pair_cancel()),
-            "ccm:remote-revoke" => {
-                let Some(id) = arg.as_str() else { return Ok(json!(false)) };
-                Ok(self.revoke(&[id.to_owned()]).unwrap_or(json!(false)))
-            }
+            "ccm:remote-revoke" => Ok(self.revoke_call(arg)),
+            "ccm:remote-revoke-undo" => Ok(self.revoke_undo(arg)),
+            "ccm:remote-check" => Ok(self.remote_check(arg)),
             "ccm:remote-device-rename" => Ok(self.rename_device(arg).unwrap_or(json!(false))),
             "ccm:remote-revoke-all" => Ok(self.revoke_all().unwrap_or(json!(false))),
             "ccm:remote-publish" => Ok(json!(self.publish(arg))),

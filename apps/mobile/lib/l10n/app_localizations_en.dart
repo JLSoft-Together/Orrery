@@ -195,6 +195,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errRate => 'Too many commands. Slow down.';
 
   @override
+  String get errNeedsAuth =>
+      'This command needs device authentication. Update the app to send it.';
+
+  @override
   String get errProto => 'App and desktop versions do not match.';
 
   @override

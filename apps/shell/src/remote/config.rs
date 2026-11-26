@@ -75,11 +75,13 @@ pub struct Config {
     pub apk_path: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub apk_url: String,
+    #[serde(default = "super::danger::default_rules")]
+    pub danger_rules: Vec<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { machine_id: String::new(), enabled: false, port: DEFAULT_PORT, keep_awake: true, relay: RelayConfig::default(), firebase: FirebaseConfig::default(), webpush_subject: String::new(), apk_path: String::new(), apk_url: String::new() }
+        Config { machine_id: String::new(), enabled: false, port: DEFAULT_PORT, keep_awake: true, relay: RelayConfig::default(), firebase: FirebaseConfig::default(), webpush_subject: String::new(), apk_path: String::new(), apk_url: String::new(), danger_rules: super::danger::default_rules() }
     }
 }
 

@@ -115,6 +115,7 @@
   "errTimeout": "The computer did not answer in time.",
   "errOffline": "Computer offline.",
   "errRate": "Too many commands. Slow down.",
+  "errNeedsAuth": "This command needs device authentication. Update the app to send it.",
   "errProto": "App and desktop versions do not match.",
   "errInternal": "Something went wrong on the computer.",
   "revokedTitle": "The computer revoked this phone",

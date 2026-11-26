@@ -7,6 +7,7 @@ mod cf_http;
 mod config;
 mod confirm;
 mod ctx;
+mod danger;
 mod dashboard;
 mod device_info;
 mod devices;
@@ -72,6 +73,8 @@ mod unit_tests;
 mod device_info_tests;
 #[cfg(test)]
 mod ws_tests;
+#[cfg(test)]
+mod danger_tests;
 #[cfg(test)]
 mod chat_tests;
 #[cfg(test)]

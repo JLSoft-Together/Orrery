@@ -187,6 +187,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get errRate => 'Gửi lệnh quá nhanh. Chậm lại.';
 
   @override
+  String get errNeedsAuth =>
+      'Lệnh này cần xác thực thiết bị. Cập nhật app để gửi.';
+
+  @override
   String get errProto => 'Phiên bản app và desktop không khớp.';
 
   @override

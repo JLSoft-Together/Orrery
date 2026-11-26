@@ -333,6 +333,7 @@ impl Ctx {
             "caps": DESKTOP_CAPS,
         });
         let cfg = lock(&self.config);
+        out["dangerRules"] = super::danger::rules_json(&cfg.danger_rules);
         if cfg.relay.registered && !cfg.relay.url.is_empty() {
             out["relay"] = Value::from(cfg.relay.url.clone());
         }

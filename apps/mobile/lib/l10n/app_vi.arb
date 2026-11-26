@@ -52,6 +52,7 @@
   "errTimeout": "Máy tính không trả lời kịp.",
   "errOffline": "Máy đang offline.",
   "errRate": "Gửi lệnh quá nhanh. Chậm lại.",
+  "errNeedsAuth": "Lệnh này cần xác thực thiết bị. Cập nhật app để gửi.",
   "errProto": "Phiên bản app và desktop không khớp.",
   "errInternal": "Máy tính gặp lỗi.",
   "revokedTitle": "Máy đã thu hồi điện thoại này",

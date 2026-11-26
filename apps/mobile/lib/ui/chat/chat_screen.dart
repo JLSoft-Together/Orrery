@@ -5,6 +5,7 @@ import '../../remote/chat_protocol.dart';
 import '../../remote/link_state.dart';
 import '../../remote/providers.dart';
 import '../commands.dart';
+import '../danger_guard.dart';
 import '../model/workspace_model.dart';
 import '../terminal/terminal_pane.dart';
 import '../theme/orrery_shape.dart';
@@ -50,6 +51,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       api: ref.read(machineApiProvider(widget.machineId)),
       paneKey: widget.paneKey,
       cacheKey: '${widget.machineId}|${widget.paneKey}',
+      reauthorize: _reauthorize,
     )..addListener(_onChat);
     _chat.start();
     _life = AppLifecycleListener(
@@ -76,7 +78,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  Future<bool> _send(String text) {
+  Future<bool> _send(String text, bool authed) {
     if (_scroll.hasClients && _scroll.offset > 0) {
       _scroll.animateTo(
         0,
@@ -84,8 +86,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         curve: Curves.easeOutCubic,
       );
     }
-    return _chat.send(text);
+    return _chat.send(text, authed: authed);
   }
+
+  Future<bool> _reauthorize(String text) =>
+      mounted ? authorizeNow(context) : Future.value(false);
 
   void _toggle() => setState(() => _termMode = !_termMode);
 
@@ -217,6 +222,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 enabled: true,
                 working: working,
                 onSend: _send,
+                danger: ref.watch(dangerRulesProvider(id)),
                 onStop: () => _stop(pane),
                 onPlus: () => showChatPlusSheet(
                   context,

@@ -14,6 +14,7 @@ use super::pty_bridge::{Attach, FromHub};
 use super::viewer::{fits, with_accept, ViewerState};
 use super::viewer_map::lookup;
 use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS};
+use crate::state::lock;
 
 pub const WS_TIMEOUT: Duration = Duration::from_secs(5);
 pub const MAX_IN_FLIGHT: usize = 4;
@@ -157,7 +158,17 @@ impl Phone {
                 if t == "ws.get" {
                     return self.ws_get(id).await;
                 }
-                self.call(id, t, command_of(v), false).await
+                let mut cmd = command_of(v);
+                if t == "ws.send" {
+                    let rules = lock(&self.ctx.config).danger_rules.clone();
+                    let vi = self.ctx.host.welcome().locale == "vi";
+                    if let Some(mut denied) = super::danger::needs_auth(&rules, &cmd, vi) {
+                        denied["re"] = Value::from(id);
+                        return self.sec.json(&denied).await;
+                    }
+                    super::danger::strip_authed(&mut cmd);
+                }
+                self.call(id, t, cmd, false).await
             }
             _ => match lookup(t) {
                 Some(spec) => self.viewer_command(id, spec, v).await,

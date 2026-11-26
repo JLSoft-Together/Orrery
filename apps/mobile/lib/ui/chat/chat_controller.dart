@@ -15,6 +15,8 @@ class OutboxItem {
   final Set<String> seen;
   final String text;
   final DateTime at;
+  bool authed = false;
+  bool authRetried = false;
   OutboxState state = OutboxState.sending;
   String? error;
 }
@@ -50,6 +52,7 @@ class ChatController extends ChangeNotifier {
     required this.paneKey,
     this.cacheKey,
     this.sentTtl = const Duration(seconds: 20),
+    this.reauthorize,
     DateTime Function()? now,
   }) : log = cacheKey == null
            ? ChatLog(paneKey)
@@ -63,6 +66,7 @@ class ChatController extends ChangeNotifier {
   final MachineApi api;
   final String paneKey;
   final Duration sentTtl;
+  final Future<bool> Function(String text)? reauthorize;
   final ChatLog log;
   final DateTime Function() _now;
 
@@ -176,14 +180,14 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  Future<bool> send(String raw) async {
+  Future<bool> send(String raw, {bool authed = false}) async {
     final text = raw.trim();
     if (text.isEmpty) return false;
     final seen = {
       for (final item in log.items)
         if (item is ChatMe) item.id,
     };
-    final item = OutboxItem(_nextId++, text, _now(), seen);
+    final item = OutboxItem(_nextId++, text, _now(), seen)..authed = authed;
     outbox.add(item);
     _notify();
     return _deliver(item);
@@ -192,6 +196,7 @@ class ChatController extends ChangeNotifier {
   Future<bool> resend(OutboxItem item) {
     item
       ..state = OutboxState.sending
+      ..authRetried = false
       ..error = null;
     _notify();
     return _deliver(item);
@@ -205,7 +210,11 @@ class ChatController extends ChangeNotifier {
 
   Future<bool> _deliver(OutboxItem item) async {
     try {
-      await api.command('ws.send', {'paneKey': paneKey, 'text': item.text});
+      await api.command('ws.send', {
+        'paneKey': paneKey,
+        'text': item.text,
+        if (item.authed) 'authed': true,
+      });
       item.state = OutboxState.sent;
       _timers[item.id] = Timer(sentTtl, () {
         _timers.remove(item.id);
@@ -216,6 +225,9 @@ class ChatController extends ChangeNotifier {
       _notify();
       return true;
     } on RemoteCommandException catch (e) {
+      if (e.code == 'needsAuth' && await _retryAfterAuth(item)) {
+        return _deliver(item);
+      }
       item
         ..state = OutboxState.unsent
         ..error = e.code;
@@ -226,6 +238,21 @@ class ChatController extends ChangeNotifier {
     }
     _notify();
     return false;
+  }
+
+  Future<bool> _retryAfterAuth(OutboxItem item) async {
+    final ask = reauthorize;
+    if (ask == null || item.authRetried || _disposed) return false;
+    item.authRetried = true;
+    bool ok;
+    try {
+      ok = await ask(item.text);
+    } on Object {
+      ok = false;
+    }
+    if (!ok || _disposed) return false;
+    item.authed = true;
+    return true;
   }
 
   void _dropEchoed() {

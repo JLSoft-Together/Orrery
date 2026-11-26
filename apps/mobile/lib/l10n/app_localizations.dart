@@ -410,6 +410,12 @@ abstract class AppLocalizations {
   /// **'Too many commands. Slow down.'**
   String get errRate;
 
+  /// No description provided for @errNeedsAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'This command needs device authentication. Update the app to send it.'**
+  String get errNeedsAuth;
+
   /// No description provided for @errProto.
   ///
   /// In en, this message translates to:

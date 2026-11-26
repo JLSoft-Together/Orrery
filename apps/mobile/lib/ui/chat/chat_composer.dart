@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../security/danger_rules.dart';
+import '../danger_guard.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 
@@ -13,12 +15,14 @@ class ChatComposer extends StatefulWidget {
     required this.onStop,
     this.onPlus,
     this.chips = const [],
+    this.danger = const DangerRules.none(),
   });
 
   final String hint;
   final bool enabled;
   final bool working;
-  final Future<bool> Function(String text) onSend;
+  final Future<bool> Function(String text, bool authed) onSend;
+  final DangerRules danger;
   final VoidCallback onStop;
   final VoidCallback? onPlus;
   final List<String> chips;
@@ -53,8 +57,19 @@ class ChatComposerState extends State<ChatComposer> {
   Future<void> _send() async {
     final value = _text.text.trim();
     if (value.isEmpty) return;
+    final verdict = await _verdict(value);
+    if (verdict == DangerVerdict.cancelled || !mounted) return;
     _text.clear();
-    await widget.onSend(value);
+    await widget.onSend(value, verdict == DangerVerdict.authed);
+  }
+
+  Future<DangerVerdict> _verdict(String value) =>
+      confirmDanger(context, widget.danger, value);
+
+  Future<void> _sendChip(String chip) async {
+    final verdict = await _verdict(chip);
+    if (verdict == DangerVerdict.cancelled) return;
+    await widget.onSend(chip, verdict == DangerVerdict.authed);
   }
 
   @override
@@ -88,7 +103,7 @@ class ChatComposerState extends State<ChatComposer> {
                       key: ValueKey('chat-chip-$chip'),
                       label: Text(chip),
                       onPressed: widget.enabled
-                          ? () => widget.onSend(chip)
+                          ? () => _sendChip(chip)
                           : null,
                       shape: const StadiumBorder(),
                       side: BorderSide(color: c.line),

@@ -54,7 +54,7 @@ class PushPresenter {
       await _clear(data['m']);
       return null;
     }
-    final forced = data['k'] == 'open';
+    final forced = data['k'] == 'open' || data['k'] == 'apk';
     if (!forced && await paused()) return null;
     final show =
         forced ||

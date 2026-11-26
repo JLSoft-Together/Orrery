@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/protocol.dart';
 import '../model/workspace_model.dart' show baseName;
+import '../run/run_log_page.dart';
 import '../widgets/common.dart';
+import '../workspace/machine_scope.dart';
 import 'async_panel.dart';
 import 'run_models.dart';
 import 'run_widgets.dart';
@@ -146,6 +148,18 @@ class _RunPageState extends ConsumerState<RunPage> {
     {'sessionId': s.id, 'hot': hot},
   );
 
+  void _openLog(RunSessionInfo s) => Navigator.of(context).push(
+    machineRoute<void>(
+      widget.machineId,
+      (_) => RunLogPage(
+        machineId: widget.machineId,
+        sessionId: s.id,
+        title: s.configName.isEmpty ? baseName(widget.root) : s.configName,
+        cwd: s.cwd.isEmpty ? widget.root : s.cwd,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -237,6 +251,7 @@ class _RunPageState extends ConsumerState<RunPage> {
                     lines: _logs[s.id] ?? const [],
                     onStop: () => _stop(s),
                     onReload: (hot) => _reload(s, hot),
+                    onLog: () => _openLog(s),
                   ),
               ],
             ),

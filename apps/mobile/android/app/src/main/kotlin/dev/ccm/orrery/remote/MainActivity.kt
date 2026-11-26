@@ -23,6 +23,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        ApkInstaller.register(this, flutterEngine.dartExecutor.binaryMessenger)
         pairReady = false
         pairChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PAIR_CHANNEL).also { channel ->
             channel.setMethodCallHandler { call, result ->

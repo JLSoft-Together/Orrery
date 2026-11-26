@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import '../install/apk_offer.dart';
 import '../l10n/app_localizations.dart';
 import 'push_menu.dart';
 import 'push_seal.dart';
@@ -18,6 +19,7 @@ const Set<String> pushKinds = {
   'test',
   'running',
   'open',
+  'apk',
 };
 const Set<String> menuKinds = {'question', 'permission', 'attention'};
 final RegExp pushMachinePattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
@@ -40,8 +42,10 @@ class PushNotice {
     this.menu,
     this.startedAt,
     this.labels = const [],
+    this.apk,
   });
 
+  final ApkOffer? apk;
   final String? machine;
   final String kind;
   final String title;
@@ -58,7 +62,12 @@ class PushNotice {
 
   String? get payload => machine == null
       ? null
-      : jsonEncode({'m': machine, 'p': ?pane, 'sig': ?menu?.sig});
+      : jsonEncode({
+          'm': machine,
+          'p': ?pane,
+          'sig': ?menu?.sig,
+          if (apk != null) ...{'k': 'apk', 'apk': apk!.encode()},
+        });
 }
 
 String pushKind(String? raw) => pushKinds.contains(raw) ? raw! : 'attention';
@@ -74,6 +83,7 @@ AppLocalizations pushStrings(String languageCode) =>
       'error' => (l.pushFixedErrorTitle, l.pushFixedErrorBody),
       'running' => (l.pushFixedRunningTitle, l.pushFixedRunningBody),
       'open' => (l.pushFixedOpenTitle, l.pushFixedOpenBody),
+      'apk' => (l.pushFixedApkTitle, l.pushFixedApkBody),
       'security' => (l.pushFixedSecurityTitle, l.pushFixedSecurityBody),
       'test' => (l.pushFixedTestTitle, l.pushFixedTestBody),
       _ => (l.pushFixedAttentionTitle, l.pushFixedAttentionBody),
@@ -146,6 +156,7 @@ Future<PushNotice> pushNotice(
     menu: menuKinds.contains(fixed.kind) ? open.menu : null,
     startedAt: fixed.startedAt,
     labels: open.labels,
+    apk: fixed.kind == 'apk' ? open.apk?.withMachine(machine) : null,
   );
 }
 

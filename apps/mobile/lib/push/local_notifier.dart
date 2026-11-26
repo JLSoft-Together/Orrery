@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'push_apk.dart';
 import 'push_menu.dart';
 import 'push_notice.dart';
 
@@ -25,13 +26,26 @@ abstract class PushNotifier {
 String? payloadWithAction(String? payload, String? actionId) {
   final data = pushTapData(payload);
   if (data == null) return payload;
-  return jsonEncode(tapDataWithAction(data, actionId));
+  return jsonEncode(
+    tapDataWithInstall(tapDataWithAction(data, actionId), actionId),
+  );
 }
 
 List<AndroidNotificationAction> noticeActions(
   PushNotice notice,
-  String openLabel,
-) {
+  String openLabel, [
+  String installLabel = '',
+]) {
+  if (notice.apk != null) {
+    return [
+      AndroidNotificationAction(
+        installActionId,
+        installLabel,
+        showsUserInterface: true,
+        cancelNotification: true,
+      ),
+    ];
+  }
   final menu = notice.menu;
   if (menu != null) {
     return [
@@ -60,6 +74,7 @@ AndroidNotificationDetails noticeDetails(
   PushNotice notice, {
   required String channelName,
   required String openLabel,
+  String installLabel = '',
 }) {
   if (notice.ongoing) {
     return AndroidNotificationDetails(
@@ -94,7 +109,7 @@ AndroidNotificationDetails noticeDetails(
     visibility: NotificationVisibility.public,
     category: AndroidNotificationCategory.message,
     tag: notice.tag,
-    actions: noticeActions(notice, openLabel),
+    actions: noticeActions(notice, openLabel, installLabel),
     styleInformation: BigTextStyleInformation(notice.body),
   );
 }
@@ -164,6 +179,7 @@ class LocalPushNotifier implements PushNotifier {
               ? strings.pushRunningChannel
               : channelName,
           openLabel: strings.pushActionOpen,
+          installLabel: strings.pushActionInstall,
         ),
       ),
     );

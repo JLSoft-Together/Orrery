@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../app/link_source.dart';
 import '../remote/secure_kv.dart';
+import 'push_apk.dart';
 import 'push_config.dart';
 import 'push_gateway.dart';
 import 'push_host.dart';
@@ -70,6 +71,10 @@ class PushService implements LinkSource {
   bool _revoked = false;
   String? _error;
   Uri? _initial;
+  ApkTap? _initialApk;
+  final StreamController<ApkTap> _apkTaps = StreamController.broadcast();
+
+  Stream<ApkTap> get apkTaps => _apkTaps.stream;
   Future<void> _queue = Future<void>.value();
   Set<String> _mute = {'error'};
   bool _content = true;
@@ -163,7 +168,10 @@ class PushService implements LinkSource {
     try {
       if (!await gateway.open(config)) return;
       final initial = await gateway.initialOpen();
-      if (initial != null) _initial = pushLink(initial);
+      if (initial != null) {
+        if (initial['k'] == 'apk') _initialApk = await _apkTap(initial);
+        if (_initialApk == null) _initial = pushLink(initial);
+      }
       await _checkPermission();
       await _syncAll();
     } on PushException catch (e) {
@@ -181,6 +189,7 @@ class PushService implements LinkSource {
     await host.dispose();
     await _changes.close();
     await _taps.close();
+    await _apkTaps.close();
   }
 
   void _fail(Object error) {
@@ -266,8 +275,35 @@ class PushService implements LinkSource {
   }
 
   void _onOpened(Map<String, String> data) {
+    if (data['k'] == 'apk') {
+      unawaited(_openApk(data));
+      return;
+    }
     final uri = pushLink(data);
     if (uri != null && !_taps.isClosed) _taps.add(uri);
+  }
+
+  Future<ApkTap?> _apkTap(Map<String, String> data) => apkTapOf(
+    data,
+    key: () => readStaticKey(kv),
+    machineKey: machineKey,
+    strings: pushStrings(localeCode()),
+  );
+
+  Future<void> _openApk(Map<String, String> data) async {
+    final tap = await _apkTap(data);
+    if (tap != null) {
+      if (!_apkTaps.isClosed) _apkTaps.add(tap);
+      return;
+    }
+    final uri = pushLink(data);
+    if (uri != null && !_taps.isClosed) _taps.add(uri);
+  }
+
+  ApkTap? takeInitialApk() {
+    final tap = _initialApk;
+    _initialApk = null;
+    return tap;
   }
 
   void _onRefresh(PushTokenChange change) {

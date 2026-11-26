@@ -75,6 +75,7 @@ Future<void> handleBackgroundPush(
     return;
   }
   if (notice.kind != 'open' &&
+      notice.kind != 'apk' &&
       await readPausedUntil(kv, now ?? clock.now()) != null) {
     return;
   }

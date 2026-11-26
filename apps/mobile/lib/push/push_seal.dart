@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
 
+import '../install/apk_offer.dart';
 import '../remote/keys.dart';
 import '../remote/machines.dart';
 import '../remote/secure_kv.dart';
@@ -26,8 +27,10 @@ class SealedNotice {
     this.pane,
     this.menu,
     this.labels = const [],
+    this.apk,
   });
 
+  final ApkOffer? apk;
   final String title;
   final String body;
   final String? pane;
@@ -144,6 +147,7 @@ Future<SealedNotice?> openSeal({
       body: text,
       pane: pane as String?,
       menu: parsePushMenu(value['menu']),
+      apk: ApkOffer.parse(value['apk']),
       labels: wl is List
           ? parseWaitingLabels(jsonEncode(wl.whereType<String>().toList()))
           : const [],

@@ -7,6 +7,7 @@ import 'package:orrery_remote/app/bootstrap.dart';
 import 'package:orrery_remote/app/deep_link_host.dart';
 import 'package:orrery_remote/app/home_page.dart';
 import 'package:orrery_remote/app/link_source.dart';
+import 'package:orrery_remote/install/apk_install_host.dart';
 import 'package:orrery_remote/push/pause_prompt.dart';
 import 'package:orrery_remote/push/push_providers.dart';
 import 'package:orrery_remote/push/push_service.dart';
@@ -163,11 +164,16 @@ class _OrreryRemoteAppState extends State<OrreryRemoteApp>
             final content = PausePromptHost(
               push: widget.push,
               navigatorKey: _navigator,
-              child: DeepLinkHost(
-                navigatorKey: _navigator,
-                source: widget.linkSource,
+              child: ApkInstallHost(
                 lock: widget.lock,
-                child: child ?? const SizedBox.shrink(),
+                push: widget.push,
+                navigatorKey: _navigator,
+                child: DeepLinkHost(
+                  navigatorKey: _navigator,
+                  source: widget.linkSource,
+                  lock: widget.lock,
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             );
             final lock = widget.lock;

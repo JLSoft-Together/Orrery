@@ -12,7 +12,10 @@ import {
 import { i18n } from '../../../i18n'
 import { workspaceBridge } from '../../next/lib/workspaceBridge'
 import { baseName } from '../../../core/lib/preview'
-import { pickForPhone } from '../lib/remoteMenu'
+import { pickForPhone, remoteMenuOf } from '../lib/remoteMenu'
+import { clearSnoozed } from '../../next/lib/railSnooze'
+import { useSnoozeStore } from '../../monitor/stores/snooze'
+import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useMenuQueueStore } from '@features/click-menu'
 import { useInboxStore } from '@features/click-menu'
 import { useRemoteStore } from '../stores/remote'
@@ -24,6 +27,7 @@ import { useSessionActions, type ActFail } from '../../monitor/composables/useSe
 
 export type PhoneResult = { ok: true; [key: string]: unknown } | { ok: false; error: RemoteErrorCode } | { needsConfirm: RemoteNeedsConfirm }
 
+export const REPLY_WAIT_MS = 3000
 const AGENT_PRESETS = new Set(['claude', 'codex'])
 let installed = false
 
@@ -198,6 +202,48 @@ export function installRemotePhone(): void {
     return { ok: true }
   }
 
+  function snoozeOp(call: RemotePhoneCall<'ws.snooze'>): PhoneResult {
+    const pane = paneOf(call.cmd.paneKey)
+    if (!pane || !isTerm(pane)) return fail('notFound')
+    const { minutes } = call.cmd
+    const term = pane.terminalId ? useTerminalsStore().byId[pane.terminalId] : undefined
+    if (minutes === null) {
+      clearSnoozed(pane.key)
+      if (term && useSnoozeStore().entries[term.id]) useSnoozeStore().clear(term.id)
+      return { ok: true, minutes: null }
+    }
+    const held = inbox.snoozePane(pane.key, minutes)
+    if (!held) return fail('notWaiting')
+    if (term) useSnoozeStore().snooze(term, held.minutes)
+    return { ok: true, minutes: held.minutes, until: Date.now() + held.minutes * 60_000 }
+  }
+
+  async function replied(key: string, text: string): Promise<boolean> {
+    const end = Date.now() + REPLY_WAIT_MS
+    while (Date.now() < end) {
+      if (paneOf(key)?.prefill !== text) return true
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    return false
+  }
+
+  async function reply(call: RemotePhoneCall<'ws.reply'>): Promise<PhoneResult> {
+    const pane = agentPane(call.cmd.paneKey)
+    if (!pane) return fail('notFound')
+    const text = cleanPanePrompt(call.cmd.text)
+    if (!text) return fail('invalid')
+    if (remoteMenuOf(useMenuQueueStore().entryOf(pane.key))) return fail('useMenu')
+    if (act.sessionOf(pane)?.status !== 'waiting') return fail('notWaiting')
+    if (pane.prefill || pane.compact) return fail('busy')
+    workspace.update(pane.key, { prefill: text, prefillSubmit: true, prefillWaiting: true })
+    if (await replied(pane.key, text)) {
+      log(call.device, 'send', { name: nameOf(pane) }, pane)
+      return { ok: true, submitted: true }
+    }
+    if (paneOf(pane.key)?.prefill === text) workspace.update(pane.key, { prefill: undefined, prefillSubmit: undefined, prefillWaiting: undefined })
+    return fail(act.sessionOf(pane)?.status === 'waiting' ? 'busy' : 'notWaiting')
+  }
+
   function typed(sessionId: string): PhoneResult {
     const pane = workspace.panes.find((p) => isTerm(p) && p.sessionId === sessionId)
     if (!pane || !isTerm(pane)) return fail('notFound')
@@ -223,4 +269,6 @@ export function installRemotePhone(): void {
   handleOrrery('ws.send', (call) => onceByRid(recent, call.rid, () => send(call)))
   handleOrrery('ws.keys', (call) => onceByRid(recent, call.rid, () => keys(call)))
   handleOrrery('ws.menu', (call) => onceByRid(recent, call.rid, () => menu(call)))
+  handleOrrery('ws.snooze', (call) => onceByRid(recent, call.rid, () => snoozeOp(call)))
+  handleOrrery('ws.reply', (call) => onceByRid(recent, call.rid, () => reply(call)))
 }

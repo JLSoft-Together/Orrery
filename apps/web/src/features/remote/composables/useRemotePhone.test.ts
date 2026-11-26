@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 import { PANE_LIVE_MAX, type PtyPreset } from '@ccm/shared'
 
 describe('phone commands (ws.* with source phone)', () => {
@@ -258,6 +259,95 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await call('ws.menu', { paneKey: a.key, sig, index: 1 }, { rid: 'r1' })).toEqual({ ok: true })
     expect(picker).toHaveBeenCalledTimes(1)
     expect(picker.mock.calls[0]![0]).toMatchObject({ index: 1 })
+  })
+
+  it('ws.snooze hides the waiting pane on both snooze systems, clamps minutes, and null undoes it', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const { isSnoozed } = await import('../../next/lib/railSnooze')
+    const { useSnoozeStore } = await import('../../monitor/stores/snooze')
+    const a = pane('claude', 'C:\work\A', 'a')
+    const b = pane('claude', 'C:\work\B', 'b')
+    const at = '2026-11-04T10:00:00.000Z'
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting', statusSince: at, waitingFor: 'permission prompt' } as never
+    useTerminalsStore().byId['term-b'] = { id: 'term-b', status: 'working' } as never
+    expect(await call('ws.snooze', { paneKey: 'gone', minutes: 15 })).toEqual({ ok: false, error: 'notFound' })
+    expect(await call('ws.snooze', { paneKey: b.key, minutes: 15 })).toEqual({ ok: false, error: 'notWaiting' })
+    expect(isSnoozed(b.key)).toBe(false)
+    const out = await call('ws.snooze', { paneKey: a.key, minutes: 60 })
+    expect(out).toMatchObject({ ok: true, minutes: 60 })
+    expect(isSnoozed(a.key)).toBe(true)
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: 15 })).toMatchObject({ ok: true, minutes: 15 })
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: 7 })).toEqual({ ok: false, error: 'args' })
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: null })).toEqual({ ok: true, minutes: null })
+    expect(isSnoozed(a.key)).toBe(false)
+    expect(useSnoozeStore().entries['term-a']).toBeUndefined()
+  })
+
+  it('a snooze lapses when the same pane asks a new question', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const { isSnoozed } = await import('../../next/lib/railSnooze')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting', statusSince: '2026-11-04T10:00:00.000Z' } as never
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: 15 })).toMatchObject({ ok: true })
+    expect(isSnoozed(a.key)).toBe(true)
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting', statusSince: '2026-11-04T10:05:00.000Z' } as never
+    await nextTick()
+    expect(isSnoozed(a.key)).toBe(false)
+  })
+
+  it('reply types into a waiting pane without a menu, refuses a menu, an idle pane and a busy pane', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const { useMenuQueueStore } = await import('@features/click-menu')
+    const a = pane('claude', 'C:\work\A', 'a')
+    const b = pane('codex', 'C:\work\B', 'b')
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting' } as never
+    useTerminalsStore().byId['term-b'] = { id: 'term-b', status: 'idle' } as never
+    expect(await call('ws.reply', { paneKey: b.key, text: 'go' })).toEqual({ ok: false, error: 'notWaiting' })
+    expect(await call('ws.reply', { paneKey: 'gone', text: 'go' })).toEqual({ ok: false, error: 'notFound' })
+    expect(await call('ws.reply', { paneKey: a.key, text: 'x'.repeat(2001) })).toEqual({ ok: false, error: 'args' })
+    const pending = call('ws.reply', { paneKey: a.key, text: 'use blue' })
+    expect(a.prefill).toBe('use blue')
+    expect(a.prefillSubmit).toBe(true)
+    expect(a.prefillWaiting).toBe(true)
+    expect(a.prefillNow).toBeUndefined()
+    ws.update(a.key, { prefill: undefined, prefillSubmit: undefined, prefillWaiting: undefined })
+    expect(await pending).toEqual({ ok: true, submitted: true })
+    ws.update(a.key, { prefill: 'queued' })
+    expect(await call('ws.reply', { paneKey: a.key, text: 'again' })).toEqual({ ok: false, error: 'busy' })
+    ws.update(a.key, { prefill: undefined })
+    const queue = useMenuQueueStore()
+    const menu = { kind: 'permission' as const, agent: 'claude' as const, items: [{ index: 1, label: 'Yes', row: 1, selected: true }], highlighted: 1, numbered: true, confident: true, firstRow: 1, lastRow: 1 }
+    queue.register(a.key, vi.fn(async () => undefined))
+    queue.report(a.key, { menu, question: 'Proceed?' } as never)
+    expect(await call('ws.reply', { paneKey: a.key, text: 'yes' })).toEqual({ ok: false, error: 'useMenu' })
+  })
+
+  it('reply gives up and clears its text when the pane stops waiting before it is typed', async () => {
+    vi.useFakeTimers()
+    try {
+      const { useTerminalsStore } = await import('../../../core/stores/terminals')
+      const a = pane('claude', 'C:\work\A', 'a')
+      useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting' } as never
+      const pending = call('ws.reply', { paneKey: a.key, text: 'late' })
+      useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'idle' } as never
+      await vi.advanceTimersByTimeAsync(3200)
+      expect(await pending).toEqual({ ok: false, error: 'notWaiting' })
+      expect(a.prefill).toBeUndefined()
+      expect(a.prefillWaiting).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a replay of the same rid does not type twice', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting' } as never
+    const first = call('ws.reply', { paneKey: a.key, text: 'once' }, { rid: 'r9' })
+    const second = call('ws.reply', { paneKey: a.key, text: 'once' }, { rid: 'r9' })
+    ws.update(a.key, { prefill: undefined, prefillSubmit: undefined, prefillWaiting: undefined })
+    expect(await first).toEqual({ ok: true, submitted: true })
+    expect(await second).toEqual({ ok: true, submitted: true })
   })
 
   it('every command writes one line to the phone log, and only phone callers may send them', async () => {

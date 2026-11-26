@@ -4,7 +4,7 @@ use serde_json::{json, Map, Value};
 
 use super::super::ctx::Ctx;
 use super::super::devices::Device;
-use super::super::pane_link::{pane_of, valid_pane_key};
+use super::super::pane_link::{pane_of, pane_snoozed, valid_pane_key};
 use super::super::push_content::{clean, label_of, mask_text, scene_of, LABEL_MAX};
 use super::{kind_of, Job, PushState, HOUR, PANES_MAX, PANE_GAP};
 use crate::state::{lock, take_slot};
@@ -189,6 +189,9 @@ impl Ctx {
             return 0;
         }
         let kind = kind_of(kind);
+        if kind != "open" && self.board.summary().is_some_and(|s| pane_snoozed(&s, pane)) {
+            return 0;
+        }
         let ongoing: Vec<String> = lock(&self.push).ongoing.keys().filter(|(_, p)| p == pane).map(|(d, _)| d.clone()).collect();
         let targets = self.push_targets(|d| wants_kind(d, kind) || (ends_run(kind) && ongoing.contains(&d.device_id)));
         let now_ms = now_ms();

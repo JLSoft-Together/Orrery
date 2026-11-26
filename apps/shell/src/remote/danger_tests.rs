@@ -110,3 +110,38 @@ fn ws_send_without_authed_is_refused_and_never_reaches_the_pane() {
     assert_eq!(sends[1]["cmd"]["text"], "ls -la");
     rig.remote.enable(false);
 }
+
+#[test]
+fn ws_reply_follows_the_same_danger_check_and_view_only_refuses_snooze_and_reply() {
+    let rig = rig("danger-reply", "", false);
+    rig.remote.enable(true);
+    let phone = Phone::new("p");
+    let ctx = rig.remote.ctx().unwrap();
+    assert!(lock(&ctx.devices).add(Device::new(&phone.id, "Phone", phone.key.public(), super::config::now_secs())));
+    *lock(&rig.host.answer_with) = Some(Box::new(|action, _| (action == "ws.reply" || action == "ws.snooze").then(|| json!({ "ok": true }))));
+    let desktop = rig.desktop_key();
+    runtime().block_on(async {
+        let (mut ws, mut t) = session(rig.addr(), &desktop, &phone).await.unwrap();
+        hello(&mut ws, &mut t).await;
+        send_json(&mut ws, &mut t, json!({ "id": "a", "t": "ws.reply", "paneKey": "p1", "text": "rm -rf /" })).await;
+        let denied = until_json(&mut ws, &mut t, |v| v["re"] == "a").await;
+        assert_eq!((denied["ok"].clone(), denied["error"].clone()), (json!(false), json!("needsAuth")));
+        send_json(&mut ws, &mut t, json!({ "id": "b", "t": "ws.reply", "paneKey": "p1", "text": "rm -rf /", "authed": true })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "b").await["ok"], true);
+        send_json(&mut ws, &mut t, json!({ "id": "c", "t": "ws.reply", "paneKey": "p1", "text": "yes" })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "c").await["ok"], true);
+        send_json(&mut ws, &mut t, json!({ "id": "d", "t": "ws.snooze", "paneKey": "p1", "minutes": 15 })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "d").await["ok"], true);
+        rig.host.view_only.store(true, std::sync::atomic::Ordering::SeqCst);
+        send_json(&mut ws, &mut t, json!({ "id": "e", "t": "ws.reply", "paneKey": "p1", "text": "yes" })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "e").await["error"], "denied");
+        send_json(&mut ws, &mut t, json!({ "id": "f", "t": "ws.snooze", "paneKey": "p1", "minutes": null })).await;
+        assert_eq!(until_json(&mut ws, &mut t, |v| v["re"] == "f").await["error"], "denied");
+    });
+    let asks: Vec<(String, Value)> = lock(&rig.host.asks).clone();
+    let replies: Vec<&Value> = asks.iter().filter(|(a, _)| a == "ws.reply").map(|(_, v)| v).collect();
+    assert_eq!(replies.len(), 2);
+    assert!(replies.iter().all(|v| v["cmd"].get("authed").is_none()));
+    assert_eq!(asks.iter().filter(|(a, _)| a == "ws.snooze").count(), 1);
+    rig.remote.enable(false);
+}

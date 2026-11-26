@@ -5,7 +5,8 @@ import { relPath } from '../../agent-tools/lib/clash'
 import { hasRun } from '../../../core/lib/desktop'
 import { now } from '../../../core/lib/format'
 import { inboxGroups, inboxItems, inboxTone, nextInboxItem, pruneDismissed, type InboxItem, type InboxNote, type InboxPane } from '../lib/inbox'
-import { isSnoozed, snooze as railSnooze } from '../../next/lib/railSnooze'
+import { isSnoozed, releaseChanged, setSnoozeSinceResolver, snooze as railSnooze } from '../../next/lib/railSnooze'
+import type { AttnKind } from '../../next/lib/railLive'
 import { runBadge } from '@features/run'
 import { useAgentTouchesStore } from '../../agent-tools/stores/agentTouches'
 import { useAttentionStore } from '../../workspace/stores/attention'
@@ -15,7 +16,7 @@ import { useRunStore } from '@features/run'
 import { useSettingsStore } from '../../../core/stores/settings'
 import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useUiStore } from '../../../core/stores/ui'
-import { useWorkspaceStore } from '../../workspace/stores/workspace'
+import { useWorkspaceStore, type Pane } from '../../workspace/stores/workspace'
 
 const KEY = 'ccm.inbox'
 export const INBOX_SNOOZE_MIN = 15
@@ -107,11 +108,38 @@ export const useInboxStore = defineStore('inbox', () => {
     dismissed.value = { ...pruneDismissed(dismissed.value, keep), [id]: item.stamp }
   }
 
-  function snooze(id: string): { undo: () => void } | null {
+  const kindOf = (item: InboxItem): AttnKind => (item.reason === 'permission' ? 'permission' : item.reason === 'menu' || item.reason === 'question' ? 'question' : 'error')
+
+  function snooze(id: string, minutes = INBOX_SNOOZE_MIN): { undo: () => void } | null {
     const item = items.value.find((i) => i.id === id)
     if (!item?.paneKey) return null
-    return railSnooze(item.paneKey, item.reason === 'permission' ? 'permission' : item.reason === 'menu' || item.reason === 'question' ? 'question' : 'error', INBOX_SNOOZE_MIN)
+    return railSnooze(item.paneKey, kindOf(item), minutes)
   }
+
+  function snoozePane(paneKey: string, minutes: number): { minutes: number; undo: () => void } | null {
+    const item = items.value.find((i) => i.paneKey === paneKey)
+    if (!item && !isSnoozed(paneKey)) return null
+    return railSnooze(paneKey, item ? kindOf(item) : 'question', minutes)
+  }
+
+  function waitSinceOfPane(p: Pane): number | null | undefined {
+    if (!p.terminalId) return undefined
+    const t = terminals.byId[p.terminalId]
+    if (!t) return undefined
+    if (t.status !== 'waiting' && t.status !== 'error') return null
+    const at = Date.parse(t.statusSince ?? '')
+    return Number.isFinite(at) ? at : undefined
+  }
+
+  const waitSinceOf = (key: string): number | null | undefined => {
+    const p = workspace.panes.find((x) => x.key === key)
+    return p ? waitSinceOfPane(p) : undefined
+  }
+  setSnoozeSinceResolver(waitSinceOf)
+  watch(
+    () => workspace.panes.map((p) => `${p.key}|${waitSinceOfPane(p)}`).join(','),
+    () => releaseChanged(waitSinceOf),
+  )
 
   function toggle(from: HTMLElement | null = null): void {
     if (open.value) {
@@ -160,5 +188,5 @@ export const useInboxStore = defineStore('inbox', () => {
     { deep: true },
   )
 
-  return { open, trigger, items, groups, count, tone, dismiss, snooze, toggle, close, reveal, next, goNext, notes, addNote }
+  return { open, trigger, items, groups, count, tone, dismiss, snooze, snoozePane, toggle, close, reveal, next, goNext, notes, addNote }
 })

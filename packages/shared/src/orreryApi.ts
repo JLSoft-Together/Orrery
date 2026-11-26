@@ -294,6 +294,8 @@ export const ORRERY_ACTIONS = {
   'ws.send': fromPhone('ws.send'),
   'ws.keys': fromPhone('ws.keys'),
   'ws.menu': fromPhone('ws.menu'),
+  'ws.snooze': fromPhone('ws.snooze'),
+  'ws.reply': fromPhone('ws.reply'),
   'session.open': spec('page', ['mcp', 'url'], parsePaneOpen),
   'session.status': fromBot('status'),
   'session.send': fromBot('send'),

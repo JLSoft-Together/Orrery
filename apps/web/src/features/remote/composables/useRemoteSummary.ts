@@ -3,6 +3,7 @@ import { REMOTE_SUMMARY_DEBOUNCE_MS, type RemoteInbox, type RemoteWorkspaceSnaps
 import { remotePublish } from '../lib/remote'
 import { buildSummary, summaryHash, type RemotePaneFacts } from '../lib/remoteSummary'
 import { remoteMenuOf } from '../lib/remoteMenu'
+import { isSnoozed } from '../../next/lib/railSnooze'
 import { useInboxStore } from '@features/click-menu'
 import { useMenuQueueStore } from '@features/click-menu'
 import { useRemoteStore } from '../stores/remote'
@@ -48,7 +49,7 @@ export function installRemoteSummary(): void {
     }
   }
 
-  const build = (at: number): RemoteWorkspaceSnapshot => buildSummary({ tabs: workspace.tabs, panes: workspace.panes, closedCount: workspace.closedStack.length, facts, inbox: (p) => inboxByPane.value.get(p.key), menu: (p) => remoteMenuOf(menus.entryOf(p.key)) }, at)
+  const build = (at: number): RemoteWorkspaceSnapshot => buildSummary({ tabs: workspace.tabs, panes: workspace.panes, closedCount: workspace.closedStack.length, facts, inbox: (p) => inboxByPane.value.get(p.key), menu: (p) => remoteMenuOf(menus.entryOf(p.key)), snoozed: (p) => isSnoozed(p.key) }, at)
 
   const hashed = computed(() => (remote.connected > 0 ? summaryHash(build(0)) : ''))
 

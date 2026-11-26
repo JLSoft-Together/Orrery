@@ -13,7 +13,7 @@ use super::dashboard::{error, Phone};
 use super::pty_bridge::{Attach, FromHub};
 use super::viewer::{fits, with_accept, ViewerState};
 use super::viewer_map::lookup;
-use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS};
+use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS, WS_GUARDED, WS_TEXT};
 use crate::state::lock;
 
 #[path = "clip.rs"]
@@ -22,7 +22,7 @@ pub(super) mod clip;
 pub const WS_TIMEOUT: Duration = Duration::from_secs(5);
 pub const MAX_IN_FLIGHT: usize = 4;
 pub const SUMMARY_GET: &str = "remote.summary.get";
-const CODES: [&str; 10] = ["denied", "busy", "limit", "notFound", "invalid", "timeout", "offline", "rate", "proto", "internal"];
+const CODES: [&str; 13] = ["denied", "busy", "limit", "notFound", "invalid", "timeout", "offline", "rate", "proto", "internal", "stale", "notWaiting", "useMenu"];
 
 pub struct Done {
     id: String,
@@ -157,15 +157,18 @@ impl Phone {
             "push.register" =>self.push_register(id, v).await,
             "push.unregister" => self.push_unregister(id).await,
             "chat.page" | "chat.watch" | "chat.unwatch" => self.chat_command(id, t, v).await,
-            "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" | "ws.menu" => {
+            "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" | "ws.menu" | "ws.snooze" | "ws.reply" => {
                 if !self.ctx.board.take_rate(&self.device, Instant::now()) {
                     return self.sec.json(&error(Value::from(id), "rate")).await;
                 }
                 if t == "ws.get" {
                     return self.ws_get(id).await;
                 }
+                if WS_GUARDED.contains(&t) && !self.ctx.host.control() {
+                    return self.sec.json(&error(Value::from(id), "denied")).await;
+                }
                 let mut cmd = command_of(v);
-                if t == "ws.send" {
+                if WS_TEXT.contains(&t) {
                     let rules = lock(&self.ctx.config).danger_rules.clone();
                     let vi = self.ctx.host.welcome().locale == "vi";
                     if let Some(mut denied) = super::danger::needs_auth(&rules, &cmd, vi) {

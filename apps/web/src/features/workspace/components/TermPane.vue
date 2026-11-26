@@ -749,6 +749,7 @@ function armPrefill(): void {
 
 function prefillReady(): boolean {
   const status = session.value?.status
+  if (props.pane.prefillWaiting) return status === 'waiting'
   return status === 'idle' || (props.pane.prefillNow === true && status === 'working') || (prefillLate && status !== 'working' && status !== 'waiting')
 }
 
@@ -764,7 +765,7 @@ async function sendPrefill(): Promise<void> {
   const submit = props.pane.prefillSubmit
   if (!text || !term || !conn?.isOpen || props.pane.state !== 'running' || !prefillReady()) return
   stopPrefill()
-  workspace.update(props.pane.key, { prefill: undefined, prefillSubmit: undefined, prefillNow: undefined, prefillAuto: undefined })
+  workspace.update(props.pane.key, { prefill: undefined, prefillSubmit: undefined, prefillNow: undefined, prefillWaiting: undefined, prefillAuto: undefined })
   if (text.startsWith('/') && !text.includes('\n')) conn.write(text)
   else {
     selfInput = true

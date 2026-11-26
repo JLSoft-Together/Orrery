@@ -136,6 +136,7 @@ export interface Pane {
   prefill?: string
   prefillSubmit?: boolean
   prefillNow?: boolean
+  prefillWaiting?: boolean
   /** Set when `prefillSubmit` was armed by the Compact flow; value = arm time, so typing or a timeout can disarm it. */
   prefillAuto?: number
   typeKeys?: string

@@ -208,3 +208,22 @@ fn menus_are_masked_capped_or_dropped_before_publish() {
     assert!(s["tabs"][0]["panes"][1].get("menu").is_none());
     assert!(s["tabs"][0]["panes"][2].get("menu").is_none());
 }
+
+#[test]
+fn pane_question_is_masked_capped_and_snoozed_must_be_true() {
+    let long = "x".repeat(400);
+    let mut s = json!({ "rev": 3, "tabs": [{ "key": "t", "panes": [
+        { "key": "a", "question": "Deploy with SECRET_KEY=xyz now?", "snoozed": true },
+        { "key": "b", "question": long, "snoozed": "yes" },
+        { "key": "c", "question": 5 },
+        { "key": "d", "question": "   " }
+    ] }] });
+    mask_menus(&mut s);
+    let panes = &s["tabs"][0]["panes"];
+    assert_eq!(panes[0]["question"], "Deploy with SECRET_KEY=•••• now?");
+    assert_eq!(panes[0]["snoozed"], true);
+    assert!(panes[1]["question"].as_str().unwrap().chars().count() <= 300);
+    assert!(panes[1].get("snoozed").is_none());
+    assert!(panes[2].get("question").is_none());
+    assert!(panes[3].get("question").is_none());
+}

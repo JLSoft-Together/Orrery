@@ -1857,4 +1857,32 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pairWrongNetwork =>
       'This code is not on the current Wi-Fi network';
+
+  @override
+  String get clipSendTitle => 'Send clipboard to computer';
+
+  @override
+  String get clipSendHint =>
+      'Copies the text you copied on this phone into the computer clipboard, only when you tap';
+
+  @override
+  String get clipSent => 'Sent to the computer clipboard';
+
+  @override
+  String get clipEmpty => 'The phone clipboard has no text';
+
+  @override
+  String get clipTooLarge => 'The text is over 64 KB';
+
+  @override
+  String get clipSecret => 'Looks like a secret, blocked';
+
+  @override
+  String get clipDenied => 'The computer does not allow remote control';
+
+  @override
+  String get clipFailed => 'Could not send the clipboard';
+
+  @override
+  String get clipReceived => 'Copied the computer clipboard to this phone';
 }

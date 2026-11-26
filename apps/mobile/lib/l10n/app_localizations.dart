@@ -3223,6 +3223,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This code is not on the current Wi-Fi network'**
   String get pairWrongNetwork;
+
+  /// No description provided for @clipSendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send clipboard to computer'**
+  String get clipSendTitle;
+
+  /// No description provided for @clipSendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the text you copied on this phone into the computer clipboard, only when you tap'**
+  String get clipSendHint;
+
+  /// No description provided for @clipSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to the computer clipboard'**
+  String get clipSent;
+
+  /// No description provided for @clipEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone clipboard has no text'**
+  String get clipEmpty;
+
+  /// No description provided for @clipTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The text is over 64 KB'**
+  String get clipTooLarge;
+
+  /// No description provided for @clipSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks like a secret, blocked'**
+  String get clipSecret;
+
+  /// No description provided for @clipDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer does not allow remote control'**
+  String get clipDenied;
+
+  /// No description provided for @clipFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send the clipboard'**
+  String get clipFailed;
+
+  /// No description provided for @clipReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied the computer clipboard to this phone'**
+  String get clipReceived;
 }
 
 class _AppLocalizationsDelegate

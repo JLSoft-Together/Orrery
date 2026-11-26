@@ -119,7 +119,7 @@ import { usePromptsStore } from '@features/agent-tools'
 import { useInboxStore } from '@features/click-menu'
 import { useTurnEditsStore } from '@features/agent-tools'
 import { useTurnChanges } from '@features/git'
-import { useRemoteStore } from '@features/remote'
+import { useClipToPhone, useRemoteStore } from '@features/remote'
 import { useSettingsStore } from '../../../core/stores/settings'
 import { useUiGenStore } from '../../next/stores/uiGen'
 import { useTerminalsStore } from '../../../core/stores/terminals'
@@ -179,6 +179,7 @@ const terminals = useTerminalsStore()
 const telegram = useTelegramStore()
 telegram.start()
 const toasts = useToastsStore()
+const clipToPhone = useClipToPhone()
 const favorites = useFavoritesStore()
 const settings = useSettingsStore()
 const uiGen = useUiGenStore()
@@ -371,6 +372,7 @@ const items = computed<Item[]>(() => {
             icon: SmartphoneNfc,
             run: () => openPhone(false),
           },
+          { id: 'c:phone-clip', group: 'actions' as const, label: t('remoteClip.palette'), sub: t('remoteClip.paletteSub'), icon: Share, run: () => void clipToPhone.send() },
         ]
       : []),
     ...(hasTerminals && hasLog

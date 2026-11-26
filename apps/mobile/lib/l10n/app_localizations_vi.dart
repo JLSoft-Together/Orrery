@@ -1743,4 +1743,32 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pairWrongNetwork => 'Mã này không thuộc mạng Wi-Fi hiện tại';
+
+  @override
+  String get clipSendTitle => 'Gửi clipboard lên máy tính';
+
+  @override
+  String get clipSendHint =>
+      'Chép chữ đang copy trên điện thoại vào clipboard máy tính, chỉ khi bạn bấm';
+
+  @override
+  String get clipSent => 'Đã gửi vào clipboard máy tính';
+
+  @override
+  String get clipEmpty => 'Clipboard điện thoại không có chữ';
+
+  @override
+  String get clipTooLarge => 'Chữ vượt 64 KB';
+
+  @override
+  String get clipSecret => 'Có vẻ là secret, đã chặn';
+
+  @override
+  String get clipDenied => 'Máy tính đang không cho điều khiển từ xa';
+
+  @override
+  String get clipFailed => 'Không gửi được clipboard';
+
+  @override
+  String get clipReceived => 'Đã chép clipboard máy tính vào điện thoại';
 }

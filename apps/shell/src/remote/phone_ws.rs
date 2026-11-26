@@ -16,6 +16,9 @@ use super::viewer_map::lookup;
 use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS};
 use crate::state::lock;
 
+#[path = "clip.rs"]
+pub(super) mod clip;
+
 pub const WS_TIMEOUT: Duration = Duration::from_secs(5);
 pub const MAX_IN_FLIGHT: usize = 4;
 pub const SUMMARY_GET: &str = "remote.summary.get";
@@ -44,6 +47,7 @@ pub struct Extra {
     pub(super) nonce: String,
     pub(super) v: ViewerState,
     pub(super) chat: super::chat::ChatState,
+    pub(super) clip: Option<broadcast::Receiver<Arc<str>>>,
 }
 
 impl Done {
@@ -71,6 +75,7 @@ impl Extra {
             backlog: Arc::new(AtomicUsize::new(0)),
             v: ViewerState::new(device, &nonce),
             chat: super::chat::ChatState::default(),
+            clip: None,
             nonce,
         }
     }
@@ -148,7 +153,8 @@ impl Phone {
             "pty.attach" => self.pty_attach(id, v).await,
             "pty.detach" => self.pty_detach(id, v).await,
             "pty.resize" => self.pty_resize(id, v).await,
-            "push.register" => self.push_register(id, v).await,
+            "clip.push" => self.clip_push(id, v).await,
+            "push.register" =>self.push_register(id, v).await,
             "push.unregister" => self.push_unregister(id).await,
             "chat.page" | "chat.watch" | "chat.unwatch" => self.chat_command(id, t, v).await,
             "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" | "ws.menu" => {

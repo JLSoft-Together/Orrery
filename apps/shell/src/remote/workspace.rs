@@ -30,11 +30,12 @@ pub struct Board {
     attached: Mutex<HashMap<String, usize>>,
     stale_until: Mutex<Option<Instant>>,
     fresh: Notify,
+    pub clip: super::phone_ws::clip::ClipHub,
 }
 
 impl Default for Board {
     fn default() -> Board {
-        Board { state: Mutex::new(None), tx: broadcast::channel(WS_EVENTS).0, rates: Mutex::new(HashMap::new()), attached: Mutex::new(HashMap::new()), stale_until: Mutex::new(None), fresh: Notify::new() }
+        Board { state: Mutex::new(None), tx: broadcast::channel(WS_EVENTS).0, rates: Mutex::new(HashMap::new()), attached: Mutex::new(HashMap::new()), stale_until: Mutex::new(None), fresh: Notify::new(), clip: Default::default() }
     }
 }
 

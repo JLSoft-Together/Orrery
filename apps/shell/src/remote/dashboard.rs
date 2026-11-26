@@ -142,6 +142,11 @@ impl Phone {
                         break;
                     }
                 }
+                Some(text) = super::phone_ws::clip::next_clip(&mut self.x.clip) => {
+                    if !self.on_clip(text).await {
+                        break;
+                    }
+                }
                 Ok(()) = self.push_rx.changed(), if self.hello => {
                     let event = self.push_rx.borrow_and_update().clone();
                     if !self.sec.json(&event).await {
@@ -228,6 +233,7 @@ impl Phone {
         self.caps = parse_caps(v);
         self.hello = true;
         self.set_chat_cap();
+        self.clip_attach();
         let welcome = self.ctx.welcome(id);
         if !self.sec.json(&welcome).await {
             return false;

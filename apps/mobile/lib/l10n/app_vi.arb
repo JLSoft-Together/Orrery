@@ -508,7 +508,8 @@
   "chatQueued": "Chưa gửi: {n} byte",
   "termUnsent": "Chưa gửi {n} ký tự",
   "termSendUnsent": "Gửi",
-  "termDropUnsent": "Bỏ",  "chatSlow": "Chậm {n} ms",
+  "termDropUnsent": "Bỏ",
+  "chatSlow": "Chậm {n} ms",
   "chatNoNet": "Mất mạng",
   "chatContext": "Context {n}%",
   "pairConfirmTitle": "Ghép đôi với {name}?",
@@ -519,5 +520,14 @@
   "pairConfirmAddress": "Địa chỉ {ip}",
   "pairConfirmAction": "Ghép đôi",
   "pairInvalidCode": "Mã ghép đôi không hợp lệ",
-  "pairWrongNetwork": "Mã này không thuộc mạng Wi-Fi hiện tại"
+  "pairWrongNetwork": "Mã này không thuộc mạng Wi-Fi hiện tại",
+  "clipSendTitle": "Gửi clipboard lên máy tính",
+  "clipSendHint": "Chép chữ đang copy trên điện thoại vào clipboard máy tính, chỉ khi bạn bấm",
+  "clipSent": "Đã gửi vào clipboard máy tính",
+  "clipEmpty": "Clipboard điện thoại không có chữ",
+  "clipTooLarge": "Chữ vượt 64 KB",
+  "clipSecret": "Có vẻ là secret, đã chặn",
+  "clipDenied": "Máy tính đang không cho điều khiển từ xa",
+  "clipFailed": "Không gửi được clipboard",
+  "clipReceived": "Đã chép clipboard máy tính vào điện thoại"
 }

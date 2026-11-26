@@ -993,7 +993,8 @@
     }
   },
   "termSendUnsent": "Send",
-  "termDropUnsent": "Drop",  "chatSlow": "Slow {n} ms",
+  "termDropUnsent": "Drop",
+  "chatSlow": "Slow {n} ms",
   "@chatSlow": {
     "placeholders": {
       "n": {
@@ -1032,5 +1033,14 @@
   },
   "pairConfirmAction": "Pair",
   "pairInvalidCode": "Invalid pairing code",
-  "pairWrongNetwork": "This code is not on the current Wi-Fi network"
+  "pairWrongNetwork": "This code is not on the current Wi-Fi network",
+  "clipSendTitle": "Send clipboard to computer",
+  "clipSendHint": "Copies the text you copied on this phone into the computer clipboard, only when you tap",
+  "clipSent": "Sent to the computer clipboard",
+  "clipEmpty": "The phone clipboard has no text",
+  "clipTooLarge": "The text is over 64 KB",
+  "clipSecret": "Looks like a secret, blocked",
+  "clipDenied": "The computer does not allow remote control",
+  "clipFailed": "Could not send the clipboard",
+  "clipReceived": "Copied the computer clipboard to this phone"
 }

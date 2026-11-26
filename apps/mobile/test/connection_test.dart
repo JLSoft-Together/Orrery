@@ -596,7 +596,7 @@ void helloInfoTests() {
       expect(hello['appBuild'], '3');
       expect(hello['model'], 'Samsung SM-A336B');
       expect(hello['os'], 'Android 14');
-      expect(hello['caps'], ['chat']);
+      expect(hello['caps'], ['chat', 'clip']);
       unawaited(conn.dispose());
     });
   });

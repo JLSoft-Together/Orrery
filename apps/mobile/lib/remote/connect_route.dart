@@ -32,7 +32,7 @@ Future<RelayOpen> openRoute(
   return relay;
 }
 
-const List<String> helloCaps = ['chat'];
+const List<String> helloCaps = ['chat', 'clip'];
 
 Future<JsonMap> sendHello(
   RemoteSession session,

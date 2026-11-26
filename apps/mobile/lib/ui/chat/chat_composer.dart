@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../media/media_flow.dart';
 import '../../security/danger_rules.dart';
 import '../danger_guard.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
+import 'chat_media.dart';
 
 class ChatComposer extends StatefulWidget {
   const ChatComposer({
@@ -16,6 +18,7 @@ class ChatComposer extends StatefulWidget {
     this.onPlus,
     this.chips = const [],
     this.danger = const DangerRules.none(),
+    this.media = const ComposerMedia(),
   });
 
   final String hint;
@@ -26,6 +29,7 @@ class ChatComposer extends StatefulWidget {
   final VoidCallback onStop;
   final VoidCallback? onPlus;
   final List<String> chips;
+  final ComposerMedia media;
 
   @override
   State<ChatComposer> createState() => ChatComposerState();
@@ -51,6 +55,20 @@ class ChatComposerState extends State<ChatComposer> {
   void fill(String value) {
     _text.text = value;
     _text.selection = TextSelection.collapsed(offset: value.length);
+    _focus.requestFocus();
+  }
+
+  String get draft => _text.text;
+
+  void setDraft(String value) {
+    _text.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+  }
+
+  void addPath(String path) {
+    setDraft(insertPath(_text.text, path));
     _focus.requestFocus();
   }
 
@@ -149,6 +167,14 @@ class ChatComposerState extends State<ChatComposer> {
                     foreground: c.inkMuted,
                     onPressed: widget.onPlus,
                   ),
+                if (widget.media.photo != null) ...[
+                  const SizedBox(width: 4),
+                  PhotoButton(
+                    flow: widget.media.photo!,
+                    enabled: widget.enabled,
+                    onPath: addPath,
+                  ),
+                ],
                 const SizedBox(width: 4),
                 Expanded(
                   child: Focus(
@@ -181,6 +207,15 @@ class ChatComposerState extends State<ChatComposer> {
                     ),
                   ),
                 ),
+                if (widget.media.dictation != null) ...[
+                  const SizedBox(width: 4),
+                  MicButton(
+                    dictation: widget.media.dictation!,
+                    enabled: widget.enabled,
+                    getText: () => _text.text,
+                    setText: setDraft,
+                  ),
+                ],
                 const SizedBox(width: 4),
                 if (stop)
                   _RoundButton(

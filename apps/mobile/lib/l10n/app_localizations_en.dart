@@ -1056,6 +1056,121 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vRunNoLog => 'No log yet';
 
   @override
+  String get pushFixedApkTitle => 'APK ready to install';
+
+  @override
+  String get pushFixedApkBody => 'Tap to download it on this Wi-Fi.';
+
+  @override
+  String get pushActionInstall => 'Download and install';
+
+  @override
+  String get apkTitle => 'Install build';
+
+  @override
+  String get apkReady =>
+      'Download this build over the same Wi-Fi and open the installer.';
+
+  @override
+  String get apkStart => 'Download and install';
+
+  @override
+  String get apkDownloading => 'Downloading';
+
+  @override
+  String apkDownloadingPercent(int percent) {
+    return 'Downloading $percent%';
+  }
+
+  @override
+  String get apkVerifying => 'Checking SHA-256';
+
+  @override
+  String get apkInstalling => 'Opening the installer';
+
+  @override
+  String get apkStarted => 'Installer opened. Confirm there to finish.';
+
+  @override
+  String get apkNeedPermission =>
+      'Allow Orrery Remote to install unknown apps, then come back here.';
+
+  @override
+  String get apkOpenSettings => 'Open settings';
+
+  @override
+  String get apkRetry => 'Try again';
+
+  @override
+  String get apkCancel => 'Cancel';
+
+  @override
+  String get apkClose => 'Close';
+
+  @override
+  String get apkErrExpired =>
+      'This link expired. Send the build again from the computer.';
+
+  @override
+  String get apkErrLan => 'Join the same Wi-Fi as the computer to download.';
+
+  @override
+  String get apkErrInterrupted => 'The download was interrupted. Try again.';
+
+  @override
+  String get apkErrSpace => 'Not enough free space on this phone.';
+
+  @override
+  String get apkErrSize =>
+      'The file size does not match the offer. Download stopped.';
+
+  @override
+  String get apkErrSha =>
+      'The file failed the SHA-256 check. It was deleted and not installed.';
+
+  @override
+  String get apkErrInstall => 'Could not open the installer.';
+
+  @override
+  String get apkErrInvalid => 'This offer is not valid.';
+
+  @override
+  String get runLogTitle => 'Log';
+
+  @override
+  String get runLogOpen => 'Full log';
+
+  @override
+  String get runLogEmpty => 'No log lines yet';
+
+  @override
+  String get runLogUnsupported =>
+      'This computer does not serve the Run log. Update Orrery on the computer.';
+
+  @override
+  String get runLogGap => 'Older lines were dropped';
+
+  @override
+  String get runLogAll => 'All';
+
+  @override
+  String get runLogSendCrash => 'Send crash to agent';
+
+  @override
+  String get runLogNoAgent => 'No agent pane is open for this project';
+
+  @override
+  String get runLogPickAgent => 'Send the crash to which agent?';
+
+  @override
+  String get runLogCrashPrompt =>
+      'The app crashed while running. Please read this crash log and fix the cause:';
+
+  @override
+  String get runLogCrashCopied =>
+      'Crash copied, paste it into the input box. Nothing was sent.';
+
+  @override
   String get lockReason => 'Unlock Orrery Remote';
 
   @override
@@ -1885,4 +2000,96 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clipReceived => 'Copied the computer clipboard to this phone';
+
+  @override
+  String get mediaPhoto => 'Add a photo';
+
+  @override
+  String get mediaTakePhoto => 'Take a photo';
+
+  @override
+  String get mediaChoosePhoto => 'Choose from gallery';
+
+  @override
+  String get mediaSending => 'Sending the photo...';
+
+  @override
+  String get mediaSent =>
+      'Photo saved in the project, path added to the message';
+
+  @override
+  String get mediaMicHold => 'Hold to speak';
+
+  @override
+  String get mediaMicHint =>
+      'Hold the mic button and speak. The text goes into the box, nothing is sent.';
+
+  @override
+  String get mediaMicListening => 'Listening...';
+
+  @override
+  String get mediaMicDenied =>
+      'Microphone access is off. Allow it in the phone settings.';
+
+  @override
+  String get mediaMicUnavailable =>
+      'Speech recognition is not available on this phone';
+
+  @override
+  String get mediaMicRefused => 'Online speech recognition was not allowed';
+
+  @override
+  String get mediaOnlineTitle => 'Use online speech recognition?';
+
+  @override
+  String get mediaOnlineBody =>
+      'This phone has no offline speech pack for this language, so your voice would go to the speech service of your phone. You are asked only once.';
+
+  @override
+  String get mediaOnlineAllow => 'Allow';
+
+  @override
+  String get mediaCameraDenied =>
+      'Camera access is off. Allow it in the phone settings.';
+
+  @override
+  String get mediaErrUnsupported => 'This image format is not supported';
+
+  @override
+  String get mediaErrTooLarge => 'The image is over 8 MB';
+
+  @override
+  String get mediaErrBusy => 'A photo is already being sent';
+
+  @override
+  String get mediaErrOffline => 'Lost the connection while sending. Try again.';
+
+  @override
+  String get mediaErrDenied =>
+      'The computer does not accept photos. Update Orrery on the computer and allow remote control.';
+
+  @override
+  String get mediaErrInterrupted => 'The upload was interrupted. Try again.';
+
+  @override
+  String get mediaErrFailed => 'Could not send the photo';
+
+  @override
+  String get mediaIgnoreTitle => 'Add .orrery/inbox/ to .gitignore?';
+
+  @override
+  String get mediaIgnoreBody =>
+      'Photos are saved in the project folder .orrery/inbox/. Add it to .gitignore so they are not committed.';
+
+  @override
+  String get mediaIgnoreAdd => 'Add';
+
+  @override
+  String get mediaIgnoreSkip => 'Not now';
+
+  @override
+  String get mediaIgnoreDone => '.gitignore updated';
+
+  @override
+  String get mediaIgnoreAlready => '.gitignore already covers it';
 }

@@ -1016,6 +1016,120 @@ class AppLocalizationsVi extends AppLocalizations {
   String get vRunNoLog => 'Chưa có log';
 
   @override
+  String get pushFixedApkTitle => 'APK sẵn sàng để cài';
+
+  @override
+  String get pushFixedApkBody => 'Chạm để tải về, cần cùng Wi-Fi.';
+
+  @override
+  String get pushActionInstall => 'Tải và cài';
+
+  @override
+  String get apkTitle => 'Cài bản build';
+
+  @override
+  String get apkReady => 'Tải bản build này qua cùng Wi-Fi rồi mở trình cài.';
+
+  @override
+  String get apkStart => 'Tải và cài';
+
+  @override
+  String get apkDownloading => 'Đang tải';
+
+  @override
+  String apkDownloadingPercent(int percent) {
+    return 'Đang tải $percent%';
+  }
+
+  @override
+  String get apkVerifying => 'Đang kiểm SHA-256';
+
+  @override
+  String get apkInstalling => 'Đang mở trình cài';
+
+  @override
+  String get apkStarted => 'Đã mở trình cài. Xác nhận ở đó để hoàn tất.';
+
+  @override
+  String get apkNeedPermission =>
+      'Cho phép Orrery Remote cài app không rõ nguồn, rồi quay lại đây.';
+
+  @override
+  String get apkOpenSettings => 'Mở cài đặt';
+
+  @override
+  String get apkRetry => 'Thử lại';
+
+  @override
+  String get apkCancel => 'Huỷ';
+
+  @override
+  String get apkClose => 'Đóng';
+
+  @override
+  String get apkErrExpired =>
+      'Liên kết đã hết hạn. Gửi lại bản build từ máy tính.';
+
+  @override
+  String get apkErrLan => 'Cần cùng Wi-Fi với máy tính để tải.';
+
+  @override
+  String get apkErrInterrupted => 'Tải bị đứt giữa chừng. Thử lại.';
+
+  @override
+  String get apkErrSpace => 'Điện thoại không đủ dung lượng trống.';
+
+  @override
+  String get apkErrSize =>
+      'Dung lượng file không khớp với bản gửi. Đã dừng tải.';
+
+  @override
+  String get apkErrSha =>
+      'File không qua kiểm SHA-256. Đã xoá file, không cài.';
+
+  @override
+  String get apkErrInstall => 'Không mở được trình cài.';
+
+  @override
+  String get apkErrInvalid => 'Bản gửi không hợp lệ.';
+
+  @override
+  String get runLogTitle => 'Log';
+
+  @override
+  String get runLogOpen => 'Xem log đầy đủ';
+
+  @override
+  String get runLogEmpty => 'Chưa có dòng log';
+
+  @override
+  String get runLogUnsupported =>
+      'Máy tính này chưa hỗ trợ Run log. Cập nhật Orrery trên máy tính.';
+
+  @override
+  String get runLogGap => 'Các dòng cũ hơn đã bị bỏ';
+
+  @override
+  String get runLogAll => 'Tất cả';
+
+  @override
+  String get runLogSendCrash => 'Gửi crash cho agent';
+
+  @override
+  String get runLogNoAgent => 'Chưa mở pane agent nào cho project này';
+
+  @override
+  String get runLogPickAgent => 'Gửi crash cho agent nào?';
+
+  @override
+  String get runLogCrashPrompt =>
+      'App bị crash khi đang chạy. Hãy đọc log crash này và sửa nguyên nhân:';
+
+  @override
+  String get runLogCrashCopied =>
+      'Đã chép crash, dán vào ô nhập. Chưa gửi gì cả.';
+
+  @override
   String get lockReason => 'Mở khoá Orrery Remote';
 
   @override
@@ -1771,4 +1885,96 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get clipReceived => 'Đã chép clipboard máy tính vào điện thoại';
+
+  @override
+  String get mediaPhoto => 'Thêm ảnh';
+
+  @override
+  String get mediaTakePhoto => 'Chụp ảnh';
+
+  @override
+  String get mediaChoosePhoto => 'Chọn từ thư viện';
+
+  @override
+  String get mediaSending => 'Đang gửi ảnh...';
+
+  @override
+  String get mediaSent =>
+      'Ảnh đã lưu trong project, đường dẫn đã thêm vào tin nhắn';
+
+  @override
+  String get mediaMicHold => 'Giữ để nói';
+
+  @override
+  String get mediaMicHint =>
+      'Giữ nút mic và nói. Chữ chỉ điền vào ô nhập, không tự gửi.';
+
+  @override
+  String get mediaMicListening => 'Đang nghe...';
+
+  @override
+  String get mediaMicDenied =>
+      'Quyền micro đang tắt. Hãy bật trong cài đặt điện thoại.';
+
+  @override
+  String get mediaMicUnavailable =>
+      'Điện thoại này không có nhận dạng giọng nói';
+
+  @override
+  String get mediaMicRefused => 'Chưa cho phép nhận dạng giọng nói online';
+
+  @override
+  String get mediaOnlineTitle => 'Dùng nhận dạng giọng nói online?';
+
+  @override
+  String get mediaOnlineBody =>
+      'Điện thoại chưa có gói giọng nói offline cho ngôn ngữ này, nên giọng của bạn sẽ gửi tới dịch vụ nhận dạng của điện thoại. Chỉ hỏi một lần.';
+
+  @override
+  String get mediaOnlineAllow => 'Cho phép';
+
+  @override
+  String get mediaCameraDenied =>
+      'Quyền camera đang tắt. Hãy bật trong cài đặt điện thoại.';
+
+  @override
+  String get mediaErrUnsupported => 'Không hỗ trợ định dạng ảnh này';
+
+  @override
+  String get mediaErrTooLarge => 'Ảnh vượt 8 MB';
+
+  @override
+  String get mediaErrBusy => 'Đang gửi một ảnh khác';
+
+  @override
+  String get mediaErrOffline => 'Mất kết nối khi đang gửi. Hãy thử lại.';
+
+  @override
+  String get mediaErrDenied =>
+      'Máy tính không nhận ảnh. Hãy cập nhật Orrery trên máy tính và bật điều khiển từ xa.';
+
+  @override
+  String get mediaErrInterrupted => 'Việc gửi bị gián đoạn. Hãy thử lại.';
+
+  @override
+  String get mediaErrFailed => 'Không gửi được ảnh';
+
+  @override
+  String get mediaIgnoreTitle => 'Thêm .orrery/inbox/ vào .gitignore?';
+
+  @override
+  String get mediaIgnoreBody =>
+      'Ảnh được lưu trong thư mục project .orrery/inbox/. Thêm vào .gitignore để ảnh không bị commit.';
+
+  @override
+  String get mediaIgnoreAdd => 'Thêm';
+
+  @override
+  String get mediaIgnoreSkip => 'Để sau';
+
+  @override
+  String get mediaIgnoreDone => 'Đã cập nhật .gitignore';
+
+  @override
+  String get mediaIgnoreAlready => '.gitignore đã có sẵn dòng này';
 }

@@ -1946,6 +1946,216 @@ abstract class AppLocalizations {
   /// **'No log yet'**
   String get vRunNoLog;
 
+  /// No description provided for @pushFixedApkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'APK ready to install'**
+  String get pushFixedApkTitle;
+
+  /// No description provided for @pushFixedApkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to download it on this Wi-Fi.'**
+  String get pushFixedApkBody;
+
+  /// No description provided for @pushActionInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get pushActionInstall;
+
+  /// No description provided for @apkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install build'**
+  String get apkTitle;
+
+  /// No description provided for @apkReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Download this build over the same Wi-Fi and open the installer.'**
+  String get apkReady;
+
+  /// No description provided for @apkStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get apkStart;
+
+  /// No description provided for @apkDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get apkDownloading;
+
+  /// No description provided for @apkDownloadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {percent}%'**
+  String apkDownloadingPercent(int percent);
+
+  /// No description provided for @apkVerifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking SHA-256'**
+  String get apkVerifying;
+
+  /// No description provided for @apkInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the installer'**
+  String get apkInstalling;
+
+  /// No description provided for @apkStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Installer opened. Confirm there to finish.'**
+  String get apkStarted;
+
+  /// No description provided for @apkNeedPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Orrery Remote to install unknown apps, then come back here.'**
+  String get apkNeedPermission;
+
+  /// No description provided for @apkOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get apkOpenSettings;
+
+  /// No description provided for @apkRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get apkRetry;
+
+  /// No description provided for @apkCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get apkCancel;
+
+  /// No description provided for @apkClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get apkClose;
+
+  /// No description provided for @apkErrExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This link expired. Send the build again from the computer.'**
+  String get apkErrExpired;
+
+  /// No description provided for @apkErrLan.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the same Wi-Fi as the computer to download.'**
+  String get apkErrLan;
+
+  /// No description provided for @apkErrInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'The download was interrupted. Try again.'**
+  String get apkErrInterrupted;
+
+  /// No description provided for @apkErrSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough free space on this phone.'**
+  String get apkErrSpace;
+
+  /// No description provided for @apkErrSize.
+  ///
+  /// In en, this message translates to:
+  /// **'The file size does not match the offer. Download stopped.'**
+  String get apkErrSize;
+
+  /// No description provided for @apkErrSha.
+  ///
+  /// In en, this message translates to:
+  /// **'The file failed the SHA-256 check. It was deleted and not installed.'**
+  String get apkErrSha;
+
+  /// No description provided for @apkErrInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the installer.'**
+  String get apkErrInstall;
+
+  /// No description provided for @apkErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This offer is not valid.'**
+  String get apkErrInvalid;
+
+  /// No description provided for @runLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log'**
+  String get runLogTitle;
+
+  /// No description provided for @runLogOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full log'**
+  String get runLogOpen;
+
+  /// No description provided for @runLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No log lines yet'**
+  String get runLogEmpty;
+
+  /// No description provided for @runLogUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer does not serve the Run log. Update Orrery on the computer.'**
+  String get runLogUnsupported;
+
+  /// No description provided for @runLogGap.
+  ///
+  /// In en, this message translates to:
+  /// **'Older lines were dropped'**
+  String get runLogGap;
+
+  /// No description provided for @runLogAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get runLogAll;
+
+  /// No description provided for @runLogSendCrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Send crash to agent'**
+  String get runLogSendCrash;
+
+  /// No description provided for @runLogNoAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent pane is open for this project'**
+  String get runLogNoAgent;
+
+  /// No description provided for @runLogPickAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Send the crash to which agent?'**
+  String get runLogPickAgent;
+
+  /// No description provided for @runLogCrashPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'The app crashed while running. Please read this crash log and fix the cause:'**
+  String get runLogCrashPrompt;
+
+  /// No description provided for @runLogCrashCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash copied, paste it into the input box. Nothing was sent.'**
+  String get runLogCrashCopied;
+
   /// No description provided for @lockReason.
   ///
   /// In en, this message translates to:
@@ -3277,6 +3487,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copied the computer clipboard to this phone'**
   String get clipReceived;
+
+  /// No description provided for @mediaPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a photo'**
+  String get mediaPhoto;
+
+  /// No description provided for @mediaTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get mediaTakePhoto;
+
+  /// No description provided for @mediaChoosePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get mediaChoosePhoto;
+
+  /// No description provided for @mediaSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending the photo...'**
+  String get mediaSending;
+
+  /// No description provided for @mediaSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved in the project, path added to the message'**
+  String get mediaSent;
+
+  /// No description provided for @mediaMicHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to speak'**
+  String get mediaMicHold;
+
+  /// No description provided for @mediaMicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the mic button and speak. The text goes into the box, nothing is sent.'**
+  String get mediaMicHint;
+
+  /// No description provided for @mediaMicListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening...'**
+  String get mediaMicListening;
+
+  /// No description provided for @mediaMicDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone access is off. Allow it in the phone settings.'**
+  String get mediaMicDenied;
+
+  /// No description provided for @mediaMicUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech recognition is not available on this phone'**
+  String get mediaMicUnavailable;
+
+  /// No description provided for @mediaMicRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Online speech recognition was not allowed'**
+  String get mediaMicRefused;
+
+  /// No description provided for @mediaOnlineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use online speech recognition?'**
+  String get mediaOnlineTitle;
+
+  /// No description provided for @mediaOnlineBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone has no offline speech pack for this language, so your voice would go to the speech service of your phone. You are asked only once.'**
+  String get mediaOnlineBody;
+
+  /// No description provided for @mediaOnlineAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get mediaOnlineAllow;
+
+  /// No description provided for @mediaCameraDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is off. Allow it in the phone settings.'**
+  String get mediaCameraDenied;
+
+  /// No description provided for @mediaErrUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This image format is not supported'**
+  String get mediaErrUnsupported;
+
+  /// No description provided for @mediaErrTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is over 8 MB'**
+  String get mediaErrTooLarge;
+
+  /// No description provided for @mediaErrBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'A photo is already being sent'**
+  String get mediaErrBusy;
+
+  /// No description provided for @mediaErrOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost the connection while sending. Try again.'**
+  String get mediaErrOffline;
+
+  /// No description provided for @mediaErrDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer does not accept photos. Update Orrery on the computer and allow remote control.'**
+  String get mediaErrDenied;
+
+  /// No description provided for @mediaErrInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'The upload was interrupted. Try again.'**
+  String get mediaErrInterrupted;
+
+  /// No description provided for @mediaErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send the photo'**
+  String get mediaErrFailed;
+
+  /// No description provided for @mediaIgnoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add .orrery/inbox/ to .gitignore?'**
+  String get mediaIgnoreTitle;
+
+  /// No description provided for @mediaIgnoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos are saved in the project folder .orrery/inbox/. Add it to .gitignore so they are not committed.'**
+  String get mediaIgnoreBody;
+
+  /// No description provided for @mediaIgnoreAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mediaIgnoreAdd;
+
+  /// No description provided for @mediaIgnoreSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get mediaIgnoreSkip;
+
+  /// No description provided for @mediaIgnoreDone.
+  ///
+  /// In en, this message translates to:
+  /// **'.gitignore updated'**
+  String get mediaIgnoreDone;
+
+  /// No description provided for @mediaIgnoreAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'.gitignore already covers it'**
+  String get mediaIgnoreAlready;
 }
 
 class _AppLocalizationsDelegate

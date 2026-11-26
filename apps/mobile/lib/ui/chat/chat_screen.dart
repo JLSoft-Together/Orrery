@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../media/media_flow.dart';
+import '../../media/media_prefs.dart';
+import '../../media/media_providers.dart';
 import '../../remote/chat_protocol.dart';
+import '../../remote/desktop_caps.dart';
 import '../../remote/link_state.dart';
 import '../../remote/providers.dart';
 import '../commands.dart';
@@ -11,12 +15,14 @@ import '../terminal/terminal_pane.dart';
 import '../theme/orrery_shape.dart';
 import '../ui_providers.dart';
 import '../viewers/diff_page.dart';
+import '../viewers/viewer_api.dart';
 import '../widgets/common.dart';
 import '../workspace/machine_scope.dart';
 import 'chat_composer.dart';
 import 'chat_controller.dart';
 import 'chat_header.dart';
 import 'chat_list.dart';
+import 'chat_media.dart';
 import 'chat_rows.dart';
 import 'chat_sheets.dart';
 import 'reconnect_strip.dart';
@@ -43,6 +49,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late bool _termMode = widget.terminal;
   late final AppLifecycleListener _life;
   final ScrollController _scroll = ScrollController();
+  MediaFlow? _flow;
+
+  ComposerMedia _media(String? root) {
+    final hasPut = ref.watch(
+      machineViewProvider(
+        widget.machineId,
+      ).select((v) => hasDesktopCap(v.hello, putCap)),
+    );
+    final dictation = ref.watch(dictationProvider);
+    if (!hasPut || root == null || root.isEmpty) {
+      return ComposerMedia(dictation: dictation);
+    }
+    final flow = _flow ??= MediaFlow(
+      call: ref.read(viewerApiProvider(widget.machineId)).call,
+      root: root,
+      prefs: ref.read(mediaPrefsProvider),
+    );
+    flow.root = root;
+    return ComposerMedia(dictation: dictation, photo: flow);
+  }
 
   @override
   void initState() {
@@ -223,6 +249,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 working: working,
                 onSend: _send,
                 danger: ref.watch(dangerRulesProvider(id)),
+                media: _media(tab.project ?? pane.cwd),
                 onStop: () => _stop(pane),
                 onPlus: () => showChatPlusSheet(
                   context,

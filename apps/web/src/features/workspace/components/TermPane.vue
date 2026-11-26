@@ -55,6 +55,7 @@ import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useTipsStore } from '@features/update'
 import { useUiStore } from '../../../core/stores/ui'
 import { useRemoteStore } from '@features/remote'
+import { usePromptsMenu } from '@features/prompts'
 import { RemotePhoneChip } from '@features/remote'
 import { usePanePhone } from '../composables/usePanePhone'
 import { parseOsc7, parseOsc9 } from '../lib/shellCwd'
@@ -447,6 +448,7 @@ const more = ref<InstanceType<typeof PaneMore> | null>(null)
 const layoutMenu = inject(PANE_LAYOUT_MENU, null)
 const reconnectable = computed(() => props.pane.state === 'error' && !!props.pane.sessionId)
 const devChipUrl = computed(() => (ended.value || parked.value ? undefined : devUrls.value[devUrls.value.length - 1]))
+const promptsMenu = usePromptsMenu()
 const moreEntries = computed<MenuEntry[]>(() => {
   const out: MenuEntry[] = []
   const url = devUrls.value[devUrls.value.length - 1]
@@ -463,6 +465,7 @@ const moreEntries = computed<MenuEntry[]>(() => {
       out.push({ id: 'worktree', label: branch.value ? t('workspace.paneHead.branch', { branch: branch.value }) : t('workspace.wt.title'), icon: GitBranch })
     else if (key === 'split') out.push({ id: 'split', label: t('workspace.splitPane'), icon: Columns2 })
     else if (key === 'phone') out.push({ id: 'phone', label: t('workspace.paneHead.phone.label'), icon: Smartphone })
+    else if (key === 'prompts') out.push(promptsMenu.entry.value)
   }
   out.push({ separator: true })
   if (hasScripts && cwd.value) out.push({ id: 'scripts', label: t('workspace.scripts.open'), icon: Play })
@@ -507,6 +510,7 @@ function openTools(): void {
 }
 
 function pickMore(id: string, anchor?: HTMLElement): void {
+  if (promptsMenu.pick(id)) return
   if (layoutMenu?.pick(props.pane.key, id)) return
   if (bookmarks.pick(id)) return
   if (id === 'history') return void openHistory()

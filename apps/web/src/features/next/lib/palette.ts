@@ -1,12 +1,12 @@
 import type { TerminalStatus } from '@ccm/shared'
 
 export type SessionBucket = 'needs' | 'running' | 'doneUnseen' | 'recent'
-export type NextPrefixMode = 'commands' | 'sessions' | 'files' | 'projects'
-export type NextScope = 'all' | 'sessions' | 'files' | 'commands' | 'projects'
+export type NextPrefixMode = 'commands' | 'sessions' | 'files' | 'projects' | 'prompts'
+export type NextScope = 'all' | 'sessions' | 'files' | 'commands' | 'projects' | 'prompts'
 
 export const NEXT_SCOPES: readonly NextScope[] = ['all', 'sessions', 'files', 'commands', 'projects']
-export const NEXT_PREFIX: Record<string, NextPrefixMode> = { '>': 'commands', '@': 'sessions', '#': 'files', ':': 'projects' }
-export const NEXT_MODES: readonly NextPrefixMode[] = ['sessions', 'files', 'commands', 'projects']
+export const NEXT_PREFIX: Record<string, NextPrefixMode> = { '>': 'commands', '@': 'sessions', '#': 'files', ':': 'projects', ';': 'prompts' }
+export const NEXT_MODES: readonly NextPrefixMode[] = ['sessions', 'files', 'commands', 'projects', 'prompts']
 export const BUCKET_ORDER: readonly SessionBucket[] = ['needs', 'running', 'doneUnseen', 'recent']
 export const NEXT_ROW_HEIGHT = 52
 
@@ -56,7 +56,7 @@ export function sessionTerms(s: { model?: string | null; branch?: string; cwd?: 
   return [s.model, s.branch, repoName(s.cwd)].filter((x): x is string => !!x)
 }
 
-export type NextGroup = SessionBucket | 'sessions' | 'projects' | 'favorites' | 'files' | 'nav' | 'actions' | 'prefs' | 'settings' | 'help'
+export type NextGroup = SessionBucket | 'sessions' | 'projects' | 'favorites' | 'files' | 'nav' | 'actions' | 'prefs' | 'settings' | 'help' | 'prompts'
 
 export const NEXT_GROUP_ORDER: readonly NextGroup[] = [
   'needs',
@@ -68,6 +68,7 @@ export const NEXT_GROUP_ORDER: readonly NextGroup[] = [
   'actions',
   'prefs',
   'help',
+  'prompts',
   'projects',
   'favorites',
   'files',
@@ -82,6 +83,7 @@ export function inNextScope(group: NextGroup, scope: NextScope): boolean {
   if (scope === 'sessions') return SESSION_GROUPS.has(group)
   if (scope === 'projects') return group === 'projects' || group === 'favorites'
   if (scope === 'files') return group === 'files'
+  if (scope === 'prompts') return group === 'prompts'
   return COMMAND_GROUPS.has(group)
 }
 

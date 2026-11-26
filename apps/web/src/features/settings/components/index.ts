@@ -132,6 +132,7 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'workspace', id: 'dust', labelKey: 'settings.dust', hintKey: 'settings.dustHint', needs: 'terminals' },
   { page: 'workspace', id: 'secretGuard', labelKey: 'secretGuard.setting', hintKey: 'secretGuard.settingHint', needs: 'terminals' },
   { page: 'workspace', id: 'shortcuts', labelKey: 'shortcutsV109.title', hintKey: 'shortcutsV109.hint', needs: 'terminals' },
+  { page: 'workspace', id: 'savedPrompts', labelKey: 'savedPrompts.title', hintKey: 'savedPrompts.hint', needs: 'terminals' },
 
   { page: 'editor', id: 'autoSave', labelKey: 'settings.autoSave', hintKey: 'settings.autoSaveHint', needs: 'terminals' },
   { page: 'editor', id: 'minimap', labelKey: 'settings.minimap', hintKey: 'settings.minimapHint', needs: 'terminals' },

@@ -114,6 +114,7 @@ import v106Install from '../features/remote/i18n/v106-install'
 import runV113 from '../features/run/i18n/run-v113'
 import v113Connect from '../features/remote/i18n/v113-connect'
 import v113Clip from '../features/remote/i18n/v113-clip'
+import savedPromptsV114 from '../features/prompts/i18n/saved-prompts'
 import v107Gon from './v107-gon'
 import notifyV109 from '../features/notify/i18n'
 import footerSysV109 from '../features/footerSys/i18n'
@@ -138,6 +139,7 @@ const vi: typeof en = {
   ...runV113.vi,
   ...v113Connect.vi,
   ...v113Clip.vi,
+  ...savedPromptsV114.vi,
   ...v107Gon.vi,
   ...notifyV109.vi,
   ...footerSysV109.vi,
@@ -1225,7 +1227,7 @@ const vi: typeof en = {
     goMonitor: 'Tới Giám sát',
     goUsage: 'Tới Thống kê',
     recap: 'Tổng kết ngày và xuất file',
-    group: { sessions: 'Session', favorites: 'Yêu thích', nav: 'Đi tới', actions: 'Thao tác', prefs: 'Tuỳ chọn', help: 'Trợ giúp' },
+    group: { sessions: 'Session', favorites: 'Yêu thích', nav: 'Đi tới', actions: 'Thao tác', prefs: 'Tuỳ chọn', help: 'Trợ giúp', prompts: 'Prompt đã lưu' },
     scopeLabel: 'Hiện',
     scope: { all: 'Tất cả', sessions: 'Session', favorites: 'Yêu thích', commands: 'Lệnh' },
     goHistory: 'Tới Lịch sử',

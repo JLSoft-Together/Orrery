@@ -114,6 +114,7 @@ import v106Install from '../features/remote/i18n/v106-install'
 import runV113 from '../features/run/i18n/run-v113'
 import v113Connect from '../features/remote/i18n/v113-connect'
 import v113Clip from '../features/remote/i18n/v113-clip'
+import savedPromptsV114 from '../features/prompts/i18n/saved-prompts'
 import v107Gon from './v107-gon'
 import notifyV109 from '../features/notify/i18n'
 import footerSysV109 from '../features/footerSys/i18n'
@@ -138,6 +139,7 @@ export default {
   ...runV113.en,
   ...v113Connect.en,
   ...v113Clip.en,
+  ...savedPromptsV114.en,
   ...v107Gon.en,
   ...notifyV109.en,
   ...footerSysV109.en,
@@ -1224,7 +1226,7 @@ export default {
     goMonitor: 'Go to Monitor',
     goUsage: 'Go to Usage',
     recap: 'Daily recap and export',
-    group: { sessions: 'Sessions', favorites: 'Favorites', nav: 'Go to', actions: 'Actions', prefs: 'Preferences', help: 'Help' },
+    group: { sessions: 'Sessions', favorites: 'Favorites', nav: 'Go to', actions: 'Actions', prefs: 'Preferences', help: 'Help', prompts: 'Saved prompts' },
     scopeLabel: 'Show',
     scope: { all: 'All', sessions: 'Sessions', favorites: 'Favorites', commands: 'Commands' },
     goHistory: 'Go to History',

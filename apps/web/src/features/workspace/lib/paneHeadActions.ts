@@ -41,6 +41,8 @@ export function demotedKeys(ctx: Pick<HeadActionCtx, 'agent' | 'phone'>): Demote
   return ctx.phone ? ['worktree', 'split', 'phone'] : ['worktree', 'split']
 }
 
-export function menuKeys(ctx: HeadActionCtx, width: number | null): (PinnedKey | DemotedKey)[] {
-  return ctx.agent ? [...pinnedHidden(ctx, width), ...demotedKeys(ctx)] : []
+export type MenuKey = PinnedKey | DemotedKey | 'prompts'
+
+export function menuKeys(ctx: HeadActionCtx, width: number | null): MenuKey[] {
+  return ctx.agent ? [...pinnedHidden(ctx, width), ...demotedKeys(ctx), 'prompts'] : []
 }

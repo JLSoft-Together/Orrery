@@ -116,6 +116,7 @@ import { canUndoLayout, undoLayout } from '../../next/lib/paletteHooks'
 import { useConnectionStore } from '../../../app/stores/connection'
 import { useFavoritesStore } from '../../../core/stores/favorites'
 import { usePromptsStore } from '@features/agent-tools'
+import { usePalettePrompts } from '@features/prompts'
 import { useInboxStore } from '@features/click-menu'
 import { useTurnEditsStore } from '@features/agent-tools'
 import { useTurnChanges } from '@features/git'
@@ -132,7 +133,7 @@ import ArtImage from '../../../core/components/ArtImage.vue'
 import StatusIcon from '../../../core/components/StatusIcon.vue'
 
 type Group = NextGroup
-type Scope = 'all' | 'sessions' | 'projects' | 'commands' | 'files' | 'settings'
+type Scope = 'all' | 'sessions' | 'projects' | 'commands' | 'files' | 'settings' | 'prompts'
 
 interface Item extends Searchable {
   id: string
@@ -220,6 +221,7 @@ const prefixFor = (m: PaletteMode | NextPrefixMode): string => (isNext.value ? n
 
 const parsed = computed<{ mode: PaletteMode | NextPrefixMode | null; text: string }>(() => (isNext.value ? parseNextPrefix(query.value) : parsePrefix(query.value)))
 const text = computed(() => parsed.value.text)
+const promptItems = usePalettePrompts(() => (parsed.value.mode === 'prompts' ? text.value : null), (q) => (query.value = q))
 const scopeNow = computed<Scope>(() =>
   parsed.value.mode ? (isNext.value ? scopeOfMode(parsed.value.mode as NextPrefixMode) : MODE_SCOPE[parsed.value.mode as PaletteMode]) : scope.value,
 )
@@ -697,7 +699,7 @@ const fileItems = computed<Item[]>(() => {
 })
 
 const matched = computed<Item[]>(() => {
-  const all = [...localMatches.value, ...fileItems.value, ...settingItems.value]
+  const all = [...localMatches.value, ...fileItems.value, ...settingItems.value, ...promptItems.value]
   if (!isNext.value) return all
   const hasText = !!text.value
   return all.map((x) => (x.bucket ? { ...x, group: groupOfSession(x.bucket, hasText) } : x))

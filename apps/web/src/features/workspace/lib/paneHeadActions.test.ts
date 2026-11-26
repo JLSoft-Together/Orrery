@@ -51,8 +51,12 @@ describe('pinnedHidden and menuKeys', () => {
   })
   it('always moves worktree and split into the agent menu', () => {
     expect(demotedKeys(agent)).toEqual(['worktree', 'split'])
-    expect(menuKeys(agent, 700)).toEqual(['worktree', 'split'])
-    expect(menuKeys(agent, 300)).toEqual(['turn', 'tools', 'worktree', 'split'])
+    expect(menuKeys(agent, 700)).toEqual(['worktree', 'split', 'prompts'])
+    expect(menuKeys(agent, 300)).toEqual(['turn', 'tools', 'worktree', 'split', 'prompts'])
+  })
+  it('lists saved prompts last in an agent menu only', () => {
+    expect(menuKeys(agent, 700).at(-1)).toBe('prompts')
+    expect(menuKeys(shell, 700)).not.toContain('prompts')
   })
   it('leaves a shell pane header alone', () => {
     expect(demotedKeys(shell)).toEqual([])
@@ -61,8 +65,8 @@ describe('pinnedHidden and menuKeys', () => {
   it('shows the phone entry in the agent menu only when a phone has push on', () => {
     expect(demotedKeys({ ...agent, phone: false })).toEqual(['worktree', 'split'])
     expect(demotedKeys({ ...agent, phone: true })).toEqual(['worktree', 'split', 'phone'])
-    expect(menuKeys({ ...agent, phone: true }, 700)).toEqual(['worktree', 'split', 'phone'])
-    expect(menuKeys({ ...agent, phone: true }, 300)).toEqual(['turn', 'tools', 'worktree', 'split', 'phone'])
+    expect(menuKeys({ ...agent, phone: true }, 700)).toEqual(['worktree', 'split', 'phone', 'prompts'])
+    expect(menuKeys({ ...agent, phone: true }, 300)).toEqual(['turn', 'tools', 'worktree', 'split', 'phone', 'prompts'])
     expect(demotedKeys({ ...shell, phone: true })).toEqual([])
     expect(menuKeys({ ...shell, phone: true }, 300)).toEqual([])
   })

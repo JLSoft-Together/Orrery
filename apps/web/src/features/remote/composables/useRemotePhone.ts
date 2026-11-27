@@ -8,11 +8,13 @@ import {
   type RemoteNeedsConfirm,
   type RemotePhoneCall,
   type SessionOpenError,
+  waitReason,
 } from '@ccm/shared'
 import { i18n } from '../../../i18n'
 import { workspaceBridge } from '../../next/lib/workspaceBridge'
 import { baseName } from '../../../core/lib/preview'
-import { pickForPhone, remoteMenuOf } from '../lib/remoteMenu'
+import { pickForPhone } from '../lib/remoteMenu'
+import { questionOf } from '../lib/remoteSummary'
 import { clearSnoozed } from '../../next/lib/railSnooze'
 import { useSnoozeStore } from '../../monitor/stores/snooze'
 import { useTerminalsStore } from '../../../core/stores/terminals'
@@ -28,6 +30,8 @@ import { useSessionActions, type ActFail } from '../../monitor/composables/useSe
 export type PhoneResult = { ok: true; [key: string]: unknown } | { ok: false; error: RemoteErrorCode } | { needsConfirm: RemoteNeedsConfirm }
 
 export const REPLY_WAIT_MS = 3000
+export const REPLY_STABLE_MS = 1500
+const SNOOZE_UNDO_MS = 30_000
 const AGENT_PRESETS = new Set(['claude', 'codex'])
 let installed = false
 
@@ -84,6 +88,7 @@ export function installRemotePhone(): void {
     const pane = paneOf(key)
     return pane && isTerm(pane) && pane.state === 'running' && AGENT_PRESETS.has(presetOf(pane)) ? pane : undefined
   }
+  const undoable = new Map<string, { at: number; undo: () => void }>()
   const nameOf = (pane: Pane): string => act.nameOf(pane, { title: true })
 
   function keepFocus<T>(run: () => T): T {
@@ -207,24 +212,44 @@ export function installRemotePhone(): void {
     if (!pane || !isTerm(pane)) return fail('notFound')
     const { minutes } = call.cmd
     const term = pane.terminalId ? useTerminalsStore().byId[pane.terminalId] : undefined
+    const snoozes = useSnoozeStore()
     if (minutes === null) {
-      clearSnoozed(pane.key)
-      if (term && useSnoozeStore().entries[term.id]) useSnoozeStore().clear(term.id)
+      const last = undoable.get(pane.key)
+      undoable.delete(pane.key)
+      if (last && Date.now() - last.at <= SNOOZE_UNDO_MS) last.undo()
+      else {
+        clearSnoozed(pane.key)
+        if (term && snoozes.entries[term.id]) snoozes.clear(term.id)
+      }
       return { ok: true, minutes: null }
     }
+    const before = term ? snoozes.entries[term.id] : undefined
     const held = inbox.snoozePane(pane.key, minutes)
     if (!held) return fail('notWaiting')
-    if (term) useSnoozeStore().snooze(term, held.minutes)
+    if (term) snoozes.snooze(term, held.minutes)
+    undoable.set(pane.key, {
+      at: Date.now(),
+      undo: () => {
+        held.undo()
+        if (!term) return
+        const left = before ? Math.ceil((before.until - Date.now()) / 60_000) : 0
+        if (left > 0) snoozes.snooze(term, left)
+        else if (snoozes.entries[term.id]) snoozes.clear(term.id)
+      },
+    })
     return { ok: true, minutes: held.minutes, until: Date.now() + held.minutes * 60_000 }
   }
 
-  async function replied(key: string, text: string): Promise<boolean> {
+  async function replied(key: string, text: string): Promise<'sent' | 'gone' | 'replaced' | 'timeout'> {
     const end = Date.now() + REPLY_WAIT_MS
     while (Date.now() < end) {
-      if (paneOf(key)?.prefill !== text) return true
+      const now = paneOf(key)
+      if (!now || now.state !== 'running') return 'gone'
+      if (now.prefill === undefined) return 'sent'
+      if (now.prefill !== text) return 'replaced'
       await new Promise((resolve) => setTimeout(resolve, 50))
     }
-    return false
+    return 'timeout'
   }
 
   async function reply(call: RemotePhoneCall<'ws.reply'>): Promise<PhoneResult> {
@@ -232,14 +257,22 @@ export function installRemotePhone(): void {
     if (!pane) return fail('notFound')
     const text = cleanPanePrompt(call.cmd.text)
     if (!text) return fail('invalid')
-    if (remoteMenuOf(useMenuQueueStore().entryOf(pane.key))) return fail('useMenu')
-    if (act.sessionOf(pane)?.status !== 'waiting') return fail('notWaiting')
+    if (useMenuQueueStore().entryOf(pane.key)) return fail('useMenu')
+    const session = act.sessionOf(pane)
+    if (session?.status !== 'waiting') return fail('notWaiting')
+    if (waitReason(session.waitingFor) === 'permission') return fail('useMenu')
+    if (!questionOf(session.waitingFor)) return fail('notWaiting')
+    const since = Date.parse(session.statusSince ?? '')
+    if (!Number.isFinite(since) || Date.now() - since < REPLY_STABLE_MS) return fail('busy')
     if (pane.prefill || pane.compact) return fail('busy')
     workspace.update(pane.key, { prefill: text, prefillSubmit: true, prefillWaiting: true })
-    if (await replied(pane.key, text)) {
+    const outcome = await replied(pane.key, text)
+    if (outcome === 'sent') {
       log(call.device, 'send', { name: nameOf(pane) }, pane)
       return { ok: true, submitted: true }
     }
+    if (outcome === 'gone') return fail('notFound')
+    if (outcome === 'replaced') return fail('busy')
     if (paneOf(pane.key)?.prefill === text) workspace.update(pane.key, { prefill: undefined, prefillSubmit: undefined, prefillWaiting: undefined })
     return fail(act.sessionOf(pane)?.status === 'waiting' ? 'busy' : 'notWaiting')
   }

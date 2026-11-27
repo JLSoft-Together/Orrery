@@ -1,0 +1,17 @@
+# Review v114 web + core-desk (sonnet, chỉ đọc, 27/11)
+
+Commit: cc5f31ed (G4), 11eff98a (G1 desktop), 5047810f (G2 desktop), 6cedba24 (G3). 1 CAO, 4 VỪA, 6 THẤP.
+
+1. CAO, CHẮC. `features/remote/composables/useRemotePhone.ts` `reply()` chỉ từ chối `useMenu` khi `remoteMenuOf(entryOf(pane.key))` có (`remoteMenu.ts:14-16` trả undefined khi menu `!confident` hoặc queue chưa có entry). Menu vẽ trên terminal nhưng chưa detect / không chắc → `ws.reply` paste + Enter sau 200 ms → menu chọn mục đang highlight. Vi phạm D3, D10, "app không tự trả lời menu". Sửa: từ chối khi có bất kỳ entry nào trong queue (không lọc qua `remoteMenuOf`); chỉ cho reply khi pane `waiting` ổn định (`statusSince` > 1.5 s) và `termMenu` không đang scan / busy; chỉ cho khi summary đang có `question` cho pane đó (shell cũng kiểm ở `ws.reply`).
+2. VỪA, CHẮC. `useRemotePhone.ts` `replied()`: `paneOf(key)?.prefill !== text` → pane mất / prefill bị thay vẫn trả `true`. Sửa: chỉ coi là gửi khi pane còn và `prefill` về undefined; pane mất → `notFound`; prefill khác → `busy`; pane không mount → `busy` đúng nghĩa.
+3. VỪA, NGHI. `features/prompts/lib/insertPrompt.ts` + `TermPane.vue:754-758 prefillReady`: chèn prompt khi pane `waiting` / `error` / `unknown` → prefill treo vô hạn (timer fallback chỉ arm khi conn mở lại `:1147`), chặn mọi prefill sau, rồi paste lúc agent chạy. Sửa: chèn vào pane `waiting` → từ chối `busy` ("Agent đang chờ bạn trả lời"), hoặc timeout 20 s tự xoá prefill + toast.
+4. VỪA, NGHI. `core-desk/src/prompts.rs` `clean_body` chỉ chặn `\0`; `promptModel.ts` `fitsDraft`, `parseImport`; `TermPane.vue:771-775`: body có `\x1b`, `\x03`, `ESC[201~` lọt vào PTY (dòng đơn bắt đầu `/` đi `conn.write` thô). Sửa: loại ký tự điều khiển (trừ `\n`, `\t`) ở Rust `clean_body` và web `fitsDraft` / `parseImport` / trước khi paste.
+5. VỪA, CHẮC. `prompts.rs` `parse()` bỏ mục lỗi rồi lần ghi kế tiếp mất hẳn. Sửa: parse bỏ ≥ 1 mục → copy file gốc sang `.bak-<ts>` trước khi ghi đè, trả `recovered`.
+6. THẤP, CHẮC. `core-desk/src/util.rs:92-101 write_atomic` không `sync_all` trước rename; `.bak` tên cố định bị ghi đè. Sửa: `sync_all`, `.bak` kèm timestamp.
+7. THẤP, NGHI. `features/prompts/stores/savedPrompts.ts migrate()` bỏ qua `ccm.prompts` cũ khi core đã có mục. Sửa: merge theo `title + body`.
+8. THẤP, CHẮC. `features/click-menu/stores/inbox.ts snoozePane` rơi về kind `question` khi không còn mục inbox → `error` hoãn được 60 phút (max 15). Sửa: lấy kind từ trạng thái terminal.
+9. THẤP, NGHI. `useRemotePhone.ts snoozeOp` undo (`null`) dùng `clearSnoozed`, không khôi phục mức hoãn trước (`railSnooze.undo` có `prev`); hệ core cũng bị xoá dù do toast tạo. Sửa: undo theo `paneKey` dùng `prev`.
+10. THẤP, NGHI. `apps/shell/src/remote/push_extra.rs:189-191` dựa summary có độ trễ; chặn cả push `done` / `error` của pane có `snoozed: true` cũ. Sửa: chỉ chặn push nhắc chờ (`waiting` / câu hỏi), không chặn `done` / `error`.
+11. THẤP, NGHI. `features/next/components/rail/RailRowItem.vue onKey` không bỏ `e.repeat` → giữ phím `i` nhấp nháy peek. Sửa: bỏ qua khi `e.repeat`.
+
+Đã soát không thấy lỗi: G4 timer / listener / untweak / mask / không render khi đóng; G3 pixel mức Vừa, không transition, giới hạn `data-ui='next'`; core-desk lock, giới hạn, id, scope, version; G1 guard `control()`, rate, danger, `minutes` 15/60/null, mask question 300; G2 `prefillSubmit` undefined, chặn busy; palette `;` không đụng prefix cũ.

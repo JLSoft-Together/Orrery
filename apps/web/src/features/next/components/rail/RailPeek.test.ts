@@ -254,4 +254,27 @@ describe('RailRowItem i key', () => {
     expect(row0.emitted('key')).toHaveLength(1)
     w.unmount()
   })
+
+  it('ignores the auto repeat of a held i key so the card does not flicker', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const rows = { a: row('a') }
+    const Harness = defineComponent({
+      setup: () => () =>
+        h('nav', { 'data-live-rail': '' }, [h(RailRowItem, { row: rows.a, tabStop: true }), h(RailPeek, { rowOf: (k: string) => (rows as Record<string, LiveRow>)[k] })]),
+    })
+    const w = mount(Harness, { attachTo: document.body, global: { plugins: [pinia, i18n] } })
+    const btn = document.querySelector<HTMLButtonElement>('[data-rail-open]')!
+    btn.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true }))
+    await flushPromises()
+    expect(card()).not.toBeNull()
+    const held = new KeyboardEvent('keydown', { key: 'i', repeat: true, bubbles: true, cancelable: true })
+    btn.dispatchEvent(held)
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 250))
+    expect(held.defaultPrevented).toBe(true)
+    expect(card()).not.toBeNull()
+    expect(w.findComponent(RailRowItem).emitted('key')).toBeUndefined()
+    w.unmount()
+  })
 })

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { waitReason } from '@ccm/shared'
 import { quietFor } from '../../../core/lib/attention'
 import { relPath } from '../../agent-tools/lib/clash'
 import { hasRun } from '../../../core/lib/desktop'
@@ -119,7 +120,14 @@ export const useInboxStore = defineStore('inbox', () => {
   function snoozePane(paneKey: string, minutes: number): { minutes: number; undo: () => void } | null {
     const item = items.value.find((i) => i.paneKey === paneKey)
     if (!item && !isSnoozed(paneKey)) return null
-    return railSnooze(paneKey, item ? kindOf(item) : 'question', minutes)
+    return railSnooze(paneKey, item ? kindOf(item) : kindOfPane(paneKey), minutes)
+  }
+
+  function kindOfPane(paneKey: string): AttnKind {
+    const pane = workspace.panes.find((p) => p.key === paneKey)
+    const t = pane?.terminalId ? terminals.byId[pane.terminalId] : undefined
+    if (t?.status === 'error') return 'error'
+    return t?.status === 'waiting' && waitReason(t.waitingFor) === 'permission' ? 'permission' : 'question'
   }
 
   function waitSinceOfPane(p: Pane): number | null | undefined {

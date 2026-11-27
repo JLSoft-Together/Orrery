@@ -21,6 +21,7 @@ const { t } = useI18n()
 function onKey(e: KeyboardEvent): void {
   if (isPeekKey(e) && !props.renaming) {
     e.preventDefault()
+    if (e.repeat) return
     peekHub.toggle(e.currentTarget as HTMLElement)
     return
   }

@@ -168,6 +168,12 @@ impl Phone {
                     return self.sec.json(&error(Value::from(id), "denied")).await;
                 }
                 let mut cmd = command_of(v);
+                if t == "ws.reply" {
+                    let key = cmd["paneKey"].as_str().unwrap_or("");
+                    if let Some(code) = self.ctx.summary().and_then(|s| super::workspace::reply_refusal(&s, key)) {
+                        return self.sec.json(&error(Value::from(id), code)).await;
+                    }
+                }
                 if WS_TEXT.contains(&t) {
                     let rules = lock(&self.ctx.config).danger_rules.clone();
                     let vi = self.ctx.host.welcome().locale == "vi";

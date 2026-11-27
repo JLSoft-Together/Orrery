@@ -6,7 +6,7 @@ import { planInsert, type InsertTarget } from '../lib/insertPrompt'
 import { baseName, type SavedPrompt } from '../lib/promptModel'
 import type { VarContext } from '../lib/promptVars'
 
-export type InsertOutcome = 'inserted' | 'noPane' | 'notAgent' | 'busy'
+export type InsertOutcome = 'inserted' | 'noPane' | 'notAgent' | 'busy' | 'waiting'
 
 export function usePromptInsert() {
   const { t } = useI18n()
@@ -23,7 +23,7 @@ export function usePromptInsert() {
       live: pane.state === 'running' || pane.state === 'starting',
       prefill: pane.prefill,
       compact: pane.compact,
-      waiting: paneInfo.sessionOf(pane)?.status === 'waiting',
+      status: paneInfo.sessionOf(pane)?.status,
     }
   }
 
@@ -44,7 +44,6 @@ export function usePromptInsert() {
     }
     workspace.update(pane!.key, plan.patch)
     if (plan.missing.length) say('missing', t('savedPrompts.insert.missing', { vars: plan.missing.map((v) => `{${v}}`).join(', ') }))
-    else if (plan.waiting) say('waiting', t('savedPrompts.insert.waiting'))
     return 'inserted'
   }
 

@@ -60,6 +60,17 @@ fn has_pane(summary: &Value, id: &str) -> bool {
     summary["tabs"].as_array().is_some_and(|tabs| tabs.iter().any(|t| t["panes"].as_array().is_some_and(|ps| ps.iter().any(|p| p["sessionId"].as_str() == Some(id)))))
 }
 
+pub fn reply_refusal(summary: &Value, key: &str) -> Option<&'static str> {
+    let pane = summary["tabs"].as_array()?.iter().filter_map(|t| t["panes"].as_array()).flatten().find(|p| p["key"].as_str() == Some(key))?;
+    if pane["menu"].is_object() {
+        return Some("useMenu");
+    }
+    match pane["question"].as_str() {
+        Some(q) if !q.trim().is_empty() => None,
+        _ => Some("notWaiting"),
+    }
+}
+
 impl Board {
     pub fn mark_connect(&self) {
         *lock(&self.stale_until) = Some(Instant::now() + STALE_FOR);

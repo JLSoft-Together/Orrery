@@ -32,10 +32,20 @@ describe('planInsert', () => {
     expect(planInsert({ ...agent, live: false }, 'p', ctx)).toEqual({ ok: false, reason: 'noPane' })
     expect(planInsert({ agent: false, live: true }, 'p', ctx)).toEqual({ ok: false, reason: 'notAgent' })
   })
-  it('reports missing variables and a waiting agent without blocking', () => {
-    const plan = planInsert({ ...agent, waiting: true }, 'On {branch} {project}', { project: 'app' })
-    expect(plan).toMatchObject({ ok: true, missing: ['branch'], waiting: true })
+  it('reports missing variables without blocking', () => {
+    const plan = planInsert(agent, 'On {branch} {project}', { project: 'app' })
+    expect(plan).toMatchObject({ ok: true, missing: ['branch'] })
     expect(plan.ok && plan.patch.prefill).toBe('On {branch} app')
+  })
+  it('refuses an agent that waits for an answer, so the text is never typed into the question later', () => {
+    expect(planInsert({ ...agent, status: 'waiting' }, 'p', ctx)).toEqual({ ok: false, reason: 'waiting' })
+  })
+  it('refuses an agent in a state that never types the prefill', () => {
+    expect(planInsert({ ...agent, status: 'error' }, 'p', ctx)).toEqual({ ok: false, reason: 'busy' })
+    expect(planInsert({ ...agent, status: 'unknown' }, 'p', ctx)).toEqual({ ok: false, reason: 'busy' })
+  })
+  it('allows an idle agent', () => {
+    expect(planInsert({ ...agent, status: 'idle' }, 'p', ctx).ok).toBe(true)
   })
   it('allows an agent that is working', () => {
     expect(planInsert(agent, 'p', {}).ok).toBe(true)

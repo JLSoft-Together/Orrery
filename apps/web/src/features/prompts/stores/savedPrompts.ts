@@ -32,9 +32,11 @@ export const useSavedPromptsStore = defineStore('savedPrompts', () => {
   }
 
   async function migrate(): Promise<void> {
-    if (items.value.length) return markMigrated()
-    const rows = readLegacy()
-    if (!rows.length) return
+    const have = new Set(items.value.map((p) => `${p.title}\n${p.body}`))
+    const legacy = readLegacy()
+    if (!legacy.length) return
+    const rows = legacy.filter((r) => !have.has(`${r.title}\n${r.body}`)).slice(0, Math.max(0, MAX_ITEMS - items.value.length))
+    if (!rows.length) return markMigrated()
     const seq = ++sent
     const reply = await setPrompts({ op: 'import', items: rows })
     if (reply.ok) {

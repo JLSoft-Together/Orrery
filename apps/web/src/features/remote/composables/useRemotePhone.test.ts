@@ -37,6 +37,8 @@ describe('phone commands (ws.* with source phone)', () => {
     return ws.panes.find((x) => x.key === p.key)!
   }
 
+  const askedTerm = (id: string, since = Date.now() - 10_000, waitingFor = 'Which color?') => ({ id, status: 'waiting', waitingFor, statusSince: new Date(since).toISOString() }) as never
+
   beforeEach(async () => {
     busyKeys = new Set()
     compactStart.mockReset().mockReturnValue(true)
@@ -279,8 +281,35 @@ describe('phone commands (ws.* with source phone)', () => {
     expect(await call('ws.snooze', { paneKey: a.key, minutes: 15 })).toMatchObject({ ok: true, minutes: 15 })
     expect(await call('ws.snooze', { paneKey: a.key, minutes: 7 })).toEqual({ ok: false, error: 'args' })
     expect(await call('ws.snooze', { paneKey: a.key, minutes: null })).toEqual({ ok: true, minutes: null })
+    expect(isSnoozed(a.key)).toBe(true)
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: null })).toEqual({ ok: true, minutes: null })
     expect(isSnoozed(a.key)).toBe(false)
     expect(useSnoozeStore().entries['term-a']).toBeUndefined()
+  })
+
+  it('undo after a first snooze clears it, and an undo long after the snooze clears instead of restoring', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const { isSnoozed } = await import('../../next/lib/railSnooze')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting', statusSince: '2026-11-04T10:00:00.000Z', waitingFor: 'Which color?' } as never
+    await call('ws.snooze', { paneKey: a.key, minutes: 60 })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      await call('ws.snooze', { paneKey: a.key, minutes: 15 })
+      vi.setSystemTime(Date.now() + 40_000)
+      expect(await call('ws.snooze', { paneKey: a.key, minutes: null })).toEqual({ ok: true, minutes: null })
+      expect(isSnoozed(a.key)).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a repeated snooze of a failed pane keeps the error max even once its inbox item is hidden', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'error', statusSince: '2026-11-04T10:00:00.000Z' } as never
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: 15 })).toMatchObject({ ok: true, minutes: 15 })
+    expect(await call('ws.snooze', { paneKey: a.key, minutes: 60 })).toMatchObject({ ok: true, minutes: 15 })
   })
 
   it('a snooze lapses when the same pane asks a new question', async () => {
@@ -300,7 +329,7 @@ describe('phone commands (ws.* with source phone)', () => {
     const { useMenuQueueStore } = await import('@features/click-menu')
     const a = pane('claude', 'C:\work\A', 'a')
     const b = pane('codex', 'C:\work\B', 'b')
-    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting' } as never
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a')
     useTerminalsStore().byId['term-b'] = { id: 'term-b', status: 'idle' } as never
     expect(await call('ws.reply', { paneKey: b.key, text: 'go' })).toEqual({ ok: false, error: 'notWaiting' })
     expect(await call('ws.reply', { paneKey: 'gone', text: 'go' })).toEqual({ ok: false, error: 'notFound' })
@@ -327,7 +356,7 @@ describe('phone commands (ws.* with source phone)', () => {
     try {
       const { useTerminalsStore } = await import('../../../core/stores/terminals')
       const a = pane('claude', 'C:\work\A', 'a')
-      useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting' } as never
+      useTerminalsStore().byId['term-a'] = askedTerm('term-a', Date.now() - 10_000)
       const pending = call('ws.reply', { paneKey: a.key, text: 'late' })
       useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'idle' } as never
       await vi.advanceTimersByTimeAsync(3200)
@@ -342,12 +371,63 @@ describe('phone commands (ws.* with source phone)', () => {
   it('a replay of the same rid does not type twice', async () => {
     const { useTerminalsStore } = await import('../../../core/stores/terminals')
     const a = pane('claude', 'C:\work\A', 'a')
-    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting' } as never
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a')
     const first = call('ws.reply', { paneKey: a.key, text: 'once' }, { rid: 'r9' })
     const second = call('ws.reply', { paneKey: a.key, text: 'once' }, { rid: 'r9' })
     ws.update(a.key, { prefill: undefined, prefillSubmit: undefined, prefillWaiting: undefined })
     expect(await first).toEqual({ ok: true, submitted: true })
     expect(await second).toEqual({ ok: true, submitted: true })
+  })
+
+  it('reply never types while any menu entry exists, even a low confidence one the phone cannot see', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const { useMenuQueueStore } = await import('@features/click-menu')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a')
+    const queue = useMenuQueueStore()
+    const menu = { kind: 'ask' as const, agent: 'claude' as const, items: [{ index: 1, label: 'Blue', row: 1, selected: true }], highlighted: 1, numbered: true, confident: false, firstRow: 1, lastRow: 1 }
+    queue.register(a.key, vi.fn(async () => undefined))
+    queue.report(a.key, { menu, question: 'Color?' } as never)
+    expect(await call('ws.reply', { paneKey: a.key, text: 'blue' })).toEqual({ ok: false, error: 'useMenu' })
+    expect(a.prefill).toBeUndefined()
+  })
+
+  it('reply refuses a permission wait, a fresh wait and a wait without a question', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a', Date.now() - 10_000, 'permission prompt')
+    expect(await call('ws.reply', { paneKey: a.key, text: 'yes' })).toEqual({ ok: false, error: 'useMenu' })
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a', Date.now() - 200)
+    expect(await call('ws.reply', { paneKey: a.key, text: 'yes' })).toEqual({ ok: false, error: 'busy' })
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting', statusSince: new Date(Date.now() - 10_000).toISOString() } as never
+    expect(await call('ws.reply', { paneKey: a.key, text: 'yes' })).toEqual({ ok: false, error: 'notWaiting' })
+    useTerminalsStore().byId['term-a'] = { id: 'term-a', status: 'waiting', waitingFor: 'Which color?' } as never
+    expect(await call('ws.reply', { paneKey: a.key, text: 'yes' })).toEqual({ ok: false, error: 'busy' })
+    expect(a.prefill).toBeUndefined()
+  })
+
+  it('reply is not sent when the pane vanishes or another prefill replaces its text', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const a = pane('claude', 'C:\work\A', 'a')
+    const b = pane('claude', 'C:\work\B', 'b')
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a')
+    useTerminalsStore().byId['term-b'] = askedTerm('term-b')
+    const gone = call('ws.reply', { paneKey: a.key, text: 'one' })
+    ws.remove(a.key)
+    expect(await gone).toEqual({ ok: false, error: 'notFound' })
+    const swapped = call('ws.reply', { paneKey: b.key, text: 'two' })
+    ws.update(b.key, { prefill: 'other text' })
+    expect(await swapped).toEqual({ ok: false, error: 'busy' })
+    expect(ws.panes.find((p) => p.key === b.key)?.prefill).toBe('other text')
+  })
+
+  it('reply is not sent when the pane ended and its prefill was dropped', async () => {
+    const { useTerminalsStore } = await import('../../../core/stores/terminals')
+    const a = pane('claude', 'C:\work\A', 'a')
+    useTerminalsStore().byId['term-a'] = askedTerm('term-a')
+    const pending = call('ws.reply', { paneKey: a.key, text: 'three' })
+    ws.update(a.key, { prefill: undefined, state: 'exited' })
+    expect(await pending).toEqual({ ok: false, error: 'notFound' })
   })
 
   it('every command writes one line to the phone log, and only phone callers may send them', async () => {

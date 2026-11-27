@@ -31,6 +31,16 @@ fn upsert(desk: &Desk, v: Value) -> Value {
     desk.dispatch("ccm:prompts-set", json!([{"op": "upsert", "item": v}])).unwrap()
 }
 
+fn backups(dir: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.file_name().unwrap().to_string_lossy().starts_with("prompts.json.bak-"))
+        .collect();
+    out.sort();
+    out
+}
+
 fn titles(v: &Value) -> Vec<String> {
     v["items"].as_array().unwrap().iter().map(|i| i["title"].as_str().unwrap().to_owned()).collect()
 }
@@ -134,7 +144,9 @@ fn a_broken_file_is_moved_to_bak_and_the_library_starts_empty() {
     assert_eq!(got["ok"], true);
     assert_eq!(got["recovered"], true);
     assert_eq!(got["items"], json!([]));
-    assert_eq!(std::fs::read_to_string(dir.join(BACKUP)).unwrap(), "{not json");
+    let baks = backups(&dir);
+    assert_eq!(baks.len(), 1);
+    assert_eq!(std::fs::read_to_string(&baks[0]).unwrap(), "{not json");
     assert!(!file_for(&dir).exists());
     let added = upsert(&desk, item("fresh", "x"));
     assert_eq!(titles(&added), ["fresh"]);
@@ -171,9 +183,60 @@ fn bad_rows_are_dropped_and_duplicates_collapse_on_load() {
     std::fs::write(file_for(&dir), format!("\u{feff}{text}")).unwrap();
     let loaded = load(&file_for(&dir));
     assert!(loaded.readable && !loaded.recovered);
+    assert_eq!(loaded.dropped, 4);
     let names: Vec<_> = loaded.lib.items.iter().map(|i| i.title.as_str()).collect();
     assert_eq!(names, ["ok", "keep"]);
     assert_eq!(loaded.lib.items[0].updated_at, 5);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn control_characters_are_refused_but_newline_and_tab_stay() {
+    let mut lib = Library::default();
+    for bad in ["a\u{1b}[31mb", "a\u{3}b", "x\u{1b}[201~y", "a\u{7f}b", "a\u{85}b", "a\0b"] {
+        assert_eq!(lib.upsert(&item("t", bad), 1), Err(PromptError::Body), "{bad:?}");
+    }
+    assert!(lib.upsert(&item("t", "a\tb\nc\r\nd"), 1).is_ok());
+    assert_eq!(lib.items[0].body, "a\tb\nc\nd");
+}
+
+#[test]
+fn dropping_rows_keeps_the_original_file_as_a_timestamped_backup_before_the_write() {
+    let dir = tmp("dropped");
+    std::fs::create_dir_all(&dir).unwrap();
+    let text = json!({"version": 1, "items": [
+        {"id": "a", "title": "ok", "body": "b", "scope": "all"},
+        {"id": "b", "title": "bad", "body": "x\u{1b}[201~y", "scope": "all"}
+    ]})
+    .to_string();
+    std::fs::write(file_for(&dir), &text).unwrap();
+    let desk = desk_in(&dir);
+    let got = desk.dispatch("ccm:prompts-get", Value::Null).unwrap();
+    assert_eq!((got["ok"].as_bool(), got["recovered"].as_bool()), (Some(true), Some(false)));
+    assert!(backups(&dir).is_empty());
+    let added = upsert(&desk, item("fresh", "x"));
+    assert_eq!(added["recovered"], true);
+    assert_eq!(titles(&added), ["ok", "fresh"]);
+    let baks = backups(&dir);
+    assert_eq!(baks.len(), 1);
+    assert_eq!(std::fs::read_to_string(&baks[0]).unwrap(), text);
+    let again = upsert(&desk, item("third", "x"));
+    assert!(again.get("recovered").is_none());
+    assert_eq!(backups(&dir).len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_second_broken_file_never_overwrites_the_first_backup() {
+    let dir = tmp("twice");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(file_for(&dir), "{first").unwrap();
+    assert!(load(&file_for(&dir)).recovered);
+    std::fs::write(file_for(&dir), "{second").unwrap();
+    assert!(load(&file_for(&dir)).recovered);
+    let texts: Vec<String> = backups(&dir).iter().map(|p| std::fs::read_to_string(p).unwrap()).collect();
+    assert_eq!(texts.len(), 2);
+    assert!(texts.contains(&"{first".to_owned()) && texts.contains(&"{second".to_owned()));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -80,7 +80,7 @@ pub fn clean_title(v: &Value) -> Option<String> {
 
 pub fn clean_body(v: &Value) -> Option<String> {
     let s = v.as_str()?.replace("\r\n", "\n").replace('\r', "\n");
-    let ok = !s.trim().is_empty() && js::len(&s) <= MAX_BODY && !s.contains('\0');
+    let ok = !s.trim().is_empty() && js::len(&s) <= MAX_BODY && !s.chars().any(|c| c.is_control() && c != '\n' && c != '\t');
     ok.then_some(s)
 }
 
@@ -118,24 +118,44 @@ pub struct Loaded {
     pub lib: Library,
     pub readable: bool,
     pub recovered: bool,
+    pub dropped: usize,
 }
 
 pub fn file_for(dir: &Path) -> PathBuf {
     dir.join(FILE)
 }
 
-fn parse(bytes: &[u8]) -> Option<Library> {
+fn parse(bytes: &[u8]) -> Option<(Library, usize)> {
     let text = String::from_utf8_lossy(bytes);
     let v: Value = serde_json::from_str(text.trim_start_matches('\u{feff}')).ok()?;
     let items = v.get("items")?.as_array()?;
     let mut lib = Library::default();
+    let mut dropped = 0;
     for raw in items {
-        let Some(item) = item_from(raw) else { continue };
+        let Some(item) = item_from(raw) else {
+            dropped += 1;
+            continue;
+        };
         if lib.items.len() < MAX_ITEMS && !lib.items.iter().any(|x| x.id == item.id) {
             lib.items.push(item);
+        } else {
+            dropped += 1;
         }
     }
-    Some(lib)
+    Some((lib, dropped))
+}
+
+fn backup_path(file: &Path) -> PathBuf {
+    let stamp = util::now_ms() as u64;
+    let mut n = 0u32;
+    loop {
+        let name = if n == 0 { format!("{BACKUP}-{stamp}") } else { format!("{BACKUP}-{stamp}-{n}") };
+        let path = file.with_file_name(name);
+        if !path.exists() {
+            return path;
+        }
+        n += 1;
+    }
 }
 
 fn newer_than_known(bytes: &[u8]) -> bool {
@@ -156,10 +176,10 @@ pub fn load(file: &Path) -> Loaded {
         return Loaded::default();
     }
     match parse(&bytes) {
-        Some(lib) => Loaded { lib, readable: true, recovered: false },
+        Some((lib, dropped)) => Loaded { lib, readable: true, recovered: false, dropped },
         None => {
-            let moved = std::fs::rename(file, file.with_file_name(BACKUP)).is_ok();
-            Loaded { lib: Library::default(), readable: moved, recovered: moved }
+            let moved = std::fs::rename(file, backup_path(file)).is_ok();
+            Loaded { lib: Library::default(), readable: moved, recovered: moved, dropped: 0 }
         }
     }
 }
@@ -269,13 +289,20 @@ pub fn set(dir: &Path, lock: &Mutex<()>, req: &Value, ctx: Option<&Ctx>) -> Valu
     if !loaded.readable {
         return failure(&PromptError::Io);
     }
+    let recovered = loaded.recovered || loaded.dropped > 0;
     let mut lib = loaded.lib;
-    let extra = match lib.apply(req, util::now_ms() as u64) {
+    let mut extra = match lib.apply(req, util::now_ms() as u64) {
         Ok(v) => v,
         Err(e) => return failure(&e),
     };
+    if loaded.dropped > 0 && std::fs::copy(&file, backup_path(&file)).is_err() {
+        return failure(&PromptError::Io);
+    }
     if let Err(e) = lib.save(&file) {
         return failure(&e);
+    }
+    if recovered {
+        extra["recovered"] = Value::Bool(true);
     }
     if let Some(ctx) = ctx {
         ctx.emit(CHANGED, json!({"count": lib.items.len()}));

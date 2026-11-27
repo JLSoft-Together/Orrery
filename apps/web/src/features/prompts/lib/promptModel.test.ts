@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoTitle, baseName, exportText, fitsDraft, looksSecret, MAX_BODY, MAX_TITLE, normalizeBody, parseImport, scopeMatches, toPromptError, type SavedPrompt } from './promptModel'
+import { autoTitle, baseName, hasControlChars, stripControlChars, exportText, fitsDraft, looksSecret, MAX_BODY, MAX_TITLE, normalizeBody, parseImport, scopeMatches, toPromptError, type SavedPrompt } from './promptModel'
 
 const draft = (over: Partial<{ title: string; body: string; scope: string }> = {}) => ({ title: 't', body: 'b', scope: 'all', ...over })
 
@@ -15,6 +15,25 @@ describe('fitsDraft', () => {
     expect(fitsDraft(draft({ scope: 'relative/dir' }))).toBe('invalid-scope')
     expect(fitsDraft(draft({ scope: 'D:\\work\\app' }))).toBeNull()
     expect(fitsDraft(draft({ scope: '/home/me/app' }))).toBeNull()
+  })
+})
+
+describe('control characters', () => {
+  it('refuses a body that carries escape, ctrl-c, bracketed paste end or delete, and keeps newline and tab', () => {
+    for (const bad of ['a\u001b[31mb', 'a\u0003b', 'x\u001b[201~y', 'a\u007fb', 'a\u0085b', 'a\u0000b']) {
+      expect(hasControlChars(bad)).toBe(true)
+      expect(fitsDraft(draft({ body: bad }))).toBe('invalid-body')
+    }
+    expect(hasControlChars('a\tb\nc\r\nd')).toBe(false)
+    expect(fitsDraft(draft({ body: 'a\tb\nc' }))).toBeNull()
+  })
+  it('skips imported rows with control characters', () => {
+    const out = parseImport([{ title: 'a', body: 'ok' }, { title: 'b', body: 'x\u001b[201~y' }])
+    expect(out?.rows.map((r) => r.title)).toEqual(['a'])
+    expect(out?.skipped).toBe(1)
+  })
+  it('strips control characters before text reaches the terminal', () => {
+    expect(stripControlChars('/clear\u001b[201~\u0003 now\nline\ttab')).toBe('/clear[201~ now\nline\ttab')
   })
 })
 

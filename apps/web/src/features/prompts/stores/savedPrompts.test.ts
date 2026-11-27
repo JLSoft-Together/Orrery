@@ -146,11 +146,30 @@ describe('saved prompts store', () => {
     expect(core.items).toHaveLength(1)
   })
 
-  it('does not import over a core list that already has prompts', async () => {
+  it('merges the old list into a core list that already has prompts, skipping the same title and body', async () => {
     core.items = [{ id: 'a', title: 'A', body: 'b', scope: 'all', updatedAt: 1 }]
-    localStorage.setItem(LEGACY_KEY, JSON.stringify([{ id: 'x', name: 'Old', text: 'old', scope: 'global' }]))
+    localStorage.setItem(
+      LEGACY_KEY,
+      JSON.stringify([
+        { id: 'x', name: 'Old', text: 'old', scope: 'global' },
+        { id: 'y', name: 'A', text: 'b', scope: 'global' },
+      ]),
+    )
+    const store = useSavedPromptsStore()
+    await store.load()
+    expect(core.items.map((p) => p.title)).toEqual(['A', 'Old'])
+    expect(store.items.map((p) => p.title)).toEqual(['A', 'Old'])
+    expect(localStorage.getItem(MIGRATED_KEY)).toBe('1')
+    setActivePinia(createPinia())
     await useSavedPromptsStore().load()
-    expect(core.items).toHaveLength(1)
+    expect(core.items).toHaveLength(2)
+  })
+
+  it('marks the old list migrated without importing when core already holds every row', async () => {
+    core.items = [{ id: 'a', title: 'A', body: 'b', scope: 'all', updatedAt: 1 }]
+    localStorage.setItem(LEGACY_KEY, JSON.stringify([{ id: 'y', name: 'A', text: 'b', scope: 'global' }]))
+    await useSavedPromptsStore().load()
+    expect(core.calls).toEqual([])
     expect(localStorage.getItem(MIGRATED_KEY)).toBe('1')
   })
 

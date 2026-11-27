@@ -55,7 +55,7 @@ import { useTerminalsStore } from '../../../core/stores/terminals'
 import { useTipsStore } from '@features/update'
 import { useUiStore } from '../../../core/stores/ui'
 import { useRemoteStore } from '@features/remote'
-import { usePromptsMenu } from '@features/prompts'
+import { stripControlChars, usePromptsMenu } from '@features/prompts'
 import { RemotePhoneChip } from '@features/remote'
 import { usePanePhone } from '../composables/usePanePhone'
 import { parseOsc7, parseOsc9 } from '../lib/shellCwd'
@@ -753,7 +753,7 @@ function armPrefill(): void {
 
 function prefillReady(): boolean {
   const status = session.value?.status
-  if (props.pane.prefillWaiting) return status === 'waiting'
+  if (props.pane.prefillWaiting) return status === 'waiting' && !termMenu.menu.value && !termMenu.busy.value
   return status === 'idle' || (props.pane.prefillNow === true && status === 'working') || (prefillLate && status !== 'working' && status !== 'waiting')
 }
 
@@ -765,7 +765,7 @@ async function sendPrefill(): Promise<void> {
   prefilling = true
   await att.idle()
   prefilling = false
-  const text = props.pane.prefill
+  const text = stripControlChars(props.pane.prefill ?? '')
   const submit = props.pane.prefillSubmit
   if (!text || !term || !conn?.isOpen || props.pane.state !== 'running' || !prefillReady()) return
   stopPrefill()
@@ -1439,7 +1439,7 @@ watch(
 )
 
 watch(
-  () => [props.pane.prefill, props.pane.state, session.value?.status] as const,
+  () => [props.pane.prefill, props.pane.state, session.value?.status, !!termMenu.menu.value, termMenu.busy.value] as const,
   () => void sendPrefill(),
 )
 

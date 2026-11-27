@@ -36,12 +36,19 @@ export function isPrompt(v: unknown): v is SavedPrompt {
   return typeof p.id === 'string' && typeof p.title === 'string' && typeof p.body === 'string' && typeof p.scope === 'string' && typeof p.updatedAt === 'number'
 }
 
+const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/
+const CONTROL_ALL = new RegExp(CONTROL.source, 'g')
+
+export const hasControlChars = (s: string): boolean => CONTROL.test(s)
+
+export const stripControlChars = (s: string): string => s.replace(CONTROL_ALL, '')
+
 export const normalizeBody = (body: string): string => body.replace(/\r\n?/g, '\n')
 
 export function fitsDraft(d: Pick<PromptDraft, 'title' | 'body' | 'scope'>): PromptError | null {
   const title = d.title.trim()
   if (!title || title.length > MAX_TITLE) return 'invalid-title'
-  if (!d.body.trim() || d.body.length > MAX_BODY) return 'invalid-body'
+  if (!d.body.trim() || d.body.length > MAX_BODY || hasControlChars(d.body)) return 'invalid-body'
   if (d.scope !== SCOPE_ALL && (d.scope.length > MAX_SCOPE || !isAbsolute(d.scope))) return 'invalid-scope'
   return null
 }

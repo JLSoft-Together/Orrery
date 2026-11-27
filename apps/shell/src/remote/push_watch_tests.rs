@@ -158,7 +158,7 @@ fn a_queued_job_is_dropped_when_the_phone_is_connected_by_the_time_it_would_send
 }
 
 #[test]
-fn a_snoozed_pane_gets_no_push_but_an_open_request_still_goes_out() {
+fn a_snoozed_pane_gets_no_reminder_push_but_done_error_and_open_still_go_out() {
     let rig = rig("pushw-snooze", "", false);
     let phone = Phone::new("p");
     let ctx = rig.remote.ctx().unwrap();
@@ -174,12 +174,17 @@ fn a_snoozed_pane_gets_no_push_but_an_open_request_still_goes_out() {
     summary["tabs"][0]["panes"][0]["snoozed"] = json!(true);
     ctx.publish(summary);
     assert_eq!(ctx.push_terminal("t1", "attention", now), 0);
-    assert_eq!(ctx.push_terminal("t1", "done", now + Duration::from_secs(40)), 0);
-    assert_eq!(ctx.push_pane("pane-1", "open", "", None, now + Duration::from_secs(80)), 1);
+    assert_eq!(ctx.push_terminal("t1", "question", now + Duration::from_secs(20)), 0);
+    assert_eq!(ctx.push_terminal("t1", "permission", now + Duration::from_secs(30)), 0);
+    assert_eq!(ctx.push_terminal("t1", "done", now + Duration::from_secs(40)), 1);
+    assert_eq!(ctx.take_push_jobs()[0].kind, "done");
+    assert_eq!(ctx.push_terminal("t1", "error", now + Duration::from_secs(80)), 1);
+    assert_eq!(ctx.take_push_jobs()[0].kind, "error");
+    assert_eq!(ctx.push_pane("pane-1", "open", "", None, now + Duration::from_secs(120)), 1);
     assert_eq!(ctx.take_push_jobs()[0].kind, "open");
     let mut released = pane_summary("t1", "pane-1");
     released["rev"] = json!(2);
     ctx.publish(released);
-    assert_eq!(ctx.push_terminal("t1", "attention", now + Duration::from_secs(120)), 1);
+    assert_eq!(ctx.push_terminal("t1", "attention", now + Duration::from_secs(200)), 1);
     assert_eq!(super::pane_link::pane_snoozed(&json!({ "tabs": [{ "panes": [{ "key": "a", "snoozed": "yes" }] }] }), "a"), false);
 }

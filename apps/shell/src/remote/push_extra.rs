@@ -189,7 +189,7 @@ impl Ctx {
             return 0;
         }
         let kind = kind_of(kind);
-        if kind != "open" && self.board.summary().is_some_and(|s| pane_snoozed(&s, pane)) {
+        if matches!(kind, "attention" | "question" | "permission") && self.board.summary().is_some_and(|s| pane_snoozed(&s, pane)) {
             return 0;
         }
         let ongoing: Vec<String> = lock(&self.push).ongoing.keys().filter(|(_, p)| p == pane).map(|(d, _)| d.clone()).collect();

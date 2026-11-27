@@ -154,6 +154,7 @@ function main() {
   run('npm', ['run', 'build', '-w', '@ccm/web'], { cwd: ROOT })
   run('node', [path.join(ROOT, 'scripts', 'gen-desk-shim.mjs')])
   daemonKit()
+  stageApk(j)
   rmSync(OUT, { recursive: true, force: true })
   mkdirSync(OUT, { recursive: true })
   for (const step of TARGETS[which]) {

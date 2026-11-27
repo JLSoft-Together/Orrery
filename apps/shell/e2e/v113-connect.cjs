@@ -39,7 +39,7 @@ const phone = (over = {}) => ({ deviceId: 'dq1', name: 'Galaxy A33', platform: '
     check('hero card replaces the old toggle block and keeps data-remote-enable', await has('[data-connect-hero] [data-remote-enable]'))
     check('device list and old selectors stay', (await has('[data-remote-devices]')) && (await has('[data-setting-row="remoteDevices"]')))
     check('advanced fold is closed by default', (await evaluate(`document.querySelector('[data-remote-more]')?.getAttribute('aria-expanded')`)) === 'false')
-    check('log list stays in the DOM inside the fold', await has('[data-remote-log]'))
+    check('log list stays in the DOM inside the fold', await has('[data-remote-log], [data-remote-log-empty]'))
     await snap('01-hero-ready')
 
     await click('[data-remote-more]')

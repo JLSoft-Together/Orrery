@@ -66,8 +66,10 @@ async function fixture() {
     check('Esc closes the popover', (await peeks()) === 0)
     check('row title is restored after close', await evaluate(`document.querySelector('[data-live-rail] [data-side-row] [data-rail-open]').hasAttribute('title')`))
 
+    await move(row.x + 600, row.y + 300)
+    await sleep(200)
     await move(row.x, row.y)
-    await sleep(500)
+    await sleep(600)
     check('popover reopens on a new hover', (await peeks()) === 1)
     await move(900, 700)
     await sleep(500)

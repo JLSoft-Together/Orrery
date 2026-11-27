@@ -1,8 +1,21 @@
 use serde_json::{json, Map, Value};
 
+use super::ctx::{Asked, Host};
+use super::viewer_events::run_log;
+
+#[path = "fs_put.rs"]
+pub mod fs_put;
+
+#[path = "prompts.rs"]
+pub mod prompts;
+
 pub const MAX_PATH: usize = 4096;
 pub const FAST: u64 = 15;
 pub const SLOW: u64 = 60;
+pub const CHECK_RUN: &str = "ccm:checklist-run";
+pub const RUN_LOG: &str = "ccm:remote-run-log";
+pub const RUN_WATCH: &str = "ccm:remote-run-watch";
+const MAX_ID: usize = 64;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Arg {
@@ -11,6 +24,10 @@ pub enum Arg {
     Str(&'static str),
     StrFlag(&'static str, &'static str),
     Write,
+    Check(&'static str),
+    RunLog,
+    Put,
+    Prompts,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -18,6 +35,7 @@ pub enum Pre {
     Discard,
     Push,
     Overwrite,
+    CheckRun,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -27,6 +45,8 @@ pub enum Watch {
     FsDrop,
     GitAdd,
     GitDrop,
+    RunAdd,
+    RunDrop,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -52,6 +72,9 @@ impl Spec {
     const fn write(self) -> Spec {
         Spec { write: true, ..self }
     }
+    pub fn charges_write(&self, cmd: &Value) -> bool {
+        self.write || (matches!(self.arg, Arg::Put) && cmd.get("seq").and_then(Value::as_u64) == Some(0))
+    }
     const fn run(self) -> Spec {
         Spec { run: true, ..self }
     }
@@ -63,11 +86,12 @@ impl Spec {
     }
 }
 
-pub const SPECS: [Spec; 31] = [
+pub const SPECS: [Spec; 41] = [
     s("fs.list", "ccm:list-dir", Arg::Obj),
     s("fs.files", "ccm:list-files", Arg::Str("root")),
     s("fs.read", "ccm:read-file", Arg::Str("path")),
     s("fs.write", "ccm:file-write", Arg::Write).write(),
+    s("fs.put", fs_put::FS_PUT, Arg::Put),
     s("fs.watch", "ccm:watch", Arg::Str("root")).watch(Watch::FsAdd),
     s("fs.unwatch", "ccm:unwatch", Arg::Str("root")).watch(Watch::FsDrop),
     s("git.status", "ccm:changes-status", Arg::Str("root")),
@@ -95,6 +119,15 @@ pub const SPECS: [Spec; 31] = [
     s("run.reload", "ccm:run-reload", Arg::StrFlag("sessionId", "hot")),
     s("run.sessions", "ccm:run-sessions", Arg::None).run(),
     s("run.devices", "ccm:run-devices", Arg::None),
+    s("run.log", RUN_LOG, Arg::RunLog),
+    s("run.watch", RUN_WATCH, Arg::None).run().watch(Watch::RunAdd),
+    s("run.unwatch", RUN_WATCH, Arg::None).watch(Watch::RunDrop),
+    s("checklist.get", "ccm:checklist", Arg::Check("list")),
+    s("checklist.toggle", "ccm:checklist", Arg::Check("toggle")).write(),
+    s("checklist.run", CHECK_RUN, Arg::Check("list")).pre(Pre::CheckRun),
+    s("prompts.list", prompts::LIST, Arg::Prompts),
+    s("prompts.save", prompts::SAVE, Arg::Prompts).write(),
+    s("prompts.delete", prompts::DELETE, Arg::Prompts).write(),
 ];
 
 pub fn lookup(t: &str) -> Option<&'static Spec> {
@@ -135,12 +168,64 @@ pub fn clean(cmd: &Value) -> Map<String, Value> {
     obj
 }
 
+fn check_args(op: &str, cmd: &Value) -> Option<Value> {
+    let mut req = json!({ "op": op, "dir": text(cmd, "dir")? });
+    match cmd.get("wt") {
+        None | Some(Value::Null) => {}
+        Some(Value::String(w)) if !w.is_empty() && w.len() <= MAX_PATH && local_path_ok(w) => req["wt"] = json!(w),
+        Some(_) => return None,
+    }
+    if op == "toggle" {
+        let id = cmd.get("id").and_then(Value::as_str).filter(|i| !i.is_empty() && i.len() <= MAX_ID)?;
+        req["id"] = json!(id);
+        req["done"] = json!(cmd.get("done").and_then(Value::as_bool)?);
+    }
+    Some(json!([req]))
+}
+
+fn put_args(cmd: &Value) -> Option<Value> {
+    let root = text(cmd, "root")?;
+    let up = cmd.get("up").and_then(Value::as_str).filter(|u| run_log::valid_id(u))?;
+    let seq = cmd.get("seq").and_then(Value::as_u64).filter(|s| *s <= fs_put::MAX_SEQ)?;
+    let last = cmd.get("last").and_then(Value::as_bool)?;
+    let b64 = cmd.get("b64").and_then(Value::as_str).filter(|b| !b.is_empty() && b.len() <= fs_put::MAX_CHUNK_B64)?;
+    Some(json!([{ "root": root, "up": up, "seq": seq, "last": last, "b64": b64 }]))
+}
+
+fn run_log_args(cmd: &Value) -> Option<Value> {
+    let session = cmd.get("session").and_then(Value::as_str).filter(|s| run_log::valid_id(s))?;
+    let mut req = json!({ "session": session });
+    match cmd.get("since") {
+        None | Some(Value::Null) => {}
+        Some(v) => req["since"] = json!(v.as_u64()?),
+    }
+    Some(json!([req]))
+}
+
+pub fn check_run(host: &dyn Host, owner: &str, accept: &[String], args: Value) -> Value {
+    let probe = host.viewer(owner, "ccm:checklist", args.clone(), accept);
+    let allowed = probe.get("raw").is_some_and(|r| r.get("ok") == Some(&Value::Bool(true)));
+    if !allowed {
+        return probe;
+    }
+    let req = args.get(0).cloned().unwrap_or(Value::Null);
+    let target = json!({ "dir": req["dir"], "wt": req.get("wt").cloned().unwrap_or(Value::Null) });
+    match host.ask("checklist.run", target) {
+        Asked::Reply(v) => json!({ "raw": v }),
+        Asked::Offline => json!({ "error": "offline" }),
+    }
+}
+
 pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
     Some(match spec.arg {
         Arg::None => json!([]),
         Arg::Obj => paths_ok(cmd).then(|| json!([Value::Object(clean(cmd))]))?,
         Arg::Str(f) => json!([text(cmd, f)?]),
         Arg::StrFlag(f, g) => json!([text(cmd, f)?, cmd.get(g) == Some(&Value::Bool(true))]),
+        Arg::Check(op) => check_args(op, cmd)?,
+        Arg::RunLog => run_log_args(cmd)?,
+        Arg::Put => put_args(cmd)?,
+        Arg::Prompts => prompts::args(spec.t, cmd)?,
         Arg::Write => {
             let path = text(cmd, "path")?;
             let body = cmd.get("text").and_then(Value::as_str)?;
@@ -155,7 +240,7 @@ pub fn build_args(spec: &Spec, cmd: &Value) -> Option<Value> {
 
 pub fn watch_key(spec: &Spec, cmd: &Value) -> Option<String> {
     let kind = match spec.watch {
-        Watch::No => return None,
+        Watch::No | Watch::RunAdd | Watch::RunDrop => return None,
         Watch::FsAdd | Watch::FsDrop => "fs",
         Watch::GitAdd | Watch::GitDrop => "git",
     };
@@ -215,6 +300,11 @@ pub fn pre_needs(locale: &str, pre: Pre, cmd: &Value) -> Value {
             }
             let (title, ok) = if vi { ("Push nhánh lên remote?", "Push") } else { ("Push branch to remote?", "Push") };
             json!({ "title": title, "detail": lines.join("\n"), "ok": ok, "cancel": cancel })
+        }
+        Pre::CheckRun => {
+            let (title, ok) = if vi { ("Chạy kiểm trên máy?", "Chạy kiểm") } else { ("Run the check on the computer?", "Run check") };
+            let target = if cmd.get("wt").is_some_and(Value::is_string) { field("wt") } else { field("dir") };
+            json!({ "title": title, "detail": target, "ok": ok, "cancel": cancel })
         }
         Pre::Overwrite => {
             let (title, ok) = if vi { ("Ghi đè file?", "Ghi đè") } else { ("Overwrite file?", "Overwrite") };

@@ -5,6 +5,7 @@ import '../../remote/chat_last.dart';
 import '../../remote/providers.dart';
 import '../chat/chat_home_page.dart';
 import '../chat/chat_nav.dart';
+import '../clip/clip_ui.dart';
 import '../commands.dart';
 import '../model/workspace_model.dart';
 import '../monitor/monitor_page.dart';
@@ -25,15 +26,18 @@ class WorkspacePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MachineScope(
     machineId: machineId,
-    child: Consumer(
-      builder: (context, ref, _) {
-        final chat = ref.watch(
-          machineViewProvider(machineId).select((v) => v.chatEnabled),
-        );
-        return chat
-            ? ChatHomePage(machineId: machineId)
-            : WorkspaceShell(machineId: machineId);
-      },
+    child: ClipListener(
+      machineId: machineId,
+      child: Consumer(
+        builder: (context, ref, _) {
+          final chat = ref.watch(
+            machineViewProvider(machineId).select((v) => v.chatEnabled),
+          );
+          return chat
+              ? ChatHomePage(machineId: machineId)
+              : WorkspaceShell(machineId: machineId);
+        },
+      ),
     ),
   );
 }

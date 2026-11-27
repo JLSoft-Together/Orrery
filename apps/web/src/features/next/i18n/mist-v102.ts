@@ -139,7 +139,7 @@ const en = {
       scopeLabel: 'Show',
       scope: { all: 'All', sessions: 'Sessions', files: 'Files', commands: 'Commands', projects: 'Projects' },
       hints: { move: 'select', open: 'open, keep split', openNew: 'open in new pane', close: 'close' },
-      prefix: { sessions: 'Sessions', files: 'Files', commands: 'Commands', projects: 'Projects' },
+      prefix: { sessions: 'Sessions', files: 'Files', commands: 'Commands', projects: 'Projects', prompts: 'Prompts' },
     },
     explorer: {
       title: 'Explorer',
@@ -391,7 +391,7 @@ const vi: typeof en = {
       scopeLabel: 'Hiển thị',
       scope: { all: 'Tất cả', sessions: 'Session', files: 'File', commands: 'Lệnh', projects: 'Dự án' },
       hints: { move: 'chọn', open: 'mở, giữ split', openNew: 'mở pane mới', close: 'đóng' },
-      prefix: { sessions: 'Session', files: 'File', commands: 'Lệnh', projects: 'Project' },
+      prefix: { sessions: 'Session', files: 'File', commands: 'Lệnh', projects: 'Project', prompts: 'Prompt' },
     },
     explorer: {
       title: 'Explorer',

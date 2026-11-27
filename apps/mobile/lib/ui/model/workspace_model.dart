@@ -72,6 +72,12 @@ class SplitNode extends LayoutNode {
   List<String> get leaves => [...a.leaves, ...b.leaves];
 }
 
+const int questionMax = 300;
+
+String? _questionOf(String? value) => value == null || value.length <= questionMax
+    ? value
+    : value.substring(0, questionMax);
+
 class PaneInfo {
   const PaneInfo({
     required this.key,
@@ -91,6 +97,8 @@ class PaneInfo {
     this.terminalId,
     this.inbox,
     this.menu,
+    this.question,
+    this.snoozed = false,
   });
 
   final String key;
@@ -110,6 +118,8 @@ class PaneInfo {
   final String? terminalId;
   final InboxInfo? inbox;
   final RemoteMenu? menu;
+  final String? question;
+  final bool snoozed;
 
   PaneInfo withTitle(String next) => PaneInfo(
     key: key,
@@ -129,6 +139,8 @@ class PaneInfo {
     terminalId: terminalId,
     inbox: inbox,
     menu: menu,
+    question: question,
+    snoozed: snoozed,
   );
 
   bool get isTerm => kind == 'term';
@@ -167,6 +179,8 @@ class PaneInfo {
       terminalId: text('terminalId'),
       inbox: InboxInfo.parse(raw['inbox']),
       menu: RemoteMenu.parse(raw['menu']),
+      question: _questionOf(text('question')),
+      snoozed: raw['snoozed'] == true,
     );
   }
 }

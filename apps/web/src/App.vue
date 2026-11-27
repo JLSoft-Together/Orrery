@@ -13,7 +13,7 @@ import { useUiStore } from './core/stores/ui'
 import { useWorkspaceStore } from './features/workspace/stores/workspace'
 import { useTaskbarBadge } from './features/notify/useTaskbarBadge'
 import { useTrayWaiting } from './features/notify/useTrayWaiting'
-import { useCiEvents } from '@features/git'
+import { installChecklistRun, useCiEvents } from '@features/git'
 import { gateDeepSeekAgent, warmDeepSeek } from './features/deepseek'
 import AppHeader from './app/components/AppHeader.vue'
 import NextShell from './features/next/components/NextShell.vue'
@@ -108,6 +108,7 @@ if (hasTerminals && !ui.compact) {
   useShareModeKey()
   void remote.start()
   installRemotePhone()
+  installChecklistRun()
   installRemoteSummary()
   watch(() => remote.connected > 0, (phone) => phone && (workspaceOpened.value = true), { immediate: true })
 }

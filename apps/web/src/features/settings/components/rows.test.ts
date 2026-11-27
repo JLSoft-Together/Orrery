@@ -64,6 +64,7 @@ const env: SettingsEnv = {
   phone: false,
   telegram: false,
   remote: false,
+  devices: false,
   disk: false,
   updater: false,
   backup: false,

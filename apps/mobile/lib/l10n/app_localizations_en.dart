@@ -195,6 +195,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errRate => 'Too many commands. Slow down.';
 
   @override
+  String get errNeedsAuth =>
+      'This command needs device authentication. Update the app to send it.';
+
+  @override
   String get errProto => 'App and desktop versions do not match.';
 
   @override
@@ -609,6 +613,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pushFixedAttentionBody => 'A session needs you. Tap to open it.';
 
   @override
+  String get pushFixedRunningTitle => 'Agent is working';
+
+  @override
+  String get pushFixedRunningBody =>
+      'A session has been running for a while. Tap to open it.';
+
+  @override
+  String get pushFixedOpenTitle => 'Opened from your computer';
+
+  @override
+  String get pushFixedOpenBody => 'Tap to open this pane.';
+
+  @override
+  String get pushRunningChannel => 'Running sessions';
+
+  @override
+  String get pushActionOpen => 'Open';
+
+  @override
+  String get pushMenuStale => 'The question changed, open the pane to see it';
+
+  @override
   String get pushFixedTestTitle => 'Orrery';
 
   @override
@@ -716,6 +742,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vCancelled => 'Cancelled.';
+
+  @override
+  String get vChecklist => 'Pre-merge checklist';
+
+  @override
+  String get vClEmpty => 'No items yet. Agents and the computer add them.';
+
+  @override
+  String get vClReady => 'Ready to merge';
+
+  @override
+  String vClOpen(int count) {
+    return '$count open';
+  }
+
+  @override
+  String get vClByAgent => 'Added by an agent';
+
+  @override
+  String get vClCheck => 'Check';
+
+  @override
+  String get vClNone => 'No check script set';
+
+  @override
+  String get vClIdle => 'Not run yet';
+
+  @override
+  String get vClRunning => 'Running';
+
+  @override
+  String get vClPass => 'Passed';
+
+  @override
+  String get vClFail => 'Failed';
+
+  @override
+  String get vClStale => 'Out of date, new commits since the run';
+
+  @override
+  String get vClRun => 'Run check';
+
+  @override
+  String get vClRunStarted => 'Check started on the computer';
+
+  @override
+  String get vErrCheckRunning => 'A check is already running on the computer.';
+
+  @override
+  String get vErrNoScript => 'Pick a check script on the computer first.';
+
+  @override
+  String get vErrNoIntegration =>
+      'Turn on shell integration on the computer first.';
+
+  @override
+  String get vErrCheckOff => 'The checklist is not available for this folder.';
 
   @override
   String get vWaitConfirm => 'Confirm on this phone to continue.';
@@ -971,6 +1054,121 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vRunNoLog => 'No log yet';
+
+  @override
+  String get pushFixedApkTitle => 'APK ready to install';
+
+  @override
+  String get pushFixedApkBody => 'Tap to download it on this Wi-Fi.';
+
+  @override
+  String get pushActionInstall => 'Download and install';
+
+  @override
+  String get apkTitle => 'Install build';
+
+  @override
+  String get apkReady =>
+      'Download this build over the same Wi-Fi and open the installer.';
+
+  @override
+  String get apkStart => 'Download and install';
+
+  @override
+  String get apkDownloading => 'Downloading';
+
+  @override
+  String apkDownloadingPercent(int percent) {
+    return 'Downloading $percent%';
+  }
+
+  @override
+  String get apkVerifying => 'Checking SHA-256';
+
+  @override
+  String get apkInstalling => 'Opening the installer';
+
+  @override
+  String get apkStarted => 'Installer opened. Confirm there to finish.';
+
+  @override
+  String get apkNeedPermission =>
+      'Allow Orrery Remote to install unknown apps, then come back here.';
+
+  @override
+  String get apkOpenSettings => 'Open settings';
+
+  @override
+  String get apkRetry => 'Try again';
+
+  @override
+  String get apkCancel => 'Cancel';
+
+  @override
+  String get apkClose => 'Close';
+
+  @override
+  String get apkErrExpired =>
+      'This link expired. Send the build again from the computer.';
+
+  @override
+  String get apkErrLan => 'Join the same Wi-Fi as the computer to download.';
+
+  @override
+  String get apkErrInterrupted => 'The download was interrupted. Try again.';
+
+  @override
+  String get apkErrSpace => 'Not enough free space on this phone.';
+
+  @override
+  String get apkErrSize =>
+      'The file size does not match the offer. Download stopped.';
+
+  @override
+  String get apkErrSha =>
+      'The file failed the SHA-256 check. It was deleted and not installed.';
+
+  @override
+  String get apkErrInstall => 'Could not open the installer.';
+
+  @override
+  String get apkErrInvalid => 'This offer is not valid.';
+
+  @override
+  String get runLogTitle => 'Log';
+
+  @override
+  String get runLogOpen => 'Full log';
+
+  @override
+  String get runLogEmpty => 'No log lines yet';
+
+  @override
+  String get runLogUnsupported =>
+      'This computer does not serve the Run log. Update Orrery on the computer.';
+
+  @override
+  String get runLogGap => 'Older lines were dropped';
+
+  @override
+  String get runLogAll => 'All';
+
+  @override
+  String get runLogSendCrash => 'Send crash to agent';
+
+  @override
+  String get runLogNoAgent => 'No agent pane is open for this project';
+
+  @override
+  String get runLogPickAgent => 'Send the crash to which agent?';
+
+  @override
+  String get runLogCrashPrompt =>
+      'The app crashed while running. Please read this crash log and fix the cause:';
+
+  @override
+  String get runLogCrashFilled =>
+      'Crash filled into the input box. Nothing was sent.';
 
   @override
   String get lockReason => 'Unlock Orrery Remote';
@@ -1349,6 +1547,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pushGroupError => 'Error or unexpected exit';
 
   @override
+  String get pushPauseTitle => 'Pause notifications for 1 hour?';
+
+  @override
+  String get pushPauseBody =>
+      'You will not get alerts from your computers for the next hour.';
+
+  @override
+  String get pushPauseAction => 'Pause';
+
+  @override
+  String get pushPauseCancel => 'Cancel';
+
+  @override
+  String pushPausedTitle(String time) {
+    return 'Notifications paused until $time';
+  }
+
+  @override
+  String get pushResumeBody => 'Turn them back on now?';
+
+  @override
+  String get pushResumeAction => 'Turn on';
+
+  @override
   String get settingsThemeSystem => 'Follows the phone';
 
   @override
@@ -1718,4 +1940,386 @@ class AppLocalizationsEn extends AppLocalizations {
   String chatContext(int n) {
     return 'Context $n%';
   }
+
+  @override
+  String pairConfirmTitle(String name) {
+    return 'Pair with $name?';
+  }
+
+  @override
+  String get pairConfirmSourceUsb => 'Via USB cable';
+
+  @override
+  String get pairConfirmSourceDevice => 'Via USB cable or an app on this phone';
+
+  @override
+  String get pairConfirmAddressUsb => 'Over USB cable';
+
+  @override
+  String get pairConfirmSourceWeb => 'Opened from a web page';
+
+  @override
+  String pairConfirmAddress(String ip) {
+    return 'Address $ip';
+  }
+
+  @override
+  String get pairConfirmAction => 'Pair';
+
+  @override
+  String get pairInvalidCode => 'Invalid pairing code';
+
+  @override
+  String get pairWrongNetwork =>
+      'This code is not on the current Wi-Fi network';
+
+  @override
+  String get clipSendTitle => 'Send clipboard to computer';
+
+  @override
+  String get clipSendHint =>
+      'Copies the text you copied on this phone into the computer clipboard, only when you tap';
+
+  @override
+  String get clipSent => 'Sent to the computer clipboard';
+
+  @override
+  String get clipEmpty => 'The phone clipboard has no text';
+
+  @override
+  String get clipTooLarge => 'The text is over 64 KB';
+
+  @override
+  String get clipSecret => 'Looks like a secret, blocked';
+
+  @override
+  String get clipDenied => 'The computer does not allow remote control';
+
+  @override
+  String get clipFailed => 'Could not send the clipboard';
+
+  @override
+  String get clipReceived => 'Copied the computer clipboard to this phone';
+
+  @override
+  String get mediaPhoto => 'Add a photo';
+
+  @override
+  String get mediaTakePhoto => 'Take a photo';
+
+  @override
+  String get mediaChoosePhoto => 'Choose from gallery';
+
+  @override
+  String get mediaSending => 'Sending the photo...';
+
+  @override
+  String get mediaSent =>
+      'Photo saved in the project, path added to the message';
+
+  @override
+  String get mediaMicHold => 'Hold to speak';
+
+  @override
+  String get mediaMicHint =>
+      'Hold the mic button and speak. The text goes into the box, nothing is sent.';
+
+  @override
+  String get mediaMicListening => 'Listening...';
+
+  @override
+  String get mediaMicDenied =>
+      'Microphone access is off. Allow it in the phone settings.';
+
+  @override
+  String get mediaMicUnavailable =>
+      'Speech recognition is not available on this phone';
+
+  @override
+  String get mediaMicRefused => 'Online speech recognition was not allowed';
+
+  @override
+  String get mediaOnlineTitle => 'Use online speech recognition?';
+
+  @override
+  String get mediaOnlineBody =>
+      'This phone has no offline speech pack for this language, so your voice would go to the speech service of your phone. You are asked only once.';
+
+  @override
+  String get mediaOnlineAllow => 'Allow';
+
+  @override
+  String get mediaCameraDenied =>
+      'Camera access is off. Allow it in the phone settings.';
+
+  @override
+  String get mediaErrUnsupported => 'This image format is not supported';
+
+  @override
+  String get mediaErrTooLarge => 'The image is over 8 MB';
+
+  @override
+  String get mediaErrBusy => 'A photo is already being sent';
+
+  @override
+  String get mediaErrOffline => 'Lost the connection while sending. Try again.';
+
+  @override
+  String get mediaErrDenied =>
+      'The computer does not accept photos. Update Orrery on the computer and allow remote control.';
+
+  @override
+  String get mediaErrInterrupted => 'The upload was interrupted. Try again.';
+
+  @override
+  String get mediaErrFailed => 'Could not send the photo';
+
+  @override
+  String get mediaIgnoreTitle => 'Add .orrery/inbox/ to .gitignore?';
+
+  @override
+  String get mediaIgnoreBody =>
+      'Photos are saved in the project folder .orrery/inbox/. Add it to .gitignore so they are not committed.';
+
+  @override
+  String get mediaIgnoreAdd => 'Add';
+
+  @override
+  String get mediaIgnoreSkip => 'Not now';
+
+  @override
+  String get mediaIgnoreDone => '.gitignore updated';
+
+  @override
+  String get mediaIgnoreAlready => '.gitignore already covers it';
+
+  @override
+  String get queueTitle => 'Answer one by one';
+
+  @override
+  String queueOpen(int n) {
+    return 'Waiting for you ($n)';
+  }
+
+  @override
+  String queueCounter(int i, int n) {
+    return '$i / $n';
+  }
+
+  @override
+  String queueWaited(String time) {
+    return 'Waiting $time';
+  }
+
+  @override
+  String get queueReplyHint => 'Type your reply';
+
+  @override
+  String get queueSend => 'Send';
+
+  @override
+  String get queueSkip => 'Skip';
+
+  @override
+  String get queueSnooze => 'Snooze';
+
+  @override
+  String queueSnoozeMinutes(int n) {
+    return '$n minutes';
+  }
+
+  @override
+  String get queueSnoozeHour => '1 hour';
+
+  @override
+  String queueSnoozed(int n) {
+    return 'Snoozed for $n minutes';
+  }
+
+  @override
+  String get queueOpenPane => 'Open pane';
+
+  @override
+  String queuePending(String label) {
+    return 'Sending: $label';
+  }
+
+  @override
+  String get queueSent => 'Sent';
+
+  @override
+  String get queueStale => 'The question changed';
+
+  @override
+  String get queueStaleReload => 'Show the new question';
+
+  @override
+  String get queueGone => 'Answered on the computer';
+
+  @override
+  String get queueDone => 'All done, nothing is waiting for you';
+
+  @override
+  String queueSkippedCount(int n) {
+    return 'Skipped $n';
+  }
+
+  @override
+  String get queueReview => 'Review skipped';
+
+  @override
+  String get queueBack => 'Back';
+
+  @override
+  String get queueNoChoice => 'Choose in the pane';
+
+  @override
+  String get queueHint => 'Swipe left to skip, right to snooze 15 minutes';
+
+  @override
+  String get queueHintSkip => 'Swipe left to skip';
+
+  @override
+  String queueMore(int n) {
+    return '$n more waiting';
+  }
+
+  @override
+  String get queueHide => 'Hide';
+
+  @override
+  String get queueErrNotWaiting => 'This pane is no longer waiting';
+
+  @override
+  String get queueErrUseMenu => 'This question has choices now, open the pane';
+
+  @override
+  String get promptsStrip => 'Saved prompts';
+
+  @override
+  String get promptsAdd => 'New prompt';
+
+  @override
+  String get promptsEditTitle => 'Edit prompt';
+
+  @override
+  String get promptsEdit => 'Edit';
+
+  @override
+  String get promptsDelete => 'Delete';
+
+  @override
+  String get promptsSave => 'Save';
+
+  @override
+  String get promptsFieldTitle => 'Title';
+
+  @override
+  String get promptsFieldBody => 'Prompt text';
+
+  @override
+  String get promptsScopeAll => 'All projects';
+
+  @override
+  String get promptsScopeHere => 'This project';
+
+  @override
+  String get promptsDeleteTitle => 'Delete this prompt?';
+
+  @override
+  String get promptsDeleteBody => 'It is removed on the computer too.';
+
+  @override
+  String promptsHidden(int count) {
+    return '$count on the computer only';
+  }
+
+  @override
+  String promptsMore(int count) {
+    return '$count more on the computer';
+  }
+
+  @override
+  String get promptsRetry => 'Prompts did not load, tap to retry';
+
+  @override
+  String promptsMissing(String names) {
+    return 'Left as written: $names';
+  }
+
+  @override
+  String get promptsTooLong =>
+      'Not enough room in the message box for this prompt';
+
+  @override
+  String get promptsSaved => 'Prompt saved';
+
+  @override
+  String get promptsDeleted => 'Prompt deleted';
+
+  @override
+  String get promptsErrSecret =>
+      'This looks like it holds a secret. Keep it on the computer.';
+
+  @override
+  String get promptsErrTitle =>
+      'The title is empty or longer than 80 characters';
+
+  @override
+  String get promptsErrBody =>
+      'The text is empty or longer than 4000 characters';
+
+  @override
+  String get promptsErrFull => 'The library is full (200 prompts)';
+
+  @override
+  String get promptsErrNotFound => 'This prompt is gone';
+
+  @override
+  String get promptsErrIo => 'The computer could not save it';
+
+  @override
+  String awayTitle(String time, String ago) {
+    return 'Since $time ($ago ago)';
+  }
+
+  @override
+  String awayDone(int n) {
+    return 'Done $n';
+  }
+
+  @override
+  String awayWaiting(int n) {
+    return 'Waiting for you $n';
+  }
+
+  @override
+  String awayFailed(int n) {
+    return 'Failed $n';
+  }
+
+  @override
+  String awayAgentsDone(int n) {
+    return 'Sub-agents done $n';
+  }
+
+  @override
+  String awayAgentsFailed(int n) {
+    return 'Sub-agents failed $n';
+  }
+
+  @override
+  String awayCompact(int n) {
+    return 'Compact $n';
+  }
+
+  @override
+  String get awaySeen => 'Seen';
+
+  @override
+  String get awayPartial => 'Numbers may be incomplete';
+
+  @override
+  String get queueMaybeSent =>
+      'It may have been sent. Send again only if it did not arrive.';
 }

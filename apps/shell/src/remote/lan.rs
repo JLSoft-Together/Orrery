@@ -96,7 +96,11 @@ fn check(req: &Request, res: Response) -> Result<Response, ErrorResponse> {
     Ok(res)
 }
 
-pub async fn accept_loop(ctx: Arc<Ctx>, listener: std::net::TcpListener, mut stop: watch::Receiver<bool>) {
+pub async fn accept_loop(ctx: Arc<Ctx>, listener: std::net::TcpListener, stop: watch::Receiver<bool>) {
+    accept_with(ctx, listener, stop, false).await;
+}
+
+pub async fn accept_with(ctx: Arc<Ctx>, listener: std::net::TcpListener, mut stop: watch::Receiver<bool>, pairing_only: bool) {
     let Ok(listener) = TcpListener::from_std(listener) else { return };
     loop {
         tokio::select! {
@@ -117,17 +121,17 @@ pub async fn accept_loop(ctx: Arc<Ctx>, listener: std::net::TcpListener, mut sto
                     }
                 };
                 let _ = stream.set_nodelay(true);
-                tokio::spawn(handle(ctx.clone(), stream, peer.ip(), pending));
+                tokio::spawn(handle(ctx.clone(), stream, peer.ip(), pending, pairing_only));
             }
             _ = stop.changed() => break,
         }
     }
 }
 
-async fn handle(ctx: Arc<Ctx>, stream: TcpStream, ip: IpAddr, pending: Pending) {
+async fn handle(ctx: Arc<Ctx>, stream: TcpStream, ip: IpAddr, pending: Pending, pairing_only: bool) {
     let deadline = Instant::now() + HANDSHAKE;
     if super::install::sniff(&stream, deadline).await {
-        super::install::serve(&ctx.install, stream, ip, deadline).await;
+        super::install_pair::serve(ctx, stream, ip, deadline).await;
         drop(pending);
         return;
     }
@@ -136,7 +140,7 @@ async fn handle(ctx: Arc<Ctx>, stream: TcpStream, ip: IpAddr, pending: Pending) 
     let (in_tx, in_rx) = mpsc::channel(INBOX);
     let (out_tx, out_rx) = mpsc::channel(OUTBOX);
     let budget = Arc::new(Budget::default());
-    let origin = Origin { ip: Some(ip.to_string()), country: None, pairing: false };
+    let origin = Origin { ip: Some(ip.to_string()), country: None, pairing: pairing_only };
     let link = Link { rx: in_rx, out: Outbox::Lan(out_tx), peer: Peer::Lan(ip), origin, budget: budget.clone() };
     tokio::spawn(pump(ws, in_tx, out_rx, budget));
     session::serve(ctx, link, Some(pending), deadline).await;

@@ -17,6 +17,7 @@ String errorText(AppLocalizations l, Object error) {
     'timeout' => l.errTimeout,
     'offline' => l.errOffline,
     'rate' => l.errRate,
+    'needsAuth' => l.errNeedsAuth,
     'proto' => l.errProto,
     _ => l.errInternal,
   };

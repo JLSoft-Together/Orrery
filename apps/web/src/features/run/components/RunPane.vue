@@ -15,11 +15,13 @@ import { useRunStore } from '../stores/run'
 import { useUiStore } from '../../../core/stores/ui'
 import { DeviceCaptureDialog } from '@features/devices'
 import AppSelect from '../../../core/components/AppSelect.vue'
+import RunApkOffer from './RunApkOffer.vue'
 import RunBar from './RunBar.vue'
 import RunConfigsDialog from './RunConfigsDialog.vue'
 import RunHistoryDialog from './RunHistoryDialog.vue'
 import RunLog from './RunLog.vue'
 import RunProjectMark from './RunProjectMark.vue'
+import RunShotsDialog from './RunShotsDialog.vue'
 import RunToolchainDialog from './RunToolchainDialog.vue'
 
 const props = withDefaults(defineProps<{ root: string; active?: boolean; paneKey?: string }>(), { active: true })
@@ -75,6 +77,7 @@ const reasonOf = (p: (typeof detectedProjects.value)[number]): string | null => 
 const step = computed(() => runStep(session.value))
 const toolchainOpen = ref(false)
 const historyOpen = ref(false)
+const multiOpen = ref(false)
 
 const config = computed(() => run.selectedConfig(props.root))
 const project = computed(() => {
@@ -214,6 +217,7 @@ function sessionLabel(s: RunSession): string {
         @edit-configs="configsOpen = true"
         @toolchain="toolchainOpen = true"
         @release-check="openReleaseCheck"
+        @multi-run="multiOpen = true"
       />
       <span v-else class="min-w-0 flex-1 truncate text-2xs text-ink-faint" :title="root">{{ baseName(root) }}</span>
       <span v-if="env?.kind === 'flutter' && env.version" class="hidden shrink-0 items-center gap-1 text-2xs text-ink-faint @lg:inline-flex" :title="env.sdk ?? undefined">
@@ -274,6 +278,7 @@ function sessionLabel(s: RunSession): string {
           @update:model-value="(v) => run.focusSession(root, v)"
         />
         <span v-else-if="session" class="hidden min-w-0 truncate text-2xs text-ink-faint @md:inline" :title="session.cwd">{{ sessionLabel(session) }}</span>
+        <RunApkOffer :session="session" :root="root" />
         <button
           v-if="androidDevice"
           type="button"
@@ -342,6 +347,7 @@ function sessionLabel(s: RunSession): string {
     </template>
     <RunConfigsDialog :open="configsOpen" :root="root" @close="configsOpen = false" />
     <RunHistoryDialog :open="historyOpen" :root="root" @close="historyOpen = false" />
+    <RunShotsDialog :open="multiOpen" :root="root" @close="multiOpen = false" />
     <RunToolchainDialog :open="toolchainOpen" :root="root" :config="config" @close="toolchainOpen = false" />
     <DeviceCaptureDialog :open="captureOpen" :device-id="androidDevice?.id ?? null" :device-name="androidDevice?.name ?? ''" :root="root" @close="captureOpen = false" />
   </section>

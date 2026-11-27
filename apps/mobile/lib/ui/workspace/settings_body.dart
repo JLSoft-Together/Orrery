@@ -5,6 +5,7 @@ import '../../app/app_lock_scope.dart';
 import '../../push/push_providers.dart';
 import '../../remote/providers.dart';
 import '../../security/lock_settings_page.dart';
+import '../clip/clip_ui.dart';
 import '../kit/kit.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
@@ -51,6 +52,7 @@ class SettingsBody extends ConsumerWidget {
               ),
             ),
           ],
+          ClipTile(machineId: machineId),
           SectionLabel(l.settingsAppearance),
           const AppearanceRows(),
           SectionLabel(l.settingsAbout),

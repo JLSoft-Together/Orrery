@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -7,9 +7,12 @@ use tokio::sync::{mpsc, watch};
 
 use super::ctx::Ctx;
 use super::pane_link::pane_of;
+use super::push::{now_ms, RUNNING_AFTER};
 
 const WORKING: &str = "working";
+const WAITING: &str = "waiting";
 const TAP_RETRY: Duration = Duration::from_secs(2);
+const RUNNING_TICK: Duration = Duration::from_secs(15);
 const TERMINALS_MAX: usize = 4096;
 
 #[derive(Default)]
@@ -17,6 +20,8 @@ pub struct Watch {
     status: HashMap<String, String>,
     started: HashMap<String, Instant>,
     worked: HashMap<String, u64>,
+    waiting_at: HashMap<String, Instant>,
+    announced: HashSet<String>,
 }
 
 fn events(text: &str) -> Vec<Value> {
@@ -42,6 +47,8 @@ impl Watch {
                     self.status.clear();
                     self.started.clear();
                     self.worked.clear();
+                    self.waiting_at.clear();
+                    self.announced.clear();
                     for t in payload["terminals"].as_array().into_iter().flatten() {
                         self.set(t["id"].as_str(), t["status"].as_str());
                     }
@@ -65,6 +72,8 @@ impl Watch {
                         self.status.remove(id);
                         self.started.remove(id);
                         self.worked.remove(id);
+                        self.waiting_at.remove(id);
+                        self.announced.remove(id);
                     }
                 }
                 _ => {}
@@ -77,6 +86,26 @@ impl Watch {
         self.worked.remove(id)
     }
 
+    pub fn waiting_ids(&self) -> Vec<String> {
+        let mut ids: Vec<(&Instant, &String)> = self.waiting_at.iter().map(|(id, at)| (at, id)).collect();
+        ids.sort();
+        ids.into_iter().map(|(_, id)| id.clone()).collect()
+    }
+
+    pub fn due_running(&mut self, now: Instant, now_ms: u64) -> Vec<(String, u64)> {
+        let mut due: Vec<(String, u64)> = self
+            .started
+            .iter()
+            .filter(|(id, at)| now.saturating_duration_since(**at) >= RUNNING_AFTER && !self.announced.contains(*id))
+            .map(|(id, at)| (id.clone(), now_ms.saturating_sub(now.saturating_duration_since(*at).as_millis() as u64)))
+            .collect();
+        due.sort();
+        for (id, _) in &due {
+            self.announced.insert(id.clone());
+        }
+        due
+    }
+
     fn set(&mut self, id: Option<&str>, status: Option<&str>) {
         let (Some(id), Some(status)) = (id, status) else { return };
         if self.status.len() >= TERMINALS_MAX && !self.status.contains_key(id) {
@@ -87,6 +116,12 @@ impl Watch {
             self.started.insert(id.to_owned(), Instant::now());
         } else if status != WORKING {
             self.started.remove(id);
+            self.announced.remove(id);
+        }
+        if status == WAITING {
+            self.waiting_at.entry(id.to_owned()).or_insert_with(Instant::now);
+        } else {
+            self.waiting_at.remove(id);
         }
     }
 }
@@ -113,6 +148,7 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
                 let _ = sink.send(text);
             });
             watcher.apply(&snapshot);
+            ctx.set_waiting(watcher.waiting_ids());
             break guard;
         }
         tokio::select! {
@@ -120,13 +156,25 @@ pub async fn run(ctx: Arc<Ctx>, mut stop: watch::Receiver<bool>) {
             _ = stop.changed() => return,
         }
     };
+    let mut tick = tokio::time::interval(RUNNING_TICK);
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tokio::select! {
             text = rx.recv() => {
                 let Some(text) = text else { break };
-                for (terminal, kind) in watcher.apply(&text) {
+                let moves = watcher.apply(&text);
+                let cleared = ctx.set_waiting(watcher.waiting_ids());
+                for (terminal, kind) in moves {
                     let worked = watcher.take_worked(&terminal);
                     ctx.push_terminal_after(&terminal, kind, worked, Instant::now());
+                }
+                if cleared {
+                    ctx.push_clear(Instant::now());
+                }
+            }
+            _ = tick.tick() => {
+                for (terminal, started) in watcher.due_running(Instant::now(), now_ms()) {
+                    ctx.push_running(&terminal, started, Instant::now());
                 }
             }
             _ = stop.changed() => break,

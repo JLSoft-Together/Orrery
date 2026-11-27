@@ -1,5 +1,6 @@
 const HIDDEN_ROWS = new Set(['disk', 'phone'])
 const ADVANCED_ROWS = new Set(['office'])
+export const REMOTE_ADVANCED_ROWS = new Set(['remoteInstall', 'remoteRelay', 'remotePush', 'remoteAwake', 'remoteBlocked', 'remoteTrusted', 'remoteAccess', 'remoteLog'])
 const REMINDER_ROWS = new Set(['break', 'stuck', 'contextWarn', 'budget'])
 const TRIES = 25
 const EVERY_MS = 40
@@ -26,6 +27,12 @@ export function flashSettingRow(id: string, root: ParentNode = document): void {
   const look = (): void => {
     if (HIDDEN_ROWS.has(id)) root.querySelector<HTMLElement>('[data-notify-more][aria-expanded="false"]')?.click()
     if (ADVANCED_ROWS.has(id)) root.querySelector<HTMLElement>('[data-general-more][aria-expanded="false"]')?.click()
+    const fold = REMOTE_ADVANCED_ROWS.has(id) ? root.querySelector<HTMLElement>('[data-remote-more][aria-expanded="false"]') : null
+    if (fold) {
+      fold.click()
+      if (++tries < TRIES) window.setTimeout(look, EVERY_MS)
+      return
+    }
     if (REMINDER_ROWS.has(id)) root.querySelector<HTMLElement>('[data-reminders-more][aria-expanded="false"]')?.click()
     const row = root.querySelector<HTMLElement>(`[data-setting-row="${id}"]`)
     if (!row) {

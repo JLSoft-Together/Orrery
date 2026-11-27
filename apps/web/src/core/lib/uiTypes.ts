@@ -10,7 +10,7 @@ export interface NodeSize {
 
 export type TourId = 'monitor' | 'workspace'
 
-export const SETTINGS_PAGES = ['general', 'appearance', 'workspace', 'notify', 'remote', 'integrations', 'data', 'about'] as const
+export const SETTINGS_PAGES = ['general', 'appearance', 'workspace', 'notify', 'remote', 'devices', 'integrations', 'data', 'about'] as const
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]
 
 export const LEGACY_PAGES = {

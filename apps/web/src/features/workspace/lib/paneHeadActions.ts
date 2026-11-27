@@ -1,5 +1,5 @@
 export type PinnedKey = 'attach' | 'chat' | 'turn' | 'tools'
-export type DemotedKey = 'worktree' | 'split'
+export type DemotedKey = 'worktree' | 'split' | 'phone'
 
 export interface HeadActionCtx {
   agent: boolean
@@ -7,6 +7,7 @@ export interface HeadActionCtx {
   chat: boolean
   turn: boolean
   tools: boolean
+  phone?: boolean
 }
 
 export const PINNED_ORDER: readonly PinnedKey[] = ['attach', 'chat', 'turn', 'tools']
@@ -35,10 +36,13 @@ export function pinnedHidden(ctx: HeadActionCtx, width: number | null): PinnedKe
   return pinnedAvailable(ctx).filter((k) => !shown.has(k))
 }
 
-export function demotedKeys(ctx: Pick<HeadActionCtx, 'agent'>): DemotedKey[] {
-  return ctx.agent ? ['worktree', 'split'] : []
+export function demotedKeys(ctx: Pick<HeadActionCtx, 'agent' | 'phone'>): DemotedKey[] {
+  if (!ctx.agent) return []
+  return ctx.phone ? ['worktree', 'split', 'phone'] : ['worktree', 'split']
 }
 
-export function menuKeys(ctx: HeadActionCtx, width: number | null): (PinnedKey | DemotedKey)[] {
-  return ctx.agent ? [...pinnedHidden(ctx, width), ...demotedKeys(ctx)] : []
+export type MenuKey = PinnedKey | DemotedKey | 'prompts'
+
+export function menuKeys(ctx: HeadActionCtx, width: number | null): MenuKey[] {
+  return ctx.agent ? [...pinnedHidden(ctx, width), ...demotedKeys(ctx), 'prompts'] : []
 }

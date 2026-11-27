@@ -410,6 +410,12 @@ abstract class AppLocalizations {
   /// **'Too many commands. Slow down.'**
   String get errRate;
 
+  /// No description provided for @errNeedsAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'This command needs device authentication. Update the app to send it.'**
+  String get errNeedsAuth;
+
   /// No description provided for @errProto.
   ///
   /// In en, this message translates to:
@@ -1148,6 +1154,48 @@ abstract class AppLocalizations {
   /// **'A session needs you. Tap to open it.'**
   String get pushFixedAttentionBody;
 
+  /// No description provided for @pushFixedRunningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent is working'**
+  String get pushFixedRunningTitle;
+
+  /// No description provided for @pushFixedRunningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A session has been running for a while. Tap to open it.'**
+  String get pushFixedRunningBody;
+
+  /// No description provided for @pushFixedOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened from your computer'**
+  String get pushFixedOpenTitle;
+
+  /// No description provided for @pushFixedOpenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to open this pane.'**
+  String get pushFixedOpenBody;
+
+  /// No description provided for @pushRunningChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Running sessions'**
+  String get pushRunningChannel;
+
+  /// No description provided for @pushActionOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get pushActionOpen;
+
+  /// No description provided for @pushMenuStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The question changed, open the pane to see it'**
+  String get pushMenuStale;
+
   /// No description provided for @pushFixedTestTitle.
   ///
   /// In en, this message translates to:
@@ -1351,6 +1399,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancelled.'**
   String get vCancelled;
+
+  /// No description provided for @vChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-merge checklist'**
+  String get vChecklist;
+
+  /// No description provided for @vClEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No items yet. Agents and the computer add them.'**
+  String get vClEmpty;
+
+  /// No description provided for @vClReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to merge'**
+  String get vClReady;
+
+  /// No description provided for @vClOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} open'**
+  String vClOpen(int count);
+
+  /// No description provided for @vClByAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by an agent'**
+  String get vClByAgent;
+
+  /// No description provided for @vClCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get vClCheck;
+
+  /// No description provided for @vClNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No check script set'**
+  String get vClNone;
+
+  /// No description provided for @vClIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not run yet'**
+  String get vClIdle;
+
+  /// No description provided for @vClRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get vClRunning;
+
+  /// No description provided for @vClPass.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed'**
+  String get vClPass;
+
+  /// No description provided for @vClFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get vClFail;
+
+  /// No description provided for @vClStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of date, new commits since the run'**
+  String get vClStale;
+
+  /// No description provided for @vClRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run check'**
+  String get vClRun;
+
+  /// No description provided for @vClRunStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Check started on the computer'**
+  String get vClRunStarted;
+
+  /// No description provided for @vErrCheckRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'A check is already running on the computer.'**
+  String get vErrCheckRunning;
+
+  /// No description provided for @vErrNoScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a check script on the computer first.'**
+  String get vErrNoScript;
+
+  /// No description provided for @vErrNoIntegration.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on shell integration on the computer first.'**
+  String get vErrNoIntegration;
+
+  /// No description provided for @vErrCheckOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The checklist is not available for this folder.'**
+  String get vErrCheckOff;
 
   /// No description provided for @vWaitConfirm.
   ///
@@ -1789,6 +1945,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No log yet'**
   String get vRunNoLog;
+
+  /// No description provided for @pushFixedApkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'APK ready to install'**
+  String get pushFixedApkTitle;
+
+  /// No description provided for @pushFixedApkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to download it on this Wi-Fi.'**
+  String get pushFixedApkBody;
+
+  /// No description provided for @pushActionInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get pushActionInstall;
+
+  /// No description provided for @apkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install build'**
+  String get apkTitle;
+
+  /// No description provided for @apkReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Download this build over the same Wi-Fi and open the installer.'**
+  String get apkReady;
+
+  /// No description provided for @apkStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get apkStart;
+
+  /// No description provided for @apkDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get apkDownloading;
+
+  /// No description provided for @apkDownloadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {percent}%'**
+  String apkDownloadingPercent(int percent);
+
+  /// No description provided for @apkVerifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking SHA-256'**
+  String get apkVerifying;
+
+  /// No description provided for @apkInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the installer'**
+  String get apkInstalling;
+
+  /// No description provided for @apkStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Installer opened. Confirm there to finish.'**
+  String get apkStarted;
+
+  /// No description provided for @apkNeedPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Orrery Remote to install unknown apps, then come back here.'**
+  String get apkNeedPermission;
+
+  /// No description provided for @apkOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get apkOpenSettings;
+
+  /// No description provided for @apkRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get apkRetry;
+
+  /// No description provided for @apkCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get apkCancel;
+
+  /// No description provided for @apkClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get apkClose;
+
+  /// No description provided for @apkErrExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This link expired. Send the build again from the computer.'**
+  String get apkErrExpired;
+
+  /// No description provided for @apkErrLan.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the same Wi-Fi as the computer to download.'**
+  String get apkErrLan;
+
+  /// No description provided for @apkErrInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'The download was interrupted. Try again.'**
+  String get apkErrInterrupted;
+
+  /// No description provided for @apkErrSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough free space on this phone.'**
+  String get apkErrSpace;
+
+  /// No description provided for @apkErrSize.
+  ///
+  /// In en, this message translates to:
+  /// **'The file size does not match the offer. Download stopped.'**
+  String get apkErrSize;
+
+  /// No description provided for @apkErrSha.
+  ///
+  /// In en, this message translates to:
+  /// **'The file failed the SHA-256 check. It was deleted and not installed.'**
+  String get apkErrSha;
+
+  /// No description provided for @apkErrInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the installer.'**
+  String get apkErrInstall;
+
+  /// No description provided for @apkErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This offer is not valid.'**
+  String get apkErrInvalid;
+
+  /// No description provided for @runLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log'**
+  String get runLogTitle;
+
+  /// No description provided for @runLogOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full log'**
+  String get runLogOpen;
+
+  /// No description provided for @runLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No log lines yet'**
+  String get runLogEmpty;
+
+  /// No description provided for @runLogUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer does not serve the Run log. Update Orrery on the computer.'**
+  String get runLogUnsupported;
+
+  /// No description provided for @runLogGap.
+  ///
+  /// In en, this message translates to:
+  /// **'Older lines were dropped'**
+  String get runLogGap;
+
+  /// No description provided for @runLogAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get runLogAll;
+
+  /// No description provided for @runLogSendCrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Send crash to agent'**
+  String get runLogSendCrash;
+
+  /// No description provided for @runLogNoAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent pane is open for this project'**
+  String get runLogNoAgent;
+
+  /// No description provided for @runLogPickAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Send the crash to which agent?'**
+  String get runLogPickAgent;
+
+  /// No description provided for @runLogCrashPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'The app crashed while running. Please read this crash log and fix the cause:'**
+  String get runLogCrashPrompt;
+
+  /// No description provided for @runLogCrashFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash filled into the input box. Nothing was sent.'**
+  String get runLogCrashFilled;
 
   /// No description provided for @lockReason.
   ///
@@ -2438,6 +2804,48 @@ abstract class AppLocalizations {
   /// **'Error or unexpected exit'**
   String get pushGroupError;
 
+  /// No description provided for @pushPauseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause notifications for 1 hour?'**
+  String get pushPauseTitle;
+
+  /// No description provided for @pushPauseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You will not get alerts from your computers for the next hour.'**
+  String get pushPauseBody;
+
+  /// No description provided for @pushPauseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pushPauseAction;
+
+  /// No description provided for @pushPauseCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pushPauseCancel;
+
+  /// No description provided for @pushPausedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications paused until {time}'**
+  String pushPausedTitle(String time);
+
+  /// No description provided for @pushResumeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn them back on now?'**
+  String get pushResumeBody;
+
+  /// No description provided for @pushResumeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get pushResumeAction;
+
   /// No description provided for @settingsThemeSystem.
   ///
   /// In en, this message translates to:
@@ -2971,6 +3379,660 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Context {n}%'**
   String chatContext(int n);
+
+  /// No description provided for @pairConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with {name}?'**
+  String pairConfirmTitle(String name);
+
+  /// No description provided for @pairConfirmSourceUsb.
+  ///
+  /// In en, this message translates to:
+  /// **'Via USB cable'**
+  String get pairConfirmSourceUsb;
+
+  /// No description provided for @pairConfirmSourceDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Via USB cable or an app on this phone'**
+  String get pairConfirmSourceDevice;
+
+  /// No description provided for @pairConfirmAddressUsb.
+  ///
+  /// In en, this message translates to:
+  /// **'Over USB cable'**
+  String get pairConfirmAddressUsb;
+
+  /// No description provided for @pairConfirmSourceWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened from a web page'**
+  String get pairConfirmSourceWeb;
+
+  /// No description provided for @pairConfirmAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address {ip}'**
+  String pairConfirmAddress(String ip);
+
+  /// No description provided for @pairConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get pairConfirmAction;
+
+  /// No description provided for @pairInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid pairing code'**
+  String get pairInvalidCode;
+
+  /// No description provided for @pairWrongNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'This code is not on the current Wi-Fi network'**
+  String get pairWrongNetwork;
+
+  /// No description provided for @clipSendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send clipboard to computer'**
+  String get clipSendTitle;
+
+  /// No description provided for @clipSendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the text you copied on this phone into the computer clipboard, only when you tap'**
+  String get clipSendHint;
+
+  /// No description provided for @clipSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to the computer clipboard'**
+  String get clipSent;
+
+  /// No description provided for @clipEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone clipboard has no text'**
+  String get clipEmpty;
+
+  /// No description provided for @clipTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The text is over 64 KB'**
+  String get clipTooLarge;
+
+  /// No description provided for @clipSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks like a secret, blocked'**
+  String get clipSecret;
+
+  /// No description provided for @clipDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer does not allow remote control'**
+  String get clipDenied;
+
+  /// No description provided for @clipFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send the clipboard'**
+  String get clipFailed;
+
+  /// No description provided for @clipReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied the computer clipboard to this phone'**
+  String get clipReceived;
+
+  /// No description provided for @mediaPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a photo'**
+  String get mediaPhoto;
+
+  /// No description provided for @mediaTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get mediaTakePhoto;
+
+  /// No description provided for @mediaChoosePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get mediaChoosePhoto;
+
+  /// No description provided for @mediaSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending the photo...'**
+  String get mediaSending;
+
+  /// No description provided for @mediaSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved in the project, path added to the message'**
+  String get mediaSent;
+
+  /// No description provided for @mediaMicHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to speak'**
+  String get mediaMicHold;
+
+  /// No description provided for @mediaMicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the mic button and speak. The text goes into the box, nothing is sent.'**
+  String get mediaMicHint;
+
+  /// No description provided for @mediaMicListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening...'**
+  String get mediaMicListening;
+
+  /// No description provided for @mediaMicDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone access is off. Allow it in the phone settings.'**
+  String get mediaMicDenied;
+
+  /// No description provided for @mediaMicUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech recognition is not available on this phone'**
+  String get mediaMicUnavailable;
+
+  /// No description provided for @mediaMicRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Online speech recognition was not allowed'**
+  String get mediaMicRefused;
+
+  /// No description provided for @mediaOnlineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use online speech recognition?'**
+  String get mediaOnlineTitle;
+
+  /// No description provided for @mediaOnlineBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone has no offline speech pack for this language, so your voice would go to the speech service of your phone. You are asked only once.'**
+  String get mediaOnlineBody;
+
+  /// No description provided for @mediaOnlineAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get mediaOnlineAllow;
+
+  /// No description provided for @mediaCameraDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is off. Allow it in the phone settings.'**
+  String get mediaCameraDenied;
+
+  /// No description provided for @mediaErrUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This image format is not supported'**
+  String get mediaErrUnsupported;
+
+  /// No description provided for @mediaErrTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is over 8 MB'**
+  String get mediaErrTooLarge;
+
+  /// No description provided for @mediaErrBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'A photo is already being sent'**
+  String get mediaErrBusy;
+
+  /// No description provided for @mediaErrOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost the connection while sending. Try again.'**
+  String get mediaErrOffline;
+
+  /// No description provided for @mediaErrDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer does not accept photos. Update Orrery on the computer and allow remote control.'**
+  String get mediaErrDenied;
+
+  /// No description provided for @mediaErrInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'The upload was interrupted. Try again.'**
+  String get mediaErrInterrupted;
+
+  /// No description provided for @mediaErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send the photo'**
+  String get mediaErrFailed;
+
+  /// No description provided for @mediaIgnoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add .orrery/inbox/ to .gitignore?'**
+  String get mediaIgnoreTitle;
+
+  /// No description provided for @mediaIgnoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos are saved in the project folder .orrery/inbox/. Add it to .gitignore so they are not committed.'**
+  String get mediaIgnoreBody;
+
+  /// No description provided for @mediaIgnoreAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mediaIgnoreAdd;
+
+  /// No description provided for @mediaIgnoreSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get mediaIgnoreSkip;
+
+  /// No description provided for @mediaIgnoreDone.
+  ///
+  /// In en, this message translates to:
+  /// **'.gitignore updated'**
+  String get mediaIgnoreDone;
+
+  /// No description provided for @mediaIgnoreAlready.
+  ///
+  /// In en, this message translates to:
+  /// **'.gitignore already covers it'**
+  String get mediaIgnoreAlready;
+
+  /// No description provided for @queueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer one by one'**
+  String get queueTitle;
+
+  /// No description provided for @queueOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you ({n})'**
+  String queueOpen(int n);
+
+  /// No description provided for @queueCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'{i} / {n}'**
+  String queueCounter(int i, int n);
+
+  /// No description provided for @queueWaited.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting {time}'**
+  String queueWaited(String time);
+
+  /// No description provided for @queueReplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your reply'**
+  String get queueReplyHint;
+
+  /// No description provided for @queueSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get queueSend;
+
+  /// No description provided for @queueSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get queueSkip;
+
+  /// No description provided for @queueSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze'**
+  String get queueSnooze;
+
+  /// No description provided for @queueSnoozeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} minutes'**
+  String queueSnoozeMinutes(int n);
+
+  /// No description provided for @queueSnoozeHour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get queueSnoozeHour;
+
+  /// No description provided for @queueSnoozed.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed for {n} minutes'**
+  String queueSnoozed(int n);
+
+  /// No description provided for @queueOpenPane.
+  ///
+  /// In en, this message translates to:
+  /// **'Open pane'**
+  String get queueOpenPane;
+
+  /// No description provided for @queuePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending: {label}'**
+  String queuePending(String label);
+
+  /// No description provided for @queueSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get queueSent;
+
+  /// No description provided for @queueStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The question changed'**
+  String get queueStale;
+
+  /// No description provided for @queueStaleReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the new question'**
+  String get queueStaleReload;
+
+  /// No description provided for @queueGone.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered on the computer'**
+  String get queueGone;
+
+  /// No description provided for @queueDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All done, nothing is waiting for you'**
+  String get queueDone;
+
+  /// No description provided for @queueSkippedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped {n}'**
+  String queueSkippedCount(int n);
+
+  /// No description provided for @queueReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review skipped'**
+  String get queueReview;
+
+  /// No description provided for @queueBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get queueBack;
+
+  /// No description provided for @queueNoChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose in the pane'**
+  String get queueNoChoice;
+
+  /// No description provided for @queueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left to skip, right to snooze 15 minutes'**
+  String get queueHint;
+
+  /// No description provided for @queueHintSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left to skip'**
+  String get queueHintSkip;
+
+  /// No description provided for @queueMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} more waiting'**
+  String queueMore(int n);
+
+  /// No description provided for @queueHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get queueHide;
+
+  /// No description provided for @queueErrNotWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'This pane is no longer waiting'**
+  String get queueErrNotWaiting;
+
+  /// No description provided for @queueErrUseMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'This question has choices now, open the pane'**
+  String get queueErrUseMenu;
+
+  /// No description provided for @promptsStrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved prompts'**
+  String get promptsStrip;
+
+  /// No description provided for @promptsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'New prompt'**
+  String get promptsAdd;
+
+  /// No description provided for @promptsEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit prompt'**
+  String get promptsEditTitle;
+
+  /// No description provided for @promptsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get promptsEdit;
+
+  /// No description provided for @promptsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get promptsDelete;
+
+  /// No description provided for @promptsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get promptsSave;
+
+  /// No description provided for @promptsFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get promptsFieldTitle;
+
+  /// No description provided for @promptsFieldBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt text'**
+  String get promptsFieldBody;
+
+  /// No description provided for @promptsScopeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get promptsScopeAll;
+
+  /// No description provided for @promptsScopeHere.
+  ///
+  /// In en, this message translates to:
+  /// **'This project'**
+  String get promptsScopeHere;
+
+  /// No description provided for @promptsDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this prompt?'**
+  String get promptsDeleteTitle;
+
+  /// No description provided for @promptsDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It is removed on the computer too.'**
+  String get promptsDeleteBody;
+
+  /// No description provided for @promptsHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} on the computer only'**
+  String promptsHidden(int count);
+
+  /// No description provided for @promptsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more on the computer'**
+  String promptsMore(int count);
+
+  /// No description provided for @promptsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompts did not load, tap to retry'**
+  String get promptsRetry;
+
+  /// No description provided for @promptsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Left as written: {names}'**
+  String promptsMissing(String names);
+
+  /// No description provided for @promptsTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough room in the message box for this prompt'**
+  String get promptsTooLong;
+
+  /// No description provided for @promptsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt saved'**
+  String get promptsSaved;
+
+  /// No description provided for @promptsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt deleted'**
+  String get promptsDeleted;
+
+  /// No description provided for @promptsErrSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'This looks like it holds a secret. Keep it on the computer.'**
+  String get promptsErrSecret;
+
+  /// No description provided for @promptsErrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The title is empty or longer than 80 characters'**
+  String get promptsErrTitle;
+
+  /// No description provided for @promptsErrBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The text is empty or longer than 4000 characters'**
+  String get promptsErrBody;
+
+  /// No description provided for @promptsErrFull.
+  ///
+  /// In en, this message translates to:
+  /// **'The library is full (200 prompts)'**
+  String get promptsErrFull;
+
+  /// No description provided for @promptsErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This prompt is gone'**
+  String get promptsErrNotFound;
+
+  /// No description provided for @promptsErrIo.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer could not save it'**
+  String get promptsErrIo;
+
+  /// No description provided for @awayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Since {time} ({ago} ago)'**
+  String awayTitle(String time, String ago);
+
+  /// No description provided for @awayDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done {n}'**
+  String awayDone(int n);
+
+  /// No description provided for @awayWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you {n}'**
+  String awayWaiting(int n);
+
+  /// No description provided for @awayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed {n}'**
+  String awayFailed(int n);
+
+  /// No description provided for @awayAgentsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents done {n}'**
+  String awayAgentsDone(int n);
+
+  /// No description provided for @awayAgentsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents failed {n}'**
+  String awayAgentsFailed(int n);
+
+  /// No description provided for @awayCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact {n}'**
+  String awayCompact(int n);
+
+  /// No description provided for @awaySeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Seen'**
+  String get awaySeen;
+
+  /// No description provided for @awayPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers may be incomplete'**
+  String get awayPartial;
+
+  /// No description provided for @queueMaybeSent.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been sent. Send again only if it did not arrive.'**
+  String get queueMaybeSent;
 }
 
 class _AppLocalizationsDelegate

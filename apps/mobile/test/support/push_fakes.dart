@@ -91,6 +91,11 @@ class FakeGateway implements PushGateway {
     shown.add(notice);
   }
 
+  final List<String> cleared = [];
+
+  @override
+  Future<void> clearMachine(String machine) async => cleared.add(machine);
+
   @override
   Future<void> dispose() async => disposed = true;
 }

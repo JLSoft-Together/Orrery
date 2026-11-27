@@ -62,6 +62,7 @@ export interface SettingsEnv {
   phone: boolean
   telegram: boolean
   remote: boolean
+  devices: boolean
   disk: boolean
   updater: boolean
   backup: boolean
@@ -83,11 +84,11 @@ export interface SettingsEntry {
   needs?: keyof SettingsEnv
 }
 
-const PAGE_NEEDS: Partial<Record<SettingsPage, keyof SettingsEnv>> = { remote: 'remote' }
+const PAGE_NEEDS: Partial<Record<SettingsPage, readonly (keyof SettingsEnv)[]>> = { remote: ['remote'], devices: ['devices', 'remote'] }
 
 export const pageVisible = (page: SettingsPage, env: SettingsEnv): boolean => {
   const need = PAGE_NEEDS[page]
-  return need ? env[need] : true
+  return need ? need.some((key) => env[key]) : true
 }
 
 /** In-app notification switches in `useSettingsStore`, matched to the system-alert kind they mirror. */
@@ -131,6 +132,7 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'workspace', id: 'dust', labelKey: 'settings.dust', hintKey: 'settings.dustHint', needs: 'terminals' },
   { page: 'workspace', id: 'secretGuard', labelKey: 'secretGuard.setting', hintKey: 'secretGuard.settingHint', needs: 'terminals' },
   { page: 'workspace', id: 'shortcuts', labelKey: 'shortcutsV109.title', hintKey: 'shortcutsV109.hint', needs: 'terminals' },
+  { page: 'workspace', id: 'savedPrompts', labelKey: 'savedPrompts.title', hintKey: 'savedPrompts.hint', needs: 'terminals' },
 
   { page: 'editor', id: 'autoSave', labelKey: 'settings.autoSave', hintKey: 'settings.autoSaveHint', needs: 'terminals' },
   { page: 'editor', id: 'minimap', labelKey: 'settings.minimap', hintKey: 'settings.minimapHint', needs: 'terminals' },
@@ -159,6 +161,7 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'notify', id: 'phone', labelKey: 'phone.section', needs: 'phone' },
   { page: 'telegram', id: 'telegram', labelKey: 'telegram.section', hintKey: 'telegram.enable', needs: 'telegram' },
 
+  { page: 'remote', id: 'remoteConnect', labelKey: 'v113Connect.hero.connect', hintKey: 'v113Connect.hero.none.hint', needs: 'remote' },
   { page: 'remote', id: 'remote', labelKey: 'remoteV97.enable', hintKey: 'remoteV97.enableHint', needs: 'remote' },
   { page: 'remote', id: 'remoteAdd', labelKey: 'remoteV97.add.title', hintKey: 'remoteV97.add.hint', needs: 'remote' },
   { page: 'remote', id: 'remoteInstall', labelKey: 'v106Install.title', hintKey: 'v106Install.hint', needs: 'remote' },
@@ -170,6 +173,9 @@ const rawEntries = (mac: boolean): RawEntry[] => [
   { page: 'remote', id: 'remoteBlocked', labelKey: 'remoteV98.guard.blockedTitle', hintKey: 'remoteV98.guard.selfHint', needs: 'remote' },
   { page: 'remote', id: 'remoteTrusted', labelKey: 'remoteV98.guard.trustedTitle', hintKey: 'remoteV98.guard.trusted.hint', needs: 'remote' },
   { page: 'remote', id: 'remoteAccess', labelKey: 'remoteV98.guard.logTitle', hintKey: 'remoteV98.guard.log.hint', needs: 'remote' },
+
+  { page: 'devices', id: 'devicesList', labelKey: 'v113Devices.title', hintKey: 'v113Devices.subtitle' },
+  { page: 'devices', id: 'devicesAdb', labelKey: 'v113Devices.adbRow', hintKey: 'v113Devices.adbRowHint', needs: 'devices' },
 
   { page: 'notify', id: 'break', labelKey: 'settings.breakReminder', hintKey: 'settings.breakHint' },
   { page: 'notify', id: 'stuck', labelKey: 'settings.stuck', hintKey: 'settings.stuckHint' },
@@ -229,6 +235,7 @@ export const nextEntries = (mac: boolean): SettingsEntry[] => [
   { page: 'appearance', id: 'clearTerm', labelKey: 'mist.settings.clearTerm', hintKey: 'mist.settings.clearTermHint' },
   { page: 'appearance', id: 'motion', labelKey: 'mist.settings.motion', hintKey: 'mist.settings.motionHint' },
   { page: 'appearance', id: 'stars', labelKey: 'mist.settings.stars', hintKey: 'mist.settings.starsOnly' },
+  { page: 'appearance', id: 'density', labelKey: 'themeV96.density.label', hintKey: 'themeV96.density.hint' },
 ]
 
 const fold = (s: string): string =>

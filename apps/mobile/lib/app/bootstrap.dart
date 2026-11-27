@@ -9,6 +9,7 @@ import '../push/push_background.dart';
 import '../push/push_gateway.dart';
 import '../push/push_service.dart';
 import '../push/remote_host_push.dart';
+import '../push/waiting_sink.dart';
 import '../remote/connection.dart';
 import '../remote/crypto_rust.dart';
 import '../remote/device_name.dart';
@@ -32,6 +33,7 @@ Future<PushService?> buildPushService(RemoteHost host) async {
       resumed: () =>
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
       machineKey: pairedMachineKeys(kv),
+      waiting: ChannelWaitingSink(),
     );
     await service.init();
     return service;

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -9,7 +10,9 @@ import '../remote/machines.dart';
 import '../remote/secure_kv.dart';
 import 'local_notifier.dart';
 import 'push_notice.dart';
+import 'push_pause.dart';
 import 'push_seal.dart';
+import 'waiting_update.dart';
 
 @pragma('vm:entry-point')
 Future<void> pushBackgroundMessage(RemoteMessage message) async {
@@ -42,7 +45,19 @@ Future<void> handleBackgroundPush(
   required Future<Uint8List?> Function(String machineId) machineKey,
   required PushNotifier notifier,
   required String languageCode,
+  DateTime? now,
 }) async {
+  if (isClearPush(arrival.data)) {
+    final machine = arrival.data['m'];
+    if (machine == null || !pushMachinePattern.hasMatch(machine)) return;
+    try {
+      await notifier.init();
+      await notifier.clearMachine(machine);
+    } on Object {
+      return;
+    }
+    return;
+  }
   final strings = pushStrings(languageCode);
   PushNotice notice;
   try {
@@ -55,8 +70,13 @@ Future<void> handleBackgroundPush(
   } on Object {
     notice = fixedPushNotice(arrival.data, strings);
   }
-  if (arrival.shown) {
+  if (arrival.shown && notice.kind != 'running') {
     if (notice.sealed && await _ready(notifier)) await _mark(kv, true);
+    return;
+  }
+  if (notice.kind != 'open' &&
+      notice.kind != 'apk' &&
+      await readPausedUntil(kv, now ?? clock.now()) != null) {
     return;
   }
   for (final candidate in [

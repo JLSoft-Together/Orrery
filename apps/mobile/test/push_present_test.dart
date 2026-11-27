@@ -28,6 +28,11 @@ class FakeNotifier implements PushNotifier {
     shown.add(notice);
   }
 
+  final List<String> cleared = [];
+
+  @override
+  Future<void> clearMachine(String machine) async => cleared.add(machine);
+
   @override
   Future<String?> launchPayload() async => null;
 }

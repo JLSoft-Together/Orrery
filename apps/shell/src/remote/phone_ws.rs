@@ -13,12 +13,16 @@ use super::dashboard::{error, Phone};
 use super::pty_bridge::{Attach, FromHub};
 use super::viewer::{fits, with_accept, ViewerState};
 use super::viewer_map::lookup;
-use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS};
+use super::workspace::{patch_event, rev_of, snapshot_event, WsEvent, WS_COMMANDS, WS_GUARDED, WS_TEXT};
+use crate::state::lock;
+
+#[path = "clip.rs"]
+pub(super) mod clip;
 
 pub const WS_TIMEOUT: Duration = Duration::from_secs(5);
 pub const MAX_IN_FLIGHT: usize = 4;
 pub const SUMMARY_GET: &str = "remote.summary.get";
-const CODES: [&str; 10] = ["denied", "busy", "limit", "notFound", "invalid", "timeout", "offline", "rate", "proto", "internal"];
+const CODES: [&str; 13] = ["denied", "busy", "limit", "notFound", "invalid", "timeout", "offline", "rate", "proto", "internal", "stale", "notWaiting", "useMenu"];
 
 pub struct Done {
     id: String,
@@ -43,6 +47,7 @@ pub struct Extra {
     pub(super) nonce: String,
     pub(super) v: ViewerState,
     pub(super) chat: super::chat::ChatState,
+    pub(super) clip: Option<broadcast::Receiver<Arc<str>>>,
 }
 
 impl Done {
@@ -70,6 +75,7 @@ impl Extra {
             backlog: Arc::new(AtomicUsize::new(0)),
             v: ViewerState::new(device, &nonce),
             chat: super::chat::ChatState::default(),
+            clip: None,
             nonce,
         }
     }
@@ -147,17 +153,37 @@ impl Phone {
             "pty.attach" => self.pty_attach(id, v).await,
             "pty.detach" => self.pty_detach(id, v).await,
             "pty.resize" => self.pty_resize(id, v).await,
-            "push.register" => self.push_register(id, v).await,
+            "clip.push" => self.clip_push(id, v).await,
+            "push.register" =>self.push_register(id, v).await,
             "push.unregister" => self.push_unregister(id).await,
             "chat.page" | "chat.watch" | "chat.unwatch" => self.chat_command(id, t, v).await,
-            "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" | "ws.menu" => {
+            "ws.get" | "ws.open" | "ws.close" | "ws.rename" | "ws.move" | "ws.reopen" | "ws.compact" | "ws.send" | "ws.keys" | "ws.menu" | "ws.snooze" | "ws.reply" => {
                 if !self.ctx.board.take_rate(&self.device, Instant::now()) {
                     return self.sec.json(&error(Value::from(id), "rate")).await;
                 }
                 if t == "ws.get" {
                     return self.ws_get(id).await;
                 }
-                self.call(id, t, command_of(v), false).await
+                if WS_GUARDED.contains(&t) && !self.ctx.host.control() {
+                    return self.sec.json(&error(Value::from(id), "denied")).await;
+                }
+                let mut cmd = command_of(v);
+                if t == "ws.reply" {
+                    let key = cmd["paneKey"].as_str().unwrap_or("");
+                    if let Some(code) = self.ctx.summary().and_then(|s| super::workspace::reply_refusal(&s, key)) {
+                        return self.sec.json(&error(Value::from(id), code)).await;
+                    }
+                }
+                if WS_TEXT.contains(&t) {
+                    let rules = lock(&self.ctx.config).danger_rules.clone();
+                    let vi = self.ctx.host.welcome().locale == "vi";
+                    if let Some(mut denied) = super::danger::needs_auth(&rules, &cmd, vi) {
+                        denied["re"] = Value::from(id);
+                        return self.sec.json(&denied).await;
+                    }
+                    super::danger::strip_authed(&mut cmd);
+                }
+                self.call(id, t, cmd, false).await
             }
             _ => match lookup(t) {
                 Some(spec) => self.viewer_command(id, spec, v).await,
@@ -259,7 +285,7 @@ impl Phone {
         match lookup(&t) {
             Some(spec) => {
                 let now = Instant::now();
-                if !self.ctx.viewer.take_rate(&self.device, now) || (spec.write && !self.ctx.viewer.take_write(&self.device, now)) {
+                if !self.ctx.viewer.take_rate(&self.device, now) || (spec.charges_write(&cmd) && !self.ctx.viewer.take_write(&self.device, now)) {
                     return self.sec.json(&error(Value::from(id), "rate")).await;
                 }
                 self.viewer_call(id, spec, cmd, true).await

@@ -6,12 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orrery_remote/l10n/app_localizations.dart';
+import 'package:orrery_remote/remote/away_store.dart';
 import 'package:orrery_remote/remote/link_state.dart';
 import 'package:orrery_remote/remote/machines.dart';
 import 'package:orrery_remote/remote/protocol.dart';
 import 'package:orrery_remote/remote/size_notes.dart';
 import 'package:orrery_remote/remote/providers.dart';
 import 'package:orrery_remote/remote/store.dart';
+import 'package:orrery_remote/ui/away/away_controller.dart';
 import 'package:orrery_remote/ui/machine_api.dart';
 import 'package:orrery_remote/ui/monitor/view_prefs.dart';
 import 'package:orrery_remote/ui/theme/orrery_theme.dart';
@@ -306,6 +308,7 @@ class Harness {
 
   List<Override> get overrides => [
     viewPrefsStoreProvider.overrideWithValue(prefs),
+    awayStoreProvider.overrideWithValue(MemoryAwayStore()),
     machineApiProvider(id).overrideWithValue(api),
     machineViewProvider(id).overrideWith(() => FakeViewNotifier(id, viewState)),
     linkProvider(id).overrideWith(() => FakeLinkNotifier(id, linkState)),

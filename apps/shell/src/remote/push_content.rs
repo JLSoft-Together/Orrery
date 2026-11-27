@@ -149,6 +149,13 @@ pub fn title_of(scene: &Scene, fact: Option<&Fact>, mask: &dyn Fn(&str) -> Strin
     cut(&parts.join(", "), TEXT_MAX)
 }
 
+pub const LABEL_MAX: usize = 24;
+
+pub fn label_of(scene: &Scene, mask: &dyn Fn(&str) -> String) -> String {
+    let raw = [session_name(&scene.session), scene.tab.trim(), scene.project.trim(), if scene.agent.is_empty() { "" } else { agent_label(&scene.agent) }].into_iter().find(|s| !s.is_empty()).unwrap_or("");
+    clean(raw, mask, LABEL_MAX)
+}
+
 pub fn duration(ms: u64) -> String {
     let mins = (ms + 30_000) / 60_000;
     match mins {
@@ -169,6 +176,10 @@ pub fn body_of(kind: &str, vi: bool, fact: Option<&Fact>, worked: Option<u64>, m
         ("permission", false) => tool.map_or_else(|| "Needs your approval".to_owned(), |t| format!("Needs approval: {t}")),
         ("done", true) => worked.map_or_else(|| "Đã xong lượt".to_owned(), |w| format!("Xong sau {}", duration(w))),
         ("done", false) => worked.map_or_else(|| "Finished its turn".to_owned(), |w| format!("Done after {}", duration(w))),
+        ("running", true) => worked.map_or_else(|| "Đang chạy".to_owned(), |w| format!("Đã chạy {}", duration(w))),
+        ("running", false) => worked.map_or_else(|| "Working".to_owned(), |w| format!("Running for {}", duration(w))),
+        ("open", true) => "Mở từ máy tính".to_owned(),
+        ("open", false) => "Opened from your computer".to_owned(),
         ("error", true) => "Dừng vì lỗi".to_owned(),
         ("error", false) => "Stopped with an error".to_owned(),
         (_, true) => "Đang chờ bạn".to_owned(),
@@ -190,7 +201,7 @@ pub fn notice(a: &Ask, mask: &dyn Fn(&str) -> String) -> (String, String) {
     let fixed = |(t, b): (&str, &str)| (t.to_owned(), b.to_owned());
     match a.kind {
         "test" => fixed(test_text(a.locale)),
-        "security" => fixed(title_body("security", a.locale)),
+        "security" | "apk" => fixed(title_body(a.kind, a.locale)),
         _ if !a.content => fixed(title_body(a.kind, a.locale)),
         kind => (title_of(a.scene, a.fact, mask), body_of(kind, a.locale == "vi", a.fact, a.worked, mask)),
     }

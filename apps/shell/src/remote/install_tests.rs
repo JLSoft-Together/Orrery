@@ -6,7 +6,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::Instant;
 
-use super::install::{classify, file_head, lexical, newest_apk, resolve, serve, url_path, valid_url, Reply, Tickets, FILE, MIME, TTL_SECS};
+use super::install::{classify, file_head, lexical, newest_apk, pick_source, resolve, save_name, serve, url_path, valid_url, Reply, Source, TicketKind, Tickets, FILE, MAX_SLOTS, MIME, TTL_SECS};
 use super::test_util::{rig, runtime, temp_dir};
 
 const LAN: &str = "192.168.1.20";
@@ -26,41 +26,80 @@ fn get(target: &str) -> String {
 }
 
 #[test]
+fn a_symlink_in_place_of_the_apk_is_never_served() {
+    let file = apk("inst-link", b"PK-apk");
+    assert!(super::install_http::servable(&file));
+    assert!(!super::install_http::servable(&file.with_file_name("missing.apk")));
+    let link = file.with_file_name("link.apk");
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_file(&file, &link).is_ok();
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(&file, &link).is_ok();
+    if made {
+        assert!(!super::install_http::servable(&link));
+    }
+}
+
+#[test]
 fn a_ticket_serves_its_file_until_it_expires() {
     let file = apk("inst-exp", b"PK-apk");
     let t = Tickets::default();
-    let (token, exp) = t.issue(file.clone(), 1000).unwrap();
+    let (token, exp) = t.issue(TicketKind::ApkPage, file.clone(), 1000).unwrap();
     assert_eq!(exp, 1000 + TTL_SECS);
     assert_eq!(token.len(), 22);
-    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000 + TTL_SECS - 1), Reply::File { path: file.clone(), head: false });
+    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000 + TTL_SECS - 1), Reply::File { path: file.clone(), head: false, first: true });
     assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000 + TTL_SECS), Reply::NotFound);
     assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1000), Reply::NotFound);
 }
 
 #[test]
-fn a_new_ticket_replaces_the_old_one() {
+fn tickets_live_side_by_side_and_expire_on_their_own() {
     let file = apk("inst-new", b"PK");
     let t = Tickets::default();
-    let (old, _) = t.issue(file.clone(), 10).unwrap();
-    let (new, _) = t.issue(file.clone(), 10).unwrap();
-    assert_ne!(old, new);
-    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&old)), 11), Reply::NotFound);
-    assert!(matches!(resolve(&t, ip(LAN), &get(&url_path(&new)), 11), Reply::File { .. }));
+    let (first, _) = t.issue(TicketKind::ApkPage, file.clone(), 10).unwrap();
+    let (second, exp) = t.issue(TicketKind::ApkOffer, file.clone(), 300).unwrap();
+    assert_ne!(first, second);
+    assert_eq!(exp, 300 + TicketKind::ApkOffer.ttl());
+    assert_eq!(t.len(), 2);
+    assert!(matches!(resolve(&t, ip(LAN), &get(&url_path(&first)), 305), Reply::File { .. }));
+    assert!(matches!(resolve(&t, ip(LAN), &get(&url_path(&second)), 305), Reply::File { .. }));
+    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&first)), 10 + TTL_SECS), Reply::NotFound);
+    assert!(matches!(resolve(&t, ip(LAN), &get(&url_path(&second)), 10 + TTL_SECS), Reply::File { .. }));
+    assert_eq!(t.len(), 1);
     t.revoke();
-    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&new)), 11), Reply::NotFound);
+    assert!(t.is_empty());
+    assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&second)), 11), Reply::NotFound);
+}
+
+#[test]
+fn a_full_set_of_slots_drops_the_oldest_of_the_same_kind() {
+    let file = apk("inst-slots", b"PK");
+    let t = Tickets::default();
+    let offer = t.issue(TicketKind::ApkOffer, file.clone(), 0).unwrap().0;
+    let pages: Vec<String> = (0..MAX_SLOTS - 1).map(|_| t.issue(TicketKind::ApkPage, file.clone(), 0).unwrap().0).collect();
+    assert_eq!(t.len(), MAX_SLOTS);
+    let newest = t.issue(TicketKind::ApkPage, file.clone(), 0).unwrap().0;
+    assert_eq!(t.len(), MAX_SLOTS);
+    let live = |token: &str| matches!(resolve(&t, ip(LAN), &get(&url_path(token)), 1), Reply::File { .. });
+    assert!(!live(&pages[0]));
+    assert!(live(&pages[1]) && live(&pages[2]) && live(&newest) && live(&offer));
+    let other = t.issue(TicketKind::ApkOffer, file, 0).unwrap().0;
+    assert_eq!(t.len(), MAX_SLOTS);
+    assert!(!live(&offer) && live(&other) && live(&pages[1]));
 }
 
 #[test]
 fn only_the_one_path_is_served() {
     let file = apk("inst-path", b"PK");
     let t = Tickets::default();
-    let (token, _) = t.issue(file, 0).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkOffer, file, 0).unwrap();
     for target in [
         format!("/install/{token}/other.apk"),
         format!("/install/{token}/orrery.apk?x=1"),
         format!("/install/{token}/../config.json"),
         format!("/install/{token}"),
         format!("/install/{token}/"),
+        format!("/install/{token}/pair"),
         format!("/install/x/{token}/orrery.apk"),
         "/install//orrery.apk".to_owned(),
         "/remote".to_owned(),
@@ -78,7 +117,7 @@ fn only_the_one_path_is_served() {
 fn a_wrong_token_is_not_found() {
     let file = apk("inst-wrong", b"PK");
     let t = Tickets::default();
-    let (token, _) = t.issue(file, 0).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkPage, file, 0).unwrap();
     let mut wrong = token.clone().into_bytes();
     wrong[0] = if wrong[0] == b'A' { b'B' } else { b'A' };
     let wrong = String::from_utf8(wrong).unwrap();
@@ -91,7 +130,7 @@ fn a_wrong_token_is_not_found() {
 fn non_private_peers_are_refused() {
     let file = apk("inst-ip", b"PK");
     let t = Tickets::default();
-    let (token, _) = t.issue(file, 0).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkPage, file, 0).unwrap();
     for peer in ["127.0.0.1", "8.8.8.8", "100.64.1.2", "172.32.0.1", "::1", "fe80::1"] {
         assert_eq!(resolve(&t, ip(peer), &get(&url_path(&token)), 1), Reply::Forbidden, "{peer}");
     }
@@ -106,9 +145,9 @@ fn a_missing_or_non_apk_file_is_not_served() {
     let txt = dir.join("notes.txt");
     std::fs::write(&txt, b"secret").unwrap();
     let t = Tickets::default();
-    let (token, _) = t.issue(txt, 0).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkPage, txt, 0).unwrap();
     assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1), Reply::NotFound);
-    let (token, _) = t.issue(dir.join("gone.apk"), 0).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkPage, dir.join("gone.apk"), 0).unwrap();
     assert_eq!(resolve(&t, ip(LAN), &get(&url_path(&token)), 1), Reply::NotFound);
 }
 
@@ -166,7 +205,7 @@ fn serve_streams_the_apk_with_its_headers() {
     let body = b"PK\x03\x04 fake apk body";
     let file = apk("inst-serve", body);
     let t = Tickets::default();
-    let (token, _) = t.issue(file, super::config::now_secs()).unwrap();
+    let (token, _) = t.issue(TicketKind::ApkPage, file, super::config::now_secs()).unwrap();
     runtime().block_on(async {
         let out = exchange(&t, LAN, get(&url_path(&token))).await;
         let text = String::from_utf8_lossy(&out);
@@ -210,4 +249,79 @@ fn the_lan_listener_routes_install_requests_and_refuses_loopback() {
     assert_eq!(r.remote.install_call(&json!({ "op": "url", "url": "https://x.com/a.apk" }))["url"], "https://x.com/a.apk");
     r.remote.enable(false);
     assert_eq!(r.remote.install_call(&json!({ "op": "start" }))["error"], "off");
+}
+
+fn named(tag: &str, name: &str) -> PathBuf {
+    let path = temp_dir(tag).join(name);
+    std::fs::write(&path, b"PK").unwrap();
+    path
+}
+
+#[test]
+fn the_apk_source_order_is_custom_then_bundled_then_dev() {
+    let custom = named("src-custom", "mine.apk");
+    let bundled = named("src-bundled", "orrery-remote.apk");
+    let dev = named("src-dev", "app-release.apk");
+    let b = || Some((bundled.clone(), "4.0.10".to_owned()));
+    let found = pick_source(&custom.to_string_lossy(), b(), Some(dev.clone())).unwrap();
+    assert_eq!((found.path.clone(), found.source, found.version.as_str()), (custom.clone(), Source::Custom, ""));
+    let found = pick_source("", b(), Some(dev.clone())).unwrap();
+    assert_eq!((found.path.clone(), found.source, found.version.as_str()), (bundled.clone(), Source::Bundled, "4.0.10"));
+    let found = pick_source("/gone/x.apk", b(), Some(dev.clone())).unwrap();
+    assert_eq!(found.source, Source::Bundled);
+    let found = pick_source("", Some((temp_dir("src-none").join("no.apk"), "1".into())), Some(dev.clone())).unwrap();
+    assert_eq!((found.path, found.source), (dev, Source::Dev));
+    assert_eq!(pick_source("", None, None), None);
+    assert_eq!(Source::Custom.name(), "custom");
+    assert_eq!(Source::Bundled.name(), "bundled");
+    assert_eq!(Source::Dev.name(), "dev");
+}
+
+#[test]
+fn get_and_start_share_the_same_apk_source() {
+    let r = rig("inst-src", "", false);
+    let bundled = named("inst-src-b", "orrery-remote.apk");
+    *crate::state::lock(&r.host.bundled) = Some((bundled.clone(), "4.0.10".to_owned()));
+    r.remote.enable(true);
+    let state = r.remote.install_call(&json!({ "op": "get" }));
+    assert_eq!(state["source"], "bundled", "{state}");
+    assert_eq!(state["version"], "4.0.10");
+    assert_eq!(state["apk"]["path"], bundled.to_string_lossy().as_ref());
+    let started = r.remote.install_call(&json!({ "op": "start" }));
+    assert_eq!(started["ok"], true, "{started}");
+    let custom = named("inst-src-c", "mine.apk");
+    assert!(r.remote.set_apk(&custom));
+    let state = r.remote.install_call(&json!({ "op": "get" }));
+    assert_eq!((state["source"].as_str(), state["version"].as_str()), (Some("custom"), Some("")));
+    assert_eq!(state["apk"]["name"], "mine.apk");
+    assert_eq!(r.remote.install_call(&json!({ "op": "start" }))["ok"], true);
+    r.remote.install_call(&json!({ "op": "clear" }));
+    assert_eq!(r.remote.install_call(&json!({ "op": "get" }))["source"], "bundled");
+}
+
+#[test]
+fn save_copies_the_current_apk_or_reports_why_not() {
+    let r = rig("inst-save", "", false);
+    let bundled = named("inst-save-b", "orrery-remote.apk");
+    *crate::state::lock(&r.host.bundled) = Some((bundled, "4.0.10".to_owned()));
+    let dest = temp_dir("inst-save-d").join("out.apk");
+    assert_eq!(r.remote.install_call(&json!({ "op": "save" }))["error"], "cancel");
+    *crate::state::lock(&r.host.save_to) = Some(dest.clone());
+    let saved = r.remote.install_call(&json!({ "op": "save" }));
+    assert_eq!(saved["ok"], true, "{saved}");
+    assert_eq!(saved["path"], dest.to_string_lossy().as_ref());
+    assert_eq!(std::fs::read(&dest).unwrap(), b"PK");
+    *crate::state::lock(&r.host.save_to) = Some(temp_dir("inst-save-x").join("missing").join("out.apk"));
+    assert_eq!(r.remote.install_call(&json!({ "op": "save" })), json!({ "ok": false, "error": "save" }));
+    *crate::state::lock(&r.host.bundled) = None;
+    let fresh = rig("inst-save-none", "", false);
+    let none = fresh.remote.install_call(&json!({ "op": "save" }));
+    assert!(none["ok"] == false && (none["error"] == "apk" || none["error"] == "cancel"), "{none}");
+}
+
+#[test]
+fn save_names_carry_a_clean_version() {
+    assert_eq!(save_name("4.0.10"), "orrery-remote-4.0.10.apk");
+    assert_eq!(save_name(""), "orrery-remote.apk");
+    assert_eq!(save_name("../x y"), "orrery-remote-..xy.apk");
 }

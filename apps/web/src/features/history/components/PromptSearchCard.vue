@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Copy, FolderOpen, GitBranch, LoaderCircle, Play, Search, ShieldCheck, X } from 'lucide-vue-next'
+import { BookmarkPlus, Copy, FolderOpen, GitBranch, LoaderCircle, Play, Search, ShieldCheck, X } from 'lucide-vue-next'
+import { usePromptSave } from '@features/prompts'
 import { highlightSegments, isAgentSessionId, PROMPT_SEARCH_DAYS, type PromptSearchDays, type PromptSearchHit } from '@ccm/shared'
 import { hasTerminals } from '../../../core/lib/desktop'
 import { relativeTime, shortPath, now } from '../../../core/lib/format'
@@ -21,6 +22,7 @@ const history = useHistoryStore()
 const terminals = useTerminalsStore()
 const workspace = useWorkspaceStore()
 const ui = useUiStore()
+const promptSave = usePromptSave()
 
 const input = ref<HTMLInputElement | null>(null)
 defineExpose({ focus: () => input.value?.focus() })
@@ -195,11 +197,24 @@ const statusText = computed(() => {
           {{ t(`promptSearch.openError.${search.openResults[h.sessionId]}`) }}
         </p>
         <ul class="flex flex-col gap-1">
-          <li v-for="(s, i) in h.snippets" :key="i" class="rounded-inner bg-fill px-2 py-1 text-xs text-ink-muted [overflow-wrap:anywhere]" data-prompt-search-snippet>
-            <template v-for="(seg, j) in highlightSegments(s, search.terms)" :key="j">
-              <mark v-if="seg.hit" class="rounded-[2px] bg-accent-soft font-semibold text-accent-ink">{{ seg.text }}</mark>
-              <template v-else>{{ seg.text }}</template>
-            </template>
+          <li v-for="(s, i) in h.snippets" :key="i" class="group/snip flex items-start gap-2 rounded-inner bg-fill px-2 py-1 text-xs text-ink-muted" data-prompt-search-snippet>
+            <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+              <template v-for="(seg, j) in highlightSegments(s, search.terms)" :key="j">
+                <mark v-if="seg.hit" class="rounded-[2px] bg-accent-soft font-semibold text-accent-ink">{{ seg.text }}</mark>
+                <template v-else>{{ seg.text }}</template>
+              </template>
+            </span>
+            <button
+              v-if="promptSave.supported"
+              type="button"
+              class="ccm-btn-plain h-6 shrink-0 gap-1 px-1.5! text-2xs opacity-0 transition-opacity duration-(--ccm-dur-fast) group-hover/snip:opacity-100 group-focus-within/snip:opacity-100 focus-visible:opacity-100"
+              :title="t('savedPrompts.history.save')"
+              :aria-label="t('savedPrompts.history.save')"
+              data-prompt-search-save
+              @click="promptSave.saveText(s)"
+            >
+              <BookmarkPlus :size="12" aria-hidden="true" />{{ t('savedPrompts.history.save') }}
+            </button>
           </li>
         </ul>
       </li>

@@ -21,6 +21,7 @@ const env: SettingsEnv = {
   phone: true,
   telegram: true,
   remote: false,
+  devices: false,
   disk: true,
   updater: true,
   backup: true,

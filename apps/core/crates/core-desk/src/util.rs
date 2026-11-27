@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -96,7 +97,10 @@ pub fn write_atomic(file: &Path, text: &str) -> std::io::Result<()> {
     let mut tmp = file.as_os_str().to_owned();
     tmp.push(format!(".{}.tmp", std::process::id()));
     let tmp = PathBuf::from(tmp);
-    std::fs::write(&tmp, text)?;
+    let mut out = std::fs::File::create(&tmp)?;
+    out.write_all(text.as_bytes())?;
+    out.sync_all()?;
+    drop(out);
     std::fs::rename(&tmp, file)
 }
 

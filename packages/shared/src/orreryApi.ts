@@ -279,6 +279,12 @@ export const ORRERY_ACTIONS = {
     const alias = typeof o.alias === 'string' ? o.alias.slice(0, 200) : ''
     return { kind: 'alias' as const, device: o.device, alias }
   }),
+  'checklist.run': spec('page', ['phone'], (a) => {
+    const o = a && typeof a === 'object' && !Array.isArray(a) ? (a as Record<string, unknown>) : null
+    if (!o || !pathArg(o.dir)) return null
+    if (o.wt !== undefined && o.wt !== null && !pathArg(o.wt)) return null
+    return { dir: o.dir, wt: typeof o.wt === 'string' ? o.wt : o.dir }
+  }),
   'ws.open': fromPhone('ws.open'),
   'ws.close': fromPhone('ws.close'),
   'ws.rename': fromPhone('ws.rename'),
@@ -288,6 +294,8 @@ export const ORRERY_ACTIONS = {
   'ws.send': fromPhone('ws.send'),
   'ws.keys': fromPhone('ws.keys'),
   'ws.menu': fromPhone('ws.menu'),
+  'ws.snooze': fromPhone('ws.snooze'),
+  'ws.reply': fromPhone('ws.reply'),
   'session.open': spec('page', ['mcp', 'url'], parsePaneOpen),
   'session.status': fromBot('status'),
   'session.send': fromBot('send'),

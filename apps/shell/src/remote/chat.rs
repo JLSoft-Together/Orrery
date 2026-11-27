@@ -120,8 +120,12 @@ pub fn parse_ask(t: &str, v: &Value) -> Result<(String, Option<String>, Option<u
 }
 
 impl Phone {
-    pub(super) fn set_chat_cap(&mut self, hello: &Value) {
-        self.x.chat.cap = hello["caps"].as_array().is_some_and(|c| c.iter().any(|x| x.as_str() == Some("chat")));
+    pub(super) fn has_cap(&self, name: &str) -> bool {
+        self.caps.iter().any(|c| c == name)
+    }
+
+    pub(super) fn set_chat_cap(&mut self) {
+        self.x.chat.cap = self.has_cap("chat");
         self.x.chat.full_last();
     }
 

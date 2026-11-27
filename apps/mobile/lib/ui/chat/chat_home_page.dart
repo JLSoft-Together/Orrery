@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../remote/link_state.dart';
 import '../../remote/providers.dart';
+import '../away/away_controller.dart';
+import '../away/away_slot.dart';
 import '../theme/orrery_shape.dart';
+import '../queue/queue_model.dart';
+import '../queue/queue_page.dart';
 import '../ui_providers.dart';
 import '../widgets/common.dart';
 import '../workspace/pane_actions.dart';
@@ -51,8 +55,11 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
         .watch(machinesProvider)
         .where((m) => m.id == id)
         .firstOrNull;
+    final awayIds = ref.watch(awayIdsProvider(id));
     final groups = groupChatRows(
-      buildChatRows(model, snapshot, lasts),
+      buildChatRows(model, snapshot, lasts)
+          .where((r) => awayIds == null || awayIds.contains(r.pane.terminalId))
+          .toList(),
       _query.text,
     );
     Widget rowOf(ChatRow row) => MinuteTicker(
@@ -145,6 +152,7 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
                       ),
                     ),
                   ),
+                  AwaySlot(machineId: id),
                   if (_search)
                     Padding(
                       padding: const EdgeInsets.only(top: 8, bottom: 4),
@@ -170,11 +178,29 @@ class _ChatHomePageState extends ConsumerState<ChatHomePage> {
                     ),
                   if (groups.waiting.isNotEmpty) ...[
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 22, 12, 8),
-                      child: Text(
-                        l.chatWaitingGroup(groups.waiting.length),
-                        key: const ValueKey('home-group-waiting'),
-                        style: label.copyWith(color: c.waiting),
+                      padding: const EdgeInsets.fromLTRB(12, 22, 4, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.chatWaitingGroup(groups.waiting.length),
+                              key: const ValueKey('home-group-waiting'),
+                              style: label.copyWith(color: c.waiting),
+                            ),
+                          ),
+                          if (queueCount(model) > 0)
+                            Flexible(
+                              child: TextButton(
+                                key: const ValueKey('home-queue'),
+                                onPressed: () => openQueue(context, id),
+                                child: Text(
+                                  l.queueOpen(queueCount(model)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     RowCard(

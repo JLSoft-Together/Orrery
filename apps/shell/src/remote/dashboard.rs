@@ -10,6 +10,7 @@ use tokio::sync::{mpsc, watch};
 
 use super::config::now_secs;
 use super::ctx::{Control, Ctx};
+use super::device_info::parse_caps;
 use super::fit::{fit_snapshot, fits_message, limit_event, Fit, SNAPSHOT_BUDGET};
 use super::limits::{Rate, MAX_COMMANDS_PER_MINUTE};
 use super::liveness::{due, Liveness};
@@ -18,77 +19,8 @@ use super::phone_ws::{next_ws, Extra};
 use super::viewer::flush_due;
 use crate::state::lock;
 
-pub const BATCH: Duration = Duration::from_millis(30);
-pub const EVENT_QUEUE: usize = 512;
-pub const MAX_ID_LEN: usize = 32;
-pub const DASHBOARD: [&str; 7] = ["terminal.alias", "terminal.note", "terminal.snooze", "terminal.dismiss", "history.get", "tool-spans.get", "toolSpans.get"];
-pub const DESKTOP_ONLY: [&str; 13] = [
-    "office.snapshot",
-    "folder.picked",
-    "terminal.focusResult",
-    "terminal.openResult",
-    "promptSearch.progress",
-    "promptSearch.done",
-    "promptSearch.openResult",
-    "notify.settings",
-    "notify.testResult",
-    "sensitive.settings",
-    "diagnostics.data",
-    "resources",
-    "favorite.rejected",
-];
-
-fn expects_reply(t: &str) -> bool {
-    matches!(t, "history.get" | "tool-spans.get" | "toolSpans.get")
-}
-
-fn parse(text: &str) -> Option<(u64, Vec<Value>)> {
-    let v: Value = serde_json::from_str(text).ok()?;
-    let seq = v.get("seq").and_then(Value::as_u64).unwrap_or(0);
-    let events = v.get("events")?.as_array()?.clone();
-    Some((seq, events))
-}
-
-pub fn snapshot_event(text: &str) -> Option<(u64, Value)> {
-    let (seq, events) = parse(text)?;
-    let payload = events.into_iter().find(|e| e.get("type").and_then(Value::as_str) == Some("snapshot"))?.get("payload")?.clone();
-    Some((seq, json!({ "t": "snapshot", "seq": seq, "data": payload })))
-}
-
-pub fn phone_events(events: Vec<Value>) -> Vec<Value> {
-    events.into_iter().filter(|e| e.get("type").and_then(Value::as_str).is_none_or(|t| !DESKTOP_ONLY.contains(&t))).collect()
-}
-
-pub fn events_event(text: &str) -> Option<(u64, Value)> {
-    let (seq, events) = parse(text)?;
-    Some((seq, json!({ "t": "events", "seq": seq, "events": phone_events(events) })))
-}
-
-pub fn turn_changed(text: &str) -> bool {
-    text.contains("\"terminal.updated\"") && text.contains("\"status\"")
-}
-
-pub fn command(raw: &[u8]) -> Result<(String, String, Value), Value> {
-    let v: Value = serde_json::from_slice(raw).map_err(|_| error(Value::Null, "invalid"))?;
-    let id = v.get("id").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= MAX_ID_LEN).map(str::to_owned);
-    let t = v.get("t").and_then(Value::as_str).map(str::to_owned);
-    match (id, t) {
-        (Some(id), Some(t)) => Ok((id, t, v)),
-        (id, _) => Err(error(id.map_or(Value::Null, Value::from), "invalid")),
-    }
-}
-
-pub fn client_message(t: &str, v: &Value) -> Value {
-    let mut msg = v.as_object().cloned().unwrap_or_default();
-    msg.remove("id");
-    msg.remove("t");
-    msg.insert("type".into(), Value::from(t));
-    Value::Object(msg)
-}
-
-pub fn error(re: Value, code: &str) -> Value {
-    json!({ "re": re, "ok": false, "error": code })
-}
+pub use super::dashboard_msg::{client_message, command, error, events_event, phone_events, snapshot_event, turn_changed, BATCH, DASHBOARD, EVENT_QUEUE};
+use super::dashboard_msg::{expects_reply, parse};
 
 struct Feed {
     rx: mpsc::Receiver<Arc<str>>,
@@ -101,7 +33,9 @@ pub struct Phone {
     pub(super) sec: Secure,
     pub(super) device: String,
     reasm: Reassembler,
-    alive: Option<Liveness>,
+    pub(super) alive: Option<Liveness>,
+    pub(super) via: &'static str,
+    pub(super) pings: std::collections::VecDeque<std::time::Instant>,
     hello: bool,
     feed: Option<Feed>,
     last_seq: u64,
@@ -109,6 +43,7 @@ pub struct Phone {
     direct_tx: mpsc::Sender<(String, Arc<str>)>,
     direct_rx: mpsc::Receiver<(String, Arc<str>)>,
     push_rx: watch::Receiver<Value>,
+    pub(super) caps: Vec<String>,
     pub(super) x: Extra,
 }
 
@@ -124,7 +59,7 @@ impl Phone {
         let (direct_tx, direct_rx) = mpsc::channel(32);
         let x = Extra::new(ctx.board.subscribe(), &device);
         let push_rx = ctx.push_cfg.subscribe();
-        Phone { ctx, sec, device, reasm: Reassembler::new(), alive: None, hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x }
+        Phone { ctx, sec, device, reasm: Reassembler::new(), alive: None, via: "lan", pings: std::collections::VecDeque::new(), hello: false, feed: None, last_seq: 0, rate: Rate::default(), direct_tx, direct_rx, push_rx, x, caps: Vec::new() }
     }
 
     pub fn first_hello(&mut self, msg: &[u8]) -> Option<(String, Value)> {
@@ -165,6 +100,12 @@ impl Phone {
                     }
                 }
                 c = ctl.recv() => {
+                    if c == Some(Control::Probe) {
+                        if !self.probe().await {
+                            break;
+                        }
+                        continue;
+                    }
                     self.control(c).await;
                     break;
                 }
@@ -201,6 +142,11 @@ impl Phone {
                         break;
                     }
                 }
+                Some(text) = super::phone_ws::clip::next_clip(&mut self.x.clip) => {
+                    if !self.on_clip(text).await {
+                        break;
+                    }
+                }
                 Ok(()) = self.push_rx.changed(), if self.hello => {
                     let event = self.push_rx.borrow_and_update().clone();
                     if !self.sec.json(&event).await {
@@ -217,28 +163,16 @@ impl Phone {
         }
     }
 
-    async fn keepalive(&mut self) -> bool {
-        let Some(a) = self.alive.as_mut() else { return true };
-        if a.expired() {
-            self.sec.close(CLOSE_HANDSHAKE, "idle").await;
-            return false;
-        }
-        a.sent();
-        self.sec.frame(Kind::Ping, 0, &[]).await
-    }
-
-    async fn pong(&mut self) -> bool {
-        let echo = self.alive.as_mut().is_none_or(Liveness::answer_is_echo);
-        !echo || self.sec.frame(Kind::Ping, 0, &[]).await
-    }
-
     async fn control(&mut self, c: Option<Control>) {
         let (event, code, reason) = match c {
-            Some(Control::Revoked) => ("device.revoked", CLOSE_DEVICE, "revoked"),
-            Some(Control::Restarting) => ("machine.restarting", CLOSE_OFF, "restarting"),
-            Some(Control::Off) | None => ("remote.off", CLOSE_OFF, "off"),
+            Some(Control::Revoked) => (Some("device.revoked"), CLOSE_DEVICE, "revoked"),
+            Some(Control::Restarting) => (Some("machine.restarting"), CLOSE_OFF, "restarting"),
+            Some(Control::Held) => (None, CLOSE_OFF, "held"),
+            Some(Control::Off | Control::Probe) | None => (Some("remote.off"), CLOSE_OFF, "off"),
         };
-        self.sec.json(&json!({ "t": event })).await;
+        if let Some(event) = event {
+            self.sec.json(&json!({ "t": event })).await;
+        }
         self.sec.close(code, reason).await;
     }
 
@@ -295,8 +229,11 @@ impl Phone {
         if let Some(p) = v.get("platform").and_then(Value::as_str) {
             lock(&self.ctx.devices).set_platform(&self.device, p);
         }
+        lock(&self.ctx.devices).set_info(&self.device, v);
+        self.caps = parse_caps(v);
         self.hello = true;
-        self.set_chat_cap(v);
+        self.set_chat_cap();
+        self.clip_attach();
         let welcome = self.ctx.welcome(id);
         if !self.sec.json(&welcome).await {
             return false;

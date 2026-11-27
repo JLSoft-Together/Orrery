@@ -87,7 +87,8 @@ import { useSettingsEnv } from '@features/settings'
 import { isMac } from '../../../core/lib/platform'
 import { isPaletteKey } from '../lib/paletteKey'
 import { keyCombo, shortcutText } from '../../shortcuts/lib/shortcuts'
-import { TextSearch } from 'lucide-vue-next'
+import { Rows3, TextSearch } from 'lucide-vue-next'
+import { DENSITIES } from '../../../core/lib/density'
 import { openTermSearch } from '../../termSearch/registry'
 import { statusMeta } from '../../../core/lib/status'
 import { APP_VERSION } from '@features/update'
@@ -116,10 +117,11 @@ import { canUndoLayout, undoLayout } from '../../next/lib/paletteHooks'
 import { useConnectionStore } from '../../../app/stores/connection'
 import { useFavoritesStore } from '../../../core/stores/favorites'
 import { usePromptsStore } from '@features/agent-tools'
+import { usePalettePrompts } from '@features/prompts'
 import { useInboxStore } from '@features/click-menu'
 import { useTurnEditsStore } from '@features/agent-tools'
 import { useTurnChanges } from '@features/git'
-import { useRemoteStore } from '@features/remote'
+import { useClipToPhone, useRemoteStore } from '@features/remote'
 import { useSettingsStore } from '../../../core/stores/settings'
 import { useUiGenStore } from '../../next/stores/uiGen'
 import { useTerminalsStore } from '../../../core/stores/terminals'
@@ -132,7 +134,7 @@ import ArtImage from '../../../core/components/ArtImage.vue'
 import StatusIcon from '../../../core/components/StatusIcon.vue'
 
 type Group = NextGroup
-type Scope = 'all' | 'sessions' | 'projects' | 'commands' | 'files' | 'settings'
+type Scope = 'all' | 'sessions' | 'projects' | 'commands' | 'files' | 'settings' | 'prompts'
 
 interface Item extends Searchable {
   id: string
@@ -179,6 +181,7 @@ const terminals = useTerminalsStore()
 const telegram = useTelegramStore()
 telegram.start()
 const toasts = useToastsStore()
+const clipToPhone = useClipToPhone()
 const favorites = useFavoritesStore()
 const settings = useSettingsStore()
 const uiGen = useUiGenStore()
@@ -219,6 +222,7 @@ const prefixFor = (m: PaletteMode | NextPrefixMode): string => (isNext.value ? n
 
 const parsed = computed<{ mode: PaletteMode | NextPrefixMode | null; text: string }>(() => (isNext.value ? parseNextPrefix(query.value) : parsePrefix(query.value)))
 const text = computed(() => parsed.value.text)
+const promptItems = usePalettePrompts(() => (parsed.value.mode === 'prompts' ? text.value : null), (q) => (query.value = q))
 const scopeNow = computed<Scope>(() =>
   parsed.value.mode ? (isNext.value ? scopeOfMode(parsed.value.mode as NextPrefixMode) : MODE_SCOPE[parsed.value.mode as PaletteMode]) : scope.value,
 )
@@ -371,6 +375,7 @@ const items = computed<Item[]>(() => {
             icon: SmartphoneNfc,
             run: () => openPhone(false),
           },
+          { id: 'c:phone-clip', group: 'actions' as const, label: t('remoteClip.palette'), sub: t('remoteClip.paletteSub'), icon: Share, run: () => void clipToPhone.send() },
         ]
       : []),
     ...(hasTerminals && hasLog
@@ -611,6 +616,16 @@ const items = computed<Item[]>(() => {
     ),
     { id: 'c:codeLarger', group: 'prefs', label: t('fonts.paletteLarger'), sub: t('fonts.px', { n: settings.codeFontSize }), icon: AArrowUp, run: () => stepCodeSize(settings, 1) },
     { id: 'c:codeSmaller', group: 'prefs', label: t('fonts.paletteSmaller'), sub: t('fonts.px', { n: settings.codeFontSize }), icon: AArrowDown, run: () => stepCodeSize(settings, -1) },
+    ...(uiGen.isNext
+      ? DENSITIES.map((d) => ({
+          id: `c:density:${d}`,
+          group: 'prefs' as const,
+          label: t('themeV96.density.cmd', { name: t(`themeV96.density.${d}`) }),
+          icon: Rows3,
+          on: settings.density === d,
+          run: () => (settings.density = d),
+        }))
+      : []),
     { id: 'c:keyHints', group: 'prefs', label: t('keys.hints'), icon: Keyboard, on: settings.keyHints, run: () => (settings.keyHints = !settings.keyHints) },
     { id: 'c:tools', group: 'prefs', label: t('palette.toolsPref'), icon: ListFilter, on: !settings.hideTools, run: () => (settings.hideTools = !settings.hideTools) },
     { id: 'c:lang', group: 'prefs', label: t('palette.language'), sub: settings.locale === 'vi' ? 'Tiếng Việt → English' : 'English → Tiếng Việt', icon: Languages, run: () => settings.toggleLocale() },
@@ -695,7 +710,7 @@ const fileItems = computed<Item[]>(() => {
 })
 
 const matched = computed<Item[]>(() => {
-  const all = [...localMatches.value, ...fileItems.value, ...settingItems.value]
+  const all = [...localMatches.value, ...fileItems.value, ...settingItems.value, ...promptItems.value]
   if (!isNext.value) return all
   const hasText = !!text.value
   return all.map((x) => (x.bucket ? { ...x, group: groupOfSession(x.bucket, hasText) } : x))
@@ -999,7 +1014,7 @@ const HINTS = [
                   :aria-selected="item.index === active"
                   class="relative flex cursor-pointer items-center gap-3 rounded-inner px-3 py-1.5 text-sm"
                   :data-palette-row="item.meta ? 'session' : undefined"
-                  :class="[item.index === active ? 'bg-accent text-on-accent' : 'text-ink', isNext ? 'min-h-[52px]' : 'min-h-11']"
+                  :class="[item.index === active ? 'bg-accent text-on-accent' : 'text-ink', isNext ? 'min-h-(--ccm-density-pal-h)' : 'min-h-11']"
                   @mousemove="active = item.index"
                   @click="choose(item, $event.shiftKey)"
                 >

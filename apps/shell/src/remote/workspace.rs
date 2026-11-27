@@ -11,7 +11,9 @@ use crate::state::{lock, take_slot};
 pub const WS_EVENTS: usize = 16;
 pub const WS_PER_MINUTE: usize = 30;
 pub const MAX_ATTACH: usize = 4;
-pub const WS_COMMANDS: [&str; 9] = ["ws.open", "ws.close", "ws.rename", "ws.move", "ws.reopen", "ws.compact", "ws.send", "ws.keys", "ws.menu"];
+pub const WS_COMMANDS: [&str; 11] = ["ws.open", "ws.close", "ws.rename", "ws.move", "ws.reopen", "ws.compact", "ws.send", "ws.keys", "ws.menu", "ws.snooze", "ws.reply"];
+pub const WS_GUARDED: [&str; 2] = ["ws.snooze", "ws.reply"];
+pub const WS_TEXT: [&str; 2] = ["ws.send", "ws.reply"];
 pub const SUMMARY_WAIT: Duration = Duration::from_secs(2);
 const STALE_FOR: Duration = Duration::from_secs(10);
 const MINUTE: Duration = Duration::from_secs(60);
@@ -30,11 +32,12 @@ pub struct Board {
     attached: Mutex<HashMap<String, usize>>,
     stale_until: Mutex<Option<Instant>>,
     fresh: Notify,
+    pub clip: super::phone_ws::clip::ClipHub,
 }
 
 impl Default for Board {
     fn default() -> Board {
-        Board { state: Mutex::new(None), tx: broadcast::channel(WS_EVENTS).0, rates: Mutex::new(HashMap::new()), attached: Mutex::new(HashMap::new()), stale_until: Mutex::new(None), fresh: Notify::new() }
+        Board { state: Mutex::new(None), tx: broadcast::channel(WS_EVENTS).0, rates: Mutex::new(HashMap::new()), attached: Mutex::new(HashMap::new()), stale_until: Mutex::new(None), fresh: Notify::new(), clip: Default::default() }
     }
 }
 
@@ -55,6 +58,17 @@ pub fn patch_event(event: &WsEvent) -> Option<Value> {
 
 fn has_pane(summary: &Value, id: &str) -> bool {
     summary["tabs"].as_array().is_some_and(|tabs| tabs.iter().any(|t| t["panes"].as_array().is_some_and(|ps| ps.iter().any(|p| p["sessionId"].as_str() == Some(id)))))
+}
+
+pub fn reply_refusal(summary: &Value, key: &str) -> Option<&'static str> {
+    let pane = summary["tabs"].as_array()?.iter().filter_map(|t| t["panes"].as_array()).flatten().find(|p| p["key"].as_str() == Some(key))?;
+    if pane["menu"].is_object() {
+        return Some("useMenu");
+    }
+    match pane["question"].as_str() {
+        Some(q) if !q.trim().is_empty() => None,
+        _ => Some("notWaiting"),
+    }
 }
 
 impl Board {

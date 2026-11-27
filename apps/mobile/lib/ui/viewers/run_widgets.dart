@@ -12,12 +12,14 @@ class RunSessionCard extends StatelessWidget {
     required this.lines,
     required this.onStop,
     required this.onReload,
+    this.onLog,
   });
 
   final RunSessionInfo session;
   final List<RunLine> lines;
   final VoidCallback onStop;
   final ValueChanged<bool> onReload;
+  final VoidCallback? onLog;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +106,19 @@ class RunSessionCard extends StatelessWidget {
                       child: Text(l.vRunStop),
                     ),
                   ],
+                ),
+              ),
+            if (onLog != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('run-open-log'),
+                    onPressed: onLog,
+                    icon: const Icon(Icons.subject_rounded, size: 18),
+                    label: Text(l.runLogOpen),
+                  ),
                 ),
               ),
             const SizedBox(height: 10),

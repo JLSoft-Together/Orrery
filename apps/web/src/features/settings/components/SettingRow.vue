@@ -5,7 +5,7 @@ defineProps<{ label: string; info?: string; labelId?: string; labelFor?: string;
 </script>
 
 <template>
-  <div :class="stacked ? 'px-3 py-2' : 'flex items-center justify-between gap-3 px-3 py-2'">
+  <div :class="stacked ? 'px-3 py-(--ccm-density-set-py)' : 'flex items-center justify-between gap-3 px-3 py-(--ccm-density-set-py)'">
     <div class="flex min-w-0 items-center gap-1.5" :class="stacked ? '' : 'flex-1'">
       <label v-if="labelFor" :id="labelId" :for="labelFor" class="text-sm">{{ label }}</label>
       <p v-else :id="labelId" class="text-sm">{{ label }}</p>

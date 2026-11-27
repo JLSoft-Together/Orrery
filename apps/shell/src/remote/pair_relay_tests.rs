@@ -122,7 +122,7 @@ fn a_phone_off_the_lan_pairs_through_the_relay_with_the_one_time_ticket() {
         assert_eq!((closed["conn"].as_u64(), closed["code"].as_u64()), (Some(5), Some(1000)));
         assert!(ctls.iter().any(|v| v["t"] == "pair.close"), "{ctls:?}");
     });
-    let ask = PairAsk { name: "Pixel Test".into(), platform: "android".into(), ip: Some("203.0.113.7".into()), country: Some("VN".into()), via: "relay" };
+    let ask = PairAsk { name: "Pixel Test".into(), platform: "android".into(), ip: Some("203.0.113.7".into()), country: Some("VN".into()), via: "relay", source: "qr" };
     assert_eq!(lock(&rig.host.pair_asks).as_slice(), [ask]);
     assert_eq!(Devices::load(&rig.dir).list()[0].device_id, "phone-r");
     rig.remote.enable(false);

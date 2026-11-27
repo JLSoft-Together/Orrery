@@ -36,6 +36,16 @@ pub fn device_json(d: &Device, via: Option<&str>) -> Value {
         "pushOn": !d.push_off,
         "pushContent": d.push_content,
     });
+    for (key, value) in [("appVersion", &d.app_version), ("appBuild", &d.app_build), ("model", &d.model), ("os", &d.os)] {
+        if let Some(value) = value {
+            v[key] = Value::from(value.as_str());
+        }
+    }
+    for (key, value) in [("pairedVia", &d.paired_via), ("adbSerialHash", &d.adb_serial_hash)] {
+        if !value.is_empty() {
+            v[key] = Value::from(value.as_str());
+        }
+    }
     if let Some(via) = via {
         v["via"] = Value::from(via);
     }

@@ -17,6 +17,7 @@ import { ChatFeed, type FeedState } from '../lib/chatFeed'
 import { liveOf, projectOf } from '../lib/chatInbox'
 import { chatSupported, chatView, emptyLog } from '../lib/chatModel'
 import { settleOutbox, setState, type OutMsg } from '../lib/chatOutbox'
+import { pushMenu, pushMenuStale, setPushMenu, takePushMenu } from '../lib/deepLink'
 import { parseSessions } from '../lib/monitorModel'
 import { createAnswerFlow } from '../lib/paneAnswer'
 import { quotaOf } from '../lib/quotaModel'
@@ -273,6 +274,23 @@ async function pick(choice: AskPick): Promise<void> {
   if (result.outcome === 'changed') say(t('chat.changed'))
   else if (result.outcome === 'failed') say(errText(result.error))
 }
+
+watch(
+  [pane, pushMenu],
+  () => {
+    const want = pushMenu.value
+    const p = pane.value
+    if (want && pushMenuStale()) return setPushMenu(null)
+    if (!want || want.machine !== props.machine || want.pane !== props.pane || !p || !online.value) return
+    const menu = p.menu
+    const item = menu && menu.sig === want.sig ? menu.items.find((i) => i.index === want.index && !i.other) : undefined
+    if (!item && view.value.stale) return
+    takePushMenu(props.machine, props.pane)
+    if (item) void pick({ keys: `menu:${item.index}`, label: item.label })
+    else say(t('chat.changed'))
+  },
+  { immediate: true },
+)
 
 function openFile(file: RemoteChatFile, root: string): void {
   if (file.out || !root) return

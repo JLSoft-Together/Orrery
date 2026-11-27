@@ -150,6 +150,11 @@ fn builds_installs_launches_and_follows_logcat() {
     assert_eq!(t.names(), vec!["building", "installing", "launching", "running"]);
     assert_eq!(t.rec.states.lock().unwrap().last().unwrap().1.app_id, Some(Some("com.ex".into())));
     assert!(t.fails().is_empty());
+    let patched: Vec<_> = t.rec.states.lock().unwrap().iter().filter_map(|(s, p)| p.apk.clone().map(|a| (s.clone(), a))).collect();
+    assert_eq!(patched.len(), 1);
+    assert_eq!(patched[0].0, "installing");
+    assert!(patched[0].1.path.ends_with("app-free-debug.apk"));
+    assert_eq!((patched[0].1.application_id.as_str(), patched[0].1.variant.as_str(), patched[0].1.size), ("com.ex", "freeDebug", 0));
     assert!(t.has("gradlew :app:assembleFreeDebug --console=plain"));
     assert_eq!(std::fs::read_to_string(format!("{}/gradle.env", t.dir)).unwrap().trim(), format!("{0}/jdk|{0}/sdk|bar", t.dir));
     let apk = format!("{}/app/build/outputs/apk/free/debug/app-free-debug.apk", t.cwd);

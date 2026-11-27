@@ -95,6 +95,7 @@ import libsV75 from '../features/run/i18n/libs-v75'
 import memdocV75 from '../features/run/i18n/memdoc-v75'
 import releaseV75 from '../features/run/i18n/release-v75'
 import devicesV75 from '../features/devices/i18n/devices-v75'
+import devicesV113 from '../features/devices/i18n/devices-v113'
 import devtoolsV75 from '../features/resources/i18n/devtools-v75'
 import promptSearchV75 from '../features/history/i18n/promptsearch-v75'
 import sessionToolsV89 from '../features/agent-tools/i18n/session-tools-v89'
@@ -110,6 +111,10 @@ import v105U3 from '../features/next/i18n/v105-u3'
 import v105U2 from '../features/next/i18n/v105-u2'
 import v106Rail from '../features/next/i18n/v106-rail'
 import v106Install from '../features/remote/i18n/v106-install'
+import runV113 from '../features/run/i18n/run-v113'
+import v113Connect from '../features/remote/i18n/v113-connect'
+import v113Clip from '../features/remote/i18n/v113-clip'
+import savedPromptsV114 from '../features/prompts/i18n/saved-prompts'
 import v107Gon from './v107-gon'
 import notifyV109 from '../features/notify/i18n'
 import footerSysV109 from '../features/footerSys/i18n'
@@ -131,6 +136,10 @@ export default {
   ...v105U2.en,
   ...v106Rail.en,
   ...v106Install.en,
+  ...runV113.en,
+  ...v113Connect.en,
+  ...v113Clip.en,
+  ...savedPromptsV114.en,
   ...v107Gon.en,
   ...notifyV109.en,
   ...footerSysV109.en,
@@ -198,6 +207,7 @@ export default {
   ...memdocV75.en,
   ...releaseV75.en,
   ...devicesV75.en,
+  ...devicesV113.en,
   ...devtoolsV75.en,
   ...promptSearchV75.en,
   ...sessionToolsV89.en,
@@ -1216,7 +1226,7 @@ export default {
     goMonitor: 'Go to Monitor',
     goUsage: 'Go to Usage',
     recap: 'Daily recap and export',
-    group: { sessions: 'Sessions', favorites: 'Favorites', nav: 'Go to', actions: 'Actions', prefs: 'Preferences', help: 'Help' },
+    group: { sessions: 'Sessions', favorites: 'Favorites', nav: 'Go to', actions: 'Actions', prefs: 'Preferences', help: 'Help', prompts: 'Saved prompts' },
     scopeLabel: 'Show',
     scope: { all: 'All', sessions: 'Sessions', favorites: 'Favorites', commands: 'Commands' },
     goHistory: 'Go to History',

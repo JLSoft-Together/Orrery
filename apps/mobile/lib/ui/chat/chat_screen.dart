@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../media/media_flow.dart';
+import '../../media/media_prefs.dart';
+import '../../media/media_providers.dart';
+import '../../prompts/prompt_model.dart';
+import '../../prompts/prompts_api.dart';
+import '../../prompts/prompts_controller.dart';
 import '../../remote/chat_protocol.dart';
+import '../../remote/desktop_caps.dart';
 import '../../remote/link_state.dart';
 import '../../remote/providers.dart';
 import '../commands.dart';
+import '../danger_guard.dart';
 import '../model/workspace_model.dart';
+import '../run/crash_draft.dart';
 import '../terminal/terminal_pane.dart';
 import '../theme/orrery_shape.dart';
 import '../ui_providers.dart';
 import '../viewers/diff_page.dart';
+import '../viewers/viewer_api.dart';
 import '../widgets/common.dart';
 import '../workspace/machine_scope.dart';
 import 'chat_composer.dart';
 import 'chat_controller.dart';
 import 'chat_header.dart';
 import 'chat_list.dart';
+import 'chat_media.dart';
 import 'chat_rows.dart';
 import 'chat_sheets.dart';
 import 'reconnect_strip.dart';
@@ -42,6 +53,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late bool _termMode = widget.terminal;
   late final AppLifecycleListener _life;
   final ScrollController _scroll = ScrollController();
+  MediaFlow? _flow;
+  PromptsController? _prompts;
+
+  ComposerMedia _media(String? root) {
+    final hasPut = ref.watch(
+      machineViewProvider(widget.machineId)
+          .select((v) => hasDesktopCap(v.hello, putCap)),
+    );
+    final dictation = ref.watch(dictationProvider);
+    if (!hasPut || root == null || root.isEmpty) {
+      return ComposerMedia(dictation: dictation);
+    }
+    final flow = _flow ??= MediaFlow(
+      call: ref.read(viewerApiProvider(widget.machineId)).call,
+      root: root,
+      prefs: ref.read(mediaPrefsProvider),
+    );
+    flow.root = root;
+    return ComposerMedia(dictation: dictation, photo: flow);
+  }
+
+  PromptsController? _promptsFor(bool enabled) {
+    if (!enabled) return null;
+    return _prompts ??= PromptsController(
+      api: PromptsApi(ref.read(viewerApiProvider(widget.machineId))),
+      paneKey: widget.paneKey,
+    );
+  }
 
   @override
   void initState() {
@@ -50,14 +89,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       api: ref.read(machineApiProvider(widget.machineId)),
       paneKey: widget.paneKey,
       cacheKey: '${widget.machineId}|${widget.paneKey}',
+      reauthorize: _reauthorize,
     )..addListener(_onChat);
     _chat.start();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeCrashDraft());
     _life = AppLifecycleListener(
       onPause: _chat.pause,
       onHide: _chat.pause,
       onShow: _chat.resume,
       onResume: _chat.resume,
     );
+  }
+
+  void _takeCrashDraft() {
+    if (!mounted) return;
+    final composer = _composer.currentState;
+    if (composer == null) return;
+    final text = ref.read(crashDraftProvider.notifier).take(widget.paneKey);
+    if (text != null) composer.fill(text);
   }
 
   void _onChat() {
@@ -70,13 +119,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _life.dispose();
     _scroll.dispose();
+    _prompts?.dispose();
     _chat
       ..removeListener(_onChat)
       ..dispose();
     super.dispose();
   }
 
-  Future<bool> _send(String text) {
+  Future<bool> _send(String text, bool authed) {
     if (_scroll.hasClients && _scroll.offset > 0) {
       _scroll.animateTo(
         0,
@@ -84,8 +134,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         curve: Curves.easeOutCubic,
       );
     }
-    return _chat.send(text);
+    return _chat.send(text, authed: authed);
   }
+
+  Future<bool> _reauthorize(String text) =>
+      mounted ? authorizeNow(context) : Future.value(false);
 
   void _toggle() => setState(() => _termMode = !_termMode);
 
@@ -162,6 +215,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _chat.items.isEmpty &&
         _chat.outbox.isEmpty;
     final agentName = pane.agent == 'codex' ? 'Codex' : 'Claude';
+    final hasPrompts = ref.watch(
+      machineViewProvider(id).select((v) => hasDesktopCap(v.hello, promptsCap)),
+    );
     return Scaffold(
       backgroundColor: c.surface,
       body: SafeArea(
@@ -217,6 +273,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 enabled: true,
                 working: working,
                 onSend: _send,
+                danger: ref.watch(dangerRulesProvider(id)),
+                media: _media(tab.project ?? pane.cwd),
+                prompts: _promptsFor(hasPrompts),
+                projectPath: tab.project ?? pane.cwd,
                 onStop: () => _stop(pane),
                 onPlus: () => showChatPlusSheet(
                   context,

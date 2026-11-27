@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 
 import 'local_notifier.dart';
+import 'push_apk.dart';
 import 'push_background.dart';
 import 'push_config.dart';
 import 'push_notice.dart';
@@ -52,6 +53,8 @@ abstract class PushGateway {
 
   Future<void> show(PushNotice notice, {required String channelName});
 
+  Future<void> clearMachine(String machine);
+
   Future<void> dispose();
 }
 
@@ -73,7 +76,7 @@ class FirebasePushGateway implements PushGateway {
   Future<void>? _opening;
 
   static Map<String, String> _data(RemoteMessage message) =>
-      message.data.map((key, value) => MapEntry(key, '$value'));
+      remoteTapData(message.data);
 
   static PushPermission _status(AuthorizationStatus status) =>
       status == AuthorizationStatus.authorized ||
@@ -218,6 +221,12 @@ class FirebasePushGateway implements PushGateway {
   @override
   Future<void> show(PushNotice notice, {required String channelName}) =>
       _notifier.show(notice, channelName: channelName);
+
+  @override
+  Future<void> clearMachine(String machine) async {
+    await _notifier.init();
+    await _notifier.clearMachine(machine);
+  }
 
   @override
   Future<void> dispose() async {

@@ -64,8 +64,12 @@ export async function runCheck(dir: string, script: string, deps: CheckRunDeps):
     const head = await deps.head()
     if (!head) return 'idle'
     await deps.report('running', head)
-    const key = deps.launch(script)
-    const res = await deps.wait(key)
+    let res: { code: number } | null = null
+    try {
+      res = await deps.wait(deps.launch(script))
+    } catch {
+      res = null
+    }
     const state: CheckState = res === null ? 'idle' : res.code === 0 ? 'pass' : 'fail'
     await deps.report(state, head)
     return state
@@ -73,6 +77,25 @@ export async function runCheck(dir: string, script: string, deps: CheckRunDeps):
     live.delete(dir)
     for (const cb of [...(listeners.get(dir) ?? [])]) cb()
   }
+}
+
+export type PhoneRunError = 'running' | 'script' | 'integration' | 'unavailable'
+export type PhoneRunResult = { ok: true; started: true } | { ok: false; error: PhoneRunError }
+
+export interface PhoneRunDeps extends CheckRunDeps {
+  script: () => Promise<string | null>
+  integration: () => boolean
+}
+
+export async function startCheckFromPhone(dir: string, deps: PhoneRunDeps): Promise<PhoneRunResult> {
+  if (isCheckLive(dir)) return { ok: false, error: 'running' }
+  if (!deps.integration()) return { ok: false, error: 'integration' }
+  const script = await deps.script()
+  if (script === null) return { ok: false, error: 'unavailable' }
+  if (!script.trim()) return { ok: false, error: 'script' }
+  if (isCheckLive(dir)) return { ok: false, error: 'running' }
+  runCheck(dir, script, deps).catch(() => undefined)
+  return { ok: true, started: true }
 }
 
 export function waitShellResult(panes: () => readonly Pane[], key: string): Promise<{ code: number } | null> {

@@ -11,7 +11,7 @@ use super::pair::{clean_name, is_hidden};
 use super::patch::diff;
 use super::phone_ws::{error_code, reply_of, SUMMARY_GET};
 use super::test_util::*;
-use super::workspace::{snapshot_event, Board, WS_PER_MINUTE};
+use super::workspace::{reply_refusal, snapshot_event, Board, WS_PER_MINUTE};
 use crate::state::lock;
 
 fn unescape(s: &str) -> String {
@@ -308,4 +308,19 @@ fn a_fresh_summary_is_awaited_after_a_connect_then_the_pane_is_refused() {
         assert!(!board.has_session_fresh("s9", Duration::from_millis(300)).await);
         assert!(started.elapsed() >= Duration::from_millis(250));
     });
+}
+
+#[test]
+fn a_reply_needs_a_pane_with_a_question_and_no_menu() {
+    let asked = |extra: Value| {
+        let mut p = pane("p1", "s1", "running");
+        p.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        summary(1, vec![p])
+    };
+    assert_eq!(reply_refusal(&asked(json!({ "question": "Which color?" })), "p1"), None);
+    assert_eq!(reply_refusal(&asked(json!({})), "p1"), Some("notWaiting"));
+    assert_eq!(reply_refusal(&asked(json!({ "question": "  " })), "p1"), Some("notWaiting"));
+    assert_eq!(reply_refusal(&asked(json!({ "question": "x", "menu": { "sig": "a" } })), "p1"), Some("useMenu"));
+    assert_eq!(reply_refusal(&asked(json!({})), "gone"), None);
+    assert_eq!(reply_refusal(&json!({}), "p1"), None);
 }

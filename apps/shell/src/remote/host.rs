@@ -59,6 +59,10 @@ impl Host for AppHost {
         crate::desk::emit_app(&self.app, CHANGED, status);
     }
 
+    fn event(&self, name: &str, payload: Value) {
+        crate::desk::emit_app(&self.app, name, payload);
+    }
+
     fn awake(&self, on: bool) {
         if on {
             self.power.start();
@@ -113,6 +117,28 @@ impl Host for AppHost {
         }
         d.blocking_pick_file().and_then(|p| p.into_path().ok())
     }
+
+    fn bundled_apk(&self) -> Option<(std::path::PathBuf, String)> {
+        use tauri::path::BaseDirectory;
+        let paths = self.app.path();
+        let apk = paths.resolve("apk/orrery-remote.apk", BaseDirectory::Resource).ok()?;
+        let version = paths.resolve("apk/version.txt", BaseDirectory::Resource).ok().and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
+        Some((apk, version.trim().to_owned()))
+    }
+
+    fn save_apk(&self, src: &std::path::Path, suggested_name: &str) -> Result<Option<std::path::PathBuf>, String> {
+        use tauri_plugin_dialog::DialogExt;
+        let mut d = self.app.dialog().file().add_filter("APK", &["apk"]).set_file_name(suggested_name);
+        if let Ok(dir) = self.app.path().download_dir() {
+            d = d.set_directory(dir);
+        }
+        if let Some(w) = self.app.get_webview_window(MAIN) {
+            d = d.set_parent(&w);
+        }
+        let Some(dest) = d.blocking_save_file().and_then(|p| p.into_path().ok()) else { return Ok(None) };
+        std::fs::copy(src, &dest).map_err(|e| e.to_string())?;
+        Ok(Some(dest))
+    }
 }
 
 pub fn install(app: &AppHandle) {
@@ -165,5 +191,14 @@ pub fn viewer_event(app: &AppHandle, owner: &str, event: super::VEvent) {
 pub fn run_event(app: &AppHandle, payload: &Value) {
     if let Some(r) = app.try_state::<Remote>() {
         r.run_event(payload);
+    }
+}
+
+pub fn prompts_changed(app: &AppHandle, payload: &Value) {
+    let count = payload.get("count").and_then(Value::as_u64).unwrap_or(0);
+    if let Some(r) = app.try_state::<Remote>() {
+        if let Some(c) = lock(&r.ctx).clone().filter(|c| c.running.load(std::sync::atomic::Ordering::SeqCst)) {
+            c.viewer.push_prompts(count);
+        }
     }
 }

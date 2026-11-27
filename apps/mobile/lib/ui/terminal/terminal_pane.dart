@@ -13,6 +13,7 @@ import '../../remote/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../chat/reconnect_strip.dart';
 import '../commands.dart';
+import '../danger_guard.dart';
 import '../machine_api.dart';
 import '../model/workspace_model.dart';
 import '../ui_providers.dart';
@@ -347,6 +348,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
               _beginTyping();
               _endTypingSoon();
             },
+            danger: ref.watch(dangerRulesProvider(widget.machineId)),
           ),
       ],
     );

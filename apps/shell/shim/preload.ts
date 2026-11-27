@@ -258,6 +258,9 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   cmdHistList: (project: string): Promise<unknown> => ipcRenderer.invoke('ccm:cmdhist-list', project),
   cmdHistAdd: (project: string, entry: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:cmdhist-add', project, entry),
   cmdHistRemove: (project: string, entry: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:cmdhist-remove', project, entry),
+  promptsGet: (): Promise<unknown> => ipcRenderer.invoke('ccm:prompts-get'),
+  promptsSet: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:prompts-set', req),
+  onPromptsChanged: (handler: (payload: unknown) => void): (() => void) => subscribe('ccm:prompts-changed', handler),
   extStatus: (dir?: string): Promise<unknown> => ipcRenderer.invoke('ccm:ext-status', dir),
   extMcp: (dir?: string, fresh?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:ext-mcp', dir, fresh),
   extProject: (dir: string, refresh?: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:ext-project', dir, refresh),
@@ -322,6 +325,12 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   devUiRestore: (id: string, pkg: string | null): Promise<unknown> => ipcRenderer.invoke('ccm:dev-ui-restore', id, pkg),
   devManifest: (dir: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-manifest', dir),
   devLaunch: (id: string, target: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:dev-launch', id, target),
+  devInstall: (id: string, apk: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-install', id, apk),
+  devOpenPair: (id: string, qr: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-open-pair', id, qr),
+  devReverse: (id: string, port: number, on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:dev-reverse', id, port, on),
+  devPkgVersion: (id: string, pkg: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-pkg-version', id, pkg),
+  devVariant: (req: unknown): Promise<unknown> => ipcRenderer.invoke('ccm:dev-variant', req),
+  devBuiltApk: (cwd: string, module: string, variant: string): Promise<unknown> => ipcRenderer.invoke('ccm:dev-built-apk', cwd, module, variant),
   avdList: (): Promise<unknown> => ipcRenderer.invoke('ccm:avd-list'),
   avdStart: (name: string, mode: string): Promise<unknown> => ipcRenderer.invoke('ccm:avd-start', name, mode),
   avdStop: (name: string): Promise<unknown> => ipcRenderer.invoke('ccm:avd-stop', name),
@@ -334,10 +343,20 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   onRemoteChanged: (handler: (status: unknown) => void): (() => void) => subscribe('ccm:remote-changed', handler),
   remoteEnable: (on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:remote-enable', on === true),
   remoteKeepAwake: (on: boolean): Promise<unknown> => ipcRenderer.invoke('ccm:remote-keep-awake', on === true),
-  remotePairStart: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-pair-start'),
+  remotePairStart: (opts?: unknown): Promise<unknown> =>
+    typeof opts === 'object' && opts !== null && JSON.stringify(opts).length <= 512 ? ipcRenderer.invoke('ccm:remote-pair-start', opts) : ipcRenderer.invoke('ccm:remote-pair-start'),
   remotePairCancel: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-pair-cancel'),
-  remoteRevoke: (deviceId: string): Promise<unknown> =>
-    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-revoke', deviceId) : Promise.resolve(false),
+  remoteRevoke: (arg: unknown): Promise<unknown> => {
+    const id = typeof arg === 'string' ? arg : typeof arg === 'object' && arg !== null ? (arg as { id?: unknown }).id : undefined
+    const grace = typeof arg === 'object' && arg !== null ? (arg as { grace?: unknown }).grace : undefined
+    if (typeof id !== 'string' || !id || id.length > 128) return Promise.resolve(false)
+    return ipcRenderer.invoke('ccm:remote-revoke', typeof grace === 'number' && grace > 0 ? { id, grace: Math.min(30, Math.round(grace)) } : id)
+  },
+  remoteRevokeUndo: (deviceId: string): Promise<unknown> =>
+    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-revoke-undo', deviceId) : Promise.resolve(false),
+  remoteCheck: (deviceId: string): Promise<unknown> =>
+    typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-check', deviceId) : Promise.resolve(null),
+  onRemoteInstallFetched: (handler: (event: unknown) => void): (() => void) => subscribe('ccm:remote-install-fetched', handler),
   remoteDeviceRename: (deviceId: string, name: string): Promise<unknown> =>
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 && typeof name === 'string' && name.length <= 200
       ? ipcRenderer.invoke('ccm:remote-device-rename', { deviceId, name })
@@ -364,6 +383,11 @@ contextBridge.exposeInMainWorld('ccmDesktop', {
   remotePushRemove: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-push-remove'),
   remotePushDevice: (deviceId: string, on: boolean): Promise<unknown> =>
     typeof deviceId === 'string' && deviceId.length > 0 && deviceId.length <= 128 ? ipcRenderer.invoke('ccm:remote-push-device', { deviceId, on: on === true }) : Promise.resolve({ ok: false, error: 'invalid' }),
+  remoteSendPane: (paneKey: string): Promise<unknown> =>
+    typeof paneKey === 'string' && paneKey.length > 0 && paneKey.length <= 128 ? ipcRenderer.invoke('ccm:remote-send-pane', paneKey) : Promise.resolve({ ok: false, error: 'invalid' }),
+  remoteOfferApk: (sessionId: string): Promise<unknown> =>
+    typeof sessionId === 'string' && sessionId.length > 0 && sessionId.length <= 64 ? ipcRenderer.invoke('ccm:remote-offer-apk', sessionId) : Promise.resolve({ ok: false, error: 'invalid' }),
+  remoteClipSend: (): Promise<unknown> => ipcRenderer.invoke('ccm:remote-clip-send'),
   remoteGuard: (op: unknown): Promise<unknown> =>
     typeof op === 'object' && op !== null && JSON.stringify(op).length <= 4096 ? ipcRenderer.invoke('ccm:remote-guard', op) : Promise.resolve({ ok: false, error: 'invalid' }),
   remoteInstall: (op: unknown): Promise<unknown> =>

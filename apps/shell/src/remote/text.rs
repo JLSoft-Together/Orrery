@@ -66,12 +66,26 @@ impl RemoteText {
         let name = shown_name(&ask.name);
         let platform = if valid_platform(&ask.platform) { format!("{} ", ask.platform) } else { String::new() };
         let country = shown_country(ask.country.as_deref()).map(|c| format!(" [{c}]")).unwrap_or_default();
-        let via = if ask.via == "relay" { "relay" } else { "LAN" };
+        let src = self.pair_source(ask);
         match (self.vi, shown_ip(ask.ip.as_deref())) {
-            (true, Some(ip)) => format!("Ghép qua {via} từ IP {ip}{country}: điện thoại {platform}«{name}»?"),
-            (true, None) => format!("Ghép qua {via} từ IP không rõ{country}: điện thoại {platform}«{name}»?"),
-            (false, Some(ip)) => format!("Pair via {via} from IP {ip}{country}: {platform}phone “{name}”?"),
-            (false, None) => format!("Pair via {via} from an unknown IP{country}: {platform}phone “{name}”?"),
+            (true, Some(ip)) => format!("Ghép {src} từ IP {ip}{country}: điện thoại {platform}«{name}»?"),
+            (true, None) => format!("Ghép {src} từ IP không rõ{country}: điện thoại {platform}«{name}»?"),
+            (false, Some(ip)) => format!("Pair {src} from IP {ip}{country}: {platform}phone “{name}”?"),
+            (false, None) => format!("Pair {src} from an unknown IP{country}: {platform}phone “{name}”?"),
+        }
+    }
+
+    fn pair_source(&self, ask: &PairAsk) -> String {
+        let via = if ask.via == "relay" { "relay" } else { "LAN" };
+        match (self.vi, ask.source) {
+            (true, "usb") => "qua cáp USB".to_owned(),
+            (true, "lan") => "qua trang cài".to_owned(),
+            (true, "qr") => format!("qua mã QR ({via})"),
+            (true, _) => format!("qua {via}"),
+            (false, "usb") => "over USB cable".to_owned(),
+            (false, "lan") => "via the install page".to_owned(),
+            (false, "qr") => format!("via QR code ({via})"),
+            (false, _) => format!("via {via}"),
         }
     }
 

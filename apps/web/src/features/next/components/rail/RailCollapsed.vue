@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useDismiss } from '../../../../core/composables/useDismiss'
 import type { CollapsedProject, LiveRow } from '../../lib/railLive'
 import { monogram } from '../../../rail/lib/projectRow'
+import { peekHub } from '../../lib/useRailPeek'
 import RailRowItem from './RailRowItem.vue'
 
 defineProps<{ projects: CollapsedProject[] }>()
@@ -110,6 +111,8 @@ const badge = (p: CollapsedProject): number => p.needs + p.failed
           :aria-label="t('mist.rail.flyout', { name: projects.find((p) => p.clusterKey === open?.key)?.name ?? '' })"
           data-rail-flyout
           @keydown="onKey"
+          @pointerover="peekHub.over"
+          @pointerout="peekHub.out"
         >
           <RailRowItem v-for="r in projects.find((p) => p.clusterKey === open?.key)?.rows ?? []" :key="r.key" :row="r" tab-stop @open="pickRow" @menu="(row, e) => emit('menu', row, e)" />
         </div>

@@ -18,6 +18,12 @@ const en = {
       popLabel: 'Find a session',
     },
   },
+  v114peek: {
+    label: 'Quick look: {name}',
+    empty: 'No activity yet',
+    tool: 'Running tool',
+    question: 'Pending question',
+  },
 }
 
 const vi = {
@@ -39,6 +45,12 @@ const vi = {
       open: 'Tìm session',
       popLabel: 'Tìm session',
     },
+  },
+  v114peek: {
+    label: 'Xem nhanh {name}',
+    empty: 'Chưa có hoạt động',
+    tool: 'Công cụ đang chạy',
+    question: 'Câu hỏi đang chờ',
   },
 }
 

@@ -4,12 +4,15 @@ import 'dart:typed_data';
 
 import '../app/link_source.dart';
 import '../remote/secure_kv.dart';
+import 'push_apk.dart';
 import 'push_config.dart';
 import 'push_gateway.dart';
 import 'push_host.dart';
 import 'push_notice.dart';
 import 'push_present.dart';
+import 'push_pause.dart';
 import 'push_seal.dart';
+import 'waiting_sink.dart';
 
 export 'push_host.dart';
 
@@ -22,6 +25,7 @@ class PushService implements LinkSource {
     required this.localeCode,
     this.resumed = _alwaysResumed,
     this.machineKey = _noMachine,
+    this.waiting = const NoWaitingSink(),
   });
 
   static bool _alwaysResumed() => true;
@@ -35,6 +39,15 @@ class PushService implements LinkSource {
   final String Function() localeCode;
   final bool Function() resumed;
   final Future<Uint8List?> Function(String machineId) machineKey;
+  final WaitingSink waiting;
+  late final PushPause _pause = PushPause(
+    kv: kv,
+    sink: waiting,
+    onChange: () {
+      _notify();
+      unawaited(_syncAll());
+    },
+  );
   late final PushPresenter _presenter = PushPresenter(
     gateway: gateway,
     kv: kv,
@@ -42,6 +55,8 @@ class PushService implements LinkSource {
     resumed: resumed,
     localeCode: localeCode,
     machineKey: machineKey,
+    waiting: waiting,
+    paused: _pause.check,
   );
 
   final StreamController<void> _changes = StreamController.broadcast();
@@ -56,6 +71,10 @@ class PushService implements LinkSource {
   bool _revoked = false;
   String? _error;
   Uri? _initial;
+  ApkTap? _initialApk;
+  final StreamController<ApkTap> _apkTaps = StreamController.broadcast();
+
+  Stream<ApkTap> get apkTaps => _apkTaps.stream;
   Future<void> _queue = Future<void>.value();
   Set<String> _mute = {'error'};
   bool _content = true;
@@ -80,6 +99,14 @@ class PushService implements LinkSource {
     await kv.write(pushMuteKey, jsonEncode(_mute.toList()));
     await _syncAll();
   }
+
+  DateTime? get pausedUntil => _pause.until;
+
+  Stream<void> get pauseRequests => waiting.pauseRequests;
+
+  Future<void> pauseOneHour() => _pause.start();
+
+  Future<void> resumeNow() => _pause.stop();
 
   bool get enabled => _enabled && !_revoked;
 
@@ -124,6 +151,8 @@ class PushService implements LinkSource {
       }
     }
     await _load();
+    await _pause.load();
+    unawaited(waiting.start());
     _subs
       ..add(gateway.tokenRefresh.listen(_onRefresh, onError: _fail))
       ..add(gateway.opened.listen(_onOpened, onError: _fail))
@@ -139,7 +168,10 @@ class PushService implements LinkSource {
     try {
       if (!await gateway.open(config)) return;
       final initial = await gateway.initialOpen();
-      if (initial != null) _initial = pushLink(initial);
+      if (initial != null) {
+        if (initial['k'] == 'apk') _initialApk = await _apkTap(initial);
+        if (_initialApk == null) _initial = pushLink(initial);
+      }
       await _checkPermission();
       await _syncAll();
     } on PushException catch (e) {
@@ -148,6 +180,7 @@ class PushService implements LinkSource {
   }
 
   Future<void> dispose() async {
+    _pause.dispose();
     for (final sub in _subs) {
       await sub.cancel();
     }
@@ -156,6 +189,7 @@ class PushService implements LinkSource {
     await host.dispose();
     await _changes.close();
     await _taps.close();
+    await _apkTaps.close();
   }
 
   void _fail(Object error) {
@@ -222,6 +256,7 @@ class PushService implements LinkSource {
   }
 
   Future<void> refreshPermission() async {
+    await _pause.check();
     if (!_enabled || gateway.activeProject == null) return;
     try {
       await _checkPermission();
@@ -240,8 +275,35 @@ class PushService implements LinkSource {
   }
 
   void _onOpened(Map<String, String> data) {
+    if (data['k'] == 'apk') {
+      unawaited(_openApk(data));
+      return;
+    }
     final uri = pushLink(data);
     if (uri != null && !_taps.isClosed) _taps.add(uri);
+  }
+
+  Future<ApkTap?> _apkTap(Map<String, String> data) => apkTapOf(
+    data,
+    key: () => readStaticKey(kv),
+    machineKey: machineKey,
+    strings: pushStrings(localeCode()),
+  );
+
+  Future<void> _openApk(Map<String, String> data) async {
+    final tap = await _apkTap(data);
+    if (tap != null) {
+      if (!_apkTaps.isClosed) _apkTaps.add(tap);
+      return;
+    }
+    final uri = pushLink(data);
+    if (uri != null && !_taps.isClosed) _taps.add(uri);
+  }
+
+  ApkTap? takeInitialApk() {
+    final tap = _initialApk;
+    _initialApk = null;
+    return tap;
   }
 
   void _onRefresh(PushTokenChange change) {
@@ -310,8 +372,10 @@ class PushService implements LinkSource {
         'locale': localeCode() == 'vi' ? 'vi' : 'en',
         'mute': [
           for (final g in pushGroups)
-            if (_mute.contains(g)) g,
+            if (_pause.active || _mute.contains(g)) g,
         ],
+        if (_pause.until case final until?)
+          'pauseUntil': until.millisecondsSinceEpoch,
         'content': _content,
         if (gateway.sealing) ...{
           'seal': pushSealLevel,

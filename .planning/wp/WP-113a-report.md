@@ -1,0 +1,10 @@
+## WP-113a — DONE
+- Đã đổi: apps/shell/src/remote/{device_info.rs (mới: clean_text, parse_caps, Device::apply_hello, Devices::set_info), device_info_tests.rs (mới, 7 test), devices.rs (4 field Option + update()), dashboard.rs (hello gọi set_info, lưu caps phone), chat.rs (has_cap), ctx.rs (welcome.caps=["devinfo"]), status.rs (device_json), mod.rs (2 dòng mod)}; packages/shared/src/remote.ts (RemoteDevice thêm appVersion/appBuild/model/os); apps/mobile: lib/remote/{hello_info.dart, desktop_caps.dart (mới), connect_route.dart, connection_config.dart, store.dart (hasCap)}, pubspec.yaml (package_info_plus ^10.2.2, version 4.0.10+1), android/app/build.gradle.kts (signingConfig release từ key.properties, validateSigningRelease throw nếu thiếu), android/cert.sha256 (mới), test/{hello_info_test.dart mới, connection_test.dart}; docs/orrery-remote.md (mục build release + sao lưu keystore).
+- Tiêu chí: 7/7 đạt. Ngoài repo: D:\keys\orrery\orrery-remote.jks + android/key.properties (gitignore, đã check-ignore).
+- Audit: không code chết; set_chat_cap giờ dùng has_cap; hello field sai/quá dài bị bỏ, thiếu field giữ giá trị cũ. devices.rs 408 dòng.
+- Review: CHƯA KIỂM gradle release (không build APK theo luật). Default ConnectionConfig.info đọc plugin thật, lỗi/timeout 3s thì rỗng. Máy A33 ký debug key phải gỡ app trước khi cài (migration F0 chưa chạy). Web không có parser RemoteDevice nên không có Vitest mới.
+- Test: cargo test --locked -j 4 remote → 271 passed, 0 failed (warning cũ ở relay_setup_tests); flutter test hello_info/connection/device_name/store → all passed; flutter analyze lib/remote sạch; npm run qa -- --no-e2e → 4/4 pass.
+- Nhìn: không áp dụng
+- Hot file cần thêm: không có (đã sửa nhẹ apps/shell/src/remote/mod.rs để đăng ký module mới).
+- Ngoài phạm vi cần main xử lý: bootstrap.dart (lib/app) chưa cần sửa; thêm "devinfo" hiển thị "Galaxy A33, Android 14, Remote x" ở Settings là việc UI sau. Migration gỡ app trên A33 qua adb.
+- Commit message đề xuất: feat(remote): send app/model/os in hello, add welcome caps, sign release APK with fixed keystore

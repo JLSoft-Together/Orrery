@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../media/media_flow.dart';
+import '../../prompts/prompt_model.dart';
+import '../../prompts/prompt_strip.dart';
+import '../../prompts/prompts_controller.dart';
+import '../../security/danger_rules.dart';
+import '../commands.dart';
+import '../danger_guard.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
+import 'chat_media.dart';
 
 class ChatComposer extends StatefulWidget {
   const ChatComposer({
@@ -13,15 +21,23 @@ class ChatComposer extends StatefulWidget {
     required this.onStop,
     this.onPlus,
     this.chips = const [],
+    this.danger = const DangerRules.none(),
+    this.media = const ComposerMedia(),
+    this.prompts,
+    this.projectPath,
   });
 
   final String hint;
   final bool enabled;
   final bool working;
-  final Future<bool> Function(String text) onSend;
+  final Future<bool> Function(String text, bool authed) onSend;
+  final DangerRules danger;
   final VoidCallback onStop;
   final VoidCallback? onPlus;
   final List<String> chips;
+  final ComposerMedia media;
+  final PromptsController? prompts;
+  final String? projectPath;
 
   @override
   State<ChatComposer> createState() => ChatComposerState();
@@ -30,6 +46,7 @@ class ChatComposer extends StatefulWidget {
 class ChatComposerState extends State<ChatComposer> {
   final TextEditingController _text = TextEditingController();
   final FocusNode _focus = FocusNode();
+  bool _sending = false;
 
   @override
   void initState() {
@@ -50,11 +67,63 @@ class ChatComposerState extends State<ChatComposer> {
     _focus.requestFocus();
   }
 
+  String get draft => _text.text;
+
+  void setDraft(String value) {
+    _text.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+  }
+
+  void addPath(String path) {
+    setDraft(insertPath(_text.text, path));
+    _focus.requestFocus();
+  }
+
+  void _insertPrompt(SavedPrompt prompt) {
+    final l = context.l10n;
+    final next = insertAtCursor(_text.value, prompt.insertText);
+    if (next == null) {
+      toast(context, l.promptsTooLong);
+      return;
+    }
+    _text.value = next;
+    _focus.requestFocus();
+    if (prompt.missing.isNotEmpty) {
+      toast(context, l.promptsMissing(prompt.missing.join(', ')));
+    }
+  }
+
   Future<void> _send() async {
-    final value = _text.text.trim();
+    if (_sending) return;
+    final raw = _text.text;
+    final value = raw.trim();
     if (value.isEmpty) return;
-    _text.clear();
-    await widget.onSend(value);
+    _sending = true;
+    try {
+      final verdict = await _verdict(value);
+      if (verdict == DangerVerdict.cancelled || !mounted) return;
+      if (_text.text == raw) _text.clear();
+      await widget.onSend(value, verdict == DangerVerdict.authed);
+    } finally {
+      _sending = false;
+    }
+  }
+
+  Future<DangerVerdict> _verdict(String value) =>
+      confirmDanger(context, widget.danger, value);
+
+  Future<void> _sendChip(String chip) async {
+    if (_sending) return;
+    _sending = true;
+    try {
+      final verdict = await _verdict(chip);
+      if (verdict == DangerVerdict.cancelled || !mounted) return;
+      await widget.onSend(chip, verdict == DangerVerdict.authed);
+    } finally {
+      _sending = false;
+    }
   }
 
   @override
@@ -76,6 +145,13 @@ class ChatComposerState extends State<ChatComposer> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.prompts != null)
+            PromptStrip(
+              controller: widget.prompts!,
+              enabled: widget.enabled,
+              onInsert: _insertPrompt,
+              projectPath: widget.projectPath,
+            ),
           if (widget.chips.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 10, left: 2, right: 2),
@@ -87,9 +163,7 @@ class ChatComposerState extends State<ChatComposer> {
                     ActionChip(
                       key: ValueKey('chat-chip-$chip'),
                       label: Text(chip),
-                      onPressed: widget.enabled
-                          ? () => widget.onSend(chip)
-                          : null,
+                      onPressed: widget.enabled ? () => _sendChip(chip) : null,
                       shape: const StadiumBorder(),
                       side: BorderSide(color: c.line),
                       backgroundColor: c.raised,
@@ -134,6 +208,14 @@ class ChatComposerState extends State<ChatComposer> {
                     foreground: c.inkMuted,
                     onPressed: widget.onPlus,
                   ),
+                if (widget.media.photo != null) ...[
+                  const SizedBox(width: 4),
+                  PhotoButton(
+                    flow: widget.media.photo!,
+                    enabled: widget.enabled,
+                    onPath: addPath,
+                  ),
+                ],
                 const SizedBox(width: 4),
                 Expanded(
                   child: Focus(
@@ -166,6 +248,15 @@ class ChatComposerState extends State<ChatComposer> {
                     ),
                   ),
                 ),
+                if (widget.media.dictation != null) ...[
+                  const SizedBox(width: 4),
+                  MicButton(
+                    dictation: widget.media.dictation!,
+                    enabled: widget.enabled,
+                    getText: () => _text.text,
+                    setText: setDraft,
+                  ),
+                ],
                 const SizedBox(width: 4),
                 if (stop)
                   _RoundButton(

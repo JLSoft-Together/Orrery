@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef, watch } from 'vue'
 import { browserPush, currentPermission, dropSubscription, ensureSubscription, pushSupport, readEnv, registerFields, validKey, type PushBrowser, type PushEnv, type PushPermission, type PushSupport } from '../push/webPush'
 import { preferChat } from '../lib/chatInbox'
+import { parsePushMenu, setPushMenu } from '../lib/deepLink'
 import { parseSessions } from '../lib/monitorModel'
 import { parseWorkspace } from '../lib/workspaceModel'
 import { navigate, parsePath } from '../router'
@@ -102,6 +103,8 @@ export const usePushStore = defineStore('push', () => {
     const path = d.url.startsWith(base) ? d.url.slice(base.length) : d.url
     const target = parsePath(path)
     if (target.name === 'notfound') return
+    const menu = (event.data as { menu?: { sig?: unknown; index?: unknown } | null }).menu
+    if (target.name === 'workspace' && target.pane && menu) setPushMenu(parsePushMenu(target.machine, target.pane, menu.sig, menu.index))
     if (target.name === 'workspace' && target.pane) {
       const view = hub.viewOf(target.machine)
       navigate(preferChat(target, view.hello, parseWorkspace(view.workspace, parseSessions(view.snapshot))))

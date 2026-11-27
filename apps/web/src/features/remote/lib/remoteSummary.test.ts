@@ -108,3 +108,31 @@ describe('buildSummary', () => {
     expect(summaryHash(d)).not.toBe(summaryHash(a))
   })
 })
+
+describe('buildSummary question and snoozed', () => {
+  const p1 = term('p1', { terminalId: 'term-1' })
+  const p2 = term('p2', { terminalId: 'term-2' })
+  const tab: Tab[] = [{ key: 't1', root: { dir: 'row', ratio: 0.5, a: { pane: 'p1' }, b: { pane: 'p2' } }, focus: 'p1' }]
+
+  it('adds a masked question for a waiting pane without a menu and the snoozed flag', () => {
+    const waiting = facts({ rail: 'asked', waitingFor: 'Deploy with token=abc123def456ghi now?' })
+    const s = buildSummary({ tabs: tab, panes: [p1, p2], closedCount: 0, facts: waiting, snoozed: (p) => p.key === 'p2' }, 1)
+    const [a, b] = s.tabs[0]!.panes
+    expect(a!.question).toBe('Deploy with ••• now?')
+    expect(a!.snoozed).toBeUndefined()
+    expect(b!.snoozed).toBe(true)
+    expect(summaryHash(s)).not.toBe(summaryHash(buildSummary({ tabs: tab, panes: [p1, p2], closedCount: 0, facts: waiting }, 1)))
+  })
+
+  it('caps the question at 300 characters and drops it with a menu, for a working pane or an empty reason', () => {
+    const long = buildSummary({ tabs: tab, panes: [p1, p2], closedCount: 0, facts: facts({ rail: 'asked', waitingFor: 'x'.repeat(500) }) }, 1)
+    expect(long.tabs[0]!.panes[0]!.question).toHaveLength(300)
+    const menu = { sig: 'abc', kind: 'permission', agent: 'claude', question: 'q', items: [], numbered: true, confident: true, since: 1 } as never
+    const withMenu = buildSummary({ tabs: tab, panes: [p1, p2], closedCount: 0, facts: facts({ rail: 'asked', waitingFor: 'why' }), menu: () => menu }, 1)
+    expect(withMenu.tabs[0]!.panes[0]!.question).toBeUndefined()
+    const working = buildSummary({ tabs: tab, panes: [p1, p2], closedCount: 0, facts: facts({ rail: 'working', waitingFor: 'why' }) }, 1)
+    expect(working.tabs[0]!.panes[0]!.question).toBeUndefined()
+    const blank = buildSummary({ tabs: tab, panes: [p1, p2], closedCount: 0, facts: facts({ rail: 'asked', waitingFor: '   ' }) }, 1)
+    expect(blank.tabs[0]!.panes[0]!.question).toBeUndefined()
+  })
+})

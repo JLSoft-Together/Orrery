@@ -1,65 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type Component } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleAlert, CircleCheck, CircleOff, LoaderCircle, Plus, Smartphone, SmartphoneNfc } from 'lucide-vue-next'
-import type { RemoteStatus } from '@ccm/shared'
+import { Smartphone } from 'lucide-vue-next'
+import { SettingEmbed, SettingSection } from '@features/settings'
+import { isWizardOpen } from '../lib/connectFlow'
 import { activeDevices } from '../lib/remote'
-import { hasPushSetup, hasRelaySetup } from '../composables/useRemoteSetupIpc'
 import { useRemoteStore } from '../stores/remote'
-import ToggleSwitch from '../../../core/components/ToggleSwitch.vue'
-import { useRemoteGuard } from '../composables/useRemoteGuard'
-import { hasRemoteGuard } from '../lib/remoteGuard'
-import RemoteAccessLog from './RemoteAccessLog.vue'
+import PhoneConnectWizard from './connect/PhoneConnectWizard.vue'
+import { useConnectWizard } from './connect/useConnectWizard'
+import RemoteAdvanced from './RemoteAdvanced.vue'
 import RemoteDeviceRow from './RemoteDeviceRow.vue'
-import RemoteGuardBlocked from './RemoteGuardBlocked.vue'
-import RemoteGuardTrust from './RemoteGuardTrust.vue'
-import RemoteInstallCard from './RemoteInstallCard.vue'
-import RemoteLogList from './RemoteLogList.vue'
-import RemotePairPanel from './RemotePairPanel.vue'
+import RemoteHeroCard from './RemoteHeroCard.vue'
 import RemotePushBell from './RemotePushBell.vue'
-import RemotePushSetup from './RemotePushSetup.vue'
-import RemoteRelaySetup from './RemoteRelaySetup.vue'
-import { SettingEmbed } from '@features/settings'
-import { SettingSection } from '@features/settings'
 
 const { t } = useI18n()
 const remote = useRemoteStore()
+const wizard = useConnectWizard()
 
-const guard = useRemoteGuard()
-const pairing = ref(false)
 const askAll = ref(false)
 const busy = ref(false)
 
-const status = computed(() => remote.status)
-const enabled = computed(() => !!status.value?.enabled)
+const enabled = computed(() => !!remote.status?.enabled)
 const devices = computed(() => activeDevices(remote.devices))
-const address = computed(() => (status.value?.addresses ?? []).map((a) => `${a}:${status.value?.port}`).join(', '))
-
-type Tone = { icon: Component; cls: string; spin?: boolean }
-const LISTEN_TONE: Record<'on' | 'off', Tone> = {
-  on: { icon: CircleCheck, cls: 'text-success' },
-  off: { icon: CircleAlert, cls: 'text-warning' },
-}
-const RELAY_TONE: Record<RemoteStatus['relay'], Tone> = {
-  off: { icon: CircleOff, cls: 'text-ink-muted' },
-  connecting: { icon: LoaderCircle, cls: 'text-ink-muted', spin: true },
-  online: { icon: CircleCheck, cls: 'text-success' },
-  error: { icon: CircleAlert, cls: 'text-warning' },
-}
-const listen = computed(() => LISTEN_TONE[status.value?.listening ? 'on' : 'off'])
-const relay = computed(() => RELAY_TONE[status.value?.relay ?? 'off'])
-
-const toggle = computed({
-  get: () => enabled.value,
-  set: (on: boolean) => {
-    if (!on) pairing.value = false
-    void remote.setEnabled(on)
-  },
-})
-const awake = computed({
-  get: () => status.value?.keepAwake ?? true,
-  set: (on: boolean) => void remote.setKeepAwake(on),
-})
+const open = computed(() => isWizardOpen(wizard.name.value))
 
 async function revoke(deviceId: string): Promise<void> {
   await remote.revoke(deviceId)
@@ -81,61 +44,30 @@ watch(
   (want) => {
     if (!want) return
     remote.pairWanted = false
-    pairing.value = true
+    wizard.start()
+    wizard.dispatch({ type: 'alreadyInstalled' })
   },
   { immediate: true },
 )
 
 onMounted(() => {
   void remote.start()
-  if (hasRemoteGuard) void guard.refresh()
 })
 </script>
 
 <template>
   <div data-settings-remote>
     <SettingEmbed id="remote">
-      <SettingSection id="remote-main" :title="t('remoteV97.section.main')">
-        <ToggleSwitch v-model="toggle" class="px-3" :label="t('remoteV97.enable')" :hint="t('remoteV97.enableHint')" data-remote-enable />
-        <Transition name="ccm-fade">
-          <div v-if="enabled" class="border-t border-line">
-            <div class="flex items-start gap-2 px-3 py-2 text-sm" data-remote-listener :data-state="status?.listening ? 'on' : 'off'">
-              <component :is="listen.icon" :size="16" class="mt-0.5 shrink-0" :class="listen.cls" aria-hidden="true" />
-              <div class="min-w-0 flex-1">
-                <p>{{ status?.listening ? t('remoteV97.listener.on') : t('remoteV97.listener.off') }}</p>
-                <p v-if="status?.listening && address" class="mt-0.5 font-mono text-2xs break-all text-ink-muted" data-remote-address>{{ address }}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 border-t border-line px-3 py-2 text-sm" data-remote-relay :data-state="status?.relay">
-              <component :is="relay.icon" :size="16" class="shrink-0" :class="[relay.cls, relay.spin ? 'animate-spin' : '']" aria-hidden="true" />
-              <p class="min-w-0 flex-1">{{ t(`remoteV97.relay.${status?.relay ?? 'off'}`) }}</p>
-            </div>
-            <p class="border-t border-line px-3 py-2 text-2xs text-ink-faint" data-remote-firewall>{{ t('remoteV97.firewall', { port: status?.port ?? '' }) }}</p>
-          </div>
-        </Transition>
-      </SettingSection>
-    </SettingEmbed>
-
-    <SettingEmbed id="remoteAdd">
-      <SettingSection id="remote-add" :title="t('remoteV97.add.title')">
-        <Transition name="ccm-fade" mode="out-in">
-          <RemotePairPanel v-if="pairing && enabled" key="pair" @close="pairing = false" />
-          <div v-else key="start" class="flex items-center gap-3 px-3 py-2.5">
-            <SmartphoneNfc :size="18" class="shrink-0 text-ink-muted" aria-hidden="true" />
-            <p class="min-w-0 flex-1 text-xs text-ink-muted">{{ enabled ? t('remoteV97.add.hint') : t('remoteV97.add.needsOn') }}</p>
-            <button type="button" class="ccm-btn ccm-btn-primary shrink-0" :disabled="!enabled" data-remote-add @click="pairing = true">
-              <Plus :size="14" aria-hidden="true" />
-              {{ t('remoteV97.add.button') }}
-            </button>
-          </div>
-        </Transition>
-      </SettingSection>
-    </SettingEmbed>
-
-    <SettingEmbed id="remoteInstall">
-      <SettingSection id="remote-install" :title="t('v106Install.title')">
-        <RemoteInstallCard />
-      </SettingSection>
+      <SettingEmbed id="remoteAdd">
+        <SettingEmbed id="remoteConnect">
+          <SettingSection id="remote-main" :title="t('v113Connect.title')">
+            <Transition name="ccm-fade" mode="out-in">
+              <PhoneConnectWizard v-if="open" key="wizard" :wizard="wizard" />
+              <RemoteHeroCard v-else key="hero" :wizard="wizard" />
+            </Transition>
+          </SettingSection>
+        </SettingEmbed>
+      </SettingEmbed>
     </SettingEmbed>
 
     <SettingEmbed id="remoteDevices">
@@ -163,48 +95,6 @@ onMounted(() => {
       </SettingSection>
     </SettingEmbed>
 
-    <SettingEmbed v-if="hasRelaySetup" id="remoteRelay">
-      <SettingSection id="remote-relay" :title="t('remoteV97.relaySetup.title')">
-        <RemoteRelaySetup />
-      </SettingSection>
-    </SettingEmbed>
-
-    <SettingEmbed v-if="hasPushSetup" id="remotePush">
-      <SettingSection id="remote-push" :title="t('remoteV97.pushSetup.title')">
-        <RemotePushSetup />
-      </SettingSection>
-    </SettingEmbed>
-
-    <SettingEmbed id="remoteAwake">
-      <SettingSection id="remote-awake">
-        <ToggleSwitch v-model="awake" class="px-3" :label="t('remoteV97.awake')" :hint="t('remoteV97.awakeHint')" :disabled="!enabled" data-remote-awake />
-      </SettingSection>
-    </SettingEmbed>
-
-    <template v-if="hasRemoteGuard">
-      <SettingEmbed id="remoteBlocked">
-        <SettingSection id="remote-blocked" :title="t('remoteV98.guard.blockedTitle')">
-          <RemoteGuardBlocked :blocked="remote.blocked" :busy="guard.busy.value" :error="guard.error.value" @run="guard.run" />
-        </SettingSection>
-      </SettingEmbed>
-
-      <SettingEmbed id="remoteTrusted">
-        <SettingSection id="remote-trusted" :title="t('remoteV98.guard.trustedTitle')">
-          <RemoteGuardTrust :trusted="guard.state.value.trusted" :busy="guard.busy.value" @run="guard.run" />
-        </SettingSection>
-      </SettingEmbed>
-
-      <SettingEmbed id="remoteAccess">
-        <SettingSection id="remote-access" :title="t('remoteV98.guard.logTitle')">
-          <RemoteAccessLog :log="guard.state.value.log" :busy="guard.busy.value" @refresh="guard.refresh" />
-        </SettingSection>
-      </SettingEmbed>
-    </template>
-
-    <SettingEmbed id="remoteLog">
-      <SettingSection id="remote-log" :title="t('remoteV97.log.title')">
-        <RemoteLogList />
-      </SettingSection>
-    </SettingEmbed>
+    <RemoteAdvanced />
   </div>
 </template>

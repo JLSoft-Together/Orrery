@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 
+import '../../security/danger_rules.dart';
+import '../danger_guard.dart';
 import '../theme/orrery_shape.dart';
 import '../widgets/common.dart';
 import 'sticky_modifiers.dart';
@@ -202,6 +204,7 @@ class InputBar extends StatefulWidget {
     required this.onToggleDirect,
     required this.onFocusChange,
     required this.onSent,
+    this.danger = const DangerRules.none(),
   });
 
   final Terminal terminal;
@@ -210,6 +213,7 @@ class InputBar extends StatefulWidget {
   final VoidCallback onToggleDirect;
   final ValueChanged<bool> onFocusChange;
   final VoidCallback onSent;
+  final DangerRules danger;
 
   @override
   State<InputBar> createState() => _InputBarState();
@@ -218,6 +222,7 @@ class InputBar extends StatefulWidget {
 class _InputBarState extends State<InputBar> {
   final TextEditingController _text = TextEditingController();
   final FocusNode _focus = FocusNode();
+  bool _sending = false;
 
   @override
   void initState() {
@@ -233,14 +238,24 @@ class _InputBarState extends State<InputBar> {
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _send() async {
+    if (_sending) return;
     final value = _text.text;
     if (!widget.enabled || value.trim().isEmpty) return;
-    HapticFeedback.lightImpact();
-    widget.terminal.paste(value);
-    widget.terminal.keyInput(TerminalKey.enter);
-    _text.clear();
-    widget.onSent();
+    _sending = true;
+    try {
+      final verdict = await confirmDanger(context, widget.danger, value);
+      if (verdict == DangerVerdict.cancelled || !mounted || !widget.enabled) {
+        return;
+      }
+      HapticFeedback.lightImpact();
+      widget.terminal.paste(value);
+      widget.terminal.keyInput(TerminalKey.enter);
+      if (_text.text == value) _text.clear();
+      widget.onSent();
+    } finally {
+      _sending = false;
+    }
   }
 
   @override

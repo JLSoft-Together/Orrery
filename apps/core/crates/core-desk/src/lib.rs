@@ -30,6 +30,7 @@ pub mod pages_style;
 pub mod phone;
 pub mod power;
 pub mod preview;
+pub mod prompts;
 pub mod release_check;
 pub mod resources;
 pub mod restore;
@@ -204,6 +205,7 @@ impl Desk {
         libs::register(&mut desk, env);
         claude_hooks::register(&mut desk, env);
         cmdhist::register(&mut desk, env);
+        prompts::register(&mut desk, env);
         extensions::register(&mut desk, env);
         bridge::register(&mut desk, env);
         layouts::register(&mut desk, env);

@@ -17,6 +17,7 @@ export const REMOTE_SUMMARY_DEBOUNCE_MS = 200
 export type RemoteErrorCode =
   | 'denied'
   | 'busy'
+  | 'stale'
   | 'cancelled'
   | 'migration'
   | 'limit'
@@ -27,6 +28,8 @@ export type RemoteErrorCode =
   | 'rate'
   | 'proto'
   | 'internal'
+  | 'notWaiting'
+  | 'useMenu'
 
 export type RemotePreset = 'claude' | 'codex' | 'shell'
 
@@ -49,7 +52,12 @@ export interface RemotePane {
   busy: boolean
   inbox?: RemoteInbox
   menu?: RemoteMenu
+  question?: string
+  snoozed?: boolean
 }
+
+export const REMOTE_QUESTION_MAX = 300
+export const REMOTE_SNOOZE_MINUTES = [15, 60] as const
 
 export interface RemotePaneGroup {
   project: string
@@ -118,6 +126,8 @@ export type RemoteCommand =
   | { t: 'ws.send'; paneKey: string; text: string }
   | { t: 'ws.keys'; paneKey: string; keys: string; since: number }
   | { t: 'ws.menu'; paneKey: string; sig: string; index: number }
+  | { t: 'ws.snooze'; paneKey: string; minutes: 15 | 60 | null }
+  | { t: 'ws.reply'; paneKey: string; text: string }
   | { t: 'push.register'; token: string; platform: RemotePushPlatform; locale: RemotePushLocale; mute?: RemotePushGroup[] }
   | { t: 'push.unregister' }
 
@@ -167,6 +177,7 @@ export interface RemotePairStart {
   exp: number
   relay?: boolean
   lan?: number
+  via?: 'usb' | 'qr' | 'lan'
 }
 
 const DEVICE_MAX = 100
@@ -227,6 +238,11 @@ export function parseRemoteCommand(raw: unknown, name: RemoteCommandName): Remot
       return ident(raw.paneKey, KEY_ID_MAX) && ident(raw.sig, REMOTE_MENU_SIG_MAX) && Number.isInteger(raw.index) && (raw.index as number) >= 1 && (raw.index as number) <= REMOTE_MENU_ITEMS_MAX
         ? { t: 'ws.menu', paneKey: raw.paneKey, sig: raw.sig, index: raw.index as number }
         : null
+    case 'ws.snooze':
+      if (!ident(raw.paneKey, KEY_ID_MAX)) return null
+      return raw.minutes === null || raw.minutes === 15 || raw.minutes === 60 ? { t: 'ws.snooze', paneKey: raw.paneKey, minutes: raw.minutes } : null
+    case 'ws.reply':
+      return ident(raw.paneKey, KEY_ID_MAX) && filled(raw.text, REMOTE_TEXT_MAX) ? { t: 'ws.reply', paneKey: raw.paneKey, text: raw.text } : null
     case 'push.register': {
       if (typeof raw.token !== 'string' || !REMOTE_PUSH_TOKEN_RE.test(raw.token)) return null
       if (raw.platform !== 'android' && raw.platform !== 'ios') return null
@@ -267,6 +283,13 @@ export interface RemoteDevice {
   push?: 'web' | 'fcm' | 'none'
   pushOn?: boolean
   pushContent?: boolean
+  appVersion?: string
+  appBuild?: string
+  model?: string
+  os?: string
+  pairedVia?: 'usb' | 'qr' | 'lan'
+  adbSerialHash?: string
+  revoking?: boolean
 }
 
 export interface RemoteStatus {
@@ -281,6 +304,7 @@ export interface RemoteStatus {
   pairEnded?: 'tries' | 'denied' | null
   guardRev?: number
   relayUrl?: string
+  installFetched?: { ip: string; at: number } | null
 }
 
 export type RelaySetupState = 'none' | 'ready' | 'deploying' | 'error'

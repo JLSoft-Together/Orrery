@@ -5,6 +5,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orrery_remote/remote/connection.dart';
 import 'package:orrery_remote/remote/discovery.dart';
+import 'package:orrery_remote/remote/hello_info.dart';
 import 'package:orrery_remote/remote/link_state.dart';
 import 'package:orrery_remote/remote/machines.dart';
 import 'package:orrery_remote/remote/protocol.dart';
@@ -52,6 +53,7 @@ Rig rig(
   LanDiscovery discovery = const NoDiscovery(),
   NetworkWatcher network = const NoNetworkWatcher(),
   FakeServer Function()? serverFactory,
+  ConnectionConfig config = const ConnectionConfig(),
 }) {
   final net = FakeNet()..now = () => clock.now();
   final deps = settle(
@@ -61,6 +63,7 @@ Rig rig(
       machines: machines ?? [testMachine()],
       discovery: discovery,
       network: network,
+      config: config,
     ),
   );
   final result = Rig(async, deps, net);
@@ -80,6 +83,7 @@ Rig rig(
 FakeServer plain() => FakeServer();
 
 void main() {
+  helloInfoTests();
   test(
     'LAN first: reachable lastHost gives ready over LAN and sends hello',
     () {
@@ -564,6 +568,55 @@ void main() {
       expect(b.state.status, LinkStatus.ready);
       unawaited(a.dispose());
       unawaited(b.dispose());
+    });
+  });
+}
+
+void helloInfoTests() {
+  test('hello carries the app version, build, model, os and chat cap', () {
+    fakeAsync((async) {
+      final r = rig(
+        async,
+        serverFactory: plain,
+        config: ConnectionConfig(
+          info: () async => const HelloInfo(
+            appVersion: '4.0.10',
+            appBuild: '3',
+            model: 'Samsung SM-A336B',
+            os: 'Android 14',
+          ),
+        ),
+      );
+      final conn = r.connection();
+      unawaited(conn.connect());
+      r.tick();
+      final hello = r.servers.single.commands.first;
+      expect(hello['t'], 'hello');
+      expect(hello['appVersion'], '4.0.10');
+      expect(hello['appBuild'], '3');
+      expect(hello['model'], 'Samsung SM-A336B');
+      expect(hello['os'], 'Android 14');
+      expect(hello['caps'], ['chat', 'clip']);
+      unawaited(conn.dispose());
+    });
+  });
+
+  test('hello without device info still connects and omits the fields', () {
+    fakeAsync((async) {
+      final r = rig(
+        async,
+        serverFactory: plain,
+        config: ConnectionConfig(info: () async => HelloInfo.empty),
+      );
+      final conn = r.connection();
+      unawaited(conn.connect());
+      r.tick();
+      expect(conn.state.status, LinkStatus.ready);
+      final hello = r.servers.single.commands.first;
+      for (final key in ['appVersion', 'appBuild', 'model', 'os']) {
+        expect(hello.containsKey(key), isFalse, reason: key);
+      }
+      unawaited(conn.dispose());
     });
   });
 }

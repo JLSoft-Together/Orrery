@@ -1,0 +1,26 @@
+:root {
+  --ccm-density-row-h: 48px;
+  --ccm-density-row-py: 6px;
+  --ccm-density-gap: 8px;
+  --ccm-density-head-h: 34px;
+  --ccm-density-pal-h: 52px;
+  --ccm-density-set-py: 8px;
+}
+
+:root[data-ui='next'][data-density='compact'] {
+  --ccm-density-row-h: 40px;
+  --ccm-density-row-py: 4px;
+  --ccm-density-gap: 6px;
+  --ccm-density-head-h: 30px;
+  --ccm-density-pal-h: 44px;
+  --ccm-density-set-py: 5px;
+}
+
+:root[data-ui='next'][data-density='comfy'] {
+  --ccm-density-row-h: 56px;
+  --ccm-density-row-py: 8px;
+  --ccm-density-gap: 10px;
+  --ccm-density-head-h: 38px;
+  --ccm-density-pal-h: 60px;
+  --ccm-density-set-py: 11px;
+}

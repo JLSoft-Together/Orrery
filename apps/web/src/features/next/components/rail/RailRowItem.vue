@@ -11,11 +11,22 @@ import { statusMeta } from '../../../../core/lib/status'
 import type { RailState } from '../../../rail/lib/railModel'
 import TabRenameInput from '../../../workspace/components/TabRenameInput.vue'
 import ContextGaugeMini from '../ui/ContextGaugeMini.vue'
+import { isPeekKey, peekHub } from '../../lib/useRailPeek'
 
 const props = defineProps<{ row: LiveRow; selected?: boolean; renaming?: boolean; showProject?: boolean; tabStop?: boolean }>()
 const emit = defineEmits<{ open: [row: LiveRow]; menu: [row: LiveRow, e: MouseEvent]; renamed: [tabKey: string, saved: boolean]; key: [row: LiveRow, e: KeyboardEvent]; close: [row: LiveRow] }>()
 
 const { t } = useI18n()
+
+function onKey(e: KeyboardEvent): void {
+  if (isPeekKey(e) && !props.renaming) {
+    e.preventDefault()
+    if (e.repeat) return
+    peekHub.toggle(e.currentTarget as HTMLElement)
+    return
+  }
+  emit('key', props.row, e)
+}
 
 const ICONS: Record<RailState, { icon: LucideIcon; tone: string; spin?: boolean }> = {
   failed: { icon: XCircle, tone: 'text-st-error' },
@@ -68,7 +79,7 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
 
 <template>
   <div
-    class="ccm-next-rail-row group relative grid min-h-[48px] min-w-0 grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-x-2 rounded-control px-2 py-1.5 transition-colors duration-(--ccm-dur-fast)"
+    class="ccm-next-rail-row group relative grid min-h-(--ccm-density-row-h) min-w-0 grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-x-(--ccm-density-gap) rounded-control px-2 py-(--ccm-density-row-py) transition-colors duration-(--ccm-dur-fast)"
     :class="[row.focused ? 'bg-accent-soft' : 'hover:bg-fill', selected ? 'outline-2 -outline-offset-2 outline-accent' : '']"
     :data-signal="signal ?? undefined"
     :data-state="row.state"
@@ -122,7 +133,7 @@ onBeforeUnmount(() => clearTimeout(signalTimer))
       :title="openTitle"
       data-rail-open
       @click="emit('open', row)"
-      @keydown="emit('key', row, $event)"
+      @keydown="onKey"
     />
     <span class="ccm-next-rail-actions absolute top-1 right-1 z-2 flex items-center gap-0.5 rounded-inner bg-raised p-0.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" data-no-drag>
       <button

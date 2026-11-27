@@ -326,10 +326,12 @@ pub fn mask_menus(summary: &mut Value) {
     let Some(tabs) = summary.get_mut("tabs").and_then(Value::as_array_mut) else { return };
     for p in tabs.iter_mut().filter_map(|t| t.get_mut("panes").and_then(Value::as_array_mut)).flatten() {
         let Some(obj) = p.as_object_mut() else { continue };
-        let Some(menu) = obj.get_mut("menu") else { continue };
-        if !fix_menu(menu) {
-            obj.remove("menu");
+        if let Some(menu) = obj.get_mut("menu") {
+            if !fix_menu(menu) {
+                obj.remove("menu");
+            }
         }
+        fix_pane_extras(obj);
     }
 }
 
@@ -337,6 +339,18 @@ const MENU_ITEMS_MAX: usize = 12;
 const MENU_LABEL_MAX: usize = 120;
 const MENU_QUESTION_MAX: usize = 300;
 const MENU_SIG_MAX: usize = 16;
+
+fn fix_pane_extras(obj: &mut serde_json::Map<String, Value>) {
+    if let Some(q) = obj.remove("question") {
+        let text = clean(q.as_str().unwrap_or(""), &mask_text, MENU_QUESTION_MAX);
+        if !text.is_empty() && !obj.contains_key("menu") {
+            obj.insert("question".into(), Value::from(text));
+        }
+    }
+    if obj.get("snoozed").is_some_and(|s| s != &Value::Bool(true)) {
+        obj.remove("snoozed");
+    }
+}
 
 fn fix_menu(menu: &mut Value) -> bool {
     let sig_ok = menu["sig"].as_str().is_some_and(|s| (1..=MENU_SIG_MAX).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_alphanumeric()));

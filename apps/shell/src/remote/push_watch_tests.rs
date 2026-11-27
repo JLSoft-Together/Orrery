@@ -127,7 +127,7 @@ fn the_running_gateway_pushes_from_a_store_transition_without_any_phone_connecte
     let calls = http.fcm_calls();
     assert_eq!(calls.len(), 1);
     let sent: Value = serde_json::from_str(&calls[0].3).unwrap();
-    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "pane-1", "k": "done" }));
+    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "pane-1", "k": "done", "w": "0" }));
     assert_eq!(sent["message"]["notification"]["title"], super::push::title_body("done", "vi").0);
     rig.remote.enable(false);
 }
@@ -155,4 +155,36 @@ fn a_queued_job_is_dropped_when_the_phone_is_connected_by_the_time_it_would_send
     });
     assert!(http.fcm_calls().is_empty());
     rig.remote.enable(false);
+}
+
+#[test]
+fn a_snoozed_pane_gets_no_reminder_push_but_done_error_and_open_still_go_out() {
+    let rig = rig("pushw-snooze", "", false);
+    let phone = Phone::new("p");
+    let ctx = rig.remote.ctx().unwrap();
+    assert!(lock(&ctx.devices).add(Device::new("p", "Phone", phone.key.public(), now_secs())));
+    assert!(lock(&ctx.devices).set_push("p", TOKEN_A, "en"));
+    ctx.running.store(true, std::sync::atomic::Ordering::SeqCst);
+    let parsed = super::fcm_files::parse(&gs_json("demo-proj", PACKAGE), &sa_json("demo-proj", KEY_A)).unwrap();
+    lock(&ctx.config).firebase = parsed.firebase;
+    ctx.fcm.set_http(Fake::ok());
+    ctx.fcm.set_account(Some(account()));
+    let now = Instant::now();
+    let mut summary = pane_summary("t1", "pane-1");
+    summary["tabs"][0]["panes"][0]["snoozed"] = json!(true);
+    ctx.publish(summary);
+    assert_eq!(ctx.push_terminal("t1", "attention", now), 0);
+    assert_eq!(ctx.push_terminal("t1", "question", now + Duration::from_secs(20)), 0);
+    assert_eq!(ctx.push_terminal("t1", "permission", now + Duration::from_secs(30)), 0);
+    assert_eq!(ctx.push_terminal("t1", "done", now + Duration::from_secs(40)), 1);
+    assert_eq!(ctx.take_push_jobs()[0].kind, "done");
+    assert_eq!(ctx.push_terminal("t1", "error", now + Duration::from_secs(80)), 1);
+    assert_eq!(ctx.take_push_jobs()[0].kind, "error");
+    assert_eq!(ctx.push_pane("pane-1", "open", "", None, now + Duration::from_secs(120)), 1);
+    assert_eq!(ctx.take_push_jobs()[0].kind, "open");
+    let mut released = pane_summary("t1", "pane-1");
+    released["rev"] = json!(2);
+    ctx.publish(released);
+    assert_eq!(ctx.push_terminal("t1", "attention", now + Duration::from_secs(200)), 1);
+    assert_eq!(super::pane_link::pane_snoozed(&json!({ "tabs": [{ "panes": [{ "key": "a", "snoozed": "yes" }] }] }), "a"), false);
 }

@@ -20,6 +20,10 @@ pub fn pane_of(summary: &Value, terminal: &str) -> Option<String> {
     summary["tabs"].as_array()?.iter().filter_map(|t| t["panes"].as_array()).flatten().find(|p| p["terminalId"].as_str() == Some(terminal)).and_then(|p| p["key"].as_str()).filter(|k| valid_pane_key(k)).map(str::to_owned)
 }
 
+pub fn pane_snoozed(summary: &Value, key: &str) -> bool {
+    summary["tabs"].as_array().is_some_and(|tabs| tabs.iter().filter_map(|t| t["panes"].as_array()).flatten().any(|p| p["key"].as_str() == Some(key) && p["snoozed"] == Value::Bool(true)))
+}
+
 pub fn build(relay: &str, machine: &str, pane: &str) -> Option<String> {
     let base = relay.trim_end_matches('/');
     if !base.starts_with("https://") || !valid_machine_id(machine) || !valid_pane_key(pane) {

@@ -143,4 +143,5 @@ pub fn register(desk: &mut Desk, env: &DeskEnv, settings: Arc<crate::run::settin
         json!(true)
     });
     super::ipc_ext::register(desk, &m, &env.data_dir);
+    super::install::register(desk, &m);
 }

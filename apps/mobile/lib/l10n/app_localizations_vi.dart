@@ -187,6 +187,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get errRate => 'Gửi lệnh quá nhanh. Chậm lại.';
 
   @override
+  String get errNeedsAuth =>
+      'Lệnh này cần xác thực thiết bị. Cập nhật app để gửi.';
+
+  @override
   String get errProto => 'Phiên bản app và desktop không khớp.';
 
   @override
@@ -583,6 +587,27 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pushFixedAttentionBody => 'Một phiên cần bạn. Chạm để mở.';
 
   @override
+  String get pushFixedRunningTitle => 'Agent đang chạy';
+
+  @override
+  String get pushFixedRunningBody => 'Một phiên đã chạy khá lâu. Chạm để mở.';
+
+  @override
+  String get pushFixedOpenTitle => 'Mở từ máy tính';
+
+  @override
+  String get pushFixedOpenBody => 'Chạm để mở pane này.';
+
+  @override
+  String get pushRunningChannel => 'Phiên đang chạy';
+
+  @override
+  String get pushActionOpen => 'Mở';
+
+  @override
+  String get pushMenuStale => 'Câu hỏi đã đổi, mở pane để xem';
+
+  @override
   String get pushFixedTestTitle => 'Orrery';
 
   @override
@@ -690,6 +715,63 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get vCancelled => 'Đã huỷ.';
+
+  @override
+  String get vChecklist => 'Checklist trước khi merge';
+
+  @override
+  String get vClEmpty => 'Chưa có mục nào. Agent và máy tính sẽ thêm vào.';
+
+  @override
+  String get vClReady => 'Sẵn sàng merge';
+
+  @override
+  String vClOpen(int count) {
+    return '$count chưa xong';
+  }
+
+  @override
+  String get vClByAgent => 'Do agent thêm';
+
+  @override
+  String get vClCheck => 'Kiểm';
+
+  @override
+  String get vClNone => 'Chưa chọn script kiểm';
+
+  @override
+  String get vClIdle => 'Chưa chạy';
+
+  @override
+  String get vClRunning => 'Đang chạy';
+
+  @override
+  String get vClPass => 'Đạt';
+
+  @override
+  String get vClFail => 'Lỗi';
+
+  @override
+  String get vClStale => 'Đã cũ, có commit mới sau lần chạy';
+
+  @override
+  String get vClRun => 'Chạy kiểm';
+
+  @override
+  String get vClRunStarted => 'Đã bắt đầu chạy kiểm trên máy tính';
+
+  @override
+  String get vErrCheckRunning => 'Máy tính đang chạy kiểm rồi.';
+
+  @override
+  String get vErrNoScript => 'Hãy chọn script kiểm trên máy tính trước.';
+
+  @override
+  String get vErrNoIntegration =>
+      'Hãy bật shell integration trên máy tính trước.';
+
+  @override
+  String get vErrCheckOff => 'Thư mục này chưa dùng được checklist.';
 
   @override
   String get vWaitConfirm => 'Xác nhận trên điện thoại để tiếp tục.';
@@ -932,6 +1014,119 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get vRunNoLog => 'Chưa có log';
+
+  @override
+  String get pushFixedApkTitle => 'APK sẵn sàng để cài';
+
+  @override
+  String get pushFixedApkBody => 'Chạm để tải về, cần cùng Wi-Fi.';
+
+  @override
+  String get pushActionInstall => 'Tải và cài';
+
+  @override
+  String get apkTitle => 'Cài bản build';
+
+  @override
+  String get apkReady => 'Tải bản build này qua cùng Wi-Fi rồi mở trình cài.';
+
+  @override
+  String get apkStart => 'Tải và cài';
+
+  @override
+  String get apkDownloading => 'Đang tải';
+
+  @override
+  String apkDownloadingPercent(int percent) {
+    return 'Đang tải $percent%';
+  }
+
+  @override
+  String get apkVerifying => 'Đang kiểm SHA-256';
+
+  @override
+  String get apkInstalling => 'Đang mở trình cài';
+
+  @override
+  String get apkStarted => 'Đã mở trình cài. Xác nhận ở đó để hoàn tất.';
+
+  @override
+  String get apkNeedPermission =>
+      'Cho phép Orrery Remote cài app không rõ nguồn, rồi quay lại đây.';
+
+  @override
+  String get apkOpenSettings => 'Mở cài đặt';
+
+  @override
+  String get apkRetry => 'Thử lại';
+
+  @override
+  String get apkCancel => 'Huỷ';
+
+  @override
+  String get apkClose => 'Đóng';
+
+  @override
+  String get apkErrExpired =>
+      'Liên kết đã hết hạn. Gửi lại bản build từ máy tính.';
+
+  @override
+  String get apkErrLan => 'Cần cùng Wi-Fi với máy tính để tải.';
+
+  @override
+  String get apkErrInterrupted => 'Tải bị đứt giữa chừng. Thử lại.';
+
+  @override
+  String get apkErrSpace => 'Điện thoại không đủ dung lượng trống.';
+
+  @override
+  String get apkErrSize =>
+      'Dung lượng file không khớp với bản gửi. Đã dừng tải.';
+
+  @override
+  String get apkErrSha =>
+      'File không qua kiểm SHA-256. Đã xoá file, không cài.';
+
+  @override
+  String get apkErrInstall => 'Không mở được trình cài.';
+
+  @override
+  String get apkErrInvalid => 'Bản gửi không hợp lệ.';
+
+  @override
+  String get runLogTitle => 'Log';
+
+  @override
+  String get runLogOpen => 'Xem log đầy đủ';
+
+  @override
+  String get runLogEmpty => 'Chưa có dòng log';
+
+  @override
+  String get runLogUnsupported =>
+      'Máy tính này chưa hỗ trợ Run log. Cập nhật Orrery trên máy tính.';
+
+  @override
+  String get runLogGap => 'Các dòng cũ hơn đã bị bỏ';
+
+  @override
+  String get runLogAll => 'Tất cả';
+
+  @override
+  String get runLogSendCrash => 'Gửi crash cho agent';
+
+  @override
+  String get runLogNoAgent => 'Chưa mở pane agent nào cho project này';
+
+  @override
+  String get runLogPickAgent => 'Gửi crash cho agent nào?';
+
+  @override
+  String get runLogCrashPrompt =>
+      'App bị crash khi đang chạy. Hãy đọc log crash này và sửa nguyên nhân:';
+
+  @override
+  String get runLogCrashFilled => 'Đã điền crash vào ô nhập. Chưa gửi gì cả.';
 
   @override
   String get lockReason => 'Mở khoá Orrery Remote';
@@ -1291,6 +1486,30 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pushGroupError => 'Lỗi hoặc thoát bất thường';
 
   @override
+  String get pushPauseTitle => 'Tạm dừng thông báo 1 giờ?';
+
+  @override
+  String get pushPauseBody =>
+      'Bạn sẽ không nhận thông báo từ máy tính trong 1 giờ tới.';
+
+  @override
+  String get pushPauseAction => 'Tạm dừng';
+
+  @override
+  String get pushPauseCancel => 'Hủy';
+
+  @override
+  String pushPausedTitle(String time) {
+    return 'Đang tạm dừng thông báo đến $time';
+  }
+
+  @override
+  String get pushResumeBody => 'Bật lại thông báo ngay bây giờ?';
+
+  @override
+  String get pushResumeAction => 'Bật lại';
+
+  @override
   String get settingsThemeSystem => 'Theo điện thoại';
 
   @override
@@ -1606,4 +1825,381 @@ class AppLocalizationsVi extends AppLocalizations {
   String chatContext(int n) {
     return 'Context $n%';
   }
+
+  @override
+  String pairConfirmTitle(String name) {
+    return 'Ghép đôi với $name?';
+  }
+
+  @override
+  String get pairConfirmSourceUsb => 'Qua cáp USB';
+
+  @override
+  String get pairConfirmSourceDevice => 'Qua cáp USB hoặc app trên máy';
+
+  @override
+  String get pairConfirmAddressUsb => 'Qua cáp USB';
+
+  @override
+  String get pairConfirmSourceWeb => 'Mở từ trang web';
+
+  @override
+  String pairConfirmAddress(String ip) {
+    return 'Địa chỉ $ip';
+  }
+
+  @override
+  String get pairConfirmAction => 'Ghép đôi';
+
+  @override
+  String get pairInvalidCode => 'Mã ghép đôi không hợp lệ';
+
+  @override
+  String get pairWrongNetwork => 'Mã này không thuộc mạng Wi-Fi hiện tại';
+
+  @override
+  String get clipSendTitle => 'Gửi clipboard lên máy tính';
+
+  @override
+  String get clipSendHint =>
+      'Chép chữ đang copy trên điện thoại vào clipboard máy tính, chỉ khi bạn bấm';
+
+  @override
+  String get clipSent => 'Đã gửi vào clipboard máy tính';
+
+  @override
+  String get clipEmpty => 'Clipboard điện thoại không có chữ';
+
+  @override
+  String get clipTooLarge => 'Chữ vượt 64 KB';
+
+  @override
+  String get clipSecret => 'Có vẻ là secret, đã chặn';
+
+  @override
+  String get clipDenied => 'Máy tính đang không cho điều khiển từ xa';
+
+  @override
+  String get clipFailed => 'Không gửi được clipboard';
+
+  @override
+  String get clipReceived => 'Đã chép clipboard máy tính vào điện thoại';
+
+  @override
+  String get mediaPhoto => 'Thêm ảnh';
+
+  @override
+  String get mediaTakePhoto => 'Chụp ảnh';
+
+  @override
+  String get mediaChoosePhoto => 'Chọn từ thư viện';
+
+  @override
+  String get mediaSending => 'Đang gửi ảnh...';
+
+  @override
+  String get mediaSent =>
+      'Ảnh đã lưu trong project, đường dẫn đã thêm vào tin nhắn';
+
+  @override
+  String get mediaMicHold => 'Giữ để nói';
+
+  @override
+  String get mediaMicHint =>
+      'Giữ nút mic và nói. Chữ chỉ điền vào ô nhập, không tự gửi.';
+
+  @override
+  String get mediaMicListening => 'Đang nghe...';
+
+  @override
+  String get mediaMicDenied =>
+      'Quyền micro đang tắt. Hãy bật trong cài đặt điện thoại.';
+
+  @override
+  String get mediaMicUnavailable =>
+      'Điện thoại này không có nhận dạng giọng nói';
+
+  @override
+  String get mediaMicRefused => 'Chưa cho phép nhận dạng giọng nói online';
+
+  @override
+  String get mediaOnlineTitle => 'Dùng nhận dạng giọng nói online?';
+
+  @override
+  String get mediaOnlineBody =>
+      'Điện thoại chưa có gói giọng nói offline cho ngôn ngữ này, nên giọng của bạn sẽ gửi tới dịch vụ nhận dạng của điện thoại. Chỉ hỏi một lần.';
+
+  @override
+  String get mediaOnlineAllow => 'Cho phép';
+
+  @override
+  String get mediaCameraDenied =>
+      'Quyền camera đang tắt. Hãy bật trong cài đặt điện thoại.';
+
+  @override
+  String get mediaErrUnsupported => 'Không hỗ trợ định dạng ảnh này';
+
+  @override
+  String get mediaErrTooLarge => 'Ảnh vượt 8 MB';
+
+  @override
+  String get mediaErrBusy => 'Đang gửi một ảnh khác';
+
+  @override
+  String get mediaErrOffline => 'Mất kết nối khi đang gửi. Hãy thử lại.';
+
+  @override
+  String get mediaErrDenied =>
+      'Máy tính không nhận ảnh. Hãy cập nhật Orrery trên máy tính và bật điều khiển từ xa.';
+
+  @override
+  String get mediaErrInterrupted => 'Việc gửi bị gián đoạn. Hãy thử lại.';
+
+  @override
+  String get mediaErrFailed => 'Không gửi được ảnh';
+
+  @override
+  String get mediaIgnoreTitle => 'Thêm .orrery/inbox/ vào .gitignore?';
+
+  @override
+  String get mediaIgnoreBody =>
+      'Ảnh được lưu trong thư mục project .orrery/inbox/. Thêm vào .gitignore để ảnh không bị commit.';
+
+  @override
+  String get mediaIgnoreAdd => 'Thêm';
+
+  @override
+  String get mediaIgnoreSkip => 'Để sau';
+
+  @override
+  String get mediaIgnoreDone => 'Đã cập nhật .gitignore';
+
+  @override
+  String get mediaIgnoreAlready => '.gitignore đã có sẵn dòng này';
+
+  @override
+  String get queueTitle => 'Trả lời từng cái';
+
+  @override
+  String queueOpen(int n) {
+    return 'Chờ bạn ($n)';
+  }
+
+  @override
+  String queueCounter(int i, int n) {
+    return '$i / $n';
+  }
+
+  @override
+  String queueWaited(String time) {
+    return 'Chờ $time';
+  }
+
+  @override
+  String get queueReplyHint => 'Nhập câu trả lời';
+
+  @override
+  String get queueSend => 'Gửi';
+
+  @override
+  String get queueSkip => 'Bỏ qua';
+
+  @override
+  String get queueSnooze => 'Hoãn';
+
+  @override
+  String queueSnoozeMinutes(int n) {
+    return '$n phút';
+  }
+
+  @override
+  String get queueSnoozeHour => '1 giờ';
+
+  @override
+  String queueSnoozed(int n) {
+    return 'Đã hoãn $n phút';
+  }
+
+  @override
+  String get queueOpenPane => 'Mở pane';
+
+  @override
+  String queuePending(String label) {
+    return 'Sắp gửi: $label';
+  }
+
+  @override
+  String get queueSent => 'Đã gửi';
+
+  @override
+  String get queueStale => 'Câu hỏi đã đổi';
+
+  @override
+  String get queueStaleReload => 'Xem câu hỏi mới';
+
+  @override
+  String get queueGone => 'Đã trả lời trên máy tính';
+
+  @override
+  String get queueDone => 'Xong hết, không còn gì chờ bạn';
+
+  @override
+  String queueSkippedCount(int n) {
+    return 'Đã bỏ qua $n';
+  }
+
+  @override
+  String get queueReview => 'Xem lại';
+
+  @override
+  String get queueBack => 'Quay lại';
+
+  @override
+  String get queueNoChoice => 'Chọn trong pane';
+
+  @override
+  String get queueHint => 'Vuốt trái để bỏ qua, vuốt phải để hoãn 15 phút';
+
+  @override
+  String get queueHintSkip => 'Vuốt trái để bỏ qua';
+
+  @override
+  String queueMore(int n) {
+    return 'Còn $n đang chờ';
+  }
+
+  @override
+  String get queueHide => 'Ẩn';
+
+  @override
+  String get queueErrNotWaiting => 'Pane này không còn chờ';
+
+  @override
+  String get queueErrUseMenu => 'Câu hỏi này đã có lựa chọn, mở pane để xem';
+
+  @override
+  String get promptsStrip => 'Prompt đã lưu';
+
+  @override
+  String get promptsAdd => 'Prompt mới';
+
+  @override
+  String get promptsEditTitle => 'Sửa prompt';
+
+  @override
+  String get promptsEdit => 'Sửa';
+
+  @override
+  String get promptsDelete => 'Xoá';
+
+  @override
+  String get promptsSave => 'Lưu';
+
+  @override
+  String get promptsFieldTitle => 'Tiêu đề';
+
+  @override
+  String get promptsFieldBody => 'Nội dung prompt';
+
+  @override
+  String get promptsScopeAll => 'Mọi dự án';
+
+  @override
+  String get promptsScopeHere => 'Dự án này';
+
+  @override
+  String get promptsDeleteTitle => 'Xoá prompt này?';
+
+  @override
+  String get promptsDeleteBody => 'Prompt cũng bị xoá trên máy tính.';
+
+  @override
+  String promptsHidden(int count) {
+    return '$count chỉ có trên máy tính';
+  }
+
+  @override
+  String promptsMore(int count) {
+    return 'Còn $count trên máy tính';
+  }
+
+  @override
+  String get promptsRetry => 'Chưa tải được prompt, chạm để thử lại';
+
+  @override
+  String promptsMissing(String names) {
+    return 'Giữ nguyên chữ: $names';
+  }
+
+  @override
+  String get promptsTooLong => 'Ô nhập không đủ chỗ cho prompt này';
+
+  @override
+  String get promptsSaved => 'Đã lưu prompt';
+
+  @override
+  String get promptsDeleted => 'Đã xoá prompt';
+
+  @override
+  String get promptsErrSecret =>
+      'Nội dung có vẻ chứa secret. Hãy giữ nó trên máy tính.';
+
+  @override
+  String get promptsErrTitle => 'Tiêu đề trống hoặc dài hơn 80 ký tự';
+
+  @override
+  String get promptsErrBody => 'Nội dung trống hoặc dài hơn 4000 ký tự';
+
+  @override
+  String get promptsErrFull => 'Thư viện đã đầy (200 prompt)';
+
+  @override
+  String get promptsErrNotFound => 'Prompt này không còn';
+
+  @override
+  String get promptsErrIo => 'Máy tính không lưu được';
+
+  @override
+  String awayTitle(String time, String ago) {
+    return 'Từ $time ($ago trước)';
+  }
+
+  @override
+  String awayDone(int n) {
+    return 'Xong $n';
+  }
+
+  @override
+  String awayWaiting(int n) {
+    return 'Chờ bạn $n';
+  }
+
+  @override
+  String awayFailed(int n) {
+    return 'Lỗi $n';
+  }
+
+  @override
+  String awayAgentsDone(int n) {
+    return 'Agent con xong $n';
+  }
+
+  @override
+  String awayAgentsFailed(int n) {
+    return 'Agent con lỗi $n';
+  }
+
+  @override
+  String awayCompact(int n) {
+    return 'Compact $n';
+  }
+
+  @override
+  String get awaySeen => 'Đã xem';
+
+  @override
+  String get awayPartial => 'Số liệu có thể thiếu';
+
+  @override
+  String get queueMaybeSent => 'Có thể đã gửi. Chỉ gửi lại nếu chưa tới.';
 }

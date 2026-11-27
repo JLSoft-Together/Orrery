@@ -23,7 +23,9 @@ import {
 } from '@ccm/shared'
 import { desktop, type RunSettings } from '../../../core/lib/desktop'
 import { devConnectMany, devSnapshot } from '../../devices/lib/devices'
+import { sweepVariants } from '../lib/multiRunDeps'
 import { AUTO_RELOAD_DEBOUNCE_MS, AUTO_RELOAD_MIN_GAP_MS, agentsFinished, autoReloadAction } from '../lib/runAutoReload'
+import { forgetOffered, maybeAutoOffer } from '../lib/apkOffer'
 import { agentPaneFor, errorPrompt, fitsPlatforms, inRoot } from '../lib/runUi'
 import { dirKey } from '../../../core/stores/favorites'
 import { useTerminalsStore } from '../../../core/stores/terminals'
@@ -155,6 +157,7 @@ export const useRunStore = defineStore('run', () => {
     for (const s of ended.slice(ENDED_KEEP)) {
       delete sessions.value[s.id]
       delete restored.value[s.id]
+      forgetOffered(s.id)
       dropOutput(s.id)
       for (const [root, id] of Object.entries(focus.value)) if (id === s.id) delete focus.value[root]
     }
@@ -162,9 +165,12 @@ export const useRunStore = defineStore('run', () => {
 
   function handleEvent(event: RunEvent): void {
     switch (event.type) {
-      case 'session':
+      case 'session': {
+        const prev = sessions.value[event.session.id]
         putSession(event.session)
+        maybeAutoOffer(prev, event.session)
         break
+      }
       // The session event always comes first; output for an unknown id would never be pruned.
       case 'log':
         if (sessions.value[event.sessionId]) appendLines(event.sessionId, event.lines)
@@ -265,6 +271,7 @@ export const useRunStore = defineStore('run', () => {
     }
     if (withDevices && !devicesAsked) {
       devicesAsked = true
+      void sweepVariants()
       await refreshDevices()
     }
   }

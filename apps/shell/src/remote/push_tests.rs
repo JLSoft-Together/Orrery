@@ -68,6 +68,23 @@ fn every_kind_has_fixed_text_in_both_locales_and_the_payload_carries_no_content(
 }
 
 #[test]
+fn a_device_waiting_for_its_revoke_gets_no_push_and_cannot_join_late() {
+    let rig = rig("push-held", "", false);
+    let ctx = ready(&rig, Fake::ok());
+    add_device(&rig, "a", TOKEN_A, "en");
+    let j = job(TOKEN_A, "done", "en");
+    assert!(ctx.still_wanted(&j));
+    ctx.hold.hold("a", Duration::from_secs(30), Instant::now());
+    assert!(!ctx.still_wanted(&j));
+    let key = [9u8; 32];
+    assert!(lock(&ctx.devices).add(Device::new("h", "h", &key, now_secs())));
+    ctx.hold.hold("h", Duration::from_secs(30), Instant::now());
+    let (tx, _rx) = tokio::sync::mpsc::channel(4);
+    assert_eq!(ctx.admit_live("h", &key, "lan", tx, now_secs()), Err(super::ctx::Admit::Held));
+    assert_eq!(ctx.live_count(), 0);
+}
+
+#[test]
 fn only_plain_fcm_tokens_are_accepted() {
     assert!(valid_token(TOKEN_A));
     assert!(!valid_token("short"));
@@ -227,7 +244,7 @@ fn the_running_remote_sends_a_queued_push_to_fcm_in_the_background() {
     assert!(calls[0].0.ends_with("/projects/demo-proj/messages:send"));
     let sent: Value = serde_json::from_str(&calls[0].3).unwrap();
     assert_eq!(sent["message"]["token"], TOKEN_A);
-    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "p1", "k": "permission" }));
+    assert_eq!(sent["message"]["data"], json!({ "m": ctx.machine_id(), "p": "p1", "k": "permission", "w": "0" }));
     assert_eq!(sent["message"]["notification"]["title"], title_body("permission", "vi").0);
     rig.remote.enable(false);
 }

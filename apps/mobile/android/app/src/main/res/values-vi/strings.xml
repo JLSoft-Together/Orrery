@@ -2,4 +2,11 @@
 <resources>
     <string name="attention_channel_name">Cần chú ý</string>
     <string name="attention_channel_description">Một pane cần bạn: agent đã xong, đang hỏi hoặc cần cấp quyền.</string>
+    <string name="tile_label">Orrery</string>
+    <string name="tile_waiting_count">%1$d chờ bạn</string>
+    <string name="waiting_open_app">Mở app để cập nhật</string>
+    <string name="waiting_paused_until">Tạm dừng đến %1$s</string>
+    <string name="widget_at">lúc %1$s</string>
+    <string name="widget_none">Không có session nào đang chờ</string>
+    <string name="widget_description">Số session đang chờ bạn</string>
 </resources>

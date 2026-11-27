@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bucketOf, compareSessions, cycleNextScope, groupOfSession, inNextScope, parseNextPrefix, repoName, sessionTerms, NEXT_GROUP_ORDER } from './palette'
+import { bucketOf, compareSessions, cycleNextScope, groupOfSession, inNextScope, parseNextPrefix, repoName, sessionTerms, NEXT_GROUP_ORDER, NEXT_SCOPES } from './palette'
 import { canUndoLayout, registerLayoutUndo, undoLayout } from './paletteHooks'
 import { matchText, searchable } from '@features/palette'
 
@@ -53,6 +53,8 @@ describe('next palette', () => {
     expect(parseNextPrefix('>theme')).toEqual({ mode: 'commands', text: 'theme' })
     expect(parseNextPrefix(': orrery')).toEqual({ mode: 'projects', text: 'orrery' })
     expect(parseNextPrefix(' plain ')).toEqual({ mode: null, text: 'plain' })
+    expect(parseNextPrefix('; fix build')).toEqual({ mode: 'prompts', text: 'fix build' })
+    expect(parseNextPrefix(';')).toEqual({ mode: 'prompts', text: '' })
   })
 
   it('scopes', () => {
@@ -63,6 +65,11 @@ describe('next palette', () => {
     expect(inNextScope('files', 'all')).toBe(true)
     expect(cycleNextScope('all', -1)).toBe('projects')
     expect(cycleNextScope('projects', 1)).toBe('all')
+    expect(inNextScope('prompts', 'prompts')).toBe(true)
+    expect(inNextScope('prompts', 'all')).toBe(true)
+    expect(inNextScope('prompts', 'commands')).toBe(false)
+    expect(inNextScope('settings', 'prompts')).toBe(false)
+    expect(NEXT_SCOPES).not.toContain('prompts')
   })
 
   it('matches model, branch and repo', () => {

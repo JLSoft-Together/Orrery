@@ -182,7 +182,7 @@ void main() {
     flow.skip('a');
     expect(flow.current!.key, 'b');
     expect(flow.skippedCount, 1);
-    expect(flow.position, 2);
+    expect(flow.position, 1);
     flow.remove('b');
     expect(flow.current, isNull);
     flow.reviewSkipped();
@@ -204,6 +204,68 @@ void main() {
     expect(flow.slot('a'), isNot(same(first)));
     expect(flow.current!.key, 'a');
     expect(flow.total, 2);
+  });
+
+  test('a snoozed card retired by the driver is replaced when the pane returns', () {
+    final flow = QueueFlow();
+    flow.sync(modelOf([paneOf('a', menuSig: 's1')]), live: true);
+    final first = flow.slot('a')!;
+    flow.begin('a', QueuePhase.snoozed);
+    flow.remove('a');
+    flow.sync(modelOf([paneOf('a', menuSig: 's1', snoozed: true)]), live: true);
+    expect(flow.slot('a'), same(first));
+    flow.sync(modelOf([paneOf('a', menuSig: 's1')]), live: true);
+    expect(flow.slot('a'), isNot(same(first)));
+    expect(flow.current!.key, 'a');
+    expect(flow.current!.phase, QueuePhase.ready);
+  });
+
+  test('a card retired while sending is replaced when the pane is a candidate', () {
+    final flow = QueueFlow();
+    flow.sync(modelOf([paneOf('a', menuSig: 's1')]), live: true);
+    final first = flow.slot('a')!;
+    flow.begin('a', QueuePhase.sending);
+    flow.remove('a');
+    flow.sync(modelOf([paneOf('a', menuSig: 's1')]), live: true);
+    expect(flow.slot('a'), isNot(same(first)));
+    expect(flow.current!.phase, QueuePhase.ready);
+  });
+
+  test('an unsure card waits for the desktop to settle', () {
+    final flow = QueueFlow();
+    flow.sync(modelOf([paneOf('a', menuSig: 's1')]), live: true);
+    flow.begin('a', QueuePhase.unsure);
+    expect(flow.slot('a')!.canResend, isTrue);
+    expect(flow.slot('a')!.actionable, isFalse);
+    flow.sync(modelOf([paneOf('a', menuSig: 's1')]), live: true);
+    expect(flow.slot('a')!.phase, QueuePhase.unsure);
+    flow.sync(modelOf([paneOf('a', menuSig: 's2')]), live: true);
+    expect(flow.slot('a')!.phase, QueuePhase.stale);
+    flow.begin('a', QueuePhase.unsure);
+    flow.sync(modelOf([paneOf('a', rail: 'working')]), live: true);
+    expect(flow.slot('a')!.phase, QueuePhase.gone);
+  });
+
+  test('position counts answered cards, not skipped ones', () {
+    final flow = QueueFlow();
+    flow.sync(modelOf([paneOf('a'), paneOf('b'), paneOf('c')]), live: true);
+    flow.skip('a');
+    flow.skip('b');
+    expect(flow.current!.key, 'c');
+    expect(flow.position, 1);
+    expect(flow.total, 3);
+    flow.remove('c');
+    expect(flow.position, 2);
+  });
+
+  test('skipped count leaves out cards that are gone', () {
+    final flow = QueueFlow();
+    flow.sync(modelOf([paneOf('a'), paneOf('b')]), live: true);
+    flow.skip('a');
+    expect(flow.skippedCount, 1);
+    flow.sync(modelOf([paneOf('a', rail: 'working'), paneOf('b')]), live: true);
+    expect(flow.slot('a')!.phase, QueuePhase.gone);
+    expect(flow.skippedCount, 0);
   });
 
   test('pane parse keeps question and snoozed, caps the question', () {

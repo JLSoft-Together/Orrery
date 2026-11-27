@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -58,6 +60,7 @@ class _QueuePageState extends ConsumerState<QueuePage> {
     goneDelay: widget.goneDelay,
   );
   bool _synced = false;
+  ScaffoldMessengerState? _messenger;
 
   @override
   void initState() {
@@ -66,7 +69,21 @@ class _QueuePageState extends ConsumerState<QueuePage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+  }
+
+  @override
   void dispose() {
+    final messenger = _messenger;
+    if (messenger != null) {
+      scheduleMicrotask(() {
+        if (messenger.mounted) {
+          messenger.removeCurrentSnackBar(reason: SnackBarClosedReason.remove);
+        }
+      });
+    }
     _driver.dispose();
     super.dispose();
   }

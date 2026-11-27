@@ -37,6 +37,7 @@ Future<void> runMenuAction({
   required int index,
   required MenuSend send,
   Duration undo = menuActionUndo,
+  bool Function()? proceed,
 }) async {
   final l = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.maybeOf(context);
@@ -56,6 +57,7 @@ Future<void> runMenuAction({
   );
   final reason = await controller.closed;
   if (reason == SnackBarClosedReason.action) return;
+  if (proceed != null && !proceed()) return;
   try {
     await send(sig, index);
   } on Object catch (error) {

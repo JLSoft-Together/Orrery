@@ -42,6 +42,7 @@ class AwayNotifier extends Notifier<Map<String, AwaySummary>> {
         s.cancel();
       }
     });
+    ref.listen(machinesProvider, (_, _) => _watchMachines());
     unawaited(back());
     return const {};
   }
@@ -70,6 +71,7 @@ class AwayNotifier extends Notifier<Map<String, AwaySummary>> {
   }
 
   Future<void> leave() async {
+    ref.invalidate(awayFilterProvider);
     final done = _tracker.leave();
     _sync();
     await done;

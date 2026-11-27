@@ -2318,4 +2318,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get awayPartial => 'Numbers may be incomplete';
+
+  @override
+  String get queueMaybeSent =>
+      'It may have been sent. Send again only if it did not arrive.';
 }

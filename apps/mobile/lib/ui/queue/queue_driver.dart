@@ -55,6 +55,8 @@ class QueueDriver {
   final Duration goneDelay;
   final Map<String, Timer> _timers = {};
   final Map<String, TextEditingController> drafts = {};
+  final List<TextEditingController> _retiredDrafts = [];
+  final Set<String> _replying = {};
 
   TextEditingController draftOf(String key) =>
       drafts.putIfAbsent(key, TextEditingController.new);
@@ -68,6 +70,10 @@ class QueueDriver {
       draft.dispose();
     }
     drafts.clear();
+    for (final draft in _retiredDrafts) {
+      draft.dispose();
+    }
+    _retiredDrafts.clear();
   }
 
   void _later(String key, Duration wait, VoidCallback run) {
@@ -80,7 +86,8 @@ class QueueDriver {
 
   void _retire(String key) {
     flow.remove(key);
-    drafts.remove(key)?.dispose();
+    final draft = drafts.remove(key);
+    if (draft != null) _retiredDrafts.add(draft);
     notify();
   }
 
@@ -101,13 +108,16 @@ class QueueDriver {
     _later('sent-${slot.key}', wait, () => _retire(slot.key));
   }
 
-  void _fail(QueueSlot slot, Object error) {
+  void _fail(QueueSlot slot, Object error, {bool uncertain = false}) {
     final context = paneContext();
     final code = _codeOf(error);
     if (code == 'notWaiting' || code == 'notFound') {
       flow.begin(slot.key, QueuePhase.gone);
     } else if (code == 'stale' || code == 'useMenu') {
       flow.begin(slot.key, QueuePhase.stale);
+    } else if (uncertain && (code == 'timeout' || code == 'offline')) {
+      flow.begin(slot.key, QueuePhase.unsure);
+      slot.unsureCode = code;
     } else {
       flow.resume(slot.key);
     }
@@ -133,6 +143,7 @@ class QueueDriver {
       sig: menu.sig,
       index: item.index,
       undo: undo,
+      proceed: isMounted,
       send: (sig, index) async {
         try {
           await api.command('ws.menu', {
@@ -174,7 +185,20 @@ class QueueDriver {
   Future<void> reply(QueueSlot slot) async {
     final context = paneContext();
     final value = draftOf(slot.key).text.trim();
-    if (context == null || value.isEmpty || !slot.actionable) return;
+    if (context == null || value.isEmpty || !slot.canResend) return;
+    if (!_replying.add(slot.key)) return;
+    try {
+      await _reply(slot, context, value);
+    } finally {
+      _replying.remove(slot.key);
+    }
+  }
+
+  Future<void> _reply(
+    QueueSlot slot,
+    BuildContext context,
+    String value,
+  ) async {
     final verdict = await confirmDanger(context, rules(), value);
     if (verdict == DangerVerdict.cancelled || !isMounted()) return;
     var authed = verdict == DangerVerdict.authed;
@@ -197,7 +221,7 @@ class QueueDriver {
           authed = true;
           continue;
         }
-        _fail(slot, error);
+        _fail(slot, error, uncertain: true);
         return;
       }
     }

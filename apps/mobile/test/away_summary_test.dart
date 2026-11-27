@@ -412,6 +412,49 @@ void main() {
       expect(t.dismiss('m1'), isFalse);
     });
 
+    test('leaving again before the machine was fresh keeps the old mark', () async {
+      await make().leave();
+      clock = plus(45);
+      feeds = {'m1': AwayFeed(snapshot: returning, fresh: false)};
+      final t = make();
+      await t.back();
+      expect(t.pendingIds, {'m1'});
+      clock = plus(50);
+      await t.leave();
+      final mark = store.marks['m1']!;
+      expect(mark.leftAt, t0);
+      expect(mark.statuses, {'a': 'working'});
+    });
+
+    test('leaving with an unseen card makes it pending again', () async {
+      final t = make();
+      await t.leave();
+      clock = plus(80);
+      feeds = {'m1': AwayFeed(snapshot: returning, fresh: true)};
+      await t.back();
+      expect(t.summaries, isNotEmpty);
+      clock = plus(90);
+      await t.leave();
+      expect(t.summaries, isEmpty);
+      expect(store.marks['m1']!.leftAt, t0);
+      expect(store.marks['m1']!.statuses, {'a': 'working'});
+      clock = plus(120);
+      expect(await t.back(), isTrue);
+      expect(t.summaries['m1']!.since, t0);
+    });
+
+    test('a dismissed card is not pending after leaving', () async {
+      final t = make();
+      await t.leave();
+      clock = plus(80);
+      feeds = {'m1': AwayFeed(snapshot: returning, fresh: true)};
+      await t.back();
+      t.dismiss('m1');
+      clock = plus(90);
+      await t.leave();
+      expect(store.marks['m1']!.leftAt, plus(90));
+    });
+
     test('a new absence clears an unseen card', () async {
       final t = make();
       await t.leave();

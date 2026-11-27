@@ -2199,4 +2199,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get awayPartial => 'Số liệu có thể thiếu';
+
+  @override
+  String get queueMaybeSent => 'Có thể đã gửi. Chỉ gửi lại nếu chưa tới.';
 }

@@ -401,6 +401,125 @@ void main() {
     expect(find.byKey(const ValueKey('queue-gone')), findsOneWidget);
   });
 
+  testWidgets('a reply that times out is unsure and is not resent by itself', (
+    tester,
+  ) async {
+    var fail = true;
+    final api = FakeMachineApi()
+      ..responder = (type, fields) {
+        if (type == 'ws.reply' && fail) {
+          throw const RemoteCommandException('timeout');
+        }
+        return {};
+      };
+    final h = harness([asked('a', question: 'Name?')], api: api);
+    await pumpPage(h, tester);
+    await tester.enterText(find.byKey(const ValueKey('queue-reply')), 'x');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('queue-send')));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('queue-unsure')), findsOneWidget);
+    expect(sent(h, 'ws.reply'), hasLength(1));
+    expect(find.byKey(const ValueKey('queue-send')), findsOneWidget);
+
+    h.viewNotifier.emit(
+      view(
+        ws: wsOf([asked('a', rail: 'working')]),
+        hello: {
+          'caps': ['queue'],
+        },
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('queue-gone')), findsOneWidget);
+    expect(sent(h, 'ws.reply'), hasLength(1));
+    fail = false;
+  });
+
+  testWidgets('tapping send twice during the danger check sends once', (
+    tester,
+  ) async {
+    final h = harness([asked('a', question: 'Run?')], danger: ['rm -rf']);
+    await pumpPage(h, tester);
+    await tester.enterText(find.byKey(const ValueKey('queue-reply')), 'rm -rf /');
+    await tester.pump();
+    final send = find.byKey(const ValueKey('queue-send'));
+    await tester.tap(send);
+    await tester.tap(send, warnIfMissed: false);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(sent(h, 'ws.reply'), hasLength(1));
+  });
+
+  testWidgets('leaving the queue page drops a pending menu answer', (
+    tester,
+  ) async {
+    final h = harness([asked('a', menu: menuOf('s1'))]);
+    await pumpPage(
+      h,
+      tester,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            key: const ValueKey('open-queue'),
+            onPressed: () => openQueue(context, 'm1'),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('open-queue')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('queue-menu-1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('queue-pending')), findsOneWidget);
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(sent(h, 'ws.menu'), isEmpty);
+  });
+
+  testWidgets('a snoozed card that expires brings the pane back to the queue', (
+    tester,
+  ) async {
+    final h = harness([asked('a', menu: menuOf('s1'))]);
+    await pumpPage(h, tester);
+    await tester.tap(find.byKey(const ValueKey('queue-snooze')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('queue-snooze-15')));
+    await tester.pump();
+    await tester.pump();
+    h.viewNotifier.emit(
+      view(
+        ws: wsOf([asked('a', menu: menuOf('s1'), snoozed: true)]),
+        hello: {
+          'caps': ['queue'],
+        },
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump();
+    h.viewNotifier.emit(
+      view(
+        ws: wsOf([asked('a', menu: menuOf('s1'))]),
+        hello: {
+          'caps': ['queue'],
+        },
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('queue-menu-1')), findsOneWidget);
+  });
+
   testWidgets('a question that changes while typing keeps the draft, stale', (
     tester,
   ) async {

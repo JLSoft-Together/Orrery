@@ -23,6 +23,7 @@ class AwayTracker {
 
   final Map<String, AwaySummary> summaries = {};
   final Map<String, AwayMark> _pending = {};
+  final Map<String, AwayMark> _shown = {};
   Future<void> _io = Future.value();
   bool _left = false;
 
@@ -37,11 +38,25 @@ class AwayTracker {
   Future<void> leave() {
     if (_left) return _io;
     _left = true;
+    for (final id in summaries.keys) {
+      final mark = _shown[id];
+      if (mark != null) _pending[id] = mark;
+    }
     summaries.clear();
+    _shown.clear();
     final at = _now();
-    final marks = {
-      for (final e in source().entries) e.key: markFromSnapshot(e.value.snapshot, at),
-    };
+    final marks = Map<String, AwayMark>.of(_pending);
+    for (final e in source().entries) {
+      final fresh = markFromSnapshot(e.value.snapshot, at);
+      final old = _pending[e.key];
+      marks[e.key] = old == null
+          ? fresh
+          : AwayMark(
+              leftAt: old.leftAt.isBefore(at) ? old.leftAt : at,
+              ref: old.ref,
+              statuses: old.statuses,
+            );
+    }
     return _queued(() => store.save(marks));
   }
 
@@ -73,17 +88,24 @@ class AwayTracker {
     for (final id in _pending.keys.toList()) {
       final feed = feeds[id];
       if (feed == null || !feed.fresh || feed.snapshot == null) continue;
+      final mark = _pending.remove(id)!;
       final summary = computeAway(
         snapshot: feed.snapshot,
-        mark: _pending.remove(id)!,
+        mark: mark,
         now: now,
       );
-      if (summary != null) summaries[id] = summary;
+      if (summary != null) {
+        summaries[id] = summary;
+        _shown[id] = mark;
+      }
       changed = true;
     }
     if (changed) await store.save(Map.of(_pending));
     return changed;
   }
 
-  bool dismiss(String machineId) => summaries.remove(machineId) != null;
+  bool dismiss(String machineId) {
+    _shown.remove(machineId);
+    return summaries.remove(machineId) != null;
+  }
 }

@@ -654,5 +654,6 @@
   "awayAgentsFailed": "Agent con lỗi {n}",
   "awayCompact": "Compact {n}",
   "awaySeen": "Đã xem",
-  "awayPartial": "Số liệu có thể thiếu"
+  "awayPartial": "Số liệu có thể thiếu",
+  "queueMaybeSent": "Có thể đã gửi. Chỉ gửi lại nếu chưa tới."
 }

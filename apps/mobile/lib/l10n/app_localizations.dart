@@ -4027,6 +4027,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Numbers may be incomplete'**
   String get awayPartial;
+
+  /// No description provided for @queueMaybeSent.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been sent. Send again only if it did not arrive.'**
+  String get queueMaybeSent;
 }
 
 class _AppLocalizationsDelegate

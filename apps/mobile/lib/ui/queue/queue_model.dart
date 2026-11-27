@@ -1,6 +1,15 @@
 import '../model/workspace_model.dart';
 
-enum QueuePhase { ready, sending, pendingUndo, snoozed, sent, stale, gone }
+enum QueuePhase {
+  ready,
+  sending,
+  pendingUndo,
+  snoozed,
+  sent,
+  stale,
+  gone,
+  unsure,
+}
 
 bool isQueueCandidate(PaneInfo pane) =>
     pane.isTerm && pane.rail == RailState.asked && !pane.snoozed;
@@ -37,6 +46,7 @@ class QueueSlot {
   bool ignoreSnoozed = false;
   String? pickedLabel;
   int snoozeMinutes = 0;
+  String? unsureCode;
 
   String get key => pane.key;
 
@@ -47,6 +57,9 @@ class QueueSlot {
   bool get busy => phase == QueuePhase.sending || phase == QueuePhase.pendingUndo;
 
   bool get actionable => phase == QueuePhase.ready;
+
+  bool get canResend =>
+      phase == QueuePhase.ready || phase == QueuePhase.unsure;
 }
 
 class QueueFlow {
@@ -67,10 +80,13 @@ class QueueFlow {
 
   int get total => _slots.length + _retired;
 
-  int get position => (total - open.length + 1).clamp(1, total < 1 ? 1 : total);
+  int get position {
+    final done = _retired + _slots.values.where((s) => s.removed).length;
+    return (done + 1).clamp(1, total < 1 ? 1 : total);
+  }
 
   int get skippedCount => _slots.values
-      .where((s) => s.skipped && !s.removed)
+      .where((s) => s.skipped && !s.removed && s.phase != QueuePhase.gone)
       .length;
 
   QueueSlot? slot(String paneKey) => _slots[paneKey];
@@ -93,7 +109,9 @@ class QueueFlow {
     }
     for (final slot in _slots.values) {
       if (seen.contains(slot.key) || slot.removed) continue;
-      if (slot.phase == QueuePhase.ready || slot.phase == QueuePhase.stale) {
+      if (slot.phase == QueuePhase.ready ||
+          slot.phase == QueuePhase.stale ||
+          slot.phase == QueuePhase.unsure) {
         slot.phase = QueuePhase.gone;
         changed = true;
       }
@@ -128,6 +146,13 @@ class QueueFlow {
     slot.tab = tab;
     slot.pane = pane;
     final asked = pane.rail == RailState.asked;
+    if (slot.removed &&
+        slot.phase != QueuePhase.sent &&
+        slot.phase != QueuePhase.gone &&
+        isQueueCandidate(pane)) {
+      _replace(slot, tab, pane, fresh);
+      return true;
+    }
     switch (slot.phase) {
       case QueuePhase.ready:
         if (!pane.snoozed) slot.ignoreSnoozed = false;
@@ -151,9 +176,17 @@ class QueueFlow {
         if (slot.removed &&
             isQueueCandidate(pane) &&
             queueSignature(pane) != slot.signature) {
-          _slots.remove(slot.key);
-          _retired++;
-          fresh.add((tab, pane));
+          _replace(slot, tab, pane, fresh);
+          return true;
+        }
+        return false;
+      case QueuePhase.unsure:
+        if (!asked) {
+          slot.phase = QueuePhase.gone;
+          return true;
+        }
+        if (queueSignature(pane) != slot.signature) {
+          slot.phase = QueuePhase.stale;
           return true;
         }
         return false;
@@ -164,10 +197,22 @@ class QueueFlow {
     }
   }
 
+  void _replace(
+    QueueSlot slot,
+    TabInfo tab,
+    PaneInfo pane,
+    List<(TabInfo, PaneInfo)> fresh,
+  ) {
+    _slots.remove(slot.key);
+    _retired++;
+    fresh.add((tab, pane));
+  }
+
   void begin(String paneKey, QueuePhase phase) {
     final slot = _slots[paneKey];
     if (slot == null) return;
     slot.phase = phase;
+    if (phase != QueuePhase.unsure) slot.unsureCode = null;
     if (phase == QueuePhase.snoozed) slot.ignoreSnoozed = true;
   }
 

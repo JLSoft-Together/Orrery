@@ -55,36 +55,36 @@ class QueueStage extends StatelessWidget {
         onUndoSnooze: () => driver.undoSnooze(slot),
       ),
     );
-    if (swipeable) {
-      card = Dismissible(
-        key: ValueKey('queue-swipe-${slot.key}'),
-        direction: canSnooze
-            ? DismissDirection.horizontal
-            : DismissDirection.endToStart,
-        confirmDismiss: (direction) async {
-          onSeen();
-          if (direction == DismissDirection.endToStart) {
-            driver.skip(slot);
-          } else {
-            driver.snooze(slot, queueSnoozeMinutes.first);
-          }
-          return false;
-        },
-        background: _SwipeBack(
-          icon: Icons.snooze_rounded,
-          label: l.queueSnooze,
-          color: c.waiting,
-          alignment: Alignment.centerLeft,
-        ),
-        secondaryBackground: _SwipeBack(
-          icon: Icons.skip_next_rounded,
-          label: l.queueSkip,
-          color: c.inkMuted,
-          alignment: Alignment.centerRight,
-        ),
-        child: card,
-      );
-    }
+    card = Dismissible(
+      key: ValueKey('queue-swipe-${slot.key}'),
+      direction: !swipeable
+          ? DismissDirection.none
+          : canSnooze
+          ? DismissDirection.horizontal
+          : DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        onSeen();
+        if (direction == DismissDirection.endToStart) {
+          driver.skip(slot);
+        } else {
+          driver.snooze(slot, queueSnoozeMinutes.first);
+        }
+        return false;
+      },
+      background: _SwipeBack(
+        icon: Icons.snooze_rounded,
+        label: l.queueSnooze,
+        color: c.waiting,
+        alignment: Alignment.centerLeft,
+      ),
+      secondaryBackground: _SwipeBack(
+        icon: Icons.skip_next_rounded,
+        label: l.queueSkip,
+        color: c.inkMuted,
+        alignment: Alignment.centerRight,
+      ),
+      child: card,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
@@ -122,7 +122,7 @@ class QueueStage extends StatelessWidget {
                   key: const ValueKey('queue-open-pane'),
                   label: l.queueOpenPane,
                   kind: ButtonKind.secondary,
-                  onPressed: ready || slot.phase == QueuePhase.stale
+                  onPressed: slot.canResend || slot.phase == QueuePhase.stale
                       ? onOpen
                       : null,
                 ),

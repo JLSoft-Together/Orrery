@@ -180,6 +180,20 @@ class QueueCard extends StatelessWidget {
           c.accentInk,
           const ValueKey('queue-pending'),
         );
+      case QueuePhase.unsure:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _note(
+              context,
+              Icons.sync_problem_rounded,
+              l.queueMaybeSent,
+              c.waiting,
+              const ValueKey('queue-unsure'),
+            ),
+            _ask(context),
+          ],
+        );
       case QueuePhase.ready:
       case QueuePhase.sending:
         return _ask(context);

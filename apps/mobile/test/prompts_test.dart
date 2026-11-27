@@ -291,6 +291,30 @@ void main() {
     });
   });
 
+  group('controller writes that the desktop did not finish', () {
+    for (final reply in <JsonMap>[
+      {'confirm': {'id': 'c1'}},
+      {'cancelled': true},
+    ]) {
+      test('save and remove fail on $reply', () async {
+        final api = FakeMachineApi();
+        api.responder = (type, fields) =>
+            type == 'prompts.list' ? listReply([]) : reply;
+        final c = PromptsController(
+          api: PromptsApi(ViewerApi(api)),
+          paneKey: 'a',
+        );
+        await Future<void>.delayed(Duration.zero);
+        await expectLater(
+          c.save(const PromptDraft(title: 'a', body: 'b')),
+          throwsA(isA<ViewerFailure>()),
+        );
+        await expectLater(c.remove('x'), throwsA(isA<ViewerFailure>()));
+        c.dispose();
+      });
+    }
+  });
+
   group('composer strip', () {
     testWidgets('chips appear for a desktop with the prompts cap', (
       tester,

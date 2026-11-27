@@ -18,6 +18,28 @@ export const SEEN_KEY = 'ccm.whatsNew.seen'
 // Summaries of `git log <prev tag>..<tag>` and the matching .planning plans; newest first.
 export const CHANGELOG: Release[] = [
   {
+    version: '4.0.11',
+    date: '2026-11-27',
+    items: [
+      { en: 'Three step phone connect in Settings: install over USB or scan a QR, then a connection test', vi: 'Kết nối điện thoại 3 bước trong Settings: cài qua cáp USB hoặc quét QR, rồi kiểm kết nối' },
+      { en: 'The installer ships the Orrery Remote app: install over USB in one click or save the APK', vi: 'Bộ cài có sẵn app Orrery Remote: cài qua cáp bằng 1 nút hoặc lưu file APK' },
+      { en: 'Settings, Devices: phones, adb devices and emulators in one list, revoke with Undo', vi: 'Settings, Thiết bị: điện thoại, máy adb và emulator chung 1 danh sách, thu hồi có Hoàn tác' },
+      { en: 'Answer agent questions right from the phone notification', vi: 'Trả lời câu hỏi của agent ngay trên thông báo điện thoại' },
+      { en: 'Running notice with a timer on the phone, open a pane on the phone from the pane menu', vi: 'Thông báo đang chạy có đồng hồ, mở pane trên điện thoại từ menu pane' },
+      { en: 'Phone home screen widget and Quick Settings tile with the waiting count', vi: 'Widget màn hình chính và ô Quick Settings trên điện thoại hiện số session đang chờ' },
+      { en: '"Waiting for you" queue and "Since you were away" card on the phone', vi: 'Hàng đợi "Chờ bạn" và thẻ "Từ lúc bạn đi vắng" trên điện thoại' },
+      { en: 'Saved prompts: type ; in Ctrl+K, inserted without sending, shared with the phone', vi: 'Prompt đã lưu: gõ ; trong Ctrl+K, chèn không tự gửi, dùng chung với điện thoại' },
+      { en: 'Peek a session from the rail: running tool, run time, pending question', vi: 'Xem nhanh session khi rê chuột trên rail: tool đang chạy, thời gian, câu hỏi đang chờ' },
+      { en: 'Interface density: compact, regular, comfortable', vi: 'Mật độ giao diện Gọn, Vừa, Thoáng' },
+      { en: 'Dangerous commands from the phone need fingerprint or PIN', vi: 'Lệnh nguy hiểm gửi từ điện thoại cần vân tay hoặc PIN' },
+      { en: 'Pre-merge checklist, Run log and crash hand-off on the phone', vi: 'Checklist trước merge, log Run và gửi crash cho agent trên điện thoại' },
+      { en: 'Run on several Android devices with light, dark and large font variants and a screenshot grid', vi: 'Chạy trên nhiều máy Android với biến thể sáng, tối, chữ lớn và lưới ảnh chụp' },
+      { en: 'Send a freshly built APK to the phone', vi: 'Gửi APK vừa build lên điện thoại' },
+      { en: 'Shared clipboard between phone and computer, only on a tap', vi: 'Clipboard chung giữa điện thoại và máy tính, chỉ khi bấm' },
+      { en: 'Dictate or take a photo into a pane from the phone', vi: 'Nói ra chữ hoặc chụp ảnh gửi vào pane từ điện thoại' },
+    ],
+  },
+  {
     version: '4.0.10',
     date: '2026-11-25',
     items: [
